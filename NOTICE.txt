@@ -43,6 +43,15 @@ This product is heavily influenced by:
 
 ---
 
+This product contains Cameron Desrochers's 'moodycamel::ConcurrentQueue'.
+
+  * LICENSE (Simplified BSD):
+    * https://github.com/cameron314/concurrentqueue/blob/master/LICENSE.md
+  * HOMEPAGE:
+    * https://github.com/cameron314/concurrentqueue
+
+---
+
 This product contains a derivation of the Tony Stone's 'process_test_files.rb'.
 
   * LICENSE (Apache License 2.0):
