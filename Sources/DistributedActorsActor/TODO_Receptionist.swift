@@ -11,10 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import XCTest
+// Created by Konrad Malawski on 2018-09-28.
+//
 
-import Swift Distributed ActorsActorTests
+import Foundation
 
-var tests = [XCTestCaseEntry]()
-tests += ActorTests.allTests()
-XCTMain(tests)

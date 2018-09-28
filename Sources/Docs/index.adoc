@@ -1,0 +1,26 @@
+= DistributedActors Reference Documentation
+:toc:
+:toc: left
+:toc-title: DistributedActors Reference Docs
+:icons: font
+:idprefix:
+:idseparator: -
+:sectanchors:
+:source-highlighter: pygments
+:pygments-style: tango
+:mdash: &#8212;
+
+This will be a more "wordy" documentation rather than the plain API docs.
+
+Both are important as we need to explain not only the API but patterns and style etc.
+
+NOTE: Note to authors: If you are new to asciidoc, see here: https://asciidoctor.org/docs/user-manual/#include-directive
+
+NOTE: I know we could use Jazzy for this though feature wise was a bit meh. If we want to use Jazzy though for some reasons I'd be okey with it.
+This ofc would need to integrate the TOC.
+
+NOTE: *TODO* make it look like the other Apple project docs (Jazzy style).
+
+NOTE: *TODO* link to the API docs as well
+
+include::actors.adoc[]

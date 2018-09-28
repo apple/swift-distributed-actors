@@ -1,0 +1,29 @@
+{
+  "xcodebuild_arguments": [
+    "-project", "swift-distributed-actors.xcodeproj",
+    "-scheme", "swift-distributed-actors-Package"
+  ],
+  "author": "DistributedActors Team",
+  "author_url": "https://github.com/kmalawski/sact",
+  "github_url": "https://github.com/kmalawski/sact",
+  "module": "DistributedActors",
+  "documentation": "Sources/Docs/*.md",
+  "custom_categories": [
+    {
+      "name": "Documentation",
+      "children": [
+        "Actors"
+      ]
+    },
+    {
+      "name": "Examples",
+      "children": [
+      ]
+    }
+  ],
+  "string-replacements": {
+    "Docs/img": "img",
+    "http://reswift.github.io/ReSwift/master/getting-started-guide.html": "getting-started-guide.html",
+    "#contributing": "contributing.html"
+  }
+}

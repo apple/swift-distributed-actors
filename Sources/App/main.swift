@@ -15,3 +15,18 @@ import Foundation
 import Swift Distributed ActorsActor
 
 let system = ActorSystem()
+
+struct Hello {
+    let name: String
+    let sender: ActorRef<String>
+}
+
+let greeter: Behavior<Hello> = .receive { msg in
+    msg.sender.tell("Hello: \(msg.name)!")
+    msg.sender ! "Hello: \(msg.name)!"
+
+    return .same
+}
+
+let ref = system.spawn(greeter, named: "echo")
+

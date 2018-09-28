@@ -1,0 +1,19 @@
+== Actors
+
+TODO: This is just placeholders. Not actual structure etc.
+
+=== Minimal example
+
+TODO
+
+=== Starting and stopping Actors
+
+TODO
+
+=== Sending messages
+
+TODO
+
+=== Monitoring and reacting to Termination
+
+TODO

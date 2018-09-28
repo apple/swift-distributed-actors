@@ -26,14 +26,15 @@ public final class ActorSystem {
 
 }
 
-protocol ActorRefFactory {
-    func spawn<Message>(_ props: Props<Message>, named name: String) -> ActorRef<Message>
+public protocol ActorRefFactory {
+
+    func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props) -> ActorRef<Message>
 }
 
-struct Props<Message> {
+extension ActorSystem: ActorRefFactory {
 
+    public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) -> ActorRef<Message> {
+        return FIXME("implement this")
+    }
 }
 
-struct ActorRef<Message> {
-
-}

@@ -3,3 +3,7 @@
 /Packages
 /*.xcodeproj
 .idea
+
+# rendered docs output dirs
+/reference/
+/api/

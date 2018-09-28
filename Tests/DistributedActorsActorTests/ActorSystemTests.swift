@@ -13,10 +13,14 @@
 //===----------------------------------------------------------------------===//
 import Foundation
 import XCTest
-import Files
 import Swift Distributed ActorsActor
 
-class CommandLineToolTests: XCTestCase {
-    func testCreatingFile() throws {
+class ActorTests: XCTestCase {
+
+    func testNothing() throws {
+        let s: String? = nil
+
+        let ss = s!
     }
+
 }
