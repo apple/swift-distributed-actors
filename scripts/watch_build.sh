@@ -16,6 +16,11 @@ fi
 echo "Watching: $pattern..."
 echo "(Usage: ./scripts/watch-build.sh [swift test])"
 
+if ! command -v watchmedo > /dev/null; then
+  echo "Please install `watchmedo`"
+  echo "See: https://github.com/gorakhargosh/watchdog"
+fi
+
 watchmedo shell-command \
   --patterns="$pattern" \
   --recursive \
