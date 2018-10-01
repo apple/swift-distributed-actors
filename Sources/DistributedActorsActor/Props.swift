@@ -14,6 +14,8 @@
 // Created by Konrad Malawski on 2018-09-28.
 //
 
+import Dispatch // TODO I suppose we'll end up supporting it anyway, only modeling it for now tho
+
 /// "Props"
 ///
 /// Mnemonic: "props" are what an actor in real life uses when acting on stage,
@@ -36,7 +38,7 @@ public enum Dispatcher {
     /// Picks default dispatched for user actors for your current runtime
     case `default`;
 
-    case dispatch; // TODO we can implement using Dispatch
+    case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass); // TODO we can implement using Dispatch
 
     // TODO: not entirely sure about how to best pull it off, but pretty sure we want a dispatcher that can use NIO's EventLoop
     //       we'd need to pass EventLoop into the system, but I think this would be nice; at the worst we'd "blow up if you want to use NIO event loops but it's not passed in"

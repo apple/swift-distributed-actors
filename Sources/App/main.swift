@@ -21,12 +21,25 @@ struct Hello {
     let sender: ActorRef<String>
 }
 
-let greeter: Behavior<Hello> = .receive { msg in
+let greeterBehavior: Behavior<Hello> = .receive { msg in
     msg.sender.tell("Hello: \(msg.name)!")
     msg.sender ! "Hello: \(msg.name)!"
 
     return .same
 }
 
-let ref = system.spawn(greeter, named: "echo")
+func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
+    return .setup { context in
+        greeter ! Hello(name: context.name, sender: context.selfRef) // TODO: Just FYI this is where Scala would employ implicits to write Hello(context.name)
+
+        .receive { (msg: Hello) in
+            print("msg = \(msg)")
+
+            return .stopped
+        }
+    }
+}
+
+let greeter = system.spawn(greeterBehavior, named: "echo")
+let caplin = system.spawn(personBehavior(sayHelloTo: greeter), named: "caplin")
 

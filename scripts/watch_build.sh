@@ -10,7 +10,7 @@ if [ -z "$1" ]
 then
   declare -r swift_cmd="swift test"
 else
-  declare -r swift_cmd="$1 | head -4"
+  declare -r swift_cmd="$@ | head -4"
 fi
 
 echo "Watching: $pattern..."

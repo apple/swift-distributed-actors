@@ -18,9 +18,6 @@ import Swift Distributed ActorsActor
 class ActorTests: XCTestCase {
 
     func testNothing() throws {
-        let s: String? = nil
-
-        let ss = s!
     }
 
 }
