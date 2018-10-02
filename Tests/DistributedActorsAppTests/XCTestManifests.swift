@@ -15,8 +15,9 @@ import XCTest
 
 #if !os(macOS)
 public func allTests() -> [XCTestCaseEntry] {
-    return [
-        testCase(Swift Distributed ActorsActorTests.allTests),
-    ]
+  return [
+    testCase(Swift Distributed ActorsActorTests.allTests),
+    testCase(AnonymousNamesGeneratorTests.allTests),
+  ]
 }
 #endif

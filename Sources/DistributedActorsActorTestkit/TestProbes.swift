@@ -11,19 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import Foundation
-import XCTest
-import Swift Distributed ActorsActor
-
-class ActorTests: XCTestCase {
-
-  let MaxSpecialTreatedValueTypeSizeInBytes = 24
-
-  func testNothing() throws {
-  }
-
-  func test_ensureActorRefSizeBelow24Bytes() {
-    // mostly just me playing around with MemoryLayout // TODO serious tests and considerations here later
-    XCTAssertLessThanOrEqual(MemoryLayout<ActorRef<String>>.size, MaxSpecialTreatedValueTypeSizeInBytes)
-  }
-}
+//
+//class TestProbe<Message> {
+//
+//  let name: String = "" // TODO
+//
+//  func expectMessage(_ message: Message) throws {
+//    TODO("implement me")
+//  }
+//}

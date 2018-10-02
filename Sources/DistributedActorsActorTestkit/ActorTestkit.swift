@@ -11,8 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-// Created by Konrad Malawski on 2018-09-28.
-//
+
 
 import Foundation
 
+final class ActorTestkit {
+
+
+    func probe(named name: String = "") -> TestProbe {
+      return undefined()
+    }
+
+}

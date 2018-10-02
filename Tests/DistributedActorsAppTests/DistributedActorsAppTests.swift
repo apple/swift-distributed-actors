@@ -11,18 +11,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import XCTest
-@testable import Swift Distributed ActorsActor
-
-final class Swift Distributed ActorsActorTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(ActorSystem().text, "Hello, World!")
-    }
-
-    static var allTests = [
-        ("testExample", testExample),
-    ]
-}
+//import XCTest
+//@testable import Swift Distributed ActorsActor
+//
+//final class Swift Distributed ActorsActorTests: XCTestCase {
+//    func testExample() {
+//        // This is an example of a functional test case.
+//        // Use XCTAssert and related functions to verify your tests produce the correct
+//        // results.
+//        XCTAssertEqual(ActorSystem().text, "Hello, World!")
+//    }
+//
+//    static var allTests = [
+//        ("testExample", testExample),
+//    ]
+//}
