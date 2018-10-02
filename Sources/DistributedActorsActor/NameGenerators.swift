@@ -14,6 +14,7 @@
 
 import Atomics
 
+// TODO: I think for anonymous actors we're good with short like this; for other random id names like system node identifiers we may want to go "hungry-alpaca", "awesome-capybara" etc?
 
 // Implementation note:
 // Note that we are not strictly following Base64; we start with lower case letters and replace the `/` with `~`
@@ -22,6 +23,7 @@ import Atomics
 // Rationale:
 // This is consistent with Akka, where the choice was made such as it is "natural" for small numbers of actors
 // when learning the toolkit, and predictable for high numbers of them (where how it looks like stops to matter).
+// TODO we could also avoid similar looking letters... I may be overthinking it? // was thinking about it since https://blog.softwaremill.com/new-pretty-id-generator-in-scala-commons-39b0fc6b6210
 fileprivate let charsTable: [UnicodeScalar] = [
   "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
   "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
@@ -89,7 +91,7 @@ class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
   }
 }
 
-// TODO pick better name for non sychronized ones
+// TODO pick better name for non synchronized ones
 class NonSynchronizedAnonymousNamesGenerator: AnonymousNamesGenerator {
   private var ids: Int // FIXME should be UInt64, since there's no reason to limit child actors only since the name won't fit them ;-)
 

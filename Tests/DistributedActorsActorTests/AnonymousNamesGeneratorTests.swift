@@ -19,8 +19,8 @@ import XCTest
 class AnonymousNamesGeneratorTests: XCTestCase {
 
   func test_hasCorrectPrefix() throws {
-    let a = AnonymousNamesGenerator(prefix: "a-")
-    let b = AnonymousNamesGenerator(prefix: "b-")
+    let a = NonSynchronizedAnonymousNamesGenerator(prefix: "a-")
+    let b = NonSynchronizedAnonymousNamesGenerator(prefix: "b-")
 
     XCTAssertEqual(a.nextName(), "a-a")
     XCTAssertEqual(b.nextName(), "b-a")
@@ -30,7 +30,7 @@ class AnonymousNamesGeneratorTests: XCTestCase {
   }
 
   func test_generatedNamesAreTheExpectedOnes() throws {
-    let a = AnonymousNamesGenerator(prefix: "")
+    let a = NonSynchronizedAnonymousNamesGenerator(prefix: "")
 
     let p = "$"
     XCTAssertEqual(a.mkName(prefix: p, n: 0), "$a")

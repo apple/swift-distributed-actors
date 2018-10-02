@@ -20,7 +20,8 @@ import Atomics
 /// Rather, the system should be configured to host the kinds of dispatchers that the application needs.
 public final class ActorSystem {
 
-  private let anonymousNames = AnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
+  /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
+  private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let name: String
 
@@ -56,7 +57,6 @@ extension ActorSystem: ActorRefFactory {
   // and devs should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
   // This is why there should not be default parameter values for actor names
   public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) -> ActorRef<Message> {
-    return FIXME("implement this")
-//         return spawn(behavior, named: self.anonymousNames.next(), props: props)
+    return spawn(behavior, named: self.anonymousNames.next(), props: props)
   }
 }

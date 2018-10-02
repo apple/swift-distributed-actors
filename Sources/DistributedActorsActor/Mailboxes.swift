@@ -19,7 +19,7 @@ struct Envelope {
   // Note that we can pass around senders however we can not automatically get the type of them right.
   // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
   // TODO explain this more
-#if SACTANA_DEBUG
+#if SACTANA_DEBUG // TODO: AFAIK this does work yet right?
   let senderPath: String
 #endif
 
@@ -29,11 +29,13 @@ struct Envelope {
   // and don't need to do any magic around it
 }
 
+/// A Mailbox represents an (typically) FIFO queue of messages that an actor has to handle.
+/// Multiple actors may concurrently attempt to enqueue messages while the receiving actor is processing them/
+///
+/// Mailboxes should be implemented as non blocking as possible, utilising lockfree or waitfree programming whenever possible.
 protocol Mailbox {
-  // DONT BLOCK HERE
   func enqueue(envelope: Envelope) -> ()
 
-  // DONT BLOCK HERE
   func dequeue() -> Envelope
 
   /// Returns a definite answer if the mailbox nas messages to run
