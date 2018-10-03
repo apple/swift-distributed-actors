@@ -12,19 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
-import Swift Distributed ActorsActor
+public class Supervision {
 
-class ActorSystemTests: XCTestCase {
-
-  let MaxSpecialTreatedValueTypeSizeInBytes = 24
-
-  func testNothing() throws {
+  public struct Failure {
+    // TODO figure out how to represent failures, carry error code, actor path etc I think
   }
 
-  func test_ensureActorRefSizeBelow24Bytes() {
-    // mostly just me playing around with MemoryLayout // TODO serious tests and considerations here later
-    XCTAssertLessThanOrEqual(MemoryLayout<ActorRef<String>>.size, MaxSpecialTreatedValueTypeSizeInBytes)
+  // TODO settings for all of those
+  public enum Directive {
+    case resume
+    case restart
+    case backoffRestart // TODO exponential backoff settings, best as config object for easier extension?
+    case stop
   }
+
 }

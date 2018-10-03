@@ -19,7 +19,10 @@
 public enum Behavior<Message> {
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
-  case receive(handle: (Message) -> Behavior<Message>)
+  case receive(_ handle: (Message) -> Behavior<Message>)
+
+  // TODO above is receiveMessage(M -> B)
+  // TODO we need receive((Context, M) -> B) as well, leaving it for later
 
   /// Runs once the actor has been started, also exposing the `ActorContext`
   ///
@@ -34,23 +37,16 @@ public enum Behavior<Message> {
   /// and the actor itself will stop. Return this behavior to stop your actors.
   case stopped
 
+  /// Apply given supervision to behavior
+  /// TODO more docs
+  // Implementation note:
+  // Was quite afraid having this be recursive would cause all the enum cases to be indirect; but seems we're ok with only this case being such...
+  indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO I assume this causes us to lose all benefits of being an enum? since `indirect`
 }
 
-//public struct Behavior<Message> {
-//
-//}
-//
-//// MARK: default provided behaviors
-//
-//public extension Behavior {
-//    static func receive<T>(_ onMessage: (T) -> Behavior<T>) -> Behavior<T> {
-//        return TODO("not implemented yet")
-//    }
-//
-//    static func same<T>() -> Behavior<T> {
-//
-//    }
-//
-//}
-//
 
+extension Behavior {
+  func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
+    return .supervise(behavior) { _ in directive }
+  }
+}

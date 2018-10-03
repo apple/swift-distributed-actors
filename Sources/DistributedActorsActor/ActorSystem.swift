@@ -57,6 +57,6 @@ extension ActorSystem: ActorRefFactory {
   // and devs should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
   // This is why there should not be default parameter values for actor names
   public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) -> ActorRef<Message> {
-    return spawn(behavior, named: self.anonymousNames.next(), props: props)
+    return spawn(behavior, named: self.anonymousNames.nextName(), props: props)
   }
 }
