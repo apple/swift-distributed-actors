@@ -42,11 +42,9 @@ public enum Behavior<Message> {
   // Implementation note:
   // Was quite afraid having this be recursive would cause all the enum cases to be indirect; but seems we're ok with only this case being such...
   indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO I assume this causes us to lose all benefits of being an enum? since `indirect`
-}
 
-
-extension Behavior {
-  func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
+  public static func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
     return .supervise(behavior) { _ in directive }
   }
 }
+
