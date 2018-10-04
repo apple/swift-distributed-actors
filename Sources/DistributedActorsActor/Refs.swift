@@ -14,16 +14,20 @@
 
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
-protocol ReceivesMessages {
+public protocol ReceivesMessages { // CanBeTold ? ;-)
   associatedtype Message
 
-  func tell(_ message: Message) -> ()
+  func tell(_ message: Message)
 }
+
+//protocol ActorRef: ReceivesMessages {
+//  associatedtype Message
+//}
 
 // MARK: Public API
 
 // TODO has to be Codable
-public struct ActorRef<Message>: ReceivesMessages, Codable {
+public struct ActorRef<Message>: ReceivesMessages, CustomStringConvertible, CustomDebugStringConvertible {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
   /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
@@ -43,9 +47,8 @@ public struct ActorRef<Message>: ReceivesMessages, Codable {
   public func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
     return TODO("not implemented yet")
   }
-}
 
-extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
+  // ---
   public var description: String {
     return "ActorRef(\(path))"
   }

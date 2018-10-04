@@ -37,14 +37,16 @@ class SupervisionTests: XCTestCase {
   typealias Nothing = Never
 
 
-//  enum Command<M> { // uh, now everyone has to write ActorRef<Command<Nothing>> :\
-//    case ping
-//    case error(err: Error)
-//    case incrementState
-//    case getState
-//    // case createChild<T>(b: Behavior<T>, name: String) // TODO is what I'd love to write... :-\ rather than the command being generic
-//    case createChild(b: Behavior<M>, name: String) // TODO is what I'd love to write... :-\
-//  }
+  enum Command { // uh, now everyone has to write ActorRef<Command<Nothing>> :\
+    case ping
+    case error(err: Error)
+    case incrementState
+    case getState
+    // case createChild<T>(b: Behavior<T>, name: String) // TODO is what I'd love to write... :-\ rather than the command being generic
+
+    typealias CommandBehavior = Behavior<Command>
+    case createChild(b: CommandBehavior, name: String) // TODO is what I'd love to write... :-\
+  }
 
   fileprivate enum Event {
     case pong
@@ -58,9 +60,8 @@ class SupervisionTests: XCTestCase {
     return .setup { context in // would be magical if we could make context always available in an actor
       return .receive { msg in
         switch msg {
-        case _ as Ping:
-          // case let _ as Ping:
-          // would love: case as Ping:
+        case let .createChild(behavior, name):
+          print("b = \(behavior) @ \(name)")
           monitor.tell(.pong)
           return .same
 
@@ -92,7 +93,7 @@ class SupervisionTests: XCTestCase {
     let monitor: TestProbe<Event> = TestProbe(system, named: "monitor")
 
     let a: ActorRef<Command> = system.spawnAnonymous(targetBehavior(monitor: monitor.ref, state: [:]))
-    a ! Ping()
+    a ! .ping
 
     try monitor.expectMessage(.pong)
     // a signal .PoisonPill // TODO: WDYT
