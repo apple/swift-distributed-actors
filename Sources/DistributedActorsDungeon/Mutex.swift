@@ -18,6 +18,8 @@ import Darwin
 import Glibc
 #endif
 
+/// Not intended to be used by end users
+// TODO move to DistributedActorsDungeon?
 public final class Mutex {
   var mutex: pthread_mutex_t = pthread_mutex_t()
 

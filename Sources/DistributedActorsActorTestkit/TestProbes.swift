@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Swift Distributed ActorsActor
+import SwiftDistributedActorsDungeon
 import Atomics
 
 public class TestProbe<Message> {

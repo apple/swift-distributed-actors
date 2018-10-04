@@ -12,13 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+// MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
+
 protocol ReceivesMessages {
   associatedtype Message
 
   func tell(_ message: Message) -> ()
 }
 
-public struct ActorRef<Message>: ReceivesMessages {
+// MARK: Public API
+
+// TODO has to be Codable
+public struct ActorRef<Message>: ReceivesMessages, Codable {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
   /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
@@ -38,7 +43,6 @@ public struct ActorRef<Message>: ReceivesMessages {
   public func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
     return TODO("not implemented yet")
   }
-
 }
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
@@ -47,23 +51,6 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
   }
   public var debugDescription: String {
     return "ActorRef(\(path)#\(uid)"
-  }
-}
-
-// TODO decide where to put tell
-// TODO decide where to put ask // later though
-
-// Dario's ideas:
-//infix operator !
-//
-//public func !<R : ActorRef, T>(ref: inout R, msg: T) -> Void where R.T == T {
-//    ref.tell(msg)
-//}
-
-infix operator !
-
-public extension ActorRef {
-  static func !(ref: ActorRef<Message>, message: Message) {
   }
 }
 

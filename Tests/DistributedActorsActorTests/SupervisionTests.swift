@@ -95,6 +95,7 @@ class SupervisionTests: XCTestCase {
     a ! Ping()
 
     try monitor.expectMessage(.pong)
+    // a signal .PoisonPill // TODO: WDYT
   }
 
 

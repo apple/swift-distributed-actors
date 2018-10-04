@@ -14,7 +14,10 @@
 
 import Atomics
 
-// TODO: I think for anonymous actors we're good with short like this; for other random id names like system node identifiers we may want to go "hungry-alpaca", "awesome-capybara" etc?
+// FIXME: KM I've grown convinced we should improve on the anonymous naming generation, see examples:
+//   - https://twitter.com/ktosopl/status/1047147815019851776
+//   - https://philzimmermann.com/docs/human-oriented-base-32-encoding.txt
+//   - k8s uses "safe string"
 
 // Implementation note:
 // Note that we are not strictly following Base64; we start with lower case letters and replace the `/` with `~`

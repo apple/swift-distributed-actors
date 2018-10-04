@@ -25,9 +25,8 @@ internal class ActorCell {
 
   init(mailbox: Mailbox) {
     self.mailbox = mailbox
-    self.signals = SignalMailbox()
+    self.signals = SignalMailbox() // not configurable, specialized implementation
   }
-
 
   func run() {
     return FIXME("Actually run the actors behavior")

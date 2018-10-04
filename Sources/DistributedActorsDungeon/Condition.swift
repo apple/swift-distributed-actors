@@ -18,6 +18,7 @@ import Darwin
 import Glibc
 #endif
 
+// TODO move to DistributedActorsDungeon?
 public final class Condition {
   private var condition: pthread_cond_t = pthread_cond_t()
 
