@@ -37,7 +37,7 @@ public class TestProbe<Message> {
   }
 
   public func expectMessage(_ message: Message) throws {
-
+    print("IMPLEMENT: expectMessage")
   }
 
   public func expectSignal(_ signal: Signal) throws {
@@ -46,7 +46,7 @@ public class TestProbe<Message> {
   }
 
   public func expectTerminated<T>(ref: ActorRef<T>) throws {
-
+    print("IMPLEMENT: expectTerminated")
   }
 
 }
