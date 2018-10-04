@@ -37,15 +37,19 @@
  *
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
-internal func undefined<T>(hint: String = "", file: StaticString = #file, line: UInt = #line) -> T {
+
+// TODO make those internal again
+public func undefined<T>(hint: String = "", file: StaticString = #file, line: UInt = #line) -> T {
   let message = hint == "" ? "" : ": \(hint)"
   fatalError("undefined \(T.self)\(message)", file: file, line: line)
 }
 
-internal func TODO<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
+// TODO make those internal again
+public func TODO<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
   return undefined(hint: "TODO: \(hint)", file: file, line: line)
 }
 
-internal func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
+// TODO make those internal again
+public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
   return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }

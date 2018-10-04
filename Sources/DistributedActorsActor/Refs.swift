@@ -12,7 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-public struct ActorRef<Message> {
+protocol ReceivesMessages {
+  associatedtype Message
+
+  func tell(_ message: Message) -> ()
+}
+
+public struct ActorRef<Message>: ReceivesMessages {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
   /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
