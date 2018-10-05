@@ -12,49 +12,80 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Atomics
 import Dispatch
 
-/// TODO Proper User API for timers is Timers, which have to be coming from an actor context for the lifecycles to not leak
-///
-// Implementation notes:
-// We very very likely do not want to expose a full blown scheduler like this to users.
-// This is a lesson learnt from Akka, where people would forget to cancel tasks when the actor would terminate,
-// so we need to have a way to terminate Timers (hint, that's the name) when actors terminate
-internal protocol Scheduler {
-  func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Void
+public protocol Cancellable {
+  /// Attempts to cancel the cancellable. Returns true when successful, or false
+  /// when unsuccessful, or it was already cancelled.
+  func cancel() -> Bool
 
-  func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Void
+  /// Returns true if the cancellable has already been cancelled, false otherwise.
+  func isCancelled() -> Bool
+}
 
-  // FIXME must not return void, since it has to be cancellable
-  func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Void
+public protocol Scheduler {
+  func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable
 
-  // FIXME must not return void, since it has to be cancellable
-  func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Void
+  func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable
+
+  func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable
+
+  func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable
+}
+
+class FlagCancellable : Cancellable {
+  private var flag: AtomicBool
+
+  init() {
+    flag = AtomicBool()
+  }
+
+  func cancel() -> Bool {
+    return flag.CAS(false, true, .strong, .release)
+  }
+
+  func isCancelled() -> Bool {
+    return flag.load()
+  }
 }
 
 // TODO this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
 extension DispatchQueue : Scheduler {
-  public func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Void {
-    self.asyncAfter(deadline: .now() + delay, execute: f)
+  public func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable {
+    let cancellable = FlagCancellable()
+    self.asyncAfter(deadline: .now() + delay) {
+      if (!cancellable.isCancelled()) {
+        f()
+      }
+    }
+
+    return cancellable
   }
 
-  public func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Void {
-    scheduleOnce(delay: delay) {
+  public func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
+    return scheduleOnce(delay: delay) {
       receiver ! message
     }
   }
 
-  public func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Void {
+  public func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable {
+    let cancellable = FlagCancellable()
     func sched() -> Void {
-      f()
-      self.asyncAfter(deadline: .now() + interval, execute: sched)
+      if (!cancellable.isCancelled()) {
+        let nextDeadline = DispatchTime.now() + interval
+        f()
+        self.asyncAfter(deadline: nextDeadline, execute: sched)
+      }
     }
 
     self.asyncAfter(deadline: .now() + initialDelay, execute: sched)
+
+    return cancellable
   }
 
-  public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Void {
-    schedule(initialDelay: initialDelay, interval: interval) {
+  public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
+    return schedule(initialDelay: initialDelay, interval: interval) {
       receiver ! message
     }
   }
