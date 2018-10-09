@@ -85,7 +85,7 @@ extension ActorSystem: ActorRefFactory {
     let dispatcher: MessageDispatcher = DispatchQueue.main // look up via props config
 
     // the "real" actor, the cell that holds the actual "actor"
-    let cell: ActorCell<Message> = ActorCell(behavior: behavior)
+    let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
 
     // the mailbox of the actor
     let mailbox: Mailbox = DefaultMailbox(cell: cell) // look up via props config
@@ -94,8 +94,7 @@ extension ActorSystem: ActorRefFactory {
     let ref: ActorRef<Message> = ActorRefWithCell(
         path: "/user/\(name)",
         cell: cell,
-        mailbox: mailbox,
-        dispatcher: dispatcher
+        mailbox: mailbox
     ) // TODO we should expose ActorRef
 
     cell.start() // FIXME remember why

@@ -21,13 +21,20 @@ public protocol AnyActorCell {
 }
 
 // pretty sure it has to be a class; it will do all the horrible mutating things :-)
-public class ActorCell<Message>: AnyActorCell {
+internal class ActorCell<Message>: AnyActorCell {
   // keep the behavior, context, dispatcher references etc
 
+  // Implementation notes:
+  // The phrase that "actor change their behavior" is taken quite literally by our infrastructure,
+  // on each message being applied the actor may return a new behavior that will be handling the next message.
   private var behavior: Behavior<Message>
 
-  init(behavior: Behavior<Message>) {
+  internal let dispatcher: MessageDispatcher
+
+  init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
+    // TODO we may end up referring to the system here... we'll see
     self.behavior = behavior
+    self.dispatcher = dispatcher
   }
 
 //  var context: ActorContext<Message> {
@@ -35,12 +42,22 @@ public class ActorCell<Message>: AnyActorCell {
 //  }
 
   func start() {
-
+    // TODO "now actually ready to process messages"
   }
 
   // TODO should this mutate the cel itself?
   func invokeMessage(message: Message) -> Behavior<Message> {
-    return FIXME("Actually run the actors behavior")
+    switch self.behavior {
+    case let .receive(recv):
+      return recv(message)
+    default:
+      return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
+    }
+  }
+
+  func nextBehavior(_ next: Behavior<Message>) {
+    // TODO canonicalize (remove not needed layers etc)
+    self.behavior = next
   }
 
   func invokeSystemMessage(sysMessage: SystemMessage) {

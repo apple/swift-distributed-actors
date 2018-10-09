@@ -16,7 +16,7 @@ import NIOConcurrencyHelpers
 
 /// INTERNAL API
 public struct Envelope {
-  let payload: Any
+  let payload: Any // TODO we may want to type the Envelope properly to <M>
 
   // Note that we can pass around senders however we can not automatically get the type of them right.
   // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
@@ -25,7 +25,7 @@ public struct Envelope {
   let senderPath: String
   #endif
 
-  init(_ payload: Any /* context metadata*/) {
+  init(_ payload: Any /* context metadata */) {
     self.payload = payload
   }
 
@@ -68,29 +68,49 @@ public protocol Mailbox: Runnable {
 // We implement the mailbox state in such sneaky way in order to be able to at the same time modify scheduled/idle
 // and message count values; which are used to estimate the throughput to apply on this mailbox run. This is losely based
 // on the dropped Typed Akka ActorSystem implementation by Roland Kuhn, from 2016 https://github.com/akka/akka/pull/21128/files#diff-92d9e38d1b6b284e38230047feea5fdcR36
-private enum MailboxStateMasks: Int {
-  case inactive = 0
-  case activatedOnlySystemMessages = 1
-  // case activatedMsgs1 = 2 // ... 31
-  case terminating = 30
-  case terminated = 31
+private struct MailboxStatusMasks {
+  static let Inactive = 0
+  static let ActivatedOnlySystemMessages = 1
+  static let Activated = 2 ... 29 // not really going to use this, mostly as documentation of the bit range
+  static let Terminating = 30
+  static let Terminated = 31
+
+  static let TerminatingBit = 1 << 30
+  static let TerminatedBit = 1 << 31
 }
 
-protocol MailboxState {
+// Implementation notes:
+// State should be operated on bitwise; where the specific bits signify states like the following:
+// 0 - 29 - activation count
+//     30 - terminating (or terminated)
+//     31 - terminated (for sure)
+// Activation count is special in the sense that we use it as follows, it's value being:
+// 0 - inactive, not scheduled and no messages to process
+// 1 - active without(!) normal messages, only system messages are to be processed
+// n - there are (n-1) messages to process
+//
+// Note that this implementation allows, using one load, to know: if the actor is running right now (so
+// the mailbox size will be decremented shortly), if we need to schedule it or not since it was scheduled already etc.
+protocol MailboxStatus {
   var isTerminating: Bool { get }
   var isTerminated: Bool { get }
   var isActive: Bool { get }
 }
 
-extension Atomic: MailboxState where T == Int {
+extension Atomic: MailboxStatus where T == Int {
+
+  func checkStatus(bit: Int) -> Bool {
+    return (self.load() & bit) != 0
+  }
+
   var isTerminating: Bool {
-    return undefined()
+    return checkStatus(bit: MailboxStatusMasks.Terminating)
   }
   var isTerminated: Bool {
-    return undefined()
+    return self.load() < 0 // since 32th bit used for marking sign
   }
   var isActive: Bool {
-    return self.load()
+    return true // FIXME: self.load() ...
   }
 }
 
@@ -100,30 +120,17 @@ extension Atomic: MailboxState where T == Int {
 // Mailboxes must be Simple.
 final class DefaultMailbox<Message>: Mailbox {
 
-  // Implementation notes:
-  // State should be operated on bitwise; where the specific bits signify states like the following:
-  // 0 - 29 - activation count
-  //     30 - terminating (or terminated)
-  //     31 - terminated (for sure)
-  // Activation count is special in the sense that we use it as follows, it's value being:
-  // 0 - inactive, not scheduled and no messages to process
-  // 1 - active without(!) normal messages, only system messages are to be processed
-  // n - there are (n-1) messages to process
-  //
-  // Note that this implementation allows, using one load, to know: if the actor is running right now (so
-  // the mailbox size will be decremented shortly), if we need to schedule it or not since it was scheduled already etc.
-  let state: MailboxState
+  let state: MailboxStatus = Atomic<Int>(value: 0)
+
+  // FIXME we want to remove this and replace with acquire/release access to the mailbox status
+  private let runLock = Lock() // I'm sorry
 
   // updates to these MUST be atomic
   private var cell: ActorCell<Message>
-  private var queue = MPSCLinkedQueue<Message>()
+  private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc)
 
   init(cell: ActorCell<Message>) {
     self.cell = cell
-
-    var stateInt = AtomicInt()
-    stateInt.initialize(MailboxState.inactive.hashValue)
-    self.state = stateInt
   }
 
   func enqueue(envelope: Envelope) -> () {
@@ -150,34 +157,40 @@ final class DefaultMailbox<Message>: Mailbox {
     self.cell = cell
   }
 
+  //
+  // FIXME: In order to be able to remove the lock (we really really need to remove it) we'll need acquire/release semantics on the mailbox status field
   func run() {
+    runLock.withLockVoid {
+      // TODO failure handling in case those crash
+      runSystemMessages()
+      runUserMessages()
+
+      scheduleForExecution()
+    }
+  }
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
+  private func runSystemMessages() {
+    // TODO implement system messages; we always run the entire system queue here
+  }
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
+  private func runUserMessages() {
     // FIXME first process system messages; then use throughput to process N messages of mailbox
     let MaxRunLength = 1024
     var remainingRun = min(count(), MaxRunLength) // TODO apply throughput limit; this is what dispatcher can use to apply fairness
 
-    func runSystemMessages() {
-      // TODO implement system messages; we always run the entire system queue here
+    // FIXME this has to take into account the runLength
+    while let e = dequeue() { // FIXME look at run len
+      let next = cell.invokeMessage(message: e.payload as! Message) // FIXME make the envelope typed as well
+      cell.nextBehavior(next)
+      remainingRun -= 1 // TODO actually use it
     }
-
-    func runUserMessages() {
-      // FIXME this has to take into account the runLength
-      while let e = dequeue() { // FIXME look at run len
-        print("[\(#file):\(#line)] invoke [\(cell)] with \(e.payload)")
-        let b = cell.invokeMessage(message: e.payload)
-        print("[\(#file):\(#line)] resulting behavior: \(b)")
-        // FIXME actually interpret the behavior
-      }
-    }
-
-    // TODO failure handling in case those crash
-    runSystemMessages()
-    runUserMessages()
-    
-    scheduleForExecution()
   }
-  
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
   private func scheduleForExecution() {
-      
+    cell.dispatcher.execute(self)
   }
 
 }

@@ -57,16 +57,14 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringC
   public override var path: String { return _path }
 
   let mailbox: Mailbox // TODO we need to be able to swap it for DeadLetters or find some other way
-  let dispatcher: MessageDispatcher
 
   // MARK: Internal details; here be dragons
   private let cell: ActorCell<Message>
 
-  public init(path: String, cell: ActorCell<Message>, mailbox: Mailbox, dispatcher: MessageDispatcher) {
+  public init(path: String, cell: ActorCell<Message>, mailbox: Mailbox) {
     self._path = path // TODO make custom type for it
     self.cell = cell
     self.mailbox = mailbox
-    self.dispatcher = dispatcher
   }
 
   // TODO decide where tell should live

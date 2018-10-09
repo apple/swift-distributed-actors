@@ -68,9 +68,9 @@ fileprivate class LinkedBlockingQueue<A> {
 
   private var producer: Node<A>
   private var consumer: Node<A>
-  private let putLock = Lock()
-  private let takeLock = Lock()
-  private let notEmpty: Condition = Condition()
+  private let putLock = Mutex()
+  private let takeLock = Mutex()
+   private let notEmpty: Condition = Condition()
   private var count = Atomic<Int>(value: 0)
 
   public init() {
@@ -84,7 +84,7 @@ fileprivate class LinkedBlockingQueue<A> {
       let next = Node(item)
       producer.next = next
       producer = next
-      oldCount = count.increment()
+      oldCount = count.add(1)
     }
 
     if oldCount == 0 {
@@ -103,7 +103,7 @@ fileprivate class LinkedBlockingQueue<A> {
           newNext.item = nil
           consumer.next = nil
           consumer = newNext
-          if count.decrement() > 1 {
+          if count.sub(1) > 1 {
             notEmpty.signal()
           }
           return res
