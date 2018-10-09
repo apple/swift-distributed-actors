@@ -14,6 +14,7 @@
 
 import Foundation
 import Swift Distributed ActorsActor
+import NIOConcurrencyHelpers
 
 let system = ActorSystem()
 
@@ -43,6 +44,11 @@ func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
   }
 }
 
-let greeter = system.spawn(greeterBehavior, named: "echo")
+print("Spawning greeter...")
+let greeter = system.spawn(greeterBehavior, named: "greeter")
+print("Spawning caplin...")
 let caplin = system.spawn(personBehavior(sayHelloTo: greeter), named: "caplin")
 
+while true {
+
+}

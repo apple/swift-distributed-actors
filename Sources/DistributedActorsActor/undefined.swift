@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-typealias Nothing = Never
+public typealias Nothing = Never
 
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can

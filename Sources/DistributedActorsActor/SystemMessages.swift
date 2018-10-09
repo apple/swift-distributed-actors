@@ -17,10 +17,15 @@
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
 /// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
-internal enum SystemMessage {
+public /* but really internal... */ enum SystemMessage {
+
+  /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
+  /// be executed immediately e.g. `setup` or similar ones.
+  case start
+
   case terminate
   case watch(from: ActorRef<Nothing>)
   case unwatch(from: ActorRef<Nothing>)
 
-     // TODO this is incomplete
+ // TODO this is incomplete
 }

@@ -80,9 +80,8 @@ extension ActorSystem: ActorRefFactory {
     // TODO validate name is valid actor name (no / in it etc)
     // TODO move this to the provider perhaps? or some way to share setup logic
 
-
     // what runs the actor:
-    let dispatcher: MessageDispatcher = DispatchQueue.main // look up via props config
+    let dispatcher: MessageDispatcher = DispatchQueue.global() // look up via props config
 
     // the "real" actor, the cell that holds the actual "actor"
     let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
@@ -91,15 +90,16 @@ extension ActorSystem: ActorRefFactory {
     let mailbox: Mailbox = DefaultMailbox(cell: cell) // look up via props config
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 
-    let ref: ActorRef<Message> = ActorRefWithCell(
+    let refWithCell = ActorRefWithCell(
         path: "/user/\(name)",
         cell: cell,
         mailbox: mailbox
     ) // TODO we should expose ActorRef
 
-    cell.start() // FIXME remember why
+    cell.setRef(refWithCell)
+    refWithCell.sendSystem(message: .start)
 
-    return ref
+    return refWithCell
   }
 
   // Implementation note:

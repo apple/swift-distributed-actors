@@ -44,8 +44,10 @@ public struct Envelope {
 public protocol Mailbox: Runnable {
 
   func enqueue(envelope: Envelope) -> ()
-
   func dequeue() -> Envelope?
+
+  func enqueueSystem(message: SystemMessage) -> ()
+  func dequeueSystem() -> SystemMessage?
 
   /// Returns a definite answer if the mailbox nas messages to run
   func hasMessages() -> Bool
@@ -69,12 +71,10 @@ public protocol Mailbox: Runnable {
 // and message count values; which are used to estimate the throughput to apply on this mailbox run. This is losely based
 // on the dropped Typed Akka ActorSystem implementation by Roland Kuhn, from 2016 https://github.com/akka/akka/pull/21128/files#diff-92d9e38d1b6b284e38230047feea5fdcR36
 private struct MailboxStatusMasks {
-  static let Inactive = 0
-  static let ActivatedOnlySystemMessages = 1
-  static let Activated = 2 ... 29 // not really going to use this, mostly as documentation of the bit range
-  static let Terminating = 30
-  static let Terminated = 31
-
+  static let InactiveBit = 0
+  static let ActivatedOnlySystemMessagesBit = 1
+  static let ActivatedBits = 0x11 // FIXME
+  // static let ActivatedBits = (2 ... 29) // not really going to use this, mostly as documentation of the bit range
   static let TerminatingBit = 1 << 30
   static let TerminatedBit = 1 << 31
 }
@@ -91,26 +91,76 @@ private struct MailboxStatusMasks {
 //
 // Note that this implementation allows, using one load, to know: if the actor is running right now (so
 // the mailbox size will be decremented shortly), if we need to schedule it or not since it was scheduled already etc.
-protocol MailboxStatus {
+protocol MailboxStatusSnapshot {
   var isTerminating: Bool { get }
   var isTerminated: Bool { get }
   var isActive: Bool { get }
+  var activations: Int { get }
 }
 
-extension Atomic: MailboxStatus where T == Int {
+/// Extends `MailboxStatusSnapshot` with the ability to update the states
+// TODO want to expose this to dispatcher and let IT decide // this was never done but we wanted to in typed
+protocol MailboxStatus: MailboxStatusSnapshot {
+  /// Increments underlying counter by 1
+  /// Returns a snapshot of the previous mailbox status; a snapshot can not be modified, only read.
+  func incrementActivations() -> MailboxStatusSnapshot
+
+  // TODO func rollbackActivationIncrement
+}
+// TODO make this to make it cleaner; can't update the snapshot; only the real current one
+//struct MailboxStatusSnapshot {
+//  let underlying: Int
+//
+//
+//  var isTerminating: Bool {
+//    return check
+//  }
+//  var isTerminated: Bool { get }
+//  var isActive: Bool { get }
+//  var activations: Int { get }
+//}
+
+extension Atomic: MailboxStatus, MailboxStatusSnapshot where T == Int {
 
   func checkStatus(bit: Int) -> Bool {
     return (self.load() & bit) != 0
   }
 
   var isTerminating: Bool {
-    return checkStatus(bit: MailboxStatusMasks.Terminating)
+    return checkStatus(bit: MailboxStatusMasks.TerminatingBit)
   }
   var isTerminated: Bool {
     return self.load() < 0 // since 32th bit used for marking sign
   }
   var isActive: Bool {
     return true // FIXME: self.load() ...
+  }
+  var activations: Int {
+    return self.load() & MailboxStatusMasks.ActivatedBits
+  }
+
+  func incrementActivations() -> MailboxStatusSnapshot {
+    return self.add(1)
+  }
+}
+
+extension Int: MailboxStatusSnapshot {
+
+  func checkStatus(bit: Int) -> Bool {
+    return (self & bit) != 0
+  }
+
+  var isTerminating: Bool {
+    return checkStatus(bit: MailboxStatusMasks.TerminatingBit)
+  }
+  var isTerminated: Bool {
+    return self < 0 // since 32th bit used for marking sign
+  }
+  var isActive: Bool {
+    return true // FIXME: self.load() ...
+  }
+  var activations: Int {
+    return self & MailboxStatusMasks.ActivatedBits
   }
 }
 
@@ -127,18 +177,39 @@ final class DefaultMailbox<Message>: Mailbox {
 
   // updates to these MUST be atomic
   private var cell: ActorCell<Message>
-  private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc)
+
+  private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc); default to be array backed
+  private var systemQueue = MPSCLinkedQueue<SystemMessage>() // TODO specialize the queue, make it light and linked; the queue for normal messages should be optimized, likely array backed
 
   init(cell: ActorCell<Message>) {
     self.cell = cell
   }
 
   func enqueue(envelope: Envelope) -> () {
-    queue.enqueue(envelope)
+    let old = state.incrementActivations()
+    let oldActivations = old.activations
+
+    // FIXME implement ptoperly counting if we need to activate
+
+    if (oldActivations == 0) {
+      // so no one activated and we have to do so
+      scheduleForExecution()
+    } else {
+      // TODO what then; undo the activation increment?
+    }
+  }
+  func dequeue() -> Envelope? {
+    return queue.dequeue()
   }
 
-  func dequeue() -> Envelope? {
-    return undefined()
+  func enqueueSystem(message: SystemMessage) {
+    print("self.systemQueue.enqueue(message) = \(message)")
+    self.systemQueue.enqueue(message)
+    scheduleForExecution() // TODO logic for when to schedule
+  }
+
+  func dequeueSystem() -> SystemMessage? {
+    return systemQueue.dequeue()
   }
 
   func hasMessages() -> Bool {
@@ -165,12 +236,16 @@ final class DefaultMailbox<Message>: Mailbox {
       runSystemMessages()
       runUserMessages()
 
+      // keep running iff there are more pending messages remaining
       scheduleForExecution()
     }
   }
 
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func runSystemMessages() {
+    while let sys = dequeueSystem() {
+      cell.invokeSystem(message: sys)
+    }
     // TODO implement system messages; we always run the entire system queue here
   }
 
@@ -190,6 +265,7 @@ final class DefaultMailbox<Message>: Mailbox {
 
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func scheduleForExecution() {
+    print("scheduleForExecution = \(self)")
     cell.dispatcher.execute(self)
   }
 

@@ -60,8 +60,9 @@ public final class MPSCLinkedQueue<A> {
   }
 }
 
-protocol Qeueu {
+protocol Queue {
   associatedtype A
+
   func dequeue() -> A?
 
   func enqueue(_ item: A) -> Void

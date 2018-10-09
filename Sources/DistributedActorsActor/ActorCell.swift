@@ -31,19 +31,26 @@ internal class ActorCell<Message>: AnyActorCell {
 
   internal let dispatcher: MessageDispatcher
 
+  /// Guaranteed to be set during ActorRef creation
+  private var myself: ActorRef<Message>!
+
   init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
     // TODO we may end up referring to the system here... we'll see
     self.behavior = behavior
     self.dispatcher = dispatcher
   }
 
+  public func setRef(_ ref: ActorRef<Message>) {
+    self.myself = ref // TODO atomic?
+  }
+
+  lazy var context = ActorContext(path: "", yourself: myself!) // FIXME context should be ready
 //  var context: ActorContext<Message> {
 //    return self // TODO make this real
 //  }
 
-  func start() {
-    // TODO "now actually ready to process messages"
-  }
+  // MARK: Handling messages
+
 
   // TODO should this mutate the cel itself?
   func invokeMessage(message: Message) -> Behavior<Message> {
@@ -60,7 +67,16 @@ internal class ActorCell<Message>: AnyActorCell {
     self.behavior = next
   }
 
-  func invokeSystemMessage(sysMessage: SystemMessage) {
+  func invokeSystem(message: SystemMessage) {
+    switch behavior {
+    case let .setup(setupFunction):
+      let next: Behavior<Message> = setupFunction(context)
+      self.behavior = next
+
+    default:
+      // ...
+        print("invokeSystem, unknown behavior: \(behavior)")
+    }
     return FIXME("Actually run the actors behavior")
   }
 }

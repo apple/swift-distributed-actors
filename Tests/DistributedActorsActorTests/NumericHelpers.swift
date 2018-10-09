@@ -12,23 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-// MARK: "tell" ("!") pattern
+import Foundation
+import XCTest
+import Swift Distributed ActorsActor
 
-infix operator !
+class ActorSystemTests: XCTestCase {
 
-//public extension ActorRef {
-//
-//  static func !(ref: ActorRef<Message>, message: Message) {
-//    ref.tell(message)
-//  }
-//}
-
-//public extension ReceivesMessages {
- public func !<R : ReceivesMessages, Message>(ref: R, msg: Message) -> Void where R.Message == Message {
-   ref.tell(msg)
- }
-//}
-
-// MARK: "ask" ("?") pattern
-
-// MARK: "forward" (">") pattern
+  func test_Int_binaryStringRepresentation() {
+    XCTAssertEqual(0.binaryStringRepresentation, "0000")
+  }
+}

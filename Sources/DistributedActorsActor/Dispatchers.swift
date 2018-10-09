@@ -42,7 +42,10 @@ extension DispatchQueue: MessageDispatcher {
   //  }
 
   public func execute(_ f: Runnable) {
-    self.async(execute: { () -> () in f.run()})
+    self.async(execute: { () -> () in
+      print("RUNNING: \(f)")
+      f.run()
+    })
   }
 
 }

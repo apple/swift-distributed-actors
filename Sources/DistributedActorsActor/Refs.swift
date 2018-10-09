@@ -23,12 +23,10 @@ public protocol ReceivesMessages { // CanBeTold ? ;-)
   func tell(_ message: Message)
 }
 
-//protocol ActorRef: ReceivesMessages {
-//  associatedtype Message
-//}
-
 // MARK: Public API
 
+/// Represents a reference to an actor.
+/// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public class ActorRef<Message>: ReceivesMessages {
   var path: String {
     return undefined()
@@ -39,8 +37,8 @@ public class ActorRef<Message>: ReceivesMessages {
   }
 }
 
-// FIXME: I'm not happy with this; this is super internal things; I hoped to hide it away more, and not in the ActorRef, but some "internal ref" or so...
-// TODO has to be Codable; we manually should implement the coding tho
+// MARK: Internal implementation classes
+
 internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringConvertible, CustomDebugStringConvertible {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
@@ -69,7 +67,18 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringC
 
   // TODO decide where tell should live
   public override func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
-    mailbox.enqueue(envelope: Envelope(message))
+    self.send(message: message)
+  }
+
+  internal func send(message: Message) {
+    print("send = \(message)")
+    self.mailbox.enqueue(envelope: Envelope(message))
+    // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
+  }
+  internal func sendSystem(message: SystemMessage) {
+    print("sendSystem = \(message)")
+    self.mailbox.enqueueSystem(message: message)
+    // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
 
   // --- conformance to CustomStringConvertible
