@@ -25,7 +25,6 @@ extension SupervisionTests {
    static var allTests : [(String, (SupervisionTests) -> () throws -> Void)] {
       return [
                 ("test_compile", test_compile),
-                ("test_canPingPong", test_canPingPong),
            ]
    }
 }

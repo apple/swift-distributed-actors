@@ -26,6 +26,7 @@ import XCTest
    @testable import Swift Distributed ActorsAppTests
 
    XCTMain([
+         testCase(ActorPingPongTests.allTests),
          testCase(ActorSystemTests.allTests),
          testCase(AnonymousNamesGeneratorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),

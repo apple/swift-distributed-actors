@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+typealias Nothing = Never
+
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can
  * be very useful whilst writing a program. It happens that you need a value

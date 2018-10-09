@@ -11,17 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import Foundation
-import XCTest
-import Swift Distributed ActorsActor
 
-class SupervisionTests: XCTestCase {
 
-  func test_compile() throws {
-    let b: Behavior<String> = .receive { s in .same }
-    let _: Behavior<String> = .supervise(b) { failure -> Supervision.Directive in
-      return .restart
-    }
-  }
+/// Messages sent only internally by the `ActorSystem` and actor internals.
+/// These messages MUST NOT ever be sent directly by user-land.
+///
+/// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
+internal enum SystemMessage {
+  case terminate
+  case watch(from: ActorRef<Nothing>)
+  case unwatch(from: ActorRef<Nothing>)
 
+     // TODO this is incomplete
 }

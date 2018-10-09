@@ -14,7 +14,7 @@
 
 import Swift Distributed ActorsActor
 import SwiftDistributedActorsDungeon
-import Atomics
+import NIOConcurrencyHelpers
 
 public class TestProbe<Message> {
 
@@ -68,10 +68,10 @@ fileprivate class LinkedBlockingQueue<A> {
 
   private var producer: Node<A>
   private var consumer: Node<A>
-  private let putLock: Mutex = Mutex()
-  private let takeLock: Mutex = Mutex()
+  private let putLock = Lock()
+  private let takeLock = Lock()
   private let notEmpty: Condition = Condition()
-  private var count: AtomicInt = AtomicInt()
+  private var count = Atomic<Int>(value: 0)
 
   public init() {
     producer = Node(nil)

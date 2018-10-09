@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Atomics
+import NIOConcurrencyHelpers
 
 // FIXME: KM I've grown convinced we should improve on the anonymous naming generation, see examples:
 //   - https://twitter.com/ktosopl/status/1047147815019851776
@@ -82,15 +82,14 @@ class AnonymousNamesGenerator {
 /// Generate sequential names for actors
 // TODO can be abstracted ofc, not doing so for now; keeping internal
 class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
-  private var ids = AtomicUInt() // FIXME should be UInt64, since there's no reason to limit child actors only since the name won't fit them ;-)
+  private var ids = Atomic<Int64>(value: 0)
 
   override init(prefix: String) {
-    self.ids.initialize(0)
     super.init(prefix: prefix)
   }
 
   override func nextId() -> Int {
-    return Int(ids.increment())
+    return Int(ids.add(1))
   }
 }
 

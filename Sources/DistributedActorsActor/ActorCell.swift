@@ -16,19 +16,34 @@
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
 
+public protocol AnyActorCell {
+
+}
+
 // pretty sure it has to be a class; it will do all the horrible mutating things :-)
-internal class ActorCell {
+public class ActorCell<Message>: AnyActorCell {
   // keep the behavior, context, dispatcher references etc
 
-  let mailbox: Mailbox
-  let signals: SignalMailbox // specialized mailbox for signals ("system messages" which always have top priority and MUST NOT be dropped)
+  private var behavior: Behavior<Message>
 
-  init(mailbox: Mailbox) {
-    self.mailbox = mailbox
-    self.signals = SignalMailbox() // not configurable, specialized implementation
+  init(behavior: Behavior<Message>) {
+    self.behavior = behavior
   }
 
-  func run() {
+//  var context: ActorContext<Message> {
+//    return self // TODO make this real
+//  }
+
+  func start() {
+
+  }
+
+  // TODO should this mutate the cel itself?
+  func invokeMessage(message: Message) -> Behavior<Message> {
+    return FIXME("Actually run the actors behavior")
+  }
+
+  func invokeSystemMessage(sysMessage: SystemMessage) {
     return FIXME("Actually run the actors behavior")
   }
 }
