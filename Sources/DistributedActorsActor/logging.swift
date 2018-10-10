@@ -117,7 +117,7 @@ final public class StdoutLogger: Logger {
 
   public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
     if level >= self.logLevel {
-      print("\(message())\(self.prettyContext)")
+      print("STDOUT_LOG: \(message())\(self.prettyContext)")
     }
   }
 

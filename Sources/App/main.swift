@@ -32,6 +32,7 @@ let greeterBehavior: Behavior<Hello> = .receive { msg in
 
 func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
   return .setup { context in
+    context.log.info("Running setup...")
 
     let myself: ActorRef<String> = context.myself
     greeter ! Hello(name: context.name.description, sender: myself) // TODO: Just FYI this is where Scala would employ implicits to write Hello(context.name)

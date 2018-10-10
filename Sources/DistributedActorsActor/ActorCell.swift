@@ -53,13 +53,13 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   override public var myself: ActorRef<Message> { return _myself! }
 
   // FIXME move to proper actor paths
-  override public var path: String { return super.path }
+  override public var path: String { return self.myself.path }
   override public var name: String { return String(self.path.split(separator: "/").last!) }
 
   // access only from within actor
   private lazy var _log = ActorLogger(self.context)
   override public var log: Logger { return _log }
-  
+
   override public var dispatcher: MessageDispatcher { return self._dispatcher }
   // MARK: Handling messages
 
@@ -80,17 +80,36 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   }
 
   func invokeSystem(message: SystemMessage) {
-    switch behavior {
-    case let .setup(setupFunction):
-      let next: Behavior<Message> = setupFunction(context)
-      self.behavior = next
+    switch message {
+    case .start:
+      // start means we need to evaluate all `setup` blocks, since they are triggered eagerly - to "set up" the actors userland state
+      switch behavior {
+      case let .setup(setupFunction):
+        let next: Behavior<Message> = setupFunction(context)
+        self.behavior = next
+
+      default:
+        // ...
+        print("invokeSystem, unknown behavior: \(behavior)")
+          // return FIXME("Actually run the actors behavior")
+      }
+
+
 
     default:
-      // ...
-      print("invokeSystem, unknown behavior: \(behavior)")
-      return FIXME("Actually run the actors behavior")
+      switch behavior {
+      case let .setup(setupFunction):
+        let next: Behavior<Message> = setupFunction(context)
+        self.behavior = next
+
+      default:
+        // ...
+        print("invokeSystem, unknown behavior: \(behavior)")
+          // return FIXME("Actually run the actors behavior")
+      }
     }
   }
+
 }
 
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.

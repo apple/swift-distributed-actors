@@ -217,7 +217,7 @@ final class DefaultMailbox<Message>: Mailbox {
   }
 
   func count() -> Int {
-    return undefined()
+    return 1 // undefined() // TODO implement for real
   }
 
   func isCountExact() -> Bool {
