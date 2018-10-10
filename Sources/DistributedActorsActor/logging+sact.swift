@@ -14,6 +14,7 @@
 
 import NIOConcurrencyHelpers
 
+// TODO implement logging infrastructure - pipe as messages to dedicated logging actor
 final public class ActorLogger: Logger {
 
   private let lock = Lock()
@@ -54,7 +55,11 @@ final public class ActorLogger: Logger {
 
     // mock impl until we get the real infra
     lock.withLockVoid {
-      print("[\(formatLevel(level))]\(identifier)[\(prettyContext)][@\(file)#\(function)\(line)] \(message())") // could access the context here, include trace id etc 
+      var msg = "[\(formatLevel(level))]"
+      msg += "\(identifier)"
+      msg += "[\(prettyContext)]"
+      msg += "[@\(file)#\(function)\(line)] "
+      print("\(message())") // could access the context here, include trace id etc 
     }
   }
 
@@ -63,9 +68,9 @@ final public class ActorLogger: Logger {
     case .error:
       return "ERROR"
     case .warn:
-      return "WARN "
+      return "WARN"
     case .info:
-      return "INFO "
+      return "INFO"
     }
   }
 
