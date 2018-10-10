@@ -15,13 +15,10 @@
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
+//
+// The cell is mutable, as it may replace the behavior it hosts
+public class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
-public protocol AnyActorCell {
-
-}
-
-// pretty sure it has to be a class; it will do all the horrible mutating things :-)
-internal class ActorCell<Message>: AnyActorCell {
   // keep the behavior, context, dispatcher references etc
 
   // Implementation notes:
@@ -29,26 +26,41 @@ internal class ActorCell<Message>: AnyActorCell {
   // on each message being applied the actor may return a new behavior that will be handling the next message.
   private var behavior: Behavior<Message>
 
-  internal let dispatcher: MessageDispatcher
+  internal let _dispatcher: MessageDispatcher
 
   /// Guaranteed to be set during ActorRef creation
-  private var myself: ActorRef<Message>!
+  private var _myself: ActorRef<Message>?
 
   init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
     // TODO we may end up referring to the system here... we'll see
     self.behavior = behavior
-    self.dispatcher = dispatcher
+    self._dispatcher = dispatcher
   }
 
-  public func setRef(_ ref: ActorRef<Message>) {
-    self.myself = ref // TODO atomic?
+  /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
+  /// as the actor needs to access its ref from its context during setup or other behavior reductions
+  public func set(ref: ActorRef<Message>) {
+    self._myself = ref // TODO atomic?
   }
 
-  lazy var context = ActorContext(path: "", yourself: myself!) // FIXME context should be ready
-//  var context: ActorContext<Message> {
-//    return self // TODO make this real
-//  }
+  @inlinable
+  var context: ActorContext<Message> {
+    return self
+  }
 
+  // MARK: Conforming to ActorContext
+
+  override public var myself: ActorRef<Message> { return _myself! }
+
+  // FIXME move to proper actor paths
+  override public var path: String { return super.path }
+  override public var name: String { return String(self.path.split(separator: "/").last!) }
+
+  // access only from within actor
+  private lazy var _log = ActorLogger(self.context)
+  override public var log: Logger { return _log }
+  
+  override public var dispatcher: MessageDispatcher { return self._dispatcher }
   // MARK: Handling messages
 
 
@@ -75,9 +87,9 @@ internal class ActorCell<Message>: AnyActorCell {
 
     default:
       // ...
-        print("invokeSystem, unknown behavior: \(behavior)")
+      print("invokeSystem, unknown behavior: \(behavior)")
+      return FIXME("Actually run the actors behavior")
     }
-    return FIXME("Actually run the actors behavior")
   }
 }
 
@@ -86,8 +98,10 @@ internal class ActorCell<Message>: AnyActorCell {
 /// It must ONLY EVER be accessed from its own Actor.
 /// It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 
-// TODO in Akka to save space AFAIR we made the context IS-A with the cell; which means we need it to be a class anyway...
-public struct ActorContext<Message> {
+public class ActorContext<Message> {
+
+  // TODO in the sublass we need to apply some workarounds around `cannot override with a stored property 'myself'` since I want those to be vars
+  // See: https://stackoverflow.com/questions/46676992/overriding-computed-property-with-stored-one
 
   /// Complete path in hierarchy of this Actor.
   /// Segments are separated by "/" and signify the parent actors of each individual level in the hierarchy.
@@ -99,7 +113,9 @@ public struct ActorContext<Message> {
   /// // This would be for "debugging mode", not for log statements though; interesting idea tho; may want to be configurable since adds weight
   ///
   /// Invariants: MUST NOT be empty.
-  public let path: String // TODO ActorPath to abstract over it and somehow optimize it?
+  public var path: String { // TODO ActorPath to abstract over it and somehow optimize it?
+    return undefined()
+  }
 
   /// Name of the Actor
   /// The `name` is the last segment of the Actor's `path`
@@ -108,7 +124,9 @@ public struct ActorContext<Message> {
   // Implementation note:
   // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
   // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
-  public let name: String // TODO decide if Substring or String; TBH we may go with something like ActorPathSegment and ActorPath?
+  public var name: String { // TODO decide if Substring or String; TBH we may go with something like ActorPathSegment and ActorPath?
+    return undefined()
+  }
 
   /// The actor reference to _this_ actor.
   ///
@@ -118,11 +136,19 @@ public struct ActorContext<Message> {
   // We use `myself` as the Akka style `self` is taken; We could also do `context.ref` however this sounds inhuman,
   // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
   // to get developers into the right mindset.
-  public let myself: ActorRef<Message>
-
-  init(path: String, yourself myself: ActorRef<Message>) { // I've not watched the series, but the pun was asking for it...
-    self.path = path
-    self.name = String(path.split(separator: "/").last!) // FIXME should we keep it as Substring? or is it a hassle for users?
-    self.myself = myself
+  public var myself: ActorRef<Message> {
+    return undefined()
   }
+
+
+  /// Provides context metadata aware logger
+  // TODO: API wise this logger will be whichever type the SSWG group decides on, we will adopt it
+  public var log: Logger {
+    return undefined()
+  }
+
+  public var dispatcher: MessageDispatcher {
+    return undefined()
+  }
+
 }

@@ -266,7 +266,7 @@ final class DefaultMailbox<Message>: Mailbox {
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func scheduleForExecution() {
     print("scheduleForExecution = \(self)")
-    cell.dispatcher.execute(self)
+    cell._dispatcher.execute(self)
   }
 
 }

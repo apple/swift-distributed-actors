@@ -96,7 +96,7 @@ extension ActorSystem: ActorRefFactory {
         mailbox: mailbox
     ) // TODO we should expose ActorRef
 
-    cell.setRef(refWithCell)
+    cell.set(ref: refWithCell)
     refWithCell.sendSystem(message: .start)
 
     return refWithCell
