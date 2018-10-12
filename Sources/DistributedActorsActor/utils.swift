@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
+
 public typealias Nothing = Never
 
 /**
@@ -54,4 +56,14 @@ public func TODO<T>(_ hint: String, file: StaticString = #file, line: UInt = #li
 // TODO make those internal again
 public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
   return undefined(hint: "FIXME: \(hint)", file: file, line: line)
+}
+
+@inline(__always)
+public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: T, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+  func details() -> String { return " Owner: \(owner), Thread: \(Thread.current.debugDescription)" }
+  assert(condition(), message() + details(), file: file, line: line)
+}
+
+public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
+  print("\(file): : \(message)")
 }

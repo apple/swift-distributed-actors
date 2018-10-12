@@ -38,6 +38,8 @@ public final class ActorSystem {
   /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
+  private let terminationLock = Lock()
+
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
@@ -56,8 +58,15 @@ public final class ActorSystem {
   // FIXME FIXME we don't do any hierarchy right now!!!
 
   // TODO should we depend on NIO already? I guess so hm they have the TimeAmount... Tho would be nice to split it out maybe
-  func terminate(/* TimeAmount */) {
+  func terminate(/* TimeAmount */) -> Void {
       return undefined()
+  }
+
+  /// WARNING: Blocks current thread until the system has terminated.
+  /// Do not call from within actors or you may deadlock shutting down the system.
+  public func whenTerminated() -> Awaitable {
+    // return Awaitable(underlyingLock: terminationLock)
+    while true {}
   }
 }
 
@@ -97,7 +106,7 @@ extension ActorSystem: ActorRefFactory {
     ) // TODO we should expose ActorRef
 
     cell.set(ref: refWithCell)
-    refWithCell.sendSystem(message: .start)
+    refWithCell.sendSystemMessage(.start)
 
     return refWithCell
   }

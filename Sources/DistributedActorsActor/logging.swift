@@ -26,8 +26,6 @@ import Foundation
 ///     }
 public protocol Logger {
 
-  init(identifier: String)
-
   /// not called directly, only by the helper methods like `info(...)`
   func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt)
 
@@ -117,7 +115,7 @@ final public class StdoutLogger: Logger {
 
   public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
     if level >= self.logLevel {
-      print("STDOUT_LOG: \(message())\(self.prettyContext)")
+      pprint("STDOUT_LOG: \(message())\(self.prettyContext)")
     }
   }
 

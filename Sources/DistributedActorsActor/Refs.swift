@@ -67,17 +67,15 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringC
 
   // TODO decide where tell should live
   public override func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
-    self.send(message: message)
+    self.sendMessage(message)
   }
 
-  internal func send(message: Message) {
-    print("send = \(message)")
-    self.mailbox.enqueue(envelope: Envelope(message))
+  internal func sendMessage(_ message: Message) {
+    self.mailbox.sendMessage(envelope: Envelope(message))
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
-  internal func sendSystem(message: SystemMessage) {
-    print("sendSystem = \(message)")
-    self.mailbox.enqueueSystem(message: message)
+  internal func sendSystemMessage(_ message: SystemMessage) {
+    self.mailbox.sendSystemMessage(message)
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
 

@@ -26,7 +26,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   // on each message being applied the actor may return a new behavior that will be handling the next message.
   private var behavior: Behavior<Message>
 
-  internal let _dispatcher: MessageDispatcher
+  private let _dispatcher: MessageDispatcher
 
   /// Guaranteed to be set during ActorRef creation
   private var _myself: ActorRef<Message>?
@@ -67,8 +67,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   // TODO should this mutate the cel itself?
   func invokeMessage(message: Message) -> Behavior<Message> {
     switch self.behavior {
-    case let .receive(recv):
+    case let .receiveMessage(recv):
       return recv(message)
+    case let .receive(recv):
+      return recv(context, message)
     default:
       return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
     }
@@ -90,7 +92,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
       default:
         // ...
-        print("invokeSystem, unknown behavior: \(behavior)")
+        pprint("invokeSystem, unknown behavior: \(behavior)")
           // return FIXME("Actually run the actors behavior")
       }
 
@@ -104,12 +106,18 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
       default:
         // ...
-        print("invokeSystem, unknown behavior: \(behavior)")
+        pprint("invokeSystem, unknown behavior: \(behavior)")
           // return FIXME("Actually run the actors behavior")
       }
     }
   }
 
+}
+
+extension ActorCell: CustomStringConvertible {
+  public var description: String {
+    return "\(type(of: self))(\(self.path))"
+  }
 }
 
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.

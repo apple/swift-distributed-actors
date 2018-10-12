@@ -23,11 +23,11 @@ struct Hello {
   let sender: ActorRef<String>
 }
 
-let greeterBehavior: Behavior<Hello> = .receive { msg in
+let greeterBehavior: Behavior<Hello> = .receiveMessage { msg in
   msg.sender.tell("Hello: \(msg.name)!")
   msg.sender ! "Hello: \(msg.name)!"
-    
-  return .same
+
+  return .same // TODO .stopped
 }
 
 func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
@@ -37,9 +37,8 @@ func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
     let myself: ActorRef<String> = context.myself
     greeter ! Hello(name: context.name.description, sender: myself) // TODO: Just FYI this is where Scala would employ implicits to write Hello(context.name)
 
-
-    return .receive { msg in
-      print("I was greeted: '\(msg)', how nice! Time to stop...")
+    return .receiveMessage { msg in
+      context.log.info("I was greeted: '\(msg)', how nice! Time to stop...")
       return .stopped
     }
   }
@@ -50,6 +49,7 @@ let greeter = system.spawn(greeterBehavior, named: "greeter")
 print("Spawning caplin...")
 let caplin = system.spawn(personBehavior(sayHelloTo: greeter), named: "caplin")
 
-while true {
 
-}
+Await.on(system.whenTerminated())
+
+
