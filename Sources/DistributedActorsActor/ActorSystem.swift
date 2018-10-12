@@ -45,6 +45,10 @@ public final class ActorSystem {
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
 //  private let provider =
 
+  public var log: ActorLogger {
+    return TODO("not implemented yet")
+  }
+
   /// Creates a named ActorSystem; The name is useful for debugging cross system communication
   // TODO /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)
   public init(_ name: String) {

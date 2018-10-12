@@ -40,7 +40,8 @@ extension DispatchQueue: MessageDispatcher {
   public var name: String {
     let queueName = String(cString: __dispatch_queue_get_label(nil), encoding: .utf8)!
 
-    let threadName = Thread.current // .terribleHackThreadId
+    let pthread: Thread = Thread.current
+    let threadName = pthread.name ?? "\(pthread.terribleHackThreadId)"
 
     return  "\(queueName)#\(threadName)"
 
@@ -86,7 +87,7 @@ extension MessageDispatcher {
 
 // terrible hack, would prefer NSThread to solve: "Expose thread number in NSThread" https://bugs.swift.org/browse/SR-1075
 
-extension Foundation.Thread {
+extension Thread {
   // FIXME 1) do this nicer 2) get official API for thread id
   // TODO is it better to expose the <...> thread id rather than number?
   var terribleHackThreadId: Int {

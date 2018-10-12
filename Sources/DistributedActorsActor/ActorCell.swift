@@ -63,22 +63,23 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   override public var dispatcher: MessageDispatcher { return self._dispatcher }
   // MARK: Handling messages
 
-
-  // TODO should this mutate the cel itself?
-  func invokeMessage(message: Message) -> Behavior<Message> {
-    switch self.behavior {
-    case let .receiveMessage(recv):
-      return recv(message)
-    case let .receive(recv):
-      return recv(context, message)
-    default:
-      return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
+  /// Interprets the incoming message using the current `Behavior` and swaps it with the
+  /// next behavior (as returned by user code, which the message was applied to).
+  ///
+  /// WARNING: Mutates the cell's behavior.
+  func interpretMessage(message: Message) -> Void {
+    func interpretMessage0(_ message: Message) -> Behavior<Message> {
+      switch self.behavior {
+      case let .receiveMessage(recv): return recv(message)
+      case let .receive(recv):        return recv(context, message)
+      default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
+      }
     }
-  }
 
-  func nextBehavior(_ next: Behavior<Message>) {
-    // TODO canonicalize (remove not needed layers etc)
-    self.behavior = next
+    let next: Behavior<Message> = interpretMessage0(message)
+    log.info("Applied [\(message)], becoming: \(next)")
+
+    self.behavior = self.behavior.canonicalize(next: next)
   }
 
   func invokeSystem(message: SystemMessage) {

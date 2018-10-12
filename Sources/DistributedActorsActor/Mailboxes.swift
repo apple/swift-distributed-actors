@@ -44,7 +44,7 @@ public struct Envelope {
 public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
 
   func sendMessage(envelope: Envelope) -> ()
-  func dequeue() -> Envelope?
+  func dequeueMessage() -> Envelope?
 
   func sendSystemMessage(_ message: SystemMessage) -> ()
   func dequeueSystemMessage() -> SystemMessage?
@@ -57,6 +57,143 @@ public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
   /// A mailbox run consists of processing pending system and user messages
   func run()
 }
+
+// Implementation Note:
+// It may seem tempting to allow total extensability of mailboxes by end users; in reality this has always been a bad idea in Akka
+// since people attempt to solve their protocol and higher level issues by "we'll make a magical mailbox for it"
+// Mailboxes must be Simple.
+final class DefaultMailbox<Message>: Mailbox {
+
+  private let status = MailboxStatus()
+
+  private let runLock = Lock() // I'm sorry // TODO remove once we get acquire/release semantics access
+
+  // updates to these MUST be atomic
+  private var cell: ActorCell<Message>
+
+  private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc); default to be array backed
+  private var systemQueue = MPSCLinkedQueue<SystemMessage>() // TODO specialize the queue, make it light and linked; the queue for normal messages should be optimized, likely array backed
+
+  // since we want to allow implementing bounded queues; TODO make it configurable
+  private let mailboxCapacity = Int.max
+
+  init(cell: ActorCell<Message>) {
+    self.cell = cell
+  }
+
+  func sendMessage(envelope: Envelope) -> Void {
+    let old = status.incrementActivations()
+    let oldActivations = old.activations
+
+    if (oldActivations > mailboxCapacity) {
+      // meaning: mailbox is over capacity
+      status.decrementActivations() // rollback the update to `old` state, since we're dropping the message
+
+      // Implementation notes:
+      // "Dropping" is specific wording used to signal that a message is dropped due to mailbox etc over-capacity
+      // It is different than "dead letter" which means a message arrived at terminated actor.
+      // The two seem similar, but point at different programming errors:
+      //   - dropping is flow control issues
+      //   - dead letters may be lifecycle issues or races
+      pprint("DROPPED: Mailbox overflow (capacity: \(mailboxCapacity), dropping: \(type(of: envelope.payload)), in \(self.cell.myself)") // TODO: log this properly
+    } else if (old.isTerminating) {
+      // meaning: we enqueued a message to an actor which is in the process of terminating, but not terminated yet
+      status.decrementActivations()
+
+      pprint("DEAD LETTER: \(self.cell.myself) is terminating, thus message \(type(of: envelope.payload)) is a dead letter")
+    } else if (oldActivations == 0) {
+      // no activations yet, which means we are responsible for scheduling the actor for execution
+      // TODO this is where "smart batching" could come into play; to schedule later than immediately
+      queue.enqueue(envelope)
+
+      // "wake up" the actor
+      scheduleForExecution(hasMessageHint: true, hasSystemMessageHint: false)
+    } else {
+      // TODO what then; undo the activation increment?
+    }
+  }
+
+  func dequeueMessage() -> Envelope? {
+    return queue.dequeue()
+  }
+
+  func sendSystemMessage(_ message: SystemMessage) {
+    pprint("self.systemQueue.enqueue(message) = \(message)")
+    self.systemQueue.enqueue(message)
+    // TODO more logic here to avoid scheduling many times
+    scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: true)
+  }
+
+  func dequeueSystemMessage() -> SystemMessage? {
+    return systemQueue.dequeue()
+  }
+
+  internal func setActor(cell: ActorCell<Message>) {
+    self.cell = cell
+  }
+
+  // MARK: Running the mailbox
+
+  // FIXME: In order to be able to remove the lock (we really really need to remove it) we'll need acquire/release semantics on the mailbox status field
+  func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
+    runLock.withLockVoid {
+      let status: MailboxStatusSnapshot = self.status.snapshot()
+       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
+
+      // TODO failure handling in case those crash
+        
+      // TODO run only if has system messages?
+      runSystemMessages()
+      runUserMessages(activations: status.activations, runLimit: 100) // FIXME take from run directive from cell/dispatcher which passes in here
+    
+      // TODO once lock is gone, we need more actions here, to check again if we received any messages etc
+
+      // keep running iff there are more pending messages remaining
+      scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: false)
+
+       pprint("[Mailbox] Exiting run \(self): Status: \(status.debugDescription)")
+    }
+  }
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
+  private func runSystemMessages() {
+    while let sys = dequeueSystemMessage() {
+      cell.invokeSystem(message: sys)
+    }
+    // TODO implement system messages; we always run the entire system queue here
+  }
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
+  private func runUserMessages(activations: Int, runLimit: Int) {
+    guard activations > 0 else { return } // no reason to run when no activations
+    
+    var remainingRun = min(activations, runLimit) // TODO apply throughput limit; this is what dispatcher can use to apply fairness
+
+    // FIXME this has to take into account the runLength
+    while let e = dequeueMessage() { // FIXME look at run len
+
+      // mutates the cell
+      cell.interpretMessage(message: e.payload as! Message) // FIXME make the envelope typed as well
+      remainingRun -= 1 // TODO actually use it
+    }
+  }
+
+  // RUN ONLY WHILE PROTECTED BY `runLock`
+  private func scheduleForExecution(hasMessageHint: Bool, hasSystemMessageHint: Bool) {
+    // if can be scheduled for execution
+    cell.dispatcher.registerForExecution(self, status: self.status, hasMessageHint: hasMessageHint, hasSystemMessageHint: hasSystemMessageHint)
+  }
+}
+
+extension DefaultMailbox: CustomStringConvertible {
+  public var description: String {
+    return "\(type(of: self))(\(self.cell.path))"
+  }
+}
+
+
+// MARK: MailboxState
+
 
 /// Represents the masks used to pull out status flags and counters contained in the _status of a mailbox.
 // Implementation notes:
@@ -175,166 +312,3 @@ private struct MailboxStatusSnapshotImpl: MailboxStatusSnapshot {
     return _status
   }
 }
-
-// Implementation Note:
-// It may seem tempting to allow total extensability of mailboxes by end users; in reality this has always been a bad idea in Akka
-// since people attempt to solve their protocol and higher level issues by "we'll make a magical mailbox for it"
-// Mailboxes must be Simple.
-final class DefaultMailbox<Message>: Mailbox {
-
-  private let status = MailboxStatus()
-
-  private let runLock = Lock() // I'm sorry // TODO remove once we get acquire/release semantics access
-
-  // updates to these MUST be atomic
-  private var cell: ActorCell<Message>
-
-  private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc); default to be array backed
-  private var systemQueue = MPSCLinkedQueue<SystemMessage>() // TODO specialize the queue, make it light and linked; the queue for normal messages should be optimized, likely array backed
-
-  // since we want to allow implementing bounded queues; TODO make it configurable
-  private let mailboxCapacity = Int.max
-
-  init(cell: ActorCell<Message>) {
-    self.cell = cell
-  }
-
-  func sendMessage(envelope: Envelope) -> Void {
-    let old = status.incrementActivations()
-    let oldActivations = old.activations
-
-    if (oldActivations > mailboxCapacity) {
-      // meaning: mailbox is over capacity
-      status.decrementActivations() // rollback the update to `old` state, since we're dropping the message
-
-      // Implementation notes:
-      // "Dropping" is specific wording used to signal that a message is dropped due to mailbox etc over-capacity
-      // It is different than "dead letter" which means a message arrived at terminated actor.
-      // The two seem similar, but point at different programming errors:
-      //   - dropping is flow control issues
-      //   - dead letters may be lifecycle issues or races
-      pprint("DROPPED: Mailbox overflow (capacity: \(mailboxCapacity), dropping: \(type(of: envelope.payload)), in \(self.cell.myself)") // TODO: log this properly
-    } else if (old.isTerminating) {
-      // meaning: we enqueued a message to an actor which is in the process of terminating, but not terminated yet
-      status.decrementActivations()
-
-      pprint("DEAD LETTER: \(self.cell.myself) is terminating, thus message \(type(of: envelope.payload)) is a dead letter")
-    } else if (oldActivations == 0) {
-      // no activations yet, which means we are responsible for scheduling the actor for execution
-      // TODO this is where "smart batching" could come into play; to schedule later than immediately
-      queue.enqueue(envelope)
-
-      // "wake up" the actor
-      scheduleForExecution(hasMessageHint: true, hasSystemMessageHint: false)
-    } else {
-      // TODO what then; undo the activation increment?
-    }
-  }
-
-  func dequeueMessage() -> Envelope? {
-    return queue.dequeue()
-  }
-
-  func sendSystemMessage(_ message: SystemMessage) {
-    pprint("self.systemQueue.enqueue(message) = \(message)")
-    self.systemQueue.enqueue(message)
-    // TODO more logic here to avoid scheduling many times
-    scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: true)
-  }
-
-  func dequeueSystemMessage() -> SystemMessage? {
-    return systemQueue.dequeue()
-  }
-
-  internal func setActor(cell: ActorCell<Message>) {
-    self.cell = cell
-  }
-
-  //
-  // FIXME: In order to be able to remove the lock (we really really need to remove it) we'll need acquire/release semantics on the mailbox status field
-  func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
-    runLock.withLockVoid {
-      let status: MailboxStatusSnapshot = self.status.snapshot()
-       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
-
-      // TODO failure handling in case those crash
-      runSystemMessages()
-      runUserMessages(activations: status.activations, runLimit: 100) // FIXME take from run directive from cell/dispatcher which passes in here
-
-      // TODO once lock is gone, we need more actions here, to check again if we received any messages etc
-
-      // keep running iff there are more pending messages remaining
-      scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: false)
-
-       pprint("[Mailbox] Exiting run \(self): Status: \(status.debugDescription)")
-    }
-  }
-
-  // RUN ONLY WHILE PROTECTED BY `runLock`
-  private func runSystemMessages() {
-    while let sys = dequeueSystemMessage() {
-      cell.invokeSystem(message: sys)
-    }
-    // TODO implement system messages; we always run the entire system queue here
-  }
-
-  // RUN ONLY WHILE PROTECTED BY `runLock`
-  private func runUserMessages(activations: Int, runLimit: Int) {
-    // FIXME first process system messages; then use throughput to process N messages of mailbox
-    var remainingRun = min(activations, runLimit) // TODO apply throughput limit; this is what dispatcher can use to apply fairness
-
-    // FIXME this has to take into account the runLength
-    while let e = dequeueMessage() { // FIXME look at run len
-      let next = cell.invokeMessage(message: e.payload as! Message) // FIXME make the envelope typed as well
-      cell.nextBehavior(next)
-      remainingRun -= 1 // TODO actually use it
-    }
-  }
-
-  // RUN ONLY WHILE PROTECTED BY `runLock`
-  private func scheduleForExecution(hasMessageHint: Bool, hasSystemMessageHint: Bool) {
-    // if can be scheduled for execution
-    cell.dispatcher.registerForExecution(self, status: self.status, hasMessageHint: hasMessageHint, hasSystemMessageHint: hasSystemMessageHint)
-  }
-}
-
-extension DefaultMailbox: CustomStringConvertible {
-  public var description: String {
-    return "\(type(of: self))(\(self.cell.path))"
-  }
-}
-
-//final class SignalMailbox {
-//  // TODO make use of unsafe pointers
-//  var head: Any?
-//  var tail: Any?
-//
-//  func enqueue(envelope: Envelope) -> Void {
-//    return FIXME("Implement the simple linked queue")
-//  }
-//
-//  func dequeue() -> Envelope {
-//    return FIXME("Implement the simple linked queue")
-//  }
-//
-//  func hasMessages() -> Bool {
-//    return FIXME("Implement the simple linked queue")
-//  }
-//
-//  func count() -> Int {
-//    if hasMessages() {
-//      return 0
-//    } else {
-//      return 1
-//    }
-//  }
-//
-//  func isCountExact() -> Bool {
-//    return false
-//  }
-//
-////  internal func setActor(cell: AnyActorCell) {
-////
-////  }
-//
-//}
