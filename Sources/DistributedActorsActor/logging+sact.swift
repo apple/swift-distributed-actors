@@ -59,7 +59,7 @@ public func _log(level: LogLevel, message: @autoclosure () -> String, file: Stri
       msg += "\(prettyContext)"
       msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line).\(function)]"
       msg += "[\(path)]"
-      pprint("\(msg) \(message())") // could access the context here, include trace id etc 
+      print("\(msg) \(message())") // could access the context here, include trace id etc 
     }
   }
 

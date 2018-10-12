@@ -71,10 +71,12 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringC
   }
 
   internal func sendMessage(_ message: Message) {
+    pprint("sendMessage: \(message)")
     self.mailbox.sendMessage(envelope: Envelope(message))
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
   internal func sendSystemMessage(_ message: SystemMessage) {
+    pprint("sendMessage: \(message)")
     self.mailbox.sendSystemMessage(message)
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }

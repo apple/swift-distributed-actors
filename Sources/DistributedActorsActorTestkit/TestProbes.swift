@@ -16,7 +16,7 @@ import Swift Distributed ActorsActor
 import SwiftDistributedActorsDungeon
 import NIOConcurrencyHelpers
 
-public class TestProbe<Message> {
+public class TestActorProbe<Message> {
 
   // TODO is weak the right thing here?
   private weak var system: ActorSystem?
@@ -24,7 +24,7 @@ public class TestProbe<Message> {
 
   public let ref: ActorRef<Message>
 
-  let testProbeBehavior: Behavior<Message> = .receive { message in
+  let testProbeBehavior: Behavior<Message> = .receiveMessage { message in
 
     return .same
   }
@@ -50,6 +50,14 @@ public class TestProbe<Message> {
     print("IMPLEMENT: expectTerminated")
   }
 
+}
+
+extension TestActorProbe<Message>: ReceivesMessages {
+  typealias Message = Message
+
+  public func tell(_ message: Message) {
+    self.ref.tell(message)
+  }
 }
 
 

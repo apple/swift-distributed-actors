@@ -24,14 +24,12 @@ class ActorPingPongTests: XCTestCase {
 
   func test_itHasToSayHello() { // Thanks, Steve.
 
-    return () // FIXME implement the actor system basics
-
     let system = ActorSystem("ActorPingPongTests")
 
     let setupHasRun = Mutex()
     let sayHelloReceived = Mutex()
 
-    let target: ActorRef<SayHello> = system.spawn(.receive { sayHello in
+    let target: ActorRef<SayHello> = system.spawn(.receiveMessage { sayHello in
       sayHelloReceived.unlock()
       print("hello!")
       return .stopped

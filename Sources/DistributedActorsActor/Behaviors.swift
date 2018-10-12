@@ -12,7 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-public protocol AnyBehavior {}
+public protocol AnyBehavior {
+}
 
 /// A `Behavior` is what executes then an `Actor` handles messages.
 ///
@@ -24,7 +25,7 @@ public enum Behavior<Message>: AnyBehavior {
   case receiveMessage(_ handle: (Message) -> Behavior<Message>)
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
-  /// Aditionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
+  /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
   case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>)
 
   // TODO above is receiveMessage(M -> B)
@@ -43,6 +44,11 @@ public enum Behavior<Message>: AnyBehavior {
   /// and the actor itself will stop. Return this behavior to stop your actors.
   case stopped
 
+  /// Causes a message to be assumed unhandled by the runtime.
+  /// Unhandled messages are logged by default, and other behaviors may use this information to implement `apply1.orElse(apply2)` style logic.
+  /// TODO and their logging rate should be configurable
+  case unhandled
+
   /// Apply given supervision to behavior
   /// TODO more docs
   indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO I assume this causes us to lose all benefits of being an enum? since `indirect`
@@ -50,6 +56,22 @@ public enum Behavior<Message>: AnyBehavior {
   /// Supervise the passed in behavior and return the such supervised behavior.
   /// The returned behavior will supervised be given supervision decision to any crash of this actor.to behavior
   public static func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
-    return .supervise(behavior) { _ in directive }
+    return .supervise(behavior) { _ in
+      directive
+    }
+  }
+
+  // MARK: Behavior interpretation utilities
+
+  /// Since we have "special" behaviors like "same" or wrappers intended to
+//  internal static func canonicalize<T>(current: Behavior<T>, next: Behavior<T>) -> Behavior<T> {
+  internal func canonicalize(next: Behavior<Message>) -> Behavior<Message> {
+    switch next {
+    case .same:      return self
+    case .unhandled: return self
+    case .stopped:   return .stopped
+    case .setup:     return FIXME("Not handling setup within other behaviors yet...")
+    default:         return next
+    }
   }
 }
