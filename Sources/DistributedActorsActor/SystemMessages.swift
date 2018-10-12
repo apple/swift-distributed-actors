@@ -23,9 +23,13 @@ public /* but really internal... */ enum SystemMessage {
   /// be executed immediately e.g. `setup` or similar ones.
   case start
 
-  case terminate
+  case terminate // TODO poisonPill
   case watch(from: ActorRef<Nothing>)
   case unwatch(from: ActorRef<Nothing>)
 
- // TODO this is incomplete
+  // TODO this is incomplete
+
+  // exciting future ideas:
+  // case setLogLevel(_ level: LogLevel)
 }
+

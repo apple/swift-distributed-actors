@@ -12,19 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch
-
-// MARK: Dispatch based executors
-
-public protocol Runnable {
-  func run()
-}
+import Foundation
+import NIO
 
 /// An `Executor` is a low building block that is able to take blocks and schedule them for running
 public protocol MessageDispatcher {
 
   // TODO we should make it dedicated to dispatch() rather than raw executing perhaps? This way it can take care of fairness things
-
 
   // TODO will show up in performance work I guess; make sure we don't need to allocate those () -> always,
   //      but e.g. only when the underlying one impl needs it; e.g. dispatch seems to
@@ -33,30 +27,72 @@ public protocol MessageDispatcher {
 
   var name: String { get }
 
-  // TODO is Swift style to do those `-> Void` or `-> ()` or just nothing for func declarations?
-//  func execute(_ f: @escaping () -> Void) -> ()
-  func execute(_ f: Runnable) -> ()
+  func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool)
+
+  func execute(_ f: @escaping () -> Void)
 }
+
+// MARK: Dispatch based executors
 
 // TODO not sure we need this extension
 extension DispatchQueue: MessageDispatcher {
 
   public var name: String {
-    return String(cString: __dispatch_queue_get_label(nil), encoding: .utf8)!
+    let queueName = String(cString: __dispatch_queue_get_label(nil), encoding: .utf8)!
+
+    let threadName = Thread.current // .terribleHackThreadId
+
+    return  "\(queueName)#\(threadName)"
 
     // TODO if Foundation available also log the thread name?
 
     // TODO if pthread, log process id
   }
 
-  public func execute(_ f: Runnable) {
-    self.async(execute: { () -> () in
-      print("[dispatcher: \(self.name)]: \(f)")
-      f.run()
-    })
+  public func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) {
+     // volatile read needed (acquire) (in future)
+    var canBeScheduled: Bool = false
+    if hasMessageHint || hasSystemMessageHint {
+      canBeScheduled = true
+    } else if (status.isTerminated) {
+      canBeScheduled = false
+    } // FIXME needs more reads once we go async
+    
+    if canBeScheduled {
+      pprint("mailbox \(mailbox) = \(canBeScheduled)")
+      // TODO set as scheduled
+      // status.setAsScheduled
+      self.execute(mailbox.run)
+    }
   }
 
+  public func execute(_ f: @escaping () -> Void) {
+    #if SACT_DEBUG
+    self.async(execute: { () -> () in
+      pprint("[dispatcher: \(self.name)]: \(f)")
+      f()
+    })
+    #else
+    self.async(execute: f)
+    #endif
+  }
 }
 
-// MARK: TODO implement custom executors
+extension MessageDispatcher {
+  func execute(mailbox: Mailbox) {
+    self.execute(mailbox.run)
+  }
+}
 
+// terrible hack, would prefer NSThread to solve: "Expose thread number in NSThread" https://bugs.swift.org/browse/SR-1075
+
+extension Foundation.Thread {
+  // FIXME 1) do this nicer 2) get official API for thread id
+  // TODO is it better to expose the <...> thread id rather than number?
+  var terribleHackThreadId: Int {
+    let idString: String = self.debugDescription
+    let trimmedFront = idString.drop(while: { $0 != "=" }).dropFirst(2)
+    let it = trimmedFront.reversed().drop(while: { $0 != "," }).dropFirst().reversed() // reversed is cheap, just a view right?
+    return Int(String(it))!
+  }
+}

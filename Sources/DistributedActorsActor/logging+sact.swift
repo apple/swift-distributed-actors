@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIOConcurrencyHelpers
+import Foundation
 
 // TODO implement logging infrastructure - pipe as messages to dedicated logging actor
 final public class ActorLogger: Logger {
@@ -21,10 +22,9 @@ final public class ActorLogger: Logger {
 
   private let path: String
 
-  // TODO make () -> String if we can get thread ids (we will be able to)
-  // FIXME issue: github.pie.apple.com/johannes-weiss/sswg-logger-api-pitch/issues/3 regarding init() not allowing us to keep this a `let`
-  // private let dispatcherName: String
-  private var dispatcherName: String?
+  private let dispatcherName: String
+
+  private let formatter: DateFormatter
 
   private var prettyContext: String = ""
   private var context: [String: String] = [:] {
@@ -32,34 +32,34 @@ final public class ActorLogger: Logger {
       if self.context.isEmpty {
         self.prettyContext = ""
       } else {
-        self.prettyContext = " \(self.context.description)"
+        self.prettyContext = "[\(self.context.description)]"
       }
     }
   }
 
-  public init(identifier: String) {
-    self.path = identifier
-  }
-
-  convenience public init<T>(_ context: ActorContext<T>) {
-    self.init(identifier: context.path)
+  public init<T>(_ context: ActorContext<T>) {
+    self.path = context.path
     self.dispatcherName = context.dispatcher.name
+
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+    formatter.locale = Locale(identifier: "en_US")
+    formatter.calendar = Calendar(identifier: .gregorian)
+    self.formatter = formatter
   }
 
-  var identifier: String {
-    return "[\(path)][\(dispatcherName ?? "")]"  
-  }
-
-  public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
+public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
     // TODO this actually would be dispatching to the logging infra (has ticket)
 
     // mock impl until we get the real infra
     lock.withLockVoid {
-      var msg = "[\(formatLevel(level))]"
-      msg += "\(identifier)"
-      msg += "[\(prettyContext)]"
-      msg += "[@\(file)#\(function)\(line)] "
-      print("\(message())") // could access the context here, include trace id etc 
+      var msg = "\(formatter.string(from: Date())) "
+      msg += "[\(formatLevel(level))]"
+      msg += "[\(dispatcherName)]"
+      msg += "\(prettyContext)"
+      msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line).\(function)]"
+      msg += "[\(path)]"
+      pprint("\(msg) \(message())") // could access the context here, include trace id etc 
     }
   }
 
@@ -77,10 +77,14 @@ final public class ActorLogger: Logger {
 
   public subscript(diagnosticKey diagnosticKey: String) -> String? {
     get {
-      return self.lock.withLock { self.context[diagnosticKey] } // TODO maybe dont allow get
+      return self.lock.withLock {
+        self.context[diagnosticKey]
+      } // TODO maybe dont allow get
     }
     set {
-      self.lock.withLock { self.context[diagnosticKey] = newValue }
+      self.lock.withLock {
+        self.context[diagnosticKey] = newValue
+      }
     }
   }
 }

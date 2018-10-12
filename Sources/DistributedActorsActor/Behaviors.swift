@@ -21,7 +21,11 @@ public protocol AnyBehavior {}
 public enum Behavior<Message>: AnyBehavior {
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
-  case receive(_ handle: (Message) -> Behavior<Message>)
+  case receiveMessage(_ handle: (Message) -> Behavior<Message>)
+
+  /// Defines a behavior that will be executed with an incoming message by its hosting actor.
+  /// Aditionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
+  case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>)
 
   // TODO above is receiveMessage(M -> B)
   // TODO we need receive((Context, M) -> B) as well, leaving it for later

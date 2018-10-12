@@ -15,7 +15,7 @@
 //
 // This source file is part of the DistributedActors open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the DistributedActors project authors
+// Copyright (c) 2018 Apple Inc. and the DistributedActors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
