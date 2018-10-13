@@ -46,7 +46,7 @@ class MailboxStatusTests: XCTestCase {
   // Failure example:
   //   "Assertion failed: Decremented below 0 activations, this must never happen and is a bug!
   //    Owner: MailboxStatus(-100), Thread: <NSThread: 0x7fa8ed404350>{number = 1, name = main}:
-  //    file /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Mailboxes.swift, line 160"
+  //    file /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Mailbox.swift, line 160"
   func test_mailboxStatus_mustDetectAndProtectFromDecrementingBelowZeroActivations() {
     #if SACT_TESTS_CRASH
     let s0 = MailboxStatus()

@@ -100,14 +100,18 @@ extension ActorSystem: ActorRefFactory {
     let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
 
     // the mailbox of the actor
-    let mailbox: Mailbox = DefaultMailbox(cell: cell) // look up via props config
+    let mailbox: Mailbox
+    switch props.mailbox {
+    case let .default(capacity, _):
+      mailbox = DefaultMailbox(cell: cell, capacity: capacity)
+    }
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 
     let refWithCell = ActorRefWithCell(
         path: "/user/\(name)",
         cell: cell,
         mailbox: mailbox
-    ) // TODO we should expose ActorRef
+    )
 
     cell.set(ref: refWithCell)
     refWithCell.sendSystemMessage(.start)

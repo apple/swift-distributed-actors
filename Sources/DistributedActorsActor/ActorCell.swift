@@ -128,7 +128,7 @@ extension ActorCell: CustomStringConvertible {
 
 public class ActorContext<Message> {
 
-  // TODO in the sublass we need to apply some workarounds around `cannot override with a stored property 'myself'` since I want those to be vars
+  // TODO in the subclass we need to apply some workarounds around `cannot override with a stored property 'myself'` since I want those to be vars
   // See: https://stackoverflow.com/questions/46676992/overriding-computed-property-with-stored-one
 
   /// Complete path in hierarchy of this Actor.

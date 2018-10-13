@@ -21,7 +21,7 @@ public struct Envelope {
   // Note that we can pass around senders however we can not automatically get the type of them right.
   // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
   // TODO explain this more
-  #if SACTANA_DEBUG // TODO: AFAIK this does work yet right?
+  #if SACTANA_DEBUG
   let senderPath: String
   #endif
 
@@ -64,7 +64,8 @@ public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
 // Mailboxes must be Simple.
 final class DefaultMailbox<Message>: Mailbox {
 
-  private let status = MailboxStatus()
+  private let _status = Atomic<Int>(value: 0)
+  private func status() -> MailboxStatus { return MailboxStatus(underlying: _status.load()) }
 
   private let runLock = Lock() // I'm sorry // TODO remove once we get acquire/release semantics access
 
@@ -74,20 +75,21 @@ final class DefaultMailbox<Message>: Mailbox {
   private var queue = MPSCLinkedQueue<Envelope>() // TODO configurable (bounded / unbounded etc); default to be array backed
   private var systemQueue = MPSCLinkedQueue<SystemMessage>() // TODO specialize the queue, make it light and linked; the queue for normal messages should be optimized, likely array backed
 
-  // since we want to allow implementing bounded queues; TODO make it configurable
-  private let mailboxCapacity = Int.max
+  // since we want to allow implementing bounded queues
+  private let capacity: Int
 
-  init(cell: ActorCell<Message>) {
+  init(cell: ActorCell<Message>, capacity: Int ) {
     self.cell = cell
+    self.capacity = capacity
   }
 
   func sendMessage(envelope: Envelope) -> Void {
-    let old = status.incrementActivations()
+    let old = incrementStatusActivations()
     let oldActivations = old.activations
 
-    if (oldActivations > mailboxCapacity) {
+    if (oldActivations > capacity) {
       // meaning: mailbox is over capacity
-      status.decrementActivations() // rollback the update to `old` state, since we're dropping the message
+      decrementStatusActivations() // rollback the update to `old` state, since we're dropping the message
 
       // Implementation notes:
       // "Dropping" is specific wording used to signal that a message is dropped due to mailbox etc over-capacity
@@ -95,10 +97,10 @@ final class DefaultMailbox<Message>: Mailbox {
       // The two seem similar, but point at different programming errors:
       //   - dropping is flow control issues
       //   - dead letters may be lifecycle issues or races
-      pprint("DROPPED: Mailbox overflow (capacity: \(mailboxCapacity), dropping: \(type(of: envelope.payload)), in \(self.cell.myself)") // TODO: log this properly
+      pprint("DROPPED: Mailbox overflow (capacity: \(capacity), dropping: \(type(of: envelope.payload)), in \(self.cell.myself)") // TODO: log this properly
     } else if (old.isTerminating) {
       // meaning: we enqueued a message to an actor which is in the process of terminating, but not terminated yet
-      status.decrementActivations()
+      decrementStatusActivations()
 
       pprint("DEAD LETTER: \(self.cell.myself) is terminating, thus message \(type(of: envelope.payload)) is a dead letter")
     } else if (oldActivations == 0) {
@@ -132,26 +134,46 @@ final class DefaultMailbox<Message>: Mailbox {
     self.cell = cell
   }
 
+  // MARK: Mailbox status management
+
+
+  /// Increments underlying counter by 1
+  /// Returns a snapshot of the previous mailbox status.
+  private func incrementStatusActivations() -> MailboxStatus {
+    let old: Int = self._status.add(MailboxStatus.singleActivation) // TODO or a raw 1...
+    return MailboxStatus(underlying: old)
+  }
+
+  // TODO func rollbackActivationIncrement
+  @discardableResult
+  private func decrementStatusActivations() -> MailboxStatus {
+    // FIXME decrement must protect against decrementing below 0 activations
+    let old: Int = self._status.sub(MailboxStatus.singleActivation)
+    let oldSnap = MailboxStatus(underlying: old)
+    assertWithDetails(oldSnap.activations > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
+    return oldSnap
+  }
+
   // MARK: Running the mailbox
 
   // FIXME: In order to be able to remove the lock (we really really need to remove it) we'll need acquire/release semantics on the mailbox status field
   func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
     runLock.withLockVoid {
-      let status: MailboxStatusSnapshot = self.status.snapshot()
-       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
+      let status: MailboxStatus = self.status()
+      pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
 
       // TODO failure handling in case those crash
-        
+
       // TODO run only if has system messages?
       runSystemMessages()
       runUserMessages(activations: status.activations, runLimit: 100) // FIXME take from run directive from cell/dispatcher which passes in here
-    
+
       // TODO once lock is gone, we need more actions here, to check again if we received any messages etc
 
       // keep running iff there are more pending messages remaining
       scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: false)
 
-       pprint("[Mailbox] Exiting run \(self): Status: \(status.debugDescription)")
+      pprint("[Mailbox] Exiting run \(self): Status: \(status.debugDescription)")
     }
   }
 
@@ -165,8 +187,10 @@ final class DefaultMailbox<Message>: Mailbox {
 
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func runUserMessages(activations: Int, runLimit: Int) {
-    guard activations > 0 else { return } // no reason to run when no activations
-    
+    guard activations > 0 else {
+      return
+    } // no reason to run when no activations
+
     var remainingRun = min(activations, runLimit) // TODO apply throughput limit; this is what dispatcher can use to apply fairness
 
     // FIXME this has to take into account the runLength
@@ -181,7 +205,7 @@ final class DefaultMailbox<Message>: Mailbox {
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func scheduleForExecution(hasMessageHint: Bool, hasSystemMessageHint: Bool) {
     // if can be scheduled for execution
-    cell.dispatcher.registerForExecution(self, status: self.status, hasMessageHint: hasMessageHint, hasSystemMessageHint: hasSystemMessageHint)
+    cell.dispatcher.registerForExecution(self, status: self.status(), hasMessageHint: hasMessageHint, hasSystemMessageHint: hasSystemMessageHint)
   }
 }
 
@@ -193,24 +217,6 @@ extension DefaultMailbox: CustomStringConvertible {
 
 
 // MARK: MailboxState
-
-
-/// Represents the masks used to pull out status flags and counters contained in the _status of a mailbox.
-// Implementation notes:
-// We implement the mailbox state in such sneaky way in order to be able to at the same time modify scheduled/idle
-// and message count values; which are used to estimate the throughput to apply on this mailbox run. This is loosely based
-// on the dropped Typed Akka ActorSystem implementation by Roland Kuhn, from 2016 https://github.com/akka/akka/pull/21128/files#diff-92d9e38d1b6b284e38230047feea5fdcR36
-private enum MailboxStatusMasks: Int {
-  //@formatter:off
-  case Inactive                    = 0b00000000_00000000_00000000_00000001 // 0 bit
-  case ActivatedOnlySystemMessages = 0b00000000_00000000_00000000_00000010 // 1 bit
-  case SingleActivation            = 0b00000000_00000000_00000000_00000100 // 2 bit, means "1 activation"
-  case Activations                 = 0b00111111_11111111_11111111_11111100 // 2 – 29 bits (28 bits total), used to count activations
-  case ActivationMask              = 0b00111111_11111111_11111111_11111111 // 0 – 29 bits (28 bits total), used to determine whether to activate/run
-  case Terminating                 = 0b01000000_00000000_00000000_00000000 // 30 bit
-  case Terminated                  = 0b10000000_00000000_00000000_00000000 // 31 bit, also sign of Int
-  //@formatter:on
-}
 
 // Implementation notes:
 // State should be operated on bitwise; where the specific bits signify states like the following:
@@ -224,42 +230,16 @@ private enum MailboxStatusMasks: Int {
 //
 // Note that this implementation allows, using one load, to know: if the actor is running right now (so
 // the mailbox size will be decremented shortly), if we need to schedule it or not since it was scheduled already etc.
-protocol MailboxStatusSnapshot: CustomStringConvertible, CustomDebugStringConvertible {
-  var isTerminating: Bool { get }
-  var isTerminated: Bool { get }
-  var isRunnable: Bool { get }
-  var activations: Int { get }
+//protocol MailboxStatusSnapshot: CustomStringConvertible, CustomDebugStringConvertible {
+//  var isTerminating: Bool { get }
+//  var isTerminated: Bool { get }
+//  var isRunnable: Bool { get }
+//  var activations: Int { get }
+//
+//  // MARK: Internal, in order to share impl across snapshot/real
+//  func _load() -> Int
+//}
 
-  // MARK: Internal, in order to share impl across snapshot/real
-  func _load() -> Int
-}
-
-extension MailboxStatusSnapshot {
-  private func checkStatus(mask: Int) -> Bool {
-    return (self._load() & mask) != 0
-  }
-
-  var isTerminating: Bool {
-    return self.checkStatus(mask: MailboxStatusMasks.Terminating.rawValue)
-  }
-  var isTerminated: Bool {
-    return self._load() < 0 // since leading bit is used for sign, and Terminated is the Int's leading bit
-  }
-  var isRunnable: Bool {
-    return self.activations > 0
-  }
-  var activations: Int {
-    return (self._load() & MailboxStatusMasks.Activations.rawValue) >> 2 // adjust right due to flag gits
-  }
-
-  public var description: String {
-    return "\(type(of: self))(\(String(_load(), radix: 2)))"
-  }
-
-  public var debugDescription: String {
-    return "\(type(of: self))(0b\(String(_load(), radix: 2)): R:\(self.isRunnable ? "y" : "n"),A:\(self.activations),Ti:\(self.isTerminating ? "y" : "n"),Td:\(self.isTerminated ? "y" : "n"))"
-  }
-}
 
 /// Extends `MailboxStatusSnapshot` with the ability to update the states
 ///
@@ -267,48 +247,55 @@ extension MailboxStatusSnapshot {
 // TODO how terrible is it that I actually do mutate this internally via the Atomic? (IMHO ok, since i avoid copying things and uphold the atomicity, and dont want this to be a class... but good to ask I suppose)
 //
 // TODO In future want to expose this to dispatcher and let IT decide // this was never done but we wanted to in typed
-public struct MailboxStatus: MailboxStatusSnapshot {
+public struct MailboxStatus {
 
-  // in-place mutable, access with care
-  private let _status = Atomic<Int>(value: 0)
+  /// Represents the masks used to pull out status flags and counters contained in the _status of a mailbox.
+  // Implementation notes:
+  // We implement the mailbox state in such sneaky way in order to be able to at the same time modify scheduled/idle
+  // and message count values; which are used to estimate the throughput to apply on this mailbox run. This is loosely based
+  // on the dropped Typed Akka ActorSystem implementation by Roland Kuhn, from 2016 https://github.com/akka/akka/pull/21128/files#diff-92d9e38d1b6b284e38230047feea5fdcR36
+  fileprivate enum Masks: Int {
+    //@formatter:off
+    case inactive                    = 0b00000000_00000000_00000000_00000001 // 0 bit
+    case activatedOnlySystemMessages = 0b00000000_00000000_00000000_00000010 // 1 bit
+    case activations                 = 0b00111111_11111111_11111111_11111100 // 2 – 29 bits (28 bits total), used to count activations
+    case activationMask              = 0b00111111_11111111_11111111_11111111 // 0 – 29 bits (28 bits total), used to determine whether to activate/run
+    case terminating                 = 0b01000000_00000000_00000000_00000000 // 30 bit
+    case terminated                  = 0b10000000_00000000_00000000_00000000 // 31 bit, also sign of Int
+  }
+  static let singleActivation   = 0b00000000_00000000_00000000_00000100 // 2 bit, means "1 activation"
+  //@formatter:on
 
-  @inline(__always)
-  func _load() -> Int {
-    return _status.load()
+  let value: Int
+
+  public init(underlying value: Int) {
+    self.value = value
   }
 
-  func snapshot() -> MailboxStatusSnapshot {
-    return MailboxStatusSnapshotImpl(status: self._load())
+  private func checkStatus(mask: Int) -> Bool {
+    return (self.value & mask) != 0
   }
 
-  /// Increments underlying counter by 1
-  /// Returns a snapshot of the previous mailbox status; a snapshot can not be modified, only read.
-  func incrementActivations() -> MailboxStatusSnapshot {
-    let old: Int = self._status.add(MailboxStatusMasks.SingleActivation.rawValue)
-    return MailboxStatusSnapshotImpl(status: old)
+  var isTerminating: Bool {
+    return self.checkStatus(mask: Masks.terminating.rawValue)
   }
-
-  // TODO func rollbackActivationIncrement
-  @discardableResult
-  func decrementActivations() -> MailboxStatusSnapshot {
-    // FIXME decrement must protect against decrementing below 0 activations
-    let old: Int = self._status.sub(MailboxStatusMasks.SingleActivation.rawValue)
-    let oldSnap = MailboxStatusSnapshotImpl(status: old)
-    assertWithDetails(oldSnap.activations > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
-    return oldSnap
+  var isTerminated: Bool {
+    return self.value < 0 // since leading bit is used for sign, and Terminated is the Int's leading bit
+  }
+  var isRunnable: Bool {
+    return self.activations > 0
+  }
+  var activations: Int {
+    return (self.value & Masks.activations.rawValue) >> 2 // adjust right due to flag bits
   }
 }
 
-
-private struct MailboxStatusSnapshotImpl: MailboxStatusSnapshot {
-  private let _status: Int
-
-  init(status: Int) {
-    self._status = status
+extension MailboxStatus: CustomStringConvertible, CustomDebugStringConvertible {
+  public var description: String {
+    return "\(type(of: self))(\(String(value, radix: 2)))"
   }
 
-  @inline(__always)
-  func _load() -> Int {
-    return _status
+  public var debugDescription: String {
+    return "\(type(of: self))(0b\(String(value, radix: 2)): R:\(self.isRunnable ? "y" : "n"),A:\(self.activations),Ti:\(self.isTerminating ? "y" : "n"),Td:\(self.isTerminated ? "y" : "n"))"
   }
 }
