@@ -60,12 +60,12 @@ public final class MPSCLinkedQueue<A> {
   }
 }
 
-protocol Queue {
-  associatedtype A
-
-  func dequeue() -> A?
-
-  func enqueue(_ item: A) -> Void
-
-  func isEmpty() -> Bool
-}
+//protocol Queue {
+//  associatedtype A
+//
+//  func dequeue() -> A?
+//
+//  func enqueue(_ item: A) -> Void
+//
+//  func isEmpty() -> Bool
+//}
