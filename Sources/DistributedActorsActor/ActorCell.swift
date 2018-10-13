@@ -77,7 +77,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     }
 
     let next: Behavior<Message> = interpretMessage0(message)
-    log.info("Applied [\(message)], becoming: \(next)")
+    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO never really log entire user message (passwords etc)
 
     self.behavior = self.behavior.canonicalize(next: next)
   }

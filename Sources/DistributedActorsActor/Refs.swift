@@ -37,9 +37,18 @@ public class ActorRef<Message>: ReceivesMessages {
   }
 }
 
+extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
+  public var description: String {
+    return "ActorRef(\(path))"
+  }
+  public var debugDescription: String {
+    return "ActorRef(\(path)#DEBUG" // TODO: "ActorRef(\(path)#\(uid)"
+  }
+}
+
 // MARK: Internal implementation classes
 
-internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringConvertible, CustomDebugStringConvertible {
+internal final class ActorRefWithCell<Message>: ActorRef<Message> {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
   /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
@@ -71,23 +80,15 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, CustomStringC
   }
 
   internal func sendMessage(_ message: Message) {
-    pprint("sendMessage: \(message)")
+    pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(message))
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
   internal func sendSystemMessage(_ message: SystemMessage) {
-    pprint("sendMessage: \(message)")
+    pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
     // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
 
-  // --- conformance to CustomStringConvertible
-  public var description: String {
-    return "ActorRef(\(path))"
-  }
-  // --- conformance to CustomDebugStringConvertible
-  public var debugDescription: String {
-    return "ActorRef(\(path)#DEBUG" // TODO: "ActorRef(\(path)#\(uid)"
-  }
 }
 

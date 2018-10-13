@@ -15,32 +15,41 @@
 import NIOConcurrencyHelpers
 import Foundation
 
-// TODO implement logging infrastructure - pipe as messages to dedicated logging actor
-final public class ActorLogger: Logger {
+public struct LoggingContext {
+  let name: String
+  let dispatcher: () -> String
 
-  private let lock = Lock()
+  // Lock used when mutating MDC
+  let lock = Lock()
 
-  private let path: String
-
-  private let dispatcherName: String
-
-  private let formatter: DateFormatter
-
-  private var prettyContext: String = ""
-  private var context: [String: String] = [:] {
+  var prettyMdc: String
+  var mdc: [String: String] = [:] {
     didSet {
-      if self.context.isEmpty {
-        self.prettyContext = ""
+      if self.mdc.isEmpty {
+        self.prettyMdc = ""
       } else {
-        self.prettyContext = "[\(self.context.description)]"
+        self.prettyMdc = "[\(self.mdc.description)]"
       }
     }
   }
 
-  public init<T>(_ context: ActorContext<T>) {
-    self.path = context.path
-    self.dispatcherName = context.dispatcher.name
+  public init(name: String, dispatcher: @escaping () -> String) {
+    self.name = name
+    self.dispatcher = dispatcher
+    self.prettyMdc = ""
+  }
+}
 
+// TODO implement logging infrastructure - pipe as messages to dedicated logging actor
+public struct ActorLogger: Logger {
+
+  private var context: LoggingContext
+
+  private let formatter: DateFormatter
+
+  public init(_ context: LoggingContext) {
+    self.context = context
+    
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
     formatter.locale = Locale(identifier: "en_US")
@@ -48,17 +57,32 @@ final public class ActorLogger: Logger {
     self.formatter = formatter
   }
 
-public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
+  public init<T>(_ context: ActorContext<T>) {
+    self.init(LoggingContext(
+        name: context.path,
+        dispatcher: { () in context.dispatcher.name }
+      ))
+  }
+
+  public init(_ system: ActorSystem) {
+    self.init(LoggingContext(
+        name: system.name,
+        dispatcher: { () in "<get-current-thread>" }
+      ))
+  }
+
+  public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
     // TODO this actually would be dispatching to the logging infra (has ticket)
 
     // mock impl until we get the real infra
-    lock.withLockVoid {
+    self.context.lock.withLockVoid {
       var msg = "\(formatter.string(from: Date())) "
       msg += "[\(formatLevel(level))]"
-      msg += "[\(dispatcherName)]"
-      msg += "\(prettyContext)"
-      msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line).\(function)]"
-      msg += "[\(path)]"
+      msg += "[\(context.dispatcher())]"
+      msg += "\(context.prettyMdc)"
+      // msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line) .\(function)]"
+      msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line)]"
+      msg += "[\(context.name)]"
       print("\(msg) \(message())") // could access the context here, include trace id etc 
     }
   }
@@ -77,13 +101,13 @@ public func _log(level: LogLevel, message: @autoclosure () -> String, file: Stri
 
   public subscript(diagnosticKey diagnosticKey: String) -> String? {
     get {
-      return self.lock.withLock {
-        self.context[diagnosticKey]
+      return self.context.lock.withLock {
+        self.context.mdc[diagnosticKey]
       } // TODO maybe dont allow get
     }
     set {
-      self.lock.withLock {
-        self.context[diagnosticKey] = newValue
+      self.context.lock.withLock {
+        self.context.mdc[diagnosticKey] = newValue
       }
     }
   }

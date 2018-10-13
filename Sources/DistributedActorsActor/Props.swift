@@ -70,7 +70,7 @@ public enum DispatcherProps {
 public enum MailboxProps {
   case `default`(capacity: Int, onOverflow: MailboxOverflowStrategy)
 
-  static func `default`(capacity: Int = -1) -> MailboxProps {
+  static func `default`(capacity: Int = Int.max) -> MailboxProps {
     return .default(capacity: capacity, onOverflow: .crash)
   }
 }

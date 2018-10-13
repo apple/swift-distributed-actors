@@ -160,6 +160,7 @@ final class DefaultMailbox<Message>: Mailbox {
   func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
     runLock.withLockVoid {
       let status: MailboxStatus = self.status()
+      guard status.isAlive else { return } // dead actors don't run
       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
 
       // TODO failure handling in case those crash
@@ -278,6 +279,9 @@ public struct MailboxStatus {
 
   var isTerminating: Bool {
     return self.checkStatus(mask: Masks.terminating.rawValue)
+  }
+  var isAlive: Bool {
+    return !isTerminated
   }
   var isTerminated: Bool {
     return self.value < 0 // since leading bit is used for sign, and Terminated is the Int's leading bit
