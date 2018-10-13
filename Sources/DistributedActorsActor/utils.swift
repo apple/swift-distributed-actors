@@ -65,5 +65,11 @@ public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: 
 }
 
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
-  print("\(file): : \(message)")
+  print("\(file):\(line) : \(message)")
+}
+
+public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
+  let yellow = "\u{001B}[0;33m"
+  let reset = "\u{001B}[0;0m"
+  print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }

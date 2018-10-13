@@ -26,6 +26,7 @@ extension ActorSystemTests {
       return [
                 ("testNothing", testNothing),
                 ("test_ensureActorRefSizeBelow24Bytes", test_ensureActorRefSizeBelow24Bytes),
+                ("test_ensureActorCellSizeBelow24Bytes", test_ensureActorCellSizeBelow24Bytes),
            ]
    }
 }
