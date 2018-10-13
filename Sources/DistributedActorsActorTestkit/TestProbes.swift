@@ -15,6 +15,7 @@
 import Swift Distributed ActorsActor
 import SwiftDistributedActorsDungeon
 import NIOConcurrencyHelpers
+import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 
 public class TestActorProbe<Message> {
 
@@ -24,21 +25,40 @@ public class TestActorProbe<Message> {
 
   public let ref: ActorRef<Message>
 
-  let testProbeBehavior: Behavior<Message> = .receiveMessage { message in
+  private let expectationTimeout: TimeAmount
 
-    return .same
-  }
+  /// Blocking linked queue, available to run assertions on
+  private let messagesQueue: LinkedBlockingQueue<Message>
+  /// Blocking linked queue, available to run assertions on
+  // private let signalQueue = LinkedBlockingQueue<Message>()
+
+// // TODO too bad that we can't make this happen... since the self
+//  let testProbeBehavior: Behavior<Message> = .receiveMessage { message in
+//    self.messagesQueue.enqueue(message)
+//    return .same
+//  }
 
   public init(_ system: ActorSystem, named name: String) {
     self.system = system
     // extract config here
     self.name = name
 
-    self.ref = system.spawn(testProbeBehavior, named: name)
+    self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
+
+    self.messagesQueue = LinkedBlockingQueue<Message>()
+    let behavior = TestActorProbe.behavior(messageQueue: self.messagesQueue)
+    self.ref = system.spawn(behavior, named: name)
   }
 
+  private static func behavior(messageQueue: LinkedBlockingQueue<Message>) -> Behavior<Message> {
+    return .receiveMessage { message in
+      messageQueue.enqueue(message)
+      return .same
+    }
+  }
+  
   public func expectMessage(_ message: Message) throws {
-    print("IMPLEMENT: expectMessage")
+
   }
 
   public func expectSignal(_ signal: Signal) throws {
@@ -52,9 +72,7 @@ public class TestActorProbe<Message> {
 
 }
 
-extension TestActorProbe<Message>: ReceivesMessages {
-  typealias Message = Message
-
+extension TestActorProbe: ReceivesMessages {
   public func tell(_ message: Message) {
     self.ref.tell(message)
   }

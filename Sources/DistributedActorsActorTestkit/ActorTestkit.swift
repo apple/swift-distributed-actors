@@ -11,15 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-//
-//
-//import Foundation
-//
-//final class ActorTestkit {
-//
-//
-//    func probe(named name: String = "") -> TestProbe {
-//      return undefined()
-//    }
-//
-//}
+
+
+import NIOConcurrencyHelpers
+import SwiftDistributedActorsDungeon
+import Swift Distributed ActorsActor
+
+final class ActorTestkit {
+
+  let system: ActorSystem
+
+  init(system: ActorSystem) {
+    self.system = system
+  }
+
+  func probe<Message>(named name: String = "") -> TestActorProbe<Message> {
+    // FIXME check uniqueness
+    return TestActorProbe(system, named: name) // spawns real actor underneeth
+  }
+
+}

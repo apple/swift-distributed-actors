@@ -18,7 +18,7 @@ import Swift Distributed ActorsActor
 class SupervisionTests: XCTestCase {
 
   func test_compile() throws {
-    let b: Behavior<String> = .receive { s in .same }
+    let b: Behavior<String> = .receiveMessage { s in .same }
     let _: Behavior<String> = .supervise(b) { failure -> Supervision.Directive in
       return .restart
     }
