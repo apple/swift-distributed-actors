@@ -17,6 +17,7 @@ import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
 
 let system = ActorSystem()
+let log = system.log
 
 struct Hello {
   let name: String
@@ -44,9 +45,9 @@ func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
   }
 }
 
-print("Spawning greeter...")
+log.info("Spawning greeter...")
 let greeter = system.spawn(greeterBehavior, named: "greeter")
-print("Spawning caplin...")
+log.info("Spawning caplin...")
 let caplin = system.spawn(personBehavior(sayHelloTo: greeter), named: "caplin")
 
 

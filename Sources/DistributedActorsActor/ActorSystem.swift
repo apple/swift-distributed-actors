@@ -26,7 +26,7 @@ public final class ActorSystem {
   // it has upsides though, it is then possible to expose additional async APIs on it, without doing any weird things
   // creating an actor them becomes much simpler; it becomes an `ask` and we can avoid locks then (!)
 
-  private let name: String
+  public let name: String
 
   // Implementation note:
   // First thing we need to start is the event stream, since is is what powers our logging infrastructure // TODO ;-)
@@ -45,9 +45,12 @@ public final class ActorSystem {
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
 //  private let provider =
 
-  public var log: ActorLogger {
-    return TODO("not implemented yet")
-  }
+  // FIXME should link to the logging infra rather than be ad hoc (init will be tricky, chicken-and-egg ;-))
+  // TODO lazy var is unsafe here
+  public lazy var log: ActorLogger = ActorLogger(self)
+    // the tricky stuff is due to
+    // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorSystem.swift:55:16: error: 'self' used before all stored properties are initialized
+    // self.log = ActorLogger(self)
 
   /// Creates a named ActorSystem; The name is useful for debugging cross system communication
   // TODO /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)
@@ -90,6 +93,9 @@ extension ActorSystem: ActorRefFactory {
 
   /// Spawn a new top-level Actor with the given initial behavior and name.
   public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) -> ActorRef<Message> {
+    log.info("Spawning \(behavior), named: [\(name)]")
+
+
     // TODO validate name is valid actor name (no / in it etc)
     // TODO move this to the provider perhaps? or some way to share setup logic
 

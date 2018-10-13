@@ -60,7 +60,7 @@ extension DispatchQueue: MessageDispatcher {
     } // FIXME needs more reads once we go async
     
     if canBeScheduled {
-      pprint("mailbox \(mailbox) = \(canBeScheduled)")
+      pprint("mailbox \(mailbox), canBeScheduled=\(canBeScheduled)")
       // TODO set as scheduled
       // status.setAsScheduled
       self.execute(mailbox.run)
