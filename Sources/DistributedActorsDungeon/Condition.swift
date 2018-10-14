@@ -51,6 +51,26 @@ public final class Condition {
     }
   }
 
+  public func wait(_ mutex: Mutex, timeoutAt: Int) -> Void {
+//    clock_gettime(CLOCK_REALTIME, &now)
+//    let reltime = sleep_til_this_absolute_time - now;
+    let t = timespec(tv_sec: timeoutAt, tv_nsec: 0)
+    let error = withUnsafePointer(to: t, { p in
+      pthread_cond_timedwait(&condition, &mutex.mutex, p)
+    })
+
+    switch error {
+    case 0:
+      return
+    case EPERM:
+      fatalError("Wait failed, mutex is not owned by this thread")
+    case EINVAL:
+      fatalError("Wait failed, condition is not valid")
+    default:
+      fatalError("Wait failed with unspecified error: \(error)")
+    }
+  }
+
   public func signal() -> Void {
     let error = pthread_cond_signal(&condition)
 
