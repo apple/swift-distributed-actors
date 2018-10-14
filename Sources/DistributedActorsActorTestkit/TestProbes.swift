@@ -12,10 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 import Swift Distributed ActorsActor
 import SwiftDistributedActorsDungeon
 import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
+import XCTest
 
 public class TestActorProbe<Message> {
 
@@ -56,12 +58,33 @@ public class TestActorProbe<Message> {
       return .same
     }
   }
-  
-  public func expectMessage(_ message: Message) throws {
 
+  @discardableResult
+  private func within<T>(_ timeout: TimeAmount, _ block: @autoclosure () throws -> T ) throws -> T {
+    // FIXME implement by scheduling checks rather than spinning
+
+    let deadline = Deadline.fromNow(amount: timeout)
+
+    var lastObservedError: Error? = nil
+    while !deadline.isOverdue(now: Date()) {
+      do {
+        let res: T = try block()
+        return res
+      } catch {
+        // keep error, try again...
+        lastObservedError = error // TODO show it
+      }
+    }
+    throw ExpectationError.noMessagesInQueue
+  }
+
+  enum ExpectationError: Error {
+    case noMessagesInQueue
+    case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
   }
 
   public func expectSignal(_ signal: Signal) throws {
+    messagesQueue.dequeue()
     let got: Signal = undefined() // await on the signal queue
     fatalError("Expected [\(signal)] got: [\(got)]")
   }
@@ -70,6 +93,17 @@ public class TestActorProbe<Message> {
     print("IMPLEMENT: expectTerminated")
   }
 
+}
+
+/// Equatable checks
+extension TestActorProbe where Message: Equatable {
+  public func expectMessage(_ message: Message) throws {
+    try (within(expectationTimeout) {
+      guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
+      let got = self.messagesQueue.dequeue()
+      got.shouldEqual(message)
+    })()
+  }
 }
 
 extension TestActorProbe: ReceivesMessages {

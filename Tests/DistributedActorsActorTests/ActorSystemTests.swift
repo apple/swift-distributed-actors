@@ -36,4 +36,5 @@ class ActorSystemTests: XCTestCase {
     print("[size] ActorCell<String> size = \(cellSize)")
     XCTAssertLessThanOrEqual(cellSize, MaxSpecialTreatedValueTypeSizeInBytes)
   }
+  
 }
