@@ -24,7 +24,8 @@ extension ActorSystemTests {
 
    static var allTests : [(String, (ActorSystemTests) -> () throws -> Void)] {
       return [
-                ("test_deadlineNowIsNotPastNow", test_deadlineNowIsNotPastNow),
+                ("test_deadline_nowIsNotPastNow", test_deadline_nowIsNotPastNow),
+                ("test_deadline_remainingShouldReturnExpectedTimeAmounts", test_deadline_remainingShouldReturnExpectedTimeAmounts),
            ]
    }
 }

@@ -20,7 +20,10 @@ class ActorSystemTests: XCTestCase {
 
   let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
-  func testNothing() throws {
+  let system = ActorSystem("ActorSystemTests")
+
+  override func tearDown() {
+    // system.terminate()
   }
 
   func test_ensureActorRefSizeBelow24Bytes() {

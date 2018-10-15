@@ -29,31 +29,30 @@ struct TestMatchers<T: Equatable> {
   }
 
   func toEqual(_ expected: T) {
-    XCTAssertEqual(it, expected, detailedMessage(it, expected), file: callSite.file, line: callSite.line) // could be implemented in place here
+    let msg = self.callSite.detailedMessage(it, expected)
+    XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
   }
 
-  func detailedMessage(_ it: T, _ expected: T) -> String {
-    let failingLine = try! String(contentsOfFile: "\(callSite.file)")
-        .components(separatedBy: .newlines)
-        .dropFirst(Int(callSite.line - 1))
-        .first!
-
-    var s = "\n"
-    s += "\(failingLine)\n"
-    s += "\(String(repeating: " ", count: Int(callSite.column) - 1 - callSite.appliedAssertionName.count))"
-    s += ANSIColors.red.rawValue
-    s += "^\(String(repeating: "~", count: callSite.appliedAssertionName.count - 1))\n"
-    s += "Assertion failed: [\(it)] did not equal expected [\(expected)]\n"
-    s += ANSIColors.reset.rawValue
-    return s
+  func toBe<T>(_ expected: T.Type) {
+    if !(it is T) {
+      let msg = self.callSite.detailedMessage(it, expected)
+      XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+    }
   }
 }
 
 extension Equatable {
 
+  /// Asserts that the value is equal to the `other` value
   func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-    let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-    return TestMatchers(it: self, callSite: csInfo).toEqual(other())
+    let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    return TestMatchers(it: self, callSite: callSiteInfo).toEqual(other())
+  }
+
+  /// Asserts that the value is of the expected Type `T`
+  func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    return TestMatchers(it: self, callSite: callSiteInfo).toBe(expectedType)
   }
 }
 
@@ -79,6 +78,42 @@ struct CallSiteInfo {
     self.line = line
     self.column = column
     self.appliedAssertionName = String(function[function.startIndex ... function.firstIndex(of: "(")!])
+  }
+
+  /// Prepares a detailed error information, specialized for two values being equal
+  /// // TODO DRY this all up
+  /// - Warning: Performs file IO in order to read source location line where failure happened
+  func detailedMessage(_ it: Any, _ expected: Any) -> String {
+    let msg = "Assertion failed: [\(it)] did not equal expected [\(expected)]\n"
+    return detailedMessage(assertionExplained: msg)
+  }
+
+  /// Prepares a detailed error information
+  ///
+  /// - Warning: Performs file IO in order to read source location line where failure happened
+  func detailedMessage(assertionExplained: String) -> String {
+    let failingLine = try! String(contentsOfFile: "\(self.file)")
+        .components(separatedBy: .newlines)
+        .dropFirst(Int(self.line - 1))
+        .first!
+
+    var s = "\n"
+    s += "\(failingLine)\n"
+    s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
+    s += ANSIColors.red.rawValue
+    s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
+    s += assertionExplained
+    s += ANSIColors.reset.rawValue
+    return s
+  }
+
+}
+
+extension CallSiteInfo {
+
+  /// Reports a failure at the given call site source location.
+  func fail(message: String) {
+    XCTAssert(false, detailedMessage(assertionExplained: message))
   }
 }
 
