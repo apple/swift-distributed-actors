@@ -62,18 +62,20 @@ public final class ActorSystem {
     self.init("ActorSystem")
   }
 
-  // FIXME FIXME we don't do any hierarchy right now!!!
+  // FIXME we don't do any hierarchy right now
 
   // TODO should we depend on NIO already? I guess so hm they have the TimeAmount... Tho would be nice to split it out maybe
-  func terminate(/* TimeAmount */) -> Void {
-      return undefined()
+  public func terminate(/* TimeAmount */) -> Awaitable {
+    // TODO cause termination here
+    return whenTerminated()
   }
 
-  /// WARNING: Blocks current thread until the system has terminated.
-  /// Do not call from within actors or you may deadlock shutting down the system.
+  /// - Warning: Blocks current thread until the system has terminated.
+  ///            Do not call from within actors or you may deadlock shutting down the system.
   public func whenTerminated() -> Awaitable {
     // return Awaitable(underlyingLock: terminationLock)
     while true {}
+    return undefined()
   }
 }
 

@@ -19,7 +19,9 @@ import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
-public class TestActorProbe<Message> {
+/// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
+/// which make testing asynchronous actor interactions simpler.
+final public class ActorTestProbe<Message> {
 
   // TODO is weak the right thing here?
   private weak var system: ActorSystem?
@@ -45,10 +47,10 @@ public class TestActorProbe<Message> {
     // extract config here
     self.name = name
 
-    self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
+    self.expectationTimeout = .seconds(3) // would really love "1.second" // TODO config
 
     self.messagesQueue = LinkedBlockingQueue<Message>()
-    let behavior = TestActorProbe.behavior(messageQueue: self.messagesQueue)
+    let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue)
     self.ref = system.spawn(behavior, named: name)
   }
 
@@ -67,6 +69,7 @@ public class TestActorProbe<Message> {
 
     var lastObservedError: Error? = nil
     while !deadline.isOverdue(now: Date()) {
+      pprint("remaining until deadline: \(deadline.remainingFrom(Date()))")
       do {
         let res: T = try block()
         return res
@@ -95,18 +98,36 @@ public class TestActorProbe<Message> {
 
 }
 
-/// Equatable checks
-extension TestActorProbe where Message: Equatable {
-  public func expectMessage(_ message: Message) throws {
+extension ActorTestProbe where Message: Equatable {
+
+  ///
+  /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+  // TODO is it worth it making the API enforce users to write in tests `try! p.expectMessage(message)`?
+  public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    let timeout = expectationTimeout
+    do {
+      try (within(timeout) {
+        guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
+        let got = self.messagesQueue.dequeue()
+        got.shouldEqual(message)
+      })()
+    } catch {
+      let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription())], error: \(error)"
+      CallSiteInfo(file: file, line: line, column: column, function: #function)
+        .fail(message: message)
+    }
+  }
+
+  public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     try (within(expectationTimeout) {
       guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
       let got = self.messagesQueue.dequeue()
-      got.shouldEqual(message)
+      got.shouldBe(type)
     })()
   }
 }
 
-extension TestActorProbe: ReceivesMessages {
+extension ActorTestProbe: ReceivesMessages {
   public func tell(_ message: Message) {
     self.ref.tell(message)
   }

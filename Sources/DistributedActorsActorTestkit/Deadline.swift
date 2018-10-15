@@ -40,11 +40,15 @@ public struct Deadline: Equatable {
 
   /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
   func isOverdue(now: Date) -> Bool {
-    return instant.compare(now) == .orderedAscending
+    if now == Date.distantFuture { return false }
+    else { return instant.compare(now) == .orderedAscending }
   }
 
-  func remaining(until time: Date) -> Date {
-    return undefined()
-    // return time.addingTimeInterval(instant) // FIXME
+  func remainingFrom(_ now: Date) -> TimeAmount {
+    let d = Int(instant.timeIntervalSince1970.rounded())
+    let n = Int(now.timeIntervalSince1970.rounded())
+    let delta = d - n
+    print("delta = \(delta)")
+    return .milliseconds(delta)
   }
 }
