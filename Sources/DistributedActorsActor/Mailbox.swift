@@ -62,7 +62,7 @@ public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
 // It may seem tempting to allow total extensability of mailboxes by end users; in reality this has always been a bad idea in Akka
 // since people attempt to solve their protocol and higher level issues by "we'll make a magical mailbox for it"
 // Mailboxes must be Simple.
-final class DefaultMailbox<Message>: Mailbox {
+final class DefaultMailbox<Message> : Mailbox {
 
   private let _status = Atomic<Int>(value: 0)
   private func status() -> MailboxStatus { return MailboxStatus(underlying: _status.load()) }
@@ -84,7 +84,7 @@ final class DefaultMailbox<Message>: Mailbox {
   }
 
   func sendMessage(envelope: Envelope) -> Void {
-    let old = incrementStatusActivations()
+    let old = incrementStatusActivations() // also takes care of setting it as active
     let oldActivations = old.messageCountNonSystem
 
     if (oldActivations > capacity) {
@@ -108,10 +108,7 @@ final class DefaultMailbox<Message>: Mailbox {
       // TODO this is where "smart batching" could come into play; to schedule later than immediately
       queue.enqueue(envelope)
 
-      // "wake up" the actor
       scheduleForExecution(hasMessageHint: true, hasSystemMessageHint: false)
-    } else {
-      // TODO what then; undo the activation increment?
     }
   }
 
@@ -120,8 +117,31 @@ final class DefaultMailbox<Message>: Mailbox {
   }
 
   func sendSystemMessage(_ message: SystemMessage) {
-    pprint("self.systemQueue.enqueue(message) = \(message)")
-    self.systemQueue.enqueue(message)
+    // todo handle errors
+
+    pprint("sendSystemMessage: \(message) @ old: \(self.status().debugDescription)")
+    let old = incrementStatusActivations()
+
+    if (old.isTerminated) {
+      pprint("\(self) is terminated, NOT enqueueing system message \(message). Terminating.")
+      decrementStatusActivations()
+    } else {
+      // which means we are allowed to enqueue
+      self.systemQueue.enqueue(message)
+
+      // we need to decide though if we need to schedule execution,
+      // or if we already were scheduled (by some other send triggering it:
+      if (old.messageCountNonSystem == 0) {
+        // no messages were enqueued before we performed the increment
+        // we are responsible of activating the actor
+        pprint("\(self) enqueued signal \(message): activating")
+        scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: true) // hint that we are certain that we should execute
+      } else {
+        // the mailbox was already scheduled (since message count was > 0, which means first to send message performed the scheduling)
+        pprint("\(self) enqueued signal \(message): already active (scheduled)")
+      }
+    }
+
     // TODO more logic here to avoid scheduling many times
     scheduleForExecution(hasMessageHint: false, hasSystemMessageHint: true)
   }
@@ -137,21 +157,17 @@ final class DefaultMailbox<Message>: Mailbox {
   // MARK: Mailbox status management
 
 
-  /// Increments underlying counter by 1
-  /// Returns a snapshot of the previous mailbox status.
+  /// Increments underlying status counter by 1
+  /// - Returns: a snapshot of the previous mailbox status.
   private func incrementStatusActivations() -> MailboxStatus {
-    let old: Int = self._status.add(MailboxStatus.singleActivation) // TODO or a raw 1...
+    let old: Int = self._status.add(1)
     return MailboxStatus(underlying: old)
   }
-
-  // TODO func rollbackActivationIncrement
-  @discardableResult
-  private func decrementStatusActivations() -> MailboxStatus {
-    // FIXME decrement must protect against decrementing below 0 activations
-    let old: Int = self._status.sub(MailboxStatus.singleActivation)
-    let oldSnap = MailboxStatus(underlying: old)
-    assertWithDetails(oldSnap.messageCountNonSystem > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
-    return oldSnap
+  /// Increments underlying status by -1
+  /// Used to "revert" an increment that was made too eagerly while entering a send*
+  private func decrementStatusActivations() -> Void {
+    let old = self._status.add(-1)
+    assertWithDetails(MailboxStatus(underlying: old).messageCountNonSystem > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
   }
 
   // MARK: Running the mailbox
@@ -160,6 +176,8 @@ final class DefaultMailbox<Message>: Mailbox {
   func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
     runLock.withLockVoid {
       let status: MailboxStatus = self.status()
+      pprint("status = \(status)")
+
       guard status.isActive else { return } // dead actors don't run
       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
 

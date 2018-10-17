@@ -20,9 +20,6 @@ public protocol MessageDispatcher {
 
   // TODO we should make it dedicated to dispatch() rather than raw executing perhaps? This way it can take care of fairness things
 
-  // TODO will show up in performance work I guess; make sure we don't need to allocate those () -> always,
-  //      but e.g. only when the underlying one impl needs it; e.g. dispatch seems to
-
   // func attach(cell: AnyActorCell)
 
   var name: String { get }
@@ -50,6 +47,7 @@ extension DispatchQueue: MessageDispatcher {
     // TODO if pthread, log process id
   }
 
+  // TODO would want to mutate the status here
   public func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) {
      // volatile read needed (acquire) (in future)
     var canBeScheduled: Bool = false
@@ -61,9 +59,10 @@ extension DispatchQueue: MessageDispatcher {
     
     if canBeScheduled {
       pprint("mailbox \(mailbox), canBeScheduled=\(canBeScheduled)")
-      // TODO set as scheduled
-      // status.setAsScheduled
-      self.execute(mailbox.run)
+      self.execute({ () in
+        pprint("Executor: Running mailbox \(mailbox)")
+        mailbox.run()
+      })
     }
   }
 
