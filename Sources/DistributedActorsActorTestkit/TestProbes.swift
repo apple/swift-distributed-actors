@@ -19,6 +19,9 @@ import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
+// TODO find another way to keep it, so it's per-actor-system unique, we may need "akka extensions" style value holders
+private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testActor-")
+
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
 final public class ActorTestProbe<Message> {
@@ -36,18 +39,21 @@ final public class ActorTestProbe<Message> {
   /// Blocking linked queue, available to run assertions on
   // private let signalQueue = LinkedBlockingQueue<Message>()
 
-// // TODO too bad that we can't make this happen... since the self
-//  let testProbeBehavior: Behavior<Message> = .receiveMessage { message in
-//    self.messagesQueue.enqueue(message)
-//    return .same
+// TODO make this work
+//  public static func spawnAnonymous<Message>(on system: ActorSystem) -> ActorTestProbe<Message> {
+//    return ActorTestProbe<Message>(system, named: testProbeNames.nextName())
+//  }
+//
+//  public static func spawn<Message>(named name: String, on system: ActorSystem) -> ActorTestProbe<Message> {
+//    return ActorTestProbe<Message>(system, named: name)
 //  }
 
-  public init(_ system: ActorSystem, named name: String) {
+  public init(named name: String, on system: ActorSystem) {
     self.system = system
     // extract config here
     self.name = name
 
-    self.expectationTimeout = .seconds(3) // would really love "1.second" // TODO config
+    self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
 
     self.messagesQueue = LinkedBlockingQueue<Message>()
     let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue)
@@ -55,21 +61,23 @@ final public class ActorTestProbe<Message> {
   }
 
   private static func behavior(messageQueue: LinkedBlockingQueue<Message>) -> Behavior<Message> {
-    return .receiveMessage { message in
+    return .receive { (context, message) in
+      context.log.info("Probe received: \(message)")
       messageQueue.enqueue(message)
       return .same
     }
   }
 
   @discardableResult
-  private func within<T>(_ timeout: TimeAmount, _ block: @autoclosure () throws -> T ) throws -> T {
+  private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
     // FIXME implement by scheduling checks rather than spinning
 
     let deadline = Deadline.fromNow(amount: timeout)
 
     var lastObservedError: Error? = nil
+
+    // TODO make more async than spining like this, also with check interval rather than spin, or use the blocking queue properly
     while !deadline.isOverdue(now: Date()) {
-      pprint("remaining until deadline: \(deadline.remainingFrom(Date()))")
       do {
         let res: T = try block()
         return res
@@ -78,6 +86,7 @@ final public class ActorTestProbe<Message> {
         lastObservedError = error // TODO show it
       }
     }
+
     throw ExpectationError.noMessagesInQueue
   }
 
@@ -103,27 +112,27 @@ extension ActorTestProbe where Message: Equatable {
   ///
   /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
   // TODO is it worth it making the API enforce users to write in tests `try! p.expectMessage(message)`?
-  public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+  public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
     let timeout = expectationTimeout
     do {
-      try (within(timeout) {
+      try within(timeout) {
         guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
         let got = self.messagesQueue.dequeue()
-        got.shouldEqual(message)
-      })()
+        got.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
+      }
     } catch {
       let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription())], error: \(error)"
-      CallSiteInfo(file: file, line: line, column: column, function: #function)
-        .fail(message: message)
+      try callSite.fail(message: message)
     }
   }
 
   public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-    try (within(expectationTimeout) {
+    try within(expectationTimeout) {
       guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
       let got = self.messagesQueue.dequeue()
       got.shouldBe(type)
-    })()
+    }
   }
 }
 

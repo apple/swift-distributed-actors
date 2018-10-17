@@ -44,24 +44,24 @@ struct TestMatchers<T: Equatable> {
 extension Equatable {
 
   /// Asserts that the value is equal to the `other` value
-  func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     return TestMatchers(it: self, callSite: callSiteInfo).toEqual(other())
   }
 
   /// Asserts that the value is of the expected Type `T`
-  func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     return TestMatchers(it: self, callSite: callSiteInfo).toBe(expectedType)
   }
 }
 
 extension Bool {
-  func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
     let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     return TestMatchers(it: self, callSite: csInfo).toEqual(false)
   }
-  func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
     let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     return TestMatchers(it: self, callSite: csInfo).toEqual(true)
   }
@@ -102,6 +102,7 @@ struct CallSiteInfo {
     s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
     s += ANSIColors.red.rawValue
     s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
+    s += "error: "
     s += assertionExplained
     s += ANSIColors.reset.rawValue
     return s
@@ -112,9 +113,19 @@ struct CallSiteInfo {
 extension CallSiteInfo {
 
   /// Reports a failure at the given call site source location.
-  func fail(message: String) {
-    XCTAssert(false, detailedMessage(assertionExplained: message))
+  public func fail(message: String) {
+     XCTAssert(false, detailedMessage(assertionExplained: message), file: self.file, line: self.line)
+
+    // Alternatively we could throw, however this interrupts the entire test run (!),
+    // it would be awesome however if we could run a single test in an actor, and it would then crash the single test, not entire suite...
+    //    throw CallSiteError.CallSiteError(message: detailedMessage(assertionExplained: message))
   }
+
+}
+
+public enum CallSiteError: Error {
+  case CallSiteError(message: String)
+
 }
 
 enum ANSIColors: String {

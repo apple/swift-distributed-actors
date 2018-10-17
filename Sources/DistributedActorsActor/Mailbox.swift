@@ -85,7 +85,7 @@ final class DefaultMailbox<Message>: Mailbox {
 
   func sendMessage(envelope: Envelope) -> Void {
     let old = incrementStatusActivations()
-    let oldActivations = old.activations
+    let oldActivations = old.messageCountNonSystem
 
     if (oldActivations > capacity) {
       // meaning: mailbox is over capacity
@@ -150,7 +150,7 @@ final class DefaultMailbox<Message>: Mailbox {
     // FIXME decrement must protect against decrementing below 0 activations
     let old: Int = self._status.sub(MailboxStatus.singleActivation)
     let oldSnap = MailboxStatus(underlying: old)
-    assertWithDetails(oldSnap.activations > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
+    assertWithDetails(oldSnap.messageCountNonSystem > 0, self, "Decremented below 0 activations, this must never happen and is a bug!")
     return oldSnap
   }
 
@@ -160,14 +160,14 @@ final class DefaultMailbox<Message>: Mailbox {
   func run() { // TODO pass in "RunAllowance" or "RunDirectives" which the mailbox should respect (e.g. capping max run length)
     runLock.withLockVoid {
       let status: MailboxStatus = self.status()
-      guard status.isAlive else { return } // dead actors don't run
+      guard status.isActive else { return } // dead actors don't run
       pprint("[Mailbox] Entering run \(self): Status: \(status.debugDescription)")
 
       // TODO failure handling in case those crash
 
       // TODO run only if has system messages?
       runSystemMessages()
-      runUserMessages(activations: status.activations, runLimit: 100) // FIXME take from run directive from cell/dispatcher which passes in here
+      runUserMessages(activations: status.messageCountNonSystem, runLimit: 100) // FIXME take from run directive from cell/dispatcher which passes in here
 
       // TODO once lock is gone, we need more actions here, to check again if we received any messages etc
 
@@ -257,12 +257,10 @@ public struct MailboxStatus {
   // on the dropped Typed Akka ActorSystem implementation by Roland Kuhn, from 2016 https://github.com/akka/akka/pull/21128/files#diff-92d9e38d1b6b284e38230047feea5fdcR36
   fileprivate enum Masks: Int {
     //@formatter:off
-    case inactive                    = 0b00000000_00000000_00000000_00000001 // 0 bit
     case activatedOnlySystemMessages = 0b00000000_00000000_00000000_00000010 // 1 bit
-    case activations                 = 0b00111111_11111111_11111111_11111100 // 2 – 29 bits (28 bits total), used to count activations
-    case activationMask              = 0b00111111_11111111_11111111_11111111 // 0 – 29 bits (28 bits total), used to determine whether to activate/run
+    case activations                 = 0b00111111_11111111_11111111_11111111 // 0 – 29 bits (28 bits total), value of N means N-1 activations
     case terminating                 = 0b01000000_00000000_00000000_00000000 // 30 bit
-    case terminated                  = 0b10000000_00000000_00000000_00000000 // 31 bit, also sign of Int
+    case terminated                  = 0b10000000_00000000_00000000_00000000 // 31 bit, also `sign` bit, which we utilize
   }
   static let singleActivation   = 0b00000000_00000000_00000000_00000100 // 2 bit, means "1 activation"
   //@formatter:on
@@ -273,24 +271,24 @@ public struct MailboxStatus {
     self.value = value
   }
 
-  private func checkStatus(mask: Int) -> Bool {
-    return (self.value & mask) != 0
+  /// - Returns: true if mailbox is able to run (is not terminating or terminated), regardless of message count
+  var isActive: Bool {
+    return self.value & Masks.activations.rawValue != 0
   }
-
+  /// - Returns: true if mailbox has any messages pending (either system or normal messages)
+  var hasAnyMessages: Bool {
+    return self.value & Masks.activations.rawValue > 0
+  }
+  /// Count of user messages contained in mailbox (plus, potentially any system messages)
+  /// Could be 0 but still be ready to run, since mailbox can contain only system messages
+  var messageCountNonSystem: Int {
+    return max(0, (self.value & Masks.activations.rawValue) - 1)
+  }
   var isTerminating: Bool {
-    return self.checkStatus(mask: Masks.terminating.rawValue)
-  }
-  var isAlive: Bool {
-    return !isTerminated
+    return (self.value & Masks.terminating.rawValue) != 0
   }
   var isTerminated: Bool {
     return self.value < 0 // since leading bit is used for sign, and Terminated is the Int's leading bit
-  }
-  var isRunnable: Bool {
-    return self.activations > 0
-  }
-  var activations: Int {
-    return (self.value & Masks.activations.rawValue) >> 2 // adjust right due to flag bits
   }
 }
 
@@ -300,6 +298,6 @@ extension MailboxStatus: CustomStringConvertible, CustomDebugStringConvertible {
   }
 
   public var debugDescription: String {
-    return "\(type(of: self))(0b\(String(value, radix: 2)): R:\(self.isRunnable ? "y" : "n"),A:\(self.activations),Ti:\(self.isTerminating ? "y" : "n"),Td:\(self.isTerminated ? "y" : "n"))"
+    return "\(type(of: self))(0b\(String(value, radix: 2)): Act:\(self.isActive ? "y" : "n"),A:\(self.messageCountNonSystem),Ti:\(self.isTerminating ? "y" : "n"),Td:\(self.isTerminated ? "y" : "n"))"
   }
 }
