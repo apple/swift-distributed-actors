@@ -25,9 +25,6 @@ final class ActorTestkit {
     self.system = system
   }
 
-  func probe<Message>(named name: String = "") -> ActorTestProbe<Message> {
-    // FIXME check uniqueness
-    return ActorTestProbe(system, named: name) // spawns real actor underneeth
-  }
+  // TODO
 
 }

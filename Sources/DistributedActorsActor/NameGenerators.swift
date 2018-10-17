@@ -41,10 +41,10 @@ fileprivate let charsTableMaxIndex = charsTable.indices.last!
 
 // TODO is this proper style?
 // TODO is such inheritance expensive?
-class AnonymousNamesGenerator {
+public class AnonymousNamesGenerator {
   private let prefix: String
 
-  init(prefix: String) {
+  public init(prefix: String) {
     self.prefix = prefix
   }
 
@@ -58,13 +58,13 @@ class AnonymousNamesGenerator {
     return undefined()
   }
 
-  func nextName() -> String {
+  public func nextName() -> String {
     let n = nextId()
     return mkName(prefix: prefix, n: n)
   }
 
   /// Based on Base64, though simplified
-  func mkName(prefix: String, n: Int) -> String { // TODO work on Int64?
+  internal func mkName(prefix: String, n: Int) -> String { // TODO work on Int64?
     var outputString: String = prefix
 
     var next = n
@@ -81,10 +81,10 @@ class AnonymousNamesGenerator {
 
 /// Generate sequential names for actors
 // TODO can be abstracted ofc, not doing so for now; keeping internal
-class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
+public class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
   private var ids = Atomic<Int64>(value: 0)
 
-  override init(prefix: String) {
+  override public init(prefix: String) {
     super.init(prefix: prefix)
   }
 

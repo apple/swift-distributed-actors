@@ -22,11 +22,11 @@ public protocol AnyBehavior {
 public enum Behavior<Message>: AnyBehavior {
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
-  case receiveMessage(_ handle: (Message) -> Behavior<Message>)
+  case receiveMessage(_ handle: (Message) -> Behavior<Message>) // TODO make them throws?
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
   /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
-  case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>)
+  case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>) // TODO make them throws?
 
   // TODO above is receiveMessage(M -> B)
   // TODO we need receive((Context, M) -> B) as well, leaving it for later
@@ -49,17 +49,19 @@ public enum Behavior<Message>: AnyBehavior {
   /// TODO and their logging rate should be configurable
   case unhandled
 
-  /// Apply given supervision to behavior
-  /// TODO more docs
-  indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO I assume this causes us to lose all benefits of being an enum? since `indirect`
+  case ignore
 
-  /// Supervise the passed in behavior and return the such supervised behavior.
-  /// The returned behavior will supervised be given supervision decision to any crash of this actor.to behavior
-  public static func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
-    return .supervise(behavior) { _ in
-      directive
-    }
-  }
+//  /// Apply given supervision to behavior
+//  /// TODO more docs
+//  indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO I assume this causes us to lose all benefits of being an enum? since `indirect`
+//
+//  /// Supervise the passed in behavior and return the such supervised behavior.
+//  /// The returned behavior will supervised be given supervision decision to any crash of this actor.to behavior
+//  public static func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
+//    return .supervise(behavior) { _ in
+//      directive
+//    }
+//  }
 
   // MARK: Behavior interpretation utilities
 

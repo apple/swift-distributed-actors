@@ -29,6 +29,7 @@ import XCTest
    XCTMain([
          testCase(ActorSystemTests.allTests),
          testCase(ActorSystemTests.allTests),
+         testCase(ActorTestProbeTests.allTests),
          testCase(AnonymousNamesGeneratorTests.allTests),
          testCase(BehaviorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),

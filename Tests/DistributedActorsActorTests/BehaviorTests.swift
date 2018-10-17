@@ -19,8 +19,6 @@ import Swift Distributed ActorsActorTestkit
 
 class BehaviorTests: XCTestCase {
 
-  let MaxSpecialTreatedValueTypeSizeInBytes = 24
-
   let system = ActorSystem("ActorSystemTests")
 
   override func tearDown() {
@@ -30,7 +28,7 @@ class BehaviorTests: XCTestCase {
   // TODO behavior tests should be possible to run synchronously if we wanted to
 
   func test_setup_executesImmediatelyOnStartOfActor() {
-    let p: ActorTestProbe<String> = ActorTestProbe(system, named: "testProbe-1")
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     let message = "EHLO"
     let ref: ActorRef<String> = system.spawnAnonymous(.setup(onStart: { context in
@@ -39,7 +37,7 @@ class BehaviorTests: XCTestCase {
       return .stopped
     }))
 
-    try! p.expectMessage(message)
+    p.expectMessage(message)
     // TODO p.expectTerminated(ref)
   }
 

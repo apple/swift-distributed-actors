@@ -14,54 +14,48 @@
 
 import Foundation
 import XCTest
-
+import Swift Distributed ActorsActorTestkit
 @testable import Swift Distributed ActorsActor
 
 class MailboxStatusTests: XCTestCase {
   // FIXME change to handle new impl style
 
-  func test_mailboxStatus_userMessageCountIsCorrect() {
-//    var c0 = 0
-//    let s0 = MailboxStatus()
-//
-//    s0.activations.shouldEqual(0)
-//    let snap0 = s0.incrementActivations()
-//    s0.activations.shouldEqual(1)
-//    snap0.activations.shouldEqual(0) // returned snapshot is "old" state
+  func test_mailboxStatus_checkInitialState() {
+    MailboxStatus(underlying: 0).isActive.shouldBeFalse()
+    MailboxStatus(underlying: 0).isTerminating.shouldBeFalse()
+    MailboxStatus(underlying: 0).isTerminated.shouldBeFalse()
+
+    MailboxStatus(underlying: 0).hasAnyMessages.shouldBeFalse()
+    MailboxStatus(underlying: 0).messageCountNonSystem.shouldEqual(0)
   }
 
-  func test_mailboxStatus_snapshotIsImmutableAndCorrect() {
-//    let s0 = MailboxStatus()
-//
-//    s0.activations.shouldEqual(0)
-//    let snap0 = s0.incrementActivations()
-//    s0.activations.shouldEqual(1)
-//    let snap1 = s0.incrementActivations()
-//    let snap2 = s0.incrementActivations()
-//    snap0.activations.shouldEqual(0)
-//    snap1.activations.shouldEqual(1)
-//    snap2.activations.shouldEqual(2)
-//    _ = s0.decrementActivations()
+  func test_mailboxStatus_isActive() {
+    MailboxStatus(underlying: 0b00000000).isActive.shouldBeFalse()
+    MailboxStatus(underlying: 0b00000001).isActive.shouldBeTrue() // active, only system messages
+    MailboxStatus(underlying: 0b00000010).isActive.shouldBeTrue() // active, may have system messages too
+    MailboxStatus(underlying: 0b00000011).isActive.shouldBeTrue() // active, may have system messages too
+    MailboxStatus(underlying: 0b00000100).isActive.shouldBeTrue() // active, may have system messages too
   }
 
+  func test_mailboxStatus_messageCount() {
+    // inactive
+    MailboxStatus(underlying: 0b00000000).messageCountNonSystem.shouldEqual(0)
+    MailboxStatus(underlying: 0b00000000).hasAnyMessages.shouldBeFalse()
+    // MailboxStatus(underlying: 0b00000000).hasSystemMessages.shouldBeTrue()
 
-  // TODO we can't test assert()
-  // Failure example:
-  //   "Assertion failed: Decremented below 0 activations, this must never happen and is a bug!
-  //    Owner: MailboxStatus(-100), Thread: <NSThread: 0x7fa8ed404350>{number = 1, name = main}:
-  //    file /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Mailbox.swift, line 160"
-  func test_mailboxStatus_mustDetectAndProtectFromDecrementingBelowZeroActivations() {
-    #if SACT_TESTS_CRASH
-    let s0 = MailboxStatus()
+    // active
+    // only system messages
+    MailboxStatus(underlying: 0b00000001).messageCountNonSystem.shouldEqual(0)
+    MailboxStatus(underlying: 0b00000001).hasAnyMessages.shouldBeTrue() // only system messages
 
-    _ = s0.incrementActivations() // 1
-    _ = s0.decrementActivations() // 0
-    s0.activations.shouldEqual(0)
+    // may have system messages, but at least one normal message
+    MailboxStatus(underlying: 0b00000010).messageCountNonSystem.shouldEqual(1)
+    MailboxStatus(underlying: 0b00000010).hasAnyMessages.shouldBeTrue()
 
-    s0.decrementActivations() // activations would be -1, illegal!
-    #else
-    pnote("Skipping test, can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
-    #endif
+    // may have system messages, but at least 2 normal messages
+    MailboxStatus(underlying: 0b00000011).messageCountNonSystem.shouldEqual(2)
+    MailboxStatus(underlying: 0b00000011).hasAnyMessages.shouldBeTrue()
   }
+
 }
 

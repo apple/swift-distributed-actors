@@ -48,7 +48,6 @@ public struct Deadline: Equatable {
     let d = Int(instant.timeIntervalSince1970.rounded())
     let n = Int(now.timeIntervalSince1970.rounded())
     let delta = d - n
-    print("delta = \(delta)")
     return .milliseconds(delta)
   }
 }

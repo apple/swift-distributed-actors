@@ -12,10 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// Signals are system messages which may be handled by actors.
+///
+/// They are separate from the message protocol of an Actor (the `M` in `ActorRef<M>`)
+/// since these signals are independently useful regardless of protocol that an actor speaks externally.
+///
+/// Signals will never be "dropped", as a special mailbox is used to store them, so even in presence of
+/// bounded mailbox configurations, signals are retained and handled as a priority during mailbox runs.m
 public enum Signal {
-  case terminated(ref: ActorRef<Never>)
+  case terminated(ref: ActorRef<Never>, reason: String) // TODO figure out types for reason
   // case preRestart
   // case postStop
-
-  // poison pill here maybe? TODO maybe not... cant remember why it's not in Typed
 }
