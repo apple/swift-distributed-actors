@@ -77,3 +77,12 @@ public enum Behavior<Message>: AnyBehavior {
     }
   }
 }
+
+//extension Behavior {
+//  static func receiveMessage(_ handle: (Message) -> Void) -> Behavior<Message> {
+//    return .receiveMessage({ msg in
+//      handle(msg)
+//      return .same
+//    })
+//  }
+//}

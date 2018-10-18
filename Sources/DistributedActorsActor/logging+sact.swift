@@ -78,10 +78,10 @@ public struct ActorLogger: Logger {
     self.context.lock.withLockVoid {
       var msg = "\(formatter.string(from: Date())) "
       msg += "[\(formatLevel(level))]"
-      msg += "[\(context.dispatcher())]"
       msg += "\(context.prettyMdc)"
       // msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line) .\(function)]"
       msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line)]"
+      msg += "[\(context.dispatcher())]"
       msg += "[\(context.name)]"
       print("\(msg) \(message())") // could access the context here, include trace id etc 
     }

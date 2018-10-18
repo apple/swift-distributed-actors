@@ -24,7 +24,8 @@ public protocol MessageDispatcher {
 
   var name: String { get }
 
-  func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool)
+  /// - Returns: `true` iff the mailbox status indicated that the mailbox should be run (still contains pending messages)
+  func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) -> Bool
 
   func execute(_ f: @escaping () -> Void)
 }
@@ -37,8 +38,9 @@ extension DispatchQueue: MessageDispatcher {
   public var name: String {
     let queueName = String(cString: __dispatch_queue_get_label(nil), encoding: .utf8)!
 
-    let pthread: Thread = Thread.current
-    let threadName = pthread.name ?? "\(pthread.terribleHackThreadId)"
+     let thread: Thread = Thread.current
+//    let threadName = thread.name ?? "\(thread.terribleHackThreadId)"
+    let threadName = "\(thread.terribleHackThreadId)"
 
     return  "\(queueName)#\(threadName)"
 
@@ -48,22 +50,27 @@ extension DispatchQueue: MessageDispatcher {
   }
 
   // TODO would want to mutate the status here
-  public func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) {
+  public func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) -> Bool {
      // volatile read needed (acquire) (in future)
-    var canBeScheduled: Bool = false
+    var canBeScheduled: Bool
+
     if hasMessageHint || hasSystemMessageHint {
       canBeScheduled = true
     } else if (status.isTerminated) {
       canBeScheduled = false
-    } // FIXME needs more reads once we go async
+    } else {
+      canBeScheduled = false
+    }
     
     if canBeScheduled {
-      pprint("mailbox \(mailbox), canBeScheduled=\(canBeScheduled)")
+      pprint("[dispatcher: Thread: \(Thread.current.terribleHackThreadId)] \(mailbox), canBeScheduled=\(canBeScheduled); ")
       self.execute({ () in
-        pprint("Executor: Running mailbox \(mailbox)")
+        pprint("[Executor: Thread: \(Thread.current.terribleHackThreadId)] Running mailbox \(mailbox), CALLING RUN NOW")
         mailbox.run()
       })
     }
+
+    return canBeScheduled
   }
 
   public func execute(_ f: @escaping () -> Void) {
@@ -79,7 +86,7 @@ extension DispatchQueue: MessageDispatcher {
 }
 
 extension MessageDispatcher {
-  func execute(mailbox: Mailbox) {
+  func execute(_ mailbox: Mailbox) {
     self.execute(mailbox.run)
   }
 }

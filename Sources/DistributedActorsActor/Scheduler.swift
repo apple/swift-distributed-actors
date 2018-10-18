@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Atomics
+import NIOConcurrencyHelpers
 import Dispatch
 
 public protocol Cancellable {
@@ -35,14 +35,10 @@ public protocol Scheduler {
 }
 
 class FlagCancellable : Cancellable {
-  private var flag: AtomicBool
-
-  init() {
-    flag = AtomicBool()
-  }
+  private let flag = Atomic<Bool>(value: false)
 
   func cancel() -> Bool {
-    return flag.CAS(false, true, .strong, .release)
+    return flag.compareAndExchange(expected: false, desired: true)
   }
 
   func isCancelled() -> Bool {
