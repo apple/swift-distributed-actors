@@ -25,6 +25,8 @@ extension MailboxStatusTests {
    static var allTests : [(String, (MailboxStatusTests) -> () throws -> Void)] {
       return [
                 ("test_mailboxStatus_checkInitialState", test_mailboxStatus_checkInitialState),
+                ("test_mailboxStatus_isActive", test_mailboxStatus_isActive),
+                ("test_mailboxStatus_messageCount", test_mailboxStatus_messageCount),
            ]
    }
 }
