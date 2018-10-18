@@ -73,3 +73,9 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
   let reset = "\u{001B}[0;0m"
   print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }
+
+func hackyThreadName() -> String {
+  let thread: Thread = Thread.current
+  let threadName = "\(thread.terribleHackThreadId)"
+  return threadName
+}

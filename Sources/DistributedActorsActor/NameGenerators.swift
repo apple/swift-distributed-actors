@@ -81,7 +81,7 @@ public class AnonymousNamesGenerator {
 
 /// Generate sequential names for actors
 // TODO can be abstracted ofc, not doing so for now; keeping internal
-public class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
+public final class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
   private var ids = Atomic<Int64>(value: 0)
 
   override public init(prefix: String) {
@@ -94,7 +94,7 @@ public class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
 }
 
 // TODO pick better name for non synchronized ones
-class NonSynchronizedAnonymousNamesGenerator: AnonymousNamesGenerator {
+public final   class NonSynchronizedAnonymousNamesGenerator: AnonymousNamesGenerator {
   private var ids: Int // FIXME should be UInt64, since there's no reason to limit child actors only since the name won't fit them ;-)
 
   override init(prefix: String) {

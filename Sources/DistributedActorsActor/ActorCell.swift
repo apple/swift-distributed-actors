@@ -82,34 +82,17 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     self.behavior = self.behavior.canonicalize(next: next)
   }
 
-  func invokeSystem(message: SystemMessage) {
+  func interpretSystemMessage(message: SystemMessage) {
+    log.info("Interpret system message: \(message)")
     switch message {
     case .start:
       // start means we need to evaluate all `setup` blocks, since they are triggered eagerly - to "set up" the actors userland state
-      switch behavior {
-      case let .setup(setupFunction):
-        let next: Behavior<Message> = setupFunction(context)
-        self.behavior = next
-
-      default:
-        // ...
-        pprint("invokeSystem, unknown behavior: \(behavior)")
-          // return FIXME("Actually run the actors behavior")
+      if case .setup(let onStart) = behavior {
+        self.behavior = onStart(context) // TODO canonicalize in case people do setup in setup...
       }
-
-
 
     default:
-      switch behavior {
-      case let .setup(setupFunction):
-        let next: Behavior<Message> = setupFunction(context)
-        self.behavior = next
-
-      default:
-        // ...
-        pprint("invokeSystem, unknown behavior: \(behavior)")
-          // return FIXME("Actually run the actors behavior")
-      }
+      pprint("invokeSystem, handling of \(message) is not implemented yet; Behavior was: \(behavior)")
     }
   }
 

@@ -58,6 +58,11 @@ public final class MPSCLinkedQueue<A> {
   public func isEmpty() -> Bool {
     return cmpsc_linked_queue_is_empty(q) != 0
   }
+
+  @inline(__always)
+  public func nonEmpty() -> Bool {
+    return !isEmpty()
+  }
 }
 
 //protocol Queue {

@@ -80,14 +80,12 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
   }
 
   internal func sendMessage(_ message: Message) {
-    pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
+    // pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(message))
-    // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
   internal func sendSystemMessage(_ message: SystemMessage) {
-    pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
+    // pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
-    // cell.dispatcher.execute(mailbox) // TODO dispatcher should do scheduling
   }
 
 }

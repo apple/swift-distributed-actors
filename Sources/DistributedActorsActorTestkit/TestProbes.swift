@@ -62,7 +62,7 @@ final public class ActorTestProbe<Message> {
 
   private static func behavior(messageQueue: LinkedBlockingQueue<Message>) -> Behavior<Message> {
     return .receive { (context, message) in
-      context.log.info("Probe received: \(message)")
+      context.log.info("Probe received: [\(message)]:\(type(of: message))") // TODO make configurable to log or not
       messageQueue.enqueue(message)
       return .same
     }
@@ -123,7 +123,7 @@ extension ActorTestProbe where Message: Equatable {
       }
     } catch {
       let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription())], error: \(error)"
-      try callSite.fail(message: message)
+      callSite.fail(message: message)
     }
   }
 
