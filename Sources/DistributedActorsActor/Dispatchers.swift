@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
+import Dispatch
 import NIO
 
 /// An `Executor` is a low building block that is able to take blocks and schedule them for running
@@ -25,7 +25,7 @@ public protocol MessageDispatcher {
   var name: String { get }
 
   /// - Returns: `true` iff the mailbox status indicated that the mailbox should be run (still contains pending messages)
-  func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) -> Bool
+  //func registerForExecution(_ mailbox: Mailbox, status: MailboxStatus, hasMessageHint: Bool, hasSystemMessageHint: Bool) -> Bool
 
   func execute(_ f: @escaping () -> Void)
 }
@@ -38,9 +38,9 @@ extension DispatchQueue: MessageDispatcher {
   public var name: String {
     let queueName = String(cString: __dispatch_queue_get_label(nil), encoding: .utf8)!
 
-     let thread: Thread = Thread.current
+     //let thread: Thread = Thread.current
 //    let threadName = thread.name ?? "\(thread.terribleHackThreadId)"
-    let threadName = "\(thread.terribleHackThreadId)"
+    let threadName = "--" //"\(thread.terribleHackThreadId)"
 
     return  "\(queueName)#\(threadName)"
 
@@ -63,9 +63,9 @@ extension DispatchQueue: MessageDispatcher {
     }
     
     if canBeScheduled {
-      pprint("[dispatcher: Thread: \(Thread.current.terribleHackThreadId)] \(mailbox), canBeScheduled=\(canBeScheduled); ")
+      pprint("[dispatcher: Thread: --] \(mailbox), canBeScheduled=\(canBeScheduled); ")
       self.execute({ () in
-        pprint("[Executor: Thread: \(Thread.current.terribleHackThreadId)] Running mailbox \(mailbox), CALLING RUN NOW")
+        pprint("[Executor: Thread: --] Running mailbox \(mailbox), CALLING RUN NOW")
         mailbox.run()
       })
     }
@@ -92,7 +92,7 @@ extension MessageDispatcher {
 }
 
 // terrible hack, would prefer NSThread to solve: "Expose thread number in NSThread" https://bugs.swift.org/browse/SR-1075
-
+/*
 extension Thread {
   // FIXME 1) do this nicer 2) get official API for thread id
   // TODO is it better to expose the <...> thread id rather than number?
@@ -103,3 +103,4 @@ extension Thread {
     return Int(String(it))!
   }
 }
+*/

@@ -77,13 +77,13 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     }
 
     let next: Behavior<Message> = interpretMessage0(message)
-    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO never really log entire user message (passwords etc)
+//    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO never really log entire user message (passwords etc)
 
     self.behavior = self.behavior.canonicalize(next: next)
   }
 
   func interpretSystemMessage(message: SystemMessage) {
-    log.info("Interpret system message: \(message)")
+//    log.info("Interpret system message: \(message)")
     switch message {
     case .start:
       // start means we need to evaluate all `setup` blocks, since they are triggered eagerly - to "set up" the actors userland state

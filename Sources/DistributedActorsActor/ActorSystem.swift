@@ -39,6 +39,7 @@ public final class ActorSystem {
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let terminationLock = Lock()
+  let dispatcher: MessageDispatcher = try! FixedThreadPool(1)
 
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
@@ -102,17 +103,17 @@ extension ActorSystem: ActorRefFactory {
     // TODO move this to the provider perhaps? or some way to share setup logic
 
     // what runs the actor:
-    let dispatcher: MessageDispatcher = DispatchQueue.global() // look up via props config
+    let dispatcher: MessageDispatcher = self.dispatcher //DispatchQueue(label: "test", qos: .default, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil) //DispatchQueue.global() // look up via props config
 
     // the "real" actor, the cell that holds the actual "actor"
     let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
 
     // the mailbox of the actor
-    let mailbox: Mailbox
-    switch props.mailbox {
+    let mailbox = NativeMailbox(cell: cell, capacity: Int.max)
+    /*switch props.mailbox {
     case let .default(capacity, _):
-      mailbox = DefaultMailbox(cell: cell, capacity: capacity)
-    }
+      mailbox = NativeMailbox(cell: cell, capacity: capacity)
+    }*/
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 
     let refWithCell = ActorRefWithCell(
