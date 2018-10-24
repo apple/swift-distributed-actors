@@ -15,42 +15,65 @@
 import Foundation
 import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
+import Foundation
+import Dispatch
+
+// MARK: Test Harness
+
+var warning: String = ""
+assert({
+  print("======================================================")
+  print("= YOU ARE RUNNING NIOPerformanceTester IN DEBUG MODE =")
+  print("======================================================")
+  warning = " <<< DEBUG MODE >>>"
+  return true
+  }())
+
+public func measure(_ fn: () throws -> Int) rethrows -> [TimeInterval] {
+  func measureOne(_ fn: () throws -> Int) rethrows -> TimeInterval {
+    let start = Date()
+    _ = try fn()
+    let end = Date()
+    return end.timeIntervalSince(start)
+  }
+
+  _ = try measureOne(fn) /* pre-heat and throw away */
+  var measurements = Array(repeating: 0.0, count: 10)
+  for i in 0..<10 {
+    measurements[i] = try measureOne(fn)
+  }
+
+  return measurements
+}
+
+public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void {
+  print("measuring\(warning): \(desc): ", terminator: "")
+  let measurements = try measure(fn)
+  print(measurements.reduce("") { $0 + "\($1), " })
+}
+
+
 
 let system = ActorSystem()
-let log = system.log
 
-struct Hello {
-  let name: String
-  let sender: ActorRef<String>
-}
+let n = 5_000_000
 
-let greeterBehavior: Behavior<Hello> = .receiveMessage { msg in
-  msg.sender.tell("Hello: \(msg.name)!")
-  msg.sender ! "Hello: \(msg.name)!"
 
-  return .same // TODO .stopped
-}
 
-func personBehavior(sayHelloTo greeter: ActorRef<Hello>) -> Behavior<String> {
-  return .setup { context in
-    context.log.info("Running setup...")
+measureAndPrint(desc: "receive \(n) messages") {
+  let l = Lock()
 
-    let myself: ActorRef<String> = context.myself
-    greeter ! Hello(name: context.name.description, sender: myself) // TODO: Just FYI this is where Scala would employ implicits to write Hello(context.name)
+  let ref: ActorRef<Int> = system.spawnAnonymous(.receiveMessage { msg in
+    if (msg == n) { l.unlock() }
+    return .same
+    })
 
-    return .receiveMessage { msg in
-      context.log.info("I was greeted: '\(msg)', how nice! Time to stop...")
-      return .stopped
-    }
+  for i in 1 ... n {
+    ref ! i
   }
+
+  l.lock()
+
+  return n
 }
-
-log.info("Spawning greeter...")
-let greeter = system.spawn(greeterBehavior, named: "greeter")
-log.info("Spawning caplin...")
-let caplin = system.spawn(personBehavior(sayHelloTo: greeter), named: "caplin")
-
-
-Await.on(system.whenTerminated())
-
 

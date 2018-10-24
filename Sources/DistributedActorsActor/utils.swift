@@ -60,7 +60,7 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
 
 @inline(__always)
 public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: T, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
-  func details() -> String { return " Owner: \(owner), Thread: \(Thread.current.debugDescription)" }
+  func details() -> String { return " Owner: \(owner), Thread: --" }
   assert(condition(), message() + details(), file: file, line: line)
 }
 
@@ -75,7 +75,7 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
 }
 
 func hackyThreadName() -> String {
-  let thread: Thread = Thread.current
-  let threadName = "\(thread.terribleHackThreadId)"
+  //let thread: Thread = Thread.current
+  let threadName = "--" //"\(thread.terribleHackThreadId)"
   return threadName
 }

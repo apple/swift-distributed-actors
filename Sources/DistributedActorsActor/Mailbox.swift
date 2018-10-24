@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CQueue
 import NIOConcurrencyHelpers
 import Foundation // TODO remove
 
@@ -45,10 +46,10 @@ public struct Envelope {
 public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
 
   func sendMessage(envelope: Envelope) -> ()
-  func dequeueMessage() -> Envelope?
+  //func dequeueMessage() -> Envelope?
 
   func sendSystemMessage(_ message: SystemMessage) -> ()
-  func dequeueSystemMessage() -> SystemMessage?
+  //func dequeueSystemMessage() -> SystemMessage?
 
   // MARK: INTERNAL API
   // TODO hide those from outside users?
@@ -57,6 +58,76 @@ public protocol Mailbox { // TODO possibly remove the protocol for perf reasons?
 
   /// A mailbox run consists of processing pending system and user messages
   func run()
+}
+
+struct Context {
+  let fn: (UnsafeMutableRawPointer) -> Void
+
+  init(_ fn: @escaping (UnsafeMutableRawPointer) -> Void) {
+    self.fn = fn
+  }
+
+  func exec(with ptr: UnsafeMutableRawPointer) -> Void {
+    fn(ptr)
+  }
+}
+
+final class NativeMailbox<Message> : Mailbox {
+  private var mailbox: UnsafeMutablePointer<CMailbox>
+  private var cell: ActorCell<Message>
+  private var context: Context
+  private var system_context: Context
+  private let __run: RunMessageCallback
+
+  init(cell: ActorCell<Message>, capacity: Int) {
+    self.mailbox = cmailbox_create(Int64(capacity));
+    self.cell = cell
+    self.context = Context({ ptr in
+      let envelopePtr = ptr.assumingMemoryBound(to: Envelope.self)
+      let msg = envelopePtr.move().payload as! Message
+      cell.interpretMessage(message: msg)
+    })
+
+    self.system_context = Context({ ptr in
+      let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
+      let msg = envelopePtr.move()
+      cell.interpretSystemMessage(message: msg)
+    })
+
+    __run = { (ctxPtr, msg) in
+      defer { msg?.deallocate() }
+      let ctx = ctxPtr?.assumingMemoryBound(to: Context.self)
+      ctx?.pointee.exec(with: msg!)
+    }
+  }
+
+  deinit {
+    cmailbox_destroy(mailbox)
+  }
+
+  func sendMessage(envelope: Envelope) -> Void {
+    let ptr = UnsafeMutablePointer<Envelope>.allocate(capacity: 1)
+    ptr.initialize(to: envelope)
+    if (cmailbox_send_message(mailbox, ptr)) {
+      cell.dispatcher.execute(self.run)
+    }
+  }
+
+  func sendSystemMessage(_ systemMessage: SystemMessage) -> Void {
+    let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
+    ptr.initialize(to: systemMessage)
+    if (cmailbox_send_system_message(mailbox, ptr)) {
+      cell.dispatcher.execute(self.run)
+    }
+  }
+
+  func run() -> Void {
+    let requeue = cmailbox_run(mailbox, &context, &system_context, __run)
+
+    if (requeue) {
+      cell.dispatcher.execute(self.run)
+    }
+  }
 }
 
 // Implementation Note:
@@ -132,7 +203,7 @@ final class DefaultMailbox<Message> : Mailbox {
 
         cell.dispatcher.execute(self)
 //        let activated = scheduleForExecution(status: status, hasMessageHint: true, hasSystemMessageHint: false)
-        log.info("sendMessage: ACTIVATED!")
+       // log.info("sendMessage: ACTIVATED!")
       }
     }
   }
@@ -326,7 +397,7 @@ final class DefaultMailbox<Message> : Mailbox {
   // RUN ONLY WHILE PROTECTED BY `runLock`
   private func runUserMessages(activations: Int, runLimit: Int) -> Int {
     guard activations > 0 else {
-      log.info("RUN: No user messages to run...")
+     // log.info("RUN: No user messages to run...")
       return 0 
     } // no reason to run when no activations
 
@@ -344,7 +415,7 @@ final class DefaultMailbox<Message> : Mailbox {
 
     return processed
   }
-
+/*
   // RUN ONLY WHILE PROTECTED BY `runLock`
   @inline(__always)
   @discardableResult
@@ -352,6 +423,7 @@ final class DefaultMailbox<Message> : Mailbox {
     // if can be scheduled for execution
     return cell.dispatcher.registerForExecution(self, status: status, hasMessageHint: hasMessageHint, hasSystemMessageHint: hasSystemMessageHint)
   }
+ */
 }
 
 extension DefaultMailbox: CustomStringConvertible {
