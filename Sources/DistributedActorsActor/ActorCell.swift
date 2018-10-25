@@ -17,19 +17,19 @@
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
 //
 // The cell is mutable, as it may replace the behavior it hosts
-public class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
+class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
   // keep the behavior, context, dispatcher references etc
 
   // Implementation notes:
   // The phrase that "actor change their behavior" is taken quite literally by our infrastructure,
   // on each message being applied the actor may return a new behavior that will be handling the next message.
-  private var behavior: Behavior<Message>
+  var behavior: Behavior<Message>
 
-  private let _dispatcher: MessageDispatcher
+  let _dispatcher: MessageDispatcher
 
   /// Guaranteed to be set during ActorRef creation
-  private var _myself: ActorRef<Message>?
+  var _myself: ActorRef<Message>?
 
   init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
     // TODO we may end up referring to the system here... we'll see
@@ -39,7 +39,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
   /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
   /// as the actor needs to access its ref from its context during setup or other behavior reductions
-  public func set(ref: ActorRef<Message>) {
+  func set(ref: ActorRef<Message>) {
     self._myself = ref // TODO atomic?
   }
 
@@ -67,6 +67,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// next behavior (as returned by user code, which the message was applied to).
   ///
   /// WARNING: Mutates the cell's behavior.
+  @inlinable
   func interpretMessage(message: Message) -> Void {
     func interpretMessage0(_ message: Message) -> Behavior<Message> {
       switch self.behavior {
@@ -82,6 +83,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     self.behavior = self.behavior.canonicalize(next: next)
   }
 
+  @inlinable
   func interpretSystemMessage(message: SystemMessage) {
 //    log.info("Interpret system message: \(message)")
     switch message {

@@ -67,6 +67,7 @@ public enum Behavior<Message>: AnyBehavior {
 
   /// Since we have "special" behaviors like "same" or wrappers intended to
 //  internal static func canonicalize<T>(current: Behavior<T>, next: Behavior<T>) -> Behavior<T> {
+  @inlinable
   internal func canonicalize(next: Behavior<Message>) -> Behavior<Message> {
     switch next {
     case .same:      return self

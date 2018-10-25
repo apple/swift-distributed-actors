@@ -20,7 +20,7 @@ import Glibc
 
 /// Not intended to be used by end users
 public final class Mutex {
-  var mutex: pthread_mutex_t = pthread_mutex_t()
+  public var mutex: pthread_mutex_t = pthread_mutex_t()
 
   public init() {
     var attr: pthread_mutexattr_t = pthread_mutexattr_t()
@@ -42,6 +42,7 @@ public final class Mutex {
     pthread_mutex_destroy(&mutex)
   }
 
+  @inlinable
   public func lock() -> Void {
     let error = pthread_mutex_lock(&mutex)
 
@@ -55,6 +56,7 @@ public final class Mutex {
     }
   }
 
+  @inlinable
   public func unlock() -> Void {
     let error = pthread_mutex_unlock(&mutex)
 
@@ -68,6 +70,7 @@ public final class Mutex {
     }
   }
 
+  @inlinable
   public func synchronized<A>(_ f: () -> A) -> A {
     lock()
 
