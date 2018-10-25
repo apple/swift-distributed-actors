@@ -14,10 +14,10 @@
 
 import NIOConcurrencyHelpers
 
-public final class FixedThreadPool: MessageDispatcher {
+public final class FixedThreadPool : MessageDispatcher {
   public var name: String = ""
 
-  private let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
+  public let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
   private var threads: [Thread] = []
   private var stopping: Atomic<Bool> = Atomic(value: false)
 
@@ -42,10 +42,12 @@ public final class FixedThreadPool: MessageDispatcher {
     threads.forEach { $0.cancel() }
   }
 
+  @inlinable
   public func submit(_ f: @escaping () -> Void) -> Void {
     q.enqueue(f)
   }
 
+  @inlinable
   public func execute(_ f: @escaping () -> Void) {
     submit(f)
   }

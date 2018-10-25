@@ -19,7 +19,7 @@ import Glibc
 #endif
 
 public final class Condition {
-  private var condition: pthread_cond_t = pthread_cond_t()
+  public var condition: pthread_cond_t = pthread_cond_t()
 
   public init() {
     let error = pthread_cond_init(&condition, nil)
@@ -36,6 +36,7 @@ public final class Condition {
     pthread_cond_destroy(&condition)
   }
 
+  @inlinable
   public func wait(_ mutex: Mutex) -> Void {
     let error = pthread_cond_wait(&condition, &mutex.mutex)
 
@@ -51,6 +52,7 @@ public final class Condition {
     }
   }
 
+  @inlinable
   public func wait(_ mutex: Mutex, timeoutAt: Int) -> Void {
 //    clock_gettime(CLOCK_REALTIME, &now)
 //    let reltime = sleep_til_this_absolute_time - now;
@@ -71,6 +73,7 @@ public final class Condition {
     }
   }
 
+  @inlinable
   public func signal() -> Void {
     let error = pthread_cond_signal(&condition)
 

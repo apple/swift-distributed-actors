@@ -39,7 +39,7 @@ public final class ActorSystem {
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let terminationLock = Lock()
-  let dispatcher: MessageDispatcher = try! FixedThreadPool(2)
+  let dispatcher: MessageDispatcher = try! FixedThreadPool(1)
 
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
@@ -101,9 +101,6 @@ extension ActorSystem: ActorRefFactory {
 
     // TODO validate name is valid actor name (no / in it etc)
     // TODO move this to the provider perhaps? or some way to share setup logic
-
-    // what runs the actor:
-    let dispatcher: MessageDispatcher = self.dispatcher //DispatchQueue(label: "test", qos: .default, attributes: .concurrent, autoreleaseFrequency: .inherit, target: nil) //DispatchQueue.global() // look up via props config
 
     // the "real" actor, the cell that holds the actual "actor"
     let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
