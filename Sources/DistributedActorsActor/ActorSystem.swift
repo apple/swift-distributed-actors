@@ -39,7 +39,7 @@ public final class ActorSystem {
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let terminationLock = Lock()
-  let dispatcher: MessageDispatcher = try! FixedThreadPool(1)
+  let dispatcher: MessageDispatcher = try! FixedThreadPool(2)
 
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:

@@ -84,7 +84,8 @@ final class NativeMailbox<Message> : Mailbox {
     self.cell = cell
     self.context = Context({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope.self)
-      let msg = envelopePtr.move().payload as! Message
+      let envelope = envelopePtr.move()
+      let msg = envelope.payload as! Message
       cell.interpretMessage(message: msg)
     })
 

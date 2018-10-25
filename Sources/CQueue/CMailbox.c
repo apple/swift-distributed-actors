@@ -30,7 +30,7 @@ int64_t message_count(int64_t status);
 bool is_terminating(int64_t status);
 bool is_terminated(int64_t status);
 bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_message);
-bool try_activate(CMailbox* mailbox);
+int64_t try_activate(CMailbox* mailbox);
 
 CMailbox* cmailbox_create(int64_t capacity) {
   CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
@@ -74,22 +74,28 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, RunMes
     return false;
   }
 
+  //printf("Processing...\n");
+
   int64_t processed = 0;
   int64_t max_process = message_count(status);
   if (max_process > 100) {
     max_process = 100;
   }
 
-  void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-  while (system_message != NULL) {
-    //printf("Procesing system message...\n");
-    callback(system_context, system_message);
-    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+  if ((status & 1) == 1) {
+    //printf("Has system message\n");
+    processed = 1;
+    void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+    while (system_message != NULL) {
+      //printf("Procesing system message...\n");
+      callback(system_context, system_message);
+      system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+    }
   }
 
   void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
   while (message != NULL) {
-    processed += 1;
+    processed += 2;
     //printf("Procesing user message...\n");
     callback(context, message);
     if (processed >= max_process) {
@@ -103,9 +109,9 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, RunMes
 
   int64_t old_status = decrement_status_activations(mailbox, processed);
 
-  int64_t old_count = message_count(old_status);
-  //printf("Old: %lld, processed: %lld\n", old_count, processed);
-  if (old_count > processed || !cmpsc_linked_queue_is_empty(mailbox->system_messages)) {
+  int64_t old_activations = activations(old_status);
+  //printf("Old: %lld, processed: %lld\n", old_activations, processed);
+  if (old_activations > processed || !cmpsc_linked_queue_is_empty(mailbox->system_messages)) {
     //printf("More messages, enqueuing again...\n");
     return true;
   }
@@ -114,9 +120,8 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, RunMes
   return false;
 }
 
-bool try_activate(CMailbox* mailbox) {
-  int old = atomic_fetch_or_explicit(&mailbox->status, 1, memory_order_acq_rel);
-  return (old & 1) == 0;
+int64_t try_activate(CMailbox* mailbox) {
+  return atomic_fetch_or_explicit(&mailbox->status, 1, memory_order_acq_rel);
 }
 
 int64_t increment_status_activations(CMailbox* mailbox) {
@@ -124,7 +129,7 @@ int64_t increment_status_activations(CMailbox* mailbox) {
 }
 
 int64_t decrement_status_activations(CMailbox* mailbox, int64_t n) {
-  return atomic_fetch_sub_explicit(&mailbox->status, (n << 1) | 0x1, memory_order_acq_rel);
+  return atomic_fetch_sub_explicit(&mailbox->status, n, memory_order_acq_rel);
 }
 
 bool is_active(int64_t status) {

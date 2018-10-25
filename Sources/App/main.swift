@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
+
 import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
 import Foundation
-import Dispatch
 
 // MARK: Test Harness
 
@@ -40,9 +39,8 @@ public func measure(_ fn: () throws -> Int) rethrows -> [TimeInterval] {
   _ = try measureOne(fn) /* pre-heat and throw away */
   var measurements = Array(repeating: 0.0, count: 10)
   for i in 0..<10 {
-    measurements[i] = try measureOne(fn)
+     measurements[i] = try measureOne(fn)
   }
-
   return measurements
 }
 
@@ -58,22 +56,24 @@ let system = ActorSystem()
 
 let n = 5_000_000
 
-
+import SwiftDistributedActorsDungeon
 
 measureAndPrint(desc: "receive \(n) messages") {
-  let l = Lock()
+  let l = Mutex()
+  let c = Condition()
 
   let ref: ActorRef<Int> = system.spawnAnonymous(.receiveMessage { msg in
-    if (msg == n) { l.unlock() }
+    if msg == n {
+      c.signal()
+    }
     return .same
     })
 
+  l.lock()
   for i in 1 ... n {
     ref ! i
   }
-
-  l.lock()
+  c.wait(l)
 
   return n
 }
-
