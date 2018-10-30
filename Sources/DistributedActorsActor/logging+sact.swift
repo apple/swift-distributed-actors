@@ -67,7 +67,7 @@ public struct ActorLogger: Logger {
   public init(_ system: ActorSystem) {
     self.init(LoggingContext(
         name: system.name,
-        dispatcher: { () in "<get-current-thread>" }
+        dispatcher: { () in hackyPthreadThreadName() }
       ))
   }
 

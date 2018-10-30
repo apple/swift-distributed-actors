@@ -64,13 +64,3 @@ public final class MPSCLinkedQueue<A> {
     return !isEmpty()
   }
 }
-
-//protocol Queue {
-//  associatedtype A
-//
-//  func dequeue() -> A?
-//
-//  func enqueue(_ item: A) -> Void
-//
-//  func isEmpty() -> Bool
-//}

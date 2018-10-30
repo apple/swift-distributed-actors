@@ -11,4 +11,5 @@ needs to be listed here.
 
 ### Contributors
 
+- Konrad `ktoso` Malawski <konrad_malawski@apple.com>
 - Add Yourself <your@email.com>

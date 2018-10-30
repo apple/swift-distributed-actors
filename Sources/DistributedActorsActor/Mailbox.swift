@@ -46,7 +46,7 @@ struct WrappedClosure {
   }
 }
 
-final class NativeMailbox<Message> {
+final class Mailbox<Message> {
   var mailbox: UnsafeMutablePointer<CMailbox>
   var cell: ActorCell<Message>
   var context: WrappedClosure

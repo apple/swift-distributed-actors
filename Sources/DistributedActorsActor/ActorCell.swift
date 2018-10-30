@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIO
+import Dispatch
+
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
@@ -73,12 +76,13 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       switch self.behavior {
       case let .receiveMessage(recv): return recv(message)
       case let .receive(recv):        return recv(context, message)
+      case .ignore:                   return .same // ignore message and remain .same
       default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
       }
     }
 
     let next: Behavior<Message> = interpretMessage0(message)
-//    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO never really log entire user message (passwords etc)
+    // log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
 
     self.behavior = self.behavior.canonicalize(context, next: next)
   }
@@ -88,10 +92,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 //    log.info("Interpret system message: \(message)")
     switch message {
     case .start:
-      // start means we need to evaluate all `setup` blocks, since they are triggered eagerly - to "set up" the actors userland state
+      // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
       if case .setup(let onStart) = behavior {
-        self.behavior = self.behavior.canonicalize(context, next: onStart(context))
-      } // else nothing to do here `start` signal was ignored
+        let next = onStart(context)
+        self.behavior = self.behavior.canonicalize(context, next: next)
+      } // else we ignore the .start, since no behavior is interested in it // TODO or we pass in anyway, since it is a signal? To be considered -- ktoso
 
     default:
       pprint("invokeSystem, handling of \(message) is not implemented yet; Behavior was: \(behavior)")
@@ -152,7 +157,6 @@ public class ActorContext<Message> {
   public var myself: ActorRef<Message> {
     return undefined()
   }
-
 
   /// Provides context metadata aware logger
   // TODO: API wise this logger will be whichever type the SSWG group decides on, we will adopt it

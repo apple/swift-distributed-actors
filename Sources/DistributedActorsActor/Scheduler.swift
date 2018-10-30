@@ -31,7 +31,7 @@ public protocol Scheduler {
 
   func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable
 
-  func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable
+//  public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
 }
 
 class FlagCancellable : Cancellable {
@@ -48,6 +48,7 @@ class FlagCancellable : Cancellable {
 
 // TODO this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
 extension DispatchQueue : Scheduler {
+
   public func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable {
     let cancellable = FlagCancellable()
     self.asyncAfter(deadline: .now() + delay) {
@@ -85,4 +86,5 @@ extension DispatchQueue : Scheduler {
       receiver ! message
     }
   }
+
 }

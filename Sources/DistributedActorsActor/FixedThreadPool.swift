@@ -15,7 +15,9 @@
 import NIOConcurrencyHelpers
 
 public final class FixedThreadPool: MessageDispatcher {
-  public var name: String = ""
+  public var name: String {
+    return hackyPthreadThreadName()
+  }
 
   public let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
   private var threads: [Thread] = []
