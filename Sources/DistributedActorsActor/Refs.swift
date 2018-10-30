@@ -42,9 +42,16 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
     return "ActorRef(\(path))"
   }
   public var debugDescription: String {
-    return "ActorRef(\(path)#DEBUG" // TODO: "ActorRef(\(path)#\(uid)"
+    return "ActorRef(\(path)#<UID>" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
   }
 }
+
+extension ActorRef: Equatable {
+  public static func ==(lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
+    return lhs.path == rhs.path
+  }
+}
+
 
 // MARK: Internal implementation classes
 
@@ -63,12 +70,12 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
   let _path: String // TODO this is if we want them in a hierarchy, otherwise it would be "name" but I think hierarchy has been pretty successful for Akka
   public override var path: String { return _path }
 
-  let mailbox: NativeMailbox<Message> // TODO we need to be able to swap it for DeadLetters or find some other way
+  let mailbox: Mailbox<Message> // TODO we need to be able to swap it for DeadLetters or find some other way
 
   // MARK: Internal details; here be dragons
   private let cell: ActorCell<Message>
 
-  public init(path: String, cell: ActorCell<Message>, mailbox: NativeMailbox<Message>) {
+  public init(path: String, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
     self._path = path // TODO make custom type for it
     self.cell = cell
     self.mailbox = mailbox

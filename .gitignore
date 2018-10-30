@@ -4,6 +4,8 @@
 .xcode
 Swift Distributed Actors.xcworkspace
 /*.xcodeproj
+Swift Distributed Actors.xcworkspace
+.xcode
 .idea
 
 # rendered docs output dirs

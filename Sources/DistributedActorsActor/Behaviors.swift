@@ -12,14 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-public protocol AnyBehavior {
-}
-
 /// A `Behavior` is what executes then an `Actor` handles messages.
 ///
 /// The most important behavior is `Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
-public enum Behavior<Message>: AnyBehavior {
+public enum Behavior<Message> {
 
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
   case receiveMessage(_ handle: (Message) -> Behavior<Message>) // TODO make them throws?
@@ -27,6 +24,8 @@ public enum Behavior<Message>: AnyBehavior {
   /// Defines a behavior that will be executed with an incoming message by its hosting actor.
   /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
   case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>) // TODO make them throws?
+
+  // TODO receiveExactly(_ expected: Message, orElse: Behavior<Message> = /* .ignore */, atMost = /* 5.seconds */)
 
   // TODO above is receiveMessage(M -> B)
   // TODO we need receive((Context, M) -> B) as well, leaving it for later

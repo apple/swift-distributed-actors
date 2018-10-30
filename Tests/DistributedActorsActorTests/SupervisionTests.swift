@@ -34,15 +34,13 @@ struct Failure {
 
 private extension Behavior {
   func supervise(_ decide: (Failure) -> Supervision.Directive) -> Behavior<Message> {
-    return TODO("not implemented yet")
+    return self // FIXME not a real impl of course; replace with real impl in Swift Distributed ActorsActor
   }
 }
 
 class SupervisionTests: XCTestCase {
 
   func test_compile() throws {
-    return () // compile only spec
-
     let b: Behavior<String> = .receiveMessage { s in .same }
 
     let _: Behavior<String> = b.supervise { failure -> Supervision.Directive in

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import NIOConcurrencyHelpers
 
 public typealias Nothing = Never
 
@@ -74,8 +75,13 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
   print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }
 
-func hackyThreadName() -> String {
-  //let thread: Thread = Thread.current
-  let threadName = "--" //"\(thread.terribleHackThreadId)"
-  return threadName
+func hackyPthreadThreadName() -> String {
+  let threadId: String
+  #if os(macOS)
+  threadId = "thread:\(pthread_mach_thread_np(pthread_self()))"
+  #else
+  threadId = "<thread:??>"
+  #endif
+
+  return threadId
 }

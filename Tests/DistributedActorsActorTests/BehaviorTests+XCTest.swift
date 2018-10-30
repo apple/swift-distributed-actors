@@ -29,6 +29,8 @@ extension BehaviorTests {
                 ("test_single_actor_should_wakeUp_on_new_message_lockstep", test_single_actor_should_wakeUp_on_new_message_lockstep),
                 ("test_two_actors_should_wakeUp_on_new_message_lockstep", test_two_actors_should_wakeUp_on_new_message_lockstep),
                 ("test_receive_receivesMessages", test_receive_receivesMessages),
+                ("test_canonicalize_nestedSetupBehaviors", test_canonicalize_nestedSetupBehaviors),
+                ("test_canonicalize_doesSurviveDeeplyNestedSetups", test_canonicalize_doesSurviveDeeplyNestedSetups),
            ]
    }
 }

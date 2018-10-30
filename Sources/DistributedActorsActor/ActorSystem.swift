@@ -39,7 +39,7 @@ public final class ActorSystem {
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let terminationLock = Lock()
-  let dispatcher: MessageDispatcher = try! FixedThreadPool(1)
+  let dispatcher: MessageDispatcher = try! FixedThreadPool(6)
 
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
@@ -106,10 +106,10 @@ extension ActorSystem: ActorRefFactory {
     let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
 
     // the mailbox of the actor
-    let mailbox = NativeMailbox(cell: cell, capacity: Int.max)
+    let mailbox = Mailbox(cell: cell, capacity: Int.max)
     /*switch props.mailbox {
     case let .default(capacity, _):
-      mailbox = NativeMailbox(cell: cell, capacity: capacity)
+      mailbox = Mailbox(cell: cell, capacity: capacity)
     }*/
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 

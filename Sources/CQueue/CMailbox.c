@@ -32,7 +32,7 @@
 
 #define ACTIVATIONS 0b00111111111111111111111111111111
 #define TERMINATING 0b01000000000000000000000000000000
-#define TERMINATED 0b10000000000000000000000000000000
+#define TERMINATED  0b10000000000000000000000000000000
 
 int64_t increment_status_activations(CMailbox* mailbox);
 int64_t decrement_status_activations(CMailbox* mailbox, int64_t n);
@@ -101,8 +101,8 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
   // TODO: pass maximum in as parameter to allow for more elaborate,
   // metrics based scheduling decisions
   int64_t max_run_length = message_count(status);
-  if (max_run_length > 100) {
-    max_run_length = 100;
+  if (max_run_length > 1) {
+    max_run_length = 1;
   }
 
   if (has_system_messages(status)) {
