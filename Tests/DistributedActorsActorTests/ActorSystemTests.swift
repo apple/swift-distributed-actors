@@ -25,19 +25,5 @@ class ActorSystemTests: XCTestCase {
   override func tearDown() {
     // system.terminate()
   }
-
-  func test_ensureActorRefSizeBelow24Bytes() {
-    // mostly just me playing around with MemoryLayout // TODO serious tests and considerations here later
-    let refSize = MemoryLayout<ActorRef<String>>.size
-    print("[size] ActorRef<String> size = \(refSize) bytes")
-    XCTAssertLessThanOrEqual(refSize, MaxSpecialTreatedValueTypeSizeInBytes)
-  }
-
-  func test_ensureActorCellSizeBelow24Bytes() {
-    // mostly just me playing around with MemoryLayout // TODO serious tests and considerations here later
-    let cellSize = MemoryLayout<ActorCell<String>>.size
-    print("[size] ActorCell<String> size = \(cellSize) bytes")
-    XCTAssertLessThanOrEqual(cellSize, MaxSpecialTreatedValueTypeSizeInBytes)
-  }
   
 }

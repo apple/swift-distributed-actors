@@ -41,13 +41,22 @@ public class Thread {
   public init(_ f: @escaping () -> Void) throws {
     let ref = Unmanaged.passRetained(BoxedClosure(f: f))
 
-    var t: pthread_t?
+    #if os(Linux)
+      var t: pthread_t = pthread_t()
+    #else
+      var t: pthread_t?
+    #endif
+
     guard pthread_create(&t, nil, runner, ref.toOpaque()) == 0 else {
       ref.release()
       throw ThreadError.threadCreationFailed
     }
 
-    thread = t!
+    #if os(Linux)
+      thread = t
+    #else
+      thread = t!
+    #endif
   }
 
   public func join() throws {

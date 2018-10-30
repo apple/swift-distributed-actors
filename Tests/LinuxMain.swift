@@ -34,7 +34,6 @@ import XCTest
          testCase(BehaviorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
-         testCase(MailboxStatusTests.allTests),
          testCase(Swift Distributed ActorsActorTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),

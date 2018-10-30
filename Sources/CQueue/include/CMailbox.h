@@ -27,8 +27,7 @@ typedef struct {
   CMPSCLinkedQueue* messages;
 } CMailbox;
 
-typedef void (*RunMessageCallback)(void*, void*);
-typedef bool (*RunSystemMessageCallback)(void*, void*);
+typedef void (*InterpretMessageCallback)(void*, void*);
 
 CMailbox* cmailbox_create(int64_t capacity);
 void cmailbox_destroy(CMailbox* mailbox);
@@ -36,6 +35,6 @@ void cmailbox_destroy(CMailbox* mailbox);
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
 bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
-bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, RunMessageCallback callback);
+bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message);
 
 #endif /* CMailbox_h */

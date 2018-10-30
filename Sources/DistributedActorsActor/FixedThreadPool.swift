@@ -14,7 +14,7 @@
 
 import NIOConcurrencyHelpers
 
-public final class FixedThreadPool : MessageDispatcher {
+public final class FixedThreadPool: MessageDispatcher {
   public var name: String = ""
 
   public let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
