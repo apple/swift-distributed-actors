@@ -17,14 +17,14 @@
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
 //
 // The cell is mutable, as it may replace the behavior it hosts
-class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
+public class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
   // keep the behavior, context, dispatcher references etc
 
   // Implementation notes:
   // The phrase that "actor change their behavior" is taken quite literally by our infrastructure,
   // on each message being applied the actor may return a new behavior that will be handling the next message.
-  var behavior: Behavior<Message>
+  public var behavior: Behavior<Message>
 
   let _dispatcher: MessageDispatcher
 

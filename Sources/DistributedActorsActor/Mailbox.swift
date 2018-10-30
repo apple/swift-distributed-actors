@@ -33,7 +33,7 @@ struct Envelope<Message> {
   // and don't need to do any magic around it
 }
 
-struct Context {
+struct WrappedClosure {
   let fn: (UnsafeMutableRawPointer) -> Void
 
   init(_ fn: @escaping (UnsafeMutableRawPointer) -> Void) {
@@ -49,29 +49,29 @@ struct Context {
 final class NativeMailbox<Message> {
   var mailbox: UnsafeMutablePointer<CMailbox>
   var cell: ActorCell<Message>
-  var context: Context
-  var system_context: Context
-  let __run: RunMessageCallback
+  var context: WrappedClosure
+  var systemContext: WrappedClosure
+  let interpretMessage: InterpretMessageCallback
 
   init(cell: ActorCell<Message>, capacity: Int) {
     self.mailbox = cmailbox_create(Int64(capacity));
     self.cell = cell
-    self.context = Context({ ptr in
+    self.context = WrappedClosure({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
       let envelope = envelopePtr.move()
       let msg = envelope.payload
       cell.interpretMessage(message: msg)
     })
 
-    self.system_context = Context({ ptr in
+    self.systemContext = WrappedClosure({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
       let msg = envelopePtr.move()
       cell.interpretSystemMessage(message: msg)
     })
 
-    __run = { (ctxPtr, msg) in
+    interpretMessage = { (ctxPtr, msg) in
       defer { msg?.deallocate() }
-      let ctx = ctxPtr?.assumingMemoryBound(to: Context.self)
+      let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
       ctx?.pointee.exec(with: msg!)
     }
   }
@@ -100,7 +100,7 @@ final class NativeMailbox<Message> {
 
   @inlinable
   func run() -> Void {
-    let requeue = cmailbox_run(mailbox, &context, &system_context, __run)
+    let requeue = cmailbox_run(mailbox, &context, &systemContext, interpretMessage)
 
     if (requeue) {
       cell.dispatcher.execute(self.run)

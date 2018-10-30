@@ -24,8 +24,6 @@ extension ActorSystemTests {
 
    static var allTests : [(String, (ActorSystemTests) -> () throws -> Void)] {
       return [
-                ("test_ensureActorRefSizeBelow24Bytes", test_ensureActorRefSizeBelow24Bytes),
-                ("test_ensureActorCellSizeBelow24Bytes", test_ensureActorCellSizeBelow24Bytes),
            ]
    }
 }
