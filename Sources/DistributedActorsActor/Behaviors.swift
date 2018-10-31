@@ -65,17 +65,24 @@ public enum Behavior<Message>: AnyBehavior {
 
   // MARK: Behavior interpretation utilities
 
-  /// Since we have "special" behaviors like "same" or wrappers intended to
-//  internal static func canonicalize<T>(current: Behavior<T>, next: Behavior<T>) -> Behavior<T> {
+  /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
+  /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
   @inlinable
-  internal func canonicalize(next: Behavior<Message>) -> Behavior<Message> {
-    switch next {
-    case .same:      return self
-    case .unhandled: return self
-    case .stopped:   return .stopped
-    case .setup:     return FIXME("Not handling setup within other behaviors yet...")
-    default:         return next
+  internal func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) -> Behavior<Message> {
+    // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
+
+    var canonical = next
+    while true {
+      switch canonical {
+      case .same:               return self
+      case .ignore:             return self
+      case .unhandled:          return self
+      case .stopped:            return .stopped
+      case let .setup(onStart): canonical = onStart(context)
+      default:                  return canonical
+      }
     }
+
   }
 }
 
