@@ -153,7 +153,6 @@ class BehaviorTests: XCTestCase {
 
     func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
       return .setup { context in
-        print("running setup at depth: \(depth)")
         if depth < limit {
           // add another "setup layer"
           return deepSetupRabbitHole(currentDepth: depth + 1, stopAt: limit)
