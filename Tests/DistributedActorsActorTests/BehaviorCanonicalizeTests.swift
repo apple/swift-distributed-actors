@@ -1,0 +1,81 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import Foundation
+import XCTest
+@testable import Swift Distributed ActorsActor
+import Swift Distributed ActorsActorTestkit
+
+class BehaviorCanonicalizeTests: XCTestCase {
+
+  let system = ActorSystem("ActorSystemTests")
+
+  override func tearDown() {
+    // Await.on(system.terminate()) // FIXME termination that actually does so
+  }
+
+  func test_canonicalize_nestedSetupBehaviors() {
+    let p = ActorTestProbe<String>(named: "canonicalize-probe-1", on: system)
+
+    let b: Behavior<String> = .setup { c1 in
+      p ! "outer-1"
+      return .setup { c2 in
+        p ! "inner-2"
+        return .setup { c2 in
+          p ! "inner-3"
+          return .receiveMessage { m in
+            p ! "received:\(m)"
+            return .stopped
+          }
+        }
+      }
+    }
+
+    let ref = system.spawnAnonymous(b)
+
+    p.expectMessage("outer-1")
+    p.expectMessage("inner-2")
+    p.expectMessage("inner-3")
+    // p.expectNoMessage(.milliseconds(100))
+    ref ! "ping"
+    p.expectMessage("received:ping")
+  }
+
+  func test_canonicalize_doesSurviveDeeplyNestedSetups() {
+    let p = ActorTestProbe<String>(named: "canonicalize-probe-2", on: system)
+
+    func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
+      return .setup { context in
+        if depth < limit {
+          // add another "setup layer"
+          return deepSetupRabbitHole(currentDepth: depth + 1, stopAt: limit)
+        } else {
+          return .receiveMessage { msg in
+            p ! "received:\(msg)"
+            return .stopped
+          }
+        }
+      }
+    }
+
+    // we attempt to cause a stack overflow by nesting tons of setups inside each other.
+    // this could fail if canonicalization were implemented in some naive way.
+    let depthLimit = 1024 * 8 // not a good idea, but we should not crash
+    let ref = system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), named: "deepSetupNestedRabbitHole")
+
+    ref ! "ping"
+    p.expectMessage("received:ping")
+  }
+
+}

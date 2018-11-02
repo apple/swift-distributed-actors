@@ -114,7 +114,7 @@ extension ActorSystem: ActorRefFactory {
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 
     let refWithCell = ActorRefWithCell(
-        path: "/user/\(name)",
+        path: "/user/\(name)", // TODO this is a mock
         cell: cell,
         mailbox: mailbox
     )
