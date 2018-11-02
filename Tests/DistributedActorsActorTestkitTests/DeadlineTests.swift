@@ -17,7 +17,7 @@ import Foundation
 import NIO
 @testable import Swift Distributed ActorsActorTestkit
 
-class ActorSystemTests: XCTestCase {
+class DeadlineTests: XCTestCase {
 
 
   func test_deadline_nowIsNotPastNow() {
