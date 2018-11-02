@@ -1,4 +1,3 @@
 #!/bin/sh
 
-echo "No integration tests yet :-)"
-echo "... so all existing ones passed, right?"
+echo "No integration tests to run."
