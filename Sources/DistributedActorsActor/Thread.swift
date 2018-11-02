@@ -47,7 +47,7 @@ public class Thread {
       var t: pthread_t?
     #endif
 
-    guard pthread_create(&t, nil, runner, ref.toOpaque()) == 0 else {
+    guard pthread_create(&t, nil, runnerCallback, ref.toOpaque()) == 0 else {
       ref.release()
       throw ThreadError.threadCreationFailed
     }
@@ -110,9 +110,22 @@ public class Thread {
   }
 }
 
-private func runner(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
-  let unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg)
-  unmanaged.takeUnretainedValue().f()
-  unmanaged.release()
-  return nil
+#if os(Linux)
+typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+#else
+typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer) -> UnsafeMutableRawPointer?
+#endif
+
+private var runnerCallback: CRunnerCallback {
+  return { arg in
+    let unmanaged: Unmanaged<BoxedClosure>
+    #if os(Linux)
+    unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg!)
+    #else
+    unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg)
+    #endif
+    unmanaged.takeUnretainedValue().f()
+    unmanaged.release()
+    return nil
+  }
 }

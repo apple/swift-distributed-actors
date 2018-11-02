@@ -24,17 +24,15 @@ import XCTest
    @testable import CQueueTests
    @testable import Swift Distributed ActorsActorTestkitTests
    @testable import Swift Distributed ActorsActorTests
-   @testable import Swift Distributed ActorsAppTests
 
    XCTMain([
-         testCase(ActorSystemTests.allTests),
          testCase(ActorSystemTests.allTests),
          testCase(ActorTestProbeTests.allTests),
          testCase(AnonymousNamesGeneratorTests.allTests),
          testCase(BehaviorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),
+         testCase(DeadlineTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
-         testCase(Swift Distributed ActorsActorTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),
     ])
