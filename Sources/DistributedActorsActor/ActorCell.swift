@@ -90,8 +90,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     case .start:
       // start means we need to evaluate all `setup` blocks, since they are triggered eagerly - to "set up" the actors userland state
       if case .setup(let onStart) = behavior {
-        self.behavior = onStart(context) // TODO canonicalize in case people do setup in setup...
-      }
+        self.behavior = self.behavior.canonicalize(context, next: onStart(context))
+      } // else nothing to do here `start` signal was ignored
 
     default:
       pprint("invokeSystem, handling of \(message) is not implemented yet; Behavior was: \(behavior)")
