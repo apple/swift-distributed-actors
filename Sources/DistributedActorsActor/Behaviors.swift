@@ -36,6 +36,8 @@ public enum Behavior<Message> {
   /// (e.g. send an initial message, or subscribe to some event stream, configure receive timeouts, etc.).
   case setup(onStart: (ActorContext<Message>) -> Behavior<Message>)
 
+  case custom(behavior: ActorBehavior<Message>)
+
   /// Defines that the same behavior should remain
   case same
 
@@ -76,12 +78,23 @@ public enum Behavior<Message> {
       case .same:               return self
       case .ignore:             return self
       case .unhandled:          return self
+      case .custom:             return self
       case .stopped:            return .stopped
       case let .setup(onStart): canonical = onStart(context)
       default:                  return canonical
       }
     }
 
+  }
+}
+
+open class ActorBehavior<Message> {
+  open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    fatalError("Not implemented")
+  }
+
+  open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
+    return .unhandled
   }
 }
 
