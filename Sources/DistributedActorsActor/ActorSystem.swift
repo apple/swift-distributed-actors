@@ -125,11 +125,19 @@ extension ActorSystem: ActorRefFactory {
     return refWithCell
   }
 
+  public func spawn<Message>(_ behavior: ActorBehavior<Message>, named name: String, props: Props = Props()) -> ActorRef<Message> {
+    return spawn(.custom(behavior: behavior), named: name, props: props)
+  }
+
   // Implementation note:
   // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
   // and devs should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
   // This is why there should not be default parameter values for actor names
   public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) -> ActorRef<Message> {
     return spawn(behavior, named: self.anonymousNames.nextName(), props: props)
+  }
+
+  public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) -> ActorRef<Message> {
+    return spawnAnonymous(.custom(behavior: behavior), props: props)
   }
 }

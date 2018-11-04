@@ -25,7 +25,7 @@ class BehaviorTests: XCTestCase {
     // Await.on(system.terminate()) // FIXME termination that actually does so
   }
 
-  private struct TestMessage {
+  public struct TestMessage {
     let message: String
     let replyTo: ActorRef<String>
   }
@@ -119,6 +119,46 @@ class BehaviorTests: XCTestCase {
     }
 
     // TODO p.expectTerminated(ref)
+  }
+
+  class MyActor: ActorBehavior<TestMessage> {
+    override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
+      context.log.info("Received \(message)")
+      message.replyTo ! thxFor(message.message)
+      return .same
+    }
+
+    override func receiveSignal(context: ActorContext<BehaviorTests.TestMessage>, signal: Signal) -> Behavior<BehaviorTests.TestMessage> {
+      return .ignore
+    }
+
+    func thxFor(_ m: String) -> String {
+      return "Thanks for: <\(m)>"
+    }
+  }
+
+  func test_ActorBehavior_receivesMessages() {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-4", on: system)
+
+    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
+
+    let ref: ActorRef<TestMessage> = system.spawnAnonymous(MyActor())
+
+    // first we send many messages
+    for i in 0...10 {
+      ref ! TestMessage(message: "message-\(i)", replyTo: p.ref)
+    }
+
+    func thxFor(_ m: String) -> String {
+      return "Thanks for: <\(m)>"
+    }
+
+    // separately see if we got the expected replies in the right order.
+    // we do so separately to avoid sending in "lock-step" in the first loop above here
+    for i in 0...10 {
+      // TODO make expectMessage()! that can terminate execution
+      p.expectMessage(thxFor("message-\(i)"))
+    }
   }
 
 }

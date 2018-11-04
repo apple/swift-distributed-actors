@@ -77,6 +77,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       case let .receiveMessage(recv): return recv(message)
       case let .receive(recv):        return recv(context, message)
       case .ignore:                   return .same // ignore message and remain .same
+      case let .custom(behavior):     return behavior.receive(context: context, message: message)
       default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
       }
     }
