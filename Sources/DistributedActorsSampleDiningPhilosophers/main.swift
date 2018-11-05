@@ -28,17 +28,17 @@ import Swift Distributed ActorsActor
 let system = ActorSystem("DiningPhilosophersTests")
 
 // prepare 5 forks, the resources, that the philosophers will compete for:
-let fork1: Fork.Ref = system.spawn(Fork.behavior, named: "fork-1")
-let fork2: Fork.Ref = system.spawn(Fork.behavior, named: "fork-2")
-let fork3: Fork.Ref = system.spawn(Fork.behavior, named: "fork-3")
-let fork4: Fork.Ref = system.spawn(Fork.behavior, named: "fork-4")
-let fork5: Fork.Ref = system.spawn(Fork.behavior, named: "fork-5")
+let fork1: Fork.Ref = try! system.spawn(Fork.behavior, named: "fork-1")
+let fork2: Fork.Ref = try! system.spawn(Fork.behavior, named: "fork-2")
+let fork3: Fork.Ref = try! system.spawn(Fork.behavior, named: "fork-3")
+let fork4: Fork.Ref = try! system.spawn(Fork.behavior, named: "fork-4")
+let fork5: Fork.Ref = try! system.spawn(Fork.behavior, named: "fork-5")
 
 // 5 philosophers, sitting in a circle, with the forks between them:
-let p1: Philosopher.Ref = system.spawn(Philosopher(left: fork5, right: fork1).thinking, named: "Konrad")
-let p2: Philosopher.Ref = system.spawn(Philosopher(left: fork1, right: fork2).thinking, named: "Dario")
-let p3: Philosopher.Ref = system.spawn(Philosopher(left: fork2, right: fork3).thinking, named: "Johannes")
-let p4: Philosopher.Ref = system.spawn(Philosopher(left: fork3, right: fork4).thinking, named: "Cory")
-let p5: Philosopher.Ref = system.spawn(Philosopher(left: fork4, right: fork5).thinking, named: "Norman")
+let p1: Philosopher.Ref = try! system.spawn(Philosopher(left: fork5, right: fork1).thinking, named: "Konrad")
+let p2: Philosopher.Ref = try! system.spawn(Philosopher(left: fork1, right: fork2).thinking, named: "Dario")
+let p3: Philosopher.Ref = try! system.spawn(Philosopher(left: fork2, right: fork3).thinking, named: "Johannes")
+let p4: Philosopher.Ref = try! system.spawn(Philosopher(left: fork3, right: fork4).thinking, named: "Cory")
+let p5: Philosopher.Ref = try! system.spawn(Philosopher(left: fork4, right: fork5).thinking, named: "Norman")
 
 Thread.sleep(.seconds(10))

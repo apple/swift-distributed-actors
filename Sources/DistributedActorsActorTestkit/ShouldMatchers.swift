@@ -28,6 +28,11 @@ struct TestMatchers<T: Equatable> {
     self.callSite = callSite
   }
 
+//  func fail(reason: String) {
+//    let msg = self.callSite.detailedMessage(assertionExplained: reason)
+//    XCTFail(msg, file: callSite.file, line: callSite.line)
+//  }
+
   func toEqual(_ expected: T) {
     let msg = self.callSite.detailedMessage(it, expected)
     XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
@@ -40,6 +45,71 @@ struct TestMatchers<T: Equatable> {
     }
   }
 }
+
+// MARK: free functions
+
+public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> E {
+  let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+  let error = shouldThrow(block, file: file, line: line, column: column)
+
+  guard error is E else {
+    let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw [\(expected)], but threw: [\(error)]")
+    XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
+    fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+  }
+
+  return error as! E // safe since we checked in guard above
+}
+
+public func shouldThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+  let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+  var it: T? = nil
+  do {
+    it = try block()
+  } catch {
+    return error
+  }
+
+  let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw, but returned: \(it!)")
+  XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
+  fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+}
+
+/// Provides improved error logging in case of an unexpected throw.
+/// XCTest output without wrapping in shouldNotThrow:
+///
+/// ```
+///   <unknown>:0: error: -[Swift Distributed ActorsActorTests.ActorLifecycleTests test_beAbleToStop_immediately] :
+///   failed: caught error: The operation couldn’t be completed. (Swift Distributed ActorsActor.ActorPathError error 0.)
+/// ```
+///
+/// Error report with shouldNotThrow includes more details about the thrown value:
+///
+/// ```
+/// Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTests/ActorLifecycleTests.swift:55: error: -[Swift Distributed ActorsActorTests.ActorLifecycleTests test_beAbleToStop_immediately] : failed -
+///    shouldNotThrow({
+///    ^~~~~~~~~~~~~~~
+/// error: Unexpected throw captured: illegalActorPathElement(name: "/user", illegal: "/", index: 0)
+/// Fatal error: Failed: expectedErrorToBeThrown: file /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActorTestkit/ShouldMatchers.swift, line 79
+/// ```
+///
+/// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
+public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+  do {
+    let _ = try block()
+  } catch {
+    let msg = callSiteInfo.detailedMessage(assertionExplained: "Unexpected throw captured: \(error)")
+    XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
+    fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+  }
+}
+
+enum ShouldMatcherError: Error {
+  case expectedErrorToBeThrown
+}
+
+// MARK: assertion extensions on specific types
 
 extension Equatable {
 

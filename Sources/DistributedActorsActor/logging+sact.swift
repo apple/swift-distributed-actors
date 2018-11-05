@@ -59,7 +59,7 @@ public struct ActorLogger: Logger {
 
   public init<T>(_ context: ActorContext<T>) {
     self.init(LoggingContext(
-        name: context.path,
+        name: context.path.description,
         dispatcher: { () in context.dispatcher.name }
       ))
   }

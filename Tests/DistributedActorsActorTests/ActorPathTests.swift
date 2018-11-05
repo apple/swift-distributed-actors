@@ -12,20 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-import NIOConcurrencyHelpers
-import Swift Distributed ActorsActor
-
+import Foundation
 import XCTest
+@testable import Swift Distributed ActorsActor
+import Swift Distributed ActorsActorTestkit
 
-final public class ActorTestkit {
+class ActorPathTests: XCTestCase {
 
-  private let system: ActorSystem
+  class Ex: Error {
 
-  public init(system: ActorSystem) {
-    self.system = system
   }
 
-  // TODO
+  func test_shouldNotAllow_illegalCharacters() {
+    shouldThrow(expected: ActorPathError.self, { let _ = try ActorPath(root: "") })
+  }
 
 }

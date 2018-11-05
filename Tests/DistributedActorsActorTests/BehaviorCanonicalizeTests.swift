@@ -42,7 +42,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
       }
     }
 
-    let ref = system.spawnAnonymous(b)
+    let ref = try! system.spawnAnonymous(b)
 
     p.expectMessage("outer-1")
     p.expectMessage("inner-2")
@@ -72,7 +72,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     // we attempt to cause a stack overflow by nesting tons of setups inside each other.
     // this could fail if canonicalization were implemented in some naive way.
     let depthLimit = 1024 * 8 // not a good idea, but we should not crash
-    let ref = system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), named: "deepSetupNestedRabbitHole")
+    let ref = try! system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), named: "deepSetupNestedRabbitHole")
 
     ref ! "ping"
     p.expectMessage("received:ping")

@@ -63,8 +63,36 @@ public enum Behavior<Message> {
 //      directive
 //    }
 //  }
+}
 
-  // MARK: Behavior interpretation utilities
+// MARK: Behavior interpretation utilities
+
+public enum IllegalBehaviorError<M>: Error {
+  /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
+  /// See their individual documentation for the rationale why that is so.
+  indirect case notAllowedAsInitial(_ behavior: Behavior<M>)
+}
+
+/// Internal operations for behavior manipulation
+extension Behavior {
+  // TODO was thinking to make it a class since then we could "hide it more" from users... Do we need to though? they can't call them anyway -- ktoso
+
+  // TODO I kind of want it to throw really...
+  func validateAsInitial() throws {
+    switch self {
+    case .same:      throw IllegalBehaviorError.notAllowedAsInitial(self)
+    case .unhandled: throw IllegalBehaviorError.notAllowedAsInitial(self)
+    default: return ()
+    }
+  }
+
+  func validateAsInitialFatal(file: StaticString = #file, line: UInt = #line) {
+    switch self {
+    case .same:      fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
+    case .unhandled: fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
+    default: return ()
+    }
+  }
 
   /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
   /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
@@ -97,12 +125,3 @@ open class ActorBehavior<Message> {
     return .unhandled
   }
 }
-
-//extension Behavior {
-//  static func receiveMessage(_ handle: (Message) -> Void) -> Behavior<Message> {
-//    return .receiveMessage({ msg in
-//      handle(msg)
-//      return .same
-//    })
-//  }
-//}

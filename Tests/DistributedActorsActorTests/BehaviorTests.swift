@@ -34,7 +34,7 @@ class BehaviorTests: XCTestCase {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     let message = "EHLO"
-    let _: ActorRef<String> = system.spawnAnonymous(.setup(onStart: { context in
+    let _: ActorRef<String> = try! system.spawnAnonymous(.setup(onStart: { context in
       pprint("sending the HELLO")
       p ! message
       return .stopped
@@ -50,7 +50,7 @@ class BehaviorTests: XCTestCase {
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-    for i in 0...1 {
+    for _ in 0...1 {
       let payload: String = messages.nextName()
       p ! payload
       p.expectMessage(payload)
@@ -63,7 +63,7 @@ class BehaviorTests: XCTestCase {
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-    for i in 0...10 {
+    for _ in 0...10 {
       let payload: String = messages.nextName()
       p ! payload
       p.expectMessage(payload)
@@ -71,18 +71,18 @@ class BehaviorTests: XCTestCase {
     // TODO p.expectTerminated(ref)
   }
 
-  func test_two_actors_should_wakeUp_on_new_message_lockstep() {
+  func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-3", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
     let echoPayload: ActorRef<TestMessage> =
-      system.spawnAnonymous(.receiveMessage{ message in
+      try system.spawnAnonymous(.receiveMessage{ message in
         p ! message.message
         return .same
       })
 
-    for i in 0...10 {
+    for _ in 0...10 {
       let payload: String = messages.nextName()
       echoPayload ! TestMessage(message: payload, replyTo: p.ref)
       p.expectMessage(payload)
@@ -99,7 +99,7 @@ class BehaviorTests: XCTestCase {
       return "Thanks for: <\(m)>"
     }
 
-    let ref: ActorRef<TestMessage> = system.spawn(
+    let ref: ActorRef<TestMessage> = try! system.spawn(
       .receive { (context, testMessage) in
         context.log.info("Received \(testMessage)")
         testMessage.replyTo ! thxFor(testMessage.message)
@@ -137,12 +137,12 @@ class BehaviorTests: XCTestCase {
     }
   }
 
-  func test_ActorBehavior_receivesMessages() {
+  func test_ActorBehavior_receivesMessages() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-5", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-    let ref: ActorRef<TestMessage> = system.spawnAnonymous(MyActor())
+    let ref: ActorRef<TestMessage> = try system.spawnAnonymous(MyActor())
 
     // first we send many messages
     for i in 0...10 {
