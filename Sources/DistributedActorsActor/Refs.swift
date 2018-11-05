@@ -28,7 +28,7 @@ public protocol ReceivesMessages { // CanBeTold ? ;-)
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public class ActorRef<Message>: ReceivesMessages {
-  var path: String {
+  var path: ActorPath {
     return undefined()
   }
 
@@ -42,7 +42,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
     return "ActorRef(\(path))"
   }
   public var debugDescription: String {
-    return "ActorRef(\(path)#<UID>" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
+    return "ActorRef(\(path.debugDescription)" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
   }
 }
 
@@ -67,16 +67,16 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
   ///
   /// Bottom line: I feel we may gain some performance by straying from the Akka way of carrying the names, yet at the same time, we need to guarantee some way for users to get names; they're incredibly important.
 
-  let _path: String // TODO this is if we want them in a hierarchy, otherwise it would be "name" but I think hierarchy has been pretty successful for Akka
-  public override var path: String { return _path }
+  let _path: ActorPath
+  public override var path: ActorPath { return _path }
 
   let mailbox: Mailbox<Message> // TODO we need to be able to swap it for DeadLetters or find some other way
 
   // MARK: Internal details; here be dragons
   private let cell: ActorCell<Message>
 
-  public init(path: String, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
-    self._path = path // TODO make custom type for it
+  public init(path: ActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
+    self._path = path
     self.cell = cell
     self.mailbox = mailbox
   }
@@ -96,4 +96,3 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
   }
 
 }
-

@@ -56,8 +56,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   override public var myself: ActorRef<Message> { return _myself! }
 
   // FIXME move to proper actor paths
-  override public var path: String { return self.myself.path }
-  override public var name: String { return String(self.path.split(separator: "/").last!) }
+  override public var path: ActorPath { return self.myself.path }
+  override public var name: String { return path.name }
 
   // access only from within actor
   private lazy var _log = ActorLogger(self.context)
@@ -130,9 +130,7 @@ public class ActorContext<Message> {
   ///
   /// // TODO maybe we can pull of some better things with source location where one was started as well being carried here?
   /// // This would be for "debugging mode", not for log statements though; interesting idea tho; may want to be configurable since adds weight
-  ///
-  /// Invariants: MUST NOT be empty.
-  public var path: String { // TODO ActorPath to abstract over it and somehow optimize it?
+  public var path: ActorPath {
     return undefined()
   }
 

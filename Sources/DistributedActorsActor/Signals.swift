@@ -24,3 +24,13 @@ public enum Signal {
   // case preRestart
   // case postStop
 }
+
+extension Signal: Equatable {
+  public static func ==(lhs: Signal, rhs: Signal) -> Bool {
+    switch lhs {
+    case let .terminated(ref: ref, reason: reason):
+      guard case .terminated(ref, reason) = rhs else { return false }
+      return true
+    }
+  }
+}

@@ -87,7 +87,7 @@ public protocol ActorRefFactory {
 
   /// Spawn an actor with the given behavior name and props.
   /// - returns
-  func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props) -> ActorRef<Message>
+  func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props) throws -> ActorRef<Message>
 }
 
 // MARK: Actor creation
@@ -95,9 +95,17 @@ public protocol ActorRefFactory {
 extension ActorSystem: ActorRefFactory {
 
   /// Spawn a new top-level Actor with the given initial behavior and name.
-  public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) -> ActorRef<Message> {
-    log.info("Spawning \(behavior), named: [\(name)]")
+  ///
+  /// - throws: when the passed behavior is not a legal initial behavior
+  /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
+  public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    try behavior.validateAsInitial() // TODO good example of what would be a soft crash...
 
+    // FIXME hacks... should get real parent
+    let nameSegment = try ActorPathSegment(name) // performs validation
+    let path = try ActorPath([ActorPathSegment("user"), nameSegment])
+
+    log.info("Spawning \(behavior), named: [\(name)]")
 
     // TODO validate name is valid actor name (no / in it etc)
     // TODO move this to the provider perhaps? or some way to share setup logic
@@ -114,7 +122,7 @@ extension ActorSystem: ActorRefFactory {
     // mailbox.set(cell) // TODO remind myself why it had to be a setter back in Akka
 
     let refWithCell = ActorRefWithCell(
-        path: "/user/\(name)", // TODO this is a mock
+        path: path,
         cell: cell,
         mailbox: mailbox
     )
@@ -125,19 +133,19 @@ extension ActorSystem: ActorRefFactory {
     return refWithCell
   }
 
-  public func spawn<Message>(_ behavior: ActorBehavior<Message>, named name: String, props: Props = Props()) -> ActorRef<Message> {
-    return spawn(.custom(behavior: behavior), named: name, props: props)
+  public func spawn<Message>(_ behavior: ActorBehavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    return try spawn(.custom(behavior: behavior), named: name, props: props)
   }
 
   // Implementation note:
   // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
   // and devs should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
   // This is why there should not be default parameter values for actor names
-  public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) -> ActorRef<Message> {
-    return spawn(behavior, named: self.anonymousNames.nextName(), props: props)
+  public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+    return try spawn(behavior, named: self.anonymousNames.nextName(), props: props)
   }
 
-  public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) -> ActorRef<Message> {
-    return spawnAnonymous(.custom(behavior: behavior), props: props)
+  public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+    return try spawnAnonymous(.custom(behavior: behavior), props: props)
   }
 }

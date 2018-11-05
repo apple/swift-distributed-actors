@@ -36,7 +36,7 @@ final public class ActorTestProbe<Message> {
   /// Blocking linked queue, available to run assertions on
   private let messagesQueue: LinkedBlockingQueue<Message>
   /// Blocking linked queue, available to run assertions on
-  // private let signalQueue = LinkedBlockingQueue<Message>()
+  private let signalQueue: LinkedBlockingQueue<Signal>
 
 // TODO make this work
 //  public static func spawnAnonymous<Message>(on system: ActorSystem) -> ActorTestProbe<Message> {
@@ -55,8 +55,9 @@ final public class ActorTestProbe<Message> {
     self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
 
     self.messagesQueue = LinkedBlockingQueue<Message>()
+    self.signalQueue = LinkedBlockingQueue<Signal>()
     let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue)
-    self.ref = system.spawn(behavior, named: name)
+    self.ref = try! system.spawn(behavior, named: name)
   }
 
   private static func behavior(messageQueue: LinkedBlockingQueue<Message>) -> Behavior<Message> {
@@ -95,13 +96,14 @@ final public class ActorTestProbe<Message> {
   }
 
   public func expectSignal(_ signal: Signal) throws {
-    messagesQueue.dequeue()
-    let got: Signal = undefined() // await on the signal queue
-    fatalError("Expected [\(signal)] got: [\(got)]")
+    let got: Signal = signalQueue.dequeue()
+    if got != signal {
+      fatalError("Expected [\(signal)] got: [\(got)]")
+    }
   }
 
   public func expectTerminated<T>(ref: ActorRef<T>) throws {
-    print("IMPLEMENT: expectTerminated")
+    fatalError("IMPLEMENT: expectTerminated")
   }
 
 }
