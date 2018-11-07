@@ -138,7 +138,7 @@ class BehaviorTests: XCTestCase {
   }
 
   func test_ActorBehavior_receivesMessages() {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-4", on: system)
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-5", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -161,4 +161,9 @@ class BehaviorTests: XCTestCase {
     }
   }
 
+  func test_expectNoMessage() {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+
+    p.expectNoMessage(for: .milliseconds(100))
+  }
 }

@@ -18,6 +18,10 @@ import Darwin
 import Glibc
 #endif
 
+//import Foundation
+
+import NIO
+
 public final class Condition {
   public var condition: pthread_cond_t = pthread_cond_t()
 
@@ -53,17 +57,30 @@ public final class Condition {
   }
 
   @inlinable
-  public func wait(_ mutex: Mutex, timeoutAt: Int) -> Void {
+  public func wait(_ mutex: Mutex, amount: TimeAmount) -> Bool {
 //    clock_gettime(CLOCK_REALTIME, &now)
 //    let reltime = sleep_til_this_absolute_time - now;
-    let t = timespec(tv_sec: timeoutAt, tv_nsec: 0)
-    let error = withUnsafePointer(to: t, { p in
-      pthread_cond_timedwait(&condition, &mutex.mutex, p)
+
+    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+    let time = TimeSpec.from(timeAmount: amount)
+    #else
+    var now = timespec()
+    clock_gettime(CLOCK_REALTIME, &now)
+    let time = now + TimeSpec.from(timeAmount: amount)
+    #endif
+    let error = withUnsafePointer(to: time, { p -> Int32 in
+      #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+      return pthread_cond_timedwait_relative_np(&condition, &mutex.mutex, p)
+      #else
+      return pthread_cond_timedwait(&condition, &mutex.mutex, p)
+      #endif
     })
 
     switch error {
     case 0:
-      return
+      return true
+    case ETIMEDOUT:
+      return false
     case EPERM:
       fatalError("Wait failed, mutex is not owned by this thread")
     case EINVAL:

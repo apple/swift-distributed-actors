@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import NIO
 import Swift Distributed ActorsActor
 
 /*
@@ -40,4 +41,4 @@ let p3: Philosopher.Ref = system.spawn(Philosopher(left: fork2, right: fork3).th
 let p4: Philosopher.Ref = system.spawn(Philosopher(left: fork3, right: fork4).thinking, named: "Cory")
 let p5: Philosopher.Ref = system.spawn(Philosopher(left: fork4, right: fork5).thinking, named: "Norman")
 
-Thread.sleep(10000)
+Thread.sleep(.seconds(10))

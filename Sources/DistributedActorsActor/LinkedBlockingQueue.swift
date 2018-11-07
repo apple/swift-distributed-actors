@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftDistributedActorsDungeon
+import NIO
 import NIOConcurrencyHelpers
 
 public final class LinkedBlockingQueue<A> {
@@ -56,19 +56,44 @@ public final class LinkedBlockingQueue<A> {
   public func dequeue() -> A {
     return takeLock.synchronized { () -> A in
       while true {
-        if count.load() > 0 {
-          let newNext = consumer.next!
-          let res = newNext.item!
-          newNext.item = nil
-          consumer.next = nil
-          consumer = newNext
-          if count.sub(1) > 1 {
-            notEmpty.signal()
-          }
-          return res
+        if let elem = take() {
+          return elem
         }
         notEmpty.wait(takeLock)
       }
+    }
+  }
+
+  public func poll(_ timeout: TimeAmount) -> A? {
+    return takeLock.synchronized { () -> A? in
+      if let item = take() {
+        return item
+      }
+
+      guard notEmpty.wait(takeLock, amount: timeout) else {
+        return nil
+      }
+
+      return take()
+    }
+  }
+
+  // Helper function to actually take an element out of the queue.
+  // This function is not synchronized and expects the caller to
+  // already hold the lock.
+  private func take() -> A? {
+    if count.load() > 0 {
+      let newNext = consumer.next!
+      let res = newNext.item!
+      newNext.item = nil
+      consumer.next = nil
+      consumer = newNext
+      if count.sub(1) > 1 {
+        notEmpty.signal()
+      }
+      return res
+    } else {
+      return nil
     }
   }
 

@@ -14,7 +14,6 @@
 
 
 import NIOConcurrencyHelpers
-import SwiftDistributedActorsDungeon
 import Swift Distributed ActorsActor
 
 final class ActorTestkit {
