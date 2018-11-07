@@ -56,11 +56,9 @@ let system = ActorSystem()
 
 let n = 5_000_000
 
-import SwiftDistributedActorsDungeon
-
 measureAndPrint(desc: "receive \(n) messages") {
-  let l = Mutex()
-  let c = Condition()
+  let l = Swift Distributed ActorsActor.Mutex()
+  let c = Swift Distributed ActorsActor.Condition()
 
   let ref: ActorRef<Int> = system.spawnAnonymous(.receiveMessage { msg in
     if msg == n {

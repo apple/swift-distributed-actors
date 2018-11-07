@@ -23,6 +23,8 @@ import Darwin
 import Glibc
 #endif
 
+import NIO
+
 public enum ThreadError: Error {
   case threadCreationFailed
   case threadJoinFailed
@@ -83,13 +85,8 @@ public class Thread {
     pthread_detach(thread)
   }
 
-  public static func sleep(_ millis: Int) -> Void {
-    let nanosPart =  millis % 1000
-    let nanos = nanosPart * 1000 * 1000
-    let seconds = (millis - nanosPart) / 1000
-    var time = timespec()
-    time.tv_sec = seconds
-    time.tv_nsec = nanos
+  public static func sleep(_ amount: TimeAmount) -> Void {
+    var time = TimeSpec.from(timeAmount: amount)
     let err = nanosleep(&time, nil)
     if err != 0 {
     switch errno {

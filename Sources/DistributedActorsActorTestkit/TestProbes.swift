@@ -14,7 +14,6 @@
 
 import Foundation
 import Swift Distributed ActorsActor
-import SwiftDistributedActorsDungeon
 import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
@@ -122,7 +121,7 @@ extension ActorTestProbe where Message: Equatable {
         got.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
       }
     } catch {
-      let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription())], error: \(error)"
+      let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
       callSite.fail(message: message)
     }
   }
@@ -134,76 +133,18 @@ extension ActorTestProbe where Message: Equatable {
       got.shouldBe(type)
     }
   }
+
+  public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    if let message = self.messagesQueue.poll(timeout) {
+      let message = "Received unexpected message [\(message)]. Did not expect to receive any messages for [\(timeout.prettyDescription)]."
+      callSite.fail(message: message)
+    }
+  }
 }
 
 extension ActorTestProbe: ReceivesMessages {
   public func tell(_ message: Message) {
     self.ref.tell(message)
-  }
-}
-
-
-// --- support infra ---
-
-// TODO get Dario's queue as a baseline and take it from there... we need poll with a timeout mostly
-fileprivate class LinkedBlockingQueue<A> {
-  public class Node<A> {
-    var item: A?
-    var next: Node<A>?
-
-    public init(_ item: A?) {
-      self.item = item
-    }
-  }
-
-  private var producer: Node<A>
-  private var consumer: Node<A>
-  private let putLock = Mutex()
-  private let takeLock = Mutex()
-   private let notEmpty: Condition = Condition()
-  private var count = Atomic<Int>(value: 0)
-
-  public init() {
-    producer = Node(nil)
-    consumer = producer
-  }
-
-  public func enqueue(_ item: A) -> Void {
-    var oldCount = 0
-    putLock.synchronized {
-      let next = Node(item)
-      producer.next = next
-      producer = next
-      oldCount = count.add(1)
-    }
-
-    if oldCount == 0 {
-      takeLock.synchronized {
-        notEmpty.signal()
-      }
-    }
-  }
-
-  public func dequeue() -> A {
-    return takeLock.synchronized { () -> A in
-      while true {
-        if count.load() > 0 {
-          let newNext = consumer.next!
-          let res = newNext.item!
-          newNext.item = nil
-          consumer.next = nil
-          consumer = newNext
-          if count.sub(1) > 1 {
-            notEmpty.signal()
-          }
-          return res
-        }
-        notEmpty.wait(takeLock)
-      }
-    }
-  }
-
-  public func size() -> Int {
-    return count.load()
   }
 }
