@@ -91,7 +91,7 @@ extension TimeAmount {
       case .days: return "d"
       }
     }
-    
+
     func timeAmount(_ amount: Int) -> TimeAmount {
       switch self {
       case .nanoseconds: return .nanoseconds(amount)
