@@ -22,22 +22,24 @@ import Dispatch
 // The cell is mutable, as it may replace the behavior it hosts
 public class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
-  // keep the behavior, context, dispatcher references etc
-
   // Implementation notes:
   // The phrase that "actor change their behavior" is taken quite literally by our infrastructure,
   // on each message being applied the actor may return a new behavior that will be handling the next message.
   public var behavior: Behavior<Message>
 
-  let _dispatcher: MessageDispatcher
+  // Implementation of DeathWatch
+  private var deathWatch: DeathWatch<Message>!
+
+  private let _dispatcher: MessageDispatcher
 
   /// Guaranteed to be set during ActorRef creation
-  var _myself: ActorRef<Message>?
+  private var _myself: ActorRef<Message>?
 
   init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
     // TODO we may end up referring to the system here... we'll see
     self.behavior = behavior
     self._dispatcher = dispatcher
+    self.deathWatch = DeathWatch()
   }
 
   /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
@@ -72,24 +74,61 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// WARNING: Mutates the cell's behavior.
   @inlinable
   func interpretMessage(message: Message) -> Void {
-    self.behavior = Behavior<Message>.interpretMessage(behavior: self.behavior, context: self.context, message: message)
+    func interpretMessage0(_ behavior: Behavior<Message>, _ message: Message) -> Behavior<Message> {
+      pprint("interpret: \(behavior), with message: \(message)")
+        
+      switch behavior {
+      case let .receiveMessage(recv):       return recv(message)
+      case let .receive(recv):              return recv(context, message)
+      case .ignore:                         return .same // ignore message and remain .same
+      case let .custom(behavior):           return behavior.receive(context: context, message: message)
+      case let .signalHandling(recvMsg, _): return interpretMessage0(recvMsg, message) // TODO should we keep the signal handler even if not .same? // TODO more signal handling tests
+      default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
+      }
+    }
+
+    let currentBehavior = self.behavior
+    let next: Behavior<Message> = interpretMessage0(currentBehavior, message)
+    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
+
+    self.behavior = currentBehavior.canonicalize(context, next: next)
   }
 
-  @inlinable
-  func interpretSystemMessage(message: SystemMessage) {
-//    log.info("Interpret system message: \(message)")
-    switch message {
-    case .start:
-      // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
-      if case .setup(let onStart) = behavior {
-        let next = onStart(context)
-        self.behavior = self.behavior.canonicalize(context, next: next)
-      } // else we ignore the .start, since no behavior is interested in it // TODO or we pass in anyway, since it is a signal? To be considered -- ktoso
+  // MARK: Handling system messages
 
+  func interpretSystemMessage(message: SystemMessage) {
+    //    log.info("Interpret system message: \(message)")
+    switch message {
+    // initialization:
+    case .start: self.interpretSystemStart()
+
+    // death watch
+    case let .watch(watcher): self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+    case let .unwatch(watcher): self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
+
+    // termination:
     default:
       pprint("invokeSystem, handling of \(message) is not implemented yet; Behavior was: \(behavior)")
     }
   }
+
+  @inlinable
+  internal func interpretSystemStart() {
+    // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
+    if case .setup(let onStart) = behavior {
+      let next = onStart(context)
+      self.behavior = self.behavior.canonicalize(context, next: next)
+    } // else we ignore the .start, since no behavior is interested in it // TODO or we pass in anyway, since it is a signal? To be considered -- ktoso
+  }
+
+  override public func watch<M>(_ watchee: ActorRef<M>) {
+    self.deathWatch.watch(watchee: watchee, myself: context.myself)
+  }
+
+  override public func unwatch<M>(_ watchee: ActorRef<M>) {
+    self.deathWatch.unwatch(watchee: watchee)
+  }
+
 
 }
 
@@ -151,6 +190,29 @@ public class ActorContext<Message> {
   }
 
   public var dispatcher: MessageDispatcher {
+    return undefined()
+  }
+  
+
+  /// Watches the given actor for termination events, and will receive an `Terminated` signal
+  /// when the watched actor is stopped.
+  ///
+  /// Death Pact: By watching an actor one enters signs a "death pact" with the watchee,
+  /// meaning that it will also terminate itself once it receives the `Terminated(who)` signal
+  /// about the watchee.
+  ///
+  /// Alternatively, one can handle the `Terminated` signal using the `.receiveSignal()` method,
+  /// which gives this actor the ability to react to the watchee's death (e.g. by saying some nice words about its life time,
+  /// or spawning a replacement worker in its' place).
+  /// When the `Terminated` signal is handled by this actor, the automatic death pact will not be triggered.
+  public func watch<M>(_ watchee: ActorRef<M>) {
+    return undefined()
+  }
+
+  /// Reverts the watching of an previously watched actor.
+  ///
+  /// Unwatching a not-watched actor has no effect.
+  public func unwatch<M>(_ watchee: ActorRef<M>) {
     return undefined()
   }
 

@@ -30,7 +30,7 @@ class BehaviorTests: XCTestCase {
     let replyTo: ActorRef<String>
   }
 
-  func test_setup_executesImmediatelyOnStartOfActor() {
+  func test_setup_executesImmediatelyOnStartOfActor() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     let message = "EHLO"
@@ -40,12 +40,12 @@ class BehaviorTests: XCTestCase {
       return .stopped
     }))
 
-    p.expectMessage(message)
+    try p.expectMessage(message)
     // TODO p.expectTerminated(ref)
   }
 
   // TODO more of a scheduling spec than behavior spec so move it
-  func test_single_actor_should_wakeUp_on_new_message_exactly_2_locksteps() {
+  func test_single_actor_should_wakeUp_on_new_message_exactly_2_locksteps() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-1", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
@@ -53,12 +53,12 @@ class BehaviorTests: XCTestCase {
     for _ in 0...1 {
       let payload: String = messages.nextName()
       p ! payload
-      p.expectMessage(payload)
+      try p.expectMessage(payload)
     }
     // TODO p.expectTerminated(ref)
   }
 
-  func test_single_actor_should_wakeUp_on_new_message_lockstep() {
+  func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-2", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
@@ -66,7 +66,7 @@ class BehaviorTests: XCTestCase {
     for _ in 0...10 {
       let payload: String = messages.nextName()
       p ! payload
-      p.expectMessage(payload)
+      try p.expectMessage(payload)
     }
     // TODO p.expectTerminated(ref)
   }
@@ -85,12 +85,12 @@ class BehaviorTests: XCTestCase {
     for _ in 0...10 {
       let payload: String = messages.nextName()
       echoPayload ! TestMessage(message: payload, replyTo: p.ref)
-      p.expectMessage(payload)
+      try p.expectMessage(payload)
     }
     // TODO p.expectTerminated(ref)
   }
 
-  func test_receive_receivesMessages() {
+  func test_receive_receivesMessages() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-4", on: system)
 
     let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
@@ -115,7 +115,7 @@ class BehaviorTests: XCTestCase {
     // we do so separately to avoid sending in "lock-step" in the first loop above here
     for i in 0...10 {
       // TODO make expectMessage()! that can terminate execution
-      p.expectMessage(thxFor("message-\(i)")) 
+      try p.expectMessage(thxFor("message-\(i)"))
     }
 
     // TODO p.expectTerminated(ref)
@@ -157,7 +157,7 @@ class BehaviorTests: XCTestCase {
     // we do so separately to avoid sending in "lock-step" in the first loop above here
     for i in 0...10 {
       // TODO make expectMessage()! that can terminate execution
-      p.expectMessage(thxFor("message-\(i)"))
+      try p.expectMessage(thxFor("message-\(i)"))
     }
   }
 
@@ -178,5 +178,11 @@ class BehaviorTests: XCTestCase {
     for i in 0...10 {
       p.expectMessage("\(i)")
     }
+  }
+
+  func test_expectNoMessage() throws {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+
+    try p.expectNoMessage(for: .milliseconds(100))
   }
 }

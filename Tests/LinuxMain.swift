@@ -35,6 +35,7 @@ import XCTest
          testCase(BehaviorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),
          testCase(DeadlineTests.allTests),
+         testCase(DeathWatchTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),

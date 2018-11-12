@@ -34,13 +34,13 @@ def header(fileName)
   string = <<-eos
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the DistributedActors open source project
+// This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2017-2018 Apple Inc. and the DistributedActors project authors
+// Copyright (c) 2017-2018 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.md for the list of DistributedActors project authors
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //

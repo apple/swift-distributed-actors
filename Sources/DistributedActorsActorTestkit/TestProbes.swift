@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import Swift Distributed ActorsActor
+@testable import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
@@ -34,9 +34,9 @@ final public class ActorTestProbe<Message> {
   private let expectationTimeout: TimeAmount
 
   /// Blocking linked queue, available to run assertions on
-  private let messagesQueue: LinkedBlockingQueue<Message>
+  private let messagesQueue = LinkedBlockingQueue<Message>()
   /// Blocking linked queue, available to run assertions on
-  private let signalQueue: LinkedBlockingQueue<Signal>
+  private let signalQueue = LinkedBlockingQueue<SystemMessage>()
 
 // TODO make this work
 //  public static func spawnAnonymous<Message>(on system: ActorSystem) -> ActorTestProbe<Message> {
@@ -54,8 +54,6 @@ final public class ActorTestProbe<Message> {
 
     self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
 
-    self.messagesQueue = LinkedBlockingQueue<Message>()
-    self.signalQueue = LinkedBlockingQueue<Signal>()
     let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue)
     self.ref = try! system.spawn(behavior, named: name)
   }
@@ -74,7 +72,7 @@ final public class ActorTestProbe<Message> {
 
     let deadline = Deadline.fromNow(amount: timeout)
 
-    var lastObservedError: Error? = nil
+    // var lastObservedError: Error? = nil
 
     // TODO make more async than spining like this, also with check interval rather than spin, or use the blocking queue properly
     while !deadline.isOverdue(now: Date()) {
@@ -83,7 +81,7 @@ final public class ActorTestProbe<Message> {
         return res
       } catch {
         // keep error, try again...
-        lastObservedError = error // TODO show it
+        // lastObservedError = error // TODO show it
       }
     }
 
@@ -95,25 +93,49 @@ final public class ActorTestProbe<Message> {
     case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
   }
 
-  public func expectSignal(_ signal: Signal) throws {
-    let got: Signal = signalQueue.dequeue()
-    if got != signal {
-      fatalError("Expected [\(signal)] got: [\(got)]")
+
+  // MARK: Expecting termination signals
+
+  /// Expects a signal to be enqueued to this actor within the default [[expectationTimeout]].
+  public func expectSignal(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
+    let maybeGot: SystemMessage? = self.signalQueue.poll(expectationTimeout)
+    guard let got = maybeGot else {
+      try callSite.fail(message: "Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
+      fatalError() // won't trigger since callSite.fail always throws
     }
+    return got
   }
 
-  public func expectTerminated<T>(ref: ActorRef<T>) throws {
-    fatalError("IMPLEMENT: expectTerminated")
+  public func expectSignal(expected: SystemMessage, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    let got: SystemMessage = try self.expectSignal(file: file, line: line, column: column)
+    got.shouldEqual(expected, file: file, line: line, column: column)
+  }
+
+  public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    let signal = try self.expectSignal(file: file, line: line, column: column)
+    switch signal {
+    case let .terminated(_ref, _) where _ref.path == ref.path: return () // ok!
+    default: try callSite.fail(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
+    }
   }
 
 }
 
 extension ActorTestProbe where Message: Equatable {
 
+  // MARK: Expecting messages
+
+  /// Fails in nice readable ways:
+  ///    sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
+  ///        try! probe.expectMessage("awaiting-forever")
+  ///                   ^~~~~~~~~~~~~~
+  ///    error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
   ///
   /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
-  // TODO is it worth it making the API enforce users to write in tests `try! p.expectMessage(message)`?
-  public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
     let timeout = expectationTimeout
     do {
@@ -124,7 +146,7 @@ extension ActorTestProbe where Message: Equatable {
       }
     } catch {
       let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
-      callSite.fail(message: message)
+      try callSite.fail(message: message)
     }
   }
 
@@ -136,17 +158,36 @@ extension ActorTestProbe where Message: Equatable {
     }
   }
 
-  public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+  public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
     if let message = self.messagesQueue.poll(timeout) {
       let message = "Received unexpected message [\(message)]. Did not expect to receive any messages for [\(timeout.prettyDescription)]."
-      callSite.fail(message: message)
+      try callSite.fail(message: message)
     }
   }
+
 }
 
 extension ActorTestProbe: ReceivesMessages {
+  public var path: ActorPath {
+    return self.ref.path
+  }
+
   public func tell(_ message: Message) {
     self.ref.tell(message)
   }
 }
+
+// MARK: Watching Actors
+
+extension ActorTestProbe {
+
+  /// Instructs this probe to watch the passed in reference.
+  ///
+  /// This enables it to use [[expectTerminated]] to await for the watched actors termination.
+  public func watch<M>(_ watchee: ActorRef<M>) {
+    let downcast: ActorRefWithCell<M> = watchee.internal_downcast
+    downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSignals(self.ref)))
+  }
+}
+
