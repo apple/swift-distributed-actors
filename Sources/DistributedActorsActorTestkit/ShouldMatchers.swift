@@ -28,11 +28,6 @@ struct TestMatchers<T: Equatable> {
     self.callSite = callSite
   }
 
-//  func fail(reason: String) {
-//    let msg = self.callSite.detailedMessage(assertionExplained: reason)
-//    XCTFail(msg, file: callSite.file, line: callSite.line)
-//  }
-
   func toEqual(_ expected: T) {
     let msg = self.callSite.detailedMessage(it, expected)
     XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
@@ -48,7 +43,7 @@ struct TestMatchers<T: Equatable> {
 
 // MARK: free functions
 
-public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> E {
+public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
   let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
   let error = shouldThrow(block, file: file, line: line, column: column)
 
@@ -57,8 +52,6 @@ public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, 
     XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
     fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
   }
-
-  return error as! E // safe since we checked in guard above
 }
 
 public func shouldThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {

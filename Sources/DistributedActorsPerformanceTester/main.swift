@@ -15,15 +15,18 @@
 
 import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
+import NIO
 import Foundation
 
 // MARK: Test Harness
 
+let prettyOutput = true
+
 var warning: String = ""
 assert({
-  print("======================================================")
-  print("= YOU ARE RUNNING NIOPerformanceTester IN DEBUG MODE =")
-  print("======================================================")
+  print("==========================================================")
+  print("= YOU ARE RUNNING Swift Distributed ActorsPerformanceTester IN DEBUG MODE =")
+  print("==========================================================")
   warning = " <<< DEBUG MODE >>>"
   return true
   }())
@@ -47,7 +50,15 @@ public func measure(_ fn: () throws -> Int) rethrows -> [TimeInterval] {
 public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void {
   print("measuring\(warning): \(desc): ", terminator: "")
   let measurements = try measure(fn)
-  print(measurements.reduce("") { $0 + "\($1), " })
+
+   if prettyOutput {
+     print(measurements.reduce("") { (acc, m: TimeInterval) in
+       let prettyMeasurement = TimeAmount.nanoseconds(TimeAmount.Value(m * 1_000_000_000))
+       return acc + "\(prettyMeasurement.prettyDescription), "
+     })
+   } else {
+     print(measurements.reduce("") { $0 + "\($1), " })
+   }
 }
 
 
@@ -55,6 +66,19 @@ public func measureAndPrint(desc: String, fn: () throws -> Int) rethrows -> Void
 let system = ActorSystem()
 
 let n = 5_000_000
+
+print("~~~~~~~~~~~~~~ ActorPath ~~~~~~~~~~~~~~")
+
+try measureAndPrint(desc: "create short path") {
+  let root = try ActorPath(root: "user")
+  let master = try root / ActorPathSegment("master")
+  let worker = try master / ActorPathSegment("worker")
+  let _ = worker
+
+  return 1
+}
+
+print("~~~~~~~~~~~~~~ Actors ~~~~~~~~~~~~~~")
 
 measureAndPrint(desc: "receive \(n) messages") {
   let l = Swift Distributed ActorsActor.Mutex()

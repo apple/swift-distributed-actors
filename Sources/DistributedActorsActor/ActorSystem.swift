@@ -99,6 +99,17 @@ extension ActorSystem: ActorRefFactory {
   /// - throws: when the passed behavior is not a legal initial behavior
   /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
   public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    guard !name.starts(with: "$") else {
+      // only system and anonymous actors are allowed have names beginning with "$"
+      throw ActorPathError.illegalLeadingSpecialCharacter(name: name, illegal: "$")
+    }
+
+    return try self.spawnInternal(behavior, named: name, props: props)
+  }
+
+  // Actual spawn implementation, minus the leading "$" check on names;
+  // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
+  private func spawnInternal<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
     try behavior.validateAsInitial() // TODO good example of what would be a soft crash...
 
     // FIXME hacks... should get real parent
@@ -139,10 +150,10 @@ extension ActorSystem: ActorRefFactory {
 
   // Implementation note:
   // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
-  // and devs should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
+  // and developers should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
   // This is why there should not be default parameter values for actor names
   public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-    return try spawn(behavior, named: self.anonymousNames.nextName(), props: props)
+    return try spawnInternal(behavior, named: self.anonymousNames.nextName(), props: props)
   }
 
   public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {

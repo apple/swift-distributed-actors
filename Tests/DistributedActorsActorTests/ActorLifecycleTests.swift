@@ -65,11 +65,12 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     try check(illegalName: "hello world", expectedError: """
-                                                     illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
-                                                     """)
+                                                         illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+                                                         """)
+
     try check(illegalName: "he//o", expectedError: """
-                                                     illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
-                                                     """)
+                                                   illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
+                                                   """)
     try check(illegalName: "ążŻŌżąć", expectedError: """
                                                      illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
                                                      """)
