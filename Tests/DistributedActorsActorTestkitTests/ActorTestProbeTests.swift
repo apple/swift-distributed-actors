@@ -24,35 +24,30 @@ class ActorTestProbeTests: XCTestCase {
     // Await.on(system.terminate())
   }
 
-  func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() {
+  func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
     #if !SACT_TESTS_CRASH
     pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
     return ()
     #endif
-    let _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+    _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
     let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
-    probe.expectMessage("awaiting-forever")
-    // this causes a nice failure like:
-    //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
-    //        try! probe.expectMessage("awaiting-forever")
-    //                   ^~~~~~~~~~~~~~
-    //    error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
+    try probe.expectMessage("awaiting-forever")
   }
 
-  func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() {
+  func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() throws {
     #if !SACT_TESTS_CRASH
     pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
     return ()
     #endif
-    let _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+    _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
     let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     probe ! "one"
 
-    probe.expectMessage("two") // TODO style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
+    try probe.expectMessage("two") // TODO style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
     // this causes a nice failure like:
     //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
     //        try! probe.expectMessage("two")

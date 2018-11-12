@@ -25,7 +25,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     // Await.on(system.terminate()) // FIXME termination that actually does so
   }
 
-  func test_canonicalize_nestedSetupBehaviors() {
+  func test_canonicalize_nestedSetupBehaviors() throws {
     let p = ActorTestProbe<String>(named: "canonicalize-probe-1", on: system)
 
     let b: Behavior<String> = .setup { c1 in
@@ -44,15 +44,15 @@ class BehaviorCanonicalizeTests: XCTestCase {
 
     let ref = try! system.spawnAnonymous(b)
 
-    p.expectMessage("outer-1")
-    p.expectMessage("inner-2")
-    p.expectMessage("inner-3")
+    try p.expectMessage("outer-1")
+    try p.expectMessage("inner-2")
+    try p.expectMessage("inner-3")
     // p.expectNoMessage(.milliseconds(100))
     ref ! "ping"
-    p.expectMessage("received:ping")
+    try p.expectMessage("received:ping")
   }
 
-  func test_canonicalize_doesSurviveDeeplyNestedSetups() {
+  func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
     let p = ActorTestProbe<String>(named: "canonicalize-probe-2", on: system)
 
     func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
@@ -75,7 +75,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     let ref = try! system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), named: "deepSetupNestedRabbitHole")
 
     ref ! "ping"
-    p.expectMessage("received:ping")
+    try p.expectMessage("received:ping")
   }
 
 }

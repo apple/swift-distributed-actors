@@ -20,12 +20,15 @@ import Swift Distributed ActorsActorTestkit
 class ActorLifecycleTests: XCTestCase {
 
   let system = ActorSystem("ActorSystemTests")
+  lazy var testKit: ActorTestKit = ActorTestKit(system: system)
 
   override func tearDown() {
     // Await.on(system.terminate()) // FIXME termination that actually does so
   }
 
-  func test_shouldNotAllowStartingWith_Same() throws {
+  // MARK: starting actors
+
+  func test_spawn_shouldNotAllowStartingWith_Same() throws {
     // since there is no previous behavior to stay "same" name at the same time:
 
     let ex = shouldThrow {
@@ -38,7 +41,7 @@ class ActorLifecycleTests: XCTestCase {
                         """)
   }
 
-  func test_shouldNotAllowStartingWith_Unhandled() throws {
+  func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
     // the purpose of unhandled is to combine with things that can handle, and if we start a raw unhandled
     // it always will be unhandled until we use some signal to make it otherwise... weird edge case which
     // is better avoided all together.

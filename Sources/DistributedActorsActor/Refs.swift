@@ -17,18 +17,37 @@
 // TODO designing the cell and ref is so far the most tricky thing I've seen... We want to hide away the ActorRef
 //      people should deal with ActorRef<T>; so we can't go protocol for the ActorRef, and we can't go
 
-public protocol ReceivesMessages { // CanBeTold ? ;-)
-  associatedtype Message
+// MARK: Public API
 
-  func tell(_ message: Message)
+public protocol AddressableRef: Hashable {
+  var path: ActorPath { get }
+}
+extension AddressableRef {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    return lhs.path == rhs.path
+  }
+  public func hash(into hasher: inout Hasher) {
+    self.path.hash(into: &hasher)
+  }
 }
 
-// MARK: Public API
+public protocol ReceivesMessages: AddressableRef  {
+  associatedtype Message
+  /// Send message to actor referred to by this [[ActorRef]].
+  ///
+  /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
+  ///
+  /// Note that `tell` is a "fire-and-forget" operation and does not block.
+  /// The actor will eventually, asynchronously process the message sent to it.
+  func tell(_ message: Message)
+
+}
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public class ActorRef<Message>: ReceivesMessages {
-  var path: ActorPath {
+
+  public var path: ActorPath {
     return undefined()
   }
 
@@ -50,16 +69,20 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
   }
 }
 
-extension ActorRef: Equatable {
-  public static func ==(lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
-    return lhs.path == rhs.path
-  }
-}
-
-
 // MARK: Internal implementation classes
 
-internal final class ActorRefWithCell<Message>: ActorRef<Message> {
+/// INTERNAL API: Only for use by the actor system itself
+internal protocol ReceivesSignals: AnyReceivesSignals {
+  // TODO fix naming mess with Signal and SystemMessage
+
+  /// INTERNAL API: Only for use by the actor system itself
+  ///
+  /// Internal API causing an immediate send of a system message to target actor.
+  /// System messages are given stronger delivery guarantees in a distributed setting than "user" messages.
+  func sendSystemMessage(_ message: SystemMessage)
+}
+
+internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
   /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
@@ -85,7 +108,6 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
     self.mailbox = mailbox
   }
 
-  // TODO decide where tell should live
   public override func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
     self.sendMessage(message)
   }
@@ -94,11 +116,10 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
     // pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(payload: message))
   }
-  internal func sendSystemMessage(_ message: SystemMessage) {
+  /* internal */ func sendSystemMessage(_ message: SystemMessage) {
     // pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
   }
-
 }
 
 internal final class ActorRefAdapter<From, To>: ActorRef<From> {

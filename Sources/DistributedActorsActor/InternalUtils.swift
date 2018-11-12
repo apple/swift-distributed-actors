@@ -12,18 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// Forbidden tools for use only internally in Swift Distributed Actors.
+internal extension ActorRef {
 
-import NIOConcurrencyHelpers
-import Swift Distributed ActorsActor
-
-import XCTest
-
-final public class ActorTestKit {
-
-  private let system: ActorSystem
-
-  public init(system: ActorSystem) {
-    self.system = system
+  /// INTERNAL API: UNSAFE, DO NOT TOUCH.
+  internal var internal_downcast: ActorRefWithCell<Message> {
+    switch self {
+    case let withCell as ActorRefWithCell<Message>: return withCell
+    default: fatalError("Illegal downcast attempt from \(self) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+    }
   }
 
 }
+

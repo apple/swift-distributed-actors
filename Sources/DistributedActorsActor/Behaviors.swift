@@ -36,6 +36,11 @@ public enum Behavior<Message> {
   /// (e.g. send an initial message, or subscribe to some event stream, configure receive timeouts, etc.).
   case setup(onStart: (ActorContext<Message>) -> Behavior<Message>)
 
+  /// Allows defining actors by extending the [[ActorBehavior]] class.
+  ///
+  /// This allows for easier storage of mutable state, since one can utilize instance variables for this,
+  /// rather than closing over state like it is typical in the more function heavy (class-less) style.
+  // TODO rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
   case custom(behavior: ActorBehavior<Message>)
 
   /// Defines that the same behavior should remain
@@ -45,11 +50,22 @@ public enum Behavior<Message> {
   /// and the actor itself will stop. Return this behavior to stop your actors.
   case stopped
 
+  /// Allows handling messages
+  indirect case signalHandling(handleMessage: Behavior<Message>,
+                               handleSignal: (ActorContext<Message>, SystemMessage) -> Behavior<Message>)
+
   /// Causes a message to be assumed unhandled by the runtime.
   /// Unhandled messages are logged by default, and other behaviors may use this information to implement `apply1.orElse(apply2)` style logic.
   /// TODO and their logging rate should be configurable
   case unhandled
 
+  /// Ignore an incoming message.
+  ///
+  /// Ignoring a message differs from handling it with "unhandled" since the later can be acted upon by another behavior,
+  /// such as "orElse" which can be used for behavior composition. `ignore` on the other hand does "consume" the message,
+  /// in the sense that we did handle it, however simply chose to ignore it.
+  ///
+  /// Returning `ignore` implies remaining the same behavior, the same way as would returning `.same`.
   case ignore
 
 //  /// Apply given supervision to behavior
@@ -82,7 +98,25 @@ public enum Behavior<Message> {
   }
 }
 
-// MARK: Behavior interpretation utilities
+// MARK: Behavior combinators
+
+extension Behavior {
+
+  public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
+    return TODO("Not implemented yet:: orElse")
+  }
+
+  public func receiveSignal(_ handle: @escaping (ActorContext<Message>, SystemMessage) -> Behavior<Message>) -> Behavior<Message> {
+    return Behavior<Message>.signalHandling(handleMessage: self, handleSignal: handle)
+  }
+
+  public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, SystemMessage) -> Behavior<Message>) -> Behavior<Message> {
+    return Behavior<Message>.signalHandling(handleMessage: .unhandled, handleSignal: handle)
+  }
+}
+
+
+
 
 public enum IllegalBehaviorError<M>: Error {
   /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
@@ -90,11 +124,25 @@ public enum IllegalBehaviorError<M>: Error {
   indirect case notAllowedAsInitial(_ behavior: Behavior<M>)
 }
 
+
+open class ActorBehavior<Message> {
+  open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    fatalError("Not implemented")
+  }
+
+  open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
+    return .unhandled
+  }
+}
+
+// MARK: Internal tools to work with Behaviors
+
 /// Internal operations for behavior manipulation
-extension Behavior {
+internal extension Behavior {
   // TODO was thinking to make it a class since then we could "hide it more" from users... Do we need to though? they can't call them anyway -- ktoso
 
-  // TODO I kind of want it to throw really...
+  /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
+  /// since certain behaviors do not make sense as initial behavior.
   func validateAsInitial() throws {
     switch self {
     case .same:      throw IllegalBehaviorError.notAllowedAsInitial(self)
@@ -130,15 +178,5 @@ extension Behavior {
       }
     }
 
-  }
-}
-
-open class ActorBehavior<Message> {
-  open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
-    fatalError("Not implemented")
-  }
-
-  open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
-    return .unhandled
   }
 }

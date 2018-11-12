@@ -15,7 +15,8 @@
 import Foundation
 import XCTest
 
-// bear with me; Yeah, I know about https://github.com/Quick/Nimble
+// bear with me; we need testing facilities for the async things.
+// Yeah, I know about https://github.com/Quick/Nimble
 
 struct TestMatchers<T: Equatable> {
 
@@ -79,11 +80,11 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 /// Error report with shouldNotThrow includes more details about the thrown value:
 ///
 /// ```
-/// Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTests/ActorLifecycleTests.swift:55: error: -[Swift Distributed ActorsActorTests.ActorLifecycleTests test_beAbleToStop_immediately] : failed -
+/// sact/Tests/Swift Distributed ActorsActorTests/ActorLifecycleTests.swift:55: error: -[Swift Distributed ActorsActorTests.ActorLifecycleTests test_beAbleToStop_immediately] : failed -
 ///    shouldNotThrow({
 ///    ^~~~~~~~~~~~~~~
 /// error: Unexpected throw captured: illegalActorPathElement(name: "/user", illegal: "/", index: 0)
-/// Fatal error: Failed: expectedErrorToBeThrown: file /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActorTestkit/ShouldMatchers.swift, line 79
+/// Fatal error: Failed: expectedErrorToBeThrown: file sact/Sources/Swift Distributed ActorsActorTestkit/ShouldMatchers.swift, line 79
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
@@ -98,7 +99,7 @@ public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #fil
   }
 }
 
-enum ShouldMatcherError: Error {
+public enum ShouldMatcherError: Error {
   case expectedErrorToBeThrown
 }
 
@@ -176,8 +177,11 @@ struct CallSiteInfo {
 extension CallSiteInfo {
 
   /// Reports a failure at the given call site source location.
-  public func fail(message: String) {
-     XCTAssert(false, detailedMessage(assertionExplained: message), file: self.file, line: self.line)
+  public func fail(message: String) throws {
+    let details = detailedMessage(assertionExplained: message)
+    XCTAssert(false, details, file: self.file, line: self.line)
+
+    throw CallSiteError.CallSiteError(message: details)
 
     // Alternatively we could throw, however this interrupts the entire test run (!),
     // it would be awesome however if we could run a single test in an actor, and it would then crash the single test, not entire suite...

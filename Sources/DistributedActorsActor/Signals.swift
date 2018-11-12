@@ -19,18 +19,9 @@
 ///
 /// Signals will never be "dropped", as a special mailbox is used to store them, so even in presence of
 /// bounded mailbox configurations, signals are retained and handled as a priority during mailbox runs.m
+// FIXME system messages vs signals
 public enum Signal {
-  case terminated(ref: ActorRef<Never>, reason: String) // TODO figure out types for reason
+  // case terminated(ref: ActorRef<Never>, reason: String) // TODO figure out types for reason // TODO "existenceConfirmed: Bool"
   // case preRestart
   // case postStop
-}
-
-extension Signal: Equatable {
-  public static func ==(lhs: Signal, rhs: Signal) -> Bool {
-    switch lhs {
-    case let .terminated(ref: ref, reason: reason):
-      guard case .terminated(ref, reason) = rhs else { return false }
-      return true
-    }
-  }
 }
