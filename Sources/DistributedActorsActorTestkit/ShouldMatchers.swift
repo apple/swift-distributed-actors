@@ -43,9 +43,9 @@ struct TestMatchers<T: Equatable> {
 
 // MARK: free functions
 
-public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) {
   let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-  let error = shouldThrow(block, file: file, line: line, column: column)
+  let error = shouldThrow(file: file, line: line, column: column, block)
 
   guard error is E else {
     let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw [\(expected)], but threw: [\(error)]")
@@ -54,7 +54,7 @@ public func shouldThrow<E: Error, T>(expected: E.Type, _ block: () throws -> T, 
   }
 }
 
-public func shouldThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) -> Error {
   let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
   var it: T? = nil
   do {

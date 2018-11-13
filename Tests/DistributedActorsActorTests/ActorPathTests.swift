@@ -24,7 +24,7 @@ class ActorPathTests: XCTestCase {
   }
 
   func test_shouldNotAllow_illegalCharacters() {
-    shouldThrow(expected: ActorPathError.self, { let _ = try ActorPath(root: "") })
+    shouldThrow(expected: ActorPathError.self) { let _ = try ActorPath(root: "") }
   }
 
 }
