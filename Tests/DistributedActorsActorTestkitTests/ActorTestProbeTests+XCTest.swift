@@ -26,6 +26,7 @@ extension ActorTestProbeTests {
       return [
                 ("test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout", test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout),
                 ("test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived", test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived),
+                ("test_expectNoMessage", test_expectNoMessage),
            ]
    }
 }
