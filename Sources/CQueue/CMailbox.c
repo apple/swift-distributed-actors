@@ -45,9 +45,10 @@ bool is_terminating(int64_t status);
 bool is_terminated(int64_t status);
 bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_message);
 
-CMailbox* cmailbox_create(int64_t capacity) {
+CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
   CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
   mailbox->capacity = capacity;
+  mailbox->max_run_length = max_run_length;
   mailbox->messages = cmpsc_linked_queue_create();
   mailbox->system_messages = cmpsc_linked_queue_create();
 
@@ -101,8 +102,8 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
   // TODO: pass maximum in as parameter to allow for more elaborate,
   // metrics based scheduling decisions
   int64_t max_run_length = message_count(status);
-  if (max_run_length > 1) {
-    max_run_length = 1;
+  if (max_run_length > mailbox->max_run_length) {
+    max_run_length = mailbox->max_run_length;
   }
 
   if (has_system_messages(status)) {

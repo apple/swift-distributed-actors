@@ -22,6 +22,7 @@
 
 typedef struct {
   int64_t capacity;
+  int64_t max_run_length;
   _Atomic int64_t status;
   CMPSCLinkedQueue* system_messages;
   CMPSCLinkedQueue* messages;
@@ -29,7 +30,7 @@ typedef struct {
 
 typedef void (*InterpretMessageCallback)(void*, void*);
 
-CMailbox* cmailbox_create(int64_t capacity);
+CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 void cmailbox_destroy(CMailbox* mailbox);
 
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);

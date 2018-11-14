@@ -53,8 +53,8 @@ final class Mailbox<Message> {
   var systemContext: WrappedClosure
   let interpretMessage: InterpretMessageCallback
 
-  init(cell: ActorCell<Message>, capacity: Int) {
-    self.mailbox = cmailbox_create(Int64(capacity));
+  init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
+    self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
     self.cell = cell
     self.context = WrappedClosure({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
