@@ -153,10 +153,33 @@ internal extension Behavior {
 
   func validateAsInitialFatal(file: StaticString = #file, line: UInt = #line) {
     switch self {
-    case .same:      fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
-    case .unhandled: fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
-    default: return ()
+    case .same, .unhandled: fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
+    default: return
     }
+  }
+
+  /// Shorthand for checking if the current behavior is a `.unhandled`
+  @inlinable
+  internal func isUnhandled() -> Bool {
+    switch self {
+    case .unhandled: return true
+    default: return false
+    }
+  }
+
+  /// Shorthand for checking if the current behavior is a `.stopped`.
+  @inlinable
+  internal func isStopped() -> Bool {
+    switch self {
+    case .stopped: return true
+    default: return false
+    }
+  }
+
+  /// Shorthand for any [[Behavior]] that is NOT `.stopped`.
+  @inlinable
+  internal func isStillAlive() -> Bool {
+    return !self.isStopped()
   }
 
   /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)

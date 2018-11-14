@@ -19,10 +19,10 @@
 
 // MARK: Public API
 
-public protocol AddressableRef: Hashable {
+public protocol AddressableActorRef: Hashable {
   var path: ActorPath { get }
 }
-extension AddressableRef {
+extension AddressableActorRef {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     return lhs.path == rhs.path
   }
@@ -31,7 +31,7 @@ extension AddressableRef {
   }
 }
 
-public protocol ReceivesMessages: AddressableRef  {
+public protocol ReceivesMessages: AddressableActorRef  {
   associatedtype Message
   /// Send message to actor referred to by this [[ActorRef]].
   ///
@@ -72,7 +72,8 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
 // MARK: Internal implementation classes
 
 /// INTERNAL API: Only for use by the actor system itself
-internal protocol ReceivesSignals: AnyReceivesSignals {
+// TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
+protocol ReceivesSignals: AnyReceivesSignals {
   // TODO fix naming mess with Signal and SystemMessage
 
   /// INTERNAL API: Only for use by the actor system itself
@@ -112,11 +113,21 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSigna
     self.sendMessage(message)
   }
 
+  @usableFromInline
   internal func sendMessage(_ message: Message) {
     // pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(payload: message))
   }
-  /* internal */ func sendSystemMessage(_ message: SystemMessage) {
+
+  // TODO does not work: `@usableFromInline internal` in a @inlineable method tho it should?
+  // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorCell.swift:224:43: error: instance method 'sendSystemMessage' is internal and cannot be referenced from an '@inlinable' function
+  // if alreadyDead { self._myselfInACell?.sendSystemMessage(.terminate) }
+  // ^
+  // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Refs.swift:117:35: note: instance method 'sendSystemMessage' is not '@usableFromInline' or public
+  // @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
+  //   ^
+  @inlinable
+  func sendSystemMessage(_ message: SystemMessage) {
     // pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
   }

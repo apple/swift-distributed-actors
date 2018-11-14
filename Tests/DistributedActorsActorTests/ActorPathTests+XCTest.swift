@@ -24,6 +24,7 @@ extension ActorPathTests {
 
    static var allTests : [(String, (ActorPathTests) -> () throws -> Void)] {
       return [
+                ("test_shouldNotAllow_illegalCharacters", test_shouldNotAllow_illegalCharacters),
            ]
    }
 }

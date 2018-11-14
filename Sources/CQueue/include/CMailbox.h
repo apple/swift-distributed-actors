@@ -11,6 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 
 #ifndef CMailbox_h
 #define CMailbox_h
@@ -28,7 +41,15 @@ typedef struct {
   CMPSCLinkedQueue* messages;
 } CMailbox;
 
-typedef void (*InterpretMessageCallback)(void*, void*);
+/*
+ * Callback type for Swift interop.
+ *
+ * Returns `true` while the resulting behavior is not terminating,
+ * once a message interpretation returns `false` it should be assumed
+ * that the actor is terminating, and messages should be drained into
+ * deadLetters.
+ */
+typedef bool (*InterpretMessageCallback)(void*, void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 void cmailbox_destroy(CMailbox* mailbox);

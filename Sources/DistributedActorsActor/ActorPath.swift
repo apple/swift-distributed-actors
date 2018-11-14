@@ -21,6 +21,9 @@
 /// - Example: `/user/master/worker`
 public struct ActorPath: Equatable, Hashable {
 
+  // TODO we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt,
+  //      Akka wanted to get closer to that but we had historical naming to take into account so we didn't
+  // private var address: Address = "swift-distributed-actors://10.0.0.1:2552
   private var segments: [ActorPathSegment]
 
   public init(_ segments: [ActorPathSegment]) throws {
@@ -61,7 +64,8 @@ extension ActorPath {
 // TODO
 extension ActorPath: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    return self.segments.map({$0.value}).joined(separator: "/")
+    let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
+    return "/\(pathSegments)"
   }
   public var debugDescription: String {
     return "ActorPath(\(description))"

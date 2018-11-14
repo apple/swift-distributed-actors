@@ -31,7 +31,7 @@ public /* but really internal... */ enum SystemMessage: Equatable {
   case unwatch(from: AnyReceivesSignals)
 
   /// Received after [[watch]] was issued to an actor ref
-  case terminated(ref: ActorRef<Never>, reason: String) // TODO figure out types for reason // TODO "existenceConfirmed: Bool"
+  case terminated(ref: AnyAddressableActorRef, reason: String) // TODO figure out types for reason // TODO "existenceConfirmed: Bool"
 
   // TODO this is incomplete
 
