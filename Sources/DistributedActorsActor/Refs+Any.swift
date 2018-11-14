@@ -27,7 +27,7 @@ public protocol AnyAddressableActorRef {
 
 // Implementation notes:
 // Any [[AddressableRef]] is Hashable as well as can be packed as AnyHashable (for type-erasure)
-public extension AddressableRef {
+public extension AddressableActorRef {
   public func asHashable() -> AnyHashable {
     return AnyHashable(self)
   }

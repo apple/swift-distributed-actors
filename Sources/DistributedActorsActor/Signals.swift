@@ -21,6 +21,8 @@
 /// bounded mailbox configurations, signals are retained and handled as a priority during mailbox runs.m
 // FIXME system messages vs signals
 public enum Signal {
+  // TODO I think we will indeed want to separate "system message" from "signal" and "signal" be those that users see
+
   // case terminated(ref: ActorRef<Never>, reason: String) // TODO figure out types for reason // TODO "existenceConfirmed: Bool"
   // case preRestart
   // case postStop

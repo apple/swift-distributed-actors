@@ -24,7 +24,7 @@ struct Envelope<Message> {
   // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
   // TODO explain this more
   #if SACTANA_DEBUG
-  let senderPath: String
+  let senderPath: ActorPath
   #endif
 
   // Implementation notes:
@@ -33,46 +33,51 @@ struct Envelope<Message> {
   // and don't need to do any magic around it
 }
 
-struct WrappedClosure {
-  let fn: (UnsafeMutableRawPointer) -> Void
+/// Wraps context for use in closures passed to C
+private struct WrappedClosure {
+  private let fn: (UnsafeMutableRawPointer) -> Bool
 
-  init(_ fn: @escaping (UnsafeMutableRawPointer) -> Void) {
+  init(_ fn: @escaping (UnsafeMutableRawPointer) -> Bool) {
     self.fn = fn
   }
 
   @inlinable
-  func exec(with ptr: UnsafeMutableRawPointer) -> Void {
-    fn(ptr)
+  func exec(with ptr: UnsafeMutableRawPointer) -> Bool {
+    return fn(ptr)
   }
 }
 
 final class Mailbox<Message> {
-  var mailbox: UnsafeMutablePointer<CMailbox>
-  var cell: ActorCell<Message>
-  var context: WrappedClosure
-  var systemContext: WrappedClosure
-  let interpretMessage: InterpretMessageCallback
+  private var mailbox: UnsafeMutablePointer<CMailbox>
+  private var cell: ActorCell<Message>
+
+  // Implementation note: WrappedClosures are used for C-interop
+  private var messageCallbackContext: WrappedClosure
+  private var systemMessageCallbackContext: WrappedClosure
+
+  private let interpretMessage: InterpretMessageCallback
 
   init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
     self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
     self.cell = cell
-    self.context = WrappedClosure({ ptr in
+
+    self.messageCallbackContext = WrappedClosure({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
       let envelope = envelopePtr.move()
       let msg = envelope.payload
-      cell.interpretMessage(message: msg)
+      return cell.interpretMessage(message: msg)
     })
 
-    self.systemContext = WrappedClosure({ ptr in
+    self.systemMessageCallbackContext = WrappedClosure({ ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
       let msg = envelopePtr.move()
-      cell.interpretSystemMessage(message: msg)
+      return cell.interpretSystemMessage(message: msg)
     })
 
     interpretMessage = { (ctxPtr, msg) in
       defer { msg?.deallocate() }
       let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
-      ctx?.pointee.exec(with: msg!)
+      return ctx?.pointee.exec(with: msg!) ?? false // FIXME don't like the many ? around here hm, likely costs -- ktoso
     }
   }
 
@@ -100,9 +105,10 @@ final class Mailbox<Message> {
 
   @inlinable
   func run() -> Void {
-    let requeue = cmailbox_run(mailbox, &context, &systemContext, interpretMessage)
+    let shouldSchedule: Bool =
+        cmailbox_run(mailbox, &messageCallbackContext, &systemMessageCallbackContext, interpretMessage)
 
-    if (requeue) {
+    if shouldSchedule {
       cell.dispatcher.execute(self.run)
     }
   }

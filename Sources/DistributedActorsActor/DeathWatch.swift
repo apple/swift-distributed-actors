@@ -52,21 +52,54 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   // MARK: react to watch or unwatch signals
 
   public mutating func becomeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
-    pprint("become watched by: \(watcher)     inside: \(myself)")
+    pprint("become watched by: \(watcher.path)     inside: \(myself)")
     let boxedWatcher = watcher.internal_exposeBox()
     self.watchedBy.insert(boxedWatcher)
   }
   public mutating func removeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
-    pprint("become watched by: \(watcher)     inside: \(myself)")
+    pprint("remove watched by: \(watcher.path)     inside: \(myself)")
 
   }
 
-  public mutating func receiveTerminated(t: SystemMessage) {
-    guard case let .terminated(deadActorRef, _) = t else {
+  /// Performs cleanup of references to the dead actor.
+  ///
+  /// Requires: passed in argument to be a `.terminated`.
+  public mutating func receiveTerminated(_ terminated: SystemMessage) {
+    guard case let .terminated(deadActorRef, _) = terminated else {
       fatalError("receiveTerminated most only be invoked with .terminated")
     }
 
-    self.watching.remove(BoxedHashableAnyReceivesSignals(ref: deadActorRef.internal_downcast))
+    let deadPath = deadActorRef.path
+    let pathsEqual: (BoxedHashableAnyReceivesSignals) -> Bool = { watched in watched.path == deadPath }
+    func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSignals>, `where` check: (BoxedHashableAnyReceivesSignals) -> Bool) {
+      if let deadIndex = set.firstIndex(where: check) {
+        set.remove(at: deadIndex)
+      }
+    }
+
+
+    // remove the dead actor from the set that we were watching:
+
+    // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
+    var fromSet: Set<BoxedHashableAnyReceivesSignals> = self.watching
+
+    removeDeadRef(from: &fromSet, where: pathsEqual)
+
+    // remove the dead actor from the set that was watching us, no need to notify dead actors about our death:
+    var fromSet2: Set<BoxedHashableAnyReceivesSignals> = self.watchedBy
+    if let deadIndex = fromSet2.firstIndex(where: pathsEqual) {
+      fromSet2.remove(at: deadIndex)
+    }
+  }
+
+  // MARK: termination tasks
+
+  func notifyWatchersWeDied(myself: ActorRef<Message>) {
+    for watcher in watchedBy {
+      // TODO reasons need to be thought through...
+      let figureOutHowToUseReasons = "natural death"
+      watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), reason: figureOutHowToUseReasons))
+    }
   }
 
   // MARK: helper methods and state management

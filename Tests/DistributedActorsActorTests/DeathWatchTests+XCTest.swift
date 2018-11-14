@@ -25,7 +25,6 @@ extension DeathWatchTests {
    static var allTests : [(String, (DeathWatchTests) -> () throws -> Void)] {
       return [
                 ("test_watch_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_shouldTriggerTerminatedWhenWatchedActorStops),
-                ("test_spawning_stopped_shouldTriggerDeathNotification_whenWasWatched", test_spawning_stopped_shouldTriggerDeathNotification_whenWasWatched),
            ]
    }
 }
