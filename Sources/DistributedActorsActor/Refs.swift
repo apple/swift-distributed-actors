@@ -35,6 +35,10 @@ public class ActorRef<Message>: ReceivesMessages {
   public func tell(_ message: Message) {
     return undefined()
   }
+
+  public func adapt<From>(with converter: @escaping (From) -> Message) -> ActorRef<From> {
+    return ActorRefAdapter(self, converter)
+  }
 }
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
@@ -95,4 +99,22 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message> {
     self.mailbox.sendSystemMessage(message)
   }
 
+}
+
+internal final class ActorRefAdapter<From, To>: ActorRef<From> {
+  let ref: ActorRef<To>
+  let converter: (From) -> To
+
+  init(_ ref: ActorRef<To>, _ converter: @escaping (From) -> To) {
+    self.ref = ref
+    self.converter = converter
+  }
+
+  override var path: ActorPath {
+    return ref.path
+  }
+
+  override func tell(_ message: From) {
+    ref ! converter(message)
+  }
 }

@@ -30,7 +30,7 @@ extension BehaviorTests {
                 ("test_two_actors_should_wakeUp_on_new_message_lockstep", test_two_actors_should_wakeUp_on_new_message_lockstep),
                 ("test_receive_receivesMessages", test_receive_receivesMessages),
                 ("test_ActorBehavior_receivesMessages", test_ActorBehavior_receivesMessages),
-                ("test_expectNoMessage", test_expectNoMessage),
+                ("test_ActorBehavior_adapt", test_ActorBehavior_adapt),
            ]
    }
 }

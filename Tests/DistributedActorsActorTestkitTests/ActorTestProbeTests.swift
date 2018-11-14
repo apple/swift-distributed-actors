@@ -60,4 +60,10 @@ class ActorTestProbeTests: XCTestCase {
     //    error: Assertion failed: [one] did not equal expected [two]
 
   }
+
+  func test_expectNoMessage() {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+
+    p.expectNoMessage(for: .milliseconds(100))
+  }
 }
