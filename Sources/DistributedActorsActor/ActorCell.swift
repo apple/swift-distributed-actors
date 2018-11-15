@@ -219,9 +219,6 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       // TODO reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
       pprint("Terminating \(self.myself). Remaining messages will be drained to deadLetters.") 
       return self.finishTerminating()
-
-    default:
-      return TODO("invokeSystemMessage, handling of \(message) is not implemented yet; Behavior was: \(behavior)")
     }
 
     return self.behavior.isStillAlive()

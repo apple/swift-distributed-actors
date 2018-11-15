@@ -80,7 +80,50 @@ class ActorLifecycleTests: XCTestCase {
     try check(illegalName: "カピバラ", expectedError: """
                                                      illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
                                                      """)
-
   }
 
+  func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
+    pnote("NOT IMPLEMENTED YET")
+  }
+  
+  func test_stopping_shouldDeinitTheBehavior() throws {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+    let chattyAboutLifecycle =
+        try system.spawn(LifecycleDeinitActorBehavior(p.ref), named: "deinitLifecycleActor")
+
+    chattyAboutLifecycle.tell(.stop)
+
+    try p.expectMessage("init")
+    try p.expectMessage("receive:stop")
+    // TODO historically we have a "postStop" before dying; and we need it for the "not a class" behaviors anyway, implement this
+    try p.expectMessage("deinit")
+  }
+
+}
+
+enum LifecycleDeinitActorMessage {
+  case stop
+}
+
+final class LifecycleDeinitActorBehavior: ActorBehavior<LifecycleDeinitActorMessage> {
+  let probe: ActorRef<String>
+
+  init(_ p: ActorRef<String>) {
+    self.probe = p
+    self.probe.tell("init")
+  }
+
+  deinit {
+    self.probe.tell("deinit")
+  }
+
+  override func receive(context: ActorContext<LifecycleDeinitActorMessage>, message: LifecycleDeinitActorMessage) -> Behavior<LifecycleDeinitActorMessage> {
+    self.probe.tell("receive:\(message)")
+    return .stopped
+  }
+
+  override func receiveSignal(context: ActorContext<LifecycleDeinitActorMessage>, signal: Signal) -> Behavior<LifecycleDeinitActorMessage> {
+    self.probe.tell("signal:\(signal)")
+    return .same
+  }
 }
