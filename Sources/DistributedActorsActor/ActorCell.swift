@@ -72,20 +72,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// WARNING: Mutates the cell's behavior.
   @inlinable
   func interpretMessage(message: Message) -> Void {
-    func interpretMessage0(_ message: Message) -> Behavior<Message> {
-      switch self.behavior {
-      case let .receiveMessage(recv): return recv(message)
-      case let .receive(recv):        return recv(context, message)
-      case .ignore:                   return .same // ignore message and remain .same
-      case let .custom(behavior):     return behavior.receive(context: context, message: message)
-      default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
-      }
-    }
-
-    let next: Behavior<Message> = interpretMessage0(message)
-    // log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
-
-    self.behavior = self.behavior.canonicalize(context, next: next)
+    self.behavior = Behavior<Message>.interpretMessage(behavior: self.behavior, context: self.context, message: message)
   }
 
   @inlinable
