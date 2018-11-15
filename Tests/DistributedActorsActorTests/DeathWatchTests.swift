@@ -76,21 +76,16 @@ class DeathWatchTests: XCTestCase {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
     let stoppableRef: ActorRef<String> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz")
 
-    let watcher = try system.spawn(self.terminationWatcherBehavior, named: "terminationWatcher")
+    p.watch(stoppableRef)
 
-    watcher.tell(.watch(who: stoppableRef, notifyOnDeath: p.ref))
-    try p.expectMessage("watch installed: \(stoppableRef.path)")
-
-    // FIXME: make this API possible: expectTerminated.watch(stoppableRef)
     stoppableRef.tell("stop!")
 
     // the order of these messages is also guaranteed:
     // 1) first the dying actor has last chance to signal a message,
     try p.expectMessage("I (/user/stopMePlz) will now stop")
     // 2) and then terminated messages are sent:
-    try p.expectMessage("/user/terminationWatcher received .terminated for: /user/stopMePlz")
-
-    // FIXME this should also work: try p.expectTerminated(stoppableRef)
+    // try p.expectMessage("/user/terminationWatcher received .terminated for: /user/stopMePlz")
+    try p.expectTerminated(stoppableRef)
   }
 
   func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
@@ -100,23 +95,15 @@ class DeathWatchTests: XCTestCase {
 
     let stoppableRef: ActorRef<String> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz")
 
-    let watcher1 = try system.spawn(self.terminationWatcherBehavior, named: "terminationWatcher1")
-    let watcher2 = try system.spawn(self.terminationWatcherBehavior, named: "terminationWatcher2")
+    p1.watch(stoppableRef)
+    p2.watch(stoppableRef)
 
-    watcher1.tell(.watch(who: stoppableRef, notifyOnDeath: p1.ref))
-    watcher2.tell(.watch(who: stoppableRef, notifyOnDeath: p2.ref))
-    try p1.expectMessage("watch installed: \(stoppableRef.path)")
-    try p2.expectMessage("watch installed: \(stoppableRef.path)")
-
-    // FIXME: make this API possible: expectTerminated.watch(stoppableRef)
     stoppableRef.tell("stop!")
 
     try p.expectMessage("I (/user/stopMePlz) will now stop")
 
-    try p1.expectMessage("/user/terminationWatcher1 received .terminated for: /user/stopMePlz")
-    try p2.expectMessage("/user/terminationWatcher2 received .terminated for: /user/stopMePlz")
-
-    // FIXME this should also work: try p.expectTerminated(stoppableRef)
+    try p1.expectTerminated(stoppableRef)
+    try p2.expectTerminated(stoppableRef)
   }
 
   // FIXME not implemented yet

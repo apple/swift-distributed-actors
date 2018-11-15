@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-@testable import Swift Distributed ActorsActor
+// FIXME we'd want @testable import Swift Distributed ActorsActor // because we need ActorRefWithCell
+// FIXME but we can't since `[sact] Advice for testing vs. release mode`
+import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
@@ -54,14 +56,19 @@ final public class ActorTestProbe<Message> {
 
     self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO config
 
-    let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue)
+    let behavior = ActorTestProbe.behavior(messageQueue: self.messagesQueue, signalQueue: self.signalQueue)
     self.ref = try! system.spawn(behavior, named: name)
   }
 
-  private static func behavior(messageQueue: LinkedBlockingQueue<Message>) -> Behavior<Message> {
-    return .receive { (context, message) in
+  private static func behavior(messageQueue: LinkedBlockingQueue<Message>,
+                               signalQueue: LinkedBlockingQueue<SystemMessage>) -> Behavior<Message> {
+    return Behavior<Message>.receive { (context, message) in
       context.log.info("Probe received: [\(message)]:\(type(of: message))") // TODO make configurable to log or not
       messageQueue.enqueue(message)
+      return .same
+    }.receiveSignal { (context, signal) in
+      context.log.info("Probe received: [\(signal)]:\(type(of: signal))") // TODO make configurable to log or not
+      signalQueue.enqueue(signal) // TODO fix naming...
       return .same
     }
   }
@@ -69,27 +76,31 @@ final public class ActorTestProbe<Message> {
   @discardableResult
   private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
     // FIXME implement by scheduling checks rather than spinning
-
     let deadline = Deadline.fromNow(amount: timeout)
 
-    // var lastObservedError: Error? = nil
+     var lastObservedError: Error? = nil
 
-    // TODO make more async than spining like this, also with check interval rather than spin, or use the blocking queue properly
+    // TODO make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
     while !deadline.isOverdue(now: Date()) {
       do {
         let res: T = try block()
         return res
       } catch {
         // keep error, try again...
-        // lastObservedError = error // TODO show it
+         lastObservedError = error
       }
     }
 
-    throw ExpectationError.noMessagesInQueue
+    if let lastError = lastObservedError {
+      throw lastError
+    } else {
+      throw ExpectationError.withinDeadlineExceeded(timeout: timeout)
+    }
   }
 
   enum ExpectationError: Error {
     case noMessagesInQueue
+    case withinDeadlineExceeded(timeout: TimeAmount)
     case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
   }
 
@@ -113,15 +124,6 @@ final public class ActorTestProbe<Message> {
     got.shouldEqual(expected, file: file, line: line, column: column)
   }
 
-  public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-    let signal = try self.expectSignal(file: file, line: line, column: column)
-    switch signal {
-    case let .terminated(_ref, _) where _ref.path == ref.path: return () // ok!
-    default: try callSite.fail(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
-    }
-  }
-
 }
 
 extension ActorTestProbe where Message: Equatable {
@@ -140,7 +142,9 @@ extension ActorTestProbe where Message: Equatable {
     let timeout = expectationTimeout
     do {
       try within(timeout) {
-        guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
+        guard self.messagesQueue.size() > 0 else {
+          throw ExpectationError.noMessagesInQueue
+        }
         let got = self.messagesQueue.dequeue()
         got.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
       }
@@ -152,7 +156,9 @@ extension ActorTestProbe where Message: Equatable {
 
   public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     try within(expectationTimeout) {
-      guard self.messagesQueue.size() > 0 else { throw ExpectationError.noMessagesInQueue }
+      guard self.messagesQueue.size() > 0 else {
+        throw ExpectationError.noMessagesInQueue
+      }
       let got = self.messagesQueue.dequeue()
       got.shouldBe(type)
     }
@@ -189,5 +195,21 @@ extension ActorTestProbe {
     let downcast: ActorRefWithCell<M> = watchee.internal_downcast
     downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSignals(self.ref)))
   }
+
+
+  /// Returns the `terminated` message (TODO SIGNAL)
+  /// since one may want to perform additional assertions on the termination reason perhaps
+  public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+    let signal = try self.expectSignal(file: file, line: line, column: column)
+    switch signal {
+    case let .terminated(_ref, _) where _ref.path == ref.path:
+      return signal // ok!
+    default:
+      try callSite.fail(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
+      fatalError("NEVER HAPPENS")
+    }
+  }
+
 }
 
