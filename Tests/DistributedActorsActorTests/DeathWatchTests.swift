@@ -93,6 +93,32 @@ class DeathWatchTests: XCTestCase {
     // FIXME this should also work: try p.expectTerminated(stoppableRef)
   }
 
+  func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "p", on: system)
+    let p1: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+    let p2: ActorTestProbe<String> = ActorTestProbe(named: "p2", on: system)
+
+    let stoppableRef: ActorRef<String> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz")
+
+    let watcher1 = try system.spawn(self.terminationWatcherBehavior, named: "terminationWatcher1")
+    let watcher2 = try system.spawn(self.terminationWatcherBehavior, named: "terminationWatcher2")
+
+    watcher1.tell(.watch(who: stoppableRef, notifyOnDeath: p1.ref))
+    watcher2.tell(.watch(who: stoppableRef, notifyOnDeath: p2.ref))
+    try p1.expectMessage("watch installed: \(stoppableRef.path)")
+    try p2.expectMessage("watch installed: \(stoppableRef.path)")
+
+    // FIXME: make this API possible: expectTerminated.watch(stoppableRef)
+    stoppableRef.tell("stop!")
+
+    try p.expectMessage("I (/user/stopMePlz) will now stop")
+
+    try p1.expectMessage("/user/terminationWatcher1 received .terminated for: /user/stopMePlz")
+    try p2.expectMessage("/user/terminationWatcher2 received .terminated for: /user/stopMePlz")
+
+    // FIXME this should also work: try p.expectTerminated(stoppableRef)
+  }
+
   // FIXME not implemented yet
 //  func FIXME_spawning_stopped_shouldTriggerDeathNotification_whenWasWatched() throws {
 //    // not a typical situation however it can happen when we initialize depending on some variable

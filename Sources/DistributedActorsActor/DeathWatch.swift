@@ -95,7 +95,9 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   // MARK: termination tasks
 
   func notifyWatchersWeDied(myself: ActorRef<Message>) {
+    pprint("IM DYING, I AM: \(myself)...")
     for watcher in watchedBy {
+      pprint("TELLING \(watcher) that IM DYING")
       // TODO reasons need to be thought through...
       let figureOutHowToUseReasons = "natural death"
       watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), reason: figureOutHowToUseReasons))

@@ -83,6 +83,8 @@ protocol ReceivesSignals: AnyReceivesSignals {
   func sendSystemMessage(_ message: SystemMessage)
 }
 
+// TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
+/// INTERNAL API
 internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
 
   /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
@@ -126,8 +128,7 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSigna
   // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Refs.swift:117:35: note: instance method 'sendSystemMessage' is not '@usableFromInline' or public
   // @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
   //   ^
-  @inlinable
-  func sendSystemMessage(_ message: SystemMessage) {
+  @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
     // pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
   }
