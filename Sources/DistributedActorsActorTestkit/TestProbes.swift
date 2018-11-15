@@ -13,9 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-// FIXME we'd want @testable import Swift Distributed ActorsActor // because we need ActorRefWithCell
-// FIXME but we can't since `[sact] Advice for testing vs. release mode`
-import Swift Distributed ActorsActor
+@testable import Swift Distributed ActorsActor
 import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
