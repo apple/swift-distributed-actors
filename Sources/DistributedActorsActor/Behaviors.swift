@@ -63,6 +63,23 @@ public enum Behavior<Message> {
 //      directive
 //    }
 //  }
+
+  @inlinable
+  internal static func interpretMessage<Message>(behavior: Behavior<Message>, context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    func interpretMessage0(_ message: Message) -> Behavior<Message> {
+      switch behavior {
+      case let .receiveMessage(recv): return recv(message)
+      case let .receive(recv):        return recv(context, message)
+      case .ignore:                   return .same // ignore message and remain .same
+      case let .custom(behavior):     return behavior.receive(context: context, message: message)
+      default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(behavior)")
+      }
+    }
+
+    let next: Behavior<Message> = interpretMessage0(message)
+
+    return behavior.canonicalize(context, next: next)
+  }
 }
 
 // MARK: Behavior interpretation utilities
