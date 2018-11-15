@@ -161,7 +161,7 @@ extension ActorTestProbe where Message: Equatable {
   public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
     if let message = self.messagesQueue.poll(timeout) {
-      let message = "Received unexpected message [\(message)]. Did not expect to receive any messages for [\(timeout.prettyDescription)]."
+      let message = "Received unexpected message [\(message)]:\(type(of: message)). Did not expect to receive any messages for [\(timeout.prettyDescription)]."
       try callSite.fail(message: message)
     }
   }

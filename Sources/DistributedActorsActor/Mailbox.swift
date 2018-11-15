@@ -47,6 +47,7 @@ private struct WrappedClosure {
   }
 }
 
+// TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
 final class Mailbox<Message> {
   private var mailbox: UnsafeMutablePointer<CMailbox>
   private var cell: ActorCell<Message>

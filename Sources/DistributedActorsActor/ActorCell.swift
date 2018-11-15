@@ -119,6 +119,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// Guaranteed to be set during ActorRef creation
   /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
   @usableFromInline internal var _myselfInACell: ActorRefWithCell<Message>?
+  @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSignals? {
+    // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
+    return self._myselfInACell
+  }
 
   init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
     // TODO we may end up referring to the system here... we'll see
@@ -203,7 +207,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     case let .terminated(ref, _):
       log.info("Received .terminated(\(ref.path))")
       self.deathWatch.receiveTerminated(message) // FIXME implement the logic well in there
-      if case let .signalHandling(handleMsg, handleSignal) = self.behavior {
+      if case let .signalHandling(_, handleSignal) = self.behavior {
         let next = handleSignal(context, message) // TODO we want to deliver Signals to users
         becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
       }
@@ -225,15 +229,17 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
   /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
   /// Always invoke [[becomeNext]] rather than assigning to `self.behavior` manually.
-  // TODO @inlinable but https://github.com/apple/swift-distributed-actors/issues/69
+  @inlinable
   internal func becomeNext(behavior next: Behavior<Message>) {
     // TODO handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
+
     self.behavior = self.behavior.canonicalize(context, next: next)
+
     let alreadyDead: Bool = self.behavior.isStopped()
-    if alreadyDead { self._myselfInACell?.sendSystemMessage(.terminate) }
+    if alreadyDead { self._myselfReceivesSystemMessages?.sendSystemMessage(.terminate) }
   }
 
-  // TODO @inlinable but https://github.com/apple/swift-distributed-actors/issues/69
+  @inlinable
   internal func interpretSystemStart() {
     // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
     if case .setup(let onStart) = behavior {
