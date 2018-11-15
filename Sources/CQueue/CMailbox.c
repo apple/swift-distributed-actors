@@ -217,7 +217,7 @@ bool has_system_messages(int64_t status) {
 }
 
 bool is_active(int64_t status) {
-  return (status & ACTIVATIONS) != 0; // TODO would it be faster to avoid the `!= 0`? Don't have a good feeling for these
+  return (status & ACTIVATIONS) != 0;
 }
 
 int64_t activations(int64_t status) {

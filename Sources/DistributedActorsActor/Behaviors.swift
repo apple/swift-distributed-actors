@@ -127,7 +127,7 @@ public enum IllegalBehaviorError<M>: Error {
 
 open class ActorBehavior<Message> {
   open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
-    fatalError("Not implemented")
+    return undefined(hint: "MUST override receive(context:message:) when extending ActorBehavior")
   }
 
   open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
