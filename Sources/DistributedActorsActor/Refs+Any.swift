@@ -81,7 +81,7 @@ internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableAct
 // MARK: Type erasure for ReceivesSignals
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
-public protocol AnyReceivesSignals {
+public protocol AnyReceivesSignals { // TODO this should be SystemMessages I think -- ktoso (Signals is what users can get, this is the super internal ones)
   /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
   var path: ActorPath { get }
@@ -130,10 +130,19 @@ internal extension AnyReceivesSignals {
   }
 }
 
-// MARK: internal ActorRefWithCell conformances
+// MARK: Internal boxing helpers
 
-extension ActorRefWithCell {
-  
+/// INTERNAL API
+internal extension ActorRef {
+
+  /// INTERNAL API: Performs downcast, only use when you know what you're doing
+  internal func internal_boxAnyReceivesSignals() -> AnyReceivesSignals {
+    return BoxedHashableAnyReceivesSignals(ref: self.internal_downcast)
+  }
+
+  /// INTERNAL API: Performs downcast, only use when you know what you're doing
+  func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
+    return BoxedHashableAnyAddressableActorRef(ref: self.internal_downcast)
+  }
 }
-
 

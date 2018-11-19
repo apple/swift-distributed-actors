@@ -23,7 +23,8 @@ public /* but really internal... */ enum SystemMessage: Equatable {
   /// be executed immediately e.g. `setup` or similar ones.
   case start
 
-  case terminate // TODO poisonPill
+  /// Usually the actor sends this message to itself once it has processed other things.
+  case terminate // TODO do we need poison pill?
 
   /// Notifies an actor that it is being watched by the `from` actor
   case watch(from: AnyReceivesSignals)

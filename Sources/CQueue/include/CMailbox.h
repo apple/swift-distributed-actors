@@ -54,7 +54,9 @@ typedef bool (*InterpretMessageCallback)(void*, void*);
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 void cmailbox_destroy(CMailbox* mailbox);
 
+/* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
+/* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
 bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
 bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message);

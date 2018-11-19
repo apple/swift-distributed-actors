@@ -71,24 +71,28 @@ public class ActorContext<Message> {
   }
 
 
-  /// Watches the given actor for termination events, and will receive an `Terminated` signal
-  /// when the watched actor is stopped.
+  /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
+  /// when the watched actor is terminates ("dies").
   ///
-  /// Death Pact: By watching an actor one enters signs a "death pact" with the watchee,
-  /// meaning that it will also terminate itself once it receives the `Terminated(who)` signal
-  /// about the watchee.
+  /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
+  /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
+  /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
+  /// the lovers each kill themselves, thinking the other has died.
   ///
-  /// Alternatively, one can handle the `Terminated` signal using the `.receiveSignal()` method,
-  /// which gives this actor the ability to react to the watchee's death (e.g. by saying some nice words about its life time,
-  /// or spawning a replacement worker in its' place).
-  /// When the `Terminated` signal is handled by this actor, the automatic death pact will not be triggered.
+  /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
+  /// which gives this actor the ability to react to the watchee's death in some other fashion,
+  /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
+  ///
+  /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
+  /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
+  /// and the Death Pact will trigger as usual.
   public func watch<M>(_ watchee: ActorRef<M>) {
     return undefined()
   }
 
   /// Reverts the watching of an previously watched actor.
   ///
-  /// Unwatching a not-watched actor has no effect.
+  /// Unwatching a not-previously-watched actor has no effect.
   public func unwatch<M>(_ watchee: ActorRef<M>) {
     return undefined()
   }
@@ -159,8 +163,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// Interprets the incoming message using the current `Behavior` and swaps it with the
   /// next behavior (as returned by user code, which the message was applied to).
   ///
-  /// WARNING: Mutates the cell's behavior.
-  // FIXME @inlinable https://github.com/apple/swift-distributed-actors/issues/69
+  /// WARNING: Mutates the cells' behavior.
   func interpretMessage(message: Message) -> Bool {
     func interpretMessage0(_ behavior: Behavior<Message>, _ message: Message) -> Behavior<Message> {
       pprint("interpret: \(behavior), with message: \(message)")
@@ -188,7 +191,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
   /// Process single system message and return if processing of further shall continue.
   /// If not, then they will be drained to deadLetters – as it means that the actor is terminating!
-  func interpretSystemMessage(message: SystemMessage) -> Bool {
+  /// 
+  /// Throws:
+  ///   - user behavior thrown exceptions
+  ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
+  func interpretSystemMessage(message: SystemMessage) throws -> Bool {
     //    log.info("Interpret system message: \(message)")
     switch message {
     // initialization:
@@ -207,9 +214,22 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     case let .terminated(ref, _):
       log.info("Received .terminated(\(ref.path))")
       self.deathWatch.receiveTerminated(message) // FIXME implement the logic well in there
+
+      let next: Behavior<Message>
       if case let .signalHandling(_, handleSignal) = self.behavior {
-        let next = handleSignal(context, message) // TODO we want to deliver Signals to users
-        becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
+        next = handleSignal(context, message) // TODO we want to deliver Signals to users
+      } else {
+        // no signal handling installed is semantically equivalent to unhandled
+        log.info("No .signalHandling yet \(message) arrived so UNHANDLED :::: ")
+        next = Behavior<Message>.unhandled
+      }
+
+      log.info("becoming : \(next) after the terminated:::: \(message)")
+      switch next {
+      case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
+          message: "Death pact error: [\(context.myself)] has not handled termination received from watched watched [\(ref.path)] actor. " +
+              "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
+      default: becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
       }
 
     case .terminate:
@@ -222,6 +242,29 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     }
 
     return self.behavior.isStillAlive()
+  }
+
+  /// Fails the actor using the passed in error.
+  ///
+  /// TODO any kind of supervision things.
+  ///
+  /// Special handling is applied to [[DeathPactError]] since if that error is passed in here, we know that `.terminated`
+  /// was not handled and we have to adhere to the DeathPact contract by stopping this actor as well.
+  // TODO not sure if this should mutate the cell or return to mailbox the nex behavior
+  internal func fail(error: Error) {
+    // TODO we could handle here "wait for children to terminate"
+
+    // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
+    // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
+    switch error {
+    case is DeathPactError:
+      log.error("Actor failing, reason: \(error)")
+      self.finishTerminating()
+
+    default:
+      log.error("Actor failing, reason: \(error)")
+      self.finishTerminating()
+    }
   }
 
   /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
@@ -262,9 +305,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     self.deathWatch = nil
     self._myselfInACell = nil // TODO or a dead placeholder
 
-    // TODO if SACT_DEBUG_CELL_LIFECYCLE
+    #if SACT_TRACE_CELL
     pprint("\(b) TERMINATED.")
-    // TODO endif SACT_DEBUG_CELL_LIFECYCLE
+    #endif
 
     return false
   }
@@ -283,7 +326,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   }
 
   override public func unwatch<M>(_ watchee: ActorRef<M>) {
-    self.deathWatch.unwatch(watchee: watchee)
+    self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
   }
 
 

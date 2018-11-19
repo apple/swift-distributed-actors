@@ -75,7 +75,6 @@ public final class ActorSystem {
   ///            Do not call from within actors or you may deadlock shutting down the system.
   public func whenTerminated() -> Awaitable {
     // return Awaitable(underlyingLock: terminationLock)
-    while true {}
     return undefined()
   }
 }

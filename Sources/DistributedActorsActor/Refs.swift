@@ -118,19 +118,12 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
 
   @usableFromInline
   internal func sendMessage(_ message: Message) {
-    // pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
+    pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(payload: message))
   }
 
-  // TODO does not work: `@usableFromInline internal` in a @inlineable method tho it should?
-  // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorCell.swift:224:43: error: instance method 'sendSystemMessage' is internal and cannot be referenced from an '@inlinable' function
-  // if alreadyDead { self._myselfInACell?.sendSystemMessage(.terminate) }
-  // ^
-  // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/Refs.swift:117:35: note: instance method 'sendSystemMessage' is not '@usableFromInline' or public
-  // @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
-  //   ^
   @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
-    // pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
+    pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
   }
 }

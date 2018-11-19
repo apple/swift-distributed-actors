@@ -29,9 +29,9 @@ internal struct DeathWatch<Message> { // TODO make a protocol
 
   // MARK: perform watch/unwatch
   
-  /// Performed by the sending side of "watch", the watchee should equal "context.myself"
+  /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
   public mutating func watch<M>(watchee: ActorRef<M>, myself watcher: ActorRef<Message>) {
-    pprint("watch: \(watchee) (by \(watcher))")
+    pprint("watch: \(watchee) (from \(watcher) (myself))")
     // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
     guard watchee.path != watcher.path else { return () }
 
@@ -41,24 +41,39 @@ internal struct DeathWatch<Message> { // TODO make a protocol
     let boxedWatchee = BoxedHashableAnyReceivesSignals(ref: watcheeWithCell)
     guard !watching.contains(boxedWatchee) else { return () }
 
-    watcheeWithCell.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSignals(watcher)))
+    watcheeWithCell.sendSystemMessage(.watch(from: watcher.internal_boxAnyReceivesSignals()))
     watching.insert(boxedWatchee)
     subscribeAddressTerminatedEvents()
   }
-  public mutating func unwatch(watchee: AnyAddressableActorRef) {
-    return TODO("NOT IMPLEMENTED YET")
+
+  /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
+  public mutating func unwatch(watchee: AnyReceivesSignals, myself watcher: ActorRef<Message>) {
+    pprint("unwatch: watchee: \(watchee) (from \(watcher) myself)")
+    // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
+    let boxedWatchee: BoxedHashableAnyReceivesSignals = watchee.internal_exposeBox()
+    if let removed = watching.remove(boxedWatchee) {
+      removed.sendSystemMessage(.unwatch(from: watcher.internal_boxAnyReceivesSignals()))
+    }
   }
 
   // MARK: react to watch or unwatch signals
 
   public mutating func becomeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
+    guard watcher.path != myself.path else {
+      // TODO log warning
+      pprint("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
+          "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
+      return
+    }
+
     pprint("become watched by: \(watcher.path)     inside: \(myself)")
     let boxedWatcher = watcher.internal_exposeBox()
     self.watchedBy.insert(boxedWatcher)
   }
   public mutating func removeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
     pprint("remove watched by: \(watcher.path)     inside: \(myself)")
-
+    let boxedWatcher = watcher.internal_exposeBox()
+    self.watchedBy.remove(boxedWatcher)
   }
 
   /// Performs cleanup of references to the dead actor.
@@ -95,9 +110,11 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   // MARK: termination tasks
 
   func notifyWatchersWeDied(myself: ActorRef<Message>) {
+    pprint("\(myself) IS WATCHED BY \(watchedBy) AND IS DYING :::::::")
     for watcher in watchedBy {
       // TODO reasons need to be thought through...
       let figureOutHowToUseReasons = "natural death"
+      pprint("Notify \(watcher) that we died... :::: myself: \(myself)")
       watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), reason: figureOutHowToUseReasons))
     }
   }
@@ -107,4 +124,9 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   // TODO implement this once we are clustered; a termination of an entire node means termination of all actors on that node
   private func subscribeAddressTerminatedEvents() {}
 
+}
+
+
+public enum DeathPactError: Error {
+  case unhandledDeathPact(terminated: AnyAddressableActorRef, myself: AnyAddressableActorRef, message: String)
 }
