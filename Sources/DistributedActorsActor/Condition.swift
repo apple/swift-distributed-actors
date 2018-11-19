@@ -18,8 +18,6 @@ import Darwin
 import Glibc
 #endif
 
-//import Foundation
-
 import NIO
 
 public final class Condition {

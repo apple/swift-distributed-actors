@@ -26,28 +26,32 @@ class BehaviorCanonicalizeTests: XCTestCase {
   }
 
   func test_canonicalize_nestedSetupBehaviors() throws {
-    let p = ActorTestProbe<String>(named: "canonicalize-probe-1", on: system)
+    let p = ActorTestProbe<String>(named: "canonicalizeProbe1", on: system)
 
     let b: Behavior<String> = .setup { c1 in
       p ! "outer-1"
+      pprint("======================================================= OUTER 1")
       return .setup { c2 in
         p ! "inner-2"
+        pprint("======================================================= INNER 2")
         return .setup { c2 in
           p ! "inner-3"
+          pprint("======================================================= INNER 3")
           return .receiveMessage { m in
+            pprint("======================================================= RECV")
             p ! "received:\(m)"
-            return .stopped
+            return .same
           }
         }
       }
     }
 
-    let ref = try! system.spawnAnonymous(b)
+    let ref = try! system.spawn(b, named: "nestedSetups")
 
     try p.expectMessage("outer-1")
     try p.expectMessage("inner-2")
     try p.expectMessage("inner-3")
-    // p.expectNoMessage(.milliseconds(100))
+    try p.expectNoMessage(for: .milliseconds(100))
     ref ! "ping"
     try p.expectMessage("received:ping")
   }

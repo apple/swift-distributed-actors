@@ -176,16 +176,13 @@ struct CallSiteInfo {
 
 extension CallSiteInfo {
 
-  /// Reports a failure at the given call site source location.
-  public func fail(message: String) throws {
+  /// Returns an Error that should be thrown by the called.
+  /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
+  public func failure(message: String) -> Error {
     let details = detailedMessage(assertionExplained: message)
     XCTAssert(false, details, file: self.file, line: self.line)
 
-    throw CallSiteError.CallSiteError(message: details)
-
-    // Alternatively we could throw, however this interrupts the entire test run (!),
-    // it would be awesome however if we could run a single test in an actor, and it would then crash the single test, not entire suite...
-    //    throw CallSiteError.CallSiteError(message: detailedMessage(assertionExplained: message))
+    return CallSiteError.CallSiteError(message: details)
   }
 
 }

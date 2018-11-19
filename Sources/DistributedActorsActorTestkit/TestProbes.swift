@@ -111,8 +111,7 @@ final public class ActorTestProbe<Message> {
 
     let maybeGot: SystemMessage? = self.signalQueue.poll(expectationTimeout)
     guard let got = maybeGot else {
-      try callSite.fail(message: "Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
-      fatalError() // won't trigger since callSite.fail always throws
+      throw callSite.failure(message: "Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
     }
     return got
   }
@@ -148,7 +147,7 @@ extension ActorTestProbe where Message: Equatable {
       }
     } catch {
       let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
-      try callSite.fail(message: message)
+      throw callSite.failure(message: message)
     }
   }
 
@@ -162,11 +161,15 @@ extension ActorTestProbe where Message: Equatable {
     }
   }
 
+  /// Asserts that no message is received by the probe during the specified timeout.
+  /// Useful for making sure that after some "terminal" message no other messages are sent.
+  ///
+  /// Warning: The method will block the current thread for the specified timeout.
   public func expectNoMessage(for timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
     if let message = self.messagesQueue.poll(timeout) {
       let message = "Received unexpected message [\(message)]:\(type(of: message)). Did not expect to receive any messages for [\(timeout.prettyDescription)]."
-      try callSite.fail(message: message)
+      throw callSite.failure(message: message)
     }
   }
 
@@ -197,15 +200,24 @@ extension ActorTestProbe {
 
   /// Returns the `terminated` message (TODO SIGNAL)
   /// since one may want to perform additional assertions on the termination reason perhaps
+  /// Returns: the matched `.terminated` message
+  @discardableResult
   public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-    let signal = try self.expectSignal(file: file, line: line, column: column)
+
+    var maybeSignal: SystemMessage? = nil
+    do {
+      maybeSignal = try self.expectSignal()
+    } catch {
+      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but no signal received within \(self.expectationTimeout.prettyDescription)")
+    }
+
+    guard let signal = maybeSignal else { fatalError("should never happen") }
     switch signal {
     case let .terminated(_ref, _) where _ref.path == ref.path:
       return signal // ok!
     default:
-      try callSite.fail(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
-      fatalError("NEVER HAPPENS")
+      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
     }
   }
 
