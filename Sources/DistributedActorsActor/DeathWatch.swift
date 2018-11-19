@@ -22,7 +22,7 @@ import Dispatch
 //
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
-internal struct DeathWatch<Message> { // TODO make a protocol
+@usableFromInline internal struct DeathWatch<Message> { // TODO make a protocol
 
   private var watching = Set<BoxedHashableAnyReceivesSignals>()
   private var watchedBy = Set<BoxedHashableAnyReceivesSignals>()
@@ -79,32 +79,37 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   /// Performs cleanup of references to the dead actor.
   ///
   /// Requires: passed in argument to be a `.terminated`.
-  public mutating func receiveTerminated(_ terminated: SystemMessage) {
-    guard case let .terminated(deadActorRef, _) = terminated else {
+  ///
+  /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
+  public mutating func receiveTerminated(_ terminated: SystemMessage) -> Bool {
+    guard case let .terminated(deadActorRef) = terminated else { // TODO hope this optimizes away nicely when inlined etc
       fatalError("receiveTerminated most only be invoked with .terminated")
     }
 
     let deadPath = deadActorRef.path
     let pathsEqual: (BoxedHashableAnyReceivesSignals) -> Bool = { watched in watched.path == deadPath }
-    func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSignals>, `where` check: (BoxedHashableAnyReceivesSignals) -> Bool) {
+    // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
+    func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSignals>, `where` check: (BoxedHashableAnyReceivesSignals) -> Bool) -> Bool {
       if let deadIndex = set.firstIndex(where: check) {
         set.remove(at: deadIndex)
+        return true
       }
+      return false
     }
 
-
-    // remove the dead actor from the set that we were watching:
-
-    // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
-    var fromSet: Set<BoxedHashableAnyReceivesSignals> = self.watching
-
-    removeDeadRef(from: &fromSet, where: pathsEqual)
-
-    // remove the dead actor from the set that was watching us, no need to notify dead actors about our death:
-    var fromSet2: Set<BoxedHashableAnyReceivesSignals> = self.watchedBy
-    if let deadIndex = fromSet2.firstIndex(where: pathsEqual) {
-      fromSet2.remove(at: deadIndex)
+    // we remove the actor from both sets;
+    // - we don't need to watch it anymore, since it has just terminated,
+    // - we don't need to refer to it, since sending it .terminated notifications would be pointless.
+    guard removeDeadRef(from: &self.watching, where: pathsEqual) &&
+          removeDeadRef(from: &self.watchedBy, where: pathsEqual) else {
+      // seems we don't know this actor at all, which means that no actions should be taken in response to this .terminated.
+      // It should NOT be delivered to user code, nor should Death Pact termination be triggered.
+      return false
     }
+
+    // we knew this actor, and have successfully removed it from our sets,
+    // the ActorCell should take appropriate signal handling actions now.
+    return true
   }
 
   // MARK: termination tasks
@@ -112,10 +117,8 @@ internal struct DeathWatch<Message> { // TODO make a protocol
   func notifyWatchersWeDied(myself: ActorRef<Message>) {
     pprint("\(myself) IS WATCHED BY \(watchedBy) AND IS DYING :::::::")
     for watcher in watchedBy {
-      // TODO reasons need to be thought through...
-      let figureOutHowToUseReasons = "natural death"
       pprint("Notify \(watcher) that we died... :::: myself: \(myself)")
-      watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), reason: figureOutHowToUseReasons))
+      watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself)))
     }
   }
 

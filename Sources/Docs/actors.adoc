@@ -14,6 +14,49 @@ TODO
 
 TODO
 
+
+=== Stopping actors
+
+#### Guarantees
+
+For a given actor, the following is guaranteed:
+
+- if an actor returns the `.stopped` behavior, no further messages will be delivered to its message (or signal) receive blocks.
+- if any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
+
+Internal guarantees:
+
+- if the `.stopped` behavior is returned during handling system messages, no further user messages shall be processed.
+- all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
+- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `TERMINATED` (dead),
+  - during the time between `TERMINATING` and `TERMINATED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
+  - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
+- resources (e.g. the held behavior) shall only be released once the TERMINATED state has been reached.
+
+
 === Monitoring and reacting to Termination
 
 TODO
+
+=== DeathWatch
+
+#### Guarantees
+
+For the sake of describing those guarantees let us assume we have two actors, Romeo and Juliet.
+Romeo performs a `context.watch(juliet)` during its `setup`.
+
+It is by Swift Distributed Actors guaranteed that:
+
+- if Juliet terminated Romeo will receive a `.terminated` signal which it can handle by using an `Behavior.receiveSignal`,
+- the `.terminated` message will never be duplicated not lost. As it goes with system messages, one can assume "exactly once" processing for them,
+including in distributed settings (which is a stronger guarantee than given for plain user messages),
+-
+
+Furthermore, if we imagine the above two actors be in the actual play of Shakespeare, then there would also be an audience,
+which would be watching both of these actors. This means that many actors (the audience) can be watching out "stage" actors.
+For this situation the following is guaranteed:
+
+- if an actor (any actor) is watching any of the terminating actors it WILL receive an `.terminated` message,
+- all of the actors watching a terminating actor WILL receive the `.terminated` message,
+  - even in distributed settings, if a watcher has "not noticed immediately" what was going on on stage (e.g. due to lack of network connectivity),
+    once it is informed by other actors (handled internally via cluster gossip), it will receive the outstanding `.terminated` as-if it had observed the death with its own eyes.

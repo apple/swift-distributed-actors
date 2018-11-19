@@ -34,28 +34,14 @@ class BehaviorTests: XCTestCase {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     let message = "EHLO"
-    let _: ActorRef<String> = try! system.spawnAnonymous(.setup(onStart: { context in
+    let ref: ActorRef<String> = try! system.spawnAnonymous(.setup(onStart: { context in
       pprint("sending the HELLO")
       p ! message
       return .stopped
     }))
 
     try p.expectMessage(message)
-    // TODO p.expectTerminated(ref)
-  }
-
-  // TODO more of a scheduling spec than behavior spec so move it
-  func test_single_actor_should_wakeUp_on_new_message_exactly_2_locksteps() throws {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-1", on: system)
-
-    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
-
-    for _ in 0...1 {
-      let payload: String = messages.nextName()
-      p ! payload
-      try p.expectMessage(payload)
-    }
-    // TODO p.expectTerminated(ref)
+    try p.expectTerminated(ref)
   }
 
   func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
@@ -68,7 +54,6 @@ class BehaviorTests: XCTestCase {
       p ! payload
       try p.expectMessage(payload)
     }
-    // TODO p.expectTerminated(ref)
   }
 
   func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
@@ -87,7 +72,6 @@ class BehaviorTests: XCTestCase {
       echoPayload ! TestMessage(message: payload, replyTo: p.ref)
       try p.expectMessage(payload)
     }
-    // TODO p.expectTerminated(ref)
   }
 
   func test_receive_receivesMessages() throws {
@@ -118,7 +102,7 @@ class BehaviorTests: XCTestCase {
       try p.expectMessage(thxFor("message-\(i)"))
     }
 
-    // TODO p.expectTerminated(ref)
+    try p.expectTerminated(ref)
   }
 
   class MyActor: ActorBehavior<TestMessage> {

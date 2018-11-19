@@ -36,6 +36,10 @@ public protocol Logger {
 
 extension Logger {
 
+  public func debug(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
+    self._log(level: .debug, message: message, file: file, function: function, line: line)
+  }
+
   public func info(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
     self._log(level: .info, message: message, file: file, function: function, line: line)
   }
@@ -51,6 +55,7 @@ extension Logger {
 }
 
 public enum LogLevel: Int {
+  case debug
   case info
   case warn
   case error

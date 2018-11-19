@@ -214,7 +214,27 @@ extension ActorTestProbe {
 
     guard let signal = maybeSignal else { fatalError("should never happen") }
     switch signal {
-    case let .terminated(_ref, _) where _ref.path == ref.path:
+    case let .terminated(_ref) where _ref.path == ref.path:
+      return signal // ok!
+    default:
+      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
+    }
+  }
+
+  @discardableResult
+  public func expect<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
+    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
+    var maybeSignal: SystemMessage? = nil
+    do {
+      maybeSignal = try self.expectSignal()
+    } catch {
+      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but no signal received within \(self.expectationTimeout.prettyDescription)")
+    }
+
+    guard let signal = maybeSignal else { fatalError("should never happen") }
+    switch signal {
+    case let .terminated(_ref) where _ref.path == ref.path:
       return signal // ok!
     default:
       throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(signal)")

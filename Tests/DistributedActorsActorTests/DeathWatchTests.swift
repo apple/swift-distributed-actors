@@ -145,7 +145,7 @@ class DeathWatchTests: XCTestCase {
     try probe.expectMessage("reply:hi")
 
     // internal hacks
-    let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef(), reason: "")
+    let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef())
     romeo.internal_boxAnyReceivesSignals().sendSystemMessage(fakeTerminated)
 
     try probe.expectTerminated(romeo)
@@ -166,26 +166,39 @@ class DeathWatchTests: XCTestCase {
       return .same
     }, named: "juliet")
 
-    let romeo = try system.spawn(Behavior<String>.setup { context in
-      context.watch(juliet)
-
-      return .receiveMessage { msg in
-        probe.ref.tell("reply:\(msg)")
-        return .same
+    let romeo = try system.spawn(Behavior<String>.receive { context, message in
+      switch message {
+      case "watch":
+        context.watch(juliet)
+        probe.tell("reply:watch")
+      case "unwatch":
+        context.unwatch(juliet)
+        probe.tell("reply:unwatch")
+      default:
+        fatalError("should not happen")
       }
+      return .same
+    }.receiveSignal { context, signal in
+      if case let .terminated(ref) = signal {
+        probe.tell("Unexpected terminated received!!! \(ref)")
+      }
+      return .same
     }, named: "romeo")
 
     probe.watch(juliet)
     probe.watch(romeo)
 
-    romeo ! "hi"
-    try probe.expectMessage("reply:hi")
+    romeo ! "watch"
+    try probe.expectMessage("reply:watch")
+    romeo ! "unwatch"
+    try probe.expectMessage("reply:unwatch")
 
-    // internal hacks
-    let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef(), reason: "")
+    // internal hacks; we simulate that Juliet has terminated, and enqueued the .terminated before the unwatch managed to reach her
+    let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef())
     romeo.internal_boxAnyReceivesSignals().sendSystemMessage(fakeTerminated)
 
-    try probe.expectTerminated(romeo)
+    // should NOT trigger the receiveSignal handler (which notifies the probe)
+    try probe.expectNoMessage(for: .milliseconds(100))
   }
 
   // MARK: Death pact

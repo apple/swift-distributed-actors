@@ -89,12 +89,10 @@ public struct ActorLogger: Logger {
 
   private func formatLevel(_ level: LogLevel) -> String {
     switch level {
-    case .error:
-      return "ERROR"
-    case .warn:
-      return "WARN"
-    case .info:
-      return "INFO"
+    case .debug: return "DEBUG"
+    case .info:  return " INFO"
+    case .warn:  return " WARN"
+    case .error: return "ERROR"
     }
   }
 
