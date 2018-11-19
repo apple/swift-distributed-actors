@@ -116,7 +116,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   public var behavior: Behavior<Message>
 
   // Implementation of DeathWatch
-  private var deathWatch: DeathWatch<Message>!
+  @usableFromInline internal var deathWatch: DeathWatch<Message>!
 
   private let _dispatcher: MessageDispatcher
 
@@ -211,37 +211,48 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       // TODO make DeathWatch methods available via extension
       self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
 
-    case let .terminated(ref, _):
-      log.info("Received .terminated(\(ref.path))")
-      self.deathWatch.receiveTerminated(message) // FIXME implement the logic well in there
-
-      let next: Behavior<Message>
-      if case let .signalHandling(_, handleSignal) = self.behavior {
-        next = handleSignal(context, message) // TODO we want to deliver Signals to users
-      } else {
-        // no signal handling installed is semantically equivalent to unhandled
-        log.info("No .signalHandling yet \(message) arrived so UNHANDLED :::: ")
-        next = Behavior<Message>.unhandled
-      }
-
-      log.info("becoming : \(next) after the terminated:::: \(message)")
-      switch next {
-      case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
-          message: "Death pact error: [\(context.myself)] has not handled termination received from watched watched [\(ref.path)] actor. " +
-              "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
-      default: becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
-      }
+    case let .terminated(ref):
+      try self.interpretSystemTerminated(who: ref, message: message)
 
     case .terminate:
-      // TODO SACT_CELL_DEBUG flag
       // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
       // mailbox status, but obtaining the mailbox status and getting the
       // TODO reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
       pprint("Terminating \(self.myself). Remaining messages will be drained to deadLetters.") 
-      return self.finishTerminating()
+      self.finishTerminating()
+      return false
     }
 
     return self.behavior.isStillAlive()
+  }
+
+  /// Interpret incoming .terminated system message
+  ///
+  /// Mutates actor cell behavior.
+  /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
+  @inlinable internal func interpretSystemTerminated(who ref: AnyAddressableActorRef, message: SystemMessage) throws {
+    log.info("Received .terminated(\(ref.path))")
+    guard self.deathWatch.receiveTerminated(message) else {
+      // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
+      return
+    }
+
+    let next: Behavior<Message>
+    if case let .signalHandling(_, handleSignal) = self.behavior {
+      next = handleSignal(context, message) // TODO we want to deliver Signals to users
+    } else {
+      // no signal handling installed is semantically equivalent to unhandled
+      log.info("No .signalHandling yet \(message) arrived so UNHANDLED :::: ")
+      next = Behavior<Message>.unhandled
+    }
+
+    log.info("becoming : \(next) after the terminated:::: .terminated(\(ref))")
+    switch next {
+    case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
+        message: "Death pact error: [\(context.myself)] has not handled termination received from watched watched [\(ref.path)] actor. " +
+            "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
+    default: becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
+    }
   }
 
   /// Fails the actor using the passed in error.
@@ -294,7 +305,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   // TODO this is also part of lifecycle / supervision... maybe should be in an extension for those
 
   /// One of the final methods to invoke when terminating->terminated
-  func finishTerminating() -> Bool {
+  ///
+  /// Always causes behavior to become `.stopped`.
+  internal func finishTerminating() {
     let b = self.behavior
     // TODO: stop all children? depends which style we'll end up with...
     // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
@@ -304,12 +317,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // "nil out everything"
     self.deathWatch = nil
     self._myselfInACell = nil // TODO or a dead placeholder
+    self.behavior = .stopped
 
     #if SACT_TRACE_CELL
     pprint("\(b) TERMINATED.")
     #endif
-
-    return false
   }
 
   // Implementation note: bridge method so Mailbox can call this when needed

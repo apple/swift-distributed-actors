@@ -32,7 +32,7 @@ public /* but really internal... */ enum SystemMessage: Equatable {
   case unwatch(from: AnyReceivesSignals)
 
   /// Received after [[watch]] was issued to an actor ref
-  case terminated(ref: AnyAddressableActorRef, reason: String) // TODO figure out types for reason // TODO "existenceConfirmed: Bool"
+  case terminated(ref: AnyAddressableActorRef) // TODO there's usually additional ifo: existenceConfirmed: Bool, reason: etc
 
   // TODO this is incomplete
 
@@ -49,7 +49,7 @@ extension SystemMessage {
     case let (.watch(l), .watch(r)): return l.path == r.path
     case let (.unwatch(l), .unwatch(r)): return l.path == r.path
     case (.terminate, .terminate): return true
-    case let (.terminated(lref, _), .terminated(rref, _)): return lref.path == rref.path
+    case let (.terminated(lref), .terminated(rref)): return lref.path == rref.path
 
     // listing cases rather than a full-on `default` to get an error when we add a new system message
     case (.start, _),
