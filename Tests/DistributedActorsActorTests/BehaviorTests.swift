@@ -80,13 +80,11 @@ class BehaviorTests: XCTestCase {
     func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
       if at == n {
         return .setup { context in
-          context.log.info("Got the expected final message")
           return .stopped
         }
       } else {
         return .receive { context, message in
           if (message == at + 1) {
-            context.log.info("Got the expected \(message)")
             return countTillNThenDieBehavior(n: n, currentlyAt: message)
           } else {
             fatalError("Received \(message) when was expecting \(at + 1)! Ordering rule violated.")

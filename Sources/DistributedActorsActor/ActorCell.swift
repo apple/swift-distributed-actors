@@ -15,6 +15,8 @@
 import NIO
 import Dispatch
 
+@usableFromInline let SACT_TRACE_CELL = false
+
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
 ///
 /// Warning:
@@ -170,7 +172,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// WARNING: Mutates the cells' behavior.
   func interpretMessage(message: Message) -> Bool {
     func interpretMessage0(_ behavior: Behavior<Message>, _ message: Message) -> Behavior<Message> {
-      pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
+      if SACT_TRACE_CELL { pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)") }
         
       switch behavior {
       case let .receiveMessage(recv):       return recv(message)
@@ -185,7 +187,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     let currentBehavior = self.behavior
     let next: Behavior<Message> = interpretMessage0(currentBehavior, message)
-    log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
+    if SACT_TRACE_CELL { log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") } // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
 
     self.behavior = currentBehavior.canonicalize(context, next: next)
     self.becomeNext(behavior: next)
@@ -248,10 +250,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// Mutates actor cell behavior.
   /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
   @inlinable internal func interpretSystemTerminated(who ref: AnyAddressableActorRef, message: SystemMessage) throws {
-    log.info("Received .terminated(\(ref.path))")
+    if SACT_TRACE_CELL { log.info("Received .terminated(\(ref.path))") }
     guard self.deathWatch.receiveTerminated(message) else {
       // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-      log.warn("Actor not known!")
+      log.warn("Actor not known yet \(message) received for it.")
       return
     }
     self.deathWatch.receiveTerminated(message)
@@ -261,11 +263,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       next = handleSignal(context, message) // TODO we want to deliver Signals to users
     } else {
       // no signal handling installed is semantically equivalent to unhandled
-      log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
+      // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
       next = Behavior<Message>.unhandled
     }
 
-    log.info("becoming : \(next) after the terminated:::: .terminated(\(ref))")
     switch next {
     case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
         message: "Death pact error: [\(context.myself)] has not handled termination received from watched watched [\(ref.path)] actor. " +

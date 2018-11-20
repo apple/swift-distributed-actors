@@ -18,6 +18,8 @@ import NIOConcurrencyHelpers
 import NIO // TODO feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
+let SACT_TRACE_PROBE = false
+
 // TODO find another way to keep it, so it's per-actor-system unique, we may need "akka extensions" style value holders
 private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testActor-")
 
@@ -87,7 +89,7 @@ final public class ActorTestProbe<Message> {
       switch message {
       case let .realMessage(msg):
       // real messages are stored directly
-        context.log.info("Probe received: [\(msg)]:\(type(of: msg))") // TODO make configurable to log or not
+        if SACT_TRACE_PROBE { context.log.info("Probe received: [\(msg)]:\(type(of: msg))") } // TODO make configurable to log or not
         messageQueue.enqueue(msg)
         return .same
 
@@ -104,7 +106,7 @@ final public class ActorTestProbe<Message> {
         return .stopped
       }
     }.receiveSignal { (context, signal) in
-      context.log.info("Probe received: [\(signal)]:\(type(of: signal))") // TODO make configurable to log or not
+      if SACT_TRACE_PROBE { context.log.debug("Probe received: [\(signal)]:\(type(of: signal))") } // TODO make configurable to log or not
       terminationsQueue.enqueue(signal) // TODO fix naming...
       return .same
     }
