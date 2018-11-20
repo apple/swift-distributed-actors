@@ -39,7 +39,7 @@ public final class ActorSystem {
   private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO make the $ a constant TODO: where
 
   private let terminationLock = Lock()
-  let dispatcher: MessageDispatcher = try! FixedThreadPool(6)
+  let dispatcher: MessageDispatcher = try! FixedThreadPool(8) // TODO better guesstimate on start and also make it tuneable
 
 //  // TODO provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
@@ -115,7 +115,7 @@ extension ActorSystem: ActorRefFactory {
     let nameSegment = try ActorPathSegment(name) // performs validation
     let path = try ActorPath([ActorPathSegment("user"), nameSegment])
 
-    log.info("Spawning \(behavior), named: [\(name)]")
+    log.info("Spawning [\(behavior)], named: [\(name)]")
 
     // TODO validate name is valid actor name (no / in it etc)
     // TODO move this to the provider perhaps? or some way to share setup logic

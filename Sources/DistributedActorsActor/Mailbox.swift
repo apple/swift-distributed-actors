@@ -75,6 +75,7 @@ final class Mailbox<Message> {
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
       let envelope = envelopePtr.move()
       let msg = envelope.payload
+      pprint("MAILBOX:::::::INVOKE \(envelope.payload)")
       return cell.interpretMessage(message: msg)
     }, fail: { error in
       cell.fail(error: error)
@@ -83,6 +84,7 @@ final class Mailbox<Message> {
     self.systemMessageCallbackContext = WrappedClosure(exec: { ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
       let msg = envelopePtr.move()
+      pprint("MAILBOX:::::::INVOKE_SYS \(msg)")
       return try cell.interpretSystemMessage(message: msg)
     }, fail: { error in
       cell.fail(error: error)
@@ -110,20 +112,32 @@ final class Mailbox<Message> {
   }
 
   deinit {
+    // TODO maybe we can free the queues themselfes earlier, and only keep the status marker somehow?
+    // TODO if Closed we know we'll never allow an enqueue ever again after all // FIXME: hard to pull off with the CMailbox...
     cmailbox_destroy(mailbox)
   }
 
   @inlinable
   func sendMessage(envelope: Envelope<Message>) -> Void {
+    guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+      return // TODO drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
+    }
+
+    pprint("MAILBOX:\(self.cell.path.name):::::::sendMessage: \(envelope.payload)")
     let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
     ptr.initialize(to: envelope)
-    if (cmailbox_send_message(mailbox, ptr)) {
+    if (cmailbox_send_message(mailbox, ptr)) { // TODO if we were the same as the cmailbox, a single status read would tell us if we can exec or not (see above guard)
       cell.dispatcher.execute(self.run)
     }
   }
 
   @inlinable
   func sendSystemMessage(_ systemMessage: SystemMessage) -> Void {
+    guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+      return handleOnClosedMailbox(systemMessage)
+    }
+
+    pprint("MAILBOX:\(self.cell.path.name):::::::sendMessage: \(systemMessage)")
     let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
     ptr.initialize(to: systemMessage)
     if  cmailbox_send_system_message(mailbox, ptr) {
@@ -133,10 +147,26 @@ final class Mailbox<Message> {
 
   @inlinable
   func run() -> Void {
+    pprint("MAILBOX:\(self.cell.path.name):::::::run")
     let shouldReschedule: Bool = cmailbox_run(mailbox, &messageCallbackContext, &systemMessageCallbackContext, interpretMessage)
+    pprint("MAILBOX:\(self.cell.path.name):::::::run FINISHED, reschedule: \(shouldReschedule)")
 
     if shouldReschedule {
       cell.dispatcher.execute(self.run)
+    }
+  }
+
+  @inlinable
+  func handleOnClosedMailbox(_ message: SystemMessage) {
+    // #if mailbox trace
+    pprint("Closed Mailbox of [\(cell.myself.path.debugDescription)] received: \(message); handling on calling thread.")
+    // #endif
+
+    switch message {
+    case let .watch(watcher):
+      watcher.sendSystemMessage(.terminated(ref: cell.myself.internal_boxAnyAddressableActorRef()))
+    default:
+      return // ignore
     }
   }
 }

@@ -27,9 +27,9 @@ extension BehaviorTests {
                 ("test_setup_executesImmediatelyOnStartOfActor", test_setup_executesImmediatelyOnStartOfActor),
                 ("test_single_actor_should_wakeUp_on_new_message_lockstep", test_single_actor_should_wakeUp_on_new_message_lockstep),
                 ("test_two_actors_should_wakeUp_on_new_message_lockstep", test_two_actors_should_wakeUp_on_new_message_lockstep),
-                ("test_receive_receivesMessages", test_receive_receivesMessages),
+                ("test_receive_shouldReceiveManyMessagesInExpectedOrder", test_receive_shouldReceiveManyMessagesInExpectedOrder),
                 ("test_ActorBehavior_receivesMessages", test_ActorBehavior_receivesMessages),
-                ("test_ActorBehavior_adapt", test_ActorBehavior_adapt),
+                ("test_expectNoMessage", test_expectNoMessage),
            ]
    }
 }

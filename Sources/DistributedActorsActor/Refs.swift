@@ -55,9 +55,6 @@ public class ActorRef<Message>: ReceivesMessages {
     return undefined()
   }
 
-  public func adapt<From>(with converter: @escaping (From) -> Message) -> ActorRef<From> {
-    return ActorRefAdapter(self, converter)
-  }
 }
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible  {
@@ -104,7 +101,7 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
   let mailbox: Mailbox<Message> // TODO we need to be able to swap it for DeadLetters or find some other way
 
   // MARK: Internal details; here be dragons
-  private let cell: ActorCell<Message>
+  internal let cell: ActorCell<Message>
 
   public init(path: ActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
     self._path = path
@@ -112,12 +109,11 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
     self.mailbox = mailbox
   }
 
-  public override func tell(_ message: Message) { // yes we do want to keep ! and tell, it allows teaching people about the meanings and "how to read !" and also eases the way into other operations
+  public override func tell(_ message: Message) {
     self.sendMessage(message)
   }
 
-  @usableFromInline
-  internal func sendMessage(_ message: Message) {
+  @usableFromInline internal func sendMessage(_ message: Message) {
     pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendMessage(envelope: Envelope(payload: message))
   }
@@ -125,23 +121,5 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
   @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
     pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
     self.mailbox.sendSystemMessage(message)
-  }
-}
-
-internal final class ActorRefAdapter<From, To>: ActorRef<From> {
-  let ref: ActorRef<To>
-  let converter: (From) -> To
-
-  init(_ ref: ActorRef<To>, _ converter: @escaping (From) -> To) {
-    self.ref = ref
-    self.converter = converter
-  }
-
-  override var path: ActorPath {
-    return ref.path
-  }
-
-  override func tell(_ message: From) {
-    ref ! converter(message)
   }
 }

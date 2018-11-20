@@ -30,28 +30,25 @@ import Dispatch
   // MARK: perform watch/unwatch
   
   /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-  public mutating func watch<M>(watchee: ActorRef<M>, myself watcher: ActorRef<Message>) {
+  public mutating func watch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
     pprint("watch: \(watchee) (from \(watcher) (myself))")
     // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
     guard watchee.path != watcher.path else { return () }
 
-    let watcheeWithCell = watchee.internal_downcast
-
     // watching is idempotent, and an once-watched ref needs not be watched again
-    let boxedWatchee = BoxedHashableAnyReceivesSignals(ref: watcheeWithCell)
-    guard !watching.contains(boxedWatchee) else { return () }
+    if self.watching.contains(watchee) { return () }
 
-    watcheeWithCell.sendSystemMessage(.watch(from: watcher.internal_boxAnyReceivesSignals()))
-    watching.insert(boxedWatchee)
+    watchee.sendSystemMessage(.watch(from: watcher.internal_boxAnyReceivesSignals()))
+    self.watching.insert(watchee)
     subscribeAddressTerminatedEvents()
   }
 
   /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
-  public mutating func unwatch(watchee: AnyReceivesSignals, myself watcher: ActorRef<Message>) {
+  public mutating func unwatch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
     pprint("unwatch: watchee: \(watchee) (from \(watcher) myself)")
     // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
-    let boxedWatchee: BoxedHashableAnyReceivesSignals = watchee.internal_exposeBox()
-    if let removed = watching.remove(boxedWatchee) {
+    // let : BoxedHashableAnyReceivesSignals = watchee.internal_exposeBox()
+    if let removed = watching.remove(watchee) {
       removed.sendSystemMessage(.unwatch(from: watcher.internal_boxAnyReceivesSignals()))
     }
   }
@@ -87,7 +84,9 @@ import Dispatch
     }
 
     let deadPath = deadActorRef.path
-    let pathsEqual: (BoxedHashableAnyReceivesSignals) -> Bool = { watched in watched.path == deadPath }
+    let pathsEqual: (BoxedHashableAnyReceivesSignals) -> Bool = { watched in
+      return watched.path == deadPath
+    }
     // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
     func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSignals>, `where` check: (BoxedHashableAnyReceivesSignals) -> Bool) -> Bool {
       if let deadIndex = set.firstIndex(where: check) {
@@ -98,18 +97,12 @@ import Dispatch
     }
 
     // we remove the actor from both sets;
-    // - we don't need to watch it anymore, since it has just terminated,
-    // - we don't need to refer to it, since sending it .terminated notifications would be pointless.
-    guard removeDeadRef(from: &self.watching, where: pathsEqual) &&
-          removeDeadRef(from: &self.watchedBy, where: pathsEqual) else {
-      // seems we don't know this actor at all, which means that no actions should be taken in response to this .terminated.
-      // It should NOT be delivered to user code, nor should Death Pact termination be triggered.
-      return false
-    }
+    // 1) we don't need to watch it anymore, since it has just terminated,
+    let wasWatchedByMyself = removeDeadRef(from: &self.watching, where: pathsEqual)
+    // 2) we don't need to refer to it, since sending it .terminated notifications would be pointless.
+    _ = removeDeadRef(from: &self.watchedBy, where: pathsEqual)
 
-    // we knew this actor, and have successfully removed it from our sets,
-    // the ActorCell should take appropriate signal handling actions now.
-    return true
+    return wasWatchedByMyself
   }
 
   // MARK: termination tasks

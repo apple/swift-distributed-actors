@@ -34,20 +34,19 @@ class BehaviorTests: XCTestCase {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
     let message = "EHLO"
-    let ref: ActorRef<String> = try! system.spawnAnonymous(.setup(onStart: { context in
+    let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
       pprint("sending the HELLO")
       p ! message
       return .stopped
-    }))
+    })
 
     try p.expectMessage(message)
-    try p.expectTerminated(ref)
   }
 
   func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-2", on: system)
 
-    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
+    let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
     for _ in 0...10 {
       let payload: String = messages.nextName()
@@ -59,7 +58,7 @@ class BehaviorTests: XCTestCase {
   func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-3", on: system)
 
-    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
+    let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
     let echoPayload: ActorRef<TestMessage> =
       try system.spawnAnonymous(.receiveMessage{ message in
@@ -69,39 +68,66 @@ class BehaviorTests: XCTestCase {
 
     for _ in 0...10 {
       let payload: String = messages.nextName()
+      pprint("Sending: \(TestMessage(message: payload, replyTo: p.ref))")
       echoPayload ! TestMessage(message: payload, replyTo: p.ref)
       try p.expectMessage(payload)
     }
   }
 
-  func test_receive_receivesMessages() throws {
+  func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-4", on: system)
 
-    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
+    let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-    func thxFor(_ m: String) -> String {
-      return "Thanks for: <\(m)>"
+//    func thxFor(_ m: String) -> String {
+//      return "Thanks for: <\(m)>"
+//    }
+
+    func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
+      if at == n {
+        return .setup { context in
+          context.log.info("Got the expected final message")
+          return .stopped
+        }
+      } else {
+        return .receive { context, message in
+          if (message == at + 1) {
+            context.log.info("Got the expected \(message)")
+            return countTillNThenDieBehavior(n: n, currentlyAt: message)
+          } else {
+            fatalError("Received \(message) when was expecting \(at + 1)! Ordering rule violated.")
+          }
+        }
+      }
     }
 
-    let ref: ActorRef<TestMessage> = try! system.spawn(
-      .receive { (context, testMessage) in
-        context.log.info("Received \(testMessage)")
-        testMessage.replyTo ! thxFor(testMessage.message)
-        return .same
-      }, named: "recipient")
+    let n = 10
+    let ref = try system.spawn(countTillNThenDieBehavior(n: n), named: "countTillNThenDie")
 
     // first we send many messages
-    for i in 0...10 {
-      ref ! TestMessage(message: "message-\(i)", replyTo: p.ref)
+    for i in 0...n {
+      ref ! i
     }
 
-    // separately see if we got the expected replies in the right order.
-    // we do so separately to avoid sending in "lock-step" in the first loop above here
-    for i in 0...10 {
-      // TODO make expectMessage()! that can terminate execution
-      try p.expectMessage(thxFor("message-\(i)"))
-    }
-
+//    let ref: ActorRef<TestMessage> = try! system.spawn(
+//      .receive { (context, testMessage) in
+//        context.log.info("Got \(testMessage)")
+//        testMessage.replyTo ! thxFor(testMessage.message)
+//        return .same
+//      }, named: "recipient")
+//
+//    // first we send many messages
+//    for i in 0...10 {
+//      ref ! TestMessage(message: "message-\(i)", replyTo: p.ref)
+//    }
+//
+//    // separately see if we got the expected replies in the right order.
+//    // we do so separately to avoid sending in "lock-step" in the first loop above here
+//    for i in 0...10 {
+//      try! p.expectMessage(thxFor("message-\(i)"))
+//    }
+//
+    p.watch(ref)
     try p.expectTerminated(ref)
   }
 
@@ -124,7 +150,7 @@ class BehaviorTests: XCTestCase {
   func test_ActorBehavior_receivesMessages() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-5", on: system)
 
-    let messages = NonSynchronizedAnonymousNamesGenerator(prefix: "message-")
+    let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
     let ref: ActorRef<TestMessage> = try system.spawnAnonymous(MyActor())
 
@@ -142,25 +168,6 @@ class BehaviorTests: XCTestCase {
     for i in 0...10 {
       // TODO make expectMessage()! that can terminate execution
       try p.expectMessage(thxFor("message-\(i)"))
-    }
-  }
-
-  func test_ActorBehavior_adapt() throws {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
-
-    let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
-      p.ref ! msg
-      return .same
-    })
-
-    let adapted: ActorRef<Int> = ref.adapt { "\($0)" }
-
-    for i in 0...10 {
-      adapted ! i
-    }
-
-    for i in 0...10 {
-      p.expectMessage("\(i)")
     }
   }
 

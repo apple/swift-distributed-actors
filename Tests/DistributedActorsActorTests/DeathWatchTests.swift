@@ -201,6 +201,23 @@ class DeathWatchTests: XCTestCase {
     try probe.expectNoMessage(for: .milliseconds(100))
   }
 
+  func test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated() throws {
+    let p: ActorTestProbe<String> = ActorTestProbe(named: "alreadyDeadWatcherProbe", on: system)
+
+    let alreadyDead: ActorRef<String> = try system.spawn(.stopped, named: "alreadyDead")
+
+    p.watch(alreadyDead)
+    try p.expectTerminated(alreadyDead)
+
+    // even if a new actor comes in and performs the watch, it also should notice that `alreadyDead` is dead
+    let p2: ActorTestProbe<String> = ActorTestProbe(named: "alreadyDeadWatcherProbe2", on: system)
+    p2.watch(alreadyDead)
+    try p2.expectTerminated(alreadyDead)
+
+    // `p` though should not accidentally get another .terminated though:
+    try p.expectNoTerminationSignal(for: .milliseconds(200))
+  }
+  
   // MARK: Death pact
   func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies() throws {
     let romeo = try system.spawn(Behavior<RomeoMessage>.receive { (context, message) in

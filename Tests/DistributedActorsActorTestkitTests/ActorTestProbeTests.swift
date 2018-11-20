@@ -56,9 +56,10 @@ class ActorTestProbeTests: XCTestCase {
 
   }
 
-  func test_expectNoMessage() {
+  func test_expectNoMessage() throws {
     let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
 
-    p.expectNoMessage(for: .milliseconds(100))
+    try p.expectNoMessage(for: .milliseconds(100))
+    p.stop()
   }
 }
