@@ -94,7 +94,7 @@ public final class AtomicAnonymousNamesGenerator: AnonymousNamesGenerator {
 }
 
 // TODO pick better name for non synchronized ones
-public final   class NonSynchronizedAnonymousNamesGenerator: AnonymousNamesGenerator {
+public final   class NotSynchronizedAnonymousNamesGenerator: AnonymousNamesGenerator {
   private var ids: Int // FIXME should be UInt64, since there's no reason to limit child actors only since the name won't fit them ;-)
 
   override init(prefix: String) {

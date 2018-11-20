@@ -79,7 +79,7 @@ class ActorLifecycleTests: XCTestCase {
                                                      """)
     try check(illegalName: "カピバラ", expectedError: """
                                                      illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-                                                     """)
+                                                     """) // ka-pi-ba-ra
   }
 
   func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {

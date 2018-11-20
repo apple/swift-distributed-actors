@@ -19,8 +19,8 @@ import XCTest
 class AnonymousNamesGeneratorTests: XCTestCase {
 
   func test_hasCorrectPrefix() throws {
-    let a = NonSynchronizedAnonymousNamesGenerator(prefix: "a-")
-    let b = NonSynchronizedAnonymousNamesGenerator(prefix: "b-")
+    let a = NotSynchronizedAnonymousNamesGenerator(prefix: "a-")
+    let b = NotSynchronizedAnonymousNamesGenerator(prefix: "b-")
 
     XCTAssertEqual(a.nextName(), "a-a")
     XCTAssertEqual(b.nextName(), "b-a")
@@ -30,7 +30,7 @@ class AnonymousNamesGeneratorTests: XCTestCase {
   }
 
   func test_generatedNamesAreTheExpectedOnes() throws {
-    let a = NonSynchronizedAnonymousNamesGenerator(prefix: "")
+    let a = NotSynchronizedAnonymousNamesGenerator(prefix: "")
 
     let p = "$"
     XCTAssertEqual(a.mkName(prefix: p, n: 0), "$a")
@@ -45,7 +45,7 @@ class AnonymousNamesGeneratorTests: XCTestCase {
   func test_AtomicAndNonSynchronizedGeneratorsYieldTheSameSequenceOfNames() throws {
     let p = "$"
     let atomic = AtomicAnonymousNamesGenerator(prefix: p)
-    let normal = NonSynchronizedAnonymousNamesGenerator(prefix: p)
+    let normal = NotSynchronizedAnonymousNamesGenerator(prefix: p)
     for i in 0...(64 + 64 + 64 + 5) { // at least wanting to see a few 3 letter names
       let aName = atomic.mkName(prefix: p, n: i)
       let nName = normal.mkName(prefix: p, n: i)

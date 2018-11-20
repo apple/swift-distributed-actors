@@ -17,9 +17,9 @@ import Dispatch
 
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
 ///
-/// It must ONLY EVER be accessed from its own Actor.
-/// It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-
+/// Warning:
+/// - It MOST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
+/// - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 public class ActorContext<Message> {
 
   // TODO in the subclass we need to apply some workarounds around `cannot override with a stored property 'myself'` since I want those to be vars
@@ -166,7 +166,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// WARNING: Mutates the cells' behavior.
   func interpretMessage(message: Message) -> Bool {
     func interpretMessage0(_ behavior: Behavior<Message>, _ message: Message) -> Behavior<Message> {
-      pprint("interpret: \(behavior), with message: \(message)")
+      pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
         
       switch behavior {
       case let .receiveMessage(recv):       return recv(message)
@@ -234,8 +234,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     log.info("Received .terminated(\(ref.path))")
     guard self.deathWatch.receiveTerminated(message) else {
       // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
+      log.warn("Actor not known!")
       return
     }
+    self.deathWatch.receiveTerminated(message)
 
     let next: Behavior<Message>
     if case let .signalHandling(_, handleSignal) = self.behavior {
@@ -316,7 +318,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     // "nil out everything"
     self.deathWatch = nil
-    self._myselfInACell = nil // TODO or a dead placeholder
+    self._myselfInACell = nil
     self.behavior = .stopped
 
     #if SACT_TRACE_CELL
@@ -334,11 +336,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   // MARK: External ActorContext API
 
   override public func watch<M>(_ watchee: ActorRef<M>) {
-    self.deathWatch.watch(watchee: watchee, myself: context.myself)
+    self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSignals().internal_exposeBox(), myself: context.myself)
   }
 
   override public func unwatch<M>(_ watchee: ActorRef<M>) {
-    self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
+    self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals().internal_exposeBox(), myself: context.myself)
   }
 
 

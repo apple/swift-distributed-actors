@@ -61,4 +61,12 @@ bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
 bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message);
 
+/*
+ * Returns `true` if the mailbox is terminating or terminated, messages should not be enqueued to it.
+ * Messages can be drained to dead letters immediately, and watch messages should immediately be replied to with `.terminated`
+ */
+// TODO: this is a workaround... normally we do not need this additional read since send_message does this right away
+// TODO: in a pure swift mailbox we'd do the 1 status read, and from that already know if we are closed or not (=> drop the messages)
+bool cmailbox_is_closed(CMailbox* mailbox);
+
 #endif /* CMailbox_h */
