@@ -209,17 +209,15 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     // death watch
     case let .watch(watcher):
-      // TODO make DeathWatch methods available via extension
-      self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+      self.interpretSystemWatch(watcher: watcher)
 
     case let .unwatch(watcher):
-      // TODO make DeathWatch methods available via extension
-      self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself)
+      self.interpretSystemUnwatch(watcher: watcher)
 
     case let .terminated(ref):
       try self.interpretSystemTerminated(who: ref, message: message)
 
-    case .terminate:
+    case .tombstone:
       // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
       // mailbox status, but obtaining the mailbox status and getting the
       // TODO reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
@@ -229,6 +227,20 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     }
 
     return self.behavior.isStillAlive()
+  }
+
+  @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSignals) {
+    switch self.behavior {
+    case .stopped:
+      // so we are in the middle of terminating already anyway
+      watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself)))
+    default:
+      // TODO make DeathWatch methods available via extension
+      self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+    }
+  }
+  @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSignals) {
+    self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO make DeathWatch methods available via extension
   }
 
   /// Interpret incoming .terminated system message
@@ -296,7 +308,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     self.behavior = self.behavior.canonicalize(context, next: next)
 
     let alreadyDead: Bool = self.behavior.isStopped()
-    if alreadyDead { self._myselfReceivesSystemMessages?.sendSystemMessage(.terminate) }
+    if alreadyDead { self._myselfReceivesSystemMessages!.sendSystemMessage(.tombstone) }
   }
 
   @inlinable
@@ -304,8 +316,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
     if case .setup(let onStart) = behavior {
       let next = onStart(context)
-      _ = self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
-    } // else we ignore the .start, since no behavior is interested in it
+      self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
+    } else {
+      self.becomeNext(behavior: .same)
+    }
     // and canonicalize() will make sure that any nested `.setup` are handled immediately as well
   }
 
