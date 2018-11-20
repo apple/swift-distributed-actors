@@ -142,7 +142,7 @@ bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
 
 bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message) {
   int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
-  print_debug_status(mailbox, "Entering run");
+  // print_debug_status(mailbox, "Entering run");
 
 //  if (!has_activations(status)) { // FIXME should this not actually be a bug, because we had a spurious activation triggered?
 //    return false;
@@ -161,12 +161,12 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
   // run system messages ------
 
   if (has_system_messages(status)) {
-    printf("[cmailbox] Has system message(s)\n");
+    // printf("[cmailbox] Has system message(s)\n");
     processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
     // we run all system messages, as they may
     void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
     while (system_message != NULL && keep_running) {
-      printf("[cmailbox] Processing system message...\n");
+      // printf("[cmailbox] Processing system message...\n");
       keep_running = interpret_message(system_context, system_message);
       system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
     }
@@ -264,7 +264,7 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
 }
 
 void print_debug_status(CMailbox *mailbox, char* msg) {
-//  #if SACT_TRACE_MAILBOX
+  #if SACT_TRACE_MAILBOX
   int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
   char buffer[33];
@@ -285,7 +285,7 @@ void print_debug_status(CMailbox *mailbox, char* msg) {
          is_terminating(status) ? "Y" : "N",
          is_terminated_dead(status) ? "Y" : "N"
   );
-//  #endif
+  #endif
 }
 
 int64_t try_activate(CMailbox* mailbox) {
@@ -309,7 +309,6 @@ int64_t set_status_terminating(CMailbox* mailbox) {
 // intentionally spelled "_dead" to avoid typos
 // TODO this should be the last write we perform
 int64_t set_status_terminated_dead(CMailbox* mailbox) {
-  // printf("[cmailbox] Setting TERMINATED marker.\n");
   return atomic_fetch_or_explicit(&mailbox->status, TERMINATED, memory_order_acq_rel);
 }
 

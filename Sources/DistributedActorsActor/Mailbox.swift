@@ -75,7 +75,6 @@ final class Mailbox<Message> {
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
       let envelope = envelopePtr.move()
       let msg = envelope.payload
-      pprint("MAILBOX:::::::INVOKE \(msg)")
       return cell.interpretMessage(message: msg)
     }, fail: { error in
       cell.fail(error: error)
@@ -84,7 +83,6 @@ final class Mailbox<Message> {
     self.systemMessageCallbackContext = WrappedClosure(exec: { ptr in
       let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
       let msg = envelopePtr.move()
-      pprint("MAILBOX:::::::INVOKE_SYS \(msg)")
       return try cell.interpretSystemMessage(message: msg)
     }, fail: { error in
       cell.fail(error: error)
@@ -121,7 +119,9 @@ final class Mailbox<Message> {
   func sendMessage(envelope: Envelope<Message>) {
     // while terminating (closing) the mailbox, we immediately dead-letter new user messages
     guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+      #if SACT_TRACE_MAILBOX
       pprint("Mailbox(\(self.cell.path)) is closing, dropping message \(envelope)")
+      #endif
       return // TODO drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
     }
 
@@ -136,7 +136,7 @@ final class Mailbox<Message> {
 
   @inlinable
   func sendSystemMessage(_ systemMessage: SystemMessage) {
-    // TODO this is is_terminating
+    // TODO the following is is_terminating, but we need to refresh wording here
 //    guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
 //      return handleOnClosedMailbox(systemMessage)
 //    }

@@ -66,7 +66,7 @@ public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: 
 }
 
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
-  print("[pprint][\(file):\(line)][\(hackyPthreadThreadName())]: \(message)")
+//  print("[pprint][\(file):\(line)][\(hackyPthreadThreadName())]: \(message)")
 //  print("[pprint][\(file):\(line)]: \(message)")
 }
 
