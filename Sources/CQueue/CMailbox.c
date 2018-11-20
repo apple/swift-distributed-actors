@@ -68,6 +68,7 @@ int64_t message_count(int64_t status);
 int64_t set_status_terminating(CMailbox* mailbox);
 int64_t set_status_terminated_dead(CMailbox* mailbox);
 
+
 void print_debug_status(CMailbox *mailbox);
 bool has_activations(int64_t status);
 bool has_system_messages(int64_t status);
@@ -76,6 +77,9 @@ bool is_terminating(int64_t status);
 bool is_terminated_dead(int64_t status);
 
 bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_message);
+
+int64_t max(int64_t a, int64_t b);
+
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
   CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
@@ -146,16 +150,13 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
 
   int64_t processed_activations = 0;
   // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
-  int64_t max_run_length = message_count(status);
-  if (max_run_length > mailbox->max_run_length) {
-    max_run_length = mailbox->max_run_length;
-  }
+  int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
-  printf("[cmailbox] max_run_length = %lld\n", max_run_length);
+  printf("[cmailbox] run_length = %lld\n", run_length);
 
   // only an still_alive actor shall continue running;
   // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
-  bool still_alive = true; // TODO hijack the max_run_length, and reformulate it as "fuel", and set it to zero when we need to stop
+  bool still_alive = true; // TODO hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
   if (has_system_messages(status)) {
     printf("[cmailbox] Has system message(s)\n");
@@ -180,18 +181,22 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
 
   if (still_alive) {
     void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
-    while (message != NULL && still_alive) {
+    while (message != NULL) {
       // we need to add 2 to processed_activations because the user message count is stored
       // shifted by 1 in the status and we use the same field to clear the
       // system message bit
       processed_activations += 0b01;
       // printf("[cmailbox]Processing user message...\n");
-      still_alive = interpret_message(context, message); // TODO maybe no need for &&
+      still_alive = interpret_message(context, message); // todo we can optimize the still_alive into the processed counter?
 
-      if (processed_activations >= max_run_length) {
-        // if the maximum run length is reached, set message to
-        // NULL to break out of the loop
-        message = NULL;
+      // TODO optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
+      if (still_alive == false) {
+        print_debug_status(mailbox);
+        set_status_terminating(mailbox);
+        print_debug_status(mailbox);
+        message = NULL; // break out of the loop
+      } else if (processed_activations >= run_length) {
+        message = NULL; // break out of the loop
       } else {
         // dequeue another message, if there are no more messages left, message
         // will contain NULL and terminate the loop
@@ -202,12 +207,12 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
     printf("Skipping message processing since we are terminating...!");
   }
 
-  // // printf("[cmailbox]ProcessedActivations %lld messages...\n", processed_activations);
+  // // printf("[cmailbox] ProcessedActivations %lld messages...\n", processed_activations);
 
   int64_t old_status = decrement_status_activations(mailbox, processed_activations);
 
   int64_t old_activations = activations(old_status);
-  // printf("[cmailbox]Old: %lld, processed_activations: %lld\n", old_activations, processed_activations);
+  // printf("[cmailbox] Old: %lld, processed_activations: %lld\n", old_activations, processed_activations);
   print_debug_status(mailbox);
 
   if (old_activations == processed_activations &&
@@ -311,3 +316,6 @@ bool is_terminated_dead(int64_t status) {
   return (status & TERMINATED) != 0;
 }
 
+int64_t max(int64_t a, int64_t b) {
+  return a > b ? b : a;
+}
