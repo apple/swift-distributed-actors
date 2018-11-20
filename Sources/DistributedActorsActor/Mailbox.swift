@@ -75,7 +75,6 @@ final class Mailbox<Message> {
       let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
       let envelope = envelopePtr.move()
       let msg = envelope.payload
-      pprint("MAILBOX:::::::INVOKE \(envelope.payload)")
       return cell.interpretMessage(message: msg)
     }, fail: { error in
       cell.fail(error: error)
@@ -119,11 +118,12 @@ final class Mailbox<Message> {
 
   @inlinable
   func sendMessage(envelope: Envelope<Message>) -> Void {
+    // while terminating (closing) the mailbox, we immediately dead-letter new user messages
     guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+      pprint("Mailbox(\(self.cell.path)) is closing, dropping message \(envelope)")
       return // TODO drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
     }
 
-    pprint("MAILBOX:\(self.cell.path.name):::::::sendMessage: \(envelope.payload)")
     let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
     ptr.initialize(to: envelope)
     if (cmailbox_send_message(mailbox, ptr)) { // TODO if we were the same as the cmailbox, a single status read would tell us if we can exec or not (see above guard)
@@ -133,26 +133,30 @@ final class Mailbox<Message> {
 
   @inlinable
   func sendSystemMessage(_ systemMessage: SystemMessage) -> Void {
-    guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
-      return handleOnClosedMailbox(systemMessage)
-    }
+//    guard !cmailbox_is_closed(mailbox) else { // TODO additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+//      return handleOnClosedMailbox(systemMessage)
+//    }
 
-    pprint("MAILBOX:\(self.cell.path.name):::::::sendMessage: \(systemMessage)")
     let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
     ptr.initialize(to: systemMessage)
+    pprint("MAILBOX:\(self.cell):::::: accepting: \(systemMessage)")
     if  cmailbox_send_system_message(mailbox, ptr) {
+      pprint("MAILBOX:\(self.cell):::::: WILL SCHEDULE because accepting: \(systemMessage)")
       cell.dispatcher.execute(self.run)
+    } else {
+      pprint("MAILBOX:\(self.cell):::::: Not scheduling for accepting: \(systemMessage)")
     }
   }
 
   @inlinable
   func run() -> Void {
-    pprint("MAILBOX:\(self.cell.path.name):::::::run")
     let shouldReschedule: Bool = cmailbox_run(mailbox, &messageCallbackContext, &systemMessageCallbackContext, interpretMessage)
-    pprint("MAILBOX:\(self.cell.path.name):::::::run FINISHED, reschedule: \(shouldReschedule)")
 
     if shouldReschedule {
+      pprint("MAILBOX:\(self.cell)::::rescheduling from run()")
       cell.dispatcher.execute(self.run)
+    } else {
+      pprint("MAILBOX:\(self.cell)::::NOT NOT NOT rescheduling from run()")
     }
   }
 

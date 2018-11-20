@@ -148,6 +148,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
   // MARK: Conforming to ActorContext
 
+  /// Returns this actors "self" actor reference, which can be freely shared across
+  /// threads, actors, and even nodes (if clustering is used).
+  ///
+  /// Warning: Do not use after actor has terminated (!)
   override public var myself: ActorRef<Message> { return _myselfInACell! }
 
   override public var path: ActorPath { return self.myself.path }
@@ -174,6 +178,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       case .ignore:                         return .same // ignore message and remain .same
       case let .custom(behavior):           return behavior.receive(context: context, message: message)
       case let .signalHandling(recvMsg, _): return interpretMessage0(recvMsg, message) // TODO should we keep the signal handler even if not .same? // TODO more signal handling tests
+      case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
       default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
       }
     }
@@ -244,7 +249,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
       next = handleSignal(context, message) // TODO we want to deliver Signals to users
     } else {
       // no signal handling installed is semantically equivalent to unhandled
-      log.info("No .signalHandling yet \(message) arrived so UNHANDLED :::: ")
+      log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
       next = Behavior<Message>.unhandled
     }
 
@@ -282,6 +287,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
   /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
   /// Always invoke [[becomeNext]] rather than assigning to `self.behavior` manually.
+  ///
+  /// Returns: `true` if next behavior is .stopped and appropriate actions will be taken
   @inlinable
   internal func becomeNext(behavior next: Behavior<Message>) {
     // TODO handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
@@ -297,7 +304,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
     if case .setup(let onStart) = behavior {
       let next = onStart(context)
-      self.becomeNext(behavior: next)
+      _ = self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
     } // else we ignore the .start, since no behavior is interested in it
     // and canonicalize() will make sure that any nested `.setup` are handled immediately as well
   }
@@ -348,7 +355,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
 extension ActorCell: CustomStringConvertible {
   public var description: String {
-    return "\(type(of: self))(\(self.path))"
+    let path = self._myselfInACell?.path.description ?? "<terminated-TODO>" // FIXME path should always remain safe to touch, also after termination (!)
+    return "\(type(of: self))(\(path))"
   }
 }
 

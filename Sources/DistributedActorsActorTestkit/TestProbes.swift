@@ -22,9 +22,9 @@ import XCTest
 private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testActor-")
 
 internal enum ActorTestProbeCommand<M> {
-  case watch(who: AnyReceivesSignals)
-  case unwatch(who: AnyReceivesSignals)
-  case stop
+  case watchCommand(who: AnyReceivesSignals)
+  case unwatchCommand(who: AnyReceivesSignals)
+  case stopCommand
 
   case realMessage(message: M)
 }
@@ -92,15 +92,15 @@ final public class ActorTestProbe<Message> {
         return .same
 
       // probe commands:
-      case let .watch(who):
+      case let .watchCommand(who):
         cell.deathWatch.watch(watchee: who.internal_exposeBox(), myself: context.myself)
         return .same
 
-      case let .unwatch(who):
+      case let .unwatchCommand(who):
         cell.deathWatch.unwatch(watchee: who.internal_exposeBox(), myself: context.myself)
         return .same
 
-      case .stop:
+      case .stopCommand:
         return .stopped
       }
     }.receiveSignal { (context, signal) in
@@ -248,7 +248,7 @@ extension ActorTestProbe {
   ///
   /// This enables it to use [[expectTerminated]] to await for the watched actors termination.
   public func watch<M>(_ watchee: ActorRef<M>) {
-    self.internalRef.tell(ProbeCommands.watch(who: watchee.internal_boxAnyReceivesSignals()))
+    self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.internal_boxAnyReceivesSignals()))
     //    let downcast: ActorRefWithCell<M> = watchee.internal_downcast
     //    downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSignals(self.ref)))
   }
@@ -260,7 +260,7 @@ extension ActorTestProbe {
   /// If you want to avoid such race, you can implement your own small actor which performs the watching
   /// and forwards signals appropriately to a probe to trigger the assertions in the tests main thread.
   public func unwatch<M>(_ watchee: ActorRef<M>) {
-    self.internalRef.tell(ProbeCommands.unwatch(who: watchee.internal_boxAnyReceivesSignals()))
+    self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.internal_boxAnyReceivesSignals()))
   }
 
   /// Returns the `terminated` message (TODO SIGNAL)
@@ -271,7 +271,7 @@ extension ActorTestProbe {
     let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
     guard let termination = self.terminationsQueue.poll(expectationTimeout) else {
-      throw callSite.failure(message: "Expected .terminated(\(ref), ...), " +
+      throw callSite.failure(message: "Expected [\(SystemMessage.terminated(ref: ref))], " +
           "but no signal received within \(self.expectationTimeout.prettyDescription)")
     }
     switch termination {
@@ -282,32 +282,12 @@ extension ActorTestProbe {
     }
   }
 
-  @discardableResult
-  public func expect<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
-    let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-
-    var maybeSignal: SystemMessage? = nil
-    do {
-      maybeSignal = try self.expectSignal()
-    } catch {
-      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but no signal received within \(self.expectationTimeout.prettyDescription)")
-    }
-
-    guard let signal = maybeSignal else { fatalError("should never happen") }
-    switch signal {
-    case let .terminated(_ref) where _ref.path == ref.path:
-      return signal // ok!
-    default:
-      throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(signal)")
-    }
-  }
-
   // MARK: Stopping test probes
   
   func stop() {
     // we send the stop command as normal message in order to not "overtake" other commands that were sent to it
     // not strictly required, but can yield more predictable results when used from tests after all
-    self.internalRef.tell(.stop)
+    self.internalRef.tell(.stopCommand)
   }
 
 }
