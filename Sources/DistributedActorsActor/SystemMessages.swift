@@ -24,7 +24,8 @@ public /* but really internal... */ enum SystemMessage: Equatable {
   case start
 
   /// Usually the actor sends this message to itself once it has processed other things.
-  case terminate // TODO do we need poison pill?
+  case tombstone // also known as "terminate"
+  // TODO do we need poison pill?
 
   /// Notifies an actor that it is being watched by the `from` actor
   case watch(from: AnyReceivesSignals)
@@ -48,14 +49,14 @@ extension SystemMessage {
     case (.start, .start): return true
     case let (.watch(l), .watch(r)): return l.path == r.path
     case let (.unwatch(l), .unwatch(r)): return l.path == r.path
-    case (.terminate, .terminate): return true
+    case (.tombstone, .tombstone): return true
     case let (.terminated(lref), .terminated(rref)): return lref.path == rref.path
 
     // listing cases rather than a full-on `default` to get an error when we add a new system message
     case (.start, _),
     (.watch, _),
     (.unwatch, _),
-    (.terminate, _),
+    (.tombstone, _),
     (.terminated, _): return false
     }
   }

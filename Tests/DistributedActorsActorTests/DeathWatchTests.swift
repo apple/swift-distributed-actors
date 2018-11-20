@@ -221,7 +221,7 @@ class DeathWatchTests: XCTestCase {
     p2.watch(alreadyDead)
     try p2.expectTerminated(alreadyDead)
 
-    // `p` though should not accidentally get another .terminated though:
+    // `p` though should not accidentally get another .terminated when p2 installed the watch.
     try p.expectNoTerminationSignal(for: .milliseconds(200))
   }
   

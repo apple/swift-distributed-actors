@@ -272,7 +272,7 @@ void print_debug_status(CMailbox *mailbox, char* msg) {
 
   printf("[cmailbox] "
          "%s "
-         "Status now: [%lld,bin: %s], "
+         "Status now: [%lld, bin:%s], "
          "has_sys_msgs:%s, "
          "msgs:%lld, "
          "terminating:%s, "
