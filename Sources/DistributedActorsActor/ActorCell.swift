@@ -164,6 +164,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   override public var log: Logger { return _log }
 
   override public var dispatcher: MessageDispatcher { return self._dispatcher }
+  
   // MARK: Handling messages
 
   /// Interprets the incoming message using the current `Behavior` and swaps it with the
@@ -189,7 +190,6 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     let next: Behavior<Message> = interpretMessage0(currentBehavior, message)
     if SACT_TRACE_CELL { log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") } // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
 
-    self.behavior = currentBehavior.canonicalize(context, next: next)
     self.becomeNext(behavior: next)
     return self.behavior.isStopped()
   }
