@@ -31,3 +31,11 @@ This is not fleshed out, we should chat about it.
 - death watch, watch, unwatch - the API allowing for monitoring actors for termination, when a watched actor terminates, the watcher will receive a .terminated signal about it 
 - death pact - signed automatically when watching another actor, and is put into effect when the resulting .terminated signal about the other party is not handled; it causes the watcher to also terminate then
 
+## Recommended reads
+
+The Swift Distributed Actors team recommends the following reads to "get it",
+and understand where Swift Distributed Actors takes its core concepts from.
+
+- *Actor Model of Computation: Scalable Robust Information Systems* – Carl Hewitt
+ https://arxiv.org/abs/1008.1459
+- TODO add links
