@@ -80,16 +80,6 @@ public enum Behavior<Message> {
 //    }
 //  }
 
-  @inlinable
-  internal static func interpretMessage<Message>(behavior: Behavior<Message>, context: ActorContext<Message>, message: Message) -> Behavior<Message> {
-    switch behavior {
-    case let .receiveMessage(recv): return recv(message)
-    case let .receive(recv):        return recv(context, message)
-    case .ignore:                   return .same // ignore message and remain .same
-    case let .custom(behavior):     return behavior.receive(context: context, message: message)
-    default:                        return TODO("NOT IMPLEMENTED YET: handling of: \(behavior)")
-    }
-  }
 }
 
 // MARK: Behavior combinators
@@ -134,6 +124,23 @@ open class ActorBehavior<Message> {
 /// Internal operations for behavior manipulation
 internal extension Behavior {
   // TODO was thinking to make it a class since then we could "hide it more" from users... Do we need to though? they can't call them anyway -- ktoso
+
+  /// Interpret the passed in message.
+  ///
+  /// Note: The returned behavior MUST be [[Behavior.canonicalize]]-ed in the vast majority of cases.
+  // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
+  @inlinable
+  internal func interpretMessage(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    switch self {
+    case let .receiveMessage(recv):       return recv(message)
+    case let .receive(recv):              return recv(context, message)
+    case .ignore:                         return .same // ignore message and remain .same
+    case let .custom(behavior):           return behavior.receive(context: context, message: message)
+    case let .signalHandling(recvMsg, _): return recvMsg.interpretMessage(context: context, message: message) // TODO should we keep the signal handler even if not .same? // TODO more signal handling tests
+    case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
+    default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self)")
+    }
+  }
 
   /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
   /// since certain behaviors do not make sense as initial behavior.
