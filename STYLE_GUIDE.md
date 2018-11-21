@@ -31,6 +31,13 @@ This is not fleshed out, we should chat about it.
 - death watch, watch, unwatch - the API allowing for monitoring actors for termination, when a watched actor terminates, the watcher will receive a .terminated signal about it 
 - death pact - signed automatically when watching another actor, and is put into effect when the resulting .terminated signal about the other party is not handled; it causes the watcher to also terminate then
 
+## Code style hints
+
+- Whenever working with behaviors and an `ActorContext` is also passed, prefer passing the context as the first parameter
+  - then (if present) followed by a `Behavior`
+  - then (if present) followed by a message
+  - examples: `interpret(context, behavior, message)`, `handle { context, message ...` 
+
 ## Recommended reads
 
 The Swift Distributed Actors team recommends the following reads to "get it",

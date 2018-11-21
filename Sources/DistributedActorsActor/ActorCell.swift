@@ -170,24 +170,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
   /// Interprets the incoming message using the current `Behavior` and swaps it with the
   /// next behavior (as returned by user code, which the message was applied to).
   ///
-  /// WARNING: Mutates the cells' behavior.
+  /// WARNING: Mutates the cell's behavior.
+  @inlinable
   func interpretMessage(message: Message) -> Bool {
-    func interpretMessage0(_ behavior: Behavior<Message>, _ message: Message) -> Behavior<Message> {
-      if SACT_TRACE_CELL { pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)") }
-        
-      switch behavior {
-      case let .receiveMessage(recv):       return recv(message)
-      case let .receive(recv):              return recv(context, message)
-      case .ignore:                         return .same // ignore message and remain .same
-      case let .custom(behavior):           return behavior.receive(context: context, message: message)
-      case let .signalHandling(recvMsg, _): return interpretMessage0(recvMsg, message) // TODO should we keep the signal handler even if not .same? // TODO more signal handling tests
-      case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
-      default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self.behavior)")
-      }
-    }
-
-    let currentBehavior = self.behavior
-    let next: Behavior<Message> = interpretMessage0(currentBehavior, message)
+    if SACT_TRACE_CELL { pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)") }
+    let next = self.behavior.interpretMessage(context: context, message: message)
     if SACT_TRACE_CELL { log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)") } // TODO make the \next printout nice TODO dont log messages (could leak pass etc)
 
     self.becomeNext(behavior: next)
