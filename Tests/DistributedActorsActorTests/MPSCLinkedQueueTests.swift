@@ -18,29 +18,29 @@ import Swift Distributed ActorsActor
 
 class MPSCLinkedQueueTests: XCTestCase {
 
-  func testIsEmptyWhenEmpty() {
-    let q = MPSCLinkedQueue<Int>()
+    func testIsEmptyWhenEmpty() {
+        let q = MPSCLinkedQueue<Int>()
 
-    XCTAssertTrue(q.isEmpty())
-  }
+        XCTAssertTrue(q.isEmpty())
+    }
 
-  func testIsEmptyWhenNonEmpty() {
-    let q = MPSCLinkedQueue<Int>()
-    q.enqueue(1)
+    func testIsEmptyWhenNonEmpty() {
+        let q = MPSCLinkedQueue<Int>()
+        q.enqueue(1)
 
-    XCTAssertFalse(q.isEmpty())
-  }
+        XCTAssertFalse(q.isEmpty())
+    }
 
-  func testDequeueWhenEmpty() {
-    let q = MPSCLinkedQueue<Int>()
+    func testDequeueWhenEmpty() {
+        let q = MPSCLinkedQueue<Int>()
 
-    XCTAssertNil(q.dequeue())
-  }
+        XCTAssertNil(q.dequeue())
+    }
 
-  func testEnqueueDequeue() {
-    let q = MPSCLinkedQueue<Int>()
-    q.enqueue(1)
+    func testEnqueueDequeue() {
+        let q = MPSCLinkedQueue<Int>()
+        q.enqueue(1)
 
-    XCTAssertEqual(1, q.dequeue()!)
-  }
+        XCTAssertEqual(1, q.dequeue()!)
+    }
 }

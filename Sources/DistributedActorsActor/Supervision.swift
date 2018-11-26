@@ -14,18 +14,18 @@
 
 public struct Supervision {
 
-  public struct Failure {
-    // TODO figure out how to represent failures, carry error code, actor path etc I think
-  }
+    public struct Failure {
+        // TODO: figure out how to represent failures, carry error code, actor path etc I think
+    }
 
-  // TODO settings for all of those
-  public enum Directive {
-    case resume
-    case restart
-    // TODO exponential backoff settings, best as config object for easier extension?
-    case backoffRestart
-    case stop
-    case escalate
-  }
+    // TODO: settings for all of those
+    public enum Directive {
+        case resume
+        case restart
+        // TODO: exponential backoff settings, best as config object for easier extension?
+        case backoffRestart
+        case stop
+        case escalate
+    }
 
 }

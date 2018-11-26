@@ -20,10 +20,10 @@ import XCTest
 
 final public class ActorTestKit {
 
-  private let system: ActorSystem
+    private let system: ActorSystem
 
-  public init(system: ActorSystem) {
-    self.system = system
-  }
+    public init(system: ActorSystem) {
+        self.system = system
+    }
 
 }

@@ -19,12 +19,14 @@ import Swift Distributed ActorsActorTestkit
 
 class ActorPathTests: XCTestCase {
 
-  class Ex: Error {
+    class Ex: Error {
 
-  }
+    }
 
-  func test_shouldNotAllow_illegalCharacters() {
-    shouldThrow(expected: ActorPathError.self) { let _ = try ActorPath(root: "") }
-  }
+    func test_shouldNotAllow_illegalCharacters() {
+        shouldThrow(expected: ActorPathError.self) {
+            let _ = try ActorPath(root: "")
+        }
+    }
 
 }

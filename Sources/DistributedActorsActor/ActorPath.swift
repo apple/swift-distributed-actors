@@ -21,120 +21,126 @@
 /// - Example: `/user/master/worker`
 public struct ActorPath: Equatable, Hashable {
 
-  // TODO we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt,
-  //      Akka wanted to get closer to that but we had historical naming to take into account so we didn't
-  // private var address: Address = "swift-distributed-actors://10.0.0.1:2552
-  private var segments: [ActorPathSegment]
+    // TODO: we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt,
+    //      Akka wanted to get closer to that but we had historical naming to take into account so we didn't
+    // private var address: Address = "swift-distributed-actors://10.0.0.1:2552
+    private var segments: [ActorPathSegment]
 
-  public init(_ segments: [ActorPathSegment]) throws {
-    guard !segments.isEmpty else { throw ActorPathError.illegalEmptyActorPath }
-    self.segments = segments
-  }
-  public init(root: String) throws {
-    try self.init([ActorPathSegment(root)])
-  }
-  public init(root: ActorPathSegment) throws {
-    try self.init([root])
-  }
+    public init(_ segments: [ActorPathSegment]) throws {
+        guard !segments.isEmpty else {
+            throw ActorPathError.illegalEmptyActorPath
+        }
+        self.segments = segments
+    }
 
-  /// Appends a segment to this actor path
-  mutating func append(segment: ActorPathSegment) {
-    self.segments.append(segment)
-  }
+    public init(root: String) throws {
+        try self.init([ActorPathSegment(root)])
+    }
 
-  /// Returns the name of the actor represented by this path.
-  /// This is equal to the last path segments string representation.
-  var name: String {
-    return nameSegment.value
-  }
+    public init(root: ActorPathSegment) throws {
+        try self.init([root])
+    }
 
-  var nameSegment: ActorPathSegment {
-    return segments.last! // it is guaranteed by construction that we have at least one segment
-  }
+    /// Appends a segment to this actor path
+    mutating func append(segment: ActorPathSegment) {
+        self.segments.append(segment)
+    }
+
+    /// Returns the name of the actor represented by this path.
+    /// This is equal to the last path segments string representation.
+    var name: String {
+        return nameSegment.value
+    }
+
+    var nameSegment: ActorPathSegment {
+        return segments.last! // it is guaranteed by construction that we have at least one segment
+    }
 }
 
 extension ActorPath {
-  public static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
-    var res = base
-    res.append(segment: child)
-    return res
-  }
+    public static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
+        var res = base
+        res.append(segment: child)
+        return res
+    }
 }
 
 // TODO
 extension ActorPath: CustomStringConvertible, CustomDebugStringConvertible {
-  public var description: String {
-    let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
-    return "/\(pathSegments)"
-  }
-  public var debugDescription: String {
-    return "ActorPath(\(description))"
-  }
+    public var description: String {
+        let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
+        return "/\(pathSegments)"
+    }
+    public var debugDescription: String {
+        return "ActorPath(\(description))"
+    }
 }
 
 /// Represents a single segment (actor name) of an ActorPath.
 public struct ActorPathSegment: Equatable, Hashable {
-  let value: String
+    let value: String
 
-  public init(_ name: String) throws {
-    // TODO may want to separate validation out, in case we create it from "known safe" strings
-    try ActorPathSegment.validatePathSegment(name)
-    self.value = name
-  }
-  
-  static func validatePathSegment(_ name: String) throws {
-    if name.isEmpty { throw ActorPathError.illegalActorPathElement(name: name, illegal: "", index: 0) }
-
-    // TODO benchmark
-    func isValidASCII(_ scalar: Unicode.Scalar) -> Bool {
-      return (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
-             (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
-             (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
-             (ValidActorPathSymbols.extraSymbols.contains(scalar))
+    public init(_ name: String) throws {
+        // TODO: may want to separate validation out, in case we create it from "known safe" strings
+        try ActorPathSegment.validatePathSegment(name)
+        self.value = name
     }
-    
-    // TODO accept hex and url encoded things as well
-    // http://www.ietf.org/rfc/rfc2396.txt
-    var pos = 0
-    for c in name {
-      let f = c.unicodeScalars.first
 
-      if (f?.isASCII ?? false) && isValidASCII(f!) {
-        pos += 1
-        continue
-      } else {
-        throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
-      }
+    static func validatePathSegment(_ name: String) throws {
+        if name.isEmpty {
+            throw ActorPathError.illegalActorPathElement(name: name, illegal: "", index: 0)
+        }
+
+        // TODO: benchmark
+        func isValidASCII(_ scalar: Unicode.Scalar) -> Bool {
+            return (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
+                (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
+                (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
+                (ValidActorPathSymbols.extraSymbols.contains(scalar))
+        }
+
+        // TODO: accept hex and url encoded things as well
+        // http://www.ietf.org/rfc/rfc2396.txt
+        var pos = 0
+        for c in name {
+            let f = c.unicodeScalars.first
+
+            if (f?.isASCII ?? false) && isValidASCII(f!) {
+                pos += 1
+                continue
+            } else {
+                throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
+            }
+        }
     }
-  }
 }
 
 extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertible {
-  public var description: String {
-    return "\(self.value)"
-  }
-  public var debugDescription: String {
-    return "ActorPathSegment(\(self))"
-  }
+    public var description: String {
+        return "\(self.value)"
+    }
+    public var debugDescription: String {
+        return "ActorPathSegment(\(self))"
+    }
 }
 
 private struct ValidActorPathSymbols {
-  // TODO I suspect having those as numeric constants may be better for perf?
-  static let a: UnicodeScalar = "a"
-  static let z: UnicodeScalar = "z"
-  static let A: UnicodeScalar = "A"
-  static let Z: UnicodeScalar = "Z"
-  static let zero: UnicodeScalar = "0"
-  static let nine: UnicodeScalar = "9"
+    // TODO: I suspect having those as numeric constants may be better for perf?
+    static let a: UnicodeScalar = "a"
+    static let z: UnicodeScalar = "z"
+    static let A: UnicodeScalar = "A"
+    static let Z: UnicodeScalar = "Z"
+    static let zero: UnicodeScalar = "0"
+    static let nine: UnicodeScalar = "9"
 
-  static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';".unicodeScalars
+    static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';".unicodeScalars
 }
 
 // MARK: --
 
 public enum ActorPathError: Error {
-  case illegalEmptyActorPath
-  case illegalLeadingSpecialCharacter(name: String, illegal: Character)
-  case illegalActorPathElement(name: String, illegal: String, index: Int)
-  case rootPathSegmentRequiredToStartWithSlash(segment: ActorPathSegment)
+    case illegalEmptyActorPath
+    case illegalLeadingSpecialCharacter(name: String, illegal: Character)
+    case illegalActorPathElement(name: String, illegal: String, index: Int)
+    case rootPathSegmentRequiredToStartWithSlash(segment: ActorPathSegment)
 }

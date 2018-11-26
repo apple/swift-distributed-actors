@@ -20,64 +20,64 @@ import Glibc
 
 /// Not intended to be used by end users
 public final class Mutex {
-  public var mutex: pthread_mutex_t = pthread_mutex_t()
+    public var mutex: pthread_mutex_t = pthread_mutex_t()
 
-  public init() {
-    var attr: pthread_mutexattr_t = pthread_mutexattr_t()
-    pthread_mutexattr_init(&attr)
-    pthread_mutexattr_settype(&attr, Int32(PTHREAD_MUTEX_RECURSIVE))
+    public init() {
+        var attr: pthread_mutexattr_t = pthread_mutexattr_t()
+        pthread_mutexattr_init(&attr)
+        pthread_mutexattr_settype(&attr, Int32(PTHREAD_MUTEX_RECURSIVE))
 
-    let error = pthread_mutex_init(&mutex, &attr)
-    pthread_mutexattr_destroy(&attr)
+        let error = pthread_mutex_init(&mutex, &attr)
+        pthread_mutexattr_destroy(&attr)
 
-    switch error {
-    case 0:
-      return
-    default:
-      fatalError("Could not create mutex: \(error)")
-    }
-  }
-
-  deinit {
-    pthread_mutex_destroy(&mutex)
-  }
-
-  @inlinable
-  public func lock() -> Void {
-    let error = pthread_mutex_lock(&mutex)
-
-    switch error {
-    case 0:
-      return
-    case EDEADLK:
-      fatalError("Mutex could not be acquired because it would have caused a deadlock")
-    default:
-      fatalError("Failed with unspecified error: \(error)")
-    }
-  }
-
-  @inlinable
-  public func unlock() -> Void {
-    let error = pthread_mutex_unlock(&mutex)
-
-    switch error {
-    case 0:
-      return
-    case EPERM:
-      fatalError("Mutex could not be unlocked because it is not held by the current thread")
-    default:
-      fatalError("Unlock failed with unspecified error: \(error)")
-    }
-  }
-
-  @inlinable
-  public func synchronized<A>(_ f: () -> A) -> A {
-    lock()
-
-    defer {
-      unlock()
+        switch error {
+        case 0:
+            return
+        default:
+            fatalError("Could not create mutex: \(error)")
+        }
     }
 
-    return f()
-  }
+    deinit {
+        pthread_mutex_destroy(&mutex)
+    }
+
+    @inlinable
+    public func lock() -> Void {
+        let error = pthread_mutex_lock(&mutex)
+
+        switch error {
+        case 0:
+            return
+        case EDEADLK:
+            fatalError("Mutex could not be acquired because it would have caused a deadlock")
+        default:
+            fatalError("Failed with unspecified error: \(error)")
+        }
+    }
+
+    @inlinable
+    public func unlock() -> Void {
+        let error = pthread_mutex_unlock(&mutex)
+
+        switch error {
+        case 0:
+            return
+        case EPERM:
+            fatalError("Mutex could not be unlocked because it is not held by the current thread")
+        default:
+            fatalError("Unlock failed with unspecified error: \(error)")
+        }
+    }
+
+    @inlinable
+    public func synchronized<A>(_ f: () -> A) -> A {
+        lock()
+
+        defer {
+            unlock()
+        }
+
+        return f()
+    }
 }

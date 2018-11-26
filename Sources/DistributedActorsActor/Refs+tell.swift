@@ -17,9 +17,10 @@
 infix operator !
 
 //public extension ReceivesMessages {
- public func !<R : ReceivesMessages, Message>(ref: R, msg: Message) -> Void where R.Message == Message {
-   ref.tell(msg)
- }
+public func !<R: ReceivesMessages, Message>(ref: R, msg: Message) -> Void where R.Message == Message {
+    ref.tell(msg)
+}
+
 //}
 
 // MARK: "ask" ("?") pattern

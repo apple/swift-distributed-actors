@@ -32,15 +32,15 @@
 #include <stdlib.h>
 
 typedef struct Node {
-  void* item;
-  _Atomic (struct Node*) next;
+    void* item;
+    _Atomic (struct Node*) next;
 } Node;
 
 typedef struct {
-  _Alignas(64) _Atomic (Node*) producer;
-  char _pad0[64 - sizeof(_Atomic Node*)];
-  Node* consumer;
-  char _pad1[64 - sizeof(Node*)];
+    _Alignas(64) _Atomic (Node*) producer;
+    char _pad0[64 - sizeof(_Atomic Node*)];
+    Node* consumer;
+    char _pad1[64 - sizeof(Node*)];
 } CMPSCLinkedQueue;
 
 CMPSCLinkedQueue* cmpsc_linked_queue_create(void);

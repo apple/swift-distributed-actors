@@ -19,111 +19,111 @@ import Swift Distributed ActorsActorTestkit
 
 class ActorLifecycleTests: XCTestCase {
 
-  let system = ActorSystem("ActorSystemTests")
-  lazy var testKit: ActorTestKit = ActorTestKit(system: system)
+    let system = ActorSystem("ActorSystemTests")
+    lazy var testKit: ActorTestKit = ActorTestKit(system: system)
 
-  override func tearDown() {
-    // Await.on(system.terminate()) // FIXME termination that actually does so
-  }
-
-  // MARK: starting actors
-
-  func test_spawn_shouldNotAllowStartingWith_Same() throws {
-    // since there is no previous behavior to stay "same" name at the same time:
-
-    let ex = shouldThrow {
-      let sameBehavior: Behavior<String> = .same
-      let _ = try self.system.spawn(sameBehavior, named: "same")
+    override func tearDown() {
+        // Await.on(system.terminate()) // FIXME termination that actually does so
     }
 
-    "\(ex)".shouldEqual("""
-                        notAllowedAsInitial(Swift Distributed ActorsActor.Behavior<Swift.String>.same)
-                        """)
-  }
+    // MARK: starting actors
 
-  func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
-    // the purpose of unhandled is to combine with things that can handle, and if we start a raw unhandled
-    // it always will be unhandled until we use some signal to make it otherwise... weird edge case which
-    // is better avoided all together.
-    //
-    // We do allow starting with .ignore though since that's like a "blackhole"
+    func test_spawn_shouldNotAllowStartingWith_Same() throws {
+        // since there is no previous behavior to stay "same" name at the same time:
 
-    let ex = shouldThrow {
-      let unhandledBehavior: Behavior<String> = .unhandled
-      let _ = try system.spawn(unhandledBehavior, named: "unhandled")
+        let ex = shouldThrow {
+            let sameBehavior: Behavior<String> = .same
+            let _ = try self.system.spawn(sameBehavior, named: "same")
+        }
+
+        "\(ex)".shouldEqual("""
+                            notAllowedAsInitial(Swift Distributed ActorsActor.Behavior<Swift.String>.same)
+                            """)
     }
 
-    "\(ex)".shouldEqual("notAllowedAsInitial(Swift Distributed ActorsActor.Behavior<Swift.String>.unhandled)")
-  }
+    func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
+        // the purpose of unhandled is to combine with things that can handle, and if we start a raw unhandled
+        // it always will be unhandled until we use some signal to make it otherwise... weird edge case which
+        // is better avoided all together.
+        //
+        // We do allow starting with .ignore though since that's like a "blackhole"
 
-  func test_spawn_shouldNotAllowIllegalActorNames() throws {
-    func check(illegalName: String, expectedError: String) throws {
-      let err = shouldThrow {
-        let b: Behavior<String> = .ignore
+        let ex = shouldThrow {
+            let unhandledBehavior: Behavior<String> = .unhandled
+            let _ = try system.spawn(unhandledBehavior, named: "unhandled")
+        }
 
-        // more coverage for all the different chars in [[ActorPathTests]]
-        let _ = try system.spawn(b, named: illegalName)
-      }
-      "\(err)".shouldEqual(expectedError)
+        "\(ex)".shouldEqual("notAllowedAsInitial(Swift Distributed ActorsActor.Behavior<Swift.String>.unhandled)")
     }
 
-    try check(illegalName: "hello world", expectedError: """
-                                                         illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+    func test_spawn_shouldNotAllowIllegalActorNames() throws {
+        func check(illegalName: String, expectedError: String) throws {
+            let err = shouldThrow {
+                let b: Behavior<String> = .ignore
+
+                // more coverage for all the different chars in [[ActorPathTests]]
+                let _ = try system.spawn(b, named: illegalName)
+            }
+            "\(err)".shouldEqual(expectedError)
+        }
+
+        try check(illegalName: "hello world", expectedError: """
+                                                             illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+                                                             """)
+
+        try check(illegalName: "he//o", expectedError: """
+                                                       illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
+                                                       """)
+        try check(illegalName: "ążŻŌżąć", expectedError: """
+                                                         illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
                                                          """)
+        try check(illegalName: "カピバラ", expectedError: """
+                                                      illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
+                                                      """) // ka-pi-ba-ra
+    }
 
-    try check(illegalName: "he//o", expectedError: """
-                                                   illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
-                                                   """)
-    try check(illegalName: "ążŻŌżąć", expectedError: """
-                                                     illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
-                                                     """)
-    try check(illegalName: "カピバラ", expectedError: """
-                                                     illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-                                                     """) // ka-pi-ba-ra
-  }
+    func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
+        pnote("NOT IMPLEMENTED YET")
+    }
 
-  func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
-    pnote("NOT IMPLEMENTED YET")
-  }
-  
-  func test_stopping_shouldDeinitTheBehavior() throws {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
-    let chattyAboutLifecycle =
-        try system.spawn(LifecycleDeinitActorBehavior(p.ref), named: "deinitLifecycleActor")
+    func test_stopping_shouldDeinitTheBehavior() throws {
+        let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let chattyAboutLifecycle =
+            try system.spawn(LifecycleDeinitActorBehavior(p.ref), named: "deinitLifecycleActor")
 
-    chattyAboutLifecycle.tell(.stop)
+        chattyAboutLifecycle.tell(.stop)
 
-    try p.expectMessage("init")
-    try p.expectMessage("receive:stop")
-    // TODO historically we have a "postStop" before dying; and we need it for the "not a class" behaviors anyway, implement this
-    try p.expectMessage("deinit")
-  }
+        try p.expectMessage("init")
+        try p.expectMessage("receive:stop")
+        // TODO: historically we have a "postStop" before dying; and we need it for the "not a class" behaviors anyway, implement this
+        try p.expectMessage("deinit")
+    }
 
 }
 
 enum LifecycleDeinitActorMessage {
-  case stop
+    case stop
 }
 
 final class LifecycleDeinitActorBehavior: ActorBehavior<LifecycleDeinitActorMessage> {
-  let probe: ActorRef<String>
+    let probe: ActorRef<String>
 
-  init(_ p: ActorRef<String>) {
-    self.probe = p
-    self.probe.tell("init")
-  }
+    init(_ p: ActorRef<String>) {
+        self.probe = p
+        self.probe.tell("init")
+    }
 
-  deinit {
-    self.probe.tell("deinit")
-  }
+    deinit {
+        self.probe.tell("deinit")
+    }
 
-  override func receive(context: ActorContext<LifecycleDeinitActorMessage>, message: LifecycleDeinitActorMessage) -> Behavior<LifecycleDeinitActorMessage> {
-    self.probe.tell("receive:\(message)")
-    return .stopped
-  }
+    override func receive(context: ActorContext<LifecycleDeinitActorMessage>, message: LifecycleDeinitActorMessage) -> Behavior<LifecycleDeinitActorMessage> {
+        self.probe.tell("receive:\(message)")
+        return .stopped
+    }
 
-  override func receiveSignal(context: ActorContext<LifecycleDeinitActorMessage>, signal: Signal) -> Behavior<LifecycleDeinitActorMessage> {
-    self.probe.tell("signal:\(signal)")
-    return .same
-  }
+    override func receiveSignal(context: ActorContext<LifecycleDeinitActorMessage>, signal: Signal) -> Behavior<LifecycleDeinitActorMessage> {
+        self.probe.tell("signal:\(signal)")
+        return .same
+    }
 }

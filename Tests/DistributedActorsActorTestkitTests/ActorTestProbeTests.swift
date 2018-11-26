@@ -18,48 +18,48 @@ import XCTest
 
 class ActorTestProbeTests: XCTestCase {
 
-  let system = ActorSystem("ActorSystemTests")
+    let system = ActorSystem("ActorSystemTests")
 
-  override func tearDown() {
-    // Await.on(system.terminate())
-  }
+    override func tearDown() {
+        // Await.on(system.terminate())
+    }
 
-  func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
-    #if !SACT_TESTS_CRASH
-    pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
-    return ()
-    #endif
-    _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+    func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
+        #if !SACT_TESTS_CRASH
+        pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
+        return ()
+        #endif
+        _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-    let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
-    try probe.expectMessage("awaiting-forever")
-  }
+        try probe.expectMessage("awaiting-forever")
+    }
 
-  func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() throws {
-    #if !SACT_TESTS_CRASH
-    pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
-    return ()
-    #endif
-    _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+    func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() throws {
+        #if !SACT_TESTS_CRASH
+        pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
+        return ()
+        #endif
+        _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-    let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
 
-    probe ! "one"
+        probe ! "one"
 
-    try probe.expectMessage("two") // TODO style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
-    // this causes a nice failure like:
-    //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
-    //        try! probe.expectMessage("two")
-    //                   ^~~~~~~~~~~~
-    //    error: Assertion failed: [one] did not equal expected [two]
+        try probe.expectMessage("two") // TODO: style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
+        // this causes a nice failure like:
+        //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
+        //        try! probe.expectMessage("two")
+        //                   ^~~~~~~~~~~~
+        //    error: Assertion failed: [one] did not equal expected [two]
 
-  }
+    }
 
-  func test_expectNoMessage() throws {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+    func test_expectNoMessage() throws {
+        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
 
-    try p.expectNoMessage(for: .milliseconds(100))
-    p.stop()
-  }
+        try p.expectNoMessage(for: .milliseconds(100))
+        p.stop()
+    }
 }
