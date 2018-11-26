@@ -31,7 +31,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_setup_executesImmediatelyOnStartOfActor() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
 
         let message = "EHLO"
         let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
@@ -43,7 +43,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-2", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-2", on: system)
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -55,7 +55,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-3", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-3", on: system)
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -73,7 +73,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
-//    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-4", on: system)
+//    let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-4", on: system)
 
         func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
             if at == n {
@@ -92,7 +92,7 @@ class BehaviorTests: XCTestCase {
         }
 
         let n = 10
-        let ref = try system.spawn(countTillNThenDieBehavior(n: n), named: "countTill\(n)")
+        let ref = try system.spawn(countTillNThenDieBehavior(n: n), name: "countTill\(n)")
 
         // first we send many messages
         for i in 0...n {
@@ -118,7 +118,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_ActorBehavior_receivesMessages() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-5", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-5", on: system)
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -142,7 +142,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-6", on: system)
 
         try p.expectNoMessage(for: .milliseconds(100))
     }

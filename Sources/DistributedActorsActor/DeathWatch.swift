@@ -51,7 +51,6 @@ import Dispatch
     public mutating func unwatch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
         traceLog_DeathWatch("unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
-        // let : BoxedHashableAnyReceivesSignals = watchee.internal_exposeBox()
         if let removed = watching.remove(watchee) {
             removed.sendSystemMessage(.unwatch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSignals()))
         }

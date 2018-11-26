@@ -23,13 +23,16 @@ public struct Props {
     let mailbox: MailboxProps
     let dispatcher: DispatcherProps
 
-    public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
+    let faultDomain: FaultDomainProps
+
+    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, faultDomain: FaultDomainProps) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
+        self.faultDomain = faultDomain
     }
 
     public init() {
-        self.init(mailbox: .default(), dispatcher: .default)
+        self.init(mailbox: .default(), dispatcher: .default, faultDomain: .default)
     }
 }
 
@@ -73,6 +76,21 @@ public enum MailboxProps {
     static func `default`(capacity: Int = Int.max) -> MailboxProps {
         return .default(capacity: capacity, onOverflow: .crash)
     }
+    
+    var capacity: Int {
+        switch self {
+        case let .default(cap, _): return cap
+        }
+    }
+}
+
+// TODO: Highly experimental and only for PoC of spawning in other process
+public enum FaultDomainProps {
+    // TODO: we could make it such that top level ones become new processes by default always?
+    case `default`
+
+    /// Isolate this actor and all of its children in its own process
+    case isolate
 }
 
 // TODO: those only apply when bounded mailboxes
