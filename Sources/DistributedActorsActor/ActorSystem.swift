@@ -85,14 +85,16 @@ public final class ActorSystem {
     }
 }
 
+/// Public but not intended for user-extension.
+///
 /// An `ActorRefFactory` is able to create ("spawn") new actors and return `ActorRef` instances for them.
 /// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
-// TODO: how is it typical to mark an api as "DO NOT CONFORM TO THIS"?
 public protocol ActorRefFactory {
 
     /// Spawn an actor with the given behavior name and props.
-    /// - returns
-    func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props) throws -> ActorRef<Message>
+    ///
+    /// Returns: [[ActorRef]] for the spawned actor.
+    func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
 }
 
 // MARK: Actor creation
@@ -103,25 +105,27 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
-    public func spawn<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    public func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         guard !name.starts(with: "$") else {
             // only system and anonymous actors are allowed have names beginning with "$"
             throw ActorPathError.illegalLeadingSpecialCharacter(name: name, illegal: "$")
         }
 
-        return try self.spawnInternal(behavior, named: name, props: props)
+        return try self.spawnInternal(behavior, name: name, props: props)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    private func spawnInternal<Message>(_ behavior: Behavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    private func spawnInternal<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial() // TODO: good example of what would be a soft crash...
 
         // FIXME hacks... should get real parent
         let nameSegment = try ActorPathSegment(name) // performs validation
         let path = try ActorPath([ActorPathSegment("user"), nameSegment])
 
-        log.info("Spawning [\(behavior)], named: [\(name)]")
+        // TODO: reserve the name, atomically
+
+        log.info("Spawning [\(behavior)], name: [\(name)]")
 
         // TODO: move this to the provider perhaps? or some way to share setup logic
 
@@ -132,11 +136,7 @@ extension ActorSystem: ActorRefFactory {
             dispatcher: dispatcher)
 
         // the mailbox of the actor
-        let mailbox = Mailbox(cell: cell, capacity: Int.max)
-        /*switch props.mailbox {
-        case let .default(capacity, _):
-          mailbox = Mailbox(cell: cell, capacity: capacity)
-        }*/
+        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
         // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
 
         let refWithCell = ActorRefWithCell(
@@ -151,8 +151,8 @@ extension ActorSystem: ActorRefFactory {
         return refWithCell
     }
 
-    public func spawn<Message>(_ behavior: ActorBehavior<Message>, named name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawn(.custom(behavior: behavior), named: name, props: props)
+    public func spawn<Message>(_ behavior: ActorBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+        return try spawn(.custom(behavior: behavior), name: name, props: props)
     }
 
     // Implementation note:
@@ -160,7 +160,7 @@ extension ActorSystem: ActorRefFactory {
     // and developers should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
     // This is why there should not be default parameter values for actor names
     public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawnInternal(behavior, named: self.anonymousNames.nextName(), props: props)
+        return try spawnInternal(behavior, name: self.anonymousNames.nextName(), props: props)
     }
 
     public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {

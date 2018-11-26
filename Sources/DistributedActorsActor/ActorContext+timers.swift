@@ -16,7 +16,9 @@ import NIO
 import NIOConcurrencyHelpers
 import Dispatch // TODO: abstract away depending on it here somehow, we only want "the scheduler that we have"
 
-// Mark: Timer extensions
+// FIXME: this is very rough and needs a reimpl with a proper "scheduler" abstraction
+
+// MARK: Timer extensions
 
 /// Timer extensions
 public extension ActorContext {
@@ -37,7 +39,6 @@ public class TimerContext<Message> {
 
     /// Short-hand for scheduling a reminder message to myself.
     ///
-    /// returns:
     /// TODO:
     /// If the actor terminates before the scheduled message is triggered we should cancel it and ignore it.
     /// Implement independently from Dispatch -- if we are on dispatch, use it, but if not then not, top here we must be scheduler agnostic

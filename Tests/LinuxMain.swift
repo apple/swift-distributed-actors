@@ -39,7 +39,7 @@ import XCTest
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
-         testCase(RingBufferTests.allTests),
+         testCase(ParentChildActorTests.allTests),
          testCase(StashBufferTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),

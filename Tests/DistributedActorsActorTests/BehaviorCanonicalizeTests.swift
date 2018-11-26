@@ -26,7 +26,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p = ActorTestProbe<String>(named: "canonicalizeProbe1", on: system)
+        let p = ActorTestProbe<String>(name: "canonicalizeProbe1", on: system)
 
         let b: Behavior<String> = .setup { c1 in
             p.tell("outer-1")
@@ -42,7 +42,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             }
         }
 
-        let ref = try! system.spawn(b, named: "nestedSetups")
+        let ref = try! system.spawn(b, name: "nestedSetups")
 
         try p.expectMessage("outer-1")
         try p.expectMessage("inner-2")
@@ -53,7 +53,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p = ActorTestProbe<String>(named: "canonicalize-probe-2", on: system)
+        let p = ActorTestProbe<String>(name: "canonicalize-probe-2", on: system)
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
             return .setup { context in
@@ -72,7 +72,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         // we attempt to cause a stack overflow by nesting tons of setups inside each other.
         // this could fail if canonicalization were implemented in some naive way.
         let depthLimit = 1024 * 8 // not a good idea, but we should not crash
-        let ref = try! system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), named: "deepSetupNestedRabbitHole")
+        let ref = try! system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), name: "deepSetupNestedRabbitHole")
 
         ref ! "ping"
         try p.expectMessage("received:ping")

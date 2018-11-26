@@ -40,9 +40,15 @@ private extension Behavior {
 
 class SupervisionTests: XCTestCase {
 
+    let system = ActorSystem("SupervisionTests")
+
+    override func tearDown() {
+        // Await.on(system.terminate()) // FIXME termination that actually does so
+    }
+
     func test_compile() throws {
         let b: Behavior<String> = .receiveMessage { s in
-            .same
+            return .same
         }
 
         let _: Behavior<String> = b.supervise { failure -> Supervision.Directive in
@@ -50,4 +56,21 @@ class SupervisionTests: XCTestCase {
         }
     }
 
+    func test_supervise_allChildrenOfFaultDomainMaster() throws {
+//        let master: ActorRef<FaultDomainMasterMessages> = try system.spawn(.receive { context, message in
+//
+//            switch message {
+//            case let .spawn(b):
+//                context.s
+//
+//            }
+//
+//            return .same
+//        }, name: "master")
+    }
+
+}
+
+enum FaultDomainMasterMessages {
+    case spawn(workerBehavior: Behavior<String>)
 }

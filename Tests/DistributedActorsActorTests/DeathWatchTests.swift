@@ -45,8 +45,8 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_shouldTriggerTerminatedWhenWatchedActorStops() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "px", on: system)
-        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz0")
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), name: "stopMePlz0")
 
         p.watch(stoppableRef)
 
@@ -61,11 +61,11 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "p", on: system)
-        let p1: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
-        let p2: ActorTestProbe<String> = ActorTestProbe(named: "p2", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "p", on: system)
+        let p1: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let p2: ActorTestProbe<String> = ActorTestProbe(name: "p2", on: system)
 
-        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz1")
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), name: "stopMePlz1")
 
         p1.watch(stoppableRef)
         p2.watch(stoppableRef)
@@ -86,14 +86,14 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "p", on: system)
-        let p1: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
-        let p2: ActorTestProbe<String> = ActorTestProbe(named: "p2", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "p", on: system)
+        let p1: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let p2: ActorTestProbe<String> = ActorTestProbe(name: "p2", on: system)
 
         // p3 will not watch by itself, but serve as our observer for what our in-line defined watcher observes
-        let p3_partnerOfNotActuallyWatching: ActorTestProbe<String> = ActorTestProbe(named: "p3-not-really", on: system)
+        let p3_partnerOfNotActuallyWatching: ActorTestProbe<String> = ActorTestProbe(name: "p3-not-really", on: system)
 
-        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz2")
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), name: "stopMePlz2")
 
         p1.watch(stoppableRef)
         p2.watch(stoppableRef)
@@ -113,7 +113,7 @@ class DeathWatchTests: XCTestCase {
                     p3_partnerOfNotActuallyWatching.tell("whoops: actually DID receive terminated!")
                     return .same
                 }
-        }, named: "notActuallyWatching")
+        }, name: "notActuallyWatching")
 
         // we need to perform this ping/pong dance since watch/unwatch are async, so we only know they have been sent
         // once we get a reply for a message from this actor (i.e. it has completed its setup).
@@ -130,11 +130,11 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_minimized_deathPact_shouldTriggerForWatchedActor() throws {
-        let probe = ActorTestProbe<String>(named: "pp", on: system)
+        let probe = ActorTestProbe<String>(name: "pp", on: system)
 
         let juliet = try system.spawn(Behavior<String>.receiveMessage { msg in
             return .same
-        }, named: "juliet")
+        }, name: "juliet")
 
         let romeo = try system.spawn(Behavior<String>.setup { context in
             context.watch(juliet)
@@ -143,7 +143,7 @@ class DeathWatchTests: XCTestCase {
                 probe.ref.tell("reply:\(msg)")
                 return .same
             }
-        }, named: "romeo")
+        }, name: "romeo")
 
         probe.watch(juliet)
         probe.watch(romeo)
@@ -167,11 +167,11 @@ class DeathWatchTests: XCTestCase {
         // The .terminated message should also NOT be delivered to the .receiveSignal handler, it should be as if the watcher
         // never watched juliet to begin with. (This also is important so Swift Distributed Actors semantics are the same as what users would manually be able to to)
 
-        let probe = ActorTestProbe<String>(named: "pp", on: system)
+        let probe = ActorTestProbe<String>(name: "pp", on: system)
 
         let juliet = try system.spawn(Behavior<String>.receiveMessage { msg in
             return .same
-        }, named: "juliet")
+        }, name: "juliet")
 
         let romeo = try system.spawn(Behavior<String>.receive { context, message in
             switch message {
@@ -190,7 +190,7 @@ class DeathWatchTests: XCTestCase {
                 probe.tell("Unexpected terminated received!!! \(ref)")
             }
             return .same
-        }, named: "romeo")
+        }, name: "romeo")
 
         probe.watch(juliet)
         probe.watch(romeo)
@@ -209,15 +209,15 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "alreadyDeadWatcherProbe", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "alreadyDeadWatcherProbe", on: system)
 
-        let alreadyDead: ActorRef<String> = try system.spawn(.stopped, named: "alreadyDead")
+        let alreadyDead: ActorRef<String> = try system.spawn(.stopped, name: "alreadyDead")
 
         p.watch(alreadyDead)
         try p.expectTerminated(alreadyDead)
 
         // even if a new actor comes in and performs the watch, it also should notice that `alreadyDead` is dead
-        let p2: ActorTestProbe<String> = ActorTestProbe(named: "alreadyDeadWatcherProbe2", on: system)
+        let p2: ActorTestProbe<String> = ActorTestProbe(name: "alreadyDeadWatcherProbe2", on: system)
         p2.watch(alreadyDead)
         try p2.expectTerminated(alreadyDead)
 
@@ -235,16 +235,16 @@ class DeathWatchTests: XCTestCase {
                 probe.tell(.done)
                 return .same
             }
-        }/* NOT handling signal on purpose, we are in a Death Pact */, named: "romeo")
+        }/* NOT handling signal on purpose, we are in a Death Pact */, name: "romeo")
 
         let juliet = try system.spawn(Behavior<JulietMessage>.receiveMessage { message in
             switch message {
             case .takePoison:
                 return .stopped // "kill myself" // TODO: throw
             }
-        }, named: "juliet")
+        }, name: "juliet")
 
-        let p = ActorTestProbe<Done>(named: "p", on: system)
+        let p = ActorTestProbe<Done>(name: "p", on: system)
 
         p.watch(juliet)
         p.watch(romeo)

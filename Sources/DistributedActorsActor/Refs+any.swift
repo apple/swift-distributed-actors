@@ -122,11 +122,18 @@ internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSystemMess
     func asHashable() -> AnyHashable {
         fatalError("asHashable() has not been implemented")
     }
+
+    /// INTERNAL API: exposes the underlying wrapped anyRef as the expected ActorRef type (or nil if types dont match)
+    // TODO make it throw maybe?
+    internal func internal_exposeAs<T, R: ActorRef<T>>(_ refType: R.Type) -> R? {
+        return self.anyRef as? R
+    }
 }
 
 /// INTERNAL API: DO NOT TOUCH.
 internal extension AnyReceivesSystemMessages {
-    /// INTERNAL API: unwraps the box
+    
+    /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSignals where it is KNOWN guaranteed that it is a box
     internal func internal_exposeBox() -> BoxedHashableAnyReceivesSignals {
         return self as! BoxedHashableAnyReceivesSignals
     }

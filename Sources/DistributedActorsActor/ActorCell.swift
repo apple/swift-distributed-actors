@@ -15,89 +15,7 @@
 import NIO
 import Dispatch
 
-/// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
-///
-/// Warning:
-/// - It MOST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
-/// - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message> {
-
-    // TODO: in the subclass we need to apply some workarounds around `cannot override with a stored property 'myself'` since I want those to be vars
-    // See: https://stackoverflow.com/questions/46676992/overriding-computed-property-with-stored-one
-
-    /// Complete path in hierarchy of this Actor.
-    /// Segments are separated by "/" and signify the parent actors of each individual level in the hierarchy.
-    ///
-    /// Paths are mostly used to make systems more human-readable and understandable during debugging e.g. answering questions
-    /// like "where did this actor come from?" or "who (at least) is expected to supervise this actor"? // TODO: wording must match the semantics we decide on for supervision
-    ///
-    /// // TODO: maybe we can pull of some better things with source location where one was started as well being carried here?
-    /// // This would be for "debugging mode", not for log statements though; interesting idea tho; may want to be configurable since adds weight
-    public var path: ActorPath {
-        return undefined()
-    }
-
-    /// Name of the Actor
-    /// The `name` is the last segment of the Actor's `path`
-    ///
-    /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
-    // Implementation note:
-    // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
-    // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
-    public var name: String { // TODO: decide if Substring or String; TBH we may go with something like ActorPathSegment and ActorPath?
-        return undefined()
-    }
-
-    /// The actor reference to _this_ actor.
-    ///
-    /// It remains valid across "restarts", however does not remain valid for "stop actor and start another new one under the same path",
-    /// as such would not be the "same" actor anymore.
-    // Implementation note:
-    // We use `myself` as the Akka style `self` is taken; We could also do `context.ref` however this sounds inhuman,
-    // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
-    // to get developers into the right mindset.
-    public var myself: ActorRef<Message> {
-        return undefined()
-    }
-
-    /// Provides context metadata aware logger
-    // TODO: API wise this logger will be whichever type the SSWG group decides on, we will adopt it
-    public var log: Logger {
-        return undefined()
-    }
-
-    public var dispatcher: MessageDispatcher {
-        return undefined()
-    }
-
-
-    /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
-    /// when the watched actor is terminates ("dies").
-    ///
-    /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
-    /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
-    /// for the watchee. A simple mnemonic to remember this is to think of the Romeo & Juliet scene where
-    /// the lovers each kill themselves, thinking the other has died.
-    ///
-    /// Alternatively, one can handle the `.terminated` signal using the `.receiveSignal(Signal -> Behavior<Message>)` method,
-    /// which gives this actor the ability to react to the watchee's death in some other fashion,
-    /// for example by saying some nice words about its life, or spawning a "replacement" of watchee in its' place.
-    ///
-    /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
-    /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
-    /// and the Death Pact will trigger as usual.
-    public func watch<M>(_ watchee: ActorRef<M>) {
-        return undefined()
-    }
-
-    /// Reverts the watching of an previously watched actor.
-    ///
-    /// Unwatching a not-previously-watched actor has no effect.
-    public func unwatch<M>(_ watchee: ActorRef<M>) {
-        return undefined()
-    }
-
-}
+@usableFromInline let SACT_TRACE_CELL = false
 
 // MARK: Internal implementations, the so-called "cell"
 
@@ -130,7 +48,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self._myselfInACell
     }
 
-    init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher) {
+    internal init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
         // TODO: we may end up referring to the system here... we'll see
         self.behavior = behavior
         self._dispatcher = dispatcher
@@ -149,9 +67,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self
     }
 
-    // MARK: Dead letters
+    // MARK: ActorCellSpawning protocol requirements
 
-    // TODO make it a real actor ref with special casing (it is always dead)
+    internal var children: Children = Children()
     func sendToDeadLetters(_ letter: DeadLetter) {
         system.deadLetters.tell(letter) // TODO metadata
     }
@@ -369,8 +287,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
-        self.behavior = .stopped
         self._myselfInACell = nil
+        self.behavior = .stopped
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
     }
@@ -381,18 +299,21 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
 
+    // MARK: Spawn
 
-    // MARK: External ActorContext API
+    public override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+        return try self.internal_spawn(behavior, name: name, props: props)
+    }
+
+    // MARK: Death Watch
 
     override public func watch<M>(_ watchee: ActorRef<M>) {
-        self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSignals().internal_exposeBox(), myself: context.myself)
+        self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
     }
 
     override public func unwatch<M>(_ watchee: ActorRef<M>) {
-        self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals().internal_exposeBox(), myself: context.myself)
+        self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
     }
-
-
 }
 
 extension ActorCell: CustomStringConvertible {
@@ -402,3 +323,98 @@ extension ActorCell: CustomStringConvertible {
     }
 }
 
+
+protocol ChildActorRefFactory: ActorRefFactory {
+    // MARK: Interface with actor cell
+
+    var children: Children { get set }
+
+    // MARK: Additional
+
+    func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
+    func stop<M>(child ref: ActorRef<M>) throws
+
+}
+
+/// Represents all the (current) children this actor has spawned.
+///
+/// Convenience methods for locating children are provided, although it is recommended to keep the [[ActorRef]]
+/// of spawned actors in the context of where they are used, rather than looking them up continiously.
+public struct Children {
+
+    typealias Name = String
+    private var container: [Name: BoxedHashableAnyReceivesSignals]
+
+    public init() {
+        self.container = [:]
+    }
+
+    public func find<T>(named name: String, withType: T.Type) -> ActorRef<T>? {
+        guard let boxedChild = container[name] else {
+            return nil
+        }
+
+        return boxedChild.internal_exposeAs(ActorRef<T>.self)
+    }
+    
+    public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
+        container[childRef.path.name] = childRef.internal_boxAnyReceivesSignals()
+    }
+
+    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, false otherwise
+    internal mutating func remove<T, R: ActorRef<T>>(_ childRef: R) -> Bool {
+        let removed = container.removeValue(forKey: childRef.path.name)
+        return removed != nil
+    }
+
+}
+
+// TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
+extension ActorCell: ChildActorRefFactory {
+
+    // TODO: Very similar to top level one, though it will be differing in small bits... Likely not worth to DRY completely
+    internal func internal_spawn<Message2>(_ behavior: Behavior<Message2>, name: String, props: Props) throws -> ActorRef<Message2> {
+        try behavior.validateAsInitial()
+        // TODO prefix $ validation (only ok for anonymous)
+
+        let nameSegment = try ActorPathSegment(name)
+        let path = self.path / nameSegment
+        // TODO reserve name
+
+        let d = dispatcher // TODO this is dispatcher inheritance, we dont want that
+        let cell: ActorCell<Message2> = ActorCell<Message2>(behavior: behavior, dispatcher: d)
+        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
+
+        log.info("Spawning [\(behavior)], child of [\(self.path)], full path: [\(path)]")
+
+        let refWithCell = ActorRefWithCell(
+            path: path,
+            cell: cell,
+            mailbox: mailbox
+        )
+
+        cell.set(ref: refWithCell)
+        refWithCell.sendSystemMessage(.start)
+
+
+        self.children.insert(refWithCell)
+
+        return refWithCell
+    }
+
+    internal func internal_stop<T>(child ref: ActorRef<T>) throws {
+        // we immediately attempt the remove since
+        guard self.children.remove(ref) else {
+            throw ActorError.attemptedStoppingNonChildActor(ref: ref)
+        }
+
+        // TODO this is not really correct, just placeholder code for now
+        ref.internal_downcast.sendSystemMessage(.tombstone)
+    }
+}
+
+
+public enum ActorError: Error {
+    case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
+}

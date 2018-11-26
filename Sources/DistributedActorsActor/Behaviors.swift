@@ -54,6 +54,9 @@ public enum Behavior<Message> {
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, SystemMessage) -> Behavior<Message>)
 
+    // TODO internal and should not be used by people (likely we may need to change Behaviors away from an enum to allow such things?
+    indirect case supervised(supervisor: AnyReceivesSignals, behavior: Behavior<Message>)
+
     /// Causes a message to be assumed unhandled by the runtime.
     /// Unhandled messages are logged by default, and other behaviors may use this information to implement `apply1.orElse(apply2)` style logic.
     /// TODO: and their logging rate should be configurable
@@ -157,6 +160,7 @@ internal extension Behavior {
 
     /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
     /// since certain behaviors do not make sense as initial behavior.
+    @inlinable
     func validateAsInitial() throws {
         switch self {
         case .same:      throw IllegalBehaviorError.notAllowedAsInitial(self)
