@@ -15,11 +15,11 @@
 import NIOConcurrencyHelpers
 
 public class Awaitable {
-  fileprivate let underlyingLock: Lock
+    fileprivate let underlyingLock: Lock
 
-  init(underlyingLock: Lock) {
-    self.underlyingLock = underlyingLock
-  }
+    init(underlyingLock: Lock) {
+        self.underlyingLock = underlyingLock
+    }
 }
 
 
@@ -29,13 +29,13 @@ public class Awaitable {
 // It also is visually similar to what we would get to if there was `async await`, though the same pattern exists
 // in Scala/Akka just to steer people away from blocking, even without presence of async await.
 public struct Await {
-  public static func ready(_ awaitable: Awaitable /*, atMost timeout: Timeout*/) -> Void {
-    self.on(awaitable)
-  }
+    public static func ready(_ awaitable: Awaitable /*, atMost timeout: Timeout*/) -> Void {
+        self.on(awaitable)
+    }
 
-  public static func on(_ awaitable: Awaitable /*, atMost timeout: Timeout*/) -> Void {
-    awaitable.underlyingLock.lock() // TODO one with timeout would be nice
-  }
+    public static func on(_ awaitable: Awaitable /*, atMost timeout: Timeout*/) -> Void {
+        awaitable.underlyingLock.lock() // TODO: one with timeout would be nice
+    }
 
-  // func result(awaitable: Awaitable<T>) -> T
+    // func result(awaitable: Awaitable<T>) -> T
 }

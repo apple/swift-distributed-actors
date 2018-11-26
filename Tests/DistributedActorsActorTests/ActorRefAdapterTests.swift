@@ -19,31 +19,31 @@ import Swift Distributed ActorsActorTestkit
 
 class ActorRefAdapterTests: XCTestCase {
 
-  let system = ActorSystem("ActorSystemTests")
+    let system = ActorSystem("ActorSystemTests")
 
-  override func tearDown() {
-    // Await.on(system.terminate()) // FIXME termination that actually does so
-  }
-
-  func test_ActorBehavior_adapt() throws {
-    let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
-
-    let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
-      p.ref ! msg
-      return .same
-    })
-
-    let adapted: ActorRef<Int> = ref.adapt {
-      "\($0)"
+    override func tearDown() {
+        // Await.on(system.terminate()) // FIXME termination that actually does so
     }
 
-    for i in 0...10 {
-      adapted ! i
-    }
+    func test_ActorBehavior_adapt() throws {
+        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
 
-    for i in 0...10 {
-      try p.expectMessage("\(i)")
+        let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
+            p.ref ! msg
+            return .same
+        })
+
+        let adapted: ActorRef<Int> = ref.adapt {
+            "\($0)"
+        }
+
+        for i in 0...10 {
+            adapted ! i
+        }
+
+        for i in 0...10 {
+            try p.expectMessage("\(i)")
+        }
     }
-  }
 
 }

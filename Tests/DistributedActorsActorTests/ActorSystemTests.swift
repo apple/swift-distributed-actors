@@ -18,12 +18,12 @@ import Swift Distributed ActorsActor
 
 class ActorSystemTests: XCTestCase {
 
-  let MaxSpecialTreatedValueTypeSizeInBytes = 24
+    let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
-  let system = ActorSystem("ActorSystemTests")
+    let system = ActorSystem("ActorSystemTests")
 
-  override func tearDown() {
-    // system.terminate()
-  }
-  
+    override func tearDown() {
+        // system.terminate()
+    }
+
 }

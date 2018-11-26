@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch // TODO I suppose we'll end up supporting it anyway, only modeling it for now tho
+import Dispatch // TODO: I suppose we'll end up supporting it anyway, only modeling it for now tho
 
 /// Props configure an Actors' properties such as mailbox and dispatcher semantics.
 ///
@@ -20,20 +20,20 @@ import Dispatch // TODO I suppose we'll end up supporting it anyway, only modeli
 ///           e.g. a skull that would be used for "to be, or, not to be?
 public struct Props {
 
-  let mailbox: MailboxProps
-  let dispatcher: DispatcherProps
+    let mailbox: MailboxProps
+    let dispatcher: DispatcherProps
 
-  public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
-    self.mailbox = mailbox
-    self.dispatcher = dispatcher
-  }
+    public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
+        self.mailbox = mailbox
+        self.dispatcher = dispatcher
+    }
 
-  public init() {
-    self.init(mailbox: .default(), dispatcher: .default)
-  }
+    public init() {
+        self.init(mailbox: .default(), dispatcher: .default)
+    }
 }
 
-// TODO likely better as class hierarchy, by we'll see...
+// TODO: likely better as class hierarchy, by we'll see...
 
 public enum DispatcherProps {
 //  /// Picks default dispatched for user actors for your current runtime
@@ -45,39 +45,39 @@ public enum DispatcherProps {
 //  let `default`: DispatcherProps = DispatcherProps.dispatch(qosClass: .default)
 //  #endif
 
-  /// Lets runtime determine the default dispatcher
-  case `default`
+    /// Lets runtime determine the default dispatcher
+    case `default`
 
-  /// Use the Dispatch library as underlying executor.
-  case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass) // TODO we want diff actors to be able to run on diff priorities, thus this setting
+    /// Use the Dispatch library as underlying executor.
+    case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass) // TODO: we want diff actors to be able to run on diff priorities, thus this setting
 
-  // TODO: not entirely sure about how to best pull it off, but pretty sure we want a dispatcher that can use NIO's EventLoop
-  //       we'd need to pass EventLoop into the system, but I think this would be nice at the worst we'd "blow up if you want to use NIO event loops but it's not passed in"
-  case NIO
+    // TODO: not entirely sure about how to best pull it off, but pretty sure we want a dispatcher that can use NIO's EventLoop
+    //       we'd need to pass EventLoop into the system, but I think this would be nice at the worst we'd "blow up if you want to use NIO event loops but it's not passed in"
+    case NIO
 
-  // TODO definitely good, though likely not as first thing We can base it on Akka's recent "Affinity" one,
-  // though in Akka we had a hard time really proving that it outperforms the FJP since here we have no FJP readily available, and the Affinity one is much simpler,
-  // I'd rather implement such style, as it actually is build "for" actors, and not accidentally running them well...
-  // case OurOwnFancyActorSpecificDispatcher
+    // TODO: definitely good, though likely not as first thing We can base it on Akka's recent "Affinity" one,
+    // though in Akka we had a hard time really proving that it outperforms the FJP since here we have no FJP readily available, and the Affinity one is much simpler,
+    // I'd rather implement such style, as it actually is build "for" actors, and not accidentally running them well...
+    // case OurOwnFancyActorSpecificDispatcher
 
-  /// Use with Caution!
-  ///
-  /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
-  // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
-  case PinnedThread
+    /// Use with Caution!
+    ///
+    /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
+    // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
+    case PinnedThread
 }
 
 public enum MailboxProps {
-  case `default`(capacity: Int, onOverflow: MailboxOverflowStrategy)
+    case `default`(capacity: Int, onOverflow: MailboxOverflowStrategy)
 
-  static func `default`(capacity: Int = Int.max) -> MailboxProps {
-    return .default(capacity: capacity, onOverflow: .crash)
-  }
+    static func `default`(capacity: Int = Int.max) -> MailboxProps {
+        return .default(capacity: capacity, onOverflow: .crash)
+    }
 }
 
-// TODO those only apply when bounded mailboxes
+// TODO: those only apply when bounded mailboxes
 public enum MailboxOverflowStrategy {
-  case crash
-  case dropIncoming
-  case dropMailbox
+    case crash
+    case dropIncoming
+    case dropMailbox
 }

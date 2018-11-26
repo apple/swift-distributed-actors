@@ -18,116 +18,118 @@
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
 public protocol AnyAddressableActorRef {
-  var path: ActorPath { get }
-  func asHashable() -> AnyHashable
-  
-  static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool
+    var path: ActorPath { get }
+    func asHashable() -> AnyHashable
+
+    static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool
 
 }
 
 // Implementation notes:
 // Any [[AddressableRef]] is Hashable as well as can be packed as AnyHashable (for type-erasure)
 public extension AddressableActorRef {
-  public func asHashable() -> AnyHashable {
-    return AnyHashable(self)
-  }
+    public func asHashable() -> AnyHashable {
+        return AnyHashable(self)
+    }
 }
+
 extension ActorRef: AnyAddressableActorRef {
-  public func asHashable() -> AnyHashable {
-    return AnyHashable(self)
-  }
+    public func asHashable() -> AnyHashable {
+        return AnyHashable(self)
+    }
 }
+
 extension AnyAddressableActorRef {
-  public static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool {
-    return lhs.path == rhs.path
-  }
+    public static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool {
+        return lhs.path == rhs.path
+    }
 }
 
 /// Internal box to type-erase the type details of an [[ActorRef]] yet keep its other properties (e.g. hash-ability)
 @usableFromInline internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {
-  private let anyRef: AnyAddressableActorRef
+    private let anyRef: AnyAddressableActorRef
 
-  /// Easiest used with [[ActorRefWithCell]]
-  public init<Ref: AnyAddressableActorRef & Hashable>(ref: Ref) {
-    self.anyRef = ref
-  }
+    /// Easiest used with [[ActorRefWithCell]]
+    public init<Ref: AnyAddressableActorRef & Hashable>(ref: Ref) {
+        self.anyRef = ref
+    }
 
-  /// WARNING: Performs an `internal_downcast`
-  public init<M>(_ ref: ActorRef<M>) {
-    self.init(ref: ref.internal_downcast)
-  }
+    /// WARNING: Performs an `internal_downcast`
+    public init<M>(_ ref: ActorRef<M>) {
+        self.init(ref: ref.internal_downcast)
+    }
 
-  func hash(into hasher: inout Hasher) {
-    self.anyRef.asHashable().hash(into: &hasher)
-  }
+    func hash(into hasher: inout Hasher) {
+        self.anyRef.asHashable().hash(into: &hasher)
+    }
 
-  static func ==(lhs: BoxedHashableAnyAddressableActorRef, rhs: BoxedHashableAnyAddressableActorRef) -> Bool {
-    return lhs.path == rhs.path
-  }
+    static func ==(lhs: BoxedHashableAnyAddressableActorRef, rhs: BoxedHashableAnyAddressableActorRef) -> Bool {
+        return lhs.path == rhs.path
+    }
 
-  var path: ActorPath {
-    return self.anyRef.path
-  }
+    var path: ActorPath {
+        return self.anyRef.path
+    }
 
-  func asHashable() -> AnyHashable {
-    return self.anyRef.asHashable()
-  }
+    func asHashable() -> AnyHashable {
+        return self.anyRef.asHashable()
+    }
 }
 
 // MARK: Type erasure for ReceivesMessages
 
-// TODO maybe, and drop all others?
+// TODO: maybe, and drop all others?
 
 // MARK: Type erasure for ReceivesSignals
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
-public protocol AnyReceivesSignals { // TODO this should be SystemMessages I think -- ktoso (Signals is what users can get, this is the super internal ones)
-  /* internal */ func sendSystemMessage(_ message: SystemMessage)
+public protocol AnyReceivesSignals { // TODO: this should be SystemMessages I think -- ktoso (Signals is what users can get, this is the super internal ones)
+    /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
-  var path: ActorPath { get }
-  func asHashable() -> AnyHashable
+    var path: ActorPath { get }
+    func asHashable() -> AnyHashable
 }
 
 internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSignals {
-  private let anyRef: AnyReceivesSignals
+    private let anyRef: AnyReceivesSignals
 
-  /// Easiest used with [[ActorRefWithCell]]
-  public init<Ref: AnyReceivesSignals & Hashable>(ref: Ref) {
-    self.anyRef = ref
-  }
+    /// Easiest used with [[ActorRefWithCell]]
+    public init<Ref: AnyReceivesSignals & Hashable>(ref: Ref) {
+        self.anyRef = ref
+    }
 
-  /// WARNING: Performs an `internal_downcast`
-  public init<M>(_ ref: ActorRef<M>) {
-    self.init(ref: ref.internal_downcast)
-  }
+    /// WARNING: Performs an `internal_downcast`
+    public init<M>(_ ref: ActorRef<M>) {
+        self.init(ref: ref.internal_downcast)
+    }
 
-  func hash(into hasher: inout Hasher) {
-    self.anyRef.asHashable().hash(into: &hasher)
-  }
+    func hash(into hasher: inout Hasher) {
+        self.anyRef.asHashable().hash(into: &hasher)
+    }
 
-  static func ==(lhs: BoxedHashableAnyReceivesSignals, rhs: BoxedHashableAnyReceivesSignals) -> Bool {
-    return lhs.path == rhs.path // TODO sanity check the path equality assumption
-  }
+    static func ==(lhs: BoxedHashableAnyReceivesSignals, rhs: BoxedHashableAnyReceivesSignals) -> Bool {
+        return lhs.path == rhs.path // TODO: sanity check the path equality assumption
+    }
 
-  func sendSystemMessage(_ message: SystemMessage) {
-    self.anyRef.sendSystemMessage(message)
-  }
+    func sendSystemMessage(_ message: SystemMessage) {
+        self.anyRef.sendSystemMessage(message)
+    }
 
-  public var path: ActorPath {
-    return self.anyRef.path
-  }
+    public var path: ActorPath {
+        return self.anyRef.path
+    }
 
-  func asHashable() -> AnyHashable {
-    fatalError("asHashable() has not been implemented")
-  }
+    func asHashable() -> AnyHashable {
+        fatalError("asHashable() has not been implemented")
+    }
 }
 
 /// INTERNAL API: DO NOT TOUCH.
 internal extension AnyReceivesSignals {
-  /// INTERNAL API: unwraps the box
-  internal func internal_exposeBox() -> BoxedHashableAnyReceivesSignals {
-    return self as! BoxedHashableAnyReceivesSignals
-  }
+    /// INTERNAL API: unwraps the box
+    internal func internal_exposeBox() -> BoxedHashableAnyReceivesSignals {
+        return self as! BoxedHashableAnyReceivesSignals
+    }
 }
 
 // MARK: Internal boxing helpers
@@ -135,14 +137,14 @@ internal extension AnyReceivesSignals {
 /// INTERNAL API
 internal extension ActorRef {
 
-  /// INTERNAL API: Performs downcast, only use when you know what you're doing
-  internal func internal_boxAnyReceivesSignals() -> AnyReceivesSignals {
-    return BoxedHashableAnyReceivesSignals(ref: self.internal_downcast)
-  }
+    /// INTERNAL API: Performs downcast, only use when you know what you're doing
+    internal func internal_boxAnyReceivesSignals() -> AnyReceivesSignals {
+        return BoxedHashableAnyReceivesSignals(ref: self.internal_downcast)
+    }
 
-  /// INTERNAL API: Performs downcast, only use when you know what you're doing
-  func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
-    return BoxedHashableAnyAddressableActorRef(ref: self.internal_downcast)
-  }
+    /// INTERNAL API: Performs downcast, only use when you know what you're doing
+    func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
+        return BoxedHashableAnyAddressableActorRef(ref: self.internal_downcast)
+    }
 }
 

@@ -15,52 +15,53 @@
 import CQueue
 
 public final class MPSCLinkedQueue<A> {
-  public let q: UnsafeMutablePointer<CMPSCLinkedQueue>;
-  public init() {
-    q = cmpsc_linked_queue_create()
-  }
+    public let q: UnsafeMutablePointer<CMPSCLinkedQueue>;
 
-  deinit {
-    cmpsc_linked_queue_destroy(q)
-  }
-
-  @inlinable
-  public func enqueue(_ item: A) -> Void {
-    // When using this, A has to be constrained to AnyObject, but
-    // performance is better
-    //
-    // let unmanaged = Unmanaged<A>.passRetained(item)
-
-    let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
-    ptr.initialize(to: item)
-    cmpsc_linked_queue_enqueue(q, ptr)
-  }
-
-  @inlinable
-  public func dequeue() -> A? {
-    if let p = cmpsc_linked_queue_dequeue(q) {
-      // When using this, A has to be constrained to AnyObject, but
-      // performance is better
-      //
-      // return Unmanaged<A>.fromOpaque(p).takeRetainedValue()
-
-      let ptr = p.assumingMemoryBound(to: A.self)
-      defer {
-        ptr.deallocate()
-      }
-      return ptr.move()
+    public init() {
+        q = cmpsc_linked_queue_create()
     }
 
-    return nil
-  }
+    deinit {
+        cmpsc_linked_queue_destroy(q)
+    }
 
-  @inlinable
-  public func isEmpty() -> Bool {
-    return cmpsc_linked_queue_is_empty(q) != 0
-  }
+    @inlinable
+    public func enqueue(_ item: A) -> Void {
+        // When using this, A has to be constrained to AnyObject, but
+        // performance is better
+        //
+        // let unmanaged = Unmanaged<A>.passRetained(item)
 
-  @inline(__always)
-  public func nonEmpty() -> Bool {
-    return !isEmpty()
-  }
+        let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
+        ptr.initialize(to: item)
+        cmpsc_linked_queue_enqueue(q, ptr)
+    }
+
+    @inlinable
+    public func dequeue() -> A? {
+        if let p = cmpsc_linked_queue_dequeue(q) {
+            // When using this, A has to be constrained to AnyObject, but
+            // performance is better
+            //
+            // return Unmanaged<A>.fromOpaque(p).takeRetainedValue()
+
+            let ptr = p.assumingMemoryBound(to: A.self)
+            defer {
+                ptr.deallocate()
+            }
+            return ptr.move()
+        }
+
+        return nil
+    }
+
+    @inlinable
+    public func isEmpty() -> Bool {
+        return cmpsc_linked_queue_is_empty(q) != 0
+    }
+
+    @inline(__always)
+    public func nonEmpty() -> Bool {
+        return !isEmpty()
+    }
 }

@@ -18,52 +18,52 @@ import CQueue
 
 class CMPSCLinkedQueueTests: XCTestCase {
 
-  func testIsEmptyWhenEmpty() {
-    let q = cmpsc_linked_queue_create()
-    let empty = cmpsc_linked_queue_is_empty(q)
+    func testIsEmptyWhenEmpty() {
+        let q = cmpsc_linked_queue_create()
+        let empty = cmpsc_linked_queue_is_empty(q)
 
-    XCTAssertNotEqual(empty, 0)
-  }
-
-  func testIsEmptyWhenNonEmpty() {
-    let q = cmpsc_linked_queue_create()
-    let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
-    defer {
-      p.deallocate()
+        XCTAssertNotEqual(empty, 0)
     }
 
-    cmpsc_linked_queue_enqueue(q, p)
-    let empty = cmpsc_linked_queue_is_empty(q)
+    func testIsEmptyWhenNonEmpty() {
+        let q = cmpsc_linked_queue_create()
+        let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
+        defer {
+            p.deallocate()
+        }
 
-    XCTAssertEqual(empty, 0)
-  }
+        cmpsc_linked_queue_enqueue(q, p)
+        let empty = cmpsc_linked_queue_is_empty(q)
 
-  func testDequeueWhenEmpty() {
-    let q = cmpsc_linked_queue_create()
-    let res = cmpsc_linked_queue_dequeue(q)
-
-    XCTAssertNil(res)
-  }
-
-  func testEnqueueDequeue() {
-    let q = cmpsc_linked_queue_create()
-    let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
-    defer {
-      p.deallocate()
+        XCTAssertEqual(empty, 0)
     }
 
-    cmpsc_linked_queue_enqueue(q, p)
-    let res = cmpsc_linked_queue_dequeue(q)
+    func testDequeueWhenEmpty() {
+        let q = cmpsc_linked_queue_create()
+        let res = cmpsc_linked_queue_dequeue(q)
 
-    XCTAssertEqual(p, res)
-  }
+        XCTAssertNil(res)
+    }
 
-  func testDestroy() {
-    // jsut checking that it doesn't segfault here
-    let q = cmpsc_linked_queue_create()
-    let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
+    func testEnqueueDequeue() {
+        let q = cmpsc_linked_queue_create()
+        let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
+        defer {
+            p.deallocate()
+        }
 
-    cmpsc_linked_queue_enqueue(q, p)
-    cmpsc_linked_queue_destroy(q)
-  }
+        cmpsc_linked_queue_enqueue(q, p)
+        let res = cmpsc_linked_queue_dequeue(q)
+
+        XCTAssertEqual(p, res)
+    }
+
+    func testDestroy() {
+        // jsut checking that it doesn't segfault here
+        let q = cmpsc_linked_queue_create()
+        let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
+
+        cmpsc_linked_queue_enqueue(q, p)
+        cmpsc_linked_queue_destroy(q)
+    }
 }

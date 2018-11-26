@@ -22,30 +22,32 @@ import Darwin
 import Glibc
 #endif
 
-// TODO just prototyping, not sure yet
+// TODO: just prototyping, not sure yet
 struct Failure {
-  var isError = false
-  var isFatalError = false
-  var isFailure = false
+    var isError = false
+    var isFatalError = false
+    var isFailure = false
 
-  var underlyingSignal = Optional(EINVAL) // underlying error signal if it was a Failure
+    var underlyingSignal = Optional(EINVAL) // underlying error signal if it was a Failure
 
 }
 
 private extension Behavior {
-  func supervise(_ decide: (Failure) -> Supervision.Directive) -> Behavior<Message> {
-    return self // FIXME not a real impl of course; replace with real impl in Swift Distributed ActorsActor
-  }
+    func supervise(_ decide: (Failure) -> Supervision.Directive) -> Behavior<Message> {
+        return self // FIXME not a real impl of course; replace with real impl in Swift Distributed ActorsActor
+    }
 }
 
 class SupervisionTests: XCTestCase {
 
-  func test_compile() throws {
-    let b: Behavior<String> = .receiveMessage { s in .same }
+    func test_compile() throws {
+        let b: Behavior<String> = .receiveMessage { s in
+            .same
+        }
 
-    let _: Behavior<String> = b.supervise { failure -> Supervision.Directive in
-      return .restart
+        let _: Behavior<String> = b.supervise { failure -> Supervision.Directive in
+            return .restart
+        }
     }
-  }
 
 }

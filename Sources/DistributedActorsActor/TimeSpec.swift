@@ -24,28 +24,28 @@ fileprivate let NANOS = 1_000_000_000
 
 // utilities to convert between TimeAmount and C timespec
 public enum TimeSpec {
-  public static func from(timeAmount amount: TimeAmount) -> timespec {
-    let seconds = amount.nanoseconds / NANOS
-    let nanos = amount.nanoseconds % NANOS
+    public static func from(timeAmount amount: TimeAmount) -> timespec {
+        let seconds = amount.nanoseconds / NANOS
+        let nanos = amount.nanoseconds % NANOS
 
-    var time = timespec()
-    time.tv_sec = seconds
-    time.tv_nsec = nanos
-    return time
-  }
+        var time = timespec()
+        time.tv_sec = seconds
+        time.tv_nsec = nanos
+        return time
+    }
 }
 
 extension timespec {
-  public static func +(a: timespec, b: timespec) -> timespec {
-    let totalNanos = a.toNanos() + b.toNanos()
-    let seconds = totalNanos / NANOS
-    var result = timespec()
-    result.tv_sec = seconds
-    result.tv_nsec = totalNanos % NANOS
-    return result
-  }
+    public static func +(a: timespec, b: timespec) -> timespec {
+        let totalNanos = a.toNanos() + b.toNanos()
+        let seconds = totalNanos / NANOS
+        var result = timespec()
+        result.tv_sec = seconds
+        result.tv_nsec = totalNanos % NANOS
+        return result
+    }
 
-  public func toNanos() -> Int {
-    return self.tv_nsec + (self.tv_sec * NANOS)
-  }
+    public func toNanos() -> Int {
+        return self.tv_nsec + (self.tv_sec * NANOS)
+    }
 }

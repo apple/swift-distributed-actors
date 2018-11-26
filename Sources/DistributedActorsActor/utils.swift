@@ -43,26 +43,29 @@ public typealias Nothing = Never
  * Originally from: Johannes Weiss (MIT licensed) https://github.com/weissi/swift-undefined
  */
 
-// TODO make those internal again
+// TODO: make those internal again
 public func undefined<T>(hint: String = "", file: StaticString = #file, line: UInt = #line) -> T {
-  let message = hint == "" ? "" : ": \(hint)"
-  fatalError("undefined \(T.self)\(message)", file: file, line: line)
+    let message = hint == "" ? "" : ": \(hint)"
+    fatalError("undefined \(T.self)\(message)", file: file, line: line)
 }
 
-// TODO make those internal again
+// TODO: make those internal again
 public func TODO<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
-  return undefined(hint: "TODO: \(hint)", file: file, line: line)
+    return undefined(hint: "TODO: \(hint)", file: file, line: line)
 }
 
-// TODO make those internal again
+// TODO: make those internal again
 public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
-  return undefined(hint: "FIXME: \(hint)", file: file, line: line)
+    return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
 @inline(__always)
 public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: T, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
-  func details() -> String { return " Owner: \(owner), Thread: --" }
-  assert(condition(), message() + details(), file: file, line: line)
+    func details() -> String {
+        return " Owner: \(owner), Thread: --"
+    }
+
+    assert(condition(), message() + details(), file: file, line: line)
 }
 
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
@@ -71,18 +74,18 @@ public func pprint(_ message: String, file: StaticString = #file, line: UInt = #
 }
 
 public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
-  let yellow = "\u{001B}[0;33m"
-  let reset = "\u{001B}[0;0m"
-  print("\(yellow)\(file):\(line) : \(message)\(reset)")
+    let yellow = "\u{001B}[0;33m"
+    let reset = "\u{001B}[0;0m"
+    print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }
 
 func hackyPthreadThreadName() -> String {
-  let threadId: String
-  #if os(macOS)
-  threadId = "thread:\(pthread_mach_thread_np(pthread_self()))"
-  #else
-  threadId = "<thread:??>"
-  #endif
+    let threadId: String
+    #if os(macOS)
+    threadId = "thread:\(pthread_mach_thread_np(pthread_self()))"
+    #else
+    threadId = "<thread:??>"
+    #endif
 
-  return threadId
+    return threadId
 }
