@@ -33,8 +33,6 @@ public final class ActorSystem {
     // so without it we could not log anything.
     let eventStream = "" // FIXME actual implementation
 
-    // let deadLetters: ReceivesMessages<Any> = undefined()
-
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
@@ -121,7 +119,10 @@ extension ActorSystem: ActorRefFactory {
         // TODO: move this to the provider perhaps? or some way to share setup logic
 
         // the "real" actor, the cell that holds the actual "actor"
-        let cell: ActorCell<Message> = ActorCell(behavior: behavior, dispatcher: dispatcher)
+        let cell: ActorCell<Message> = ActorCell(
+            behavior: behavior,
+            system: self,
+            dispatcher: dispatcher)
 
         // the mailbox of the actor
         let mailbox = Mailbox(cell: cell, capacity: Int.max)

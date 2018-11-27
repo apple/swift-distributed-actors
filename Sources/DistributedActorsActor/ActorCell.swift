@@ -117,6 +117,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // on each message being applied the actor may return a new behavior that will be handling the next message.
     public var behavior: Behavior<Message>
 
+    internal var system: ActorSystem
+
     // Implementation of DeathWatch
     @usableFromInline internal var deathWatch: DeathWatch<Message>!
 
@@ -130,10 +132,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self._myselfInACell
     }
 
-    init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
+    init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher) {
         // TODO: we may end up referring to the system here... we'll see
         self.behavior = behavior
         self._dispatcher = dispatcher
+        self.system = system
         self.deathWatch = DeathWatch()
     }
 
@@ -148,6 +151,14 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self
     }
 
+    // MARK: Dead letters
+
+    // TODO make it a real actor ref with special casing (it is always dead)
+    func drainToDeadLetters(_ message: Message) {
+        print("[deadLetters] Message [\(message)]:\(type(of: message)) was not delivered. Dead letter encountered.")
+        // system.deadLetters.tell(DeadLetter(message: message)) // TODO metadata
+    }
+    
     // MARK: Conforming to ActorContext
 
     /// Returns this actors "self" actor reference, which can be freely shared across
@@ -204,7 +215,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     func interpretSystemMessage(message: SystemMessage) throws -> Bool {
-        //    log.info("Interpret system message: \(message)")
+        pprint("Interpret system message: \(message)")
         switch message {
             // initialization:
         case .start:
@@ -224,7 +235,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
             // mailbox status, but obtaining the mailbox status and getting the
             // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
-            pprint("Terminating \(self.myself). Remaining messages will be drained to deadLetters.")
+            pprint("Received tombstone for \(self.myself). Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
             return false
         }
@@ -344,9 +355,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         self.notifyWatchersWeDied()
         // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
 
+        // TODO validate all the nulling out; can we null out the cell itself?
         // "nil out everything"
         self.deathWatch = nil
-        self._myselfInACell = nil
         self.behavior = .stopped
 
         #if SACT_TRACE_CELL

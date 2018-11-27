@@ -131,27 +131,33 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
     }
 }
 
-bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
+int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
     // printf("[cmailbox] send_system_message: \n");
     int64_t old_status = try_activate(mailbox); // only activation matters
     int64_t old_activations = activations(old_status);
     CMPSCLinkedQueue* queue = mailbox->system_messages; // TODO: move out the if, we know into which queue we will write when we call send()
 
-    // if (is_terminating(old_status)) {
-    if (is_terminated_dead(old_status)) {
+    print_debug_status(mailbox, "send system message inside.....");
+
+     if (is_terminating(old_status)) {
+        print_debug_status(mailbox, "terminating, system message, though shalt drop it"); // which we do by returning -1
         // since we are terminating, we are already dropping all messages, including this one!
         // TODO: emit the message as ".dropped(msg)"
-        return false;
+        return -1;
     } else {
         // If the mailbox is not full, or we enqueue a system message, we insert it
         // into the queue and return whether this was the first activation, to signal
         // the need to enqueue this mailbox.
         cmpsc_linked_queue_enqueue(queue, envelope);
-        return old_activations == 0;
+        print_debug_status(mailbox, "enqueued system message.......");
+
+         return old_activations;
     }
 }
 
-bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message) {
+bool cmailbox_run(CMailbox* mailbox,
+                  void* context, void* system_context, void* drop_context,
+                  InterpretMessageCallback interpret_message, DropMessageCallback drop_message) {
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
     // print_debug_status(mailbox, "Entering run");
 
@@ -172,12 +178,12 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
     // run system messages ------
 
     if (has_system_messages(status)) {
-        // printf("[cmailbox] Has system message(s)\n");
+         printf("[cmailbox] Has system message(s)\n");
         processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
         // we run all system messages, as they may
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         while (system_message != NULL && keep_running) {
-            // printf("[cmailbox] Processing system message...\n");
+            printf("[cmailbox] Processing system message...\n");
             keep_running = interpret_message(system_context, system_message);
             system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         }
@@ -208,8 +214,7 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
             processed_activations += 0b10;
             // printf("[cmailbox]Processing user message...\n");
             // TODO: fix this dance
-            bool is_stopped = interpret_message(context,
-                                                message); // TODO: we can optimize the keep_running into the processed counter?
+            bool is_stopped = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
             keep_running = !is_stopped;
 
             // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
@@ -231,14 +236,14 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
 
     // end of user messages run ------
 
-    if (is_terminating(status)) {
+     if (is_terminating(status)) {
         printf("Skipping message processing since we are terminating...!\n");
         // TODO: drain them to dead letters
 
         // TODO: drainToDeadLetters(mailbox->messages) {
         void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
-            printf("Dropping user message, we are terminating...\n");
+            drop_message(drop_context, message);
             processed_activations += 0b10;
             message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
         }
@@ -280,7 +285,7 @@ int64_t cmailbox_message_count(CMailbox* mailbox) {
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
-#if SACT_TRACE_MAILBOX
+//#if SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
     char buffer[33];
@@ -301,7 +306,7 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            is_terminating(status) ? "Y" : "N",
            is_terminated_dead(status) ? "Y" : "N"
     );
-#endif
+//#endif
 }
 
 int64_t get_status(CMailbox* mailbox) {

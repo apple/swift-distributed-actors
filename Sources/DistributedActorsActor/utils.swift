@@ -15,8 +15,6 @@
 import Foundation
 import NIOConcurrencyHelpers
 
-public typealias Nothing = Never
-
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can
  * be very useful whilst writing a program. It happens that you need a value
@@ -59,17 +57,8 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
     return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
-@inline(__always)
-public func assertWithDetails<T>(_ condition: @autoclosure () -> Bool, _ owner: T, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
-    func details() -> String {
-        return " Owner: \(owner), Thread: --"
-    }
-
-    assert(condition(), message() + details(), file: file, line: line)
-}
-
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
-//  print("[pprint][\(file):\(line)][\(hackyPthreadThreadName())]: \(message)")
+  print("[pprint][\(file):\(line)][\(hackyPthreadThreadName())]: \(message)")
 //  print("[pprint][\(file):\(line)]: \(message)")
 }
 

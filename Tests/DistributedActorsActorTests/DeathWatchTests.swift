@@ -45,7 +45,7 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_shouldTriggerTerminatedWhenWatchedActorStops() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(named: "px", on: system)
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), named: "stopMePlz0")
 
         p.watch(stoppableRef)
@@ -71,9 +71,9 @@ class DeathWatchTests: XCTestCase {
         p2.watch(stoppableRef)
 
         stoppableRef.tell(.stop)
-        stoppableRef.tell(.stop)
-        stoppableRef.tell(.stop)
-        stoppableRef.tell(.stop)
+        stoppableRef.tell(.stop) // should result in dead letter
+        stoppableRef.tell(.stop) // should result in dead letter
+        stoppableRef.tell(.stop) // should result in dead letter
 
         try p.expectMessage("I (/user/stopMePlz1) will now stop")
         // since the first message results in the actor becoming .stopped

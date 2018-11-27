@@ -23,7 +23,7 @@ struct Envelope<Message> {
     // Note that we can pass around senders however we can not automatically get the type of them right.
     // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
     // TODO: explain this more
-    #if SACTANA_DEBUG
+    #if SACT_DEBUG
     let senderPath: ActorPath
     #endif
 
@@ -56,6 +56,21 @@ private struct WrappedClosure {
     }
 }
 
+/// Wraps context for use in closures passed to C
+private struct WrappedDropClosure {
+    private let _drop: (UnsafeMutableRawPointer) throws -> ()
+
+    init(drop: @escaping (UnsafeMutableRawPointer) throws -> ()) {
+        self._drop = drop
+    }
+
+    @inlinable
+    func drop(with ptr: UnsafeMutableRawPointer) throws -> () {
+        return try _drop(ptr)
+    }
+
+}
+
 // TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
 final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CMailbox>
@@ -64,8 +79,10 @@ final class Mailbox<Message> {
     // Implementation note: WrappedClosures are used for C-interop
     private var messageCallbackContext: WrappedClosure
     private var systemMessageCallbackContext: WrappedClosure
+    private var dropCallbackContext: WrappedDropClosure
 
     private let interpretMessage: InterpretMessageCallback
+    private let dropMessage: DropMessageCallback
 
     init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
@@ -81,6 +98,7 @@ final class Mailbox<Message> {
         })
 
         self.systemMessageCallbackContext = WrappedClosure(exec: { ptr in
+            pprint("INVOKE SYSTEM")
             let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             return try cell.interpretSystemMessage(message: msg)
@@ -88,16 +106,22 @@ final class Mailbox<Message> {
             cell.fail(error: error)
         })
 
-        self.interpretMessage = { (ctxPtr, msg) in
-            defer {
-                msg?.deallocate()
-            }
+        self.dropCallbackContext = WrappedDropClosure(drop: { ptr in
+            pprint("DROP.....")
+            let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
+            let envelope = envelopePtr.move()
+            let msg = envelope.payload
+            pprint("DROPPED")
+            cell.drainToDeadLetters(msg)
+        })
+
+        self.interpretMessage = { (ctxPtr, msgPtr) in
+            defer { msgPtr?.deallocate() }
             let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
-            // FIXME the try! is harsh here... we want to allow our users to throw in actor code I think
 
             var shouldContinue: Bool
             do {
-                shouldContinue = try ctx?.pointee.exec(with: msg!) ?? false // FIXME don't like the many ? around here hm, likely costs -- ktoso
+                shouldContinue = try ctx?.pointee.exec(with: msgPtr!) ?? false // FIXME don't like the many ? around here hm, likely costs -- ktoso
             } catch {
                 #if SACT_TRACE_MAILBOX
                 pprint("Error while processing message! Was: \(error) TODO supervision decisions...")
@@ -108,6 +132,15 @@ final class Mailbox<Message> {
             }
 
             return shouldContinue
+        }
+        self.dropMessage = { (ctxPtr, msgPtr) in
+            defer { msgPtr?.deallocate() }
+            let ctx = ctxPtr?.assumingMemoryBound(to: WrappedDropClosure.self)
+            do {
+                try ctx?.pointee.drop(with: msgPtr!) // FIXME don't like the many ? around here hm, likely costs -- ktoso
+            } catch {
+
+            }
         }
     }
 
@@ -138,23 +171,31 @@ final class Mailbox<Message> {
 
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage) {
-        // TODO: the following is is_terminating, but we need to refresh wording here
-//    guard !cmailbox_is_closed(mailbox) else { // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
-//      return handleOnClosedMailbox(systemMessage)
-//    }
+        // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+//        guard !cmailbox_is_closed(mailbox) else {
+//          return handleOnClosedMailbox(systemMessage)
+//        }
 
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
-        let shouldSchedule = cmailbox_send_system_message(mailbox, ptr)
-        if shouldSchedule {
+        let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
+        if schedulingDecision == 0 {
+            // enqueued, we have to schedule
+            pprint("Enqueued system message \(systemMessage), we trigger scheduling")
             cell.dispatcher.execute(self.run)
-        }
+        } else if schedulingDecision < 0 {
+            // not enqueued, mailbox is closed, actor is terminating/terminated
+            // special handle in-line certain system messages
+            self.handleOnClosedMailbox(systemMessage)
+        } // else schedulingDecision > 0 { this means we enqueued, and the mailbox already will be scheduled by someone else }
     }
 
     @inlinable
     func run() {
-        let shouldReschedule: Bool = cmailbox_run(mailbox, &messageCallbackContext, &systemMessageCallbackContext, interpretMessage)
+        let shouldReschedule: Bool = cmailbox_run(mailbox,
+            &messageCallbackContext, &systemMessageCallbackContext, &dropCallbackContext,
+            interpretMessage, dropMessage)
 
         if shouldReschedule {
             // pprint("MAILBOX:\(self.cell)::::rescheduling from run()")
@@ -165,12 +206,14 @@ final class Mailbox<Message> {
     @inlinable
     func handleOnClosedMailbox(_ message: SystemMessage) {
         // #if mailbox trace
-        pprint("Closed Mailbox of [\(cell.myself.path.debugDescription)] received: \(message); handling on calling thread.")
+        let cellDescription = cell._myselfInACell?.path.debugDescription ?? "<cell-name-not-available>"
+        pprint("Closed Mailbox of [\(cellDescription)] received: \(message); handling on calling thread.")
         // #endif
 
         switch message {
         case let .watch(watcher):
-            watcher.sendSystemMessage(.terminated(ref: cell.myself.internal_boxAnyAddressableActorRef()))
+            let myself = cell.myself.internal_boxAnyAddressableActorRef()
+            watcher.sendSystemMessage(.terminated(ref: myself))
         default:
             return // ignore
         }
