@@ -3,7 +3,7 @@
 #
 #   #!/usr/bin/env bash
 #
-#   /usr/bin/env ruby scripts/check-license-header.rb
+#   /usr/bin/env ruby scripts/check_license_header.rb
 #
 
 new_files = `git diff --name-only --diff-filter=A --cached -- '*.swift' '*.c' '*.h'`.lines
