@@ -18,6 +18,7 @@ import NIO
 
 /// "Pretty" time amount rendering, useful for human readable durations in tests
 extension TimeAmount {
+    // TODO build our own rather than extending the NIO one
 
     public var prettyDescription: String {
         return self.prettyDescription()

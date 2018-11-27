@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// TODO make a -D exposed property and compile time thingy
+let SACT_TRACE_SENDS = false
+
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 // TODO: designing the cell and ref is so far the most tricky thing I've seen... We want to hide away the ActorRef

@@ -69,7 +69,16 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     // MARK: ActorCellSpawning protocol requirements
 
-    internal var children: Children = Children()
+    internal var _children: Children = Children()
+    override public var children: Children {
+        set {
+            self._children = newValue
+        }
+        get {
+            return self._children
+        }
+    }
+
     func sendToDeadLetters(_ letter: DeadLetter) {
         system.deadLetters.tell(letter) // TODO metadata
     }
@@ -87,20 +96,25 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
-        return _myselfInACell!
+        guard let unwrapped = self._myselfInACell else {
+            fatalError("Attempted to unwrap `_myselfInACell` yet it was null. " +
+                "This should never happen, and is likely an implementation bug. " +
+                "Was a message handled by an already-dead actor which should never do so?")
+        }
+        return unwrapped
     }
 
     override public var path: ActorPath {
         return self.myself.path
     }
     override public var name: String {
-        return path.name
+        return self.path.name
     }
 
     // access only from within actor
     private lazy var _log = ActorLogger(self.context)
     override public var log: Logger {
-        return _log
+        return self._log
     }
 
     override public var dispatcher: MessageDispatcher {
@@ -305,6 +319,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return try self.internal_spawn(behavior, name: name, props: props)
     }
 
+    public override func stop<M>(child ref: ActorRef<M>) throws {
+        return try self.internal_stop(child: ref)
+    }
+
+
     // MARK: Death Watch
 
     override public func watch<M>(_ watchee: ActorRef<M>) {
@@ -321,100 +340,4 @@ extension ActorCell: CustomStringConvertible {
         let path = self._myselfInACell?.path.description ?? "<terminated-TODO>" // FIXME path should always remain safe to touch, also after termination (!)
         return "\(type(of: self))(\(path))"
     }
-}
-
-
-protocol ChildActorRefFactory: ActorRefFactory {
-    // MARK: Interface with actor cell
-
-    var children: Children { get set }
-
-    // MARK: Additional
-
-    func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
-    func stop<M>(child ref: ActorRef<M>) throws
-
-}
-
-/// Represents all the (current) children this actor has spawned.
-///
-/// Convenience methods for locating children are provided, although it is recommended to keep the [[ActorRef]]
-/// of spawned actors in the context of where they are used, rather than looking them up continiously.
-public struct Children {
-
-    typealias Name = String
-    private var container: [Name: BoxedHashableAnyReceivesSignals]
-
-    public init() {
-        self.container = [:]
-    }
-
-    public func find<T>(named name: String, withType: T.Type) -> ActorRef<T>? {
-        guard let boxedChild = container[name] else {
-            return nil
-        }
-
-        return boxedChild.internal_exposeAs(ActorRef<T>.self)
-    }
-    
-    public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
-        container[childRef.path.name] = childRef.internal_boxAnyReceivesSignals()
-    }
-
-    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
-    /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, false otherwise
-    internal mutating func remove<T, R: ActorRef<T>>(_ childRef: R) -> Bool {
-        let removed = container.removeValue(forKey: childRef.path.name)
-        return removed != nil
-    }
-
-}
-
-// TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
-extension ActorCell: ChildActorRefFactory {
-
-    // TODO: Very similar to top level one, though it will be differing in small bits... Likely not worth to DRY completely
-    internal func internal_spawn<Message2>(_ behavior: Behavior<Message2>, name: String, props: Props) throws -> ActorRef<Message2> {
-        try behavior.validateAsInitial()
-        // TODO prefix $ validation (only ok for anonymous)
-
-        let nameSegment = try ActorPathSegment(name)
-        let path = self.path / nameSegment
-        // TODO reserve name
-
-        let d = dispatcher // TODO this is dispatcher inheritance, we dont want that
-        let cell: ActorCell<Message2> = ActorCell<Message2>(behavior: behavior, dispatcher: d)
-        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
-
-        log.info("Spawning [\(behavior)], child of [\(self.path)], full path: [\(path)]")
-
-        let refWithCell = ActorRefWithCell(
-            path: path,
-            cell: cell,
-            mailbox: mailbox
-        )
-
-        cell.set(ref: refWithCell)
-        refWithCell.sendSystemMessage(.start)
-
-
-        self.children.insert(refWithCell)
-
-        return refWithCell
-    }
-
-    internal func internal_stop<T>(child ref: ActorRef<T>) throws {
-        // we immediately attempt the remove since
-        guard self.children.remove(ref) else {
-            throw ActorError.attemptedStoppingNonChildActor(ref: ref)
-        }
-
-        // TODO this is not really correct, just placeholder code for now
-        ref.internal_downcast.sendSystemMessage(.tombstone)
-    }
-}
-
-
-public enum ActorError: Error {
-    case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
 }

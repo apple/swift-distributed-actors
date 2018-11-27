@@ -97,6 +97,15 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    /// Container of spawned child actors.
+    ///
+    /// Allows obtaining references to previously spawned actors by their name.
+    /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
+    /// since looking up actors by name has an inherent seek cost associated with it.
+    public var children: Children {
+        return undefined()
+    }
+
     /// Stop child Actor.
     ///
     /// Throws: when an actor ref is passed in that is NOT a child of the current actor.
