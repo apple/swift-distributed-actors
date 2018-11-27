@@ -72,7 +72,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 
 /// INTERNAL API: Only for use by the actor system itself
 // TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
-public protocol ReceivesSignals: AnyReceivesSignals {
+public protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
     // TODO: fix naming mess with Signal and SystemMessage
 
     /// INTERNAL API: Only for use by the actor system itself
@@ -85,7 +85,7 @@ public protocol ReceivesSignals: AnyReceivesSignals {
 // TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
 /// INTERNAL API
 @usableFromInline
-final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSignals {
+final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages {
 
     /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
     /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)

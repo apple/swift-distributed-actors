@@ -59,7 +59,7 @@ import Dispatch
 
     // MARK: react to watch or unwatch signals
 
-    public mutating func becomeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
+    public mutating func becomeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
         guard watcher.path != myself.path else {
             // TODO: log warning
             pprint("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
@@ -72,7 +72,7 @@ import Dispatch
         self.watchedBy.insert(boxedWatcher)
     }
 
-    public mutating func removeWatchedBy(watcher: AnyReceivesSignals, myself: ActorRef<Message>) {
+    public mutating func removeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
         pprint("remove watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher.internal_exposeBox()
         self.watchedBy.remove(boxedWatcher)

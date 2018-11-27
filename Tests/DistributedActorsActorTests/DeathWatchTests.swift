@@ -226,6 +226,7 @@ class DeathWatchTests: XCTestCase {
     }
 
     // MARK: Death pact
+
     func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies() throws {
         let romeo = try system.spawn(Behavior<RomeoMessage>.receive { (context, message) in
             switch message {

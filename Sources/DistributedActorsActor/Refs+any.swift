@@ -83,18 +83,18 @@ extension AnyAddressableActorRef {
 // MARK: Type erasure for ReceivesSignals
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
-public protocol AnyReceivesSignals { // TODO: this should be SystemMessages I think -- ktoso (Signals is what users can get, this is the super internal ones)
+public protocol AnyReceivesSystemMessages {
     /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
     var path: ActorPath { get }
     func asHashable() -> AnyHashable
 }
 
-internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSignals {
-    private let anyRef: AnyReceivesSignals
+internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSystemMessages {
+    private let anyRef: AnyReceivesSystemMessages
 
     /// Easiest used with [[ActorRefWithCell]]
-    public init<Ref: AnyReceivesSignals & Hashable>(ref: Ref) {
+    public init<Ref: AnyReceivesSystemMessages & Hashable>(ref: Ref) {
         self.anyRef = ref
     }
 
@@ -125,7 +125,7 @@ internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSignals {
 }
 
 /// INTERNAL API: DO NOT TOUCH.
-internal extension AnyReceivesSignals {
+internal extension AnyReceivesSystemMessages {
     /// INTERNAL API: unwraps the box
     internal func internal_exposeBox() -> BoxedHashableAnyReceivesSignals {
         return self as! BoxedHashableAnyReceivesSignals
@@ -138,7 +138,7 @@ internal extension AnyReceivesSignals {
 internal extension ActorRef {
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    internal func internal_boxAnyReceivesSignals() -> AnyReceivesSignals {
+    internal func internal_boxAnyReceivesSignals() -> AnyReceivesSystemMessages {
         return BoxedHashableAnyReceivesSignals(ref: self.internal_downcast)
     }
 

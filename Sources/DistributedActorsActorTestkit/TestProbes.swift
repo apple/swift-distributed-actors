@@ -24,8 +24,8 @@ let SACT_TRACE_PROBE = false
 private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testActor-")
 
 internal enum ActorTestProbeCommand<M> {
-    case watchCommand(who: AnyReceivesSignals)
-    case unwatchCommand(who: AnyReceivesSignals)
+    case watchCommand(who: AnyReceivesSystemMessages)
+    case unwatchCommand(who: AnyReceivesSystemMessages)
     case stopCommand
 
     case realMessage(message: M)
@@ -70,7 +70,7 @@ final public class ActorTestProbe<Message> {
         // extract config here
         self.name = name
 
-        self.expectationTimeout = .seconds(1) // would really love "1.second" // TODO: config
+        self.expectationTimeout = .seconds(3) // would really love "1.second" // TODO: config
 
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,

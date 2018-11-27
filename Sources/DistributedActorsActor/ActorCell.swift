@@ -127,7 +127,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Guaranteed to be set during ActorRef creation
     /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
     @usableFromInline internal var _myselfInACell: ActorRefWithCell<Message>?
-    @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSignals? {
+    @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages? {
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
     }
@@ -235,7 +235,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
             // mailbox status, but obtaining the mailbox status and getting the
             // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
-            pprint("Received tombstone for \(self.myself). Remaining messages will be drained to deadLetters.")
+            pprint("\(self.myself) Received tombstone for. Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
             return false
         }
@@ -243,7 +243,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self.behavior.isStillAlive()
     }
 
-    @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSignals) {
+    @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
         switch self.behavior {
         case .stopped:
             // so we are in the middle of terminating already anyway
@@ -254,7 +254,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         }
     }
 
-    @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSignals) {
+    @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSystemMessages) {
         self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO: make DeathWatch methods available via extension
     }
 
@@ -292,6 +292,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     /// Fails the actor using the passed in error.
     ///
+    /// May ONLY be invoked by the Mailbox.
+    ///
     /// TODO: any kind of supervision things.
     ///
     /// Special handling is applied to [[DeathPactError]] since if that error is passed in here, we know that `.terminated`
@@ -304,12 +306,12 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
         case is DeathPactError:
-            log.error("Actor failing, reason: \(error)")
-            self.finishTerminating()
+            log.error("Actor failing, death pact: \(error)")
+            self.finishTerminating() // FIXME likely too eagerly
 
         default:
             log.error("Actor failing, reason: \(error)")
-            self.finishTerminating()
+            self.finishTerminating() // FIXME likely too eagerly
         }
     }
 
@@ -323,10 +325,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         self.behavior = self.behavior.canonicalize(context, next: next)
 
-        let alreadyDead: Bool = self.behavior.isStopped()
-        if alreadyDead {
-            self._myselfReceivesSystemMessages!.sendSystemMessage(.tombstone)
-        }
+        // FIXME: this was wrong, the MUST ONLY BE ISSUED ONCE TERMINATING and the mailbox is closed otherwise another message can race and still make it into the mailbox
+//        let alreadyDead: Bool = self.behavior.isStopped()
+//        if alreadyDead {
+//            self._myselfReceivesSystemMessages!.sendSystemMessage(.tombstone)
+//        }
     }
 
     @inlinable
@@ -349,6 +352,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///
     /// Always causes behavior to become `.stopped`.
     internal func finishTerminating() {
+        self._myselfInACell?.mailbox.setClosed()
+
+        let myPath: ActorPath? = self._myselfInACell?.path
+        pprint("FINISH TERMINATING \(myPath)")
+
         let b = self.behavior
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
@@ -359,10 +367,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         // "nil out everything"
         self.deathWatch = nil
         self.behavior = .stopped
+//        self._myselfInACell = nil
 
-        #if SACT_TRACE_CELL
-        pprint("\(b) TERMINATED.")
-        #endif
+        pprint("CLOSED DEAD: \(myPath)")
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed

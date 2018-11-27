@@ -111,7 +111,7 @@ final class Mailbox<Message> {
             let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
-            pprint("DROPPED")
+            pprint("DROPPED [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
             cell.drainToDeadLetters(msg)
         })
 
@@ -172,6 +172,9 @@ final class Mailbox<Message> {
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage) {
         // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
+        // performing an additional read is incorrect, since we have to make all decisions based on the same read value
+        // we could pull this off if we had a swift mailbox here, OR we pass in the read status into the send_message...
+        // though that splits the logic between swift and C even more making it more confusing I think
 //        guard !cmailbox_is_closed(mailbox) else {
 //          return handleOnClosedMailbox(systemMessage)
 //        }
@@ -182,29 +185,56 @@ final class Mailbox<Message> {
         let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
         if schedulingDecision == 0 {
             // enqueued, we have to schedule
-            pprint("Enqueued system message \(systemMessage), we trigger scheduling")
+            pprint("\(cell.myself) Enqueued system message \(systemMessage), we trigger scheduling")
             cell.dispatcher.execute(self.run)
         } else if schedulingDecision < 0 {
             // not enqueued, mailbox is closed, actor is terminating/terminated
             // special handle in-line certain system messages
+            pprint("\(cell.myself) Eagerly handle \(systemMessage), since we are terminated_dead")
             self.handleOnClosedMailbox(systemMessage)
-        } // else schedulingDecision > 0 { this means we enqueued, and the mailbox already will be scheduled by someone else }
-    }
-
-    @inlinable
-    func run() {
-        let shouldReschedule: Bool = cmailbox_run(mailbox,
-            &messageCallbackContext, &systemMessageCallbackContext, &dropCallbackContext,
-            interpretMessage, dropMessage)
-
-        if shouldReschedule {
-            // pprint("MAILBOX:\(self.cell)::::rescheduling from run()")
-            cell.dispatcher.execute(self.run)
+        } else { // schedulingDecision > 0 {
+            // this means we enqueued, and the mailbox already will be scheduled by someone else
+            pprint("\(cell.myself) Enqueued system message \(systemMessage), someone scheduled already")
         }
     }
 
     @inlinable
-    func handleOnClosedMailbox(_ message: SystemMessage) {
+    func run() {
+        let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
+            &messageCallbackContext, &systemMessageCallbackContext, &dropCallbackContext,
+            interpretMessage, dropMessage)
+
+        // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
+        // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
+        // we could offer even more callbacks to C but that is also not quite nice...
+        if schedulingDecision == Reschedule {
+            // pending messages, and we are the one who should should reschedule
+            cell.dispatcher.execute(self.run)
+        } else if schedulingDecision == Done {
+            // no more messages to run, we are done here
+            return
+        } else if schedulingDecision == Close {
+            // termination has been set as mailbox status and we should send ourselfes the .tombstone
+            // which serves as final system message after which termination will completely finish.
+            // We do this since while the mailbox was running, more messages could have been enqueued,
+            // and now we need to handle those that made it in, before the terminating status was set.
+            self.sendSystemMessage(.tombstone) // Rest in Peace
+        }
+
+//        if shouldReschedule {
+//            // pprint("MAILBOX:\(self.cell)::::rescheduling from run()")
+//            cell.dispatcher.execute(self.run)
+//        }
+    }
+
+    /// May only be invoked when crossing TERMINATING->CLOSED states, only by the ActorCell.
+    func setClosed() {
+        pprint("<<< SET_CLOSED \(self.cell.path) >>>")
+        cmailbox_set_closed(self.mailbox)
+    }
+
+    @inlinable
+    internal func handleOnClosedMailbox(_ message: SystemMessage) {
         // #if mailbox trace
         let cellDescription = cell._myselfInACell?.path.debugDescription ?? "<cell-name-not-available>"
         pprint("Closed Mailbox of [\(cellDescription)] received: \(message); handling on calling thread.")

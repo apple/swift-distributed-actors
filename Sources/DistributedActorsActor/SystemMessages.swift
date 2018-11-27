@@ -28,9 +28,9 @@ public /* but really internal... */ enum SystemMessage: Equatable {
     // TODO: do we need poison pill?
 
     /// Notifies an actor that it is being watched by the `from` actor
-    case watch(from: AnyReceivesSignals)
+    case watch(from: AnyReceivesSystemMessages)
     /// Notifies an actor that it is no longer being watched by the `from` actor
-    case unwatch(from: AnyReceivesSignals)
+    case unwatch(from: AnyReceivesSystemMessages)
 
     /// Received after [[watch]] was issued to an actor ref
     case terminated(ref: AnyAddressableActorRef) // TODO: there's usually additional ifo: existenceConfirmed: Bool, reason: etc

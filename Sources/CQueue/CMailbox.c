@@ -27,6 +27,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <pthread.h>
 
 // TODO: getting better code completion this way... works ok in xcode and friends this way too?
 //#include "CMailbox.h"
@@ -36,8 +37,8 @@
 // Implementation notes:
 // State should be operated on bitwise; where the specific bits signify states like the following:
 // 0 - 29 - activation count
-//     30 - terminating (or terminated)
-//     31 - terminated (for sure)
+//     30 - terminating (or closed)
+//     31 - closed, terminated (for sure)
 // Activation count is special in the sense that we use it as follows, it's value being:
 // 0 - inactive, not scheduled and no messages to process
 // 1 - active without(!) normal messages, only system messages are to be processed
@@ -51,14 +52,14 @@
 #define ACTIVATIONS 0b00111111111111111111111111111111
 
 // Implementation notes about Termination:
-// Termination MUST first set TERMINATING and only after add the "final" TERMINATED state.
+// Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
 // In other words, the only legal bit states a mailbox should observe are:
 //  - 0b11.. alive,
 //  -> 0b01.. terminating,
-//  -> 0b11.. terminated, dead.
+//  -> 0b11.. closed (terminated, dead.)
 // Meaning that `10` is NOT legal.
 #define TERMINATING 0b01000000000000000000000000000000
-#define TERMINATED  0b10000000000000000000000000000000
+#define CLOSED      0b10000000000000000000000000000000
 
 int64_t increment_status_activations(CMailbox* mailbox);
 
@@ -85,7 +86,7 @@ bool has_system_messages(int64_t status);
 
 bool is_terminating(int64_t status);
 
-bool is_terminated_dead(int64_t status);
+bool is_closed(int64_t status);
 
 bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_message);
 
@@ -135,27 +136,26 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
     // printf("[cmailbox] send_system_message: \n");
     int64_t old_status = try_activate(mailbox); // only activation matters
     int64_t old_activations = activations(old_status);
-    CMPSCLinkedQueue* queue = mailbox->system_messages; // TODO: move out the if, we know into which queue we will write when we call send()
 
-    print_debug_status(mailbox, "send system message inside.....");
-
-     if (is_terminating(old_status)) {
-        print_debug_status(mailbox, "terminating, system message, though shalt drop it"); // which we do by returning -1
-        // since we are terminating, we are already dropping all messages, including this one!
-        // TODO: emit the message as ".dropped(msg)"
+    // if (is_terminating(old_status)) {
+    if (is_closed(old_status)) {
+        // since we are terminated, we are already dropping all messages, including this one!
+        // TODO: emit the message as ".dropped(msg)" here (nowadays we handle this in the outside, via the -1 return code here)
         return -1;
     } else {
         // If the mailbox is not full, or we enqueue a system message, we insert it
         // into the queue and return whether this was the first activation, to signal
         // the need to enqueue this mailbox.
+        CMPSCLinkedQueue* queue = mailbox->system_messages;
         cmpsc_linked_queue_enqueue(queue, envelope);
-        print_debug_status(mailbox, "enqueued system message.......");
 
-         return old_activations;
+        return old_activations;
     }
 }
 
-bool cmailbox_run(CMailbox* mailbox,
+// TODO: was boolean for need to schedule, but we need to signal to swift that termination things should now happen
+// and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
+CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                   void* context, void* system_context, void* drop_context,
                   InterpretMessageCallback interpret_message, DropMessageCallback drop_message) {
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
@@ -178,12 +178,12 @@ bool cmailbox_run(CMailbox* mailbox,
     // run system messages ------
 
     if (has_system_messages(status)) {
-         printf("[cmailbox] Has system message(s)\n");
+        // printf("[cmailbox] Has system message(s)\n");
         processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
         // we run all system messages, as they may
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         while (system_message != NULL && keep_running) {
-            printf("[cmailbox] Processing system message...\n");
+            // printf("[cmailbox] Processing system message...\n");
             keep_running = interpret_message(system_context, system_message);
             system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         }
@@ -232,17 +232,13 @@ bool cmailbox_run(CMailbox* mailbox,
                 message = cmpsc_linked_queue_dequeue(mailbox->messages);
             }
         }
-    }
-
-    // end of user messages run ------
-
-     if (is_terminating(status)) {
-        printf("Skipping message processing since we are terminating...!\n");
+    } else /* we are terminating and need to drain messages */ {
         // TODO: drain them to dead letters
 
         // TODO: drainToDeadLetters(mailbox->messages) {
         void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
+            printf("Skipping message processing since we are terminating. Single message.\n");
             drop_message(drop_context, message);
             processed_activations += 0b10;
             message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
@@ -254,7 +250,7 @@ bool cmailbox_run(CMailbox* mailbox,
     int64_t old_status = decrement_status_activations(mailbox, processed_activations);
     int64_t old_activations = activations(old_status);
     // printf("[cmailbox] Old: %lld, processed_activations: %lld\n", old_activations, processed_activations);
-    print_debug_status(mailbox, "Run complete...\n");
+    print_debug_status(mailbox, "Run complete...");
 
     if (old_activations == processed_activations &&
         !cmpsc_linked_queue_is_empty(mailbox->system_messages) &&
@@ -264,20 +260,23 @@ bool cmailbox_run(CMailbox* mailbox,
         // messages in the queue, but the mailbox has not been re-scheduled yet
         // return true to signal the queue should be re-scheduled
         print_debug_status(mailbox, "Run complete, shouldReschedule:true, pending system messages\n");
-        return true;
+        return Reschedule;
     } else if (old_activations > processed_activations) {
         // if we could not process all messages in this run, because we had more
         // messages queued up than the maximum run length, return true to signal
         // the queue should be re-scheduled
 
         char msg[300];
-        sprintf(msg, "Run complete, shouldReschedule:true; %lld > %lld\n", old_activations, processed_activations);
+        sprintf(msg, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
         print_debug_status(mailbox, msg);
-        return true;
+        return Reschedule;
+    } else if (!keep_running) {
+        print_debug_status(mailbox, "terminating, notifying swift mailbox...");
+        return Close;
+    } else {
+        print_debug_status(mailbox, "Run complete, shouldReschedule:false ");
+        return Done;
     }
-
-    print_debug_status(mailbox, "Run complete, shouldReschedule:false\n");
-    return false;
 }
 
 int64_t cmailbox_message_count(CMailbox* mailbox) {
@@ -291,7 +290,8 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
     char buffer[33];
     itoa(status, buffer, 2);
 
-    printf("[cmailbox] "
+    printf("[cmailbox]"
+           "[thread:%d] " // TODO currently mac only
            "%s "
            "Status now: [%lld, bin:%s], "
            "has_sys_msgs:%s, "
@@ -299,12 +299,13 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            "terminating:%s, "
            "dead:%s"
            "\n",
+           pthread_mach_thread_np(pthread_self()), // TODO currently mac only
            msg,
            status, buffer,
            has_system_messages(status) ? "Y" : "N",
            message_count(status),
            is_terminating(status) ? "Y" : "N",
-           is_terminated_dead(status) ? "Y" : "N"
+           is_closed(status) ? "Y" : "N"
     );
 //#endif
 }
@@ -331,10 +332,9 @@ int64_t set_status_terminating(CMailbox* mailbox) {
     return atomic_fetch_or_explicit(&mailbox->status, TERMINATING, memory_order_acq_rel);
 }
 
-// intentionally spelled "_dead" to avoid typos
-// TODO: this should be the last write we perform
-int64_t set_status_terminated_dead(CMailbox* mailbox) {
-    return atomic_fetch_or_explicit(&mailbox->status, TERMINATED, memory_order_acq_rel);
+int64_t set_status_closed(CMailbox* mailbox) {
+    // return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
+    return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_seq_cst); // might as well...
 }
 
 bool has_system_messages(int64_t status) {
@@ -354,18 +354,21 @@ int64_t message_count(int64_t status) {
     return count > 0 ? count : 0;
 }
 
-// TODO: consider "closed" wording for the mailbox; actors terminate, mailboxes "close"
 bool cmailbox_is_closed(CMailbox* mailbox) {
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
     return is_terminating(status);
+}
+
+void cmailbox_set_closed(CMailbox* mailbox) {
+    set_status_closed(mailbox);
 }
 
 bool is_terminating(int64_t status) {
     return (status & TERMINATING) != 0;
 }
 
-bool is_terminated_dead(int64_t status) {
-    return (status & TERMINATED) != 0;
+bool is_closed(int64_t status) {
+    return (status & CLOSED) != 0;
 }
 
 int64_t max(int64_t a, int64_t b) {
