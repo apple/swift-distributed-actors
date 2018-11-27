@@ -41,6 +41,13 @@ typedef struct {
     CMPSCLinkedQueue* messages;
 } CMailbox;
 
+///* Result of mailbox run, instructs swift part of code to perform follow up actions */
+typedef enum {
+    Close = -1,
+    Done = 0,
+    Reschedule = 1
+} CMailboxRunResult;
+
 /*
  * Callback type for Swift interop.
  *
@@ -69,13 +76,21 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
  * Return code meaning:
  *   - res < 0 message rejected since status terminating or terminated, special handle the system message
  *   - res == 0  good, enqueued and need to schedule
- *   - res >  0  good, enqueued and need to schedule
+ *   - res >  0  good, enqueued and no need to schedule, someone else will do so or has already
  *     FIXME: This dance is only needed since we have this c/swift dance... otherwise we would be able to know from the 1 atomic read if we're good or not and immediately act on it
  * The requirement for this stems from the fact that we must never drop system messages, e.g. watch, and always have to handle it.
  */
 int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
-bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, void* drop_context, InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
+/*
+ * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.
+ *
+ * Return code meaning:
+ *   - res <  0  terminating status has been set, swift should send to self the .tombstone; we don't consider if more messages are to run, since the tombstone will activate anyway
+ *   - res == 0  no more messages to run, no need to reschedule
+ *   - res >  0  pending messages (activation count) so we need to schedule
+ */
+CMailboxRunResult cmailbox_run(CMailbox* mailbox, void* context, void* system_context, void* drop_context, InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 
@@ -86,5 +101,8 @@ int64_t cmailbox_message_count(CMailbox* mailbox);
 // TODO: this is a workaround... normally we do not need this additional read since send_message does this right away
 // TODO: in a pure swift mailbox we'd do the 1 status read, and from that already know if we are closed or not (=> drop the messages)
 bool cmailbox_is_closed(CMailbox* mailbox);
+
+/* Sets the final CLOSED state. Should only be invoked just before finishing termination, and only while TERMINATING */
+void cmailbox_set_closed(CMailbox* mailbox);
 
 #endif /* CMailbox_h */

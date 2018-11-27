@@ -3,10 +3,10 @@
     "-project", "swift-distributed-actors.xcodeproj",
     "-scheme", "swift-distributed-actors-Package"
   ],
-  "author": "DistributedActors Team",
+  "author": "Swift Distributed Actors Team",
   "author_url": "https://github.com/kmalawski/sact",
   "github_url": "https://github.com/kmalawski/sact",
-  "module": "DistributedActors",
+  "module": "Swift Distributed Actors",
   "documentation": "Sources/Docs/*.md",
   "custom_categories": [
     {

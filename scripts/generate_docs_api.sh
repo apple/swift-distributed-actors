@@ -59,12 +59,12 @@ jazzy_args=(--clean
             --theme fullwidth
            )
 cat > "$module_switcher" <<EOF
-# DistributedActors Docs
+# Swift Distributed Actors Docs
 
 Refer to the <a href="../../../reference/$version/index.html">Reference Docs</a> for a more guided experience,
 rather than raw API documentation which you will find below.
 
-DistributedActors contains multiple modules:
+Swift Distributed Actors contains multiple modules:
 
 EOF
 

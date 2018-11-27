@@ -28,10 +28,10 @@ Internal guarantees:
 
 - if the `.stopped` behavior is returned during handling system messages, no further user messages shall be processed.
 - all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
-- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `TERMINATED` (dead),
-  - during the time between `TERMINATING` and `TERMINATED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
+- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
+  - during the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
   - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
-- resources (e.g. the held behavior) shall only be released once the TERMINATED state has been reached.
+- resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
 
 
 === Monitoring and reacting to Termination

@@ -18,6 +18,8 @@ import XCTest
 // bear with me; we need testing facilities for the async things.
 // Yeah, I know about https://github.com/Quick/Nimble
 
+fileprivate let isTty = isatty(fileno(stdin)) == 0
+
 struct TestMatchers<T: Equatable> {
 
     private let it: T
@@ -165,11 +167,11 @@ struct CallSiteInfo {
         var s = "\n"
         s += "\(failingLine)\n"
         s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
-        s += ANSIColors.red.rawValue
+        if isTty { s += ANSIColors.red.rawValue }
         s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
         s += "error: "
         s += assertionExplained
-        s += ANSIColors.reset.rawValue
+        if isTty { s += ANSIColors.reset.rawValue }
         return s
     }
 
