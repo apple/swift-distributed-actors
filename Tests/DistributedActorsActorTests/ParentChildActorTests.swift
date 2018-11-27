@@ -30,7 +30,9 @@ class ParentChildActorTests: XCTestCase {
     typealias ParentRef = ActorRef<ParentProtocol>
     enum ParentProtocol {
         case spawnChild(behavior: Behavior<ChildProtocol>, name: String)
-        case stopChild(name: String)
+
+        case stopByName(name: String)
+        case findByName(name: String)
     }
 
     typealias ChildRef = ActorRef<ChildProtocol>
@@ -40,23 +42,37 @@ class ParentChildActorTests: XCTestCase {
     }
 
     typealias ParentChildProbeRef = ActorRef<ParentChildProbeProtocol>
-    enum ParentChildProbeProtocol {
-        case spawned(child: ActorRef<ChildProtocol>)
+    enum ParentChildProbeProtocol: Equatable {
+        case spawned(child: ChildRef)
+
+        case childNotFound(name: String)
+        case childFound(name: String,ref: ChildRef)
     }
 
-    func parent(probe: ParentChildProbeRef) -> Behavior<ParentProtocol> {
+    enum ChildError: Error {
+        case whoops
+    }
+
+    func parentBehavior(probe: ParentChildProbeRef) -> Behavior<ParentProtocol> {
         return .receive { context, message in
             switch message {
             case let .spawnChild(behavior, name):
                 let kid = try! context.spawn(behavior, name: name) // FIXME we MUST allow `try context.spawn`
                 probe.tell(.spawned(child: kid))
 
-            case .stopChild(let name):
-                guard let kid = context.children.find(named: name) else { fatalError() }
-                context.stop(child: kid!) // FIXME must allow `try context.stop`
-                    probe.tell("stopped \(kid!.path)")
+            case let .findByName(name):
+                if let found = context.children.find(named: name, withType: ChildProtocol.self) {
+                    probe.tell(.childFound(name: name, ref: found))
                 } else {
-                    probe.tell("child actor not found: \(name)")
+                    probe.tell(.childNotFound(name: name))
+                }
+
+            case .stopByName(let name):
+                if let kid = context.children.find(named: name, withType: ChildProtocol.self) {
+                    try! context.stop(child: kid) // FIXME must allow plain try
+                    probe.tell(.childFound(name: name, ref: kid))
+                } else {
+                    probe.tell(.childNotFound(name: name))
                 }
             }
 
@@ -64,12 +80,17 @@ class ParentChildActorTests: XCTestCase {
         }
     }
 
-    func child(probe: ParentChildProbeRef)  -> Behavior<ChildProtocol> {
+    func childBehavior(probe: ParentChildProbeRef)  -> Behavior<ChildProtocol> {
         return .setup { context in
             context.log.info("Hello...")
-            probe.tell("setup in \(context.path)")
             return .receiveMessage { message in
-                context.log.info("Received \(message)")
+                switch message {
+                case let .howAreYou(replyTo):
+                    replyTo.tell("Pretty good, I'm \(context.path)")
+                case .fail:
+                    // FIXME: Can't throw here yet... throw ChildError.whoops
+                    fatalError("TODO")
+                }
                 return .same
             }
         }
@@ -78,12 +99,36 @@ class ParentChildActorTests: XCTestCase {
     func test_contextSpawn_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = .init(name: "p", on: system)
 
-        let parent: ActorRef<ParentProtocol> = try system.spawn(self.parent(probe: p.ref), name: "parent")
-        parent.tell(.spawnChild(behavior: child(probe: p.ref), name: "kid"))
+        let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent")
+        parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
-        try p.expectMessage("spawned kid")
-        try p.expectMessage("setup in /user/parent/kid")
-        parent.tell(.stopChild(name: "kid"))
+        // TODO: maybe fishForMessage would make this nicer?
+        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
+            switch $0 {
+            case let .spawned(child): return child
+            default: return nil
+            }
+        }
+        pnote("Hello: \(child)")
+
+        let unknownName = "capybara"
+        parent.tell(.findByName(name: unknownName))
+        try p.expectMessage(.childNotFound(name: unknownName))
+
+        parent.tell(.findByName(name: child.path.name))
+        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // should return same (or equal) ref
+
+        parent.tell(.stopByName(name: child.path.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
+
+//        // FIXME This is not yet correct... stopping needs more work
+//        // we expect the child actor to be dead now
+//        p.watch(child) // watching dead ref triggers terminated
+//        try p.expectTerminated(child)
+//
+//        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
+//        try p.expectMessage(.childNotFound(name: child.path.name))
+
     }
 
     // TODO test with watching the child actor
