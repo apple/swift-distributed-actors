@@ -114,7 +114,7 @@ import Dispatch
     // MARK: termination tasks
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
-        pprint("\(myself) IS WATCHED BY \(watchedBy) AND IS DYING :::::::")
+        pprint("notifyWatchers that \(myself) died. Watchers: \(watchedBy)... DYING:::::::")
         for watcher in watchedBy {
             pprint("Notify \(watcher) that we died... :::: myself: \(myself)")
             watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself)))

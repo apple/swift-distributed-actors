@@ -44,12 +44,17 @@ typedef struct {
 /*
  * Callback type for Swift interop.
  *
+ * Accepts a context and message pointer.
+ *
  * Returns `true` while the resulting behavior is not terminating,
  * once a message interpretation returns `false` it should be assumed
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
 typedef bool (* InterpretMessageCallback)(void*, void*);
+
+/* Drop message, when draining mailbox into dead letters. */
+typedef void (* DropMessageCallback)(void*, void*); // TODO rename, deadletters
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
@@ -58,10 +63,19 @@ void cmailbox_destroy(CMailbox* mailbox);
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
 
-/* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
-bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
+/*
+ * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
+ *
+ * Return code meaning:
+ *   - res < 0 message rejected since status terminating or terminated, special handle the system message
+ *   - res == 0  good, enqueued and need to schedule
+ *   - res >  0  good, enqueued and need to schedule
+ *     FIXME: This dance is only needed since we have this c/swift dance... otherwise we would be able to know from the 1 atomic read if we're good or not and immediately act on it
+ * The requirement for this stems from the fact that we must never drop system messages, e.g. watch, and always have to handle it.
+ */
+int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
-bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message);
+bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, void* drop_context, InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 
