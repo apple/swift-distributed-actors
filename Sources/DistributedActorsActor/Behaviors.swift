@@ -140,6 +140,21 @@ internal extension Behavior {
         }
     }
 
+    @inlinable
+    internal func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) -> Behavior<Message> where Iterator.Element == Message {
+        var currentBehavior: Behavior<Message> = self
+        while currentBehavior.isStillAlive() {
+            if let message = messages.next() {
+                let nextBehavior = currentBehavior.interpretMessage(context: context, message: message)
+                currentBehavior = currentBehavior.canonicalize(context, next: nextBehavior)
+            } else {
+                break
+            }
+        }
+
+        return currentBehavior
+    }
+
     /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
     /// since certain behaviors do not make sense as initial behavior.
     func validateAsInitial() throws {
