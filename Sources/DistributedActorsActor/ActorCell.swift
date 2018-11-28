@@ -219,9 +219,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     func interpretSystemMessage(message: SystemMessage) throws -> Bool {
-        #if SACT_TRACE_CELL
-        pprint("Interpret system message: \(message)")
-        #endif
+        traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
             // initialization:
@@ -242,7 +240,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
             // mailbox status, but obtaining the mailbox status and getting the
             // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
-            pprint("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
+            traceLog_Cell("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
             return false
         }
@@ -290,7 +288,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         switch next {
         case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
-            message: "Death pact error: [\(context.myself)] has not handled termination received from watched watched [\(ref.path)] actor. " +
+            message: "Death Pact error: [\(context.myself)] has not handled .terminated signal received from watched [\(ref)] actor. " +
                 "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default: becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
         }
@@ -311,8 +309,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
-        case is DeathPactError:
-            log.error("Actor failing, death pact: \(error)")
+        case let DeathPactError.unhandledDeathPact(_, _, message):
+            log.error("\(message)")
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
