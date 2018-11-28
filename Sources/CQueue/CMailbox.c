@@ -77,6 +77,8 @@ int64_t set_status_terminated_dead(CMailbox* mailbox);
 
 void print_debug_status(CMailbox* mailbox, char* msg);
 
+int64_t get_status(CMailbox* mailbox);
+
 bool has_activations(int64_t status);
 
 bool has_system_messages(int64_t status);
@@ -111,7 +113,7 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
     // printf("[cmailbox] enter send_message; messages in queue: %lld\n", (message_count(old_status)));
 
     // `>` is correct and not an one-off, since message count is `activations - 1`
-    if ((old_activations > mailbox->capacity) || is_terminating(old_status)) {
+    if ((message_count(old_status) >= mailbox->capacity) || is_terminating(old_status)) {
         // If we passed the maximum capacity of the user queue, we can't enqueue more
         // items and have to decrement the activations count again. This is not racy,
         // because we only process messages if the queue actually contains them (does
@@ -273,6 +275,10 @@ bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, Interp
     return false;
 }
 
+int64_t cmailbox_message_count(CMailbox* mailbox) {
+    return message_count(get_status(mailbox));
+}
+
 void print_debug_status(CMailbox* mailbox, char* msg) {
 #if SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
@@ -296,6 +302,10 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            is_terminated_dead(status) ? "Y" : "N"
     );
 #endif
+}
+
+int64_t get_status(CMailbox* mailbox) {
+    return atomic_load_explicit(&mailbox->status, memory_order_consume);
 }
 
 int64_t try_activate(CMailbox* mailbox) {
