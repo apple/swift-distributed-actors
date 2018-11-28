@@ -20,7 +20,7 @@ import SwiftDistributedActorsActorTestKit
 class ParentChildActorTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
-    lazy var testKit: ActorTestKit = ActorTestKit(system: system)
+    lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate()) // FIXME termination that actually does so
@@ -97,7 +97,7 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_contextSpawn_shouldSpawnChildActorOnAppropriatePath() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = .init(name: "p", on: system)
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
 
         let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent")
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))

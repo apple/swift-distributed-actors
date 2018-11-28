@@ -19,10 +19,16 @@ import SwiftDistributedActorsActorTestKit
 @testable import Swift Distributed ActorsActor
 
 class StashBufferTests: XCTestCase {
+
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit: ActorTestKit = ActorTestKit(system)
+
+    override func tearDown() {
+        // Await.on(system.terminate()) // FIXME termination that actually does so
+    }
 
     func test_stashMessages() throws {
-        let probe: ActorTestProbe<Int> = ActorTestProbe(name: "probe-1", on: system)
+        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
             probe.ref ! message
@@ -68,7 +74,7 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {
-        let probe: ActorTestProbe<Int> = ActorTestProbe(name: "probe-2", on: system)
+        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
 
         let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
 

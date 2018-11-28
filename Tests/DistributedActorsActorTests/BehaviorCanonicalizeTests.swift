@@ -20,13 +20,14 @@ import SwiftDistributedActorsActorTestKit
 class BehaviorCanonicalizeTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate()) // FIXME termination that actually does so
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe<String>(name: "canonicalizeProbe1", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "canonicalizeProbe1")
 
         let b: Behavior<String> = .setup { c1 in
             p.tell("outer-1")
@@ -53,7 +54,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p = ActorTestProbe<String>(name: "canonicalize-probe-2", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "canonicalize-probe-2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
             return .setup { context in

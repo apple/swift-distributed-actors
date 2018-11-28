@@ -19,6 +19,7 @@ import XCTest
 class ActorTestProbeTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate())
@@ -31,7 +32,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-        let probe: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let probe = testKit.spawnTestProbe(name: "p1", expecting: String.self)
 
         try probe.expectMessage("awaiting-forever")
     }
@@ -43,7 +44,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-        let probe: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let probe = testKit.spawnTestProbe(name: "p2", expecting: String.self)
 
         probe ! "one"
 
@@ -57,7 +58,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-6", on: system)
+        let p = testKit.spawnTestProbe(name: "p3", expecting: String.self)
 
         try p.expectNoMessage(for: .milliseconds(100))
         p.stop()

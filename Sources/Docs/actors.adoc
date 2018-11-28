@@ -17,7 +17,7 @@ TODO
 
 === Stopping actors
 
-#### Guarantees
+==== Guarantees
 
 For a given actor, the following is guaranteed:
 
@@ -40,7 +40,7 @@ TODO
 
 === DeathWatch
 
-#### Guarantees
+==== Guarantees
 
 For the sake of describing those guarantees let us assume we have two actors, Romeo and Juliet.
 Romeo performs a `context.watch(juliet)` during its `setup`.

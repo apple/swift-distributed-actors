@@ -20,6 +20,7 @@ import SwiftDistributedActorsActorTestKit
 class BehaviorTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate()) // FIXME termination that actually does so
@@ -31,7 +32,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_setup_executesImmediatelyOnStartOfActor() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let p = testKit.spawnTestProbe(name: "testActor-1", expecting: String.self)
 
         let message = "EHLO"
         let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
@@ -43,7 +44,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-2", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-2")
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -55,7 +56,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-3", on: system)
+        let p = testKit.spawnTestProbe(name: "testActor-2", expecting: String.self)
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -73,7 +74,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
-//    let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-4", on: system)
+        let p = testKit.spawnTestProbe(name: "testActor-3", expecting: Int.self)
 
         func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
             if at == n {
@@ -83,6 +84,7 @@ class BehaviorTests: XCTestCase {
             } else {
                 return .receive { context, message in
                     if (message == at + 1) {
+                        p.tell(message)
                         return countTillNThenDieBehavior(n: n, currentlyAt: message)
                     } else {
                         fatalError("Received \(message) when was expecting \(at + 1)! Ordering rule violated.")
@@ -99,8 +101,13 @@ class BehaviorTests: XCTestCase {
             ref ! i
         }
 
-        Thread.sleep(.milliseconds(600))
+        // then we expect they arrive in the expected order
+        for i in 0...n {
+            try p.expectMessage(i)
+        }
     }
+
+    // TODO: another test with 2 senders, that either of their ordering is valid at recipient
 
     class MyActor: ActorBehavior<TestMessage> {
         override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
@@ -118,7 +125,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_ActorBehavior_receivesMessages() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-5", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-5")
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
@@ -142,7 +149,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-6", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
 
         try p.expectNoMessage(for: .milliseconds(100))
     }
