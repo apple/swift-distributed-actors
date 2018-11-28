@@ -61,10 +61,10 @@ public class ActorRef<Message>: ReceivesMessages {
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "ActorRef(\(path))"
+        return "ActorRef<\(Message.self)>(\(path))"
     }
     public var debugDescription: String {
-        return "ActorRef(\(path.debugDescription)" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
+        return "ActorRef<\(Message.self)>(\(path.debugDescription)" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
     }
 }
 
@@ -118,12 +118,12 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     }
 
     @usableFromInline internal func sendMessage(_ message: Message) {
-        pprint("sendMessage: [\(message)], to: \(self.cell.myself)")
+        traceLog_Mailbox("sendMessage: [\(message)], to: \(self.cell.myself)")
         self.mailbox.sendMessage(envelope: Envelope(payload: message))
     }
 
     @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
-        pprint("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
+        traceLog_Mailbox("sendSystemMessage: [\(message)], to: \(self.cell.myself)")
         self.mailbox.sendSystemMessage(message)
     }
 }

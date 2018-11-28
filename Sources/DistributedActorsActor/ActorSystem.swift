@@ -33,6 +33,8 @@ public final class ActorSystem {
     // so without it we could not log anything.
     let eventStream = "" // FIXME actual implementation
 
+    let deadLetters: ActorRef<DeadLetter>
+
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
@@ -55,6 +57,12 @@ public final class ActorSystem {
     // TODO: /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)
     public init(_ name: String) {
         self.name = name
+
+        // dead letters init
+        // TODO actually attach dead letters to a parent?
+        let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters")
+        let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
+        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath)
     }
 
     public convenience init() {
@@ -115,7 +123,6 @@ extension ActorSystem: ActorRefFactory {
 
         log.info("Spawning [\(behavior)], named: [\(name)]")
 
-        // TODO: validate name is valid actor name (no / in it etc)
         // TODO: move this to the provider perhaps? or some way to share setup logic
 
         // the "real" actor, the cell that holds the actual "actor"

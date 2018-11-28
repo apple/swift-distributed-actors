@@ -28,12 +28,17 @@ public /* but really internal... */ enum SystemMessage: Equatable {
     // TODO: do we need poison pill?
 
     /// Notifies an actor that it is being watched by the `from` actor
-    case watch(from: AnyReceivesSystemMessages)
+    case watch(wachee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
     /// Notifies an actor that it is no longer being watched by the `from` actor
-    case unwatch(from: AnyReceivesSystemMessages)
+    case unwatch(wachee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
 
     /// Received after [[watch]] was issued to an actor ref
-    case terminated(ref: AnyAddressableActorRef) // TODO: there's usually additional ifo: existenceConfirmed: Bool, reason: etc
+    /// - Parameters:
+    ///   - ref: reference to the (now terminated) actor
+    ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
+    ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
+    ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
+    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info?
 
     // TODO: this is incomplete
 
@@ -47,10 +52,15 @@ extension SystemMessage {
     public static func ==(lhs: SystemMessage, rhs: SystemMessage) -> Bool {
         switch (lhs, rhs) {
         case (.start, .start): return true
-        case let (.watch(l), .watch(r)): return l.path == r.path
-        case let (.unwatch(l), .unwatch(r)): return l.path == r.path
+
+        case let (.watch(lWatchee, lWatcher), .watch(rWatchee, rWatcher)):
+            return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
+        case let (.unwatch(lWatchee, lWatcher), .unwatch(rWatchee, rWatcher)):
+            return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
+        case let (.terminated(lRef, lExisted), .terminated(rRef, rExisted)):
+            return lRef.path == rRef.path && lExisted == rExisted
+
         case (.tombstone, .tombstone): return true
-        case let (.terminated(lref), .terminated(rref)): return lref.path == rref.path
 
             // listing cases rather than a full-on `default` to get an error when we add a new system message
         case (.start, _),

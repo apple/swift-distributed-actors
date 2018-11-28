@@ -152,7 +152,7 @@ class DeathWatchTests: XCTestCase {
         try probe.expectMessage("reply:hi")
 
         // internal hacks
-        let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef())
+        let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef(), existenceConfirmed: true)
         romeo.internal_boxAnyReceivesSignals().sendSystemMessage(fakeTerminated)
 
         try probe.expectTerminated(romeo)
@@ -201,7 +201,7 @@ class DeathWatchTests: XCTestCase {
         try probe.expectMessage("reply:unwatch")
 
         // internal hacks; we simulate that Juliet has terminated, and enqueued the .terminated before the unwatch managed to reach her
-        let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef())
+        let fakeTerminated: SystemMessage = .terminated(ref: juliet.internal_boxAnyAddressableActorRef(), existenceConfirmed: true)
         romeo.internal_boxAnyReceivesSignals().sendSystemMessage(fakeTerminated)
 
         // should NOT trigger the receiveSignal handler (which notifies the probe)
@@ -257,6 +257,16 @@ class DeathWatchTests: XCTestCase {
         try p.expectTerminated(juliet) // TODO: not actually guaranteed in the order here
         try p.expectTerminated(romeo) // TODO: not actually guaranteed in the order here
     }
+
+    // MARK: Watching dead letters ref
+
+//    // FIXME: Make deadLetters a real thing, currently it is too hacky (i.e. this will crash):
+//    func test_deadLetters_canBeWatchedAndAlwaysImmediatelyRepliesWithTerminated() throws {
+//      let p: ActorTestProbe<Never> = .init(named: "deadLetter-probe", on: system)
+//
+//        p.watch(system.deadLetters)
+//        try p.expectTerminated(system.deadLetters)
+//    }
 }
 
 private enum Done {

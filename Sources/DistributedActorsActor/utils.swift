@@ -56,6 +56,8 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
     return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
+/// Short for "pretty print".
+/// Useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("[pprint][\(file):\(line)][\(hackyPthreadThreadName())]: \(message)")
 //  print("[pprint][\(file):\(line)]: \(message)")
@@ -72,7 +74,7 @@ func hackyPthreadThreadName() -> String {
     #if os(macOS)
     threadId = "thread:\(pthread_mach_thread_np(pthread_self()))"
     #else
-    threadId = "<thread:??>"
+    threadId = "<thread:\(Int(pthread_self()))>" // TODO seems it does not yield the exact same number as in C... since I call the swift wrapped one? hm...
     #endif
 
     return threadId

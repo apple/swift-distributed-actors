@@ -31,7 +31,7 @@ import Dispatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
     public mutating func watch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
-        pprint("watch: \(watchee) (from \(watcher) (myself))")
+        traceLog_DeathWatch("watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watchee.path != watcher.path else {
             return ()
@@ -42,18 +42,18 @@ import Dispatch
             return ()
         }
 
-        watchee.sendSystemMessage(.watch(from: watcher.internal_boxAnyReceivesSignals()))
+        watchee.sendSystemMessage(.watch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSignals()))
         self.watching.insert(watchee)
         subscribeAddressTerminatedEvents()
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
     public mutating func unwatch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
-        pprint("unwatch: watchee: \(watchee) (from \(watcher) myself)")
+        traceLog_DeathWatch("unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         // let : BoxedHashableAnyReceivesSignals = watchee.internal_exposeBox()
         if let removed = watching.remove(watchee) {
-            removed.sendSystemMessage(.unwatch(from: watcher.internal_boxAnyReceivesSignals()))
+            removed.sendSystemMessage(.unwatch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSignals()))
         }
     }
 
@@ -61,19 +61,18 @@ import Dispatch
 
     public mutating func becomeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
         guard watcher.path != myself.path else {
-            // TODO: log warning
-            pprint("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
+            traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
             return
         }
 
-        pprint("become watched by: \(watcher.path)     inside: \(myself)")
+        // pprint("become watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher.internal_exposeBox()
         self.watchedBy.insert(boxedWatcher)
     }
 
     public mutating func removeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
-        pprint("remove watched by: \(watcher.path)     inside: \(myself)")
+        // pprint("remove watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher.internal_exposeBox()
         self.watchedBy.remove(boxedWatcher)
     }
@@ -84,8 +83,8 @@ import Dispatch
     ///
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
     public mutating func receiveTerminated(_ terminated: SystemMessage) -> Bool {
-        guard case let .terminated(deadActorRef) = terminated else { // TODO: hope this optimizes away nicely when inlined etc
-            fatalError("receiveTerminated most only be invoked with .terminated")
+        guard case let .terminated(deadActorRef, _) = terminated else { // TODO: hope this optimizes away nicely when inlined etc
+            fatalError("receiveTerminated most only be invoked with .terminated. This is likely a Swift Distributed Actors bug, please open a ticket.")
         }
 
         let deadPath = deadActorRef.path
@@ -114,10 +113,10 @@ import Dispatch
     // MARK: termination tasks
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
-        pprint("notifyWatchers that \(myself) died. Watchers: \(watchedBy)... DYING:::::::")
+        traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(watchedBy)...")
         for watcher in watchedBy {
-            pprint("Notify \(watcher) that we died... :::: myself: \(myself)")
-            watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself)))
+            traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died...")
+            watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), existenceConfirmed: true))
         }
     }
 
@@ -133,3 +132,4 @@ import Dispatch
 public enum DeathPactError: Error {
     case unhandledDeathPact(terminated: AnyAddressableActorRef, myself: AnyAddressableActorRef, message: String)
 }
+

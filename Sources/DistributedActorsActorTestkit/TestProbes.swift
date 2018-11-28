@@ -281,11 +281,11 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         guard let termination = self.terminationsQueue.poll(expectationTimeout) else {
-            throw callSite.failure(message: "Expected [\(SystemMessage.terminated(ref: ref))], " +
+            throw callSite.failure(message: "Expected .terminated[\(ref.path)], " + // TODO make this on signals
                 "but no signal received within \(self.expectationTimeout.prettyDescription)")
         }
         switch termination {
-        case let .terminated(_ref) where _ref.path == ref.path:
+        case let .terminated(_ref, _) where _ref.path == ref.path:
             return termination // ok!
         default:
             throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(termination)")

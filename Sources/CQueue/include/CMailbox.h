@@ -90,7 +90,10 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
  *   - res == 0  no more messages to run, no need to reschedule
  *   - res >  0  pending messages (activation count) so we need to schedule
  */
-CMailboxRunResult cmailbox_run(CMailbox* mailbox, void* context, void* system_context, void* drop_context, InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
+CMailboxRunResult cmailbox_run(
+    CMailbox* mailbox,
+    void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
+    InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 
