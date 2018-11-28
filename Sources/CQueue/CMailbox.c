@@ -165,7 +165,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                   void* dead_letter_context, void* dead_letter_system_context,
                   InterpretMessageCallback interpret_message, DropMessageCallback drop_message) {
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
-    // print_debug_status(mailbox, "Entering run");
+    print_debug_status(mailbox, "Entering run");
 
 //  if (!has_activations(status)) { // FIXME should this not actually be a bug, because we had a spurious activation triggered?
 //    return false;
@@ -183,8 +183,11 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
     // run system messages ------
 
-    if (has_system_messages(status)) {
-        // printf("[cmailbox] Has system message(s)\n");
+    // we check the system queue itself, not only the status bit, since that may be slightly racy,
+    // due to the fact that the system message bit is not a counter but only a marker, and we could lose information
+    // that actually there are more system messages waiting to be run.
+    if (cmpsc_linked_queue_non_empty(mailbox->system_messages)) {
+        printf("[cmailbox] Has system message(s)\n");
         processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
         // we run all system messages, as they may
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
@@ -288,7 +291,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // the queue should be re-scheduled
 
         char msg[300];
-        sprintf(msg, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
+        snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
         print_debug_status(mailbox, msg);
         return Reschedule;
     } else if (!keep_running) {
