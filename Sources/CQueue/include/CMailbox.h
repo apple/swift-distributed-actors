@@ -63,6 +63,8 @@ bool cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
 bool cmailbox_run(CMailbox* mailbox, void* context, void* system_context, InterpretMessageCallback interpret_message);
 
+int64_t cmailbox_message_count(CMailbox* mailbox);
+
 /*
  * Returns `true` if the mailbox is terminating or terminated, messages should not be enqueued to it.
  * Messages can be drained to dead letters immediately, and watch messages should immediately be replied to with `.terminated`
