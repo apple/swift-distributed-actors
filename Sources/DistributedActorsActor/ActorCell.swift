@@ -15,8 +15,6 @@
 import NIO
 import Dispatch
 
-@usableFromInline let SACT_TRACE_CELL = false
-
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
 ///
 /// Warning:
@@ -154,9 +152,14 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // MARK: Dead letters
 
     // TODO make it a real actor ref with special casing (it is always dead)
-    func drainToDeadLetters(_ message: Message) {
-        print("[deadLetters] Message [\(message)]:\(type(of: message)) was not delivered. Dead letter encountered.")
-        // system.deadLetters.tell(DeadLetter(message: message)) // TODO metadata
+    func sendToDeadLetters(_ letter: DeadLetter) {
+        system.deadLetters.tell(letter) // TODO metadata
+    }
+
+    func dropMessage(_ message: Message) {
+        // TODO implement support for logging dropped messages; those are different than deadLetters
+        pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
+        // system.deadLetters.tell(DeadLetter(message)) // TODO metadata
     }
     
     // MARK: Conforming to ActorContext
@@ -191,19 +194,20 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
     /// next behavior (as returned by user code, which the message was applied to).
     ///
-    /// WARNING: Mutates the cell's behavior.
+    /// Warning: Mutates the cell's behavior.
+    /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
     @inlinable
     func interpretMessage(message: Message) -> Bool {
-        if SACT_TRACE_CELL {
-            pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
-        }
+        #if SACT_TRACE_CELL
+        pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
+        #endif
         let next = self.behavior.interpretMessage(context: context, message: message)
-        if SACT_TRACE_CELL {
-            log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
-        } // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+        #if SACT_TRACE_CELL
+        log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
+        #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
         self.becomeNext(behavior: next)
-        return self.behavior.isStopped()
+        return self.behavior.isStillAlive()
     }
 
     // MARK: Handling system messages
@@ -215,27 +219,30 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     func interpretSystemMessage(message: SystemMessage) throws -> Bool {
+        #if SACT_TRACE_CELL
         pprint("Interpret system message: \(message)")
+        #endif
+
         switch message {
             // initialization:
         case .start:
             self.interpretSystemStart()
 
             // death watch
-        case let .watch(watcher):
+        case let .watch(_, watcher):
             self.interpretSystemWatch(watcher: watcher)
 
-        case let .unwatch(watcher):
+        case let .unwatch(_, watcher):
             self.interpretSystemUnwatch(watcher: watcher)
 
-        case let .terminated(ref):
+        case let .terminated(ref, _):
             try self.interpretSystemTerminated(who: ref, message: message)
 
         case .tombstone:
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
             // mailbox status, but obtaining the mailbox status and getting the
             // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
-            pprint("\(self.myself) Received tombstone for. Remaining messages will be drained to deadLetters.")
+            pprint("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
             return false
         }
@@ -247,7 +254,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         switch self.behavior {
         case .stopped:
             // so we are in the middle of terminating already anyway
-            watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself)))
+            watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), existenceConfirmed: true))
         default:
             // TODO: make DeathWatch methods available via extension
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
@@ -263,15 +270,14 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
     @inlinable internal func interpretSystemTerminated(who ref: AnyAddressableActorRef, message: SystemMessage) throws {
-        if SACT_TRACE_CELL {
-            log.info("Received .terminated(\(ref.path))")
-        }
+        #if SACT_TRACE_CELL
+        log.info("Received .terminated(\(ref.path))")
+        #endif
         guard self.deathWatch.receiveTerminated(message) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
             log.warn("Actor not known yet \(message) received for it.")
             return
         }
-        self.deathWatch.receiveTerminated(message)
 
         let next: Behavior<Message>
         if case let .signalHandling(_, handleSignal) = self.behavior {
@@ -324,12 +330,6 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
 
         self.behavior = self.behavior.canonicalize(context, next: next)
-
-        // FIXME: this was wrong, the MUST ONLY BE ISSUED ONCE TERMINATING and the mailbox is closed otherwise another message can race and still make it into the mailbox
-//        let alreadyDead: Bool = self.behavior.isStopped()
-//        if alreadyDead {
-//            self._myselfReceivesSystemMessages!.sendSystemMessage(.tombstone)
-//        }
     }
 
     @inlinable
@@ -348,28 +348,33 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     // TODO: this is also part of lifecycle / supervision... maybe should be in an extension for those
 
-    /// One of the final methods to invoke when terminating->terminated
+    /// This is the final method a Cell ever runs.
+    /// It notifies any remaining watchers about its termination, releases any remaining resources,
+    /// and clears its behavior, allowing state kept inside it to be released as well.
     ///
-    /// Always causes behavior to become `.stopped`.
+    /// Once this method returns the cell becomes "terminated", an empty shell, and may never be run again.
+    /// This is coordinated with its mailbox, which by then becomes closed, and shall no more accept any messages, not even system ones.
+    ///
+    /// Any remaining system messages are to be drained to deadLetters by the mailbox in its current run.
+    ///
+    // ./' It all comes, tumbling down, tumbling down, tumbling down... ./'
     internal func finishTerminating() {
         self._myselfInACell?.mailbox.setClosed()
 
         let myPath: ActorPath? = self._myselfInACell?.path
-        pprint("FINISH TERMINATING \(myPath)")
+        traceLog_Cell("FINISH TERMINATING \(String(describing: myPath))")
 
-        let b = self.behavior
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
         self.notifyWatchersWeDied()
         // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
 
         // TODO validate all the nulling out; can we null out the cell itself?
-        // "nil out everything"
         self.deathWatch = nil
         self.behavior = .stopped
-//        self._myselfInACell = nil
+        self._myselfInACell = nil
 
-        pprint("CLOSED DEAD: \(myPath)")
+        traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed

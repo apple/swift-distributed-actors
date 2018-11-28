@@ -83,7 +83,7 @@ extension AnyAddressableActorRef {
 // MARK: Type erasure for ReceivesSignals
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
-public protocol AnyReceivesSystemMessages {
+public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
     var path: ActorPath { get }

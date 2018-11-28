@@ -79,7 +79,8 @@ final class Mailbox<Message> {
     // Implementation note: WrappedClosures are used for C-interop
     private var messageCallbackContext: WrappedClosure
     private var systemMessageCallbackContext: WrappedClosure
-    private var dropCallbackContext: WrappedDropClosure
+    private var deadLetterMessageCallbackContext: WrappedDropClosure
+    private var deadLetterSystemMessageCallbackContext: WrappedDropClosure
 
     private let interpretMessage: InterpretMessageCallback
     private let dropMessage: DropMessageCallback
@@ -98,34 +99,39 @@ final class Mailbox<Message> {
         })
 
         self.systemMessageCallbackContext = WrappedClosure(exec: { ptr in
-            pprint("INVOKE SYSTEM")
             let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
+            traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
             return try cell.interpretSystemMessage(message: msg)
         }, fail: { error in
             cell.fail(error: error)
         })
 
-        self.dropCallbackContext = WrappedDropClosure(drop: { ptr in
-            pprint("DROP.....")
+        self.deadLetterMessageCallbackContext = WrappedDropClosure(drop: { ptr in
             let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
-            pprint("DROPPED [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.drainToDeadLetters(msg)
+            traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
+            cell.sendToDeadLetters(DeadLetter(msg))
+        })
+        self.deadLetterSystemMessageCallbackContext = WrappedDropClosure(drop: { ptr in
+            let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
+            let msg = envelopePtr.move()
+            traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
+            cell.sendToDeadLetters(DeadLetter(msg))
         })
 
         self.interpretMessage = { (ctxPtr, msgPtr) in
-            defer { msgPtr?.deallocate() }
+            defer {
+                msgPtr?.deallocate()
+            }
             let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
 
             var shouldContinue: Bool
             do {
                 shouldContinue = try ctx?.pointee.exec(with: msgPtr!) ?? false // FIXME don't like the many ? around here hm, likely costs -- ktoso
             } catch {
-                #if SACT_TRACE_MAILBOX
-                pprint("Error while processing message! Was: \(error) TODO supervision decisions...")
-                #endif
+                traceLog_Mailbox("Error while processing message! Was: \(error) TODO supervision decisions...")
 
                 // TODO: supervision can decide to stop... we now stop always though
                 shouldContinue = ctx?.pointee.fail(error: error) ?? false // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
@@ -134,7 +140,9 @@ final class Mailbox<Message> {
             return shouldContinue
         }
         self.dropMessage = { (ctxPtr, msgPtr) in
-            defer { msgPtr?.deallocate() }
+            defer {
+                msgPtr?.deallocate()
+            }
             let ctx = ctxPtr?.assumingMemoryBound(to: WrappedDropClosure.self)
             do {
                 try ctx?.pointee.drop(with: msgPtr!) // FIXME don't like the many ? around here hm, likely costs -- ktoso
@@ -154,9 +162,7 @@ final class Mailbox<Message> {
     func sendMessage(envelope: Envelope<Message>) {
         // while terminating (closing) the mailbox, we immediately dead-letter new user messages
         guard !cmailbox_is_closed(mailbox) else { // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
-            #if SACT_TRACE_MAILBOX
-            pprint("Mailbox(\(self.cell.path)) is closing, dropping message \(envelope)")
-            #endif
+            traceLog_Mailbox("Mailbox(\(self.cell.path)) is closing, dropping message \(envelope)")
             return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
         }
 
@@ -185,23 +191,28 @@ final class Mailbox<Message> {
         let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
         if schedulingDecision == 0 {
             // enqueued, we have to schedule
-            pprint("\(cell.myself) Enqueued system message \(systemMessage), we trigger scheduling")
+            traceLog_Mailbox("\(cell.myself) Enqueued system message \(systemMessage), we trigger scheduling")
             cell.dispatcher.execute(self.run)
         } else if schedulingDecision < 0 {
             // not enqueued, mailbox is closed, actor is terminating/terminated
             // special handle in-line certain system messages
-            pprint("\(cell.myself) Eagerly handle \(systemMessage), since we are terminated_dead")
-            self.handleOnClosedMailbox(systemMessage)
+            if case .tombstone = systemMessage {
+                // nothing to do // FIXME handle this nicer
+            } else {
+                traceLog_Mailbox("\(cell.myself) Dead letter: \(systemMessage), since mailbox is closed")
+                cell.sendToDeadLetters(DeadLetter(systemMessage))
+            }
         } else { // schedulingDecision > 0 {
             // this means we enqueued, and the mailbox already will be scheduled by someone else
-            pprint("\(cell.myself) Enqueued system message \(systemMessage), someone scheduled already")
+            traceLog_Mailbox("\(cell.myself) Enqueued system message \(systemMessage), someone scheduled already")
         }
     }
 
     @inlinable
     func run() {
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
-            &messageCallbackContext, &systemMessageCallbackContext, &dropCallbackContext,
+            &messageCallbackContext, &systemMessageCallbackContext,
+            &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
             interpretMessage, dropMessage)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
@@ -220,30 +231,29 @@ final class Mailbox<Message> {
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
         }
-
-//        if shouldReschedule {
-//            // pprint("MAILBOX:\(self.cell)::::rescheduling from run()")
-//            cell.dispatcher.execute(self.run)
-//        }
     }
 
     /// May only be invoked when crossing TERMINATING->CLOSED states, only by the ActorCell.
     func setClosed() {
-        pprint("<<< SET_CLOSED \(self.cell.path) >>>")
+        traceLog_Mailbox("<<< SET_CLOSED \(self.cell.path) >>>")
         cmailbox_set_closed(self.mailbox)
     }
 
     @inlinable
     internal func handleOnClosedMailbox(_ message: SystemMessage) {
-        // #if mailbox trace
+        #if SACT_TRACE_MAILBOX
         let cellDescription = cell._myselfInACell?.path.debugDescription ?? "<cell-name-not-available>"
-        pprint("Closed Mailbox of [\(cellDescription)] received: \(message); handling on calling thread.")
-        // #endif
+        traceLog_Mailbox("Closed Mailbox of [\(cellDescription)] received: \(message); handling on calling thread.")
+        #endif
 
         switch message {
-        case let .watch(watcher):
+        case let .watch(watchee, watcher):
+            assert(watchee.path == cell.myself.path, "Watch for other than myself arrived at actor! " +
+                "Watchee: \(watchee), myself: \(cell.myself)")
+
             let myself = cell.myself.internal_boxAnyAddressableActorRef()
-            watcher.sendSystemMessage(.terminated(ref: myself))
+            watcher.sendSystemMessage(.terminated(ref: myself, existenceConfirmed: true))
+
         default:
             return // ignore
         }

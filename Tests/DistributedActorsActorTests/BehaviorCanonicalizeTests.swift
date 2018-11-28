@@ -29,17 +29,13 @@ class BehaviorCanonicalizeTests: XCTestCase {
         let p = ActorTestProbe<String>(named: "canonicalizeProbe1", on: system)
 
         let b: Behavior<String> = .setup { c1 in
-            p ! "outer-1"
-            pprint("======================================================= OUTER 1")
+            p.tell("outer-1")
             return .setup { c2 in
-                p ! "inner-2"
-                pprint("======================================================= INNER 2")
+                p.tell("inner-2")
                 return .setup { c2 in
-                    p ! "inner-3"
-                    pprint("======================================================= INNER 3")
+                    p.tell("inner-3")
                     return .receiveMessage { m in
-                        pprint("======================================================= RECV")
-                        p ! "received:\(m)"
+                        p.tell("received:\(m)")
                         return .same
                     }
                 }

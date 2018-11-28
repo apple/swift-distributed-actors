@@ -35,7 +35,6 @@ class BehaviorTests: XCTestCase {
 
         let message = "EHLO"
         let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
-            pprint("sending the HELLO")
             p ! message
             return .stopped
         })
@@ -68,7 +67,6 @@ class BehaviorTests: XCTestCase {
 
         for _ in 0...10 {
             let payload: String = messages.nextName()
-            pprint("Sending: \(TestMessage(message: payload, replyTo: p.ref))")
             echoPayload ! TestMessage(message: payload, replyTo: p.ref)
             try p.expectMessage(payload)
         }
@@ -106,7 +104,6 @@ class BehaviorTests: XCTestCase {
 
     class MyActor: ActorBehavior<TestMessage> {
         override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
-            context.log.info("Received \(message)")
             message.replyTo ! thxFor(message.message)
             return .same
         }

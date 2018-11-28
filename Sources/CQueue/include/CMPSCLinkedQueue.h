@@ -52,5 +52,6 @@ void cmpsc_linked_queue_enqueue(CMPSCLinkedQueue* q, void* item);
 void* cmpsc_linked_queue_dequeue(CMPSCLinkedQueue* q);
 
 int cmpsc_linked_queue_is_empty(CMPSCLinkedQueue* q);
+int cmpsc_linked_queue_non_empty(CMPSCLinkedQueue* q);
 
 #endif /* CMPSCLinkedQueue_h */
