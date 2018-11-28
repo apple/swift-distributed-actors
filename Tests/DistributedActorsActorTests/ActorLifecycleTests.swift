@@ -20,7 +20,7 @@ import SwiftDistributedActorsActorTestKit
 class ActorLifecycleTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
-    lazy var testKit: ActorTestKit = ActorTestKit(system: system)
+    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate()) // FIXME termination that actually does so
@@ -87,7 +87,7 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     func test_stopping_shouldDeinitTheBehavior() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")
         let chattyAboutLifecycle =
             try system.spawn(LifecycleDeinitActorBehavior(p.ref), name: "deinitLifecycleActor")
 

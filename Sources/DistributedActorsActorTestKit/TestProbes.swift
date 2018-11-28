@@ -20,9 +20,6 @@ import XCTest
 
 let SACT_TRACE_PROBE = false
 
-// TODO: find another way to keep it, so it's per-actor-system unique, we may need "akka extensions" style value holders
-private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testActor-")
-
 internal enum ActorTestProbeCommand<M> {
     case watchCommand(who: AnyReceivesSystemMessages)
     case unwatchCommand(who: AnyReceivesSystemMessages)
@@ -36,7 +33,6 @@ internal enum ActorTestProbeCommand<M> {
 final public class ActorTestProbe<Message> {
 
     // TODO: is weak the right thing here?
-    private weak var system: ActorSystem?
     public let name: String
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>
@@ -65,19 +61,19 @@ final public class ActorTestProbe<Message> {
 //    return ActorTestProbe<Message>(system, named: name)
 //  }
 
-    public init(name: String, on system: ActorSystem) {
-        self.system = system
-        // extract config here
-        self.name = name
-
+    /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
+    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>) {
+        // extract config here; pass in the config here
         self.expectationTimeout = .seconds(3) // would really love "1.second" // TODO: config
 
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
             signalQueue: self.signalQueue,
             terminationsQueue: self.terminationsQueue)
+        self.internalRef = try! spawn(behavior)
 
-        self.internalRef = try! system.spawn(behavior, name: name)
+        self.name = internalRef.path.name
+
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
         }
@@ -151,7 +147,6 @@ extension ActorTestProbe where Message: Equatable {
             throw callSite.failure(message: message)
         }
     }
-
 
     /// Fails in nice readable ways:
     ///    sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -

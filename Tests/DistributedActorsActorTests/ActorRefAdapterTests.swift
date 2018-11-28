@@ -20,13 +20,14 @@ import SwiftDistributedActorsActorTestKit
 class ActorRefAdapterTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         // Await.on(system.terminate()) // FIXME termination that actually does so
     }
 
     func test_ActorBehavior_adapt() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-6", on: system)
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
 
         let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
             p.ref ! msg
