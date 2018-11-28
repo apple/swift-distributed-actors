@@ -31,20 +31,20 @@ internal extension ActorRef {
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
-    pprint(message, file, line)
+    pprint(message(), file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
-    pprint(message, file, line)
+    pprint(message(), file: file, line: line)
     #endif
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_CELL
-    pprint(message, file, line)
+    pprint(message(), file: file, line: line)
     #endif
 }

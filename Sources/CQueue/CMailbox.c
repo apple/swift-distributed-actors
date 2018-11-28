@@ -260,7 +260,6 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // TODO: drainToDeadLetters(mailbox->messages) {
         void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
-            printf("Skipping message processing since we are terminating. Single message.\n");
             drop_message(dead_letter_context, message);
             processed_activations += 0b10;
             message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
@@ -362,8 +361,7 @@ int64_t set_status_terminating(CMailbox* mailbox) {
 }
 
 int64_t set_status_closed(CMailbox* mailbox) {
-    // return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
-    return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_seq_cst); // might as well...
+     return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
 }
 
 bool has_system_messages(int64_t status) {

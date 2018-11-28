@@ -149,7 +149,7 @@ def parseSourceFile(fileName)
 
     next if ignore
     # Match class or func
-    match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
+    match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|[\/ \t]*func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
     if match
 
       if match[/class/, 0] == 'class'
@@ -160,8 +160,8 @@ def parseSourceFile(fileName)
         #
         currentClass = [className, []]
         classes << currentClass
-      else # Must be a func
-        funcName = match.sub(/^func[ \t]+/, '')
+      elsif !match.start_with?("//") # Must be a func
+        funcName = match.sub(/^[\/ \t]*func[ \t]+/, '')
         #
         # Add each func name the the class / func
         # structure created above.

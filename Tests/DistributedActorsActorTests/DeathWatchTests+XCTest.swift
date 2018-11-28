@@ -31,7 +31,6 @@ extension DeathWatchTests {
                 ("test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives", test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives),
                 ("test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated", test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated),
                 ("test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies", test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies),
-                ("test_deadLetters_canBeWatchedAndAlwaysImmediatelyRepliesWithTerminated", test_deadLetters_canBeWatchedAndAlwaysImmediatelyRepliesWithTerminated),
            ]
    }
 }
