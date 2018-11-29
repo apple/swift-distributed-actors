@@ -129,16 +129,16 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Warning: Mutates the cell's behavior.
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
     @inlinable
-    func interpretMessage(message: Message) -> Bool {
+    func interpretMessage(message: Message) throws -> Bool {
         #if SACT_TRACE_CELL
         pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
         #endif
-        let next = self.behavior.interpretMessage(context: context, message: message)
+        let next = try self.behavior.interpretMessage(context: context, message: message)
         #if SACT_TRACE_CELL
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
-        self.becomeNext(behavior: next)
+        try self.becomeNext(behavior: next)
         return self.behavior.isStillAlive()
     }
 
@@ -156,7 +156,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         switch message {
             // initialization:
         case .start:
-            self.interpretSystemStart()
+            try self.interpretSystemStart()
 
             // death watch
         case let .watch(_, watcher):
@@ -211,7 +211,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         let next: Behavior<Message>
         if case let .signalHandling(_, handleSignal) = self.behavior {
-            next = handleSignal(context, message) // TODO: we want to deliver Signals to users
+            let signal: SystemMessage = message // TODO change convert the type, we deliver `Signal` to users
+            next = try handleSignal(context, signal)
         } else {
             // no signal handling installed is semantically equivalent to unhandled
             // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
@@ -219,10 +220,12 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         }
 
         switch next {
-        case .unhandled: throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
+        case .unhandled:
+            throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
             message: "Death Pact error: [\(context.myself)] has not handled .terminated signal received from watched [\(ref)] actor. " +
                 "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
-        default: becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
+        default:
+            try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
         }
     }
 
@@ -256,20 +259,20 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///
     /// Returns: `true` if next behavior is .stopped and appropriate actions will be taken
     @inlinable
-    internal func becomeNext(behavior next: Behavior<Message>) {
+    internal func becomeNext(behavior next: Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
 
-        self.behavior = self.behavior.canonicalize(context, next: next)
+        self.behavior = try self.behavior.canonicalize(context, next: next)
     }
 
     @inlinable
-    internal func interpretSystemStart() {
+    internal func interpretSystemStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
         if case .setup(let onStart) = behavior {
-            let next = onStart(context)
-            self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
+            let next = try onStart(context)
+            try self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
         } else {
-            self.becomeNext(behavior: .same)
+            try self.becomeNext(behavior: .same)
         }
         // and canonicalize() will make sure that any nested `.setup` are handled immediately as well
     }
