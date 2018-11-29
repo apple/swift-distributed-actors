@@ -15,7 +15,7 @@
 import XCTest
 import Foundation
 import NIO
-@testable import Swift Distributed ActorsActorTestkit
+@testable import SwiftDistributedActorsActorTestKit
 
 class DeadlineTests: XCTestCase {
 

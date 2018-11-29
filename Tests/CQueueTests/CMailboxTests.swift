@@ -17,7 +17,7 @@ import Foundation
 import Foundation
 import XCTest
 import CQueue
-import Swift Distributed ActorsActorTestkit
+import SwiftDistributedActorsActorTestKit
 
 class CMailboxTests: XCTestCase {
     func test_MailboxCapacityLimit() {

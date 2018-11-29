@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Swift Distributed ActorsActor
-@testable import Swift Distributed ActorsActorTestkit
+@testable import SwiftDistributedActorsActorTestKit
 import XCTest
 
 class ActorTestProbeTests: XCTestCase {
@@ -49,7 +49,7 @@ class ActorTestProbeTests: XCTestCase {
 
         try probe.expectMessage("two") // TODO: style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
         // this causes a nice failure like:
-        //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
+        //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
         //        try! probe.expectMessage("two")
         //                   ^~~~~~~~~~~~
         //    error: Assertion failed: [one] did not equal expected [two]

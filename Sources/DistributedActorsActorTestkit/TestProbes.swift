@@ -133,7 +133,7 @@ extension ActorTestProbe where Message: Equatable {
     // MARK: Expecting messages
 
     /// Fails in nice readable ways:
-    ///    sact/Tests/Swift Distributed ActorsActorTestkitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestkitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
+    ///    sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
     ///        try! probe.expectMessage("awaiting-forever")
     ///                   ^~~~~~~~~~~~~~
     ///    error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue

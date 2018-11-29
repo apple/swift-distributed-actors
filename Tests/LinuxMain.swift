@@ -22,7 +22,7 @@ import XCTest
 
 #if os(Linux) || os(FreeBSD)
    @testable import CQueueTests
-   @testable import Swift Distributed ActorsActorTestkitTests
+   @testable import SwiftDistributedActorsActorTestKitTests
    @testable import Swift Distributed ActorsActorTests
 
    XCTMain([

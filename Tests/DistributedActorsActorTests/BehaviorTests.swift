@@ -15,7 +15,7 @@
 import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
-import Swift Distributed ActorsActorTestkit
+import SwiftDistributedActorsActorTestKit
 
 class BehaviorTests: XCTestCase {
 
