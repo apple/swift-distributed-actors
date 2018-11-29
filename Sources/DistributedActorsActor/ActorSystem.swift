@@ -38,11 +38,12 @@ public final class ActorSystem {
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
+    private let dispatcher: MessageDispatcher
+
     private let localProvider: ActorRefProvider
     private let processProvider: ActorRefProvider
 
     private let terminationLock = Lock()
-    let dispatcher: MessageDispatcher = try! FixedThreadPool(8) // TODO: better guesstimate on start and also make it tuneable
 
 //  // TODO: provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
@@ -66,6 +67,8 @@ public final class ActorSystem {
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters")
         let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath)
+
+        self.dispatcher = try! FixedThreadPool(4) // TODO: better guesstimate on start and also make it tuneable
 
         self.localProvider = LocalActorRefProvider()
         self.processProvider = ProcessFaultDomainActorRefProvider()

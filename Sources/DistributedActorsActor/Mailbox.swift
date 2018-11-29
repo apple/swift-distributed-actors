@@ -12,9 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CQueue
-import NIOConcurrencyHelpers
 import Foundation // TODO: remove
+import NIOConcurrencyHelpers
+import CQueue
+import CDungeon
 
 /// INTERNAL API
 struct Envelope<Message> {
@@ -181,9 +182,6 @@ final class Mailbox<Message> {
         // performing an additional read is incorrect, since we have to make all decisions based on the same read value
         // we could pull this off if we had a swift mailbox here, OR we pass in the read status into the send_message...
         // though that splits the logic between swift and C even more making it more confusing I think
-//        guard !cmailbox_is_closed(mailbox) else {
-//          return handleOnClosedMailbox(systemMessage)
-//        }
 
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
@@ -210,6 +208,17 @@ final class Mailbox<Message> {
 
     @inlinable
     func run() {
+        pprint("ENTERING RUN, installing handler")
+
+        CDungeon.install_swift_crash_handler({
+            print("BAD, THERE WAS A CRASH. Killing myself in 5s...\n")
+            let q = DispatchQueue(label: "killMyselfQ", attributes: .concurrent)
+            q.asyncAfter(deadline: .now() + 5.0) {
+                kill(getpid(), SIGKILL)
+            }
+        })
+
+
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
             &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
