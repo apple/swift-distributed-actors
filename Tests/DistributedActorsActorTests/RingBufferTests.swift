@@ -86,7 +86,7 @@ class RingBufferTests: XCTestCase {
     func test_take_empty() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        buffer.take().shouldEqual(nil)
+        buffer.take().shouldBeNil()
     }
 
     func test_take_non_empty() {
@@ -112,7 +112,7 @@ class RingBufferTests: XCTestCase {
     func test_peek_empty() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        buffer.peek().shouldEqual(nil)
+        buffer.peek().shouldBeNil()
     }
 
     func test_peek_non_empty() {
@@ -146,7 +146,7 @@ class RingBufferTests: XCTestCase {
             _ = buffer.offer(element: i)
         }
 
-        buffer.writeIndex.shouldEqual(nil)
+        buffer.writeIndex.shouldBeNil()
     }
 
     func test_writeIndex_empty_after_wrap() {
@@ -163,7 +163,7 @@ class RingBufferTests: XCTestCase {
     func test_readIndex_empty() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        buffer.readIndex.shouldEqual(nil)
+        buffer.readIndex.shouldBeNil()
     }
 
     func test_readIndex_non_empty_first() {
@@ -193,6 +193,6 @@ class RingBufferTests: XCTestCase {
             _ = buffer.take()
         }
 
-        buffer.readIndex.shouldEqual(nil)
+        buffer.readIndex.shouldBeNil()
     }
 }

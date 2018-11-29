@@ -29,4 +29,21 @@ class ActorPathTests: XCTestCase {
         }
     }
 
+    func test_pathsWithSameSegments_shouldBeEqual() throws {
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+
+        pathA.uid.shouldNotEqual(pathB.uid)
+
+        pathA.shouldEqual(pathB)
+    }
+
+    func test_pathsWithSameSegments_shouldHaveSameHasCode() throws {
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+
+        pathA.uid.shouldNotEqual(pathB.uid)
+
+        pathA.hashValue.shouldEqual(pathB.hashValue)
+    }
 }

@@ -68,6 +68,7 @@ let system = ActorSystem()
 
 let n = 5_000_000
 
+/*
 print("~~~~~~~~~~~~~~ ActorPath ~~~~~~~~~~~~~~")
 
 try measureAndPrint(desc: "create short path") {
@@ -78,6 +79,7 @@ try measureAndPrint(desc: "create short path") {
 
     return 1
 }
+*/
 
 print("~~~~~~~~~~~~~~ Actors ~~~~~~~~~~~~~~")
 

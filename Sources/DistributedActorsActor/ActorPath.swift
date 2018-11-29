@@ -19,26 +19,28 @@
 /// - contain only ASCII characters and select special characters (listed in [[ValidPathSymbols.extraSymbols]]
 ///
 /// - Example: `/user/master/worker`
-public struct ActorPath: Equatable, Hashable {
+public struct ActorPath {
 
     // TODO: we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt,
     //      Akka wanted to get closer to that but we had historical naming to take into account so we didn't
     // private var address: Address = "swift-distributed-actors://10.0.0.1:2552
     private var segments: [ActorPathSegment]
+    let uid: ActorUID
 
-    public init(_ segments: [ActorPathSegment]) throws {
+    init(_ segments: [ActorPathSegment], uid: ActorUID) throws {
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
         }
         self.segments = segments
+        self.uid = uid
     }
 
-    public init(root: String) throws {
-        try self.init([ActorPathSegment(root)])
+    init(root: String) throws {
+        try self.init([ActorPathSegment(root)], uid: ActorUID.undefined)
     }
 
     public init(root: ActorPathSegment) throws {
-        try self.init([root])
+        try self.init([root], uid: ActorUID.undefined)
     }
 
     /// Appends a segment to this actor path
@@ -57,11 +59,24 @@ public struct ActorPath: Equatable, Hashable {
     }
 }
 
+extension ActorPath: Equatable {
+    public static func == (lhs: ActorPath, rhs: ActorPath) -> Bool {
+        return lhs.segments == rhs.segments
+    }
+}
+
+extension ActorPath: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(segments)
+    }
+}
+
 extension ActorPath {
-    public static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
-        var res = base
-        res.append(segment: child)
-        return res
+    static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
+        var segments = base.segments
+        segments.append(child)
+        // safe because we know that segments is not empty
+        return try! ActorPath(segments, uid: ActorUID.random())
     }
 }
 
@@ -69,7 +84,13 @@ extension ActorPath {
 extension ActorPath: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
-        return "/\(pathSegments)"
+        let pathString = "/\(pathSegments)"
+        switch uid.value {
+        case ActorUID.undefined.value:
+            return pathString
+        default:
+            return "\(pathString)#\(uid.value)"
+        }
     }
     public var debugDescription: String {
         return "ActorPath(\(description))"
