@@ -24,13 +24,13 @@ import Dispatch
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline internal struct DeathWatch<Message> { // TODO: make a protocol
 
-    private var watching = Set<BoxedHashableAnyReceivesSignals>()
-    private var watchedBy = Set<BoxedHashableAnyReceivesSignals>()
+    private var watching = Set<BoxedHashableAnyReceivesSystemMessages>()
+    private var watchedBy = Set<BoxedHashableAnyReceivesSystemMessages>()
 
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
+    public mutating func watch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>) {
         traceLog_DeathWatch("watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watchee.path != watcher.path else {
@@ -42,17 +42,17 @@ import Dispatch
             return ()
         }
 
-        watchee.sendSystemMessage(.watch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSignals()))
+        watchee.sendSystemMessage(.watch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSystemMessages()))
         self.watching.insert(watchee)
         subscribeAddressTerminatedEvents()
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
-    public mutating func unwatch(watchee: BoxedHashableAnyReceivesSignals, myself watcher: ActorRef<Message>) {
+    public mutating func unwatch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>) {
         traceLog_DeathWatch("unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if let removed = watching.remove(watchee) {
-            removed.sendSystemMessage(.unwatch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSignals()))
+            removed.sendSystemMessage(.unwatch(wachee: watchee, watcher: watcher.internal_boxAnyReceivesSystemMessages()))
         }
     }
 
@@ -87,12 +87,12 @@ import Dispatch
         }
 
         let deadPath = deadActorRef.path
-        let pathsEqual: (BoxedHashableAnyReceivesSignals) -> Bool = { watched in
+        let pathsEqual: (BoxedHashableAnyReceivesSystemMessages) -> Bool = { watched in
             return watched.path == deadPath
         }
 
         // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
-        func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSignals>, `where` check: (BoxedHashableAnyReceivesSignals) -> Bool) -> Bool {
+        func removeDeadRef(from set: inout Set<BoxedHashableAnyReceivesSystemMessages>, `where` check: (BoxedHashableAnyReceivesSystemMessages) -> Bool) -> Bool {
             if let deadIndex = set.firstIndex(where: check) {
                 set.remove(at: deadIndex)
                 return true

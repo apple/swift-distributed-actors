@@ -90,7 +90,7 @@ public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     func asHashable() -> AnyHashable
 }
 
-internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSystemMessages {
+internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSystemMessages {
     private let anyRef: AnyReceivesSystemMessages
 
     /// Easiest used with [[ActorRefWithCell]]
@@ -107,7 +107,7 @@ internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSystemMess
         self.anyRef.asHashable().hash(into: &hasher)
     }
 
-    static func ==(lhs: BoxedHashableAnyReceivesSignals, rhs: BoxedHashableAnyReceivesSignals) -> Bool {
+    static func ==(lhs: BoxedHashableAnyReceivesSystemMessages, rhs: BoxedHashableAnyReceivesSystemMessages) -> Bool {
         return lhs.path == rhs.path // TODO: sanity check the path equality assumption
     }
 
@@ -133,9 +133,9 @@ internal struct BoxedHashableAnyReceivesSignals: Hashable, AnyReceivesSystemMess
 /// INTERNAL API: DO NOT TOUCH.
 internal extension AnyReceivesSystemMessages {
     
-    /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSignals where it is KNOWN guaranteed that it is a box
-    internal func internal_exposeBox() -> BoxedHashableAnyReceivesSignals {
-        return self as! BoxedHashableAnyReceivesSignals
+    /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSystemMessages where it is KNOWN guaranteed that it is a box
+    internal func internal_exposeBox() -> BoxedHashableAnyReceivesSystemMessages {
+        return self as! BoxedHashableAnyReceivesSystemMessages
     }
 }
 
@@ -145,8 +145,8 @@ internal extension AnyReceivesSystemMessages {
 internal extension ActorRef {
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    internal func internal_boxAnyReceivesSignals() -> AnyReceivesSystemMessages {
-        return BoxedHashableAnyReceivesSignals(ref: self.internal_downcast)
+    internal func internal_boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
+        return BoxedHashableAnyReceivesSystemMessages(ref: self.internal_downcast)
     }
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing

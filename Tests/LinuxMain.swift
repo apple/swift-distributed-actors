@@ -40,6 +40,7 @@ import XCTest
          testCase(DeathWatchTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(ParentChildActorTests.allTests),
+         testCase(RingBufferTests.allTests),
          testCase(StashBufferTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),
