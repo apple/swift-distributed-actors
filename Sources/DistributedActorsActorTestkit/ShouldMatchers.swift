@@ -86,7 +86,7 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 ///    shouldNotThrow({
 ///    ^~~~~~~~~~~~~~~
 /// error: Unexpected throw captured: illegalActorPathElement(name: "/user", illegal: "/", index: 0)
-/// Fatal error: Failed: expectedErrorToBeThrown: file sact/Sources/Swift Distributed ActorsActorTestkit/ShouldMatchers.swift, line 79
+/// Fatal error: Failed: expectedErrorToBeThrown: file sact/Sources/Swift Distributed ActorsActorTestKit/ShouldMatchers.swift, line 79
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
