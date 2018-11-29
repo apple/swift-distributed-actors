@@ -31,7 +31,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-        let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let probe: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
 
         try probe.expectMessage("awaiting-forever")
     }
@@ -43,7 +43,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
 
-        let probe: ActorTestProbe<String> = ActorTestProbe(named: "p1", on: system)
+        let probe: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
 
         probe ! "one"
 
@@ -57,7 +57,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p: ActorTestProbe<String> = ActorTestProbe(named: "testActor-6", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe(name: "testActor-6", on: system)
 
         try p.expectNoMessage(for: .milliseconds(100))
         p.stop()

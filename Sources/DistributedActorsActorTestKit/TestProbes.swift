@@ -65,7 +65,7 @@ final public class ActorTestProbe<Message> {
 //    return ActorTestProbe<Message>(system, named: name)
 //  }
 
-    public init(named name: String, on system: ActorSystem) {
+    public init(name: String, on system: ActorSystem) {
         self.system = system
         // extract config here
         self.name = name
@@ -77,7 +77,7 @@ final public class ActorTestProbe<Message> {
             signalQueue: self.signalQueue,
             terminationsQueue: self.terminationsQueue)
 
-        self.internalRef = try! system.spawn(behavior, named: name)
+        self.internalRef = try! system.spawn(behavior, name: name)
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
         }
@@ -131,6 +131,27 @@ final public class ActorTestProbe<Message> {
 extension ActorTestProbe where Message: Equatable {
 
     // MARK: Expecting messages
+
+    /// Expects a message to arrive at the TestProbe and returns it for further assertions.
+    /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
+    ///
+    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+    public func expectMessage(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = expectationTimeout
+        do {
+            return try within(timeout) {
+                guard self.messagesQueue.size() > 0 else {
+                    throw ExpectationError.noMessagesInQueue
+                }
+                return self.messagesQueue.dequeue()
+            }
+        } catch {
+            let message = "Did not receive message (of type \(Message.self)) within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.failure(message: message)
+        }
+    }
+
 
     /// Fails in nice readable ways:
     ///    sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
@@ -207,6 +228,48 @@ extension ActorTestProbe {
         }
     }
 
+    // MARK: Failure helpers
+
+
+    /// Returns a well formatted failure message, use as:
+    ///
+    /// Example:
+    ///
+    ///     guard ... else { throw p.failure("failed to extract expected information") }
+    public func failure(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return callSite.failure(message: message)
+    }
+
+    // MARK: Expecting messages with matching/extracting callbacks
+
+    /// Expects a message and applies the nested logic to extract values out of it.
+    ///
+    /// The callback MAY return `nil` in order to signal "this is not the expected message", or throw an error itself.
+    // TODO find a better name; it is not exactly "fish for message" though, that can ignore messages for a while, this one does not
+    public func expectMessageMatching<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ matchExtract: (Message) throws -> T?) throws -> T {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = expectationTimeout
+        do {
+            return try within(timeout) {
+                guard self.messagesQueue.size() > 0 else {
+                    throw ExpectationError.noMessagesInQueue
+                }
+                let got: Message = self.messagesQueue.dequeue()
+                guard let extracted = try matchExtract(got) else {
+                    let message = "Received \(type(of: Message.self)) message, however it did not pass the matching check, "
+                    "and did not produce the requested \(T.self)."
+                    throw callSite.failure(message: message)
+                }
+                return extracted
+            }
+        } catch {
+            let message = "Did not receive matching [\(type(of: Message.self)) message within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.failure(message: message)
+        }
+    }
+
+
     // MARK: Expecting no message/signal within a timeout
 
     /// Asserts that no message is received by the probe during the specified timeout.
@@ -258,9 +321,9 @@ extension ActorTestProbe {
     ///
     /// This enables it to use [[expectTerminated]] to await for the watched actors termination.
     public func watch<M>(_ watchee: ActorRef<M>) {
-        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.internal_boxAnyReceivesSignals()))
+        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
         //    let downcast: ActorRefWithCell<M> = watchee.internal_downcast
-        //    downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSignals(self.ref)))
+        //    downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSystemMessages(self.ref)))
     }
 
     /// Instructs this probe to unwatch the passed in reference.
@@ -270,7 +333,7 @@ extension ActorTestProbe {
     /// If you want to avoid such race, you can implement your own small actor which performs the watching
     /// and forwards signals appropriately to a probe to trigger the assertions in the tests main thread.
     public func unwatch<M>(_ watchee: ActorRef<M>) {
-        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.internal_boxAnyReceivesSignals()))
+        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
     }
 
     /// Returns the `terminated` message (TODO SIGNAL)

@@ -133,7 +133,8 @@ extension ActorSystem: ActorRefFactory {
         let cell: ActorCell<Message> = ActorCell(
             behavior: behavior,
             system: self,
-            dispatcher: dispatcher)
+            dispatcher: dispatcher
+        ) // TODO pass the Props
 
         // the mailbox of the actor
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)

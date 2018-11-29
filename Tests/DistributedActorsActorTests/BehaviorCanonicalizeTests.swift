@@ -26,7 +26,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p = ActorTestProbe<String>(name: "canonicalizeProbe1", on: system)
+        let p: ActorTestProbe<String> = ActorTestProbe<String>(name: "canonicalizeProbe1", on: system)
 
         let b: Behavior<String> = .setup { c1 in
             p.tell("outer-1")

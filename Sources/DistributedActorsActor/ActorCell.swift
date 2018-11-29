@@ -48,7 +48,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self._myselfInACell
     }
 
-    internal init(behavior: Behavior<Message>, dispatcher: MessageDispatcher) {
+    internal init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher) {
         // TODO: we may end up referring to the system here... we'll see
         self.behavior = behavior
         self._dispatcher = dispatcher
@@ -327,11 +327,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     // MARK: Death Watch
 
     override public func watch<M>(_ watchee: ActorRef<M>) {
-        self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
+        self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
     }
 
     override public func unwatch<M>(_ watchee: ActorRef<M>) {
-        self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSignals(), myself: context.myself)
+        self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
     }
 }
 

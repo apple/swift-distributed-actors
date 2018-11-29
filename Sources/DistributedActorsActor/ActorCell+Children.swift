@@ -34,7 +34,7 @@ protocol ChildActorRefFactory: ActorRefFactory {
 public struct Children {
 
     typealias Name = String
-    private var container: [Name: BoxedHashableAnyReceivesSignals]
+    private var container: [Name: BoxedHashableAnyReceivesSystemMessages]
 
     public init() {
         self.container = [:]
@@ -53,7 +53,7 @@ public struct Children {
     }
     
     public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
-        self.container[childRef.path.name] = childRef.internal_boxAnyReceivesSignals()
+        self.container[childRef.path.name] = childRef.internal_boxAnyReceivesSystemMessages()
         pprint("insert child \(childRef)... got all: \(self.container), self: \(self)")
     }
 
@@ -79,7 +79,11 @@ extension ActorCell: ChildActorRefFactory {
         // TODO reserve name
 
         let d = dispatcher // TODO this is dispatcher inheritance, we dont want that
-        let cell: ActorCell<Message2> = ActorCell<Message2>(behavior: behavior, dispatcher: d)
+        let cell: ActorCell<Message2> = ActorCell<Message2>(
+            behavior: behavior,
+            system: system,
+            dispatcher: d // TODO pass the Props
+        )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
         log.info("Spawning [\(behavior)], child of [\(self.path)], full path: [\(path)]")
