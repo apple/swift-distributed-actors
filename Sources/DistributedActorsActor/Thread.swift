@@ -11,11 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-//  swift-concurrency
-//
-//  Created by Dario Rexin on 6/8/18.
-//  Copyright © 2018 Dario Rexin. All rights reserved.
-//
+
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
