@@ -38,6 +38,9 @@ public final class ActorSystem {
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
+    private let localProvider: ActorRefProvider
+    private let processProvider: ActorRefProvider
+
     private let terminationLock = Lock()
     let dispatcher: MessageDispatcher = try! FixedThreadPool(8) // TODO: better guesstimate on start and also make it tuneable
 
@@ -63,6 +66,9 @@ public final class ActorSystem {
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters")
         let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath)
+
+        self.localProvider = LocalActorRefProvider()
+        self.processProvider = ProcessFaultDomainActorRefProvider()
     }
 
     public convenience init() {
@@ -81,7 +87,7 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func whenTerminated() -> Awaitable {
         // return Awaitable(underlyingLock: terminationLock)
-        return undefined()
+        return undefined() // FIXME: implement this
     }
 }
 
@@ -122,33 +128,27 @@ extension ActorSystem: ActorRefFactory {
         // FIXME hacks... should get real parent
         let nameSegment = try ActorPathSegment(name) // performs validation
         let path = try ActorPath(root: "user") / nameSegment
-
         // TODO: reserve the name, atomically
 
         log.info("Spawning [\(behavior)], name: [\(name)]")
 
-        // TODO: move this to the provider perhaps? or some way to share setup logic
 
-        // the "real" actor, the cell that holds the actual "actor"
-        let cell: ActorCell<Message> = ActorCell(
-            behavior: behavior,
-            system: self,
+        let refWithCell: ActorRef<Message>
+        switch props.faultDomain {
+        case .default:
+            refWithCell = localProvider.spawn(
+                system: self,
+                behavior: behavior, path: path,
+                dispatcher: dispatcher, props: props
+            )
+        case .isolate:
+            refWithCell = processProvider.spawn(
+                system: self,
+                behavior: behavior, path: path,
             dispatcher: dispatcher,
             path: path
         ) // TODO pass the Props
 
-        // the mailbox of the actor
-        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
-        // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
-
-        let refWithCell = ActorRefWithCell(
-            path: path,
-            cell: cell,
-            mailbox: mailbox
-        )
-
-        cell.set(ref: refWithCell)
-        refWithCell.sendSystemMessage(.start)
 
         return refWithCell
     }

@@ -41,13 +41,19 @@ struct TestMatchers<T> {
 
 extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(it, expected)
+        let msg = self.callSite.detailedMessage(got: it, expected: expected)
         XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
     }
 
     func toNotEqual(_ expected: T) {
         let msg = self.callSite.detailedMessage(it, expected)
         XCTAssertNotEqual(it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+
+    func toBe<Other>(_ expected: Other.Type) {
+        if !(it is Other) {
+            let msg = self.callSite.detailedMessage(got: it, expected: expected)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
     }
 }
 
@@ -58,7 +64,7 @@ public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #fil
     let error = shouldThrow(file: file, line: line, column: column, block)
 
     guard error is E else {
-        let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw [\(expected)], but threw: [\(error)]")
+        let msg = callSiteInfo.detailedMessage("Expected block to throw [\(expected)], but threw: [\(error)]")
         XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
         fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
     }
@@ -184,20 +190,21 @@ struct CallSiteInfo {
     /// Prepares a detailed error information
     ///
     /// - Warning: Performs file IO in order to read source location line where failure happened
-    func detailedMessage(assertionExplained: String) -> String {
+    func detailedMessage(_ explained: String) -> String {
         let lines = try! String(contentsOfFile: "\(self.file)")
             .components(separatedBy: .newlines)
         let failingLine = lines
             .dropFirst(Int(self.line - 1))
             .first!
 
-        var s = "\n"
+        var s = ""
+        if isTty { s += "\n" } else { s += "\(explained)\n" }
         s += "\(failingLine)\n"
         s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
         if isTty { s += ANSIColors.red.rawValue }
         s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
         s += "error: "
-        s += assertionExplained
+        s += explained
         if isTty { s += ANSIColors.reset.rawValue }
         return s
     }
@@ -209,7 +216,7 @@ extension CallSiteInfo {
     /// Returns an Error that should be thrown by the called.
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
     public func failure(message: String) -> Error {
-        let details = detailedMessage(assertionExplained: message)
+        let details = detailedMessage(message)
         XCTAssert(false, details, file: self.file, line: self.line)
 
         return CallSiteError.CallSiteError(message: details)

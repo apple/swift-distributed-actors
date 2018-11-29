@@ -32,7 +32,7 @@ public final class StashBuffer<Message> {
     /// throws `StashError.full`.
     ///
     /// - Parameter message: The message to be stored in the buffer
-    /// - Throws: StashError.full
+    /// - Throws: `StashError.full` when underlying stash would overflow its capacity
     @inlinable
     public func stash(message: Message) throws {
         guard buffer.offer(element: message) else {

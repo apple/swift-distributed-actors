@@ -22,24 +22,24 @@ class AnonymousNamesGeneratorTests: XCTestCase {
         let a = NotSynchronizedAnonymousNamesGenerator(prefix: "a-")
         let b = NotSynchronizedAnonymousNamesGenerator(prefix: "b-")
 
-        XCTAssertEqual(a.nextName(), "a-a")
-        XCTAssertEqual(b.nextName(), "b-a")
+        a.nextName().shouldEqual("a-a")
+        b.nextName().shouldEqual("b-a")
 
-        XCTAssertEqual(a.nextName(), "a-b")
-        XCTAssertEqual(b.nextName(), "b-b")
+        a.nextName().shouldEqual("a-b")
+        b.nextName().shouldEqual("b-b")
     }
 
     func test_generatedNamesAreTheExpectedOnes() throws {
         let a = NotSynchronizedAnonymousNamesGenerator(prefix: "")
 
         let p = "$"
-        XCTAssertEqual(a.mkName(prefix: p, n: 0), "$a")
-        XCTAssertEqual(a.mkName(prefix: p, n: 1), "$b")
-        XCTAssertEqual(a.mkName(prefix: p, n: 2), "$c")
+        a.mkName(prefix: p, n: 0).shouldEqual("$a")
+        a.mkName(prefix: p, n: 1).shouldEqual("$b")
+        a.mkName(prefix: p, n: 2).shouldEqual("$c")
         // ...
-        XCTAssertEqual(a.mkName(prefix: p, n: 22), "$w")
+        a.mkName(prefix: p, n: 22).shouldEqual("$w")
         // ...
-        XCTAssertEqual(a.mkName(prefix: p, n: 88), "$yb")
+        a.mkName(prefix: p, n: 88).shouldEqual("$yb")
     }
 
     func test_AtomicAndNonSynchronizedGeneratorsYieldTheSameSequenceOfNames() throws {
@@ -49,7 +49,7 @@ class AnonymousNamesGeneratorTests: XCTestCase {
         for i in 0...(64 + 64 + 64 + 5) { // at least wanting to see a few 3 letter names
             let aName = atomic.mkName(prefix: p, n: i)
             let nName = normal.mkName(prefix: p, n: i)
-            XCTAssertEqual(aName, nName)
+            aName.shouldEqual(nName)
         }
     }
 
