@@ -60,6 +60,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    /// Dispatcher on which this actor is executing
     public var dispatcher: MessageDispatcher {
         return undefined()
     }
@@ -80,7 +81,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
     /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
     /// and the Death Pact will trigger as usual.
-    public func watch<M>(_ watchee: ActorRef<M>) {
+    public func watch<M>(_ watchee: ActorRef<M>) { // TODO: fix signature, should return the watchee
         return undefined()
     }
 

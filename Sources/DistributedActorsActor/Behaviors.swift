@@ -50,6 +50,8 @@ public enum Behavior<Message> {
     /// and the actor itself will stop. Return this behavior to stop your actors.
     case stopped
 
+    case failed(error: Error)
+
     /// Allows handling messages
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, SystemMessage) throws -> Behavior<Message>)
@@ -185,11 +187,11 @@ internal extension Behavior {
         }
     }
 
-    /// Shorthand for checking if the current behavior is a `.stopped`.
+    /// Shorthand for checking if the current behavior is a `.stopped` or `.failed`.
     @inlinable
-    internal func isStopped() -> Bool {
+    internal func isTerminal() -> Bool {
         switch self {
-        case .stopped: return true
+        case .stopped, .failed: return true
         default: return false
         }
     }
@@ -197,7 +199,7 @@ internal extension Behavior {
     /// Shorthand for any [[Behavior]] that is NOT `.stopped`.
     @inlinable
     internal func isStillAlive() -> Bool {
-        return !self.isStopped()
+        return !self.isTerminal()
     }
 
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
