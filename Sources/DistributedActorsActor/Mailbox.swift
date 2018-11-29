@@ -199,7 +199,7 @@ final class Mailbox<Message> {
             if case .tombstone = systemMessage {
                 // nothing to do // FIXME handle this nicer
             } else {
-                traceLog_Mailbox("\(cell.myself) Dead letter: \(systemMessage), since mailbox is closed")
+                traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
                 cell.sendToDeadLetters(DeadLetter(systemMessage))
             }
         } else { // schedulingDecision > 0 {

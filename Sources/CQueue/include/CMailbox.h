@@ -84,11 +84,6 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
 /*
  * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.
- *
- * Return code meaning:
- *   - res <  0  terminating status has been set, swift should send to self the .tombstone; we don't consider if more messages are to run, since the tombstone will activate anyway
- *   - res == 0  no more messages to run, no need to reschedule
- *   - res >  0  pending messages (activation count) so we need to schedule
  */
 CMailboxRunResult cmailbox_run(
     CMailbox* mailbox,
@@ -107,5 +102,7 @@ bool cmailbox_is_closed(CMailbox* mailbox);
 
 /* Sets the final CLOSED state. Should only be invoked just before finishing termination, and only while TERMINATING */
 void cmailbox_set_closed(CMailbox* mailbox);
+
+int64_t sact_pthread_self();
 
 #endif /* CMailbox_h */
