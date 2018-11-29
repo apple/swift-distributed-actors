@@ -38,7 +38,7 @@ class DeathWatchTests: XCTestCase {
         return .receive { (context, message) in
             switch message {
             case .stop:
-                probe?.tell("I (\(context.path)) will now stop")
+                probe?.tell("I (\(context.path.name)) will now stop")
                 return .stopped
             }
         }
@@ -54,7 +54,7 @@ class DeathWatchTests: XCTestCase {
 
         // the order of these messages is also guaranteed:
         // 1) first the dying actor has last chance to signal a message,
-        try p.expectMessage("I (/user/stopMePlz0) will now stop")
+        try p.expectMessage("I (stopMePlz0) will now stop")
         // 2) and then terminated messages are sent:
         // try p.expectMessage("/user/terminationWatcher received .terminated for: /user/stopMePlz")
         try p.expectTerminated(stoppableRef)
@@ -75,7 +75,7 @@ class DeathWatchTests: XCTestCase {
         stoppableRef.tell(.stop) // should result in dead letter
         stoppableRef.tell(.stop) // should result in dead letter
 
-        try p.expectMessage("I (/user/stopMePlz1) will now stop")
+        try p.expectMessage("I (stopMePlz1) will now stop")
         // since the first message results in the actor becoming .stopped
         // it should not be able to forward any new messages after the first one:
         try p.expectNoMessage(for: .milliseconds(100))
@@ -122,7 +122,7 @@ class DeathWatchTests: XCTestCase {
 
         stoppableRef.tell(.stop)
 
-        try p.expectMessage("I (/user/stopMePlz2) will now stop")
+        try p.expectMessage("I (stopMePlz2) will now stop")
 
         try p1.expectTerminated(stoppableRef)
         try p2.expectTerminated(stoppableRef)

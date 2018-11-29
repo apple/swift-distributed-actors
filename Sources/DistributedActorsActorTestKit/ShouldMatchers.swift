@@ -20,7 +20,7 @@ import XCTest
 
 fileprivate let isTty = isatty(fileno(stdin)) == 0
 
-struct TestMatchers<T: Equatable> {
+struct TestMatchers<T> {
 
     private let it: T
 
@@ -31,16 +31,23 @@ struct TestMatchers<T: Equatable> {
         self.callSite = callSite
     }
 
-    func toEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(it, expected)
-        XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
-    }
-
     func toBe<T>(_ expected: T.Type) {
         if !(it is T) {
             let msg = self.callSite.detailedMessage(it, expected)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
+    }
+}
+
+extension TestMatchers where T: Equatable {
+    func toEqual(_ expected: T) {
+        let msg = self.callSite.detailedMessage(it, expected)
+        XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+
+    func toNotEqual(_ expected: T) {
+        let msg = self.callSite.detailedMessage(it, expected)
+        XCTAssertNotEqual(it, expected, msg, file: callSite.file, line: callSite.line)
     }
 }
 
@@ -107,6 +114,20 @@ public enum ShouldMatcherError: Error {
 
 // MARK: assertion extensions on specific types
 
+extension Optional {
+    public func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let msg = callSite.detailedMessage(assertionExplained: "Expected nil, got \(self)")
+        XCTAssertNil(self, msg, file: callSite.file, line: callSite.line)
+    }
+
+    public func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let msg = callSite.detailedMessage(assertionExplained: "Expected not nil")
+        XCTAssertNotNil(self, msg, file: callSite.file, line: callSite.line)
+    }
+}
+
 extension Equatable {
 
     /// Asserts that the value is equal to the `other` value
@@ -119,6 +140,11 @@ extension Equatable {
     public func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBe(expectedType)
+    }
+
+    public func shouldNotEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toNotEqual(other())
     }
 }
 
