@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import Swift Distributed ActorsActor
-import SwiftDistributedActorsActorTestKit
+import Swift Distributed ActorsActorTestkit
 import XCTest
 
 class RingBufferTests: XCTestCase {
