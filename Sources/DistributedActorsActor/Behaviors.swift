@@ -19,11 +19,11 @@
 public enum Behavior<Message> {
 
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
-    case receiveMessage(_ handle: (Message) -> Behavior<Message>) // TODO: make them throws?
+    case receiveMessage(_ handle: (Message) throws -> Behavior<Message>) // TODO: make them throws?
 
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
-    case receive(_ handle: (ActorContext<Message>, Message) -> Behavior<Message>) // TODO: make them throws?
+    case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>) // TODO: make them throws?
 
     // TODO: receiveExactly(_ expected: Message, orElse: Behavior<Message> = /* .ignore */, atMost = /* 5.seconds */)
 
@@ -34,7 +34,7 @@ public enum Behavior<Message> {
     ///
     /// This can be used to obtain the context, logger or perform actions right when the actor starts
     /// (e.g. send an initial message, or subscribe to some event stream, configure receive timeouts, etc.).
-    case setup(onStart: (ActorContext<Message>) -> Behavior<Message>)
+    case setup(onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
     /// Allows defining actors by extending the [[ActorBehavior]] class.
     ///
@@ -52,7 +52,7 @@ public enum Behavior<Message> {
 
     /// Allows handling messages
     indirect case signalHandling(handleMessage: Behavior<Message>,
-                                 handleSignal: (ActorContext<Message>, SystemMessage) -> Behavior<Message>)
+                                 handleSignal: (ActorContext<Message>, SystemMessage) throws -> Behavior<Message>)
 
     // TODO internal and should not be used by people (likely we may need to change Behaviors away from an enum to allow such things?
     indirect case supervised(supervisor: AnyReceivesSystemMessages, behavior: Behavior<Message>)
@@ -131,25 +131,25 @@ internal extension Behavior {
     /// Note: The returned behavior MUST be [[Behavior.canonicalize]]-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
     @inlinable
-    internal func interpretMessage(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    internal func interpretMessage(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         switch self {
-        case let .receiveMessage(recv):       return recv(message)
-        case let .receive(recv):              return recv(context, message)
+        case let .receiveMessage(recv):       return try recv(message)
+        case let .receive(recv):              return try recv(context, message)
         case .ignore:                         return .same // ignore message and remain .same
         case let .custom(behavior):           return behavior.receive(context: context, message: message)
-        case let .signalHandling(recvMsg, _): return recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+        case let .signalHandling(recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self)")
         }
     }
 
     @inlinable
-    internal func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) -> Behavior<Message> where Iterator.Element == Message {
+    internal func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) throws -> Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: Behavior<Message> = self
         while currentBehavior.isStillAlive() {
             if let message = messages.next() {
-                let nextBehavior = currentBehavior.interpretMessage(context: context, message: message)
-                currentBehavior = currentBehavior.canonicalize(context, next: nextBehavior)
+                let nextBehavior = try currentBehavior.interpretMessage(context: context, message: message)
+                currentBehavior = try currentBehavior.canonicalize(context, next: nextBehavior)
             } else {
                 break
             }
@@ -203,7 +203,7 @@ internal extension Behavior {
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
     /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
     @inlinable
-    internal func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) -> Behavior<Message> {
+    internal func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
 
         var canonical = next
@@ -214,7 +214,7 @@ internal extension Behavior {
             case .unhandled:          return self
             case .custom:             return self
             case .stopped:            return .stopped
-            case let .setup(onStart): canonical = onStart(context)
+            case let .setup(onStart): canonical = try onStart(context)
             default:                  return canonical
             }
         }

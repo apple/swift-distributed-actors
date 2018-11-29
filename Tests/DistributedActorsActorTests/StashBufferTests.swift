@@ -40,7 +40,7 @@ class StashBufferTests: XCTestCase {
             return .receive { (context, message) in
                 switch message {
                 case 10:
-                    return stash.unstashAll(context: context, behavior: unstashBehavior)
+                    return try stash.unstashAll(context: context, behavior: unstashBehavior)
                 default:
                     //TODO: use `try` once we have supervision and behaviors can throw
                     try! stash.stash(message: message)
@@ -87,7 +87,7 @@ class StashBufferTests: XCTestCase {
         let behavior: Behavior<Int> = .receive { (context, message) in
             switch message {
             case 10:
-                return stash.unstashAll(context: context, behavior: unstashBehavior)
+                return try stash.unstashAll(context: context, behavior: unstashBehavior)
             default:
                 //TODO: use `try` once we have supervision and behaviors can throw
                 try! stash.stash(message: message)

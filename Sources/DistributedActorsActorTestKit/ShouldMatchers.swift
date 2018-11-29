@@ -159,8 +159,9 @@ struct CallSiteInfo {
     ///
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func detailedMessage(assertionExplained: String) -> String {
-        let failingLine = try! String(contentsOfFile: "\(self.file)")
+        let lines = try! String(contentsOfFile: "\(self.file)")
             .components(separatedBy: .newlines)
+        let failingLine = lines
             .dropFirst(Int(self.line - 1))
             .first!
 

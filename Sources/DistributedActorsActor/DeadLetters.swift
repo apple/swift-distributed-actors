@@ -15,6 +15,7 @@
 struct DeadLetter {
     let message: Any
     // TODO: from, to, other metadata
+
     init(_ message: Any) {
         self.message = message
     }

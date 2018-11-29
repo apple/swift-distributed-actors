@@ -18,7 +18,7 @@ import NIOConcurrencyHelpers
 import NIO // TODO: feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
-let SACT_TRACE_PROBE = false
+private let SACT_TRACE_PROBE = false
 
 internal enum ActorTestProbeCommand<M> {
     case watchCommand(who: AnyReceivesSystemMessages)
@@ -252,7 +252,7 @@ extension ActorTestProbe {
                 }
                 let got: Message = self.messagesQueue.dequeue()
                 guard let extracted = try matchExtract(got) else {
-                    let message = "Received \(type(of: Message.self)) message, however it did not pass the matching check, "
+                    let message = "Received \(type(of: Message.self)) message, however it did not pass the matching check, " + 
                     "and did not produce the requested \(T.self)."
                     throw callSite.failure(message: message)
                 }

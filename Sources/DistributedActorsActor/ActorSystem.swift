@@ -122,7 +122,6 @@ extension ActorSystem: ActorRefFactory {
         // FIXME hacks... should get real parent
         let nameSegment = try ActorPathSegment(name) // performs validation
         let path = try ActorPath([ActorPathSegment("user"), nameSegment])
-
         // TODO: reserve the name, atomically
 
         log.info("Spawning [\(behavior)], name: [\(name)]")

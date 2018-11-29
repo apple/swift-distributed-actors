@@ -34,6 +34,28 @@ public struct Props {
     public init() {
         self.init(mailbox: .default(), dispatcher: .default, faultDomain: .default)
     }
+    
+    public func withFaultDomain(_ domain: FaultDomainProps) -> Props {
+        return self.copy(faultDomain: domain)
+    }
+    public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+        return self.copy(dispatcher: dispatcher)
+    }
+    public func withMailbox(_ mailbox: MailboxProps) -> Props {
+        return self.copy(mailbox: mailbox)
+    }
+
+    private func copy(
+        mailbox: MailboxProps? = nil,
+        dispatcher: DispatcherProps? = nil,
+        faultDomain: FaultDomainProps? = nil
+    ) -> Props {
+        return .init(
+            mailbox: mailbox ?? self.mailbox,
+            dispatcher: dispatcher ?? self.dispatcher,
+            faultDomain: faultDomain ?? self.faultDomain
+        )
+    }
 }
 
 // TODO: likely better as class hierarchy, by we'll see...
@@ -86,8 +108,7 @@ public enum MailboxProps {
 
 // TODO: Highly experimental and only for PoC of spawning in other process
 public enum FaultDomainProps {
-    // TODO: we could make it such that top level ones become new processes by default always?
-    case `default`
+    case `default` // perhaps this is "inherit"?
 
     /// Isolate this actor and all of its children in its own process
     case isolate

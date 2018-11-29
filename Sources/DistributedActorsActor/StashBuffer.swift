@@ -59,12 +59,13 @@ public final class StashBuffer<Message> {
     ///   - context: The context of the surrounding actor. This is necessary
     ///              for the processing of the messages, e.g. when the behavior
     ///              requires the context to be passed in.
+    /// - Throws: When any of the behavior reductions throws
     /// - Returns: The last behavior returned from processing the unstashed messages
     @inlinable
-    public func unstashAll(context: ActorContext<Message>, behavior: Behavior<Message>) -> Behavior<Message> {
+    public func unstashAll(context: ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
         //TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = buffer.iterator
-        return behavior.interpretMessages(context: context, messages: &iterator)
+        return try behavior.interpretMessages(context: context, messages: &iterator)
     }
 }
 
