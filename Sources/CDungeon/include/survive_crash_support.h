@@ -28,7 +28,7 @@
 #ifndef SURVIVE_CRASH_SUPPORT_H
 #define SURVIVE_CRASH_SUPPORT_H
 
-int install_swift_crash_handler(void(^)(void));
-void simulate_trap(void);
+int sact_install_swift_crash_handler(void(^)(void));
+void sact_simulate_trap(void);
 
 #endif

@@ -59,7 +59,7 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
 /// Short for "pretty print".
 /// Useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
-    print("[pprint][\(file):\(line)][\(_hackyPthreadThreadName())]: \(message)")
+    print("[pprint][\(file):\(line)][\(_hackyPThreadThreadId())]: \(message)")
 //  print("[pprint][\(file):\(line)]: \(message)")
 }
 
@@ -69,7 +69,7 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
     print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }
 
-func _hackyPthreadThreadName() -> String {
+func _hackyPThreadThreadId() -> String {
     #if os(macOS)
     let threadId = pthread_mach_thread_np(pthread_self())
     #else

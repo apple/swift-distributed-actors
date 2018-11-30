@@ -35,6 +35,9 @@ public final class ActorSystem {
 
     let deadLetters: ActorRef<DeadLetter>
 
+    /// The "grim reaper" takes faulted "undead" actors and terminates them forcefully.
+    internal lazy var reaper: FaultyActorReaper.Ref? = nil
+
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
@@ -72,6 +75,10 @@ public final class ActorSystem {
 
         self.localProvider = LocalActorRefProvider()
         self.processProvider = ProcessFaultDomainActorRefProvider()
+
+        // --- fault handling ---
+        // TODO should be a system actor
+        self.reaper = try! self.spawn(FaultyActorReaper.behavior, name: "reaper")
     }
 
     public convenience init() {
