@@ -57,6 +57,10 @@ public struct Children {
         pprint("insert child \(childRef)... got all: \(self.container), self: \(self)")
     }
 
+    internal func contains(_ name: String) -> Bool {
+        return container.keys.contains(name)
+    }
+
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, false otherwise
     internal mutating func remove<T, R: ActorRef<T>>(_ childRef: R) -> Bool {
@@ -72,6 +76,7 @@ extension ActorCell: ChildActorRefFactory {
     // TODO: Very similar to top level one, though it will be differing in small bits... Likely not worth to DRY completely
     internal func internal_spawn<Message2>(_ behavior: Behavior<Message2>, name: String, props: Props) throws -> ActorRef<Message2> {
         try behavior.validateAsInitial()
+        try validateUniqueName(name)
         // TODO prefix $ validation (only ok for anonymous)
 
         let nameSegment = try ActorPathSegment(name)
@@ -114,9 +119,16 @@ extension ActorCell: ChildActorRefFactory {
         // TODO this is not really correct, just placeholder code for now
         ref.internal_downcast.sendSystemMessage(.tombstone)
     }
+
+    private func validateUniqueName(_ name: String) throws {
+        if children.contains(name) {
+            throw ActorError.duplicateActorPath(path: try self.path / ActorPathSegment(name))
+        }
+    }
 }
 
 
 public enum ActorError: Error {
     case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
+    case duplicateActorPath(path: ActorPath)
 }
