@@ -304,7 +304,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
-        self._myselfInACell = nil
+        //FIXME: We should not carry this around after the actor is stopped
+        //self._myselfInACell = nil
         self.behavior = .stopped
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")

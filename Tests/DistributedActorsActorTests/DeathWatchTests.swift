@@ -267,6 +267,19 @@ class DeathWatchTests: XCTestCase {
 //        p.watch(system.deadLetters)
 //        try p.expectTerminated(system.deadLetters)
 //    }
+
+    func test_sendingToStoppedRef_shouldNotCrash() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn(stopOnAnyMessage(probe: p.ref), name: "stopMePlz2")
+
+        p.watch(stoppableRef)
+
+        stoppableRef ! .stop
+
+        try p.expectTerminated(stoppableRef)
+
+        stoppableRef ! .stop
+    }
 }
 
 private enum Done {
