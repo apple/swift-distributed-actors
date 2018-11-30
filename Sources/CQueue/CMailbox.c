@@ -305,6 +305,7 @@ int64_t cmailbox_message_count(CMailbox* mailbox) {
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
+    #ifdef SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
     char buffer[33];
@@ -334,6 +335,7 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            is_terminating(status) ? "Y" : "N",
            is_closed(status) ? "Y" : "N"
     );
+    #endif
 }
 
 int64_t get_status(CMailbox* mailbox) {
