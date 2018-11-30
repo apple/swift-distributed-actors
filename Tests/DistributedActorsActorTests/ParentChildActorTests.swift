@@ -59,14 +59,11 @@ class ParentChildActorTests: XCTestCase {
             switch message {
             case let .spawnChild(behavior, name):
                 do {
-                    // FIXME we MUST allow `try context.spawn` without catching
                     let kid = try context.spawn(behavior, name: name)
                     probe.tell(.spawned(child: kid))
                 } catch let ActorError.duplicateActorPath(path) {
                     probe.tell(.spawnFailed(path: path))
-                } catch let e {
-                    fatalError("Failed with: \(e)")
-                }
+                } // bubble up others
 
             case let .findByName(name):
                 if let found = context.children.find(named: name, withType: ChildProtocol.self) {
