@@ -44,6 +44,7 @@ class ParentChildActorTests: XCTestCase {
     typealias ParentChildProbeRef = ActorRef<ParentChildProbeProtocol>
     enum ParentChildProbeProtocol: Equatable {
         case spawned(child: ChildRef)
+        case spawnFailed(path: ActorPath)
 
         case childNotFound(name: String)
         case childFound(name: String,ref: ChildRef)
@@ -57,8 +58,15 @@ class ParentChildActorTests: XCTestCase {
         return .receive { context, message in
             switch message {
             case let .spawnChild(behavior, name):
-                let kid = try! context.spawn(behavior, name: name) // FIXME we MUST allow `try context.spawn`
-                probe.tell(.spawned(child: kid))
+                do {
+                    // FIXME we MUST allow `try context.spawn` without catching
+                    let kid = try context.spawn(behavior, name: name)
+                    probe.tell(.spawned(child: kid))
+                } catch let ActorError.duplicateActorPath(path) {
+                    probe.tell(.spawnFailed(path: path))
+                } catch let e {
+                    fatalError("Failed with: \(e)")
+                }
 
             case let .findByName(name):
                 if let found = context.children.find(named: name, withType: ChildProtocol.self) {
@@ -129,6 +137,29 @@ class ParentChildActorTests: XCTestCase {
 //        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
 //        try p.expectMessage(.childNotFound(name: child.path.name))
 
+    }
+
+    func test_contextSpawn_duplicateNameShouldFail() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent-2")
+        parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
+
+        _ = try p.expectMessageMatching { x throws -> ActorRef<ChildProtocol>? in
+            switch x {
+            case let .spawned(child): return child
+            default: return nil
+            }
+        }
+
+        parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
+
+        _ = try p.expectMessageMatching { x throws -> ActorPath? in
+            switch x {
+            case let .spawnFailed(path): return path
+            default: return nil
+            }
+        }
     }
 
     // TODO test with watching the child actor
