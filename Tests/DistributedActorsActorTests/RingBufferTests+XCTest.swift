@@ -34,7 +34,6 @@ extension RingBufferTests {
                 ("test_offer_full", test_offer_full),
                 ("test_take_empty", test_take_empty),
                 ("test_take_non_empty", test_take_non_empty),
-                ("test_offer_take_wrap", test_offer_take_wrap),
                 ("test_peek_empty", test_peek_empty),
                 ("test_peek_non_empty", test_peek_non_empty),
                 ("test_peek_non_empty_multiple_calls", test_peek_non_empty_multiple_calls),
