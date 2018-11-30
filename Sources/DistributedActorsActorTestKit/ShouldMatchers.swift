@@ -73,7 +73,7 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
         return error
     }
 
-    let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw, but returned: \(it!)")
+    let msg = callSiteInfo.detailedMessage(assertionExplained: "Expected block to throw, but returned: [\(it!)]")
     XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
     fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
 }
@@ -102,7 +102,7 @@ public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #fil
     do {
         let _ = try block()
     } catch {
-        let msg = callSiteInfo.detailedMessage(assertionExplained: "Unexpected throw captured: \(error)")
+        let msg = callSiteInfo.detailedMessage(assertionExplained: "Unexpected throw captured: [\(error)]")
         XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
         fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
     }
@@ -117,7 +117,7 @@ public enum ShouldMatcherError: Error {
 extension Optional {
     public func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let msg = callSite.detailedMessage(assertionExplained: "Expected nil, got \(self)")
+        let msg = callSite.detailedMessage(assertionExplained: "Expected nil, got [\(String(describing: self))]")
         XCTAssertNil(self, msg, file: callSite.file, line: callSite.line)
     }
 
@@ -177,7 +177,7 @@ struct CallSiteInfo {
     /// // TODO: DRY this all up
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func detailedMessage(_ it: Any, _ expected: Any) -> String {
-        let msg = "Assertion failed: [\(it)] did not equal expected [\(expected)]\n"
+        let msg = "Expected [\(it)] to equal [\(expected)]\n"
         return detailedMessage(assertionExplained: msg)
     }
 
