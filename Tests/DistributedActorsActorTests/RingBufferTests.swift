@@ -96,19 +96,6 @@ class RingBufferTests: XCTestCase {
         buffer.take().shouldEqual(1)
     }
 
-    // the ringbuffer should not increase buffer size when inserting and taking
-    // a number of elements greater than capacity
-    func test_offer_take_wrap() {
-        let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
-
-        for i in 1...(capacity * 20) {
-            _ = buffer.offer(element: i)
-            buffer.take().shouldEqual(i)
-        }
-
-        buffer.elements.capacity.shouldEqual(capacity)
-    }
-
     func test_peek_empty() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
