@@ -210,14 +210,7 @@ final class Mailbox<Message> {
     func run() {
         pprint("ENTERING RUN, installing handler")
 
-        CDungeon.install_swift_crash_handler({
-            print("BAD, THERE WAS A CRASH. Killing myself in 5s...\n")
-            let q = DispatchQueue(label: "killMyselfQ", attributes: .concurrent)
-            q.asyncAfter(deadline: .now() + 5.0) {
-                kill(getpid(), SIGKILL)
-            }
-        })
-
+        try! FaultHandlingDungeon.installCrashHandling(reaper: self.cell.system.reaper!, cell: self.cell)
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
@@ -268,3 +261,4 @@ final class Mailbox<Message> {
         }
     }
 }
+

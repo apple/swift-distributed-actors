@@ -33,7 +33,7 @@ struct TestMatchers<T> {
 
     func toBe<T>(_ expected: T.Type) {
         if !(it is T) {
-            let msg = self.callSite.detailedMessage(it, expected)
+            let msg = self.callSite.detailedMessage(got: it, expected: expected)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
     }
@@ -46,7 +46,7 @@ extension TestMatchers where T: Equatable {
     }
 
     func toNotEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(it, expected)
+        let msg = self.callSite.detailedMessage(got: it, expected: expected)
         XCTAssertNotEqual(it, expected, msg, file: callSite.file, line: callSite.line)
     }
 
@@ -54,8 +54,58 @@ extension TestMatchers where T: Equatable {
         if !(it is Other) {
             let msg = self.callSite.detailedMessage(got: it, expected: expected)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
     }
 }
+
+// MARK: assertion extensions on specific types
+
+extension Optional {
+    public func shouldBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let msg = callSite.detailedMessage("Expected nil, got \(self)")
+        XCTAssertNil(self, msg, file: callSite.file, line: callSite.line)
+    }
+
+    public func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let msg = callSite.detailedMessage("Expected not nil")
+        XCTAssertNotNil(self, msg, file: callSite.file, line: callSite.line)
+    }
+}
+
+extension Equatable {
+
+    /// Asserts that the value is equal to the `other` value
+    public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toEqual(other())
+    }
+
+    /// Asserts that the value is of the expected Type `T`
+    public func shouldBe<T>(_ expectedType: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toBe(expectedType)
+    }
+
+    public func shouldNotEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toNotEqual(other())
+    }
+}
+
+extension Bool {
+    public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toEqual(false)
+    }
+
+    public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toEqual(true)
+    }
+}
+
 
 // MARK: free functions
 
@@ -113,6 +163,8 @@ public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #fil
         fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
     }
 }
+
+// MARK: Errors and metadata
 
 public enum ShouldMatcherError: Error {
     case expectedErrorToBeThrown

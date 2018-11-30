@@ -20,7 +20,7 @@ import SwiftDistributedActorsActorTestKit
 class ActorIsolationFailureHandlingTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
-    lazy var testKit: ActorTestKit = ActorTestKit(system: system)
+    lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     let isolateFaultDomainProps = Props().withFaultDomain(.isolate)
 
@@ -99,8 +99,8 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = ActorTestProbe(name: "testProbe-master", on: system)
-        let pw: ActorTestProbe<Int> = ActorTestProbe(name: "testProbe-faultyWorker", on: system)
+        let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master")
+        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
         let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
             name: "healthyMaster")
@@ -127,8 +127,8 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_FaultDomain_crashOnlyWorkerOnDivisionByZero() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = ActorTestProbe(name: "testProbe-master", on: system)
-        let pw: ActorTestProbe<Int> = ActorTestProbe(name: "testProbe-faultyWorker", on: system)
+        let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master")
+        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
         let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
             name: "healthyMaster", props: isolateFaultDomainProps)
