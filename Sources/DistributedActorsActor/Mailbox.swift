@@ -191,7 +191,7 @@ final class Mailbox<Message> {
         let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
         if schedulingDecision == 0 {
             // enqueued, we have to schedule
-            traceLog_Mailbox("\(cell.myself) Enqueued system message \(systemMessage), we trigger scheduling")
+            traceLog_Mailbox("\(cell.path) Enqueued system message \(systemMessage), we trigger scheduling")
             cell.dispatcher.execute(self.run)
         } else if schedulingDecision < 0 {
             // not enqueued, mailbox is closed, actor is terminating/terminated
@@ -204,7 +204,7 @@ final class Mailbox<Message> {
             }
         } else { // schedulingDecision > 0 {
             // this means we enqueued, and the mailbox already will be scheduled by someone else
-            traceLog_Mailbox("\(cell.myself) Enqueued system message \(systemMessage), someone scheduled already")
+            traceLog_Mailbox("\(cell.path) Enqueued system message \(systemMessage), someone scheduled already")
         }
     }
 

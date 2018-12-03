@@ -87,7 +87,8 @@ extension ActorCell: ChildActorRefFactory {
         let cell: ActorCell<Message2> = ActorCell<Message2>(
             behavior: behavior,
             system: system,
-            dispatcher: d // TODO pass the Props
+            dispatcher: d, // TODO pass the Props
+            path: path
         )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
