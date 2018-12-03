@@ -107,9 +107,11 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return unwrapped
     }
 
+    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
     override public var path: ActorPath {
         return self._path
     }
+    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
     override public var name: String {
         return self.path.name
     }
@@ -301,7 +303,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         self._myselfInACell?.mailbox.setClosed()
 
         let myPath: ActorPath? = self._myselfInACell?.path
-        traceLog_Cell("FINISH TERMINATING \(String(describing: myPath))")
+        traceLog_Cell("FINISH TERMINATING \(self)")
 
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
@@ -310,6 +312,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
+        // self._myselfInACell = ActorRefWithDeadCell(system: system, path: path)
         self._myselfInACell = nil
         self.behavior = .stopped
 
@@ -346,7 +349,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
 extension ActorCell: CustomStringConvertible {
     public var description: String {
-        let path = self._myselfInACell?.path.description ?? "<terminated-TODO>" // FIXME path should always remain safe to touch, also after termination (!)
+        let path = self._myselfInACell?.path.description ?? "/system/deadLetters#DEAD###" // FIXME path should always remain safe to touch, also after termination (!)
         return "\(type(of: self))(\(path))"
     }
 }

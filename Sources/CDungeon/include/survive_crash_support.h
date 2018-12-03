@@ -28,7 +28,12 @@
 #ifndef SURVIVE_CRASH_SUPPORT_H
 #define SURVIVE_CRASH_SUPPORT_H
 
-int sact_install_swift_crash_handler(void(^)(void));
+typedef void (* FailCellCallback)(void* context, void* failingCell, int sig, int sicode);
+
+void sact_set_running_cell(void*);
+
+// invoke with
+int sact_install_swift_crash_handler(void* failContext, FailCellCallback);
 void sact_simulate_trap(void);
 
 #endif

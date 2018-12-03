@@ -90,6 +90,7 @@ public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     func asHashable() -> AnyHashable
 }
 
+/// INTERNAL API: DO NOT TOUCH.
 internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSystemMessages {
     private let anyRef: AnyReceivesSystemMessages
 
@@ -130,7 +131,6 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
     }
 }
 
-/// INTERNAL API: DO NOT TOUCH.
 internal extension AnyReceivesSystemMessages {
     
     /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSystemMessages where it is KNOWN guaranteed that it is a box

@@ -69,7 +69,7 @@ public func pnote(_ message: String, file: StaticString = #file, line: UInt = #l
     print("\(yellow)\(file):\(line) : \(message)\(reset)")
 }
 
-func _hackyPThreadThreadId() -> String {
+internal func _hackyPThreadThreadId() -> String {
     #if os(macOS)
     let threadId = pthread_mach_thread_np(pthread_self())
     #else
