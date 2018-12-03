@@ -144,14 +144,17 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // issue a message that will cause the worker to crash
         childWorker.tell(.work(n: 100, divideBy: 0)) // BOOM!
+        try pw.expectNoMessage(for: .milliseconds(200)) // code after the divide-by-zero should not be allowed to execute
 
         // the worker, should have terminated due to the error:
         try pw.expectTerminated(childWorker)
+        pnote("\(childWorker.path) has terminated")
 
         // even though the worker crashed, the parent is still alive (!)
         let stillAlive = "still alive"
         healthyMaster.tell(stillAlive)
-        try pm.expectMessage(.echoing(message: "stillAlive"))
+        try pm.expectMessage(.echoing(message: "still alive"))
+        pnote("Parent \(healthyMaster) still active.")
     }
 
 }

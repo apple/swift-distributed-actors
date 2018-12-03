@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 #define _GNU_SOURCE
+#include <stdio.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
@@ -23,39 +24,40 @@
 #include <sys/ucontext.h>
 #include <unistd.h>
 
-#include <dispatch/dispatch.h>
-
 #include "include/survive_crash_support.h"
 
 void complain_and_pause_thread(void *ctx);
 int my_tid();
 
+static atomic_flag handler_set = ATOMIC_FLAG_INIT;
+
+static _Thread_local void* current_run_cell_pointer = NULL;
+static _Thread_local void* fail_context = NULL;
 
 /*
  * This variable holds the dispatch group in the time between the crash handler
  * being registered and the first crash having happened. Otherwise NULL.
  * To be used with atomic_compare_exchange_strong
  */
-static _Atomic dispatch_group_t crashGroup = NULL;
-static _Atomic (void*) cell_pointer = NULL;
-
-pthread_t thread_ids[32];
-void* reaper_notification_callbacks[32];
+// static _Atomic (void*) cell_pointer = NULL;
+// static _Atomic (FailCellCallback*) fail_cell = NULL;
+static FailCellCallback fail_cell = NULL;
 
 pthread_mutex_t lock;
 
 
-static void sighandler(int signo, siginfo_t *si, void *data) {
-    printf("!!!!! [survive_crash][thread:%d] "
-           "HANDLE CRASH? si_value:%d, signo:%d, si.si_code:%d, si.si_errno:%d"
-           "\n", my_tid(),
-           si->si_value, signo, si->si_code, si->si_errno, FPE_INTDIV);
-
+static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
 
     // the context:
     ucontext_t *uc = (ucontext_t *)data;
+
+    // invoke our swift-handler, it will schedule the reaper and fail this cell
+    fail_cell(fail_context, current_run_cell_pointer, sig, siginfo->si_code);
+
+    // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
+    // http://man7.org/linux/man-pages/man3/backtrace.3.html
 
     #ifdef __linux__
         uc->uc_mcontext.gregs[REG_RIP] = (greg_t)&complain_and_pause_thread;
@@ -67,13 +69,22 @@ static void sighandler(int signo, siginfo_t *si, void *data) {
 }
 
 void block_thread() {
+    fprintf(stderr, "!!!!! [survive_crash][thread:%d] "
+           "Blocking thread forever to prevent progressing into undefined behavior. "
+           "Process remains alive.\n", my_tid());
+
     int fd[2] = { -1, -1 };
 
     pipe(fd);
-    while (true) {
+    for (;;) {
         char buf;
         read(fd[0], &buf, 1);
     }
+}
+
+void kill_pthread_self() {
+    // kill myself, to prevent any damage, actor will be rescheduled with .failed state and die
+    pthread_exit(NULL);
 }
 
 __attribute__((noinline))
@@ -84,67 +95,69 @@ void complain_and_pause_thread(void *ctx) {
             "movq $0xfffffffffff0, %%rsi\n"
             "andq %%rsi, %%rsp\n" ::: "sp", "si", "cc", "memory");
 
-//    dispatch_group_t g = crashGroup;
-//    if (g && atomic_compare_exchange_strong(&crashGroup, &g, NULL)) {
-//        /* we won the race and the handler is set */
-//
-//        dispatch_group_leave(g); /* this should fire the crash handler */
-//        dispatch_release(g);
-//    }
-
     block_thread();
+    // kill_pthread_self(); // terminates entire process
+}
+
+
+void sact_set_running_cell(void* cell_pointer) {
+    current_run_cell_pointer = &cell_pointer;
+}
+
+/* returns error code if sigaction install fails, or `0` otherwise */
+int install_sigaction(int sig, struct sigaction sa) {
+    int e = sigaction(SIGILL, &sa, NULL);
+    if (e) {
+        int errno_save = errno;
+        pthread_mutex_unlock(&lock);
+        errno = errno_save;
+        assert(errno_save != 0);
+        return errno_save;
+    }
+
+    return 0 ;
 }
 
 /* returns errno and sets errno appropriately, 0 on success */
-int sact_install_swift_crash_handler(void(^crash_handler_callback)(void)) {
+int sact_install_swift_crash_handler(
+    void* _fail_context, FailCellCallback fail_cell_callback) {
     pthread_mutex_lock(&lock);
 
-    dispatch_group_t g = dispatch_group_create();
+    fail_cell = fail_cell_callback;
+    fail_context = _fail_context;
 
-    thread_ids[0] = my_tid();
-    reaper_notification_callbacks[0] = crash_handler_callback;
-    printf("!!!!! [survive_crash][thread:%d] Stored thread id\n", thread_ids[0]);
-
-    dispatch_group_t g_actual = NULL;
-    if (atomic_compare_exchange_strong(&crashGroup, &g_actual, g)) {
-        /* we won the race */
-        assert(crashGroup == g);
-
-        dispatch_group_enter(crashGroup);
-        dispatch_group_notify(crashGroup,
-                              dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0),
-                              crash_handler_callback);
+    if (atomic_flag_test_and_set(&handler_set) == 0) {
+        /* we won the race; we only set the signal handler once */
 
         struct sigaction sa = { 0 };
-        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
-        sa.sa_sigaction = sighandler;
 
-        int e = sigaction(SIGILL, &sa, NULL);
-        if (e) {
+        sa.sa_flags = SA_RESTART | SA_SIGINFO;
+        sa.sa_sigaction = sact_sighandler;
+
+        int e1 = sigaction(SIGILL, &sa, NULL);
+        if (e1) {
             int errno_save = errno;
-            dispatch_release(g);
+            pthread_mutex_unlock(&lock);
             errno = errno_save;
             assert(errno_save != 0);
             return errno_save;
         }
 
-        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
-        sa.sa_sigaction = sighandler;
-        e = sigaction(SIGABRT, &sa, NULL);
-        if (e) {
+        sa.sa_flags = SA_RESTART | SA_SIGINFO;
+        sa.sa_sigaction = sact_sighandler;
+
+        int e2 = sigaction(SIGABRT, &sa, NULL);
+        if (e2) {
             int errno_save = errno;
-            dispatch_release(g);
+            pthread_mutex_unlock(&lock);
             errno = errno_save;
             assert(errno_save != 0);
             return errno_save;
         }
 
-        /* no need to release g, will be done when the crash happens. */
         pthread_mutex_unlock(&lock);
         return 0;
     } else {
-        /* we lost the race so couldn't install the handler */
-        dispatch_release(g);
         pthread_mutex_unlock(&lock);
 
         errno = EBUSY;

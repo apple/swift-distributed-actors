@@ -90,6 +90,10 @@ final class Mailbox<Message> {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
 
+        // Implementation note:
+        // contexts aim to capture self.cell, but can't since we are not done initializing
+        // all self references so Swift does not allow us to write self.cell in them.
+
         self.messageCallbackContext = WrappedClosure(exec: { ptr in
             let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
@@ -123,14 +127,12 @@ final class Mailbox<Message> {
         })
 
         self.interpretMessage = { (ctxPtr, msgPtr) in
-            defer {
-                msgPtr?.deallocate()
-            }
+            defer { msgPtr?.deallocate() }
             let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
 
             var shouldContinue: Bool
             do {
-                shouldContinue = try ctx?.pointee.exec(with: msgPtr!) ?? false // FIXME don't like the many ? around here hm, likely costs -- ktoso
+                shouldContinue = try ctx?.pointee.exec(with: msgPtr!) ?? false
             } catch {
                 traceLog_Mailbox("Error while processing message! Was: \(error) TODO supervision decisions...")
 
@@ -141,14 +143,12 @@ final class Mailbox<Message> {
             return shouldContinue
         }
         self.dropMessage = { (ctxPtr, msgPtr) in
-            defer {
-                msgPtr?.deallocate()
-            }
+            defer { msgPtr?.deallocate() }
             let ctx = ctxPtr?.assumingMemoryBound(to: WrappedDropClosure.self)
             do {
-                try ctx?.pointee.drop(with: msgPtr!) // FIXME don't like the many ? around here hm, likely costs -- ktoso
+                try ctx?.pointee.drop(with: msgPtr!)
             } catch {
-
+                traceLog_Mailbox("Error while dropping message! Was: \(error) TODO supervision decisions...")
             }
         }
     }
@@ -189,8 +189,8 @@ final class Mailbox<Message> {
         let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
         if schedulingDecision == 0 {
             // enqueued, we have to schedule
-            traceLog_Mailbox("\(cell.path) Enqueued system message \(systemMessage), we trigger scheduling")
-            cell.dispatcher.execute(self.run)
+            traceLog_Mailbox("\(self.cell.path) Enqueued system message \(systemMessage), we trigger scheduling")
+            self.cell.dispatcher.execute(self.run)
         } else if schedulingDecision < 0 {
             // not enqueued, mailbox is closed, actor is terminating/terminated
             // special handle in-line certain system messages
@@ -198,20 +198,21 @@ final class Mailbox<Message> {
                 // nothing to do // FIXME handle this nicer
             } else {
                 traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
-                cell.sendToDeadLetters(DeadLetter(systemMessage))
+                self.cell.sendToDeadLetters(DeadLetter(systemMessage))
             }
         } else { // schedulingDecision > 0 {
             // this means we enqueued, and the mailbox already will be scheduled by someone else
-            traceLog_Mailbox("\(cell.path) Enqueued system message \(systemMessage), someone scheduled already")
+            traceLog_Mailbox("\(self.cell) Enqueued system message \(systemMessage), someone scheduled already")
         }
     }
 
     @inlinable
     func run() {
-        pprint("ENTERING RUN, installing handler")
+        try! FaultHandlingDungeon.installCrashHandling(reaper: cell.system.reaper!, cell: &cell)
+        defer { FaultHandlingDungeon.unregisterCrashHandling() }
+//        // can't use it since the tooling panics about concurrent access to self :-( (since we reschedule and it panics there
 
-        try! FaultHandlingDungeon.installCrashHandling(reaper: self.cell.system.reaper!, cell: self.cell)
-
+//        try! FaultHandlingDungeon.withCrashHandlerInstall(reaper: self.cell.system.reaper!, cell: &self.cell) {
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
             &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
@@ -241,24 +242,5 @@ final class Mailbox<Message> {
         cmailbox_set_closed(self.mailbox)
     }
 
-    @inlinable
-    internal func handleOnClosedMailbox(_ message: SystemMessage) {
-        #if SACT_TRACE_MAILBOX
-        let cellDescription = cell._myselfInACell?.path.debugDescription ?? "<cell-name-not-available>"
-        traceLog_Mailbox("Closed Mailbox of [\(cellDescription)] received: \(message); handling on calling thread.")
-        #endif
-
-        switch message {
-        case let .watch(watchee, watcher):
-            assert(watchee.path == cell.myself.path, "Watch for other than myself arrived at actor! " +
-                "Watchee: \(watchee), myself: \(cell.myself)")
-
-            let myself = cell.myself.internal_boxAnyAddressableActorRef()
-            watcher.sendSystemMessage(.terminated(ref: myself, existenceConfirmed: true))
-
-        default:
-            return // ignore
-        }
-    }
 }
 

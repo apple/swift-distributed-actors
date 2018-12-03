@@ -140,7 +140,7 @@ extension ActorSystem: ActorRefFactory {
         let path = try ActorPath(root: "user") / nameSegment
         // TODO: reserve the name, atomically
 
-        log.info("Spawning [\(behavior)], name: [\(name)]")
+        log.info("Spawning [\(behavior)], path: [\(path)]")
 
 
         let refWithCell: ActorRef<Message>
