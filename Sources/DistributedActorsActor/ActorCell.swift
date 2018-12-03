@@ -35,6 +35,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
     internal var system: ActorSystem
 
+    internal let _path: ActorPath
+
     // Implementation of DeathWatch
     @usableFromInline internal var deathWatch: DeathWatch<Message>!
 
@@ -48,12 +50,13 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         return self._myselfInACell
     }
 
-    internal init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher) {
+    internal init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher, path: ActorPath) {
         // TODO: we may end up referring to the system here... we'll see
         self.behavior = behavior
         self._dispatcher = dispatcher
         self.system = system
         self.deathWatch = DeathWatch()
+        self._path = path
     }
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
@@ -105,7 +108,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     }
 
     override public var path: ActorPath {
-        return self.myself.path
+        return self._path
     }
     override public var name: String {
         return self.path.name
@@ -304,8 +307,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
-        //FIXME: We should not carry this around after the actor is stopped
-        //self._myselfInACell = nil
+        self._myselfInACell = nil
         self.behavior = .stopped
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")

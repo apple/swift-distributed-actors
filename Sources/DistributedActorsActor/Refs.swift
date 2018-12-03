@@ -121,12 +121,12 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     }
 
     @usableFromInline internal func sendMessage(_ message: Message) {
-        traceLog_Mailbox("sendMessage: [\(message)], to: \(self.cell.myself)")
+        traceLog_Mailbox("sendMessage: [\(message)], to: \(self)")
         self.mailbox.sendMessage(envelope: Envelope(payload: message))
     }
 
     @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
-        traceLog_Mailbox("sendSystemMessage: [\(message)], to: \(String(describing: self.cell._myselfInACell))")
+        traceLog_Mailbox("sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message)
     }
 }
