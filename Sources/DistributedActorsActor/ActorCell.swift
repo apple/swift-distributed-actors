@@ -14,6 +14,7 @@
 
 import NIO
 import Dispatch
+import CDungeon
 
 @usableFromInline let SACT_TRACE_CELL = false
 
@@ -100,7 +101,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
         guard let unwrapped = self._myselfInACell else {
-            fatalError("Attempted to unwrap `_myselfInACell` yet it was null. " +
+            fatalError("Attempted to unwrap `_myselfInACell` yet it was nil. " +
                 "This should never happen, and is likely an implementation bug. " +
                 "Was a message handled by an already-dead actor which should never do so?")
         }
@@ -230,7 +231,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
         switch next {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
-            message: "Death Pact error: [\(context.myself)] has not handled .terminated signal received from watched [\(ref)] actor. " +
+            message: "Death Pact error: [\(context.path)] has not handled .terminated signal received from watched [\(ref)] actor. " +
                 "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
@@ -245,8 +246,13 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     ///
     /// Special handling is applied to [[DeathPactError]] since if that error is passed in here, we know that `.terminated`
     /// was not handled and we have to adhere to the DeathPact contract by stopping this actor as well.
+    ///
+    /// We only FORCE the sending of a tombstone if we know we have parked the thread because an actual failure happened,
+    /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
+    /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
     // TODO: not sure if this should mutate the cell or return to mailbox the nex behavior
     internal func fail(error: Error) {
+        self._myselfInACell?.mailbox.setFailed()
         // TODO: we could handle here "wait for children to terminate"
 
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
@@ -260,6 +266,20 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
             log.error("Actor failing, reason: \(error)")
             self.finishTerminating() // FIXME likely too eagerly
         }
+    }
+
+    /// Similar to `fail` however assumes that the current mailbox run will never complete, which can happen when we crashed,
+    /// and invoke this function from a signal handler.
+    // Implementation notes: Similar to `fail()` but trying to keep them separate as fail() can be called during a run
+    // where we catch an exception thrown by user code and then the run continues and then we send the tombstone.
+    internal func crashFail(error: Error) {
+        log.error("Actor crashing, reason: \(error)")
+
+//        // since the the mailbox run will not complete, we have to perform the .tombstone send.
+//        // doing so will schedule another run
+//        self.sendSystemMessage(.tombstone) // Rest in Peace
+
+        self.finishTerminating() // FIXME likely too eagerly
     }
 
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
@@ -312,8 +332,7 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
-        // self._myselfInACell = ActorRefWithDeadCell(system: system, path: path)
-        self._myselfInACell = nil
+        self._myselfInACell = nil // TODO: maybe try inventing a ActorRefWithDeadCell(system: system, path: path)?
         self.behavior = .stopped
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
