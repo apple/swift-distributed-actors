@@ -40,6 +40,8 @@ public /* but really internal... */ enum SystemMessage: Equatable {
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
     case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info?
 
+    /// Sent by parent to child actor to stop it
+    case stop
     // TODO: this is incomplete
 
     // exciting future ideas:
@@ -61,13 +63,15 @@ extension SystemMessage {
             return lRef.path == rRef.path && lExisted == rExisted
 
         case (.tombstone, .tombstone): return true
+        case (.stop, .stop): return true
 
             // listing cases rather than a full-on `default` to get an error when we add a new system message
         case (.start, _),
              (.watch, _),
              (.unwatch, _),
              (.tombstone, _),
-             (.terminated, _): return false
+             (.terminated, _),
+             (.stop, _): return false
         }
     }
 }

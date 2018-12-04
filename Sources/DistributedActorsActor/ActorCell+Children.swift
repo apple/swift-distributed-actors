@@ -62,10 +62,15 @@ public struct Children {
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
-    /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, false otherwise
+    /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
     internal mutating func remove<T, R: ActorRef<T>>(_ childRef: R) -> Bool {
-        let removed = container.removeValue(forKey: childRef.path.name)
-        return removed != nil
+        if let ref = container[childRef.path.name] {
+            if ref.path.uid == childRef.path.uid {
+                return container.removeValue(forKey: childRef.path.name) != nil
+            }
+        }
+
+        return false
     }
 
 }
@@ -110,15 +115,15 @@ extension ActorCell: ChildActorRefFactory {
         return refWithCell
     }
 
-    // FIXME this is not correct (!!!)
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
         // we immediately attempt the remove since
-        guard self.children.remove(ref) else {
+        guard ref.path.isChildOf(self.path) else {
             throw ActorError.attemptedStoppingNonChildActor(ref: ref)
         }
 
-        // TODO this is not really correct, just placeholder code for now
-        ref.internal_downcast.sendSystemMessage(.tombstone)
+        if self.children.remove(ref) {
+            ref.internal_downcast.sendSystemMessage(.stop)
+        }
     }
 
     private func validateUniqueName(_ name: String) throws {

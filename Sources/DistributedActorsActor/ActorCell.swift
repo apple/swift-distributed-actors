@@ -178,6 +178,9 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
             traceLog_Cell("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
             return false
+
+        case .stop:
+            try self.becomeNext(behavior: .stopped)
         }
 
         return self.behavior.isStillAlive()

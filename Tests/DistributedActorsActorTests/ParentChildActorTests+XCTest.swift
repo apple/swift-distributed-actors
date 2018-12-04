@@ -26,6 +26,8 @@ extension ParentChildActorTests {
       return [
                 ("test_contextSpawn_shouldSpawnChildActorOnAppropriatePath", test_contextSpawn_shouldSpawnChildActorOnAppropriatePath),
                 ("test_contextSpawn_duplicateNameShouldFail", test_contextSpawn_duplicateNameShouldFail),
+                ("test_contextStop_shouldStopChild", test_contextStop_shouldStopChild),
+                ("test_contextStop_shouldThrowIfRefIsNotChild", test_contextStop_shouldThrowIfRefIsNotChild),
            ]
    }
 }
