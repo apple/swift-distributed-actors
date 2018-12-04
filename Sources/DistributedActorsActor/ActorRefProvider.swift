@@ -16,6 +16,9 @@ import NIOConcurrencyHelpers
 
 internal protocol ActorRefProvider {
 
+    /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].
+    ///
+    /// The returned actor ref is immediately valid and may have messages sent to.
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, path: ActorPath,
@@ -38,7 +41,8 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         let cell: ActorCell<Message> = ActorCell(
             behavior: behavior,
             system: system,
-            dispatcher: dispatcher
+            dispatcher: dispatcher,
+            path: path
         ) // TODO pass the Props
 
         // the mailbox of the actor
@@ -71,7 +75,8 @@ internal struct ProcessFaultDomainActorRefProvider: ActorRefProvider {
         let cell: ActorCell<Message> = ActorCell(
             behavior: behavior,
             system: system,
-            dispatcher: dispatcher
+            dispatcher: dispatcher,
+            path: path
         ) // TODO pass the Props
 
         // the mailbox of the actor

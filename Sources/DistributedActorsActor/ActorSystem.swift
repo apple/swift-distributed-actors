@@ -155,10 +155,9 @@ extension ActorSystem: ActorRefFactory {
             refWithCell = processProvider.spawn(
                 system: self,
                 behavior: behavior, path: path,
-            dispatcher: dispatcher,
-            path: path
-        ) // TODO pass the Props
-
+                dispatcher: dispatcher, props: props
+            ) // TODO pass the Props
+        }
 
         return refWithCell
     }
