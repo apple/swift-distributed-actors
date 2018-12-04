@@ -78,6 +78,14 @@ extension ActorPath {
         // safe because we know that segments is not empty
         return try! ActorPath(segments, uid: ActorUID.random())
     }
+
+    /// Checks whether this [ActorPath] is a direct descendant of the passed in path
+    ///
+    /// - Parameter path: The path to check against
+    /// - Returns: `true` if this [ActorPath] is a direct descendant of `path`, `false` otherwise
+    func isChildOf(_ path: ActorPath) -> Bool {
+        return Array(segments.dropLast()) == path.segments
+    }
 }
 
 // TODO
