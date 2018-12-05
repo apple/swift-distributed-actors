@@ -12,9 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// TODO make a -D exposed property and compile time thingy
-let SACT_TRACE_SENDS = false
-
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 // TODO: designing the cell and ref is so far the most tricky thing I've seen... We want to hide away the ActorRef
@@ -22,7 +19,14 @@ let SACT_TRACE_SENDS = false
 
 // MARK: Public API
 
+/// The most basic of types representing an [ActorRef] - without the ability to send messages to it.
+///
+/// Useful for keeping an actor reference as key of some kind, e.g. in scenarios where an actor is
+/// "responsible for" other actors whose message types may be completely different, so keeping their references
+/// in a same-typed [ActorRef<M>] collection would not be possible.
 public protocol AddressableActorRef: Hashable {
+
+    /// The [ActorPath] under which the actor is located.
     var path: ActorPath { get }
 }
 
@@ -56,6 +60,13 @@ public class ActorRef<Message>: ReceivesMessages {
         return undefined()
     }
 
+    /// Asynchronously "tell" the referred to actor about the `Message`.
+    ///
+    /// If the actor is terminating or terminated, the message will be dropped.
+    ///
+    /// This method is thread-safe, and may be used by multiple threads to send messages concurrently.
+    /// No ordering guarantees are made about the order of the messages written by those multiple threads,
+    /// in respect to each other however.
     public func tell(_ message: Message) {
         return undefined()
     }

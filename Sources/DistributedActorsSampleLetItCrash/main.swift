@@ -26,10 +26,10 @@ enum SimpleProbeMessages: Equatable {
     case echoing(message: String)
 }
 
-//enum FaultyWorkerMessages {
-//    case work(n: Int, divideBy: Int)
-//    case throwError(error: Error)
-//}
+public enum FaultyWorkerMessages {
+    case work(n: Int, divideBy: Int)
+    case throwError(error: Error)
+}
 
 enum WorkerError: Error {
     case error(code: Int)
@@ -40,14 +40,10 @@ func faultyWorkerBehavior() -> Behavior<FaultyWorkerMessages> {
         context.log.info("Working on: \(message)")
         switch message {
         case let .work(n, divideBy):
-//            if divideBy > 0 {
                 let x = n / divideBy
                 context.log.info("Computed result: \(x)")
-//            } else {
-//                // force simulate a trap since it seems linux does not emit those?
-//                CDungeon.sact_simulate_trap();
-//            }
             return .same
+
         case let .throwError(error):
             context.log.warn("Throwing as instructed, error: \(error)")
             throw error

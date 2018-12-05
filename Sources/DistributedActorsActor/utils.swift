@@ -76,5 +76,5 @@ internal func _hackyPThreadThreadId() -> String {
     let threadId = pthread_self(); // TODO: since pthread_threadid_np not available, how to get an id?
     #endif
 
-    return "<thread:\(threadId)>"
+    return "thread:\(threadId)"
 }

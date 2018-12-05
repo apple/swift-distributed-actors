@@ -35,7 +35,6 @@ static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 // shared
 static FailCellCallback shared_fail_cell_cb = NULL;
 
-static _Thread_local void* current_run_cell = NULL; // to capture cell pointer // TODO just context should be enough
 static _Thread_local void* current_fail_context = NULL; // to close over the generic
 
 pthread_mutex_t lock;
@@ -50,11 +49,21 @@ void sact_segfault_sighandler(int sig, siginfo_t* siginfo, void* data) {
     signal(sig, SIG_DFL);
     kill(getpid(), sig);
 }
+void sact_sigbus_sighandler(int sig, siginfo_t* siginfo, void* data) {
+    fprintf(stderr, "!!!!! [survive_crash] SIGBUS received! Dumping backtrace and terminating process.\n");
+    sact_dump_backtrace();
+
+    sleep(1000);
+
+    // proceed with causing a core dump
+    signal(sig, SIG_DFL);
+    kill(getpid(), sig);
+}
 
 static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     fprintf(stderr, "!!!!! [survive_crash][thread:%d] "
-                    "Executing sact_sighandler, for signo:%d, si_code:%d.\n",
-                    my_tid(), sig, siginfo->si_code);
+                    "Executing sact_sighandler %d, for signo:%d, si_code:%d.\n",
+                    my_tid(), current_fail_context, sig, siginfo->si_code);
 
     // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
@@ -63,8 +72,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     ucontext_t *uc = (ucontext_t *)data;
 
     // invoke our swift-handler, it will schedule the reaper and fail this cell
-    shared_fail_cell_cb(current_fail_context,
-        current_run_cell, sig, siginfo->si_code);
+    shared_fail_cell_cb(current_fail_context, sig, siginfo->si_code);
 
     // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
     // http://man7.org/linux/man-pages/man3/backtrace.3.html
@@ -108,17 +116,25 @@ void complain_and_pause_thread(void *ctx) {
     // kill_pthread_self(); // terminates entire process
 }
 
-void sact_set_failure_handling_threadlocal_context(void* fail_context, void* cell) {
-    fprintf(stderr, "!!!!! [survive_crash][thread:%d] setting cell for handling... %d.\n",
-            my_tid(), cell);
+void sact_set_failure_handling_threadlocal_context(void* fail_context) {
+//    fprintf(stderr, "!!!!! [survive_crash][thread:%d] setting context for handling...\n",
+//            my_tid());
 
     current_fail_context = fail_context;
-    current_run_cell = cell;
+}
+
+void* sact_clear_failure_handling_threadlocal_context() {
+//    fprintf(stderr, "!!!!! [survive_crash][thread:%d] clearing context for handling...\n",
+//            my_tid());
+
+    void* old_context = current_fail_context;
+    current_fail_context = NULL;
+    return old_context; // so Swift can release it
 }
 
 /* returns errno and sets errno appropriately, 0 on success */
 int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) {
-//    pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock);
 
     if (atomic_flag_test_and_set(&handler_set) == 0) {
         /* we won the race; we only set the signal handler once */
@@ -135,7 +151,7 @@ int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) 
             int errno_save = errno;
             errno = errno_save;
             assert(errno_save != 0);
-//            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
@@ -147,7 +163,7 @@ int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) 
             int errno_save = errno;
             errno = errno_save;
             assert(errno_save != 0);
-//            pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
@@ -155,11 +171,13 @@ int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) 
         sa.sa_sigaction = sact_segfault_sighandler;
 
         sigaction(SIGSEGV, &sa, NULL);
+        sa.sa_sigaction = sact_sigbus_sighandler;
+        sigaction(SIGBUS, &sa, NULL);
 
-//        pthread_mutex_unlock(&lock);
+        pthread_mutex_unlock(&lock);
         return 0;
     } else {
-//        pthread_mutex_unlock(&lock);
+        pthread_mutex_unlock(&lock);
 
         errno = EBUSY;
         return errno;

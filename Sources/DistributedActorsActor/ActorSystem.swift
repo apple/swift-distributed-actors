@@ -33,7 +33,7 @@ public final class ActorSystem {
     // so without it we could not log anything.
     let eventStream = "" // FIXME actual implementation
 
-    let deadLetters: ActorRef<DeadLetter>
+    @usableFromInline let deadLetters: ActorRef<DeadLetter>
 
     /// The "grim reaper" takes faulted "undead" actors and terminates them forcefully.
     internal lazy var reaper: FaultyActorReaper.Ref? = nil
@@ -81,7 +81,7 @@ public final class ActorSystem {
         let _reaper = try! self.spawn(FaultyActorReaper.behavior, name: "reaper")
         self.reaper = _reaper
         do {
-            try FaultHandlingDungeon.installCrashHandling(reaper: _reaper)
+            try FaultHandling.installCrashHandling(reaper: _reaper)
         } catch {
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
         }
