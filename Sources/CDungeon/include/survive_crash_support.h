@@ -30,8 +30,9 @@
 
 typedef void (* FailCellCallback)(void* context, void* failingCell, int sig, int sicode);
 
-void sact_set_running_cell(void*);
+void sact_set_failure_handling_threadlocal_context(void* fail_context, void* cell);
 
-int sact_install_swift_crash_handler(void* failContext, FailCellCallback);
+int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb);
+
 
 #endif

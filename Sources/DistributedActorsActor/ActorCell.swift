@@ -20,12 +20,18 @@ import CDungeon
 
 // MARK: Internal implementations, the so-called "cell"
 
+/// INTERNAL API
+internal protocol FailableActorCell {
+    /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
+    func crashFail(error: Error)
+}
+
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
 //
 // The cell is mutable, as it may replace the behavior it hosts
-public class ActorCell<Message>: ActorContext<Message> { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
+public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
     // TODO: impl note: we need to ref hold the cell somehow, but the handed our refs dont have to, since they should go to deadletters once we terminate
 
@@ -101,8 +107,10 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
         guard let unwrapped = self._myselfInACell else {
+            CDungeon.sact_dump_backtrace();
+
             fatalError("Attempted to unwrap `_myselfInACell` yet it was nil. " +
-                "This should never happen, and is likely an implementation bug. " +
+                "This should never happen, and is likely an implementation bug, please file a ticket. " +
                 "Was a message handled by an already-dead actor which should never do so?")
         }
         return unwrapped
@@ -272,8 +280,8 @@ public class ActorCell<Message>: ActorContext<Message> { // by the cell being th
     /// and invoke this function from a signal handler.
     // Implementation notes: Similar to `fail()` but trying to keep them separate as fail() can be called during a run
     // where we catch an exception thrown by user code and then the run continues and then we send the tombstone.
-    internal func crashFail(error: Error) {
-        log.error("Actor crashing, reason: \(error)")
+    public func crashFail(error: Error) {
+         log.error("Actor crashing, reason: \(error)")
 
 //        // since the the mailbox run will not complete, we have to perform the .tombstone send.
 //        // doing so will schedule another run

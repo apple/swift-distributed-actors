@@ -25,7 +25,7 @@
 #    8	libsystem_platform.dylib	0x00007fff7e040b3d	 demangled:_sigtramp
 # TODO don't drop the pos (+ n)
 
-RED='\033[0;36m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 while read line
@@ -34,5 +34,5 @@ do
   de_mangled=$(echo "$mangled" | swift demangle)
 
   echo -n "$line" | awk 'BEGIN{}{ printf "%s\t%s\t%s\t demangled:", $1, $2, $3 }'
-  echo -e "$RED$de_mangled$NC"
+  echo -e "$CYAN$de_mangled$NC"
 done

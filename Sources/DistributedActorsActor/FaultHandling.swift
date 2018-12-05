@@ -21,17 +21,24 @@ import Darwin
 import Glibc
 #endif
 
+
+public enum FaultyWorkerMessages {
+    case work(n: Int, divideBy: Int)
+    case throwError(error: Error)
+}
+
+
 // since we need to offer the cell to C code, but it can not be passed closures that capture generic parameters
 private struct WrappedFailCellClosure {
-    private let _fail: (UnsafeMutableRawPointer, Int32, Int32) throws -> ()
+    private let _fail: (UnsafeMutableRawPointer?, Int32, Int32) -> ()
 
-    init(fail: @escaping (UnsafeMutableRawPointer, Int32, Int32) throws -> ()) {
+    init(fail: @escaping (UnsafeMutableRawPointer?, Int32, Int32) -> ()) {
         self._fail = fail
     }
 
     @inlinable
-    func fail(_ cell_ptr: UnsafeMutableRawPointer, sig: Int32, sicode: Int32) throws -> () {
-        try _fail(cell_ptr, sig, sicode) // mutates ActorCell to become failed
+    func fail(_ cell_ptr: UnsafeMutableRawPointer?, sig: Int32, sicode: Int32) -> () {
+         _fail(cell_ptr, sig, sicode) // mutates ActorCell to become failed
     }
 }
 
@@ -47,69 +54,95 @@ internal class FaultHandlingDungeon {
         // no instances
     }
 
-    static func withCrashHandlerInstall<M>(reaper: FaultyActorReaper.Ref, cell: inout ActorCell<M>, run: () throws -> ()) throws {
-        try! installCrashHandling(reaper: reaper, cell: &cell)
-        do {
-            try run()
-        } catch {
-            // if a normal swift throw happens, normal swift error catching and supervision can run
-            // we end our run though, so we have to unregister this actor from the C crash handling...
-            unregisterCrashHandling()
-            throw error
+//    static func withCrashHandlerInstall<M>(reaper: FaultyActorReaper.Ref, cell: inout ActorCell<M>, run: () throws -> ()) throws {
+//        do {
+//            try installCrashHandling(reaper: reaper, cell: &cell) // installing handler can fail, meaning we have no fault handling
+//            try run()
+//        } catch {
+//            // if a normal swift throw happens, normal swift error catching and supervision can run
+//            // we end our run though, so we have to unregister this actor from the C crash handling...
+//            unregisterCrashHandling()
+//            throw error
+//        }
+//
+//    }
+
+    static func installCrashHandling(reaper: FaultyActorReaper.Ref) throws {
+        // TODO use the reaper, in every run close over it?
+
+        let failCallback: FailCellCallback = { contextPtr, cellPtr, sig, sicode in
+            assert(contextPtr != nil, "contextPointer must never be nil when running fail callback! This is a Swift Distributed Actors bug.")
+            assert(cellPtr != nil, "cellPointer must never be nil when running fail callback! This is a Swift Distributed Actors bug.")
+
+            pprint("!!!!!!!!!!!!!! contextPointer ====== \(String(describing: contextPtr))")
+            pprint("!!!!!!!!!!!!!! cellPointer ====== \(String(describing: cellPtr))")
+
+            // unwrap: protected by assertion that it may not be null above in this function
+            let context = contextPtr!.assumingMemoryBound(to: WrappedFailCellClosure.self)
+            pprint("~~~~~~  1111111")
+//            guard let cell = cellPointer else {
+//                sact_dump_backtrace()
+//                fatalError("cellPointer was nil. Should never happen.")
+//            }
+
+            let pointedFailContext = context.pointee
+            pprint("~~~~~~  22222 == \(pointedFailContext)")
+            // unwrap: protected by assertion that it may not be null above in this function
+            pointedFailContext.fail(cellPtr, sig: sig, sicode: sicode)
+            pprint("~~~~~~  4444")
         }
 
+        let handlerInstalledCode = CDungeon.sact_install_swift_crash_handler(
+            // &failCellContext, // set once, globally, invoked with right cell
+            failCallback
+        )
+
+        switch handlerInstalledCode {
+        case 0:
+            pprint("\(cyan) Installed crash handler  \(reset)")
+            () // installed properly
+        case EBUSY:
+            pprint("\(cyan) Entering run....\(reset)")
+//            pprint("[\(cellPath)] Installing crash handling failed, code: EBUSY(\(code))  ")
+            // TODO: this is not really bad? We've set it we're good...
+        default:
+            throw FaultHandlingError.unableToInstallFaultHandlingHook(errorCode: Int(handlerInstalledCode))
+        }
     }
 
-    static func installCrashHandling<M>(reaper: FaultyActorReaper.Ref, cell: inout ActorCell<M>) throws {
+    static func registerCellForCrashHandling<M>(stable: ActorCell<M>, cell: inout ActorCell<M>) {
 
-        // close over `reaper`
         var failCellContext: WrappedFailCellClosure = .init(fail: { failingCellPtr, sig, sicode in
-            let failingCellP = failingCellPtr.assumingMemoryBound(to: ActorCell<Any>.self)
-            let failingCell = failingCellP.pointee
+            assert(failingCellPtr != nil, "failingCellPointer was nil")
+            print("========  111111 ==")
+            print("========  111111 == \(stable)")
+            let failingCellBound = failingCellPtr!.assumingMemoryBound(to: ActorCell<M>.self)
+            print("========  222222")
+            let failingCell = failingCellBound.pointee
+            print("========  pointed = \(failingCell)")
 
             let error = siginfo2error(sig: sig, sicode: sicode)
-
-            pprint("\(red)[\(failingCell)] FAILED, signal:\(sig), sicode:\(sicode). " +
+            pprint("\(red) FAILED: \(error) " +
                 "Parking thread to prevent undefined behavior and more damage. " +
                 "Terminating actor, process remains alive with leaked thread.\(reset)")
 
-            failingCell.fail(error: error)
+            pprint("\(red)[\(failingCell)] FAILED.\(reset)")
 
-            reaper.tell(.failed(cause: error, path: failingCell.myself.path))
+            failingCell.crashFail(error: error)
         })
 
-        let failCallback: FailCellCallback = { contextPointer, cellPointer, sig, sicode in
-            let context = contextPointer?.assumingMemoryBound(to: WrappedFailCellClosure.self)
-            try! context!.pointee.fail(cellPointer!, sig: sig, sicode: sicode)
-        }
-
-        let code: Int32 = withUnsafeMutablePointer(to: &cell) { cellPointer in
-            // TODO tha handler is global, but we get invoked on the right thread...
-            // TODO separate installing the handler from setting th cell
-
-            CDungeon.sact_set_running_cell(cellPointer)
-            return CDungeon.sact_install_swift_crash_handler(
-                &failCellContext, // set once, globally, invoked with right cell
-                failCallback
+        withUnsafeMutablePointer(to: &cell) { cellPointer in
+            pprint("register cell \(cellPointer)<\(M.self)>, and context:\(failCellContext)")
+            CDungeon.sact_set_failure_handling_threadlocal_context(
+                &failCellContext,
+                cellPointer
             )
-        }
-
-        switch code {
-        case 0:
-            pprint("\(cyan)[\(cell.myself.path)] Installed crash handler  \(reset)")
-            () // installed properly
-        case EBUSY:
-            pprint("\(cyan)[\(cell.myself.path)] entering run....\(reset)")
-//            pprint("[\(cell.myself.path)] Installing crash handling failed, code: EBUSY(\(code))  ")
-            // TODO: this is not realy bad? We've set it we're good...
-            ()
-        default:
-            throw FaultHandlingError.unableToInstallFaultHandlingHook(errorCode: Int(code))
         }
     }
 
-    static func unregisterCrashHandling() {
-        return CDungeon.sact_set_running_cell(nil)
+    static func unregisterCellFromCrashHandling() {
+        pprint("unregister cell...")
+        return CDungeon.sact_set_failure_handling_threadlocal_context(nil, nil)
     }
 
     func killSelfProcess() {

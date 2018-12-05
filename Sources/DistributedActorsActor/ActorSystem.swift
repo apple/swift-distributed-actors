@@ -78,7 +78,13 @@ public final class ActorSystem {
 
         // --- fault handling ---
         // TODO should be a system actor
-        self.reaper = try! self.spawn(FaultyActorReaper.behavior, name: "reaper")
+        let _reaper = try! self.spawn(FaultyActorReaper.behavior, name: "reaper")
+        self.reaper = _reaper
+        do {
+            try FaultHandlingDungeon.installCrashHandling(reaper: _reaper)
+        } catch {
+            fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
+        }
     }
 
     public convenience init() {

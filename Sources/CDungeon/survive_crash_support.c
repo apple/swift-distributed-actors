@@ -25,21 +25,37 @@
 #include <unistd.h>
 
 #include "include/survive_crash_support.h"
+#include "include/crash_support.h"
 
 void complain_and_pause_thread(void *ctx);
 int my_tid();
 
 static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 
-static _Thread_local void* current_run_cell_pointer = NULL;
-static _Thread_local void* fail_context = NULL;
+// shared
+static FailCellCallback shared_fail_cell_cb = NULL;
 
-static FailCellCallback fail_cell = NULL;
+static _Thread_local void* current_run_cell = NULL; // to capture cell pointer // TODO just context should be enough
+static _Thread_local void* current_fail_context = NULL; // to close over the generic
 
 pthread_mutex_t lock;
 
+void sact_segfault_sighandler(int sig, siginfo_t* siginfo, void* data) {
+    fprintf(stderr, "!!!!! [survive_crash] SIGSEGV received! Dumping backtrace and terminating process.\n");
+    sact_dump_backtrace();
+
+    sleep(1000);
+
+    // proceed with causing a core dump
+    signal(sig, SIG_DFL);
+    kill(getpid(), sig);
+}
 
 static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
+    fprintf(stderr, "!!!!! [survive_crash][thread:%d] "
+                    "Executing sact_sighandler, for signo:%d, si_code:%d.\n",
+                    my_tid(), sig, siginfo->si_code);
+
     // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
 
@@ -47,7 +63,8 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     ucontext_t *uc = (ucontext_t *)data;
 
     // invoke our swift-handler, it will schedule the reaper and fail this cell
-    fail_cell(fail_context, current_run_cell_pointer, sig, siginfo->si_code);
+    shared_fail_cell_cb(current_fail_context,
+        current_run_cell, sig, siginfo->si_code);
 
     // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
     // http://man7.org/linux/man-pages/man3/backtrace.3.html
@@ -62,8 +79,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
 }
 
 void block_thread() {
-    fprintf(stderr, "!!!!! [survive_crash][thread:%d] "
-           "Blocking thread forever to prevent progressing into undefined behavior. "
+    fprintf(stderr, "!!!!! [survive_crash][thread:%d] Blocking thread forever to prevent progressing into undefined behavior. "
            "Process remains alive.\n", my_tid());
 
     int fd[2] = { -1, -1 };
@@ -92,35 +108,22 @@ void complain_and_pause_thread(void *ctx) {
     // kill_pthread_self(); // terminates entire process
 }
 
+void sact_set_failure_handling_threadlocal_context(void* fail_context, void* cell) {
+    fprintf(stderr, "!!!!! [survive_crash][thread:%d] setting cell for handling... %d.\n",
+            my_tid(), cell);
 
-void sact_set_running_cell(void* cell_pointer) {
-    current_run_cell_pointer = &cell_pointer;
-}
-
-/* returns error code if sigaction install fails, or `0` otherwise */
-int install_sigaction(int sig, struct sigaction sa) {
-    int e = sigaction(SIGILL, &sa, NULL);
-    if (e) {
-        int errno_save = errno;
-        pthread_mutex_unlock(&lock);
-        errno = errno_save;
-        assert(errno_save != 0);
-        return errno_save;
-    }
-
-    return 0 ;
+    current_fail_context = fail_context;
+    current_run_cell = cell;
 }
 
 /* returns errno and sets errno appropriately, 0 on success */
-int sact_install_swift_crash_handler(
-    void* _fail_context, FailCellCallback fail_cell_callback) {
-    pthread_mutex_lock(&lock);
-
-    fail_cell = fail_cell_callback;
-    fail_context = _fail_context;
+int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) {
+//    pthread_mutex_lock(&lock);
 
     if (atomic_flag_test_and_set(&handler_set) == 0) {
         /* we won the race; we only set the signal handler once */
+
+        shared_fail_cell_cb = failure_handler_swift_cb;
 
         struct sigaction sa = { 0 };
 
@@ -130,9 +133,9 @@ int sact_install_swift_crash_handler(
         int e1 = sigaction(SIGILL, &sa, NULL);
         if (e1) {
             int errno_save = errno;
-            pthread_mutex_unlock(&lock);
             errno = errno_save;
             assert(errno_save != 0);
+//            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
@@ -142,16 +145,21 @@ int sact_install_swift_crash_handler(
         int e2 = sigaction(SIGABRT, &sa, NULL);
         if (e2) {
             int errno_save = errno;
-            pthread_mutex_unlock(&lock);
             errno = errno_save;
             assert(errno_save != 0);
+//            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
-        pthread_mutex_unlock(&lock);
+        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
+        sa.sa_sigaction = sact_segfault_sighandler;
+
+        sigaction(SIGSEGV, &sa, NULL);
+
+//        pthread_mutex_unlock(&lock);
         return 0;
     } else {
-        pthread_mutex_unlock(&lock);
+//        pthread_mutex_unlock(&lock);
 
         errno = EBUSY;
         return errno;
