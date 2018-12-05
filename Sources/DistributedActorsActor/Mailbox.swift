@@ -208,8 +208,10 @@ final class Mailbox<Message> {
 
     @inlinable
     func run() {
-        FaultHandlingDungeon.registerCellForCrashHandling(stable: cell, cell: &self.cell)
-        defer { FaultHandlingDungeon.unregisterCellFromCrashHandling() }
+        // Implementation notes: for every run we make
+        var cellFailureContext = FaultHandling.createCellFailureContext(cell: self.cell)
+        FaultHandling.registerCellForCrashHandling(context: &cellFailureContext)
+        defer { FaultHandling.unregisterCellFromCrashHandling(context: cellFailureContext) }
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,

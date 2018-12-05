@@ -1,0 +1,19 @@
+== Failure handling
+
+General description
+
+=== Swift Distributed Actors vocabulary
+
+Since there are various "types" of error conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
+failure handling scenarios harder to misunderstand:
+
+- `error` as in "throw an error" - the classic meaning of "error" in Swift, which is bound to the `Error` type,
+  and means any operation that can throw an error.
+- `crash` as in "crash the actor" – an
+
+
+Further, you can expect to hear the following phrases:
+
+- "the actor has thrown" - an error was thrown during message or signal processing
+- "the actor crashed" - meaning that the actor was stopped in response to a failure
+

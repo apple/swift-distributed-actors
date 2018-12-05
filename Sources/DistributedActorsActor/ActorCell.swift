@@ -40,7 +40,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // on each message being applied the actor may return a new behavior that will be handling the next message.
     public var behavior: Behavior<Message>
 
-    internal var system: ActorSystem
+    @usableFromInline internal var system: ActorSystem
 
     internal let _path: ActorPath
 
@@ -64,6 +64,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self.system = system
         self.deathWatch = DeathWatch()
         self._path = path
+    }
+
+    deinit {
+        pprint("deinit cell \(_path)")
     }
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
@@ -109,8 +113,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         guard let unwrapped = self._myselfInACell else {
             CDungeon.sact_dump_backtrace();
 
-            fatalError("Attempted to unwrap `_myselfInACell` yet it was nil. " +
-                "This should never happen, and is likely an implementation bug, please file a ticket. " +
+            fatalError("Illegal `myself` access! Unwrapped `_myselfInACell` was nil in [thread:\(_hackyPThreadThreadId())]. " +
+                "This should never happen, and is likely an implementation bug in Swift Distributed Actors, please file a ticket. " +
                 "Was a message handled by an already-dead actor which should never do so?")
         }
         return unwrapped
@@ -201,7 +205,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         switch self.behavior {
         case .stopped:
             // so we are in the middle of terminating already anyway
-            watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), existenceConfirmed: true))
+
+            // TODO localize those in deathWatch?
+            switch _myselfInACell {
+            case .some(let cell):
+                watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(cell.), existenceConfirmed: true))
+            case .none:
+                watcher.sendSystemMessage(.terminated(ref: system.deadLetters, existenceConfirmed: true))
+            }
         default:
             // TODO: make DeathWatch methods available via extension
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
@@ -281,11 +292,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // Implementation notes: Similar to `fail()` but trying to keep them separate as fail() can be called during a run
     // where we catch an exception thrown by user code and then the run continues and then we send the tombstone.
     public func crashFail(error: Error) {
-         log.error("Actor crashing, reason: \(error)")
 
-//        // since the the mailbox run will not complete, we have to perform the .tombstone send.
-//        // doing so will schedule another run
-//        self.sendSystemMessage(.tombstone) // Rest in Peace
+        // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
+        let crashHandlingExplanation = "Parking thread to prevent undefined behavior and more damage. " +
+            "Terminating actor, process remains alive with leaked thread."
+
+        log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
 
         self.finishTerminating() // FIXME likely too eagerly
     }

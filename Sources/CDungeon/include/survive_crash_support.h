@@ -28,9 +28,10 @@
 #ifndef SURVIVE_CRASH_SUPPORT_H
 #define SURVIVE_CRASH_SUPPORT_H
 
-typedef void (* FailCellCallback)(void* context, void* failingCell, int sig, int sicode);
+typedef void (* FailCellCallback)(void* failingCell, int sig, int sicode);
 
-void sact_set_failure_handling_threadlocal_context(void* fail_context, void* cell);
+void sact_set_failure_handling_threadlocal_context(void* fail_context);
+void* sact_clear_failure_handling_threadlocal_context();
 
 int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb);
 

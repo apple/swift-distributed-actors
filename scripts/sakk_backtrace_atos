@@ -38,13 +38,13 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 BIN=$1
-BIN=".build/x86_64-apple-macosx10.10/debug/Swift Distributed ActorsSampleLetItCrash"
+# BIN=".build/x86_64-apple-macosx10.10/debug/Swift Distributed ActorsSampleLetItCrash"
 PID=$2
-PID=$(ps aux | grep "Swift Distributed ActorsSampleLetItCrash" | grep -v "grep" | awk '{print $2}')
+# PID=$(ps aux | grep "Swift Distributed ActorsSampleLetItCrash" | grep -v "grep" | awk '{print $2}')
 
 while read line
 do
-  address=$(echo "$line" | awk '{ print $3 }')
+  address="$(echo "$line" | awk '{ print $3 }')"
   source_pos=$(atos -p $PID -o $BIN -fullPath $address 2> /dev/null)
 
   echo -n "$line" | awk 'BEGIN{} { printf "%s\t%s\t%s\t atos:", $1, $2, $3 }'
