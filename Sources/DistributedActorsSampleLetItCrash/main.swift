@@ -26,10 +26,10 @@ enum SimpleProbeMessages: Equatable {
     case echoing(message: String)
 }
 
-enum FaultyWorkerMessages {
-    case work(n: Int, divideBy: Int)
-    case throwError(error: Error)
-}
+//enum FaultyWorkerMessages {
+//    case work(n: Int, divideBy: Int)
+//    case throwError(error: Error)
+//}
 
 enum WorkerError: Error {
     case error(code: Int)

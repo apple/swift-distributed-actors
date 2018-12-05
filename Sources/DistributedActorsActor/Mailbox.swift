@@ -208,8 +208,8 @@ final class Mailbox<Message> {
 
     @inlinable
     func run() {
-        try! FaultHandlingDungeon.installCrashHandling(reaper: cell.system.reaper!, cell: &cell)
-        defer { FaultHandlingDungeon.unregisterCrashHandling() }
+        FaultHandlingDungeon.registerCellForCrashHandling(stable: cell, cell: &self.cell)
+        defer { FaultHandlingDungeon.unregisterCellFromCrashHandling() }
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
@@ -242,7 +242,7 @@ final class Mailbox<Message> {
 
     /// May only be invoked by the cell and puts the mailbox into TERMINATING state.
     func setFailed() {
-        traceLog_Mailbox("<<< SET_FAILED \(self.cell.path) >>>")
+        print("<<< SET_FAILED \(self.cell.path) >>>")
         cmailbox_set_terminating(self.mailbox)
     }
 
