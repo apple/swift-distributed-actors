@@ -103,6 +103,9 @@ bool cmailbox_is_closed(CMailbox* mailbox);
 /* Sets the final CLOSED state. Should only be invoked just before finishing termination, and only while TERMINATING */
 void cmailbox_set_closed(CMailbox* mailbox);
 
+/* Sets the TERMINATING state. Should only be invoked when the actor has failed. */
+void cmailbox_set_terminating(CMailbox* mailbox); // TODO naming...
+
 int64_t sact_pthread_self();
 
 #endif /* CMailbox_h */

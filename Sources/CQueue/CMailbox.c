@@ -390,6 +390,11 @@ void cmailbox_set_closed(CMailbox* mailbox) {
     set_status_closed(mailbox);
 }
 
+// can be invoked by the cell itself if it fails
+void cmailbox_set_terminating(CMailbox* mailbox) {
+    set_status_terminating(mailbox);
+}
+
 bool is_terminating(int64_t status) {
     return (status & TERMINATING) != 0;
 }
