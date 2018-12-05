@@ -32,8 +32,6 @@ typedef void (* FailCellCallback)(void* context, void* failingCell, int sig, int
 
 void sact_set_running_cell(void*);
 
-// invoke with
 int sact_install_swift_crash_handler(void* failContext, FailCellCallback);
-void sact_simulate_trap(void);
 
 #endif

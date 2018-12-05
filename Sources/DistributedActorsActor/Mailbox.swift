@@ -210,9 +210,7 @@ final class Mailbox<Message> {
     func run() {
         try! FaultHandlingDungeon.installCrashHandling(reaper: cell.system.reaper!, cell: &cell)
         defer { FaultHandlingDungeon.unregisterCrashHandling() }
-//        // can't use it since the tooling panics about concurrent access to self :-( (since we reschedule and it panics there
 
-//        try! FaultHandlingDungeon.withCrashHandlerInstall(reaper: self.cell.system.reaper!, cell: &self.cell) {
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
             &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
@@ -240,6 +238,12 @@ final class Mailbox<Message> {
     func setClosed() {
         traceLog_Mailbox("<<< SET_CLOSED \(self.cell.path) >>>")
         cmailbox_set_closed(self.mailbox)
+    }
+
+    /// May only be invoked by the cell and puts the mailbox into TERMINATING state.
+    func setFailed() {
+        traceLog_Mailbox("<<< SET_FAILED \(self.cell.path) >>>")
+        cmailbox_set_terminating(self.mailbox)
     }
 
 }

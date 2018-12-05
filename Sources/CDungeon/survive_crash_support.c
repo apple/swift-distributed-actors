@@ -34,13 +34,6 @@ static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 static _Thread_local void* current_run_cell_pointer = NULL;
 static _Thread_local void* fail_context = NULL;
 
-/*
- * This variable holds the dispatch group in the time between the crash handler
- * being registered and the first crash having happened. Otherwise NULL.
- * To be used with atomic_compare_exchange_strong
- */
-// static _Atomic (void*) cell_pointer = NULL;
-// static _Atomic (FailCellCallback*) fail_cell = NULL;
 static FailCellCallback fail_cell = NULL;
 
 pthread_mutex_t lock;
@@ -131,7 +124,7 @@ int sact_install_swift_crash_handler(
 
         struct sigaction sa = { 0 };
 
-        sa.sa_flags = SA_RESTART | SA_SIGINFO;
+        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
         sa.sa_sigaction = sact_sighandler;
 
         int e1 = sigaction(SIGILL, &sa, NULL);
@@ -143,7 +136,7 @@ int sact_install_swift_crash_handler(
             return errno_save;
         }
 
-        sa.sa_flags = SA_RESTART | SA_SIGINFO;
+        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
         sa.sa_sigaction = sact_sighandler;
 
         int e2 = sigaction(SIGABRT, &sa, NULL);
@@ -163,11 +156,6 @@ int sact_install_swift_crash_handler(
         errno = EBUSY;
         return errno;
     }
-}
-
-/* UD2 is defined as "Raises an invalid opcode exception in all operating modes." */
-void sact_simulate_trap(void) {
-    __asm__("UD2");
 }
 
 int my_tid() {
