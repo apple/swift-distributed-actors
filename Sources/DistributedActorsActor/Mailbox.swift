@@ -208,9 +208,8 @@ final class Mailbox<Message> {
     @inlinable
     func run() {
         // Implementation notes: for every run we make
-        var cellFailureContext = FaultHandling.createCellFailureContext(cell: self.cell)
-        FaultHandling.registerCellForCrashHandling(context: &cellFailureContext)
-        defer { FaultHandling.unregisterCellFromCrashHandling(context: cellFailureContext) }
+        FaultHandling.enableFailureHandling()
+        defer { FaultHandling.disableFailureHandling() }
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
@@ -232,6 +231,8 @@ final class Mailbox<Message> {
             // We do this since while the mailbox was running, more messages could have been enqueued,
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
+        } else if schedulingDecision == Error {
+            self.cell.crashFail(error: NSError(domain: "error", code: -1, userInfo: nil))
         }
     }
 

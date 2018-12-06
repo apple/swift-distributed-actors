@@ -192,7 +192,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
     bool keep_running = true; // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
-    if (setjmp(*error_jmp_buf)) {
+    if (sigsetjmp(*error_jmp_buf, 1)) {
         printf("++++++======++++++++ ERROROROROROROROOR +++++====++++====");
         void* callstack[128];
         int i, frames = backtrace(callstack, 128);
@@ -201,8 +201,8 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             fprintf(stderr, "%s\n", strs[i]);
         }
         //exit(-1);
-        cmailbox_set_closed(mailbox);
-        return -1;
+        cmailbox_set_terminating(mailbox);
+        return Error;
     } else {
 
         // run system messages ------

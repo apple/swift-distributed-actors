@@ -30,13 +30,10 @@
 
 #include <setjmp.h>
 
-typedef void (* SActFailCellCallback)(void* failingCell, int sig, int sicode);
+void sact_enable_failure_handling();
+void sact_disable_failure_handling();
 
-
-void sact_set_failure_handling_threadlocal_context(void* fail_context);
-void* sact_clear_failure_handling_threadlocal_context();
-
-int sact_install_swift_crash_handler(SActFailCellCallback failure_handler_swift_cb);
+int sact_install_swift_crash_handler();
 
 jmp_buf* sact_get_error_jmp_buf();
 

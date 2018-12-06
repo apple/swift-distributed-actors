@@ -136,12 +136,9 @@ extension PathRelationships {
 
     /// Checks whether this [ActorPath] is a direct descendant of the passed in path.
     ///
-    /// Note: Path relationships only take into account the path segments, and can not be used
-    ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
-    ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
-    ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
+    @usableFromInline
     func isChildPathOf(_ maybeParentPath: PathRelationships) -> Bool {
         return Array(self.segments.dropLast()) == maybeParentPath.segments
     }

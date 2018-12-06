@@ -82,11 +82,14 @@ public struct Children {
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
     @usableFromInline
-    internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
+        return remove(path: childRef.path)
+    }
+
+    @usableFromInline
+    internal mutating func remove(path: ActorPath) -> Bool {
         if let ref = container[path.name] {
             if ref.path.uid == path.uid {
                 return container.removeValue(forKey: path.name) != nil
-            } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
 
         return false
