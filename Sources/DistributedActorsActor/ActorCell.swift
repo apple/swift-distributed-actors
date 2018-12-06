@@ -149,7 +149,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable
     func interpretMessage(message: Message) throws -> Bool {
         #if SACT_TRACE_CELL
-        pprint("interpret: [\(message)][:\(type(of: message))] with: \(behavior)")
+        pprint("interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
         let next = try self.behavior.interpretMessage(context: context, message: message)
         #if SACT_TRACE_CELL
@@ -168,6 +168,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Throws:
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
+    /// Fails:
+    ///   - can potentially fail, which is handled by [FaultHandling] and terminates an actor run immediately.
     func interpretSystemMessage(message: SystemMessage) throws -> Bool {
         traceLog_Cell("Interpret system message: \(message)")
 
@@ -202,20 +204,20 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     }
 
     @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
-        switch self.behavior {
-        case .stopped:
-            // so we are in the middle of terminating already anyway
-
-            // TODO localize those in deathWatch?
-            switch _myselfInACell {
-            case .some(let cell):
-                watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(cell.), existenceConfirmed: true))
-            case .none:
-                watcher.sendSystemMessage(.terminated(ref: system.deadLetters, existenceConfirmed: true))
-            }
-        default:
+        if self.behavior.isStillAlive() {
             // TODO: make DeathWatch methods available via extension
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+        } else {
+            // so we are in the middle of terminating already anyway
+
+            // FIXME: The need of special casing here is a hack and should not be needed. It is because we too eagerly invoke finishTerminating when we do fail()
+            // finishTerminating() shall be the LAST thing an actor ever executes, thus no more watch processing after it has (since them myself is nil), so we hack around it here with the "fake path based ref"
+            switch _myselfInACell {
+            case .some(let cell):
+                watcher.sendSystemMessage(.terminated(ref: cell.internal_boxAnyAddressableActorRef(), existenceConfirmed: true))
+            case .none:
+                watcher.sendSystemMessage(.terminated(ref: PathOnlyHackAnyAddressableActorRef(path: self.path), existenceConfirmed: true))
+            }
         }
     }
 
@@ -269,7 +271,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// We only FORCE the sending of a tombstone if we know we have parked the thread because an actual failure happened,
     /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
-    // TODO: not sure if this should mutate the cell or return to mailbox the nex behavior
     internal func fail(error: Error) {
         self._myselfInACell?.mailbox.setFailed()
         // TODO: we could handle here "wait for children to terminate"
@@ -278,11 +279,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
         case let DeathPactError.unhandledDeathPact(_, _, message):
-            log.error("\(message)")
+            log.error("\(message)") // TODO configurable logging? in props?
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
-            log.error("Actor failing, reason: \(error)")
+            log.error("Actor failing, reason: [\(error)]:\(type(of: error))") // TODO configurable logging? in props?
             self.finishTerminating() // FIXME likely too eagerly
         }
     }

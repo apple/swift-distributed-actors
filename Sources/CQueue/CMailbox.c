@@ -111,7 +111,7 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
     int64_t old_status = increment_status_activations(mailbox);
     int64_t old_activations = activations(old_status);
     CMPSCLinkedQueue* queue = mailbox->messages;
-    // printf("[cmailbox] enter send_message; messages in queue: %lu\n", (message_count(old_status)));
+    // printf("[SACT_TRACE_MAILBOX][c] enter send_message; messages in queue: %lu\n", (message_count(old_status)));
 
     // `>` is correct and not an one-off, since message count is `activations - 1`
     if ((message_count(old_status) >= mailbox->capacity) || is_terminating(old_status)) {
@@ -136,7 +136,7 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
 }
 
 int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
-    // printf("[cmailbox] send_system_message: \n");
+    // printf("[SACT_TRACE_MAILBOX][c] send_system_message: \n");
     int64_t old_status = try_activate(mailbox); // only activation matters
     int64_t old_activations = activations(old_status);
 
@@ -175,7 +175,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
-    // printf("[cmailbox] run_length = %lu\n", run_length);
+    // printf("[SACT_TRACE_MAILBOX][c] run_length = %lu\n", run_length);
 
     // only an keep_running actor shall continue running;
     // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
@@ -191,7 +191,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // we run all system messages, as they may
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         while (system_message != NULL && keep_running) {
-            // printf("[cmailbox] Processing system message...\n");
+            // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
             keep_running = interpret_message(system_context, system_message);
             system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
         }
@@ -235,14 +235,14 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             // shifted by 1 in the status and we use the same field to clear the
             // system message bit
             processed_activations += 0b10;
-            // printf("[cmailbox]Processing user message...\n");
+            // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
             // TODO: fix this dance
             bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
             keep_running = still_alive;
 
             // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
             if (keep_running == false && !is_terminating(status)) {
-                // printf("[cmailbox] STOPPING BASED ON MESSAGE INTERPRETATION\n");
+                // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
                 set_status_terminating(mailbox);
                 print_debug_status(mailbox, "MARKED TERMINATING");
                 message = NULL; // break out of the loop
@@ -266,11 +266,11 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         }
     }
 
-    // printf("[cmailbox] ProcessedActivations %lu messages...\n", processed_activations);
+    // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
 
     int64_t old_status = decrement_status_activations(mailbox, processed_activations);
     int64_t old_activations = activations(old_status);
-    // printf("[cmailbox] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
+    // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
     print_debug_status(mailbox, "Run complete...");
 
     if (old_activations == processed_activations && // processed everything
@@ -318,7 +318,7 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
     pthread_t thread_id = pthread_self();
     #endif
 
-    printf("[cmailbox]"
+    printf("[SACT_TRACE_MAILBOX][c]"
            "[thread:%lu] "
            "%s "
            "Status now: [%lu, bin:%s], "
@@ -356,7 +356,7 @@ int64_t decrement_status_activations(CMailbox* mailbox, int64_t n) {
 }
 
 int64_t set_status_terminating(CMailbox* mailbox) {
-    // printf("[cmailbox] Setting TERMINATING marker.\n");
+    // printf("[SACT_TRACE_MAILBOX][c] Setting TERMINATING marker.\n");
     return atomic_fetch_or_explicit(&mailbox->status, TERMINATING, memory_order_acq_rel);
 }
 

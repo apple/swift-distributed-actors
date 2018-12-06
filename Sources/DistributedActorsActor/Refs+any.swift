@@ -76,6 +76,36 @@ extension AnyAddressableActorRef {
     }
 }
 
+/// Internal helper container for identifying an without a reference
+// FIXME: this seems wrong... we only have it for sending a terminated for after when we niled out the ActorCell already;
+// this should never happen as finishTerminating should be the last thing to ever run, yet currently we too eagerly call finishTerminating in fail().
+@usableFromInline internal struct PathOnlyHackAnyAddressableActorRef: AnyAddressableActorRef { // FIXME: remove the need for this
+    private let _path: ActorPath
+
+    public init(path: ActorPath) {
+        self._path = path
+    }
+
+    func hash(into hasher: inout Hasher) {
+        self.path.hash(into: &hasher)
+    }
+
+    static func ==(lhs: PathOnlyHackAnyAddressableActorRef, rhs: PathOnlyHackAnyAddressableActorRef) -> Bool {
+        return lhs.path == rhs.path
+    }
+    static func ==(lhs: PathOnlyHackAnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool {
+        return lhs.path == rhs.path
+    }
+
+    var path: ActorPath {
+        return self._path
+    }
+
+    func asHashable() -> AnyHashable {
+        return AnyHashable(self.path)
+    }
+}
+
 // MARK: Type erasure for ReceivesMessages
 
 // TODO: maybe, and drop all others?
@@ -145,12 +175,12 @@ internal extension AnyReceivesSystemMessages {
 internal extension ActorRef {
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    internal func internal_boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
+    @usableFromInline internal func internal_boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
         return BoxedHashableAnyReceivesSystemMessages(ref: self.internal_downcast)
     }
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
+    @usableFromInline internal func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
         return BoxedHashableAnyAddressableActorRef(ref: self.internal_downcast)
     }
 }

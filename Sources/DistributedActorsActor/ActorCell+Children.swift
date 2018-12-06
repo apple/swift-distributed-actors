@@ -105,9 +105,7 @@ extension ActorCell: ChildActorRefFactory {
             mailbox: mailbox
         )
 
-        pprint("pre: \(self.children)")
         self.children.insert(refWithCell)
-        pprint("after: \(self.children)")
 
         cell.set(ref: refWithCell)
         refWithCell.sendSystemMessage(.start)
@@ -118,7 +116,7 @@ extension ActorCell: ChildActorRefFactory {
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
         // we immediately attempt the remove since
         guard ref.path.isChildOf(self.path) else {
-            throw ActorError.attemptedStoppingNonChildActor(ref: ref)
+            throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
         }
 
         if self.children.remove(ref) {
@@ -128,13 +126,13 @@ extension ActorCell: ChildActorRefFactory {
 
     private func validateUniqueName(_ name: String) throws {
         if children.contains(name) {
-            throw ActorError.duplicateActorPath(path: try self.path / ActorPathSegment(name))
+            throw ActorContextError.duplicateActorPath(path: try self.path / ActorPathSegment(name))
         }
     }
 }
 
-
-public enum ActorError: Error {
+/// Errors which can occur while executing actions on the [ActorContext].
+public enum ActorContextError: Error {
     case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
     case duplicateActorPath(path: ActorPath)
 }

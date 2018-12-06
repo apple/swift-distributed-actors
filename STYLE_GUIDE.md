@@ -38,6 +38,20 @@ This is not fleshed out, we should chat about it.
   - then (if present) followed by a message
   - examples: `interpret(context, behavior, message)`, `handle { context, message ...` 
 
+## Logging messages
+
+- put messages into `[]` so it is easier to spot where message type starts and where it ends
+- never log entire user messages, they could contain passwords or other secrets
+  - log their type instead, e.g. "`[AuthenticationMessage]` unhandled", or ""
+- when logging full messages, e.g. system messages, just printing the message (e.g. an enum) would look like this:
+  "`initialize(...)` dropped to dead letters", which sometimes MAY be clear enough but not always, since there may be
+  multiple "initialize" messages defined for various message protocols. Prefer the following logging style: `"Dropped [\(msg)]:\(type(of: msg))..."`,
+  which results in useful messages like *"Dropped initialize(...):WalletMessages"*.
+  - Technically users can also guess the type from the type of the actor ref but only if the message is sent to the exact actor, and not dead letters etc.
+    Keeping the style the same in our logging is likely best for consistency and training people to spot the message and type easily.
+  - the trailing `:type` is designed to feel like type signatures, it also should help in case there are the same string representations for various types, 
+    and one would be left scratching their head why "1 was not delivered" when "1" definitely should have been (e.g. whoops, it was `1:Int`, and not `"1":String`!) 
+
 ## Recommended reads
 
 The Swift Distributed Actors team recommends the following reads to "get it",

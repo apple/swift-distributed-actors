@@ -25,8 +25,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SURVIVE_CRASH_SUPPORT_H
-#define SURVIVE_CRASH_SUPPORT_H
+#ifndef SACT_SURVIVE_CRASH_SUPPORT_H
+#define SACT_SURVIVE_CRASH_SUPPORT_H
 
 typedef void (* FailCellCallback)(void* failingCell, int sig, int sicode);
 

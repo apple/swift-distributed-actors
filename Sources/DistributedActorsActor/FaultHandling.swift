@@ -20,20 +20,6 @@ import Darwin
 import Glibc
 #endif
 
-// context wrapper for c-interop
-internal struct CellFailureContext {
-    private let _fail: (Int32, Int32) -> ()
-
-    init(fail: @escaping (Int32, Int32) -> ()) {
-        self._fail = fail
-    }
-
-    @inlinable
-    func fail(signo: Int32, sicode: Int32) -> () {
-         _fail(signo, sicode)
-    }
-}
-
 /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 /// !!            THIS IS A Proof-of-Concept, the mechanisms (signal hijacking+parking) is NOT A FINAL SOLUTION       !!
 /// !!                                                                                                                !!
@@ -43,6 +29,14 @@ internal struct CellFailureContext {
 ///
 /// FaultHandling implementation for thread based Actors.
 /// Hooks to be invoked only by the [ActorSystem] and [Mailbox].
+///
+/// The general flow of using the fault mechanism is as follows:
+///  - 1: globally install the signal handler using [installCrashHandling]
+///  - 2: for every actor mailbox run, create a failure context [createCellFailureContext],
+///  - 2.5: and register it [registerCellForCrashHandling]
+///  - optionally fault occurs: use the captured context to signal the fault to the actor and its watchers
+///  - 3: at the successful end of a mailbox run OR occurrence of a fault, unset the context before yielding the thread
+///       back to the [MessageDispatcher] using [unregisterCellFromCrashHandling].
 internal struct FaultHandling {
 
     private init() {
@@ -52,11 +46,8 @@ internal struct FaultHandling {
     /// Installs the global (shared across all threads in the process) signal handler,
     /// responsible for intercepting fatal errors, such as arithmetic or other illegal operations or `fatalErrors`.
     ///
-    ///
     /// The fault handler is effective only *during* an actor run, and should not trap errors made outside of actors.
-    static func installCrashHandling(reaper: FaultyActorReaper.Ref) throws {
-        // TODO use the reaper, in every run close over it?
-
+    static func installCrashHandling() throws {
         // c-function inter-op closure, can't close over state; state is carried in the contextPtr
         let failCallback: FailCellCallback = { contextPtr, sig, sicode in
             assert(contextPtr != nil, "contextPointer must never be nil when running fail callback! This is a Swift Distributed Actors bug.")
@@ -80,7 +71,11 @@ internal struct FaultHandling {
 
     // TODO add a test that a crash outside of an actor still crashes like expected?
     //      I guess we can't really test for that...
-    
+
+    /// Create a context object which will carry the cell information through to the failure (signal) handler in case of a fault.
+    ///
+    /// This context MUST remain alive (keep a reference to it) over the entire run of an actor,
+    /// and may ONLY be deallocated once the run completes successfully. It MUST be the last operation a run performs.
     internal static func createCellFailureContext<M>(cell: ActorCell<M>) -> CellFailureContext {
         return .init(fail: { signo, sicode in
             defer { FaultHandling.unregisterCellFromCrashHandling(context: nil) }
@@ -90,10 +85,16 @@ internal struct FaultHandling {
         })
     }
 
+    /// Register the failure context for the currently executing [ActorCell].
+    ///
+    /// Important: Remember to clear it once the run is complete
     internal static func registerCellForCrashHandling(context: inout CellFailureContext) {
         CDungeon.sact_set_failure_handling_threadlocal_context(&context) // TODO not really needed as threadlocal
     }
 
+    /// Clear the current cell failure context after a successful (or failed) run.
+    ///
+    /// Important: Always call this once a run completes, in order to avoid mistakenly invoking a cleanup action on the wrong "previous" cell.
     // Implementation notes: The reason we allow passing in the context even though we don't use it is to make sure the
     // lifetime of the context is longer than the mailbox run. Otherwise a failure may attempt using an already deallocated context.
     internal static func unregisterCellFromCrashHandling(context: CellFailureContext?) {
@@ -101,11 +102,16 @@ internal struct FaultHandling {
         CDungeon.sact_clear_failure_handling_threadlocal_context()
     }
 
+    /// Used to terminate the entire process.
+    /// Fault handlers may decide that an error that technically could be recovered should indeed bring down the entire process ASAP.
+    // TODO actually allow users to do so
     private func killSelfProcess() {
         print("Ship's going down, killing pid: \(getpid())")
         kill(getpid(), SIGKILL)
     }
 
+    /// Convert error signal codes to their [FaultHandlingError] representation.
+    /// Only exactly models those errors we do actually handle and allow recovery from, are categorized as "Other"
     private static func siginfo2error(signo: Int32, sicode _sicode: Int32) -> Error {
         // slight type wiggling on linux needed:
         #if os(Linux)
@@ -148,6 +154,21 @@ internal struct FaultHandling {
     }
 }
 
+/// Context wrapper for c-interop.
+/// Carries all context needed for handling a fault if it were to occur during a mailbox run.
+internal struct CellFailureContext {
+    private let _fail: (Int32, Int32) -> ()
+
+    init(fail: @escaping (Int32, Int32) -> ()) {
+        self._fail = fail
+    }
+
+    @inlinable
+    func fail(signo: Int32, sicode: Int32) -> () {
+        _fail(signo, sicode)
+    }
+}
+
 /// Error related to, or failure "caught" by the failure handling mechanism.
 enum FaultHandlingError: Error {
     case unableToInstallFaultHandlingHook(errorCode: Int)
@@ -180,21 +201,3 @@ enum FaultHandlingError: Error {
     static let E_SIGTERM = FaultHandlingError.posixFailure(signo: Int(SIGTERM), sicode: nil, description: "SIGTERM: a termination request was sent to the program")
     static let E_SIGABRT = FaultHandlingError.posixFailure(signo: Int(SIGABRT), sicode: nil, description: "SIGABRT: usually caused by an abort() or assert()")
 }
-
-// MARK: FaultyActorReaper (also known as the "Grim Reaper"), responsible for terminating faulty actors
-
-internal enum FaultyActorReaper {
-    typealias Ref = ActorRef<ReaperMessage>
-    public static let behavior: Behavior<ReaperMessage> = .receive { context, message in
-        switch message {
-        case let .failed(cause, path):
-            context.log.warn("Reaper knows about \(path), died because \(cause)")
-        }
-        return .same
-    }
-}
-
-internal enum ReaperMessage {
-    case failed(cause: Error, path: ActorPath)
-}
-

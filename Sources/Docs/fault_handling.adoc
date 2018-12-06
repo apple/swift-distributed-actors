@@ -1,0 +1,25 @@
+== Fault handling
+
+General description
+
+=== Vocabulary
+
+Since there are various "types" of error conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
+failure handling scenarios harder to misunderstand:
+
+- *Fault* - the most general term for any kind of "faulty" behavior, including: errors, throws, crashes, fatal errors,
+- *Error* as in "throw an error" - the classic meaning of "error" in Swift, which is bound to the `Error` type,
+  and means any operation that can throw an error.
+- *Crash* as in "crash the actor" – an
+
+You may wonder how the various other words used by the underlying OS relate to them.
+For example, in POSIX systems faults are signalled by "error codes" and "signals".
+Some of such conditions are recoverable _within an actor_ and Swift Distributed Actors allows doing so,
+however code execution beyond a faulty line of code is never allowed.
+
+
+Further, you can expect to hear the following phrases:
+
+- "the actor has thrown" - an error was thrown during message or signal processing
+- "the actor crashed" - meaning that the actor was stopped in response to a failure
+

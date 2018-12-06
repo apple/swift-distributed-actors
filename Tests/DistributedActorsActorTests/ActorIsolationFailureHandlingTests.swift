@@ -32,33 +32,6 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         case simpleError(reason: String)
     }
 
-//    func test_master_spawnInFaultDomain_allowActorToFailButKeepProcessAlive() throws {
-//        let p: ActorTestProbe<String> = ActorTestProbe(name: "p1", on: system)
-//
-//        let failOnThis = "boom!"
-//        let throwThis: SimpleTestError = .simpleError(reason: failOnThis)
-//
-//        let faultyMasterBehavior: Behavior<String> = .receive { context, message in
-//            if message == failOnThis {
-//                throw throwThis
-//            } else {
-//                p.tell(message)
-//            }
-//            return .same
-//        }
-//        let faultyMaster: ActorRef<String> = try system.spawn(faultyMasterBehavior, name: "faultyMaster", props: isolateFaultDomainProps)
-//
-//        p.watch(faultyMaster)
-//        faultyMaster.tell("hello")
-//        try p.expectMessage("hello")
-//        // since we got hello back, watch was surely also processed
-//
-//        faultyMaster.tell(failOnThis)
-//
-//        try p.expectTerminated(faultyMaster)
-//
-//    }
-
     enum SimpleProbeMessages: Equatable {
         case spawned(child: ActorRef<FaultyWorkerMessages>)
         case echoing(message: String)
@@ -107,7 +80,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
-        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message")}
+        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message") }
 
         // watch the child worker and see that it works correctly:
         pw.watch(childWorker)
@@ -148,14 +121,15 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // the worker, should have terminated due to the error:
         let workerTerminated = try pw.expectTerminated(childWorker)
-        pnote("Expected: \(workerTerminated)")
+        pnote("Good: \(workerTerminated)")
 
         // even though the worker crashed, the parent is still alive (!)
         let stillAlive = "still alive"
         healthyMaster.tell(stillAlive)
         try pm.expectMessage(.echoing(message: "still alive"))
-        pnote("Expected: Parent \(healthyMaster) still active.")
+        pnote("Good: Parent \(healthyMaster) still active.")
     }
+
 
 }
 

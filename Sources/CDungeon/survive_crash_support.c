@@ -11,6 +11,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <assert.h>
@@ -39,21 +53,13 @@ static _Thread_local void* current_fail_context = NULL; // to close over the gen
 
 pthread_mutex_t lock;
 
-void sact_segfault_sighandler(int sig, siginfo_t* siginfo, void* data) {
-    fprintf(stderr, "!!!!! [survive_crash] SIGSEGV received! Dumping backtrace and terminating process.\n");
+void sact_unrecoverable_sighandler(int sig, siginfo_t* siginfo, void* data) {
+    char* sig_name = "";
+    if (sig == SIGSEGV) sig_name = "SIGSEGV";
+    else if (sig == SIGBUS) sig_name = "SIGBUS";
+
+    fprintf(stderr, "Unrecoverable signal %s(%d) received! Dumping backtrace and terminating process.\n", sig_name, sig);
     sact_dump_backtrace();
-
-    sleep(1000);
-
-    // proceed with causing a core dump
-    signal(sig, SIG_DFL);
-    kill(getpid(), sig);
-}
-void sact_sigbus_sighandler(int sig, siginfo_t* siginfo, void* data) {
-    fprintf(stderr, "!!!!! [survive_crash] SIGBUS received! Dumping backtrace and terminating process.\n");
-    sact_dump_backtrace();
-
-    sleep(1000);
 
     // proceed with causing a core dump
     signal(sig, SIG_DFL);
@@ -61,9 +67,11 @@ void sact_sigbus_sighandler(int sig, siginfo_t* siginfo, void* data) {
 }
 
 static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
+    #ifdef SACT_TRACE_CRASH
     fprintf(stderr, "!!!!! [survive_crash][thread:%d] "
-                    "Executing sact_sighandler %d, for signo:%d, si_code:%d.\n",
-                    my_tid(), current_fail_context, sig, siginfo->si_code);
+                    "Executing sact_sighandler for signo:%d, si_code:%d.\n",
+                    my_tid(), sig, siginfo->si_code);
+    #endif
 
     // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
@@ -117,16 +125,10 @@ void complain_and_pause_thread(void *ctx) {
 }
 
 void sact_set_failure_handling_threadlocal_context(void* fail_context) {
-//    fprintf(stderr, "!!!!! [survive_crash][thread:%d] setting context for handling...\n",
-//            my_tid());
-
     current_fail_context = fail_context;
 }
 
 void* sact_clear_failure_handling_threadlocal_context() {
-//    fprintf(stderr, "!!!!! [survive_crash][thread:%d] clearing context for handling...\n",
-//            my_tid());
-
     void* old_context = current_fail_context;
     current_fail_context = NULL;
     return old_context; // so Swift can release it
@@ -134,7 +136,7 @@ void* sact_clear_failure_handling_threadlocal_context() {
 
 /* returns errno and sets errno appropriately, 0 on success */
 int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) {
-    pthread_mutex_lock(&lock);
+    pthread_mutex_lock(&lock); // TODO not really used?
 
     if (atomic_flag_test_and_set(&handler_set) == 0) {
         /* we won the race; we only set the signal handler once */
@@ -167,11 +169,12 @@ int sact_install_swift_crash_handler(FailCellCallback failure_handler_swift_cb) 
             return errno_save;
         }
 
-        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
-        sa.sa_sigaction = sact_segfault_sighandler;
+        // handlers for unrecoverable signals, for better stacktraces:
+        // TODO provide option to skip installing those
 
+        sa.sa_flags = SA_ONSTACK | SA_RESTART | SA_SIGINFO;
+        sa.sa_sigaction = sact_unrecoverable_sighandler;
         sigaction(SIGSEGV, &sa, NULL);
-        sa.sa_sigaction = sact_sigbus_sighandler;
         sigaction(SIGBUS, &sa, NULL);
 
         pthread_mutex_unlock(&lock);
