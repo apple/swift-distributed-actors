@@ -25,7 +25,7 @@ services:
 
   unit-tests:
     <<: *common
-    command: /bin/bash -cl "swift test"
+    command: /bin/bash -cl "while swift test; do :; done"
 
   integration-tests:
     <<: *common
@@ -48,3 +48,7 @@ services:
     ports:
       - "8888:8888"
     command: /bin/bash -cl "swift run NIOHTTP1Server 0.0.0.0 8888"
+
+  bash:
+    <<: *common
+    command: /bin/bash

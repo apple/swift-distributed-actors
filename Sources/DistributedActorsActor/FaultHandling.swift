@@ -43,6 +43,10 @@ internal struct FaultHandling {
         // no instances
     }
 
+    internal static func getErrorJmpBuf() -> UnsafeMutablePointer<jmp_buf> {
+        return sact_get_error_jmp_buf()
+    }
+
     /// Installs the global (shared across all threads in the process) signal handler,
     /// responsible for intercepting fatal errors, such as arithmetic or other illegal operations or `fatalErrors`.
     ///

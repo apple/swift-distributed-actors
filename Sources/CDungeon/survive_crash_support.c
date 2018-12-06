@@ -31,7 +31,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
-#include <signal.h>
+#include <setjmp.h>
 #include <stdlib.h>
 #include <stdatomic.h>
 #include <sys/types.h>
@@ -57,7 +57,13 @@ static SActFailCellCallback shared_fail_cell_cb = NULL;
 // if NULL, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
 static _Thread_local void* current_fail_context = NULL;
 
+static _Thread_local jmp_buf error_jmp_buf;
+
 pthread_mutex_t lock;
+
+jmp_buf* sact_get_error_jmp_buf() {
+    return &error_jmp_buf;
+}
 
 void sact_unrecoverable_sighandler(int sig, siginfo_t* siginfo, void* data) {
     char* sig_name = "";
@@ -101,6 +107,10 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
     // http://man7.org/linux/man-pages/man3/backtrace.3.html
 
+    // we are jumping back to the mailbox to properly handle the crash and kill the actor
+    longjmp(error_jmp_buf, 1);
+
+    /*
     #ifdef __linux__
         uc->uc_mcontext.gregs[REG_RIP] = (greg_t)&sact_complain_and_pause_thread;
     #elif __APPLE__
@@ -108,6 +118,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     #else
         #error platform unsupported
     #endif
+     */
 }
 
 void block_thread() {

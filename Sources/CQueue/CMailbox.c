@@ -28,6 +28,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <execinfo.h>
 
 // TODO: getting better code completion this way... works ok in xcode and friends this way too?
 //#include "CMailbox.h"
@@ -175,7 +176,8 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
 CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                   void* context, void* system_context,
                   void* dead_letter_context, void* dead_letter_system_context,
-                  InterpretMessageCallback interpret_message, DropMessageCallback drop_message) {
+                  InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
+                  jmp_buf* error_jmp_buf) {
     print_debug_status(mailbox, "Entering run");
 
     int64_t status = set_processing_system_messages(mailbox);
@@ -190,120 +192,134 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
     bool keep_running = true; // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
-    // run system messages ------
-    if (has_system_messages(status)) {
-        void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-
-        while (system_message != NULL && keep_running) {
-            // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-            keep_running = interpret_message(system_context, system_message);
-            system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+    if (setjmp(*error_jmp_buf)) {
+        printf("++++++======++++++++ ERROROROROROROROOR +++++====++++====");
+        void* callstack[128];
+        int i, frames = backtrace(callstack, 128);
+        char** strs = backtrace_symbols(callstack, frames);
+        for (i = 0; i < frames; ++i) {
+            fprintf(stderr, "%s\n", strs[i]);
         }
-
-        // was our run was interrupted by a system message causing termination?
-        if (!keep_running) {
-
-            if (is_not_terminating(status)) { // avoid unnecessarily setting the terminating bit again
-                print_debug_status(mailbox, "before set TERMINATING");
-                set_status_terminating(mailbox);
-                print_debug_status(mailbox, "after set TERMINATING");
-            }
-
-            // Since we are terminating, and bailed out from a system run, there may be
-            // pending system messages in the queue still; we want to finish this run till they are drained.
-            //
-            // Never run user messages before draining system messages, system messages must be processed with priority,
-            // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
-            if (system_message == NULL) {
-                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-            }
-            while (system_message != NULL) {
-                print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
-                // drain all messages to dead letters
-                // this is very important since dead letters will handle any posthumous watches for us
-                drop_message(dead_letter_system_context, system_message);
-
-                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-            }
-        }
-    }
-    // end of system messages run ------
-
-    // while a run shall handle system messages while terminating,
-    // it should NOT handle user messages while terminating:
-    keep_running = keep_running && !is_terminating(status);
-
-    // run user messages ------
-
-    if (keep_running) {
-        void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
-        while (message != NULL && keep_running) {
-            // we need to add 2 to processed_activations because the user message count is stored
-            // shifted by 1 in the status and we use the same field to clear the
-            // system message bit
-            processed_activations += SINGLE_USER_MESSAGE_MASK;
-            // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
-            // TODO: fix this dance
-            bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
-            keep_running = still_alive;
-
-            // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
-            if (keep_running == false && !is_terminating(status)) {
-                // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
-                set_status_terminating(mailbox);
-                print_debug_status(mailbox, "MARKED TERMINATING");
-                message = NULL; // break out of the loop
-            } else if (processed_activations >= run_length) {
-                message = NULL; // break out of the loop
-            } else {
-                // dequeue another message, if there are no more messages left, message
-                // will contain NULL and terminate the loop
-                message = cmpsc_linked_queue_dequeue(mailbox->messages);
-            }
-        }
-    } else /* we are terminating and need to drain messages */ {
-        // TODO: drain them to dead letters
-
-        // TODO: drainToDeadLetters(mailbox->messages) {
-        void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
-        while (message != NULL) {
-            drop_message(dead_letter_context, message);
-            processed_activations += SINGLE_USER_MESSAGE_MASK;
-            message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
-        }
-    }
-
-    // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
-
-    int64_t old_status = decrement_status_activations(mailbox, processed_activations);
-    int64_t old_activations = activations(old_status);
-    // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
-    print_debug_status(mailbox, "Run complete...");
-
-    if (old_activations == processed_activations && // processed everything
-        cmpsc_linked_queue_non_empty(mailbox->system_messages) && // but pending system messages it seems
-        activations(try_activate(mailbox)) == 0) { // need to activate again (mark that we have system messages)
-        // If we processed_activations all messages (including system messages) that have been
-        // present when we started to process messages and there are new system
-        // messages in the queue, but the mailbox has not been re-scheduled yet
-        // return true to signal the queue should be re-scheduled
-        print_debug_status(mailbox, "Run complete, shouldReschedule:true, pending system messages\n");
-        return Reschedule;
-    } else if (old_activations > processed_activations) {
-        // if we could not process all messages in this run, because we had more
-        // messages queued up than the maximum run length, return true to signal
-        // the queue should be re-scheduled
-
-        char msg[300];
-            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
-        print_debug_status(mailbox, msg);
-        return Reschedule;
-    } else if (!keep_running) {
-        print_debug_status(mailbox, "terminating, notifying swift mailbox...");
-        return Close;
+        //exit(-1);
+        cmailbox_set_closed(mailbox);
+        return -1;
     } else {
-        print_debug_status(mailbox, "Run complete, shouldReschedule:false ");
-        return Done;
+
+        // run system messages ------
+        if (has_system_messages(status)) {
+            void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+
+            while (system_message != NULL && keep_running) {
+                // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
+                keep_running = interpret_message(system_context, system_message);
+                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+            }
+
+            // was our run was interrupted by a system message causing termination?
+            if (!keep_running) {
+
+                if (is_not_terminating(status)) { // avoid unnecessarily setting the terminating bit again
+                    print_debug_status(mailbox, "before set TERMINATING");
+                    set_status_terminating(mailbox);
+                    print_debug_status(mailbox, "after set TERMINATING");
+                }
+
+                // Since we are terminating, and bailed out from a system run, there may be
+                // pending system messages in the queue still; we want to finish this run till they are drained.
+                //
+                // Never run user messages before draining system messages, system messages must be processed with priority,
+                // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
+                if (system_message == NULL) {
+                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+                }
+                while (system_message != NULL) {
+                    print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
+                    // drain all messages to dead letters
+                    // this is very important since dead letters will handle any posthumous watches for us
+                    drop_message(dead_letter_system_context, system_message);
+
+                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+                }
+            }
+        }
+        // end of system messages run ------
+
+        // while a run shall handle system messages while terminating,
+        // it should NOT handle user messages while terminating:
+        keep_running = keep_running && !is_terminating(status);
+
+        // run user messages ------
+
+        if (keep_running) {
+            void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
+            while (message != NULL && keep_running) {
+                // we need to add 2 to processed_activations because the user message count is stored
+                // shifted by 1 in the status and we use the same field to clear the
+                // system message bit
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
+                // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
+                // TODO: fix this dance
+                bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
+                keep_running = still_alive;
+
+                // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
+                if (keep_running == false && !is_terminating(status)) {
+                    // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
+                    set_status_terminating(mailbox);
+                    print_debug_status(mailbox, "MARKED TERMINATING");
+                    message = NULL; // break out of the loop
+                } else if (processed_activations >= run_length) {
+                    message = NULL; // break out of the loop
+                } else {
+                    // dequeue another message, if there are no more messages left, message
+                    // will contain NULL and terminate the loop
+                    message = cmpsc_linked_queue_dequeue(mailbox->messages);
+                }
+            }
+        } else /* we are terminating and need to drain messages */ {
+            // TODO: drain them to dead letters
+
+            // TODO: drainToDeadLetters(mailbox->messages) {
+            void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
+            while (message != NULL) {
+                drop_message(dead_letter_context, message);
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
+                message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
+            }
+        }
+
+        // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
+
+        int64_t old_status = decrement_status_activations(mailbox, processed_activations);
+        int64_t old_activations = activations(old_status);
+        // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
+        print_debug_status(mailbox, "Run complete...");
+
+        if (old_activations == processed_activations && // processed everything
+            cmpsc_linked_queue_non_empty(mailbox->system_messages) && // but pending system messages it seems
+            activations(try_activate(mailbox)) == 0) { // need to activate again (mark that we have system messages)
+            // If we processed_activations all messages (including system messages) that have been
+            // present when we started to process messages and there are new system
+            // messages in the queue, but the mailbox has not been re-scheduled yet
+            // return true to signal the queue should be re-scheduled
+            print_debug_status(mailbox, "Run complete, shouldReschedule:true, pending system messages\n");
+            return Reschedule;
+        } else if (old_activations > processed_activations) {
+            // if we could not process all messages in this run, because we had more
+            // messages queued up than the maximum run length, return true to signal
+            // the queue should be re-scheduled
+
+            char msg[300];
+            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
+            print_debug_status(mailbox, msg);
+            return Reschedule;
+        } else if (!keep_running) {
+            print_debug_status(mailbox, "terminating, notifying swift mailbox...");
+            return Close;
+        } else {
+            print_debug_status(mailbox, "Run complete, shouldReschedule:false ");
+            return Done;
+        }
     }
 }
 
