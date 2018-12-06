@@ -39,8 +39,8 @@ typedef struct Node {
 typedef struct {
     _Alignas(64) _Atomic (Node*) producer;
     char _pad0[64 - sizeof(_Atomic Node*)];
-    Node* consumer;
-    char _pad1[64 - sizeof(Node*)];
+    _Atomic (Node*) consumer;
+    char _pad1[64 - sizeof(_Atomic Node*)];
 } CMPSCLinkedQueue;
 
 CMPSCLinkedQueue* cmpsc_linked_queue_create(void);

@@ -186,7 +186,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // we check the system queue itself, not only the status bit, since that may be slightly racy,
     // due to the fact that the system message bit is not a counter but only a marker, and we could lose information
     // that actually there are more system messages waiting to be run.
-    if (cmpsc_linked_queue_non_empty(mailbox->system_messages)) {
+    if (has_system_messages(status) && cmpsc_linked_queue_non_empty(mailbox->system_messages)) {
         processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
         // we run all system messages, as they may
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
