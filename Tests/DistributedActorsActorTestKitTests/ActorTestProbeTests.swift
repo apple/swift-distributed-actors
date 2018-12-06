@@ -30,7 +30,7 @@ class ActorTestProbeTests: XCTestCase {
         pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
         #endif
-        _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+        _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
 
         let probe = testKit.spawnTestProbe(name: "p1", expecting: String.self)
 
@@ -39,10 +39,10 @@ class ActorTestProbeTests: XCTestCase {
 
     func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() throws {
         #if !SACT_TESTS_CRASH
-        pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
+        pnote("Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
         #endif
-        _ = "Won't execute since SACT_TESTS_CRASH is not set. This test would crash since we can't capture the failures."
+        _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
 
         let probe = testKit.spawnTestProbe(name: "p2", expecting: String.self)
 

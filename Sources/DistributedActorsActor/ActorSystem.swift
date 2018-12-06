@@ -14,6 +14,7 @@
 
 import NIOConcurrencyHelpers
 import Dispatch
+import CDungeon
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
@@ -34,9 +35,6 @@ public final class ActorSystem {
     let eventStream = "" // FIXME actual implementation
 
     @usableFromInline let deadLetters: ActorRef<DeadLetter>
-
-    /// The "grim reaper" takes faulted "undead" actors and terminates them forcefully.
-    internal lazy var reaper: FaultyActorReaper.Ref? = nil
 
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
@@ -76,13 +74,10 @@ public final class ActorSystem {
         self.localProvider = LocalActorRefProvider()
         self.processProvider = ProcessFaultDomainActorRefProvider()
 
-        // --- fault handling ---
-        // TODO should be a system actor
-        let _reaper = try! self.spawn(FaultyActorReaper.behavior, name: "reaper")
-        self.reaper = _reaper
         do {
-            try FaultHandling.installCrashHandling(reaper: _reaper)
+            try FaultHandling.installCrashHandling()
         } catch {
+            CDungeon.sact_dump_backtrace()
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
         }
     }

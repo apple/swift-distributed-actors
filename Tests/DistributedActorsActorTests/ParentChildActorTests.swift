@@ -65,7 +65,7 @@ class ParentChildActorTests: XCTestCase {
                         context.watch(kid)
                     }
                     probe.tell(.spawned(child: kid))
-                } catch let ActorError.duplicateActorPath(path) {
+                } catch let ActorContextError.duplicateActorPath(path) {
                     probe.tell(.spawnFailed(path: path))
                 } // bubble up others
 
@@ -203,13 +203,8 @@ class ParentChildActorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let parent: ActorRef<String> = try system.spawn(.receive { (context, msg) in
-            switch msg {
-            case "stop":
-                try context.stop(child: p.ref)
-                return .same
-            default:
-                return .same
-            }
+            try context.stop(child: p.ref)
+            return .same
         }, name: "parent-4")
 
         p.watch(parent)
