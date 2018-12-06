@@ -28,6 +28,7 @@
 #ifndef CMailbox_h
 #define CMailbox_h
 
+#include <setjmp.h>
 #include <stdatomic.h>
 #include <stdbool.h>
 
@@ -88,7 +89,7 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 CMailboxRunResult cmailbox_run(
     CMailbox* mailbox,
     void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
-    InterpretMessageCallback interpret_message, DropMessageCallback drop_message);
+    InterpretMessageCallback interpret_message, DropMessageCallback drop_message, jmp_buf* error_jmp_buf);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 
