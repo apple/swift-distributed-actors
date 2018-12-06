@@ -118,8 +118,8 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
 
     let mailbox: Mailbox<Message> // TODO: we need to be able to swap it for DeadLetters or find some other way
 
-    // MARK: Internal details; here be dragons
-    internal let cell: ActorCell<Message> // FIXME code should never reach to the cell when thinking "ref"? only mailbox can touch cell
+    // MARK: Internal details; HERE BE DRAGONS
+    internal let cell: ActorCell<Message>
 
     public init(path: ActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
         self._path = path

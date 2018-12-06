@@ -49,7 +49,7 @@ internal struct FaultHandling {
     /// The fault handler is effective only *during* an actor run, and should not trap errors made outside of actors.
     static func installCrashHandling() throws {
         // c-function inter-op closure, can't close over state; state is carried in the contextPtr
-        let failCallback: FailCellCallback = { contextPtr, sig, sicode in
+        let failCallback: SActFailCellCallback = { contextPtr, sig, sicode in
             assert(contextPtr != nil, "contextPointer must never be nil when running fail callback! This is a Swift Distributed Actors bug.")
 
             // safe unwrap: protected by assertion above, and we always pass in a valid pointer
