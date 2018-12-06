@@ -38,6 +38,13 @@ Internal guarantees:
   - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
 - resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
 
+Parent-child relationships add a few more guarantees:
+
+- a parent is always notified about its childs' failures
+  - these DO NOT cause it to kill itself
+- if the parent spawns AND watches the child though, the same death pact principles apply,
+  and a failing child WILL cause the parent to terminate as well.
+
 
 === Monitoring and reacting to Termination
 
