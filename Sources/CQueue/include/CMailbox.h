@@ -46,8 +46,15 @@ typedef struct {
 typedef enum {
     Close = -1,
     Done = 0,
-    Reschedule = 1
+    Reschedule = 1,
+    Error = 2
 } CMailboxRunResult;
+
+typedef enum {
+    Resume = 0,
+    Restart = 1,
+    Stop = 2
+} SupervisorStrategy;
 
 /*
  * Callback type for Swift interop.
@@ -63,6 +70,8 @@ typedef bool (* InterpretMessageCallback)(void*, void*);
 
 /* Drop message, when draining mailbox into dead letters. */
 typedef void (* DropMessageCallback)(void*, void*); // TODO rename, deadletters
+
+typedef SupervisorStrategy (* SupervisorCallback)(void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 

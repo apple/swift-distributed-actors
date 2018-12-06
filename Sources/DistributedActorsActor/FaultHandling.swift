@@ -52,16 +52,8 @@ internal struct FaultHandling {
     ///
     /// The fault handler is effective only *during* an actor run, and should not trap errors made outside of actors.
     static func installCrashHandling() throws {
-        // c-function inter-op closure, can't close over state; state is carried in the contextPtr
-        let failCallback: SActFailCellCallback = { contextPtr, sig, sicode in
-            assert(contextPtr != nil, "contextPointer must never be nil when running fail callback! This is a Swift Distributed Actors bug.")
 
-            // safe unwrap: protected by assertion above, and we always pass in a valid pointer
-            let context = contextPtr!.assumingMemoryBound(to: CellFailureContext.self)
-            context.pointee.fail(signo: sig, sicode: sicode)
-        }
-
-        let handlerInstalledCode = CDungeon.sact_install_swift_crash_handler(failCallback)
+        let handlerInstalledCode = CDungeon.sact_install_swift_crash_handler()
 
         switch handlerInstalledCode {
         case 0:
@@ -73,27 +65,11 @@ internal struct FaultHandling {
         }
     }
 
-    // TODO add a test that a crash outside of an actor still crashes like expected?
-    //      I guess we can't really test for that...
-
-    /// Create a context object which will carry the cell information through to the failure (signal) handler in case of a fault.
-    ///
-    /// This context MUST remain alive (keep a reference to it) over the entire run of an actor,
-    /// and may ONLY be deallocated once the run completes successfully. It MUST be the last operation a run performs.
-    internal static func createCellFailureContext<M>(cell: ActorCell<M>) -> CellFailureContext {
-        return .init(fail: { signo, sicode in
-            defer { FaultHandling.unregisterCellFromCrashHandling(context: nil) }
-            let failingCell: ActorCell<M> = cell
-            let error = FaultHandling.siginfo2error(signo: signo, sicode: sicode)
-            failingCell.crashFail(error: error)
-        })
-    }
-
     /// Register the failure context for the currently executing [ActorCell].
     ///
     /// Important: Remember to clear it once the run is complete
-    internal static func registerCellForCrashHandling(context: inout CellFailureContext) {
-        CDungeon.sact_set_failure_handling_threadlocal_context(&context) // TODO not really needed as threadlocal
+    internal static func enableFailureHandling() {
+        CDungeon.sact_enable_failure_handling() // TODO not really needed as threadlocal
     }
 
     /// Clear the current cell failure context after a successful (or failed) run.
@@ -101,9 +77,8 @@ internal struct FaultHandling {
     /// Important: Always call this once a run completes, in order to avoid mistakenly invoking a cleanup action on the wrong "previous" cell.
     // Implementation notes: The reason we allow passing in the context even though we don't use it is to make sure the
     // lifetime of the context is longer than the mailbox run. Otherwise a failure may attempt using an already deallocated context.
-    internal static func unregisterCellFromCrashHandling(context: CellFailureContext?) {
-        _ = context // "use it"
-        CDungeon.sact_clear_failure_handling_threadlocal_context()
+    internal static func disableFailureHandling() {
+        CDungeon.sact_disable_failure_handling()
     }
 
     /// Convert error signal codes to their [FaultHandlingError] representation.

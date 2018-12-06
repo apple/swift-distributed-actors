@@ -34,6 +34,7 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/ucontext.h>
 #include <unistd.h>
@@ -48,14 +49,11 @@ int sact_my_tid();
 // we assume that setting the signal handler once for our application does the job.
 static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 
-// shared, callback invoked by signal handler, executed for each of the faults we encounter and want to tell Swift Distributed Actors about
-static SActFailCellCallback shared_fail_cell_cb = NULL;
-
 // Thread local containing the ActorCell and failure handling logic, implemented in Swift.
 //
 // Each executing actor sets this value for the duration of its mailbox run.
 // if NULL, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
-static _Thread_local void* current_fail_context = NULL;
+static _Thread_local bool failure_handling_enabled = false;
 
 static _Thread_local jmp_buf error_jmp_buf;
 
@@ -85,7 +83,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
                     sact_my_tid(), sig, siginfo->si_code);
     #endif
 
-    if (current_fail_context == NULL) {
+    if (!failure_handling_enabled) {
         // fault happened outside of a fault handling actor, we MUST NOT handle it!
         #ifdef SACT_TRACE_CRASH
         fprintf(stderr, "[SACT_TRACE_CRASH][thread:%d] Thread is not executing an actor. Applying default signal handling.\n", sact_my_tid());
@@ -98,27 +96,11 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
 
-    // the context:
-    ucontext_t *uc = (ucontext_t *)data;
-
-    // invoke our swift-handler, it will schedule the reaper and fail this cell
-    shared_fail_cell_cb(current_fail_context, sig, siginfo->si_code);
-
     // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
     // http://man7.org/linux/man-pages/man3/backtrace.3.html
 
     // we are jumping back to the mailbox to properly handle the crash and kill the actor
-    longjmp(error_jmp_buf, 1);
-
-    /*
-    #ifdef __linux__
-        uc->uc_mcontext.gregs[REG_RIP] = (greg_t)&sact_complain_and_pause_thread;
-    #elif __APPLE__
-        uc->uc_mcontext->__ss.__rip = (uint64_t)&sact_complain_and_pause_thread;
-    #else
-        #error platform unsupported
-    #endif
-     */
+    siglongjmp(error_jmp_buf, 1);
 }
 
 void block_thread() {
@@ -151,24 +133,20 @@ void sact_complain_and_pause_thread(void* ctx) {
     // kill_pthread_self(); // terminates entire process
 }
 
-void sact_set_failure_handling_threadlocal_context(void* fail_context) {
-    current_fail_context = fail_context;
+void sact_enable_failure_handling() {
+    failure_handling_enabled = true;
 }
 
-void* sact_clear_failure_handling_threadlocal_context() {
-    void* old_context = current_fail_context;
-    current_fail_context = NULL;
-    return old_context; // so Swift can release it
+void sact_disable_failure_handling() {
+    failure_handling_enabled = false;
 }
 
 /* returns errno and sets errno appropriately, 0 on success */
-int sact_install_swift_crash_handler(SActFailCellCallback failure_handler_swift_cb) {
+int sact_install_swift_crash_handler() {
     pthread_mutex_lock(&lock); // TODO not really used?
 
     if (atomic_flag_test_and_set(&handler_set) == 0) {
         /* we won the race; we only set the signal handler once */
-
-        shared_fail_cell_cb = failure_handler_swift_cb;
 
         struct sigaction sa = { 0 };
 

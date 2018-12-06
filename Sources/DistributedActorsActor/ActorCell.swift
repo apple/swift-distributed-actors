@@ -250,6 +250,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             return
         }
 
+        if ref.path.isChildOf(self.path) {
+            _ = children.remove(path: ref.path)
+        }
+
         let next: Behavior<Message>
         if case let .signalHandling(_, handleSignal) = self.behavior {
             next = try handleSignal(context, terminated)
@@ -336,8 +340,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     public func crashFail(error: Error) {
 
         // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
-        let crashHandlingExplanation = "Parking thread to prevent undefined behavior and more damage. " +
-            "Terminating actor, process remains alive with leaked thread."
+        let crashHandlingExplanation = "Terminating actor, process remains alive."
 
         log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
 
