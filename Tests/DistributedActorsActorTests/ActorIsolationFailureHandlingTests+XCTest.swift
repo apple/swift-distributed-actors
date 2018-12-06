@@ -26,6 +26,7 @@ extension ActorIsolationFailureHandlingTests {
       return [
                 ("test_worker_crashOnlyWorkerOnPlainErrorThrow", test_worker_crashOnlyWorkerOnPlainErrorThrow),
                 ("test_worker_FaultDomain_crashOnlyWorkerOnDivisionByZero", test_worker_FaultDomain_crashOnlyWorkerOnDivisionByZero),
+                ("test_crashOutsideOfActor_shouldStillFailLikeUsual", test_crashOutsideOfActor_shouldStillFailLikeUsual),
            ]
    }
 }

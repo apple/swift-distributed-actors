@@ -56,17 +56,24 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
     return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
-/// Short for "pretty print".
-/// Useful for debug tracing
+/// Short for "pretty print", useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("[pprint][\(file):\(line)][\(_hackyPThreadThreadId())]: \(message)")
 //  print("[pprint][\(file):\(line)]: \(message)")
 }
 
+/// Like [pprint] but yellow, use for things that are better not to miss.
 public func pnote(_ message: String, file: StaticString = #file, line: UInt = #line) {
     let yellow = "\u{001B}[0;33m"
     let reset = "\u{001B}[0;0m"
     print("\(yellow)\(file):\(line) : \(message)\(reset)")
+}
+
+/// Like [pprint] but green, use for notable "good" output.
+public func pinfo(_ message: String, file: StaticString = #file, line: UInt = #line) {
+    let green = "\u{001B}[0;32m"
+    let reset = "\u{001B}[0;0m"
+    print("\(green)\(file):\(line) : \(message)\(reset)")
 }
 
 internal func _hackyPThreadThreadId() -> String {

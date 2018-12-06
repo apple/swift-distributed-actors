@@ -58,16 +58,17 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         }
     }
 
+    let spawnFaultyWorkerCommand = "spawnFaultyWorker"
     func healthyMasterBehavior(pm: ActorRef<SimpleProbeMessages>, pw: ActorRef<Int>) -> Behavior<String> {
-        return .setup { context in
-            let worker = try context.spawn(self.faultyWorkerBehavior(probe: pw), name: "faultyWorker")
-            pm.tell(.spawned(child: worker))
-
-            // TODO: make sure returning .same from setup is not allowed
-            return .receiveMessage { message in
+        return .receive { context, message in
+            switch message {
+            case self.spawnFaultyWorkerCommand:
+                let worker = try context.spawn(self.faultyWorkerBehavior(probe: pw), name: "faultyWorker")
+                pm.tell(.spawned(child: worker))
+            default:
                 pm.tell(.echoing(message: message))
-                return .same
             }
+            return .same
         }
     }
 
@@ -80,6 +81,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
+        healthyMaster.tell("spawnFaultyWorker")
         guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message") }
 
         // watch the child worker and see that it works correctly:
@@ -108,7 +110,8 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
-        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message")}
+        healthyMaster.tell(spawnFaultyWorkerCommand)
+        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message") }
 
         // watch the child worker and see that it works correctly:
         pw.watch(childWorker)
@@ -121,15 +124,34 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // the worker, should have terminated due to the error:
         let workerTerminated = try pw.expectTerminated(childWorker)
-        pnote("Good: \(workerTerminated)")
+        pinfo("Good: \(workerTerminated)")
 
         // even though the worker crashed, the parent is still alive (!)
         let stillAlive = "still alive"
         healthyMaster.tell(stillAlive)
         try pm.expectMessage(.echoing(message: "still alive"))
-        pnote("Good: Parent \(healthyMaster) still active.")
+        pinfo("Good: Parent \(healthyMaster) still active.")
+
+        healthyMaster.tell(spawnFaultyWorkerCommand)
+        pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
+        guard case let .spawned(childWorkerReplacement) = try pm.expectMessage() else { fatalError("did not receive expected message") }
+        childWorkerReplacement.path.shouldEqual(childWorker.path) // same path
+        childWorkerReplacement.shouldNotEqual(childWorker) // NOT same identity
+
+        childWorkerReplacement.tell(.work(n: 1000, divideBy: 100))
+        try pw.expectMessage(10)
     }
 
+    func test_crashOutsideOfActor_shouldStillFailLikeUsual() throws {
+        #if !SACT_TESTS_CRASH
+        pnote("Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`")
+        return ()
+        #endif
+        _ = "Skipping test \\(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash, run with 'test -Xswiftc=\"-DSACT_TESTS_CRASH\"'"
+
+        fatalError("Boom like usual!")
+        // this MUST NOT trigger Swift Distributed Actors failure handling, we are not inside of an actor!
+    }
 
 }
 

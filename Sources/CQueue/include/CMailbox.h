@@ -41,7 +41,7 @@ typedef struct {
     CMPSCLinkedQueue* messages;
 } CMailbox;
 
-///* Result of mailbox run, instructs swift part of code to perform follow up actions */
+/** Result of mailbox run, instructs swift part of code to perform follow up actions */
 typedef enum {
     Close = -1,
     Done = 0,

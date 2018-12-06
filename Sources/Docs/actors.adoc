@@ -6,6 +6,12 @@ TODO: This is just placeholders. Not actual structure etc.
 
 TODO
 
+=== "Thinking in Actors"
+
+TODO super important section.
+
+We should avoid "omg everything as an actor!" when people start adopting this :-)
+
 === Starting and stopping Actors
 
 TODO
@@ -13,7 +19,6 @@ TODO
 === Sending messages
 
 TODO
-
 
 === Stopping actors
 
