@@ -56,7 +56,7 @@
 // Implementation notes about Termination:
 // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
 // In other words, the only legal bit states a mailbox should observe are:
-//  - 0b11.. alive,
+//  - 0b00.. alive,
 //  -> 0b01.. terminating,
 //  -> 0b11.. closed (terminated, dead.)
 // Meaning that `10` is NOT legal.
