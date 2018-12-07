@@ -96,7 +96,7 @@ measureAndPrint(desc: "receive \(n) messages") {
 
     l.lock()
     for i in 1...n {
-        ref ! i
+        ref.tell(i)
     }
     c.wait(l)
 

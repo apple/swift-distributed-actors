@@ -49,7 +49,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         try p.expectMessage("inner-2")
         try p.expectMessage("inner-3")
         try p.expectNoMessage(for: .milliseconds(100))
-        ref ! "ping"
+        ref.tell("ping")
         try p.expectMessage("received:ping")
     }
 
@@ -63,7 +63,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
                     return deepSetupRabbitHole(currentDepth: depth + 1, stopAt: limit)
                 } else {
                     return .receiveMessage { msg in
-                        p ! "received:\(msg)"
+                        p.tell("received:\(msg)")
                         return .stopped
                     }
                 }
@@ -75,7 +75,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         let depthLimit = 1024 * 8 // not a good idea, but we should not crash
         let ref = try! system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), name: "deepSetupNestedRabbitHole")
 
-        ref ! "ping"
+        ref.tell("ping")
         try p.expectMessage("received:ping")
     }
 

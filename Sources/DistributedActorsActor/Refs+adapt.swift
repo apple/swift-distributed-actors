@@ -39,6 +39,6 @@ internal final class ActorRefAdapter<From, To>: ActorRef<From> {
     }
 
     override func tell(_ message: From) {
-        ref ! converter(message)
+        ref.tell(converter(message))
     }
 }

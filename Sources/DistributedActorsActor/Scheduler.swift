@@ -62,7 +62,7 @@ extension DispatchQueue: Scheduler {
 
     public func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
         return scheduleOnce(delay: delay) {
-            receiver ! message
+            receiver.tell(message)
         }
     }
 
@@ -84,7 +84,7 @@ extension DispatchQueue: Scheduler {
 
     public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
         return schedule(initialDelay: initialDelay, interval: interval) {
-            receiver ! message
+            receiver.tell(message)
         }
     }
 

@@ -31,7 +31,7 @@ class StashBufferTests: XCTestCase {
         let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
-            probe.ref ! message
+            probe.ref.tell(message)
             return .same
         }
 
@@ -52,14 +52,14 @@ class StashBufferTests: XCTestCase {
         let stasher = try system.spawnAnonymous(behavior)
 
         for i in 0...10 {
-            stasher ! i
+            stasher.tell(i)
         }
 
         for i in 0...9 {
             try probe.expectMessage(i)
         }
 
-        stasher ! 10
+        stasher.tell(10)
         try probe.expectMessage(10)
     }
 
@@ -80,7 +80,7 @@ class StashBufferTests: XCTestCase {
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
             try! stash.stash(message: message)
-            probe.ref ! message
+            probe.ref.tell(message)
             return .same
         }
 
@@ -98,7 +98,7 @@ class StashBufferTests: XCTestCase {
         let stasher = try system.spawnAnonymous(behavior)
 
         for i in 0...10 {
-            stasher ! i
+            stasher.tell(i)
         }
 
         // we are expecting to get each stashed message once
@@ -110,7 +110,7 @@ class StashBufferTests: XCTestCase {
         // If the stash would unstash the messages that have been stashed
         // during the same unstash run, we should get 0 instead of 10 and the
         // test would fail.
-        stasher ! 10
+        stasher.tell(10)
         try probe.expectMessage(10)
     }
 }

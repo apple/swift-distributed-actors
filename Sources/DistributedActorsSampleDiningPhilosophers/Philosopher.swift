@@ -48,8 +48,8 @@ public class Philosopher {
                 switch msg {
                 case .eat:
                     context.log.info("I'm becoming hungry, trying to grab forks...")
-                    self.left ! Fork.Messages.take(by: context.myself)
-                    self.right ! Fork.Messages.take(by: context.myself)
+                    self.left.tell(Fork.Messages.take(by: context.myself))
+                    self.right.tell(Fork.Messages.take(by: context.myself))
                     return self.hungry
 
                 case .think:
@@ -139,8 +139,8 @@ public class Philosopher {
                 switch $0 {
                 case .think:
                     context.log.info("I've had a good meal, returning forks, and become thinking!")
-                    self.left ! .putBack(by: context.myself)
-                    self.right ! .putBack(by: context.myself)
+                    self.left.tell(.putBack(by: context.myself))
+                    self.right.tell(.putBack(by: context.myself))
                     return self.thinking
 
                 default:

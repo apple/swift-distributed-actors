@@ -90,7 +90,7 @@ class ParentChildActorTests: XCTestCase {
             switch signal {
             case let .terminated(ref, _):
                 if notifyWhenChildStops {
-                    probe ! .childStopped(name: ref.path.name)
+                    probe.tell(.childStopped(name: ref.path.name))
                 }
             default:
                 ()
@@ -178,7 +178,7 @@ class ParentChildActorTests: XCTestCase {
 
         let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref, notifyWhenChildStops: true), name: "parent-3")
 
-        parent ! .spawnChild(behavior: childBehavior(probe: p.ref), name: "kid")
+        parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
         _ = try p.expectMessageMatching { x throws -> ActorRef<ChildProtocol>? in
             switch x {
@@ -187,7 +187,7 @@ class ParentChildActorTests: XCTestCase {
             }
         }
 
-        parent ! .stopByName(name: "kid")
+        parent.tell(.stopByName(name: "kid"))
 
         _ = try p.expectMessageMatching { x throws -> String? in
             switch x {
@@ -209,7 +209,7 @@ class ParentChildActorTests: XCTestCase {
 
         p.watch(parent)
 
-        parent ! "stop"
+        parent.tell("stop")
 
         try p.expectTerminated(parent)
     }
@@ -242,7 +242,7 @@ class ParentChildActorTests: XCTestCase {
 
         p.watch(parent)
 
-        parent ! "spawn"
+        parent.tell("spawn")
 
         let childA: ActorRef<ChildProtocol> = try p.expectMessageMatching {
             switch $0 {
