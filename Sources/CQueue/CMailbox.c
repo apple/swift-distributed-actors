@@ -164,9 +164,6 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
         print_debug_status(mailbox, "cmailbox_send_system_message mailbox closed ");
         return -1;
     } else {
-        // If the mailbox is not full, or we enqueue a system message, we insert it
-        // into the queue and return whether this was the first activation, to signal
-        // the need to enqueue this mailbox.
         print_debug_status(mailbox, "cmailbox_send_system_message enqueued ");
         return old_activations;
     }
