@@ -36,9 +36,11 @@
 
 // Implementation notes:
 // State should be operated on bitwise; where the specific bits signify states like the following:
-// 0 - 29 - activation count
-//     30 - terminating (or closed)
-//     31 - closed, terminated (for sure)
+//      0 - has system messages
+//      1 - currently processing system messages
+//   2-61 - user message count
+//     62 - terminating (or closed)
+//     63 - closed, terminated (for sure)
 // Activation count is special in the sense that we use it as follows, it's value being:
 // 0 - inactive, not scheduled and no messages to process
 // 1 - active without(!) normal messages, only system messages are to be processed
@@ -49,7 +51,7 @@
 // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
 // - if we need to schedule it or not since it was scheduled already etc.
 
-#define ACTIVATIONS                 0b00111111111111111111111111111111
+#define ACTIVATIONS                 0b0011111111111111111111111111111111111111111111111111111111111111
 
 // Implementation notes about Termination:
 // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
@@ -58,10 +60,18 @@
 //  -> 0b01.. terminating,
 //  -> 0b11.. closed (terminated, dead.)
 // Meaning that `10` is NOT legal.
-#define TERMINATING                 0b01000000000000000000000000000000
-#define CLOSED                      0b10000000000000000000000000000000
-#define HAS_SYSTEM_MESSAGES         0b00000000000000000000000000000001
-#define PROCESSING_SYSTEM_MESSAGES  0b00000000000000000000000000000001
+#define TERMINATING                 0b0100000000000000000000000000000000000000000000000000000000000000
+#define CLOSED                      0b1000000000000000000000000000000000000000000000000000000000000000
+#define HAS_SYSTEM_MESSAGES         0b0000000000000000000000000000000000000000000000000000000000000001
+#define PROCESSING_SYSTEM_MESSAGES  0b0000000000000000000000000000000000000000000000000000000000000010
+
+// Mask to use with XOR on the status to unset the 'has system messages' bit
+// and set the 'is processing system messages' bit in a single atomic operation
+#define BECOME_SYS_MSG_PROCESSING_XOR_MASK 0b11
+
+// user message count is store in bits 2-61, so when incrementing or
+// decrementing the message count, we need to add starting at bit 2
+#define SINGLE_USER_MESSAGE_MASK 0b100
 
 int64_t increment_status_activations(CMailbox* mailbox);
 
@@ -117,21 +127,20 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
     CMPSCLinkedQueue* queue = mailbox->messages;
     // printf("[SACT_TRACE_MAILBOX][c] enter send_message; messages in queue: %lu\n", (message_count(old_status)));
 
-    // `>` is correct and not an one-off, since message count is `activations - 1`
     if ((message_count(old_status) >= mailbox->capacity) || is_terminating(old_status)) {
         // If we passed the maximum capacity of the user queue, we can't enqueue more
         // items and have to decrement the activations count again. This is not racy,
         // because we only process messages if the queue actually contains them (does
         // not return NULL), so even if messages get processed concurrently, it's safe
         // to decrement here.
-        decrement_status_activations(mailbox, 0b100);
+        decrement_status_activations(mailbox, SINGLE_USER_MESSAGE_MASK);
         print_debug_status(mailbox, "cmailbox_send_message dropping... ");
         // TODO: emit the message as ".dropped(msg)"
         return false;
     } else {
-        // If the mailbox is not full, or we enqueue a system message, we insert it
-        // into the queue and return whether this was the first activation, to signal
-        // the need to enqueue this mailbox.
+        // If the mailbox is not full, we insert it into the queue and return,
+        // whether this was the first activation, to signal the need to enqueue
+        // this mailbox.
         cmpsc_linked_queue_enqueue(queue, envelope);
         print_debug_status(mailbox, "cmailbox_send_message enqueued ");
 
@@ -173,11 +182,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
     int64_t status = set_processing_system_messages(mailbox);
 
-//  if (!has_activations(status)) { // FIXME should this not actually be a bug, because we had a spurious activation triggered?
-//    return false;
-//  }
-
-    int64_t processed_activations = has_system_messages(status) ? 0b10 : 0b0;
+    int64_t processed_activations = has_system_messages(status) ? 0b10 : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
@@ -235,7 +240,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             // we need to add 2 to processed_activations because the user message count is stored
             // shifted by 1 in the status and we use the same field to clear the
             // system message bit
-            processed_activations += 0b100;
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
             // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
             // TODO: fix this dance
             bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
@@ -262,7 +267,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
             drop_message(dead_letter_context, message);
-            processed_activations += 0b100;
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
             message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
         }
     }
@@ -306,7 +311,7 @@ int64_t cmailbox_message_count(CMailbox* mailbox) {
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
-    //#ifdef SACT_TRACE_MAILBOX
+    #ifdef SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
     char buffer[33];
@@ -336,11 +341,11 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            is_terminating(status) ? "Y" : "N",
            is_closed(status) ? "Y" : "N"
     );
-    //#endif
+    #endif
 }
 
 int64_t get_status(CMailbox* mailbox) {
-    return atomic_load_explicit(&mailbox->status, memory_order_consume);
+    return atomic_load_explicit(&mailbox->status, memory_order_acquire);
 }
 
 int64_t try_activate(CMailbox* mailbox) {
@@ -349,7 +354,7 @@ int64_t try_activate(CMailbox* mailbox) {
 
 // TODO: this is more like increment message count
 int64_t increment_status_activations(CMailbox* mailbox) {
-    return atomic_fetch_add_explicit(&mailbox->status, 0b100, memory_order_acq_rel);
+    return atomic_fetch_add_explicit(&mailbox->status, SINGLE_USER_MESSAGE_MASK, memory_order_acq_rel);
 }
 
 int64_t decrement_status_activations(CMailbox* mailbox, int64_t n) {
@@ -365,18 +370,21 @@ int64_t set_status_closed(CMailbox* mailbox) {
      return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
 }
 
-
+// Checks if the 'has system messages' bit is set and if it is, unsets it and
+// sets the 'is processing system messages' bit in one atomic operation. This is
+// necessary to not race between unsetting the bit at the end of a run while
+// another thread is enqueueing a new system message.
 int64_t set_processing_system_messages(CMailbox* mailbox) {
-    int64_t status = atomic_load_explicit(&mailbox->status, memory_order_consume);
+    int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
     if (has_system_messages(status)) {
-        status = atomic_fetch_xor_explicit(&mailbox->status, 0b11, memory_order_acq_rel);
+        status = atomic_fetch_xor_explicit(&mailbox->status, BECOME_SYS_MSG_PROCESSING_XOR_MASK, memory_order_acq_rel);
     }
 
     return status;
 }
 
 bool has_system_messages(int64_t status) {
-    return (status & 1) == 1;
+    return (status & HAS_SYSTEM_MESSAGES) == HAS_SYSTEM_MESSAGES;
 }
 
 bool has_activations(int64_t status) {
