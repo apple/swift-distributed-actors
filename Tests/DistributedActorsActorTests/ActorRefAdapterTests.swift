@@ -30,7 +30,7 @@ class ActorRefAdapterTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
 
         let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
-            p.ref ! msg
+            p.ref.tell(msg)
             return .same
         })
 
@@ -39,7 +39,7 @@ class ActorRefAdapterTests: XCTestCase {
         }
 
         for i in 0...10 {
-            adapted ! i
+            adapted.tell(i)
         }
 
         for i in 0...10 {

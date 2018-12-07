@@ -44,8 +44,8 @@ public final class Fork {
         return .receiveMessage { msg in
             switch msg {
             case let .take(who):
-                // who ! .pickedUpBy(context.myself) // TODO: need adapters such that it wraps in the below automatically
-                who ! .forkReply(.pickedUp(fork: context.myself))
+                // who.tell(.pickedUpBy(context.myself) // TODO: need adapters such that it wraps in the below automatically
+                who.tell(.forkReply(.pickedUp(fork: context.myself)))
                 return taken(by: who, context)
 
             case let .putBack(who):
@@ -67,7 +67,7 @@ public final class Fork {
 
             case let .take(who):
                 context.log.info("\(who) attempted to take [\(context.myself)], yet already taken by \(owner)...")
-                who ! .forkReply(.busy(fork: context.myself)) // TODO: need the adapters
+                who.tell(.forkReply(.busy(fork: context.myself))) // TODO: need the adapters
                 return .ignore
             }
         }

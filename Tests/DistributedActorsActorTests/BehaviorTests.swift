@@ -36,7 +36,7 @@ class BehaviorTests: XCTestCase {
 
         let message = "EHLO"
         let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
-            p ! message
+            p.tell(message)
             return .stopped
         })
 
@@ -50,7 +50,7 @@ class BehaviorTests: XCTestCase {
 
         for _ in 0...10 {
             let payload: String = messages.nextName()
-            p ! payload
+            p.tell(payload)
             try p.expectMessage(payload)
         }
     }
@@ -62,13 +62,13 @@ class BehaviorTests: XCTestCase {
 
         let echoPayload: ActorRef<TestMessage> =
             try system.spawnAnonymous(.receiveMessage { message in
-                p ! message.message
+                p.tell(message.message)
                 return .same
             })
 
         for _ in 0...10 {
             let payload: String = messages.nextName()
-            echoPayload ! TestMessage(message: payload, replyTo: p.ref)
+            echoPayload.tell(TestMessage(message: payload, replyTo: p.ref))
             try p.expectMessage(payload)
         }
     }
@@ -98,7 +98,7 @@ class BehaviorTests: XCTestCase {
 
         // first we send many messages
         for i in 0...n {
-            ref ! i
+            ref.tell(i)
         }
 
         // then we expect they arrive in the expected order
@@ -111,7 +111,7 @@ class BehaviorTests: XCTestCase {
 
     class MyActor: ActorBehavior<TestMessage> {
         override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
-            message.replyTo ! thxFor(message.message)
+            message.replyTo.tell(thxFor(message.message))
             return .same
         }
 
@@ -133,7 +133,7 @@ class BehaviorTests: XCTestCase {
 
         // first we send many messages
         for i in 0...10 {
-            ref ! TestMessage(message: "message-\(i)", replyTo: p.ref)
+            ref.tell(TestMessage(message: "message-\(i)", replyTo: p.ref))
         }
 
         func thxFor(_ m: String) -> String {

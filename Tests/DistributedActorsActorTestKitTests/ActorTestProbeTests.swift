@@ -46,7 +46,7 @@ class ActorTestProbeTests: XCTestCase {
 
         let probe = testKit.spawnTestProbe(name: "p2", expecting: String.self)
 
-        probe ! "one"
+        probe.tell("one")
 
         try probe.expectMessage("two") // TODO: style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
         // this causes a nice failure like:

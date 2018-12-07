@@ -148,7 +148,7 @@ class DeathWatchTests: XCTestCase {
         probe.watch(juliet)
         probe.watch(romeo)
 
-        romeo ! "hi"
+        romeo.tell("hi")
         try probe.expectMessage("reply:hi")
 
         // internal hacks
@@ -195,9 +195,9 @@ class DeathWatchTests: XCTestCase {
         probe.watch(juliet)
         probe.watch(romeo)
 
-        romeo ! "watch"
+        romeo.tell("watch")
         try probe.expectMessage("reply:watch")
-        romeo ! "unwatch"
+        romeo.tell("unwatch")
         try probe.expectMessage("reply:unwatch")
 
         // internal hacks; we simulate that Juliet has terminated, and enqueued the .terminated before the unwatch managed to reach her
@@ -274,11 +274,11 @@ class DeathWatchTests: XCTestCase {
 
         p.watch(stoppableRef)
 
-        stoppableRef ! .stop
+        stoppableRef.tell(.stop)
 
         try p.expectTerminated(stoppableRef)
 
-        stoppableRef ! .stop
+        stoppableRef.tell(.stop)
     }
 }
 
