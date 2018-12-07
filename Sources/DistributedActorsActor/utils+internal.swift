@@ -48,3 +48,10 @@ func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #f
     pprint(message(), file: file, line: line)
     #endif
 }
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_PROBE
+    pprint(message(), file: file, line: line)
+    #endif
+}

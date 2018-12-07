@@ -16,8 +16,6 @@ import NIO
 import Dispatch
 import CDungeon
 
-@usableFromInline let SACT_TRACE_CELL = false
-
 // MARK: Internal implementations, the so-called "cell"
 
 /// INTERNAL API
