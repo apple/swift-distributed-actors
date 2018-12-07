@@ -38,6 +38,7 @@ void sact_dump_backtrace() {
     for (i = 0; i < frames; ++i) {
         fprintf(stderr, "%s\n", strs[i]);
     }
+    free(strs);
 }
 
 /* UD2 is defined as "Raises an invalid opcode exception in all operating modes." */
