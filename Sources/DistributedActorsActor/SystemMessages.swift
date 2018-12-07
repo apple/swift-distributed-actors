@@ -17,7 +17,7 @@
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
 /// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
-public /* but really internal... */ enum SystemMessage: Equatable {
+public /* but really internal... */ enum SystemMessage: Equatable { // TODO system messages should be internal, we have to make the Signal/SysMsg split
 
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
@@ -28,9 +28,9 @@ public /* but really internal... */ enum SystemMessage: Equatable {
     // TODO: do we need poison pill?
 
     /// Notifies an actor that it is being watched by the `from` actor
-    case watch(wachee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
+    case watch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
     /// Notifies an actor that it is no longer being watched by the `from` actor
-    case unwatch(wachee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
+    case unwatch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
 
     /// Received after [[watch]] was issued to an actor ref
     /// - Parameters:

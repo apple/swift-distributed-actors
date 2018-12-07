@@ -306,13 +306,19 @@ extension ActorTestProbe {
 
     // MARK: Death watch methods
 
-    /// Instructs this probe to watch the passed in reference.
+    /// Instructs this probe to watch the passed in actor.
+    /// The watchee actor is from now on being watched and we will receive `.terminated` signals about it.
+    ///
+    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
+    /// The actor is the being watched subject, not a specific reference to it.
     ///
     /// This enables it to use [[expectTerminated]] to await for the watched actors termination.
-    public func watch<M>(_ watchee: ActorRef<M>) {
+    /// 
+    /// Returns: reference to the passed in watchee actor.
+    @discardableResult
+    public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
-        //    let downcast: ActorRefWithCell<M> = watchee.internal_downcast
-        //    downcast.sendSystemMessage(.watch(from: BoxedHashableAnyReceivesSystemMessages(self.ref)))
+        return watchee
     }
 
     /// Instructs this probe to unwatch the passed in reference.
@@ -321,12 +327,17 @@ extension ActorTestProbe {
     /// the `.terminated` signal in its signal assertion queue, which is not modified upon `unwatching`.
     /// If you want to avoid such race, you can implement your own small actor which performs the watching
     /// and forwards signals appropriately to a probe to trigger the assertions in the tests main thread.
-    public func unwatch<M>(_ watchee: ActorRef<M>) {
+    ///
+    /// Returns: reference to the passed in watchee actor.
+    @discardableResult
+    public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
+        return watchee
     }
 
     /// Returns the `terminated` message (TODO SIGNAL)
     /// since one may want to perform additional assertions on the termination reason perhaps
+    ///
     /// Returns: the matched `.terminated` message
     @discardableResult
     public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
