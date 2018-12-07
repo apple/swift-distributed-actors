@@ -27,5 +27,23 @@ import XCTest
 
    XCTMain([
          testCase(ActorIsolationFailureHandlingTests.allTests),
+         testCase(ActorLifecycleTests.allTests),
+         testCase(ActorPathTests.allTests),
+         testCase(ActorRefAdapterTests.allTests),
+         testCase(ActorSystemTests.allTests),
+         testCase(ActorTestProbeTests.allTests),
+         testCase(AnonymousNamesGeneratorTests.allTests),
+         testCase(BehaviorCanonicalizeTests.allTests),
+         testCase(BehaviorTests.allTests),
+         testCase(CMPSCLinkedQueueTests.allTests),
+         testCase(CMailboxTests.allTests),
+         testCase(DeadlineTests.allTests),
+         testCase(DeathWatchTests.allTests),
+         testCase(MPSCLinkedQueueTests.allTests),
+         testCase(ParentChildActorTests.allTests),
+         testCase(RingBufferTests.allTests),
+         testCase(StashBufferTests.allTests),
+         testCase(SupervisionTests.allTests),
+         testCase(TimeAmountTests.allTests),
     ])
 #endif
