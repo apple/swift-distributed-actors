@@ -79,6 +79,6 @@ int cmpsc_linked_queue_non_empty(CMPSCLinkedQueue* q) {
 }
 
 int cmpsc_linked_queue_is_empty(CMPSCLinkedQueue* q) {
-    return atomic_load_explicit(&q->consumer->next, memory_order_consume) == NULL
-           && atomic_load_explicit(&q->producer, memory_order_consume) == q->consumer;
+    return atomic_load_explicit(&q->consumer->next, memory_order_acquire) == NULL
+           && atomic_load_explicit(&q->producer, memory_order_acquire) == q->consumer;
 }
