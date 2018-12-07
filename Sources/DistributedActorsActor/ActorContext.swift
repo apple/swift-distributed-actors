@@ -67,7 +67,10 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
 
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
-    /// when the watched actor is terminates ("dies").
+    /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
+    ///
+    /// There is no difference between keeping the passed in reference or using the returned ref from this method.
+    /// The actor is the being watched subject, not a specific reference to it.
     ///
     /// Death Pact: By watching an actor one enters a so-called "death pact" with the watchee,
     /// meaning that this actor will also terminate itself once it receives the `.terminated` signal
@@ -81,14 +84,25 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// When the `.terminated` signal is handled by this actor, the automatic death pact will not be triggered.
     /// If the `.terminated` signal is handled by returning `.unhandled` it is the same as if the signal was not handled at all,
     /// and the Death Pact will trigger as usual.
-    public func watch<M>(_ watchee: ActorRef<M>) { // TODO: fix signature, should return the watchee
+    ///
+    ///
+    /// # Examples:
+    ///
+    ///     // watch some known ActorRef<M>
+    ///     context.watch(someRef)
+    ///
+    ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
+    ///     let child = try context.watch(context.spawn(behavior, name: "child"))
+    @discardableResult
+    public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> { // TODO: fix signature, should return the watchee
         return undefined()
     }
 
     /// Reverts the watching of an previously watched actor.
     ///
     /// Unwatching a not-previously-watched actor has no effect.
-    public func unwatch<M>(_ watchee: ActorRef<M>) {
+    @discardableResult
+    public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         return undefined()
     }
 
@@ -109,7 +123,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
 
     /// Stop child Actor.
     ///
-    /// Throws: when an actor ref is passed in that is NOT a child of the current actor.
+    /// - Throws: when an actor ref is passed in that is NOT a child of the current actor.
     ///         An actor may not terminate another's child actors.
     public func stop<M>(child ref: ActorRef<M>) throws {
         return undefined()

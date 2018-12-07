@@ -176,7 +176,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         case .start:
             try self.interpretSystemStart()
 
-            // death watch
+        // death watch
         case let .watch(_, watcher):
             self.interpretSystemWatch(watcher: watcher)
 
@@ -376,12 +376,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     // MARK: Death Watch
 
-    override public func watch<M>(_ watchee: ActorRef<M>) {
+    override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
+        return watchee
     }
 
-    override public func unwatch<M>(_ watchee: ActorRef<M>) {
+    override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
+        return watchee
     }
 }
 
