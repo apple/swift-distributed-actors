@@ -340,7 +340,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     public func crashFail(error: Error) {
 
         // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
-        let crashHandlingExplanation = "Terminating actor, process remains alive."
+        let crashHandlingExplanation = "Terminating actor, process and thread remain alive."
 
         log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
 

@@ -193,14 +193,6 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     bool keep_running = true; // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
     if (sigsetjmp(*error_jmp_buf, 1)) {
-        printf("++++++======++++++++ ERROROROROROROROOR +++++====++++====");
-        void* callstack[128];
-        int i, frames = backtrace(callstack, 128);
-        char** strs = backtrace_symbols(callstack, frames);
-        for (i = 0; i < frames; ++i) {
-            fprintf(stderr, "%s\n", strs[i]);
-        }
-        //exit(-1);
         cmailbox_set_terminating(mailbox);
         return Error;
     } else {
