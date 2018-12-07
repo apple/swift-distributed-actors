@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CDungeon
+
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 // TODO: designing the cell and ref is so far the most tricky thing I've seen... We want to hide away the ActorRef
@@ -87,7 +89,6 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 /// INTERNAL API: Only for use by the actor system itself
 // TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
 public protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
-    // TODO: fix naming mess with Signal and SystemMessage
 
     /// INTERNAL API: Only for use by the actor system itself
     ///
@@ -139,5 +140,56 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     @usableFromInline internal func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Mailbox("sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message)
+    }
+}
+
+// MARK: "Special" internal actors, "the Top Level Guardians"
+
+/// Represents an actor that has to exist, but does not exist in reality.
+/// It steps on the
+/// This actor ref is breaking many rules:
+///
+@usableFromInline // "the one who walks the bubbles of space time"
+internal struct TheOneWhoHasNoParentActorRef: ReceivesSystemMessages {
+
+    let path: ActorPath
+
+    init() {
+        // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
+        self.path = ActorPath._rootPath
+    }
+
+    func sendSystemMessage(_ message: SystemMessage) {
+        CDungeon.sact_dump_backtrace()
+        fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
+    }
+
+    func asHashable() -> AnyHashable {
+        return AnyHashable(path)
+    }
+}
+
+/// Represents an actor that has to exist, but does not exist in reality.
+/// It steps on the
+/// This actor ref is breaking many rules:
+///
+@usableFromInline // "the one who walks the bubbles of space time"
+internal struct TopLevelGuardian: ReceivesSystemMessages {
+
+    let path: ActorPath
+
+    init(parent: ReceivesSystemMessages, path: ActorPath) {
+        assert(parent.path === ActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
+        // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
+        self.path = ActorPath._rootPath
+    }
+
+    func sendSystemMessage(_ message: SystemMessage) {
+        CDungeon.sact_dump_backtrace()
+        fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
+    }
+
+    func asHashable() -> AnyHashable {
+        return AnyHashable(path)
     }
 }

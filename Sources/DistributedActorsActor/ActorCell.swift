@@ -40,7 +40,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     @usableFromInline internal var system: ActorSystem
 
+    internal let _parent: AnyReceivesSystemMessages
+
     internal let _path: ActorPath
+
+    internal let _props: Props
 
     // Implementation of DeathWatch
     @usableFromInline internal var deathWatch: DeathWatch<Message>!
@@ -55,13 +59,18 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         return self._myselfInACell
     }
 
-    internal init(behavior: Behavior<Message>, system: ActorSystem, dispatcher: MessageDispatcher, path: ActorPath) {
-        // TODO: we may end up referring to the system here... we'll see
-        self.behavior = behavior
-        self._dispatcher = dispatcher
+    internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
+                  behavior: Behavior<Message>, path: ActorPath,
+                  props: Props, dispatcher: MessageDispatcher) {
         self.system = system
-        self.deathWatch = DeathWatch()
+        self._parent = parent
+
+        self.behavior = behavior
         self._path = path
+        self._props = props
+        self._dispatcher = dispatcher
+
+        self.deathWatch = DeathWatch()
     }
 
     deinit {
@@ -109,7 +118,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
         guard let unwrapped = self._myselfInACell else {
-            CDungeon.sact_dump_backtrace();
+            CDungeon.sact_dump_backtrace()
 
             fatalError("Illegal `myself` access! Unwrapped `_myselfInACell` was nil in [thread:\(_hackyPThreadThreadId())]. " +
                 "This should never happen, and is likely an implementation bug in Swift Distributed Actors, please file a ticket. " +

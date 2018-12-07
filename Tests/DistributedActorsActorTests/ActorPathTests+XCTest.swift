@@ -27,6 +27,8 @@ extension ActorPathTests {
                 ("test_shouldNotAllow_illegalCharacters", test_shouldNotAllow_illegalCharacters),
                 ("test_pathsWithSameSegments_shouldBeEqual", test_pathsWithSameSegments_shouldBeEqual),
                 ("test_pathsWithSameSegments_shouldHaveSameHasCode", test_pathsWithSameSegments_shouldHaveSameHasCode),
+                ("test_rootPath_shouldRenderAsExpected", test_rootPath_shouldRenderAsExpected),
+                ("test_pathsWithSameSegmentsButDifferentUID_shouldNotEqual_whemComparedUsingTripleEquals", test_pathsWithSameSegmentsButDifferentUID_shouldNotEqual_whemComparedUsingTripleEquals),
            ]
    }
 }

@@ -161,6 +161,12 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
     }
 }
 
+extension BoxedHashableAnyReceivesSystemMessages: CustomStringConvertible {
+    public var description: String {
+        return "BoxedHashableAnyReceivesSystemMessages(\(anyRef.path))"
+    }
+}
+
 internal extension AnyReceivesSystemMessages {
     
     /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSystemMessages where it is KNOWN guaranteed that it is a box

@@ -107,6 +107,7 @@ public enum MailboxProps {
 }
 
 // TODO: Highly experimental and only for PoC of spawning in other process
+// TODO: currently not used, decide if we need them at all – will we do the process ones or not?
 public enum FaultDomainProps {
     case `default` // perhaps this is "inherit"?
 

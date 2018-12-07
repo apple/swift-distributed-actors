@@ -39,6 +39,7 @@ class ParentChildActorTests: XCTestCase {
     enum ChildProtocol {
         case howAreYou(replyTo: ActorRef<String>)
         case fail
+        case throwWhoops
     }
 
     typealias ParentChildProbeRef = ActorRef<ParentChildProbeProtocol>
@@ -102,13 +103,16 @@ class ParentChildActorTests: XCTestCase {
     func childBehavior(probe: ParentChildProbeRef)  -> Behavior<ChildProtocol> {
         return .setup { context in
             context.log.info("Hello...")
+            probe.tell(.spawned(child: context.myself))
+
             return .receiveMessage { message in
                 switch message {
                 case let .howAreYou(replyTo):
                     replyTo.tell("Pretty good, I'm \(context.path)")
                 case .fail:
-                    // FIXME: Can't throw here yet... throw ChildError.whoops
-                    fatalError("TODO")
+                    fatalError("Ohh no~!")
+                case .throwWhoops:
+                    throw ChildError.whoops
                 }
                 return .same
             }
@@ -263,6 +267,88 @@ class ParentChildActorTests: XCTestCase {
                 return nil
             }
         }
+    }
+
+    func test_throwOfSpawnedChild_shouldNotCauseParentToTerminate() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let stoppingChildBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
+
+        let parentBehavior = Behavior<String>.receive { (context, msg) in
+            switch msg {
+            case "spawn":
+                _ = try context.spawn(stoppingChildBehavior, name: "child")
+                return .same
+            default:
+                return .ignore
+            }
+        }
+
+        let parent: ActorRef<String> = try system.spawn(parentBehavior, name: "watchingParent")
+
+        p.watch(parent)
+        parent.tell("spawn")
+
+        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
+            guard case .spawned(let ref) = $0 else { return nil }
+            return p.watch(ref)
+        }
+
+        sleep(1)
+        // FIXME: remove the sleep; without it it currently races somewhat...
+        // FIXME: since the probe's watch races with the failing so we may end up watching a terminated one,
+        // FIXME: which may end up not being processed properly: this is bug: https://github.com/apple/swift-distributed-actors/issues/139
+
+        child.tell(.throwWhoops)
+
+        // since the parent watched the child, it will also terminate
+        try p.expectTerminated(child)
+        try p.expectNoTerminationSignal(for: .milliseconds(200))
+
+        // yet it MUST allow spawning another child with the same name now, since the previous one has terminated
+        parent.tell("spawn")
+
+        let secondChild: ActorRef<ChildProtocol> = try p.expectMessageMatching {
+            guard case .spawned(let ref) = $0 else { return nil }
+            return p.watch(ref)
+        }
+    }
+
+    func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let stoppingChildBehavior = self.childBehavior(probe: p.ref)
+
+        let parentBehavior = Behavior<String>.receive { (context, msg) in
+            switch msg {
+            case "spawn":
+                _ = try context.watch(context.spawn(stoppingChildBehavior, name: "child"))
+                return .same
+            default:
+                return .ignore
+            }
+        }
+
+        let parent: ActorRef<String> = try system.spawn(parentBehavior, name: "watchingParent")
+
+        p.watch(parent)
+        parent.tell("spawn")
+
+        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
+            guard case .spawned(let ref) = $0 else { return nil }
+            return p.watch(ref)
+        }
+
+        sleep(1)
+        // FIXME: remove the sleep; without it it currently races somewhat...
+        // FIXME: since the probe's watch races with the failing so we may end up watching a terminated one,
+        // FIXME: which may end up not being processed properly: this is bug: https://github.com/apple/swift-distributed-actors/issues/139
+
+        child.tell(.throwWhoops)
+
+        // since the parent watched the child, it will also terminate
+        try p.expectTerminated(child)
+        try p.expectTerminated(parent)
     }
 
     // TODO test with watching the child actor

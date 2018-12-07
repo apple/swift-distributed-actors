@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <execinfo.h>
+#include <pthread.h>
 
 #include "include/crash_support.h"
 
@@ -42,6 +43,6 @@ void sact_dump_backtrace() {
 }
 
 /* UD2 is defined as "Raises an invalid opcode exception in all operating modes." */
-void sact_simulate_trap(void) {
+void sact_simulate_trap() {
     __asm__("UD2");
 }
