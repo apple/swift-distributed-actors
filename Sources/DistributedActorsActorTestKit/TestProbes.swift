@@ -18,8 +18,6 @@ import NIOConcurrencyHelpers
 import NIO // TODO: feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
-private let SACT_TRACE_PROBE = false
-
 internal enum ActorTestProbeCommand<M> {
     case watchCommand(who: AnyReceivesSystemMessages)
     case unwatchCommand(who: AnyReceivesSystemMessages)
@@ -88,10 +86,8 @@ final public class ActorTestProbe<Message> {
 
             switch message {
             case let .realMessage(msg):
+                traceLog_Probe("Probe received: [\(msg)]:\(type(of: msg))")
                 // real messages are stored directly
-                if SACT_TRACE_PROBE {
-                    context.log.info("Probe received: [\(msg)]:\(type(of: msg))")
-                } // TODO: make configurable to log or not
                 messageQueue.enqueue(msg)
                 return .same
 
@@ -108,9 +104,7 @@ final public class ActorTestProbe<Message> {
                 return .stopped
             }
         }.receiveSignal { (context, signal) in
-            if SACT_TRACE_PROBE {
-                context.log.debug("Probe received: [\(signal)]:\(type(of: signal))")
-            } // TODO: make configurable to log or not
+            traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")
             terminationsQueue.enqueue(signal) // TODO: fix naming...
             return .same
         }
