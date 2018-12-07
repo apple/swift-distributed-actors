@@ -49,7 +49,7 @@
 // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
 // - if we need to schedule it or not since it was scheduled already etc.
 
-#define ACTIVATIONS 0b00111111111111111111111111111111
+#define ACTIVATIONS                 0b00111111111111111111111111111111
 
 // Implementation notes about Termination:
 // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
@@ -58,8 +58,10 @@
 //  -> 0b01.. terminating,
 //  -> 0b11.. closed (terminated, dead.)
 // Meaning that `10` is NOT legal.
-#define TERMINATING 0b01000000000000000000000000000000
-#define CLOSED      0b10000000000000000000000000000000
+#define TERMINATING                 0b01000000000000000000000000000000
+#define CLOSED                      0b10000000000000000000000000000000
+#define HAS_SYSTEM_MESSAGES         0b00000000000000000000000000000001
+#define PROCESSING_SYSTEM_MESSAGES  0b00000000000000000000000000000001
 
 int64_t increment_status_activations(CMailbox* mailbox);
 
@@ -74,6 +76,8 @@ int64_t message_count(int64_t status);
 int64_t set_status_terminating(CMailbox* mailbox);
 
 int64_t set_status_terminated_dead(CMailbox* mailbox);
+
+int64_t set_processing_system_messages(CMailbox* mailbox);
 
 
 void print_debug_status(CMailbox* mailbox, char* msg);
@@ -120,7 +124,7 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
         // because we only process messages if the queue actually contains them (does
         // not return NULL), so even if messages get processed concurrently, it's safe
         // to decrement here.
-        decrement_status_activations(mailbox, 0b10);
+        decrement_status_activations(mailbox, 0b100);
         print_debug_status(mailbox, "cmailbox_send_message dropping... ");
         // TODO: emit the message as ".dropped(msg)"
         return false;
@@ -136,7 +140,11 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
 }
 
 int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
+    CMPSCLinkedQueue* queue = mailbox->system_messages;
+    cmpsc_linked_queue_enqueue(queue, envelope);
+
     // printf("[SACT_TRACE_MAILBOX][c] send_system_message: \n");
+
     int64_t old_status = try_activate(mailbox); // only activation matters
     int64_t old_activations = activations(old_status);
 
@@ -150,10 +158,7 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
         // If the mailbox is not full, or we enqueue a system message, we insert it
         // into the queue and return whether this was the first activation, to signal
         // the need to enqueue this mailbox.
-        CMPSCLinkedQueue* queue = mailbox->system_messages;
-        cmpsc_linked_queue_enqueue(queue, envelope);
         print_debug_status(mailbox, "cmailbox_send_system_message enqueued ");
-
         return old_activations;
     }
 }
@@ -164,14 +169,15 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                   void* context, void* system_context,
                   void* dead_letter_context, void* dead_letter_system_context,
                   InterpretMessageCallback interpret_message, DropMessageCallback drop_message) {
-    int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
     print_debug_status(mailbox, "Entering run");
+
+    int64_t status = set_processing_system_messages(mailbox);
 
 //  if (!has_activations(status)) { // FIXME should this not actually be a bug, because we had a spurious activation triggered?
 //    return false;
 //  }
 
-    int64_t processed_activations = 0;
+    int64_t processed_activations = has_system_messages(status) ? 0b10 : 0b0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
@@ -182,14 +188,9 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     bool keep_running = true; // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
     // run system messages ------
-
-    // we check the system queue itself, not only the status bit, since that may be slightly racy,
-    // due to the fact that the system message bit is not a counter but only a marker, and we could lose information
-    // that actually there are more system messages waiting to be run.
-    if (has_system_messages(status) && cmpsc_linked_queue_non_empty(mailbox->system_messages)) {
-        processed_activations = 0b1; // marker value, not a counter; meaning that we did process system messages
-        // we run all system messages, as they may
+    if (has_system_messages(status)) {
         void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+
         while (system_message != NULL && keep_running) {
             // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
             keep_running = interpret_message(system_context, system_message);
@@ -234,7 +235,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             // we need to add 2 to processed_activations because the user message count is stored
             // shifted by 1 in the status and we use the same field to clear the
             // system message bit
-            processed_activations += 0b10;
+            processed_activations += 0b100;
             // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
             // TODO: fix this dance
             bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
@@ -261,7 +262,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
             drop_message(dead_letter_context, message);
-            processed_activations += 0b10;
+            processed_activations += 0b100;
             message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
         }
     }
@@ -288,7 +289,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // the queue should be re-scheduled
 
         char msg[300];
-        snprintf(msg, 300, "Run complete, shouldReschedule:true; %lu > %lu ", old_activations, processed_activations);
+            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
         print_debug_status(mailbox, msg);
         return Reschedule;
     } else if (!keep_running) {
@@ -305,7 +306,7 @@ int64_t cmailbox_message_count(CMailbox* mailbox) {
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
-    #ifdef SACT_TRACE_MAILBOX
+    //#ifdef SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
     char buffer[33];
@@ -319,11 +320,11 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
     #endif
 
     printf("[SACT_TRACE_MAILBOX][c]"
-           "[thread:%lu] "
+           "[thread:%d] "
            "%s "
-           "Status now: [%lu, bin:%s], "
+           "Status now: [%lld, bin:%s], "
            "has_sys_msgs:%s, "
-           "msgs:%lu, "
+           "msgs:%lld, "
            "terminating:%s, "
            "closed:%s"
            "\n",
@@ -335,7 +336,7 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            is_terminating(status) ? "Y" : "N",
            is_closed(status) ? "Y" : "N"
     );
-    #endif
+    //#endif
 }
 
 int64_t get_status(CMailbox* mailbox) {
@@ -348,7 +349,7 @@ int64_t try_activate(CMailbox* mailbox) {
 
 // TODO: this is more like increment message count
 int64_t increment_status_activations(CMailbox* mailbox) {
-    return atomic_fetch_add_explicit(&mailbox->status, 0b10, memory_order_acq_rel);
+    return atomic_fetch_add_explicit(&mailbox->status, 0b100, memory_order_acq_rel);
 }
 
 int64_t decrement_status_activations(CMailbox* mailbox, int64_t n) {
@@ -364,6 +365,16 @@ int64_t set_status_closed(CMailbox* mailbox) {
      return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
 }
 
+
+int64_t set_processing_system_messages(CMailbox* mailbox) {
+    int64_t status = atomic_load_explicit(&mailbox->status, memory_order_consume);
+    if (has_system_messages(status)) {
+        status = atomic_fetch_xor_explicit(&mailbox->status, 0b11, memory_order_acq_rel);
+    }
+
+    return status;
+}
+
 bool has_system_messages(int64_t status) {
     return (status & 1) == 1;
 }
@@ -377,7 +388,7 @@ int64_t activations(int64_t status) {
 }
 
 int64_t message_count(int64_t status) {
-    int64_t count = activations(status) >> 1;
+    int64_t count = activations(status) >> 2;
     return count > 0 ? count : 0;
 }
 
