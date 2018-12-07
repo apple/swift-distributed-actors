@@ -35,13 +35,22 @@ public struct ActorPath {
         self.uid = uid
     }
 
-    init(root: String) throws {
-        try self.init([ActorPathSegment(root)], uid: ActorUID.undefined)
+    init(path: String) throws {
+        try self.init([ActorPathSegment(path)], uid: ActorUID.undefined)
     }
 
-    public init(root: ActorPathSegment) throws {
+    init(root: ActorPathSegment) throws {
         try self.init([root], uid: ActorUID.undefined)
     }
+
+    /// Special purpose initializer, only for the "/" path. None other may use such path.
+    private init(forTheOneAndOnlyRootPathAndActorUID secretUID: ActorUID) {
+        guard secretUID == ActorUID.undefined else { fatalError("None other than the / actor with UID:0 may initialize an empty path!") }
+        self.segments = []
+        self.uid = ActorUID.undefined
+    }
+
+    internal static let _rootPath: ActorPath = ActorPath(forTheOneAndOnlyRootPathAndActorUID: .undefined)
 
     /// Appends a segment to this actor path
     mutating func append(segment: ActorPathSegment) {
@@ -69,6 +78,11 @@ extension ActorPath: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(segments)
     }
+}
+
+/// Checks that paths are *identical*, meaning that UID field of a path will be taken into account when performing the comparison.
+public func === (lhs: ActorPath, rhs: ActorPath) -> Bool {
+    return lhs.uid == rhs.uid && (lhs == rhs)
 }
 
 extension ActorPath {

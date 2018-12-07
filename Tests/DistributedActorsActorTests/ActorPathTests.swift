@@ -19,19 +19,15 @@ import SwiftDistributedActorsActorTestKit
 
 class ActorPathTests: XCTestCase {
 
-    class Ex: Error {
-
-    }
-
     func test_shouldNotAllow_illegalCharacters() {
         shouldThrow(expected: ActorPathError.self) {
-            let _ = try ActorPath(root: "")
+            let _ = try ActorPath(path: "")
         }
     }
 
     func test_pathsWithSameSegments_shouldBeEqual() throws {
-        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
 
         pathA.uid.shouldNotEqual(pathB.uid)
 
@@ -39,11 +35,27 @@ class ActorPathTests: XCTestCase {
     }
 
     func test_pathsWithSameSegments_shouldHaveSameHasCode() throws {
-        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
 
         pathA.uid.shouldNotEqual(pathB.uid)
 
         pathA.hashValue.shouldEqual(pathB.hashValue)
+    }
+    
+    func test_rootPath_shouldRenderAsExpected() throws {
+        let rendered = "\(ActorPath._rootPath)"
+        rendered.shouldEqual("/")
+    }
+
+    func test_pathsWithSameSegmentsButDifferentUID_shouldNotEqual_whemComparedUsingTripleEquals() throws {
+        var pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        var pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+
+        let equal = pathA == pathB
+        let identical = pathA === pathB
+
+        equal.shouldBeTrue()
+        identical.shouldBeFalse()
     }
 }

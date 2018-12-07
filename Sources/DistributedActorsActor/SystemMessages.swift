@@ -38,7 +38,7 @@ public /* but really internal... */ enum SystemMessage: Equatable { // TODO syst
     ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
     ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
-    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info?
+    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Sent by parent to child actor to stop it
     case stop

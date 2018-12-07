@@ -41,8 +41,11 @@ public final class ActorSystem {
 
     private let dispatcher: MessageDispatcher
 
-    private let localProvider: ActorRefProvider
-    private let processProvider: ActorRefProvider
+    // Note: This differs from Akka, we do full separate trees here
+    private let systemProvider: ActorRefProvider // TODO maybe we don't need this?
+    private let userProvider: ActorRefProvider // TODO maybe we don't need this?
+
+    private let _theOneWhoWalksTheBubblesOfSpaceTime: ReceivesSystemMessages
 
     private let terminationLock = Lock()
 
@@ -63,16 +66,21 @@ public final class ActorSystem {
     public init(_ name: String) {
         self.name = name
 
+        self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
+        let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
+        let userGuardian = TopLevelGuardian(parent: theOne, path: try! ActorPath(path: "user"))
+        let systemGuardian = TopLevelGuardian(parent: theOne, path: try! ActorPath(path: "system"))
+
+        self.userProvider = LocalActorRefProvider(parent: userGuardian)
+        self.systemProvider = LocalActorRefProvider(parent: systemGuardian)
+
         // dead letters init
         // TODO actually attach dead letters to a parent?
-        let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters")
+        let deadLettersPath = try! ActorPath(path: "system") / ActorPathSegment("deadLetters")
         let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath)
 
         self.dispatcher = try! FixedThreadPool(4) // TODO: better guesstimate on start and also make it tuneable
-
-        self.localProvider = LocalActorRefProvider()
-        self.processProvider = ProcessFaultDomainActorRefProvider()
 
         do {
             try FaultHandling.installCrashHandling()
@@ -138,30 +146,22 @@ extension ActorSystem: ActorRefFactory {
 
         // FIXME hacks... should get real parent
         let nameSegment = try ActorPathSegment(name) // performs validation
-        let path = try ActorPath(root: "user") / nameSegment
+        let path = try ActorPath(path: "user") / nameSegment
         // TODO: reserve the name, atomically
 
         log.info("Spawning [\(behavior)], path: [\(path)]")
 
 
-        let refWithCell: ActorRef<Message>
-        switch props.faultDomain {
-        case .default:
-            refWithCell = localProvider.spawn(
-                system: self,
-                behavior: behavior, path: path,
-                dispatcher: dispatcher, props: props
-            )
-        case .isolate:
-            refWithCell = processProvider.spawn(
-                system: self,
-                behavior: behavior, path: path,
-                dispatcher: dispatcher, props: props
-            ) // TODO pass the Props
-        }
+        let refWithCell: ActorRef<Message> = userProvider.spawn(
+            system: self,
+            behavior: behavior, path: path,
+            dispatcher: dispatcher, props: props
+        )
 
         return refWithCell
     }
+
+    // TODO _systemSpawn: for spawning under the system one
 
     public func spawn<Message>(_ behavior: ActorBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         return try spawn(.custom(behavior: behavior), name: name, props: props)

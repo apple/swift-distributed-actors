@@ -29,55 +29,28 @@ internal protocol ActorRefProvider {
 // FIXME sadly this is the wrong way to model "oh yeah, that one as process"
 
 internal struct LocalActorRefProvider: ActorRefProvider {
-    func spawn<Message>(
-        system: ActorSystem,
-        behavior: Behavior<Message>, path: ActorPath,
-        dispatcher: MessageDispatcher, props: Props
-    ) -> ActorRef<Message> {
 
-        // TODO attach to parent here
+    let parent: ReceivesSystemMessages
 
-        // the "real" actor, the cell that holds the actual "actor"
-        let cell: ActorCell<Message> = ActorCell(
-            behavior: behavior,
-            system: system,
-            dispatcher: dispatcher,
-            path: path
-        ) // TODO pass the Props
-
-        // the mailbox of the actor
-        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
-        // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
-
-        let refWithCell = ActorRefWithCell(
-            path: path,
-            cell: cell,
-            mailbox: mailbox
-        )
-
-        cell.set(ref: refWithCell)
-        refWithCell.sendSystemMessage(.start)
-
-        return refWithCell
+    init(parent: ReceivesSystemMessages) {
+        self.parent = parent
     }
-}
 
-internal struct ProcessFaultDomainActorRefProvider: ActorRefProvider {
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, path: ActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) -> ActorRef<Message> {
 
-        // TODO attach to parent here
-
-        // the "real" actor, the cell that holds the actual "actor"
+        // the cell that holds the actual "actor", though one could say the cell *is* the actor...
         let cell: ActorCell<Message> = ActorCell(
-            behavior: behavior,
             system: system,
-            dispatcher: dispatcher,
-            path: path
-        ) // TODO pass the Props
+            parent: parent,
+            behavior: behavior,
+            path: path,
+            props: props,
+            dispatcher: dispatcher
+        )
 
         // the mailbox of the actor
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)

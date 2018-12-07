@@ -75,7 +75,7 @@ public struct Children {
 extension ActorCell: ChildActorRefFactory {
 
     // TODO: Very similar to top level one, though it will be differing in small bits... Likely not worth to DRY completely
-    internal func internal_spawn<Message2>(_ behavior: Behavior<Message2>, name: String, props: Props) throws -> ActorRef<Message2> {
+    internal func internal_spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
         try behavior.validateAsInitial()
         try validateUniqueName(name)
         // TODO prefix $ validation (only ok for anonymous)
@@ -84,12 +84,14 @@ extension ActorCell: ChildActorRefFactory {
         let path = self.path / nameSegment
         // TODO reserve name
 
-        let d = dispatcher // TODO this is dispatcher inheritance, we dont want that
-        let cell: ActorCell<Message2> = ActorCell<Message2>(
+        let d = dispatcher // TODO this is dispatcher inheritance, we dont want that I think
+        let cell: ActorCell<M> = ActorCell<M>(
+            system: self.system,
+            parent: self.myself.internal_boxAnyReceivesSystemMessages(),
             behavior: behavior,
-            system: system,
-            dispatcher: d, // TODO pass the Props
-            path: path
+            path: path,
+            props: props,
+            dispatcher: d
         )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
