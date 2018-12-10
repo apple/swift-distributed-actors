@@ -33,6 +33,8 @@ protocol ChildActorRefFactory: ActorRefFactory {
 /// of spawned actors in the context of where they are used, rather than looking them up continiously.
 public struct Children {
 
+    // Implementation note: access is optimized for fetching by name, as that's what we do doring child lookup
+    // as well as actor tree traversal.
     typealias Name = String
     private var container: [Name: BoxedHashableAnyReceivesSystemMessages]
 
@@ -40,8 +42,9 @@ public struct Children {
         self.container = [:]
     }
 
-    public func hasChild(at uniquePath: UniqueActorPath) -> Bool {
-        return undefined()
+    public func hasChild(parentPath: UniqueActorPath, identifiedBy uniquePath: UniqueActorPath) -> Bool {
+        guard let child = self.container[uniquePath.name] else { return false }
+        return child.path == uniquePath
     }
     
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
@@ -67,11 +70,12 @@ public struct Children {
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
-    internal mutating func remove<T, R: ActorRef<T>>(_ childRef: R) -> Bool {
-        if let ref = container[childRef.path.name] {
-            if ref.path.uid == childRef.path.uid {
-                return container.removeValue(forKey: childRef.path.name) != nil
-            }
+    @usableFromInline
+    internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
+        if let ref = container[path.name] {
+            if ref.path.uid == path.uid {
+                return container.removeValue(forKey: path.name) != nil
+            } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
 
         return false
@@ -125,7 +129,7 @@ extension ActorCell: ChildActorRefFactory {
             throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
         }
 
-        if self.children.remove(ref) {
+        if self.children.removeChild(identifiedBy: ref.path) {
             ref.internal_downcast.sendSystemMessage(.stop)
         }
     }

@@ -156,7 +156,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable
     func interpretMessage(message: Message) throws -> Bool {
         #if SACT_TRACE_CELL
-        pprint("interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
+        pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
         let next = try self.behavior.interpretMessage(context: context, message: message)
         #if SACT_TRACE_CELL
@@ -193,7 +193,13 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             self.interpretSystemUnwatch(watcher: watcher)
 
         case let .terminated(ref, _):
-            try self.interpretSystemTerminated(who: ref, message: message)
+            if self.children.hasChild(parentPath: self.path, identifiedBy: ref.path) {
+                let childTerminated = Signals.Terminated(path: ref.path)
+                try self.interpretTerminatedSignal(who: ref, signal: childTerminated)
+            } else {
+                let terminatedSignal = Signals.Terminated(path: ref.path)
+                try self.interpretTerminatedSignal(who: ref, signal: terminatedSignal)
+            }
 
         case .tombstone:
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
@@ -236,20 +242,24 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
-    @inlinable internal func interpretSystemTerminated(who ref: AnyAddressableActorRef, message: SystemMessage) throws {
+    @inlinable internal func interpretTerminatedSignal(who ref: AnyAddressableActorRef, signal terminated: Signals.Terminated) throws {
         #if SACT_TRACE_CELL
-        log.info("Received .terminated(\(ref.path))")
+        log.info("Received \(terminated)")
         #endif
-        guard self.deathWatch.receiveTerminated(message) else {
+
+        if (terminated.isChild) {
+            _ = self.children.removeChild(identifiedBy: terminated.path)
+        }
+
+        guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warn("Actor not known yet \(message) received for it.")
+            log.warn("Actor not known yet \(signal) received for it.")
             return
         }
 
         let next: Behavior<Message>
         if case let .signalHandling(_, handleSignal) = self.behavior {
-            let signal: SystemMessage = message // TODO change convert the type, we deliver `Signal` to users
-            next = try handleSignal(context, signal)
+            next = try handleSignal(context, terminated)
         } else {
             // no signal handling installed is semantically equivalent to unhandled
             // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")

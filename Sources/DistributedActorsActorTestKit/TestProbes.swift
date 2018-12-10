@@ -48,7 +48,7 @@ final public class ActorTestProbe<Message> {
     /// Blocking linked queue, available to run assertions on
     private let signalQueue = LinkedBlockingQueue<SystemMessage>()
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
-    private let terminationsQueue = LinkedBlockingQueue<SystemMessage>()
+    private let terminationsQueue = LinkedBlockingQueue<Signals.Terminated>()
 
     private var lastMessageObserved: Message? = nil
 
@@ -82,7 +82,7 @@ final public class ActorTestProbe<Message> {
 
     private static func behavior(messageQueue: LinkedBlockingQueue<Message>,
                                  signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
-                                 terminationsQueue: LinkedBlockingQueue<SystemMessage>) -> Behavior<ProbeCommands> {
+                                 terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { (context, message) in
             let cell = context.myself.internal_downcast.cell
 
@@ -108,7 +108,13 @@ final public class ActorTestProbe<Message> {
         }.receiveSignal { (context, signal) in
             traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")
             terminationsQueue.enqueue(signal) // TODO: fix naming...
-            return .same
+            switch signal {
+            case let terminated as Signals.Terminated:
+                terminationsQueue.enqueue(terminated)
+                return .same
+            default:
+                return .unhandled
+            }
         }
     }
 
@@ -238,7 +244,6 @@ extension ActorTestProbe {
 
         var fullMessage: String = message ?? "ActorTestProbe failure."
 
-        let lastMsg: String
         switch self.lastMessageObserved {
         case .some(let m):
             fullMessage += " Last message observed was: [\(m)]."
@@ -359,19 +364,18 @@ extension ActorTestProbe {
     ///
     /// Returns: the matched `.terminated` message
     @discardableResult
-    public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
+    public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        guard let termination = self.terminationsQueue.poll(expectationTimeout) else {
-            throw callSite.failure(message: "Expected .terminated[\(ref.path)], " + // TODO make this on signals
-                "but no signal received within \(self.expectationTimeout.prettyDescription)")
+        guard let terminated = self.terminationsQueue.poll(expectationTimeout) else {
+            throw callSite.failure(message: "Expected [\(ref.path)] to terminate within \(self.expectationTimeout.prettyDescription)")
         }
-        switch termination {
-        case let .terminated(_ref, _) where _ref.path == ref.path:
-            return termination // ok!
-        default:
-            throw callSite.failure(message: "Expected .terminated(\(ref), ...) but got: \(termination)")
+        guard terminated.path == ref.path else {
+            throw callSite.failure(message: "Expected [\(ref.path)]to terminate, but [\(terminated)] terminated instead. " +
+                "This could be an ordering issue, inspect your signal order assumptions.")
         }
+
+        return terminated // ok!
     }
 
     // MARK: Stopping test probes

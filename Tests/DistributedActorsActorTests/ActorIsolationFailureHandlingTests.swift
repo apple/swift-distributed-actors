@@ -101,7 +101,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         try pm.expectMessage(.echoing(message: "still alive"))
     }
 
-    func test_worker_FaultDomain_crashOnlyWorkerOnDivisionByZero() throws {
+    func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
