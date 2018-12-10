@@ -186,8 +186,8 @@ class DeathWatchTests: XCTestCase {
             }
             return .same
         }.receiveSignal { context, signal in
-            if case let .terminated(ref) = signal {
-                probe.tell("Unexpected terminated received!!! \(ref)")
+            if case let terminated as Signals.Terminated = signal {
+                probe.tell("Unexpected terminated received!!! \(terminated)")
             }
             return .same
         }, name: "romeo")

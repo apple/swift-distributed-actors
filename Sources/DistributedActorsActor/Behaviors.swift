@@ -54,7 +54,7 @@ public enum Behavior<Message> {
 
     /// Allows handling messages
     indirect case signalHandling(handleMessage: Behavior<Message>,
-                                 handleSignal: (ActorContext<Message>, SystemMessage) throws -> Behavior<Message>)
+                                 handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
 
     // TODO internal and should not be used by people (likely we may need to change Behaviors away from an enum to allow such things?
     indirect case supervised(supervisor: AnyReceivesSystemMessages, behavior: Behavior<Message>)
@@ -95,11 +95,11 @@ extension Behavior {
         return TODO("Not implemented yet:: orElse")
     }
 
-    public func receiveSignal(_ handle: @escaping (ActorContext<Message>, SystemMessage) -> Behavior<Message>) -> Behavior<Message> {
+    public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
         return Behavior<Message>.signalHandling(handleMessage: self, handleSignal: handle)
     }
 
-    public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, SystemMessage) -> Behavior<Message>) -> Behavior<Message> {
+    public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
         return Behavior<Message>.signalHandling(handleMessage: .unhandled, handleSignal: handle)
     }
 }

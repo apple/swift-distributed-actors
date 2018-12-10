@@ -78,15 +78,9 @@ import Dispatch
 
     /// Performs cleanup of references to the dead actor.
     ///
-    /// Requires: passed in argument to be a `.terminated`.
-    ///
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
-    public mutating func receiveTerminated(_ terminated: SystemMessage) -> Bool {
-        guard case let .terminated(deadActorRef, _) = terminated else { // TODO: hope this optimizes away nicely when inlined etc
-            fatalError("receiveTerminated most only be invoked with .terminated. This is likely a Swift Distributed Actors bug, please open a ticket.")
-        }
-
-        let deadPath = deadActorRef.path
+    public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> Bool {
+        let deadPath = terminated.path
         let pathsEqual: (BoxedHashableAnyReceivesSystemMessages) -> Bool = { watched in
             return watched.path == deadPath
         }

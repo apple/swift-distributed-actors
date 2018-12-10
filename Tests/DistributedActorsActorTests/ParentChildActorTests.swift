@@ -89,9 +89,9 @@ class ParentChildActorTests: XCTestCase {
             return .same
         }.receiveSignal { (context, signal) in
             switch signal {
-            case let .terminated(ref, _):
+            case let terminated as Signals.Terminated:
                 if notifyWhenChildStops {
-                    probe.tell(.childStopped(name: ref.path.name))
+                    probe.tell(.childStopped(name: terminated.path.name))
                 }
             default:
                 ()
