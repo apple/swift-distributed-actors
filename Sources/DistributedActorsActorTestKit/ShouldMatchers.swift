@@ -186,7 +186,7 @@ struct CallSiteInfo {
     /// // TODO: DRY this all up
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func detailedMessage(got it: Any, expected: Any) -> String {
-        let msg = "Expected [\(it)] to equal [\(expected)]\n"
+        let msg = "[\(it)] does not equal expected: [\(expected)]\n"
         return detailedMessage(msg)
     }
 

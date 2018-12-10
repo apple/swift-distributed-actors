@@ -16,12 +16,15 @@ import NIOConcurrencyHelpers
 
 internal protocol ActorRefProvider {
 
+    /// Path of the root guardian actor for this pare of the actor tree.
+    var rootPath: UniqueActorPath { get }
+
     /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].
     ///
     /// The returned actor ref is immediately valid and may have messages sent to.
     func spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, path: ActorPath,
+        behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) -> ActorRef<Message>
 }
@@ -30,22 +33,26 @@ internal protocol ActorRefProvider {
 
 internal struct LocalActorRefProvider: ActorRefProvider {
 
-    let parent: ReceivesSystemMessages
+    let root: ReceivesSystemMessages
 
-    init(parent: ReceivesSystemMessages) {
-        self.parent = parent
+    var rootPath: UniqueActorPath {
+        return root.path
+    }
+
+    init(root: ReceivesSystemMessages) {
+        self.root = root
     }
 
     func spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, path: ActorPath,
+        behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) -> ActorRef<Message> {
 
         // the cell that holds the actual "actor", though one could say the cell *is* the actor...
         let cell: ActorCell<Message> = ActorCell(
             system: system,
-            parent: parent,
+            parent: root,
             behavior: behavior,
             path: path,
             props: props,

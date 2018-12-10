@@ -19,15 +19,12 @@
 /// - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A ActorRefFactory
 
-    /// Complete path in hierarchy of this Actor.
+    /// Uniquely identifies this actor by its path and unique identifier in the current actor hierarchy.
     /// Segments are separated by "/" and signify the parent actors of each individual level in the hierarchy.
     ///
     /// Paths are mostly used to make systems more human-readable and understandable during debugging e.g. answering questions
     /// like "where did this actor come from?" or "who (at least) is expected to supervise this actor"? // TODO: wording must match the semantics we decide on for supervision
-    ///
-    /// // TODO: maybe we can pull of some better things with source location where one was started as well being carried here?
-    /// // This would be for "debugging mode", not for log statements though; interesting idea tho; may want to be configurable since adds weight
-    public var path: ActorPath {
+    public var path: UniqueActorPath {
         return undefined()
     }
 

@@ -34,7 +34,7 @@ internal final class ActorRefAdapter<From, To>: ActorRef<From> {
         self.converter = converter
     }
 
-    override var path: ActorPath {
+    override var path: UniqueActorPath {
         return ref.path
     }
 

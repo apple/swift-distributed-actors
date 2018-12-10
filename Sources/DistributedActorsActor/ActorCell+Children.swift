@@ -40,6 +40,10 @@ public struct Children {
         self.container = [:]
     }
 
+    public func hasChild(at uniquePath: UniqueActorPath) -> Bool {
+        return undefined()
+    }
+    
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
         guard let boxedChild = container[name] else {
@@ -80,8 +84,8 @@ extension ActorCell: ChildActorRefFactory {
         try validateUniqueName(name)
         // TODO prefix $ validation (only ok for anonymous)
 
-        let nameSegment = try ActorPathSegment(name)
-        let path = self.path / nameSegment
+        let path = try self.path.makeUniqueChildPath(name: name, uid: .random())
+
         // TODO reserve name
 
         let d = dispatcher // TODO this is dispatcher inheritance, we dont want that I think
@@ -113,7 +117,7 @@ extension ActorCell: ChildActorRefFactory {
 
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
         // we immediately attempt the remove since
-        guard ref.path.isChildOf(self.path) else {
+        guard ref.path.isChildPathOf(self.path) else {
             throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
         }
 
@@ -124,7 +128,8 @@ extension ActorCell: ChildActorRefFactory {
 
     private func validateUniqueName(_ name: String) throws {
         if children.contains(name) {
-            throw ActorContextError.duplicateActorPath(path: try self.path / ActorPathSegment(name))
+            let childPath: ActorPath = try self.path.makeChildPath(name: name)
+            throw ActorContextError.duplicateActorPath(path: childPath)
         }
     }
 }

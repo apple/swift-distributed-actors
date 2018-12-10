@@ -21,41 +21,58 @@ class ActorPathTests: XCTestCase {
 
     func test_shouldNotAllow_illegalCharacters() {
         shouldThrow(expected: ActorPathError.self) {
-            let _ = try ActorPath(path: "")
+            let _ = try ActorPath(root: "")
         }
     }
 
     func test_pathsWithSameSegments_shouldBeEqual() throws {
-        let pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-        let pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-
-        pathA.uid.shouldNotEqual(pathB.uid)
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
 
         pathA.shouldEqual(pathB)
     }
 
     func test_pathsWithSameSegments_shouldHaveSameHasCode() throws {
-        let pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-        let pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-
-        pathA.uid.shouldNotEqual(pathB.uid)
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+        let pathB = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
 
         pathA.hashValue.shouldEqual(pathB.hashValue)
     }
-    
-    func test_rootPath_shouldRenderAsExpected() throws {
-        let rendered = "\(ActorPath._rootPath)"
-        rendered.shouldEqual("/")
+
+    func test_path_shouldRenderNicely() throws {
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+
+        pathA.description.shouldEqual("/test/foo/bar")
     }
 
-    func test_pathsWithSameSegmentsButDifferentUID_shouldNotEqual_whemComparedUsingTripleEquals() throws {
-        var pathA = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
-        var pathB = try ActorPath(path: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
+    func test_pathName_shouldRenderNicely() throws {
+        let pathA = try ActorPath(root: "test") / ActorPathSegment("foo") / ActorPathSegment("bar")
 
-        let equal = pathA == pathB
-        let identical = pathA === pathB
+        pathA.name.description.shouldEqual("bar")
+    }
 
-        equal.shouldBeTrue()
-        identical.shouldBeFalse()
+    func test_rootPath_shouldRenderAsExpected() throws {
+        let rootPath = ActorPath._rootPath
+
+        "\(rootPath)".shouldEqual("/")
+        rootPath.name.shouldEqual("/")
+    }
+
+    func test_equalityOf_pathsWithSameSegmentsButDifferentUID() throws {
+        let pathA = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
+        let pathB = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
+
+        pathA.shouldNotEqual(pathB)
+        pathA.uid.shouldNotEqual(pathB.uid)
+
+        // their "uid-less" parts though are equal
+        pathA.path.shouldEqual(pathB.path)
+    }
+
+    func test_equalityOf_pathsWithDifferentSegmentsButSameUID() throws {
+        let pathA = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
+        let pathA2 = try ActorPath(root: "test").makeUniqueChildPath(name: "foo2", uid: pathA.uid)
+
+        pathA.shouldNotEqual(pathA2)
     }
 }

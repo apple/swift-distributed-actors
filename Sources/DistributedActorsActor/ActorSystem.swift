@@ -68,17 +68,17 @@ public final class ActorSystem {
 
         self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
         let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
-        let userGuardian = TopLevelGuardian(parent: theOne, path: try! ActorPath(path: "user"))
-        let systemGuardian = TopLevelGuardian(parent: theOne, path: try! ActorPath(path: "system"))
+        let userGuardian = TopLevelGuardian(parent: theOne, name: "user")
+        let systemGuardian = TopLevelGuardian(parent: theOne, name: "system")
 
-        self.userProvider = LocalActorRefProvider(parent: userGuardian)
-        self.systemProvider = LocalActorRefProvider(parent: systemGuardian)
+        self.userProvider = LocalActorRefProvider(root: userGuardian)
+        self.systemProvider = LocalActorRefProvider(root: systemGuardian)
 
         // dead letters init
         // TODO actually attach dead letters to a parent?
-        let deadLettersPath = try! ActorPath(path: "system") / ActorPathSegment("deadLetters")
+        let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
         let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
-        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath)
+        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
         self.dispatcher = try! FixedThreadPool(4) // TODO: better guesstimate on start and also make it tuneable
 
@@ -144,13 +144,8 @@ extension ActorSystem: ActorRefFactory {
     private func spawnInternal<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial() // TODO: good example of what would be a soft crash...
 
-        // FIXME hacks... should get real parent
-        let nameSegment = try ActorPathSegment(name) // performs validation
-        let path = try ActorPath(path: "user") / nameSegment
+        let path = try self.userProvider.rootPath.makeUniqueChildPath(name: name, uid: .random())
         // TODO: reserve the name, atomically
-
-        log.info("Spawning [\(behavior)], path: [\(path)]")
-
 
         let refWithCell: ActorRef<Message> = userProvider.spawn(
             system: self,
