@@ -103,7 +103,6 @@ class ParentChildActorTests: XCTestCase {
     func childBehavior(probe: ParentChildProbeRef)  -> Behavior<ChildProtocol> {
         return .setup { context in
             context.log.info("Hello...")
-            probe.tell(.spawned(child: context.myself))
 
             return .receiveMessage { message in
                 switch message {
@@ -125,13 +124,7 @@ class ParentChildActorTests: XCTestCase {
         let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent")
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
-        // TODO: maybe fishForMessage would make this nicer?
-        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
-            switch $0 {
-            case let .spawned(child): return child
-            default: return nil
-            }
-        }
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
         pnote("Hello: \(child)")
 
         let unknownName = "capybara"
