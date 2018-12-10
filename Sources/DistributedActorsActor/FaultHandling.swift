@@ -102,14 +102,6 @@ internal struct FaultHandling {
         CDungeon.sact_clear_failure_handling_threadlocal_context()
     }
 
-    /// Used to terminate the entire process.
-    /// Fault handlers may decide that an error that technically could be recovered should indeed bring down the entire process ASAP.
-    // TODO actually allow users to do so
-    private func killSelfProcess() {
-        print("Ship's going down, killing pid: \(getpid())")
-        kill(getpid(), SIGKILL)
-    }
-
     /// Convert error signal codes to their [FaultHandlingError] representation.
     /// Only exactly models those errors we do actually handle and allow recovery from, are categorized as "Other"
     private static func siginfo2error(signo: Int32, sicode _sicode: Int32) -> Error {

@@ -52,15 +52,6 @@ final public class ActorTestProbe<Message> {
 
     private var lastMessageObserved: Message? = nil
 
-// TODO: make this work
-//  public static func spawnAnonymous<Message>(on system: ActorSystem) -> ActorTestProbe<Message> {
-//    return ActorTestProbe<Message>(system, named: testProbeNames.nextName())
-//  }
-//
-//  public static func spawn<Message>(named name: String, on system: ActorSystem) -> ActorTestProbe<Message> {
-//    return ActorTestProbe<Message>(system, named: name)
-//  }
-
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
     internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>) {
         // extract config here; pass in the config here
@@ -107,7 +98,6 @@ final public class ActorTestProbe<Message> {
             }
         }.receiveSignal { (context, signal) in
             traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")
-            terminationsQueue.enqueue(signal) // TODO: fix naming...
             switch signal {
             case let terminated as Signals.Terminated:
                 terminationsQueue.enqueue(terminated)
@@ -147,18 +137,23 @@ extension ActorTestProbe where Message: Equatable {
                 return message
             }
         } catch {
-            let message = "Did not receive message (of type \(Message.self)) within [\(timeout.prettyDescription)], error: \(error)"
+            let message = "Did not receive message of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.failure(message: message)
         }
     }
 
     /// Fails in nice readable ways:
-    ///    sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
-    ///        try! probe.expectMessage("awaiting-forever")
-    ///                   ^~~~~~~~~~~~~~
-    ///    error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+    ///
+    ///
+    /// Example output:
+    ///
+    ///     sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:35: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
+    ///     try! probe.expectMessage("awaiting-forever")
+    ///                ^~~~~~~~~~~~~~
+    ///     error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
+    ///
     public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = expectationTimeout
@@ -232,8 +227,8 @@ extension ActorTestProbe {
     // MARK: Failure helpers
 
 
-    /// Returns a well formatted failure message, use as:
-    /// If no
+    /// Returns a failure with additional information of the probes last observed messages.
+    /// Most useful as the `else` in an guard expression where the left hand side was an [expectMessage].
     ///
     /// Examples:
     ///
@@ -270,14 +265,14 @@ extension ActorTestProbe {
                 }
                 let got: Message = self.messagesQueue.dequeue()
                 guard let extracted = try matchExtract(got) else {
-                    let message = "Received \(type(of: Message.self)) message, however it did not pass the matching check, " + 
+                    let message = "Received \(Message.self) message, however it did not pass the matching check, " + 
                     "and did not produce the requested \(T.self)."
                     throw callSite.failure(message: message)
                 }
                 return extracted
             }
         } catch {
-            let message = "Did not receive matching [\(type(of: Message.self)) message within [\(timeout.prettyDescription)], error: \(error)"
+            let message = "Did not receive matching [\(Message.self)] message within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.failure(message: message)
         }
     }
@@ -362,7 +357,9 @@ extension ActorTestProbe {
     /// Returns the `terminated` message (TODO SIGNAL)
     /// since one may want to perform additional assertions on the termination reason perhaps
     ///
-    /// Returns: the matched `.terminated` message
+    /// - Warning: Remember to first `watch` the actor you are expecting termination for,
+    ///            otherwise the termination signal will never be received.
+    /// - Returns: the matched `.terminated` message
     @discardableResult
     public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -371,7 +368,7 @@ extension ActorTestProbe {
             throw callSite.failure(message: "Expected [\(ref.path)] to terminate within \(self.expectationTimeout.prettyDescription)")
         }
         guard terminated.path == ref.path else {
-            throw callSite.failure(message: "Expected [\(ref.path)]to terminate, but [\(terminated)] terminated instead. " +
+            throw callSite.failure(message: "Expected [\(ref.path)] to terminate, but received [\(terminated.path)] terminated signal first instead. " +
                 "This could be an ordering issue, inspect your signal order assumptions.")
         }
 

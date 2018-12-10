@@ -16,7 +16,7 @@ import NIOConcurrencyHelpers
 
 internal protocol ActorRefProvider {
 
-    /// Path of the root guardian actor for this pare of the actor tree.
+    /// Path of the root guardian actor for this partof the actor tree.
     var rootPath: UniqueActorPath { get }
 
     /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].

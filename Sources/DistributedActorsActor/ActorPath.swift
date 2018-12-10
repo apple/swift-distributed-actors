@@ -109,16 +109,6 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
     }
 }
 
-extension ActorPath {
-    /// Combines the base path with a child segment returning the concatenated path.
-    static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
-        var segments = base.segments
-        segments.append(child)
-        // safe because we know that segments is not empty
-        return try! ActorPath(segments)
-    }
-}
-
 // TODO
 extension ActorPath: CustomStringConvertible {
     public var description: String {
@@ -136,7 +126,7 @@ protocol PathRelationships {
 extension PathRelationships {
 
     /// Combines the base path with a child segment returning the concatenated path.
-    static func /(base: PathRelationships, child: ActorPathSegment) throws -> ActorPath {
+    static func /(base: Self, child: ActorPathSegment) -> ActorPath {
         var segments = base.segments
         segments.append(child)
 
@@ -150,15 +140,28 @@ extension PathRelationships {
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
     ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
     ///
-    /// - Parameter path: The path to check against
-    /// - Returns: `true` if this [ActorPath] is a direct descendant of `path`, `false` otherwise
-    func isChildPathOf(_ path: PathRelationships) -> Bool {
-        return Array(self.segments.dropLast()) == path.segments
+    /// - Parameter path: The path that is suspected to be the parent of `self`
+    /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
+    func isChildPathOf(_ maybeParentPath: PathRelationships) -> Bool {
+        return Array(self.segments.dropLast()) == maybeParentPath.segments
+    }
+    /// Checks whether this [ActorPath] is a direct ancestor of the passed in path.
+    ///
+    /// Note: Path relationships only take into account the path segments, and can not be used
+    ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
+    ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
+    ///
+    /// - Parameter path: The path that is suspected to be a child of `self`
+    /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise
+    func isParentOf(_ maybeChildPath: PathRelationships) -> Bool {
+        return maybeChildPath.isChildPathOf(self)
     }
 
-    func makeUniqueChildPath(name: String, uid: ActorUID) throws -> UniqueActorPath {
+    /// Create a unique path identifying a specific child actor.
+    func makeChildPath(name: String, uid: ActorUID) throws -> UniqueActorPath {
         return try self.makeChildPath(name: name).makeUnique(uid: uid)
     }
+    /// Create a generic path to identify a child path of the current path.
     func makeChildPath(name: String) throws -> ActorPath {
         let base = try ActorPath(self.segments)
         let nameSegment = try ActorPathSegment(name)
@@ -237,7 +240,7 @@ public struct ActorUID: Equatable, Hashable {
 
 public extension ActorUID {
     /// To be used ONLY by special actors whose existence is perpetual, such as `/system/deadLetters`
-    static let opaque: ActorUID = ActorUID(value: 0)
+    static let opaque: ActorUID = ActorUID(value: 0) // TODO need better name, plz help?
 
     public static func random() -> ActorUID {
         return ActorUID(value: UInt32.random(in: 1 ... .max))

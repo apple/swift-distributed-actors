@@ -105,6 +105,7 @@ class ParentChildActorTests: XCTestCase {
             context.log.info("Hello...")
 
             return .receiveMessage { message in
+                context.log.info("got: \(message)")
                 switch message {
                 case let .howAreYou(replyTo):
                     replyTo.tell("Pretty good, I'm \(context.path)")
@@ -137,14 +138,13 @@ class ParentChildActorTests: XCTestCase {
         parent.tell(.stopByName(name: child.path.name)) // stopping by name
         try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
 
-//        // FIXME This is not yet correct... stopping needs more work
-//        // we expect the child actor to be dead now
-//        p.watch(child) // watching dead ref triggers terminated
-//        try p.expectTerminated(child)
-//
-//        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
-//        try p.expectMessage(.childNotFound(name: child.path.name))
+        // FIXME This is not yet correct... stopping needs more work
+        // we expect the child actor to be dead now
+        p.watch(child) // watching dead ref triggers terminated
+        try p.expectTerminated(child)
 
+        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.path.name))
     }
 
     func test_contextSpawn_duplicateNameShouldFail() throws {
@@ -212,24 +212,23 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<Never> = testKit.spawnTestProbe()
+        let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p2: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
 
         let parent: ActorRef<String> = try system.spawnAnonymous(.receive { (context, msg) in
             switch msg {
             case "spawn":
                 let refA: ActorRef<ChildProtocol> = try context.spawn(.setup { context in
-                    p.tell(.spawned(child: context.myself))
+                    p1.tell(.spawned(child: context.myself))
                     return .ignore
                 }, name: "child")
-
-                p.watch(refA)
                 try context.stop(child: refA)
 
                 let refB: ActorRef<ChildProtocol> = try context.spawn(.setup { context in
-                    p.tell(.spawned(child: context.myself))
+                    p2.tell(.spawned(child: context.myself))
                     return .ignore
-                    }, name: "child")
-
+                }, name: "child")
                 try context.stop(child: refB)
                 return .same
             default:
@@ -238,39 +237,29 @@ class ParentChildActorTests: XCTestCase {
         })
 
         p.watch(parent)
-
         parent.tell("spawn")
 
-        let childA: ActorRef<ChildProtocol> = try p.expectMessageMatching {
-            switch $0 {
-            case let .spawned(child: ref):
-                return ref
-            default:
-                return nil
-            }
-        }
+        // TODO would be useful to provide some expectSpawned since it's such a common thing
+        guard case let .spawned(childA) = try p1.expectMessage() else { throw p1.failure() }
+        p1.watch(childA)
+        guard case let .spawned(childB) = try p2.expectMessage() else { throw p2.failure() }
+        p2.watch(childB)
 
-        try p.expectTerminated(childA)
-
-        _ = try p.expectMessageMatching { msg throws -> ActorRef<ChildProtocol>? in
-            switch msg {
-            case let .spawned(child: ref):
-                return ref
-            default:
-                return nil
-            }
-        }
+        try p1.expectTerminated(childA)
+        try p2.expectTerminated(childB)
+        try p.expectNoTerminationSignal(for: .milliseconds(100))
     }
 
     func test_throwOfSpawnedChild_shouldNotCauseParentToTerminate() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
 
-        let stoppingChildBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
+        let childBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
 
         let parentBehavior = Behavior<String>.receive { (context, msg) in
             switch msg {
             case "spawn":
-                _ = try context.spawn(stoppingChildBehavior, name: "child")
+                let childRef = try context.spawn(childBehavior, name: "child")
+                p.tell(.spawned(child: childRef))
                 return .same
             default:
                 return .ignore
@@ -282,15 +271,8 @@ class ParentChildActorTests: XCTestCase {
         p.watch(parent)
         parent.tell("spawn")
 
-        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
-            guard case .spawned(let ref) = $0 else { return nil }
-            return p.watch(ref)
-        }
-
-        sleep(1)
-        // FIXME: remove the sleep; without it it currently races somewhat...
-        // FIXME: since the probe's watch races with the failing so we may end up watching a terminated one,
-        // FIXME: which may end up not being processed properly: this is bug: https://github.com/apple/swift-distributed-actors/issues/139
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
+        p.watch(child)
 
         child.tell(.throwWhoops)
 
@@ -305,6 +287,9 @@ class ParentChildActorTests: XCTestCase {
             guard case .spawned(let ref) = $0 else { return nil }
             return p.watch(ref)
         }
+
+        secondChild.path.path.shouldEqual(child.path.path)
+        secondChild.path.uid.shouldNotEqual(child.path.uid)
     }
 
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
@@ -315,7 +300,8 @@ class ParentChildActorTests: XCTestCase {
         let parentBehavior = Behavior<String>.receive { (context, msg) in
             switch msg {
             case "spawn":
-                _ = try context.watch(context.spawn(stoppingChildBehavior, name: "child"))
+                let childRef = try context.watch(context.spawn(stoppingChildBehavior, name: "child"))
+                p.tell(.spawned(child: childRef))
                 return .same
             default:
                 return .ignore
@@ -327,15 +313,8 @@ class ParentChildActorTests: XCTestCase {
         p.watch(parent)
         parent.tell("spawn")
 
-        let child: ActorRef<ChildProtocol> = try p.expectMessageMatching {
-            guard case .spawned(let ref) = $0 else { return nil }
-            return p.watch(ref)
-        }
-
-        sleep(1)
-        // FIXME: remove the sleep; without it it currently races somewhat...
-        // FIXME: since the probe's watch races with the failing so we may end up watching a terminated one,
-        // FIXME: which may end up not being processed properly: this is bug: https://github.com/apple/swift-distributed-actors/issues/139
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
+        p.watch(child)
 
         child.tell(.throwWhoops)
 
@@ -344,5 +323,4 @@ class ParentChildActorTests: XCTestCase {
         try p.expectTerminated(parent)
     }
 
-    // TODO test with watching the child actor
 }

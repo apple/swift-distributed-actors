@@ -40,9 +40,8 @@ public /* but really internal... */ enum SystemMessage: Equatable { // TODO syst
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
     case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
-    // TODO can we remove?
-    /// Child actor has terminated. This fa
-    // case childTerminated(path: UniqueActorPath)
+    /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
+    case childTerminated(ref: AnyAddressableActorRef)
 
     /// Sent by parent to child actor to stop it
     case stop
@@ -65,6 +64,8 @@ extension SystemMessage {
             return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
         case let (.terminated(lRef, lExisted), .terminated(rRef, rExisted)):
             return lRef.path == rRef.path && lExisted == rExisted
+        case let (.childTerminated(lPath), .childTerminated(rPath)):
+            return lPath.path == rPath.path
 
         case (.tombstone, .tombstone): return true
         case (.stop, .stop): return true
@@ -75,6 +76,7 @@ extension SystemMessage {
              (.unwatch, _),
              (.tombstone, _),
              (.terminated, _),
+             (.childTerminated, _),
              (.stop, _): return false
         }
     }

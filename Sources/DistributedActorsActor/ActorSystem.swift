@@ -68,8 +68,8 @@ public final class ActorSystem {
 
         self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
         let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
-        let userGuardian = TopLevelGuardian(parent: theOne, name: "user")
-        let systemGuardian = TopLevelGuardian(parent: theOne, name: "system")
+        let userGuardian = Guardian(parent: theOne, name: "user")
+        let systemGuardian = Guardian(parent: theOne, name: "system")
 
         self.userProvider = LocalActorRefProvider(root: userGuardian)
         self.systemProvider = LocalActorRefProvider(root: systemGuardian)
@@ -118,7 +118,7 @@ public protocol ActorRefFactory {
 
     /// Spawn an actor with the given behavior name and props.
     ///
-    /// Returns: [[ActorRef]] for the spawned actor.
+    /// Returns: `ActorRef` for the spawned actor.
     func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
 }
 
@@ -144,7 +144,7 @@ extension ActorSystem: ActorRefFactory {
     private func spawnInternal<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial() // TODO: good example of what would be a soft crash...
 
-        let path = try self.userProvider.rootPath.makeUniqueChildPath(name: name, uid: .random())
+        let path = try self.userProvider.rootPath.makeChildPath(name: name, uid: .random())
         // TODO: reserve the name, atomically
 
         let refWithCell: ActorRef<Message> = userProvider.spawn(

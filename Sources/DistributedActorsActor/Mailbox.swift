@@ -97,6 +97,7 @@ final class Mailbox<Message> {
             let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
+            traceLog_Mailbox("INVOKE MSG: \(msg)")
             return try cell.interpretMessage(message: msg)
         }, fail: { error in
             cell.fail(error: error)

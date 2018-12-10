@@ -54,9 +54,12 @@ This is not fleshed out, we should chat about it.
 
 ## Conforming to protocols
 
-- for `Equatable` and `Hashable` esp. when they are auto derived, it is fine to put it on the type directly
+- for `Equatable` and `Hashable` - esp. when they are auto derived - it is fine to put it on the type directly
+  - you sometimes may have to implement things directly in a class, when subclassing is involved, since it is not possible to override methods implemented in extensions; this is fine as well,
+    and the code would hint that this is the reason for it since it would require writing `override` in the subclass when overriding the method
+  - for `Equatable` and `Hashable` putting the conformance right away on the type rather than adding via extensions can also be seen as documentation,
+    since when looking at the type we immediately then know that it can be used as "data"
 - for other conformances, try to make them in separate `extensions`
-- treat the adding a conformance on the type itself more of a documentation thing perhaps?
 
 ## Recommended reads
 
