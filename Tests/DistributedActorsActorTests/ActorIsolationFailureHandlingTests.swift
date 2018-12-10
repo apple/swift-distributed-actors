@@ -82,7 +82,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell("spawnFaultyWorker")
-        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message") }
+        guard case let .spawned(childWorker) = try pm.expectMessage() else { throw pm.failure() }
 
         // watch the child worker and see that it works correctly:
         pw.watch(childWorker)
@@ -111,7 +111,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(childWorker) = try pm.expectMessage() else { fatalError("did not receive expected message") }
+        guard case let .spawned(childWorker) = try pm.expectMessage() else { throw pm.failure() }
 
         // watch the child worker and see that it works correctly:
         pw.watch(childWorker)
@@ -134,7 +134,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
 //        healthyMaster.tell(spawnFaultyWorkerCommand)
 //        pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
-//        guard case let .spawned(childWorkerReplacement) = try pm.expectMessage() else { fatalError("did not receive expected message") }
+//        guard case let .spawned(childWorkerReplacement) = try pm.expectMessage() else { throw pm.failure() }
 //        childWorkerReplacement.path.shouldEqual(childWorker.path) // same path
 //        childWorkerReplacement.shouldNotEqual(childWorker) // NOT same identity
 

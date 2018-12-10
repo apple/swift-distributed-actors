@@ -49,6 +49,8 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         dispatcher: MessageDispatcher, props: Props
     ) -> ActorRef<Message> {
 
+        pprint("Spawning [\(path)], with behavior: [\(behavior)]")
+        
         // the cell that holds the actual "actor", though one could say the cell *is* the actor...
         let cell: ActorCell<Message> = ActorCell(
             system: system,

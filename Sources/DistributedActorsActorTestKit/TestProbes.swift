@@ -50,6 +50,8 @@ final public class ActorTestProbe<Message> {
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
     private let terminationsQueue = LinkedBlockingQueue<SystemMessage>()
 
+    private var lastMessageObserved: Message? = nil
+
 // TODO: make this work
 //  public static func spawnAnonymous<Message>(on system: ActorSystem) -> ActorTestProbe<Message> {
 //    return ActorTestProbe<Message>(system, named: testProbeNames.nextName())
@@ -134,7 +136,9 @@ extension ActorTestProbe where Message: Equatable {
                 guard self.messagesQueue.size() > 0 else {
                     throw ExpectationError.noMessagesInQueue
                 }
-                return self.messagesQueue.dequeue()
+                let message: Message = self.messagesQueue.dequeue()
+                self.lastMessageObserved = message
+                return message
             }
         } catch {
             let message = "Did not receive message (of type \(Message.self)) within [\(timeout.prettyDescription)], error: \(error)"
@@ -157,7 +161,8 @@ extension ActorTestProbe where Message: Equatable {
                 guard self.messagesQueue.size() > 0 else {
                     throw ExpectationError.noMessagesInQueue
                 }
-                let got = self.messagesQueue.dequeue()
+                let got: Message = self.messagesQueue.dequeue()
+                self.lastMessageObserved = got
                 got.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
             }
         } catch {
@@ -172,6 +177,7 @@ extension ActorTestProbe where Message: Equatable {
                 throw ExpectationError.noMessagesInQueue
             }
             let got = self.messagesQueue.dequeue()
+            self.lastMessageObserved = got
             got.shouldBe(type)
         }
     }
@@ -221,13 +227,26 @@ extension ActorTestProbe {
 
 
     /// Returns a well formatted failure message, use as:
+    /// If no
     ///
-    /// Example:
+    /// Examples:
     ///
     ///     guard ... else { throw p.failure("failed to extract expected information") }
-    public func failure(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    ///     guard case let .spawned(child) = p.expectMessage() else { throw p.failure() }
+    public func failure(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return callSite.failure(message: message)
+
+        var fullMessage: String = message ?? "ActorTestProbe failure."
+
+        let lastMsg: String
+        switch self.lastMessageObserved {
+        case .some(let m):
+            fullMessage += " Last message observed was: [\(m)]."
+        case .none:
+            fullMessage += " No message was observed before this failure."
+        }
+
+        return callSite.failure(message: fullMessage)
     }
 
     // MARK: Expecting messages with matching/extracting callbacks

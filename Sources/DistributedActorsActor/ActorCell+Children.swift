@@ -46,9 +46,13 @@ public struct Children {
     
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
+        pprint(">>>>>> LOOKING FOR NAMED: \(name)")
+
         guard let boxedChild = container[name] else {
             return nil
         }
+
+        pprint(">>>>>> FOUND: \(boxedChild)")
 
         return boxedChild.internal_exposeAs(ActorRef<T>.self)
     }
