@@ -19,8 +19,6 @@ import CDungeon
 
 let system = ActorSystem("ActorSystemTests")
 
-let isolateFaultDomainProps = Props().withFaultDomain(.isolate)
-
 enum SimpleProbeMessages: Equatable {
     case spawned(child: ActorRef<FaultyWorkerMessages>)
     case echoing(message: String)
@@ -73,7 +71,7 @@ func healthyMasterBehavior() -> Behavior<String> {
     }
 }
 
-let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(), name: "healthyMaster", props: isolateFaultDomainProps)
+let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(), name: "healthyMaster")
 
 
 sleep(1000)

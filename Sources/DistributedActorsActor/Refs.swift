@@ -44,7 +44,7 @@ extension AddressableActorRef {
 
 public protocol ReceivesMessages: AddressableActorRef {
     associatedtype Message
-    /// Send message to actor referred to by this [[ActorRef]].
+    /// Send message to actor referred to by this `ActorRef`.
     ///
     /// The symbolic version of "tell" is `!` and should also be pronounced as "tell".
     ///
@@ -146,9 +146,9 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
 // MARK: "Special" internal actors, "the Top Level Guardians"
 
 /// Represents an actor that has to exist, but does not exist in reality.
-/// It steps on the
-/// This actor ref is breaking many rules:
+/// It steps on the outer edge of the actor system and does not abide to its rules.
 ///
+/// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
 @usableFromInline // "the one who walks the bubbles of space time"
 internal struct TheOneWhoHasNoParentActorRef: ReceivesSystemMessages {
 
@@ -178,13 +178,10 @@ extension TheOneWhoHasNoParentActorRef: CustomStringConvertible, CustomDebugStri
     }
 }
 
-/// Represents an actor that has to exist, but does not exist in reality.
-/// It steps on the
-/// This actor ref is breaking many rules:
-///
+/// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
+/// (unlike actors spawned from within other actors, by using `context.spawn`).
 @usableFromInline // "the one who walks the bubbles of space time"
-internal struct TopLevelGuardian: ReceivesSystemMessages {
-    // TODO don't like the name... just GuardianActorRef?
+internal struct Guardian: ReceivesSystemMessages {
 
     let path: UniqueActorPath
 
@@ -192,15 +189,22 @@ internal struct TopLevelGuardian: ReceivesSystemMessages {
         assert(parent.path == UniqueActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
 
         do {
-            self.path = try ActorPath(root: name).makeUnique(uid: .random())
+            self.path = try ActorPath(root: name).makeUnique(uid: .opaque)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
     }
 
     func sendSystemMessage(_ message: SystemMessage) {
-        CDungeon.sact_dump_backtrace()
-        fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
+        switch message {
+        case .childTerminated:
+            // silently drop, guardians can't do anything about child termination.
+            // it is up to supervision behavior wrappers to provide restart etc capabilities.
+            ()
+        default:
+            CDungeon.sact_dump_backtrace()
+            fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
+        }
     }
 
     func asHashable() -> AnyHashable {

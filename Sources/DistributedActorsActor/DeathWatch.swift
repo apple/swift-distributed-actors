@@ -37,8 +37,7 @@ import Dispatch
             return ()
         }
 
-        // watching is idempotent, and an once-watched ref needs not be watched again
-        if self.watching.contains(watchee) {
+        if self.isWatching(path: watchee.path) {
             return ()
         }
 
@@ -56,6 +55,14 @@ import Dispatch
         }
     }
 
+    /// - Returns `true` if the passed in actor ref is being watched
+    @usableFromInline
+    internal func isWatching(path: UniqueActorPath) -> Bool {
+        // TODO: not efficient, however this is only for when termination of a child happens
+        // TODO: we could make system messages send AnyReceivesSystemMessages here...
+        return self.watching.contains(where: { $0.path == path })
+    }
+
     // MARK: react to watch or unwatch signals
 
     public mutating func becomeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
@@ -65,13 +72,13 @@ import Dispatch
             return
         }
 
-        // pprint("become watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Become watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher.internal_exposeBox()
         self.watchedBy.insert(boxedWatcher)
     }
 
     public mutating func removeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
-        // pprint("remove watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Remove watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher.internal_exposeBox()
         self.watchedBy.remove(boxedWatcher)
     }

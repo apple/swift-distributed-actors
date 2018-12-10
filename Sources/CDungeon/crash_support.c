@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <execinfo.h>
-#include <pthread.h>
 
 #include "include/crash_support.h"
 

@@ -59,8 +59,8 @@ class ActorPathTests: XCTestCase {
     }
 
     func test_equalityOf_pathsWithSameSegmentsButDifferentUID() throws {
-        let pathA = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
-        let pathB = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
+        let pathA = try ActorPath(root: "test").makeChildPath(name: "foo", uid: .random())
+        let pathB = try ActorPath(root: "test").makeChildPath(name: "foo", uid: .random())
 
         pathA.shouldNotEqual(pathB)
         pathA.uid.shouldNotEqual(pathB.uid)
@@ -70,8 +70,8 @@ class ActorPathTests: XCTestCase {
     }
 
     func test_equalityOf_pathsWithDifferentSegmentsButSameUID() throws {
-        let pathA = try ActorPath(root: "test").makeUniqueChildPath(name: "foo", uid: .random())
-        let pathA2 = try ActorPath(root: "test").makeUniqueChildPath(name: "foo2", uid: pathA.uid)
+        let pathA = try ActorPath(root: "test").makeChildPath(name: "foo", uid: .random())
+        let pathA2 = try ActorPath(root: "test").makeChildPath(name: "foo2", uid: pathA.uid)
 
         pathA.shouldNotEqual(pathA2)
     }

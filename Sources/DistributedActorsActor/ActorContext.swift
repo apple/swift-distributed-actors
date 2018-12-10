@@ -118,7 +118,12 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
-    /// Stop child Actor.
+    /// Stop a child actor identified by the passed in actor ref.
+    ///
+    /// **Logs Warnings** when the actor could have been a child of this actor, however it is currently not present in its children container,
+    ///    it means that either we attempted to stop an actor "twice" (which is a no-op) or that we are a re-incarnation under the same
+    ///    parent math of some actor, and we attempted to stop a non existing child, which also is a no-op however indicates an issue
+    ///    in the logic of our actor.
     ///
     /// - Throws: when an actor ref is passed in that is NOT a child of the current actor.
     ///         An actor may not terminate another's child actors.

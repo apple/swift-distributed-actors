@@ -29,11 +29,11 @@ protocol ChildActorRefFactory: ActorRefFactory {
 
 /// Represents all the (current) children this actor has spawned.
 ///
-/// Convenience methods for locating children are provided, although it is recommended to keep the [[ActorRef]]
-/// of spawned actors in the context of where they are used, rather than looking them up continiously.
+/// Convenience methods for locating children are provided, although it is recommended to keep the `ActorRef`
+/// of spawned actors in the context of where they are used, rather than looking them up continuously.
 public struct Children {
 
-    // Implementation note: access is optimized for fetching by name, as that's what we do doring child lookup
+    // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
     typealias Name = String
     private var container: [Name: BoxedHashableAnyReceivesSystemMessages]
@@ -42,20 +42,16 @@ public struct Children {
         self.container = [:]
     }
 
-    public func hasChild(parentPath: UniqueActorPath, identifiedBy uniquePath: UniqueActorPath) -> Bool {
+    public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         guard let child = self.container[uniquePath.name] else { return false }
         return child.path == uniquePath
     }
     
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
-        pprint(">>>>>> LOOKING FOR NAMED: \(name)")
-
         guard let boxedChild = container[name] else {
             return nil
         }
-
-        pprint(">>>>>> FOUND: \(boxedChild)")
 
         return boxedChild.internal_exposeAs(ActorRef<T>.self)
     }
@@ -64,8 +60,23 @@ public struct Children {
         self.container[childRef.path.name] = childRef.internal_boxAnyReceivesSystemMessages()
     }
 
-    internal func contains(_ name: String) -> Bool {
+    /// Imprecise contains function, which only checks for the existence of a child actor by its name,
+    /// without taking into account its incarnation UID.
+    ///
+    /// - SeeAlso: `contains(identifiedBy:)`
+    internal func contains(name: String) -> Bool {
         return container.keys.contains(name)
+    }
+    /// Precise contains function, which checks if this children container contains the specific actor
+    /// identified by the passed in path.
+    ///
+    /// - SeeAlso: `contains(_:)`
+    internal func contains(identifiedBy uniquePath: UniqueActorPath) -> Bool {
+        guard let boxedChild: BoxedHashableAnyReceivesSystemMessages = self.container[uniquePath.name] else {
+            return false
+        }
+
+        return boxedChild.path == uniquePath
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
@@ -92,7 +103,7 @@ extension ActorCell: ChildActorRefFactory {
         try validateUniqueName(name)
         // TODO prefix $ validation (only ok for anonymous)
 
-        let path = try self.path.makeUniqueChildPath(name: name, uid: .random())
+        let path = try self.path.makeChildPath(name: name, uid: .random())
 
         // TODO reserve name
 
@@ -107,7 +118,7 @@ extension ActorCell: ChildActorRefFactory {
         )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
-        log.info("Spawning [\(behavior)], child of [\(self.path)], full path: [\(path)]")
+        log.info("Spawning [\(behavior)], on path: [\(path)]")
 
         let refWithCell = ActorRefWithCell(
             path: path,
@@ -135,7 +146,7 @@ extension ActorCell: ChildActorRefFactory {
     }
 
     private func validateUniqueName(_ name: String) throws {
-        if children.contains(name) {
+        if children.contains(name: name) {
             let childPath: ActorPath = try self.path.makeChildPath(name: name)
             throw ActorContextError.duplicateActorPath(path: childPath)
         }

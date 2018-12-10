@@ -51,7 +51,7 @@ public struct ActorLogger: Logger {
         self.context = context
 
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSZ"
         formatter.locale = Locale(identifier: "en_US")
         formatter.calendar = Calendar(identifier: .gregorian)
         self.formatter = formatter
@@ -77,7 +77,7 @@ public struct ActorLogger: Logger {
         // mock impl until we get the real infra
         self.context.lock.withLockVoid {
             var msg = "\(formatter.string(from: Date())) "
-            msg += "[\(formatLevel(level))]"
+            msg += "\(formatLevel(level))"
             msg += "\(context.prettyMdc)"
             // msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line) .\(function)]"
             msg += "[\(file.split(separator: "/").last ?? "<unknown-file>"):\(line)]"
@@ -89,10 +89,10 @@ public struct ActorLogger: Logger {
 
     private func formatLevel(_ level: LogLevel) -> String {
         switch level {
-        case .debug: return "DEBUG"
-        case .info:  return " INFO"
-        case .warn:  return " WARN"
-        case .error: return "ERROR"
+        case .debug: return "[DEBUG]"
+        case .info:  return " [INFO]"
+        case .warn:  return " [WARN]"
+        case .error: return "[ERROR]"
         }
     }
 

@@ -23,21 +23,15 @@ public struct Props {
     let mailbox: MailboxProps
     let dispatcher: DispatcherProps
 
-    let faultDomain: FaultDomainProps
-
-    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, faultDomain: FaultDomainProps) {
+    public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
-        self.faultDomain = faultDomain
     }
 
     public init() {
-        self.init(mailbox: .default(), dispatcher: .default, faultDomain: .default)
+        self.init(mailbox: .default(), dispatcher: .default)
     }
     
-    public func withFaultDomain(_ domain: FaultDomainProps) -> Props {
-        return self.copy(faultDomain: domain)
-    }
     public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
         return self.copy(dispatcher: dispatcher)
     }
@@ -47,13 +41,11 @@ public struct Props {
 
     private func copy(
         mailbox: MailboxProps? = nil,
-        dispatcher: DispatcherProps? = nil,
-        faultDomain: FaultDomainProps? = nil
+        dispatcher: DispatcherProps? = nil
     ) -> Props {
         return .init(
             mailbox: mailbox ?? self.mailbox,
-            dispatcher: dispatcher ?? self.dispatcher,
-            faultDomain: faultDomain ?? self.faultDomain
+            dispatcher: dispatcher ?? self.dispatcher
         )
     }
 }
@@ -104,15 +96,6 @@ public enum MailboxProps {
         case let .default(cap, _): return cap
         }
     }
-}
-
-// TODO: Highly experimental and only for PoC of spawning in other process
-// TODO: currently not used, decide if we need them at all – will we do the process ones or not?
-public enum FaultDomainProps {
-    case `default` // perhaps this is "inherit"?
-
-    /// Isolate this actor and all of its children in its own process
-    case isolate
 }
 
 // TODO: those only apply when bounded mailboxes

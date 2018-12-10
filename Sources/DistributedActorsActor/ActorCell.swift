@@ -188,18 +188,15 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // death watch
         case let .watch(_, watcher):
             self.interpretSystemWatch(watcher: watcher)
-
         case let .unwatch(_, watcher):
             self.interpretSystemUnwatch(watcher: watcher)
 
         case let .terminated(ref, _):
-            if self.children.hasChild(parentPath: self.path, identifiedBy: ref.path) {
-                let childTerminated = Signals.Terminated(path: ref.path)
-                try self.interpretTerminatedSignal(who: ref, signal: childTerminated)
-            } else {
-                let terminatedSignal = Signals.Terminated(path: ref.path)
-                try self.interpretTerminatedSignal(who: ref, signal: terminatedSignal)
-            }
+            let terminated = Signals.Terminated(path: ref.path)
+            try self.interpretTerminatedSignal(who: ref, terminated: terminated)
+        case let .childTerminated(ref):
+            let terminated = Signals.ChildTerminated(path: ref.path, error: nil) // TODO what about the errors
+            try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
 
         case .tombstone:
             // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
@@ -242,18 +239,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
-    @inlinable internal func interpretTerminatedSignal(who ref: AnyAddressableActorRef, signal terminated: Signals.Terminated) throws {
+    @inlinable internal func interpretTerminatedSignal(who deadRef: AnyAddressableActorRef, terminated: Signals.Terminated) throws {
         #if SACT_TRACE_CELL
-        log.info("Received \(terminated)")
+        log.info("Received terminated: \(deadRef)")
         #endif
-
-        if (terminated.isChild) {
-            _ = self.children.removeChild(identifiedBy: terminated.path)
-        }
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warn("Actor not known yet \(signal) received for it.")
+            log.warn("Actor not known yet [.terminated] received for it.")
             return
         }
 
@@ -268,11 +261,42 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         switch next {
         case .unhandled:
-            throw DeathPactError.unhandledDeathPact(terminated: ref, myself: context.myself,
-            message: "Death Pact error: [\(context.path)] has not handled .terminated signal received from watched [\(ref)] actor. " +
+            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
+            message: "Death Pact error: [\(context.path)] has not handled .terminated signal received from watched [\(deadRef)] actor. " +
                 "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
+        }
+    }
+    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {
+        #if SACT_TRACE_CELL
+        log.info("Received \(terminated)")
+        #endif
+
+        // we always first need to remove the now terminated child from our children
+        _ = self.children.removeChild(identifiedBy: terminatedRef.path)
+        // Implementation notes:
+        // Normally this does not happen, however it MAY occur when the parent actor (self)
+        // immediately performed a `stop()` on the child, and thus removes it from its
+        // children container immediately; The following termination notification would therefore
+        // reach the parent in which the child was already removed.
+
+        // next we may apply normal deathWatch logic if the child was being watched
+        if self.deathWatch.isWatching(path: terminatedRef.path) {
+            return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
+        } else {
+            // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
+
+            let next: Behavior<Message>
+            if case let .signalHandling(_, handleSignal) = self.behavior {
+                next = try handleSignal(context, terminated)
+            } else {
+                // no signal handling installed is semantically equivalent to unhandled
+                // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
+                next = Behavior<Message>.unhandled
+            }
+
+            try becomeNext(behavior: next)
         }
     }
 
@@ -295,8 +319,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
-        case let DeathPactError.unhandledDeathPact(_, _, message):
-            log.error("\(message)") // TODO configurable logging? in props?
+        case let DeathPactError.unhandledDeathPact(ref, _, message):
+            log.error("Terminated: [\(ref)]: \(message)") // TODO configurable logging? in props?
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
@@ -365,13 +389,16 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
+
+        // TODO avoid notifying parent two times (!)
         self.notifyWatchersWeDied()
+        self.notifyParentWeDied()
         // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
         self._myselfInACell = nil // TODO: maybe try inventing a ActorRefWithDeadCell(system: system, path: path)?
-        self.behavior = .stopped
+        self.behavior = .stopped // TODO or failed...
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
     }
@@ -379,7 +406,13 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // Implementation note: bridge method so Mailbox can call this when needed
     // TODO: not sure about this design yet
     func notifyWatchersWeDied() {
+        traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD \(self.path)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
+    }
+    func notifyParentWeDied() {
+        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD \(self.path)")
+        let parent: AnyReceivesSystemMessages = self._parent
+        parent.sendSystemMessage(.childTerminated(ref: myself.internal_boxAnyAddressableActorRef()))
     }
 
     // MARK: Spawn

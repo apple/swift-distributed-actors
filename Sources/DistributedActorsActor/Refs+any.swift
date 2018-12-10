@@ -45,7 +45,7 @@ extension AnyAddressableActorRef {
     }
 }
 
-/// Internal box to type-erase the type details of an [[ActorRef]] yet keep its other properties (e.g. hash-ability)
+/// Internal box to type-erase the type details of an `ActorRef` yet keep its other properties (e.g. hash-ability)
 @usableFromInline internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {
     private let anyRef: AnyAddressableActorRef
 
