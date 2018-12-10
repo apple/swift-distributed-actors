@@ -12,6 +12,52 @@
 //
 //===----------------------------------------------------------------------===//
 
+// MARK: UniqueActorPath
+
+/// Uniquely identifies an actor within the actor hierarchy.
+///
+/// It may represent an actor that has already terminated, so attempts to locate
+/// an `ActorRef` for this unique path may yield with not being able to find it,
+/// even if previously at some point in time it existed.
+// TODO: we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt...
+// TODO: sadly "address" is super overloaded and ActorAddress sounds a bit weird... We also will have "Address" for the node, so "NodeAddress"?
+public struct UniqueActorPath: Equatable, Hashable {
+
+    /// Underlying path representation, not attached to a specific Actor instance.
+    let path: ActorPath
+
+    /// Unique identified associated with a specific actor "incarnation" under this path.
+    let uid: ActorUID
+
+    public init(path: ActorPath, uid: ActorUID) {
+        self.path = path
+        self.uid = uid
+    }
+
+    /// Only to be used by the "/" root "actor"
+    internal static let _rootPath: UniqueActorPath = ActorPath._rootPath.makeUnique(uid: .opaque)
+
+    /// Returns the name of the actor represented by this path.
+    /// This is equal to the last path segments string representation.
+    var name: String {
+        return path.name
+    }
+}
+
+extension UniqueActorPath: CustomStringConvertible {
+    public var description: String {
+        return "\(path.description)#\(uid.value)"
+    }
+}
+
+extension UniqueActorPath: PathRelationships {
+    var segments: [ActorPathSegment] {
+        return path.segments
+    }
+}
+
+// MARK: ActorPath
+
 /// Represents the name and placement within the actor hierarchy of a given actor.
 ///
 /// Names of user actors MUST:
@@ -19,105 +65,109 @@
 /// - contain only ASCII characters and select special characters (listed in [[ValidPathSymbols.extraSymbols]]
 ///
 /// - Example: `/user/master/worker`
-public struct ActorPath {
+public struct ActorPath: PathRelationships, Equatable, Hashable {
 
-    // TODO: we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt,
-    //      Akka wanted to get closer to that but we had historical naming to take into account so we didn't
-    // private var address: Address = "swift-distributed-actors://10.0.0.1:2552
-    private var segments: [ActorPathSegment]
-    let uid: ActorUID
+    internal var segments: [ActorPathSegment]
 
-    init(_ segments: [ActorPathSegment], uid: ActorUID) throws {
+    init(_ segments: [ActorPathSegment]) throws {
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
         }
         self.segments = segments
-        self.uid = uid
     }
 
-    init(path: String) throws {
-        try self.init([ActorPathSegment(path)], uid: ActorUID.undefined)
+    init(root: String) throws {
+        try self.init([ActorPathSegment(root)])
     }
 
     init(root: ActorPathSegment) throws {
-        try self.init([root], uid: ActorUID.undefined)
+        try self.init([root])
     }
 
-    /// Special purpose initializer, only for the "/" path. None other may use such path.
-    private init(forTheOneAndOnlyRootPathAndActorUID secretUID: ActorUID) {
-        guard secretUID == ActorUID.undefined else { fatalError("None other than the / actor with UID:0 may initialize an empty path!") }
+    /// INTERNAL API: Special purpose initializer, only for the "/" path. None other may use such path.
+    private init() {
         self.segments = []
-        self.uid = ActorUID.undefined
     }
 
-    internal static let _rootPath: ActorPath = ActorPath(forTheOneAndOnlyRootPathAndActorUID: .undefined)
+    internal static let _rootPath: ActorPath = .init()
 
     /// Appends a segment to this actor path
     mutating func append(segment: ActorPathSegment) {
         self.segments.append(segment)
     }
 
+    func makeUnique(uid: ActorUID) -> UniqueActorPath {
+        return UniqueActorPath(path: self, uid: uid)
+    }
+
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
     var name: String {
-        return nameSegment.value
+        // the only path which has no segments is the "root"
+        let lastSegmentName = segments.last?.description ?? "/"
+        return "\(lastSegmentName)"
     }
-
-    var nameSegment: ActorPathSegment {
-        return segments.last! // it is guaranteed by construction that we have at least one segment
-    }
-}
-
-extension ActorPath: Equatable {
-    public static func == (lhs: ActorPath, rhs: ActorPath) -> Bool {
-        return lhs.segments == rhs.segments
-    }
-}
-
-extension ActorPath: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(segments)
-    }
-}
-
-/// Checks that paths are *identical*, meaning that UID field of a path will be taken into account when performing the comparison.
-public func === (lhs: ActorPath, rhs: ActorPath) -> Bool {
-    return lhs.uid == rhs.uid && (lhs == rhs)
 }
 
 extension ActorPath {
+    /// Combines the base path with a child segment returning the concatenated path.
     static func /(base: ActorPath, child: ActorPathSegment) -> ActorPath {
         var segments = base.segments
         segments.append(child)
         // safe because we know that segments is not empty
-        return try! ActorPath(segments, uid: ActorUID.random())
-    }
-
-    /// Checks whether this [ActorPath] is a direct descendant of the passed in path
-    ///
-    /// - Parameter path: The path to check against
-    /// - Returns: `true` if this [ActorPath] is a direct descendant of `path`, `false` otherwise
-    func isChildOf(_ path: ActorPath) -> Bool {
-        return Array(segments.dropLast()) == path.segments
+        return try! ActorPath(segments)
     }
 }
 
 // TODO
-extension ActorPath: CustomStringConvertible, CustomDebugStringConvertible {
+extension ActorPath: CustomStringConvertible {
     public var description: String {
         let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
-        let pathString = "/\(pathSegments)"
-        switch uid.value {
-        case ActorUID.undefined.value:
-            return pathString
-        default:
-            return "\(pathString)#\(uid.value)"
-        }
-    }
-    public var debugDescription: String {
-        return "ActorPath(\(description))"
+        return "/\(pathSegments)"
     }
 }
+
+// MARK: Path relationships
+
+protocol PathRelationships {
+    var segments: [ActorPathSegment] { get }
+}
+
+extension PathRelationships {
+
+    /// Combines the base path with a child segment returning the concatenated path.
+    static func /(base: PathRelationships, child: ActorPathSegment) throws -> ActorPath {
+        var segments = base.segments
+        segments.append(child)
+
+        // try safe: because we know that `segments` is not empty
+        return try! ActorPath(segments)
+    }
+
+    /// Checks whether this [ActorPath] is a direct descendant of the passed in path.
+    ///
+    /// Note: Path relationships only take into account the path segments, and can not be used
+    ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
+    ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
+    ///
+    /// - Parameter path: The path to check against
+    /// - Returns: `true` if this [ActorPath] is a direct descendant of `path`, `false` otherwise
+    func isChildPathOf(_ path: PathRelationships) -> Bool {
+        return Array(self.segments.dropLast()) == path.segments
+    }
+
+    func makeUniqueChildPath(name: String, uid: ActorUID) throws -> UniqueActorPath {
+        return try self.makeChildPath(name: name).makeUnique(uid: uid)
+    }
+    func makeChildPath(name: String) throws -> ActorPath {
+        let base = try ActorPath(self.segments)
+        let nameSegment = try ActorPathSegment(name)
+        return base / nameSegment
+    }
+    
+}
+
+// MARK: Path segments
 
 /// Represents a single segment (actor name) of an ActorPath.
 public struct ActorPathSegment: Equatable, Hashable {
@@ -179,7 +229,22 @@ private struct ValidActorPathSymbols {
     static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';".unicodeScalars
 }
 
-// MARK: --
+// MARK: Actor UID
+
+public struct ActorUID: Equatable, Hashable {
+    let value: UInt32
+}
+
+public extension ActorUID {
+    /// To be used ONLY by special actors whose existence is perpetual, such as `/system/deadLetters`
+    static let opaque: ActorUID = ActorUID(value: 0)
+
+    public static func random() -> ActorUID {
+        return ActorUID(value: UInt32.random(in: 1 ... .max))
+    }
+}
+
+// MARK: Path errors
 
 public enum ActorPathError: Error {
     case illegalEmptyActorPath

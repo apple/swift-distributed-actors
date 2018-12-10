@@ -29,7 +29,7 @@ import CDungeon
 public protocol AddressableActorRef: Hashable {
 
     /// The [ActorPath] under which the actor is located.
-    var path: ActorPath { get }
+    var path: UniqueActorPath { get }
 }
 
 extension AddressableActorRef {
@@ -58,7 +58,7 @@ public protocol ReceivesMessages: AddressableActorRef {
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public class ActorRef<Message>: ReceivesMessages {
 
-    public var path: ActorPath {
+    public var path: UniqueActorPath {
         return undefined()
     }
 
@@ -80,7 +80,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
         return "ActorRef<\(Message.self)>(\(path))"
     }
     public var debugDescription: String {
-        return "ActorRef<\(Message.self)>(\(path.debugDescription)" // TODO: TODO we will need UIDs eventually I think... tho maybe not until we do remoting, since that needs to read a ref from an id
+        return "ActorRef<\(Message.self)>(\(path)"
     }
 }
 
@@ -112,8 +112,8 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     ///
     /// Bottom line: I feel we may gain some performance by straying from the Akka way of carrying the names, yet at the same time, we need to guarantee some way for users to get names; they're incredibly important.
 
-    let _path: ActorPath
-    public override var path: ActorPath {
+    let _path: UniqueActorPath
+    public override var path: UniqueActorPath {
         return _path
     }
 
@@ -122,7 +122,7 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     // MARK: Internal details; HERE BE DRAGONS
     internal let cell: ActorCell<Message>
 
-    public init(path: ActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
+    public init(path: UniqueActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
         self._path = path
         self.cell = cell
         self.mailbox = mailbox
@@ -152,11 +152,11 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
 @usableFromInline // "the one who walks the bubbles of space time"
 internal struct TheOneWhoHasNoParentActorRef: ReceivesSystemMessages {
 
-    let path: ActorPath
+    let path: UniqueActorPath
 
     init() {
         // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
-        self.path = ActorPath._rootPath
+        self.path = UniqueActorPath._rootPath
     }
 
     func sendSystemMessage(_ message: SystemMessage) {
@@ -169,19 +169,33 @@ internal struct TheOneWhoHasNoParentActorRef: ReceivesSystemMessages {
     }
 }
 
+extension TheOneWhoHasNoParentActorRef: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        return "/"
+    }
+    public var debugDescription: String {
+        return "TheOneWhoHasNoParentActorRef(path: \"/\")"
+    }
+}
+
 /// Represents an actor that has to exist, but does not exist in reality.
 /// It steps on the
 /// This actor ref is breaking many rules:
 ///
 @usableFromInline // "the one who walks the bubbles of space time"
 internal struct TopLevelGuardian: ReceivesSystemMessages {
+    // TODO don't like the name... just GuardianActorRef?
 
-    let path: ActorPath
+    let path: UniqueActorPath
 
-    init(parent: ReceivesSystemMessages, path: ActorPath) {
-        assert(parent.path === ActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
-        // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
-        self.path = ActorPath._rootPath
+    init(parent: ReceivesSystemMessages, name: String) {
+        assert(parent.path == UniqueActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
+
+        do {
+            self.path = try ActorPath(root: name).makeUnique(uid: .random())
+        } catch {
+            fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
+        }
     }
 
     func sendSystemMessage(_ message: SystemMessage) {

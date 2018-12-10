@@ -23,16 +23,16 @@ struct DeadLetter {
 
 // FIXME this is just a quick workaround, will need to be a bit smarter than that
 internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
-    let _path: ActorPath
+    let _path: UniqueActorPath
     let log: Logger
 
-    init(_ log: Logger, path: ActorPath) {
+    init(_ log: Logger, path: UniqueActorPath) {
         self.log = log
         self._path = path
         super.init()
     }
 
-    override var path: ActorPath {
+    override var path: UniqueActorPath {
         return _path
     }
 
@@ -71,9 +71,9 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
 
 // TODO this is a hack, I think... would be nicer for deadLetters to be real
 internal struct DeadLettersAnyAddressableActorRef: AnyAddressableActorRef {
-    let path: ActorPath
+    let path: UniqueActorPath
 
-    init(path: ActorPath) {
+    init(path: UniqueActorPath) {
         self.path = path
     }
 

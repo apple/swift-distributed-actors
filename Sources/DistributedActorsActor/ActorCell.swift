@@ -42,7 +42,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     internal let _parent: AnyReceivesSystemMessages
 
-    internal let _path: ActorPath
+    internal let _path: UniqueActorPath
 
     internal let _props: Props
 
@@ -60,7 +60,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     }
 
     internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
-                  behavior: Behavior<Message>, path: ActorPath,
+                  behavior: Behavior<Message>, path: UniqueActorPath,
                   props: Props, dispatcher: MessageDispatcher) {
         self.system = system
         self._parent = parent
@@ -128,7 +128,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    override public var path: ActorPath {
+    override public var path: UniqueActorPath {
         return self._path
     }
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
@@ -350,7 +350,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     internal func finishTerminating() {
         self._myselfInACell?.mailbox.setClosed()
 
-        let myPath: ActorPath? = self._myselfInACell?.path
+        let myPath: UniqueActorPath? = self._myselfInACell?.path
         traceLog_Cell("FINISH TERMINATING \(self)")
 
         // TODO: stop all children? depends which style we'll end up with...

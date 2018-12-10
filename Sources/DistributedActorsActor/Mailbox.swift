@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation // TODO: remove
 import NIOConcurrencyHelpers
 import CQueue
 import CDungeon
@@ -25,7 +24,7 @@ struct Envelope<Message> {
     // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
     // TODO: explain this more
     #if SACT_DEBUG
-    let senderPath: ActorPath
+    let senderPath: UniqueActorPath
     #endif
 
     // Implementation notes:

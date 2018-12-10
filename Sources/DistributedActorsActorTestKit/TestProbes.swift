@@ -179,7 +179,7 @@ extension ActorTestProbe where Message: Equatable {
 }
 
 extension ActorTestProbe: ReceivesMessages {
-    public var path: ActorPath {
+    public var path: UniqueActorPath {
         return self.exposedRef.path
     }
 

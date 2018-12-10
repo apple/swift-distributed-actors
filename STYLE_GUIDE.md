@@ -52,6 +52,12 @@ This is not fleshed out, we should chat about it.
   - the trailing `:type` is designed to feel like type signatures, it also should help in case there are the same string representations for various types, 
     and one would be left scratching their head why "1 was not delivered" when "1" definitely should have been (e.g. whoops, it was `1:Int`, and not `"1":String`!) 
 
+## Conforming to protocols
+
+- for `Equatable` and `Hashable` esp. when they are auto derived, it is fine to put it on the type directly
+- for other conformances, try to make them in separate `extensions`
+- treat the adding a conformance on the type itself more of a documentation thing perhaps?
+
 ## Recommended reads
 
 The Swift Distributed Actors team recommends the following reads to "get it",
@@ -60,3 +66,5 @@ and understand where Swift Distributed Actors takes its core concepts from.
 - *Actor Model of Computation: Scalable Robust Information Systems* – Carl Hewitt
  https://arxiv.org/abs/1008.1459
 - TODO add links
+
+

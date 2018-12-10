@@ -18,7 +18,7 @@
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
 public protocol AnyAddressableActorRef {
-    var path: ActorPath { get }
+    var path: UniqueActorPath { get }
     func asHashable() -> AnyHashable
 
     static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool
@@ -67,7 +67,7 @@ extension AnyAddressableActorRef {
         return lhs.path == rhs.path
     }
 
-    var path: ActorPath {
+    var path: UniqueActorPath {
         return self.anyRef.path
     }
 
@@ -80,9 +80,9 @@ extension AnyAddressableActorRef {
 // FIXME: this seems wrong... we only have it for sending a terminated for after when we niled out the ActorCell already;
 // this should never happen as finishTerminating should be the last thing to ever run, yet currently we too eagerly call finishTerminating in fail().
 @usableFromInline internal struct PathOnlyHackAnyAddressableActorRef: AnyAddressableActorRef { // FIXME: remove the need for this
-    private let _path: ActorPath
+    private let _path: UniqueActorPath
 
-    public init(path: ActorPath) {
+    public init(path: UniqueActorPath) {
         self._path = path
     }
 
@@ -97,7 +97,7 @@ extension AnyAddressableActorRef {
         return lhs.path == rhs.path
     }
 
-    var path: ActorPath {
+    var path: UniqueActorPath {
         return self._path
     }
 
@@ -116,7 +116,7 @@ extension AnyAddressableActorRef {
 public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
-    var path: ActorPath { get }
+    var path: UniqueActorPath { get }
     func asHashable() -> AnyHashable
 }
 
@@ -146,7 +146,7 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
         self.anyRef.sendSystemMessage(message)
     }
 
-    public var path: ActorPath {
+    public var path: UniqueActorPath {
         return self.anyRef.path
     }
 
