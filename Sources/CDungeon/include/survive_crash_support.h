@@ -30,11 +30,18 @@
 
 #include <setjmp.h>
 
-void sact_enable_failure_handling();
-void sact_disable_failure_handling();
+typedef struct {
+    char** backtrace;
+    int backtrace_length;
+} CCrashDetails;
 
-int sact_install_swift_crash_handler();
+void sact_enable_failure_handling(void);
+void sact_disable_failure_handling(void);
 
-jmp_buf* sact_get_error_jmp_buf();
+int sact_install_swift_crash_handler(void);
+
+jmp_buf* sact_get_error_jmp_buf(void);
+
+CCrashDetails* sact_get_crash_details(void);
 
 #endif

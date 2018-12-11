@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/ucontext.h>
 #include <unistd.h>
@@ -57,10 +58,16 @@ static _Thread_local bool failure_handling_enabled = false;
 
 static _Thread_local jmp_buf error_jmp_buf;
 
+static _Thread_local CCrashDetails* crash_details = NULL;
+
 pthread_mutex_t lock;
 
 jmp_buf* sact_get_error_jmp_buf() {
     return &error_jmp_buf;
+}
+
+CCrashDetails* sact_get_crash_details() {
+    return crash_details;
 }
 
 void sact_unrecoverable_sighandler(int sig, siginfo_t* siginfo, void* data) {
@@ -98,6 +105,13 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
 
     // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
     // http://man7.org/linux/man-pages/man3/backtrace.3.html
+
+    char** frames;
+    int frame_count = sact_get_backtrace(&frames);
+
+    crash_details = malloc(sizeof(CCrashDetails));
+    crash_details->backtrace = frames;
+    crash_details->backtrace_length = frame_count;
 
     // we are jumping back to the mailbox to properly handle the crash and kill the actor
     siglongjmp(error_jmp_buf, 1);

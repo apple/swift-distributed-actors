@@ -32,13 +32,19 @@
 #include "include/crash_support.h"
 
 void sact_dump_backtrace() {
-    void* callstack[128];
-    int i, frames = backtrace(callstack, 128);
-    char** strs = backtrace_symbols(callstack, frames);
-    for (i = 0; i < frames; ++i) {
+    char** strs;
+    int frames = sact_get_backtrace(&strs);
+    for (int i = 0; i < frames; ++i) {
         fprintf(stderr, "%s\n", strs[i]);
     }
     free(strs);
+}
+
+int sact_get_backtrace(char*** strs) {
+    void* callstack[128];
+    int frames = backtrace(callstack, 128);
+    *strs = backtrace_symbols(callstack, frames);
+    return frames;
 }
 
 /* UD2 is defined as "Raises an invalid opcode exception in all operating modes." */

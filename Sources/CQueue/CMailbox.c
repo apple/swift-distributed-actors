@@ -177,12 +177,20 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                   void* context, void* system_context,
                   void* dead_letter_context, void* dead_letter_system_context,
                   InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-                  jmp_buf* error_jmp_buf) {
+                  jmp_buf* error_jmp_buf, void** failed_message) {
     print_debug_status(mailbox, "Entering run");
+
+    // We store the message in a void** here so that it is still accessible after
+    // a failure. If we would store it in a simple void*, we would restore the
+    // initial value on the stack when longjmp'ing to the error handler. By using
+    // a void** the value on the stack will point to the same heap location that
+    // contains the actual message pointer even after restoring the stack frame.
+    void* message[1];
 
     int64_t status = set_processing_system_messages(mailbox);
 
-    int64_t processed_activations = has_system_messages(status) ? 0b10 : 0;
+    int64_t processed_activations[1];
+    *processed_activations = has_system_messages(status) ? 0b10 : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
@@ -192,9 +200,16 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
     bool keep_running = true; // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
 
+    // We store the current stack frame to `error_jmp_buf` so that we can restore
+    // it to jump back here in case an error occurs during message processing.
+    // `sigsetjmp` also stores the signal mask when the second argument is non-zero.
     if (sigsetjmp(*error_jmp_buf, 1)) {
         cmailbox_set_terminating(mailbox);
-        return Error;
+        // we still have to decrement the status activations to keep the correct message count
+        // in case we restart the actor
+        decrement_status_activations(mailbox, *processed_activations);
+        *failed_message = *message;
+        return Failure;
     } else {
 
         // run system messages ------
@@ -243,15 +258,15 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // run user messages ------
 
         if (keep_running) {
-            void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
-            while (message != NULL && keep_running) {
+            *message = cmpsc_linked_queue_dequeue(mailbox->messages);
+            while (*message != NULL && keep_running) {
                 // we need to add 2 to processed_activations because the user message count is stored
                 // shifted by 1 in the status and we use the same field to clear the
                 // system message bit
-            processed_activations += SINGLE_USER_MESSAGE_MASK;
+                *processed_activations += SINGLE_USER_MESSAGE_MASK;
                 // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
                 // TODO: fix this dance
-                bool still_alive = interpret_message(context, message); // TODO: we can optimize the keep_running into the processed counter?
+                bool still_alive = interpret_message(context, *message); // TODO: we can optimize the keep_running into the processed counter?
                 keep_running = still_alive;
 
                 // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
@@ -259,35 +274,35 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                     // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
                     set_status_terminating(mailbox);
                     print_debug_status(mailbox, "MARKED TERMINATING");
-                    message = NULL; // break out of the loop
-                } else if (processed_activations >= run_length) {
-                    message = NULL; // break out of the loop
+                    *message = NULL; // break out of the loop
+                } else if (*processed_activations >= run_length) {
+                    *message = NULL; // break out of the loop
                 } else {
                     // dequeue another message, if there are no more messages left, message
                     // will contain NULL and terminate the loop
-                    message = cmpsc_linked_queue_dequeue(mailbox->messages);
+                    *message = cmpsc_linked_queue_dequeue(mailbox->messages);
                 }
             }
         } else /* we are terminating and need to drain messages */ {
             // TODO: drain them to dead letters
 
             // TODO: drainToDeadLetters(mailbox->messages) {
-            void* message = cmpsc_linked_queue_dequeue(mailbox->messages);
-            while (message != NULL) {
-                drop_message(dead_letter_context, message);
-            processed_activations += SINGLE_USER_MESSAGE_MASK;
-                message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
+            *message = cmpsc_linked_queue_dequeue(mailbox->messages);
+            while (*message != NULL) {
+                drop_message(dead_letter_context, *message);
+            *processed_activations += SINGLE_USER_MESSAGE_MASK;
+                *message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
             }
         }
 
         // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
 
-        int64_t old_status = decrement_status_activations(mailbox, processed_activations);
+        int64_t old_status = decrement_status_activations(mailbox, *processed_activations);
         int64_t old_activations = activations(old_status);
         // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
         print_debug_status(mailbox, "Run complete...");
 
-        if (old_activations == processed_activations && // processed everything
+        if (old_activations == *processed_activations && // processed everything
             cmpsc_linked_queue_non_empty(mailbox->system_messages) && // but pending system messages it seems
             activations(try_activate(mailbox)) == 0) { // need to activate again (mark that we have system messages)
             // If we processed_activations all messages (including system messages) that have been
@@ -296,13 +311,13 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             // return true to signal the queue should be re-scheduled
             print_debug_status(mailbox, "Run complete, shouldReschedule:true, pending system messages\n");
             return Reschedule;
-        } else if (old_activations > processed_activations) {
+        } else if (old_activations > *processed_activations) {
             // if we could not process all messages in this run, because we had more
             // messages queued up than the maximum run length, return true to signal
             // the queue should be re-scheduled
 
             char msg[300];
-            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, processed_activations);
+            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld ", old_activations, *processed_activations);
             print_debug_status(mailbox, msg);
             return Reschedule;
         } else if (!keep_running) {
