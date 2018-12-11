@@ -53,17 +53,11 @@ public struct Props {
 // TODO: likely better as class hierarchy, by we'll see...
 
 public enum DispatcherProps {
-//  /// Picks default dispatched for user actors for your current runtime
-//  #if os(OSX)
-//  let `default`: DispatcherProps = DispatcherProps.dispatch(qosClass: .default)
-//  #elseif os(Linux)
-//  let `default`: DispatcherProps = DispatcherProps.dispatch(qosClass: .default)
-//  #else
-//  let `default`: DispatcherProps = DispatcherProps.dispatch(qosClass: .default)
-//  #endif
 
     /// Lets runtime determine the default dispatcher
     case `default`
+
+    case callingThread
 
     /// Use the Dispatch library as underlying executor.
     case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass) // TODO: we want diff actors to be able to run on diff priorities, thus this setting

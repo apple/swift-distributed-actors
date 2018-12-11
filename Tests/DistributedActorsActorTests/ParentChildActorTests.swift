@@ -212,9 +212,9 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
-        let p: ActorTestProbe<Never> = testKit.spawnTestProbe()
-        let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
-        let p2: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<Never> = testKit.spawnTestProbe(name: "p")
+        let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p1")
+        let p2: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p2")
 
         let parent: ActorRef<String> = try system.spawnAnonymous(.receive { (context, msg) in
             switch msg {
@@ -230,6 +230,7 @@ class ParentChildActorTests: XCTestCase {
                     return .ignore
                 }, name: "child")
                 try context.stop(child: refB)
+
                 return .same
             default:
                 return .ignore
