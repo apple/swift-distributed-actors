@@ -147,6 +147,13 @@ extension ActorSystem: ActorRefFactory {
         let path = try self.userProvider.rootPath.makeChildPath(name: name, uid: .random())
         // TODO: reserve the name, atomically
 
+        let dispatcher: MessageDispatcher
+        switch props.dispatcher {
+        case .default: dispatcher = self.dispatcher
+        case .callingThread: dispatcher = CallingThreadDispatcher()
+        default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
+        }
+
         let refWithCell: ActorRef<Message> = userProvider.spawn(
             system: self,
             behavior: behavior, path: path,

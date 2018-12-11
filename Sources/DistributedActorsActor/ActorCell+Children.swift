@@ -107,14 +107,20 @@ extension ActorCell: ChildActorRefFactory {
 
         // TODO reserve name
 
-        let d = dispatcher // TODO this is dispatcher inheritance, we dont want that I think
+        let dispatcher: MessageDispatcher
+        switch props.dispatcher {
+        case .default: dispatcher = self.dispatcher // TODO this is dispatcher inheritance, not sure about it
+        case .callingThread: dispatcher = CallingThreadDispatcher()
+        default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
+        }
+
         let cell: ActorCell<M> = ActorCell<M>(
             system: self.system,
             parent: self.myself.internal_boxAnyReceivesSystemMessages(),
             behavior: behavior,
             path: path,
             props: props,
-            dispatcher: d
+            dispatcher: dispatcher
         )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 

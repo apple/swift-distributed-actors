@@ -39,7 +39,13 @@ final public class ActorTestKit {
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
     public func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         let name = maybeName ?? testProbeNames.nextName()
-        return .init(spawn: { b in try system.spawn(b, name: name) })
+        return ActorTestProbe(spawn: { probeBehavior in
+
+            let testProbeProps = Props()
+//            let testProbeProps = Props().withDispatcher(.callingThread)
+
+            return try system.spawn(probeBehavior, name: name, props: testProbeProps)
+        })
     }
 
 }
