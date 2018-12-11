@@ -41,8 +41,11 @@ final public class ActorTestKit {
         let name = maybeName ?? testProbeNames.nextName()
         return ActorTestProbe(spawn: { probeBehavior in
 
-            let testProbeProps = Props()
-//            let testProbeProps = Props().withDispatcher(.callingThread)
+            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+            var testProbeProps = Props()
+            #if SACT_PROBE_CALLING_THREAD
+            testProbeProps.dispatcher = .callingThread
+            #endif
 
             return try system.spawn(probeBehavior, name: name, props: testProbeProps)
         })

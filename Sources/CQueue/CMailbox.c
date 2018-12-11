@@ -99,6 +99,7 @@ bool has_activations(int64_t status);
 bool has_system_messages(int64_t status);
 
 bool is_terminating(int64_t status);
+bool is_not_terminating(int64_t status);
 
 bool is_closed(int64_t status);
 
@@ -201,25 +202,28 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
         // was our run was interrupted by a system message causing termination?
         if (!keep_running) {
-            if (is_terminating(status) == false) {
+
+            if (is_not_terminating(status)) { // avoid unnecessarily setting the terminating bit again
                 print_debug_status(mailbox, "before set TERMINATING");
                 set_status_terminating(mailbox);
                 print_debug_status(mailbox, "after set TERMINATING");
-            } else if (cmailbox_is_closed(mailbox)) { // atomic read, if we handled .tombstone just now, it will be closed!
-                // this is to run any messages which may have made it into the queue between us setting closed,
-                // and finishing the system run
+            }
 
-                if (system_message == NULL) {
-                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-                }
-                while (system_message != NULL) {
-                    print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
-                    // drain all messages to dead letters
-                    // this is very important since dead letters will handle any posthumous watches for us
-                    drop_message(dead_letter_system_context, system_message);
+            // Since we are terminating, and bailed out from a system run, there may be
+            // pending system messages in the queue still; we want to finish this run till they are drained.
+            //
+            // Never run user messages before draining system messages, system messages must be processed with priority,
+            // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
+            if (system_message == NULL) {
+                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+            }
+            while (system_message != NULL) {
+                print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
+                // drain all messages to dead letters
+                // this is very important since dead letters will handle any posthumous watches for us
+                drop_message(dead_letter_system_context, system_message);
 
-                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
-                }
+                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
             }
         }
     }
@@ -413,6 +417,9 @@ void cmailbox_set_terminating(CMailbox* mailbox) {
 
 bool is_terminating(int64_t status) {
     return (status & TERMINATING) != 0;
+}
+bool is_not_terminating(int64_t status) {
+    return (status & TERMINATING) == 0;
 }
 
 bool is_closed(int64_t status) {

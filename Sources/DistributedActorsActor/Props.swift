@@ -16,12 +16,12 @@ import Dispatch // TODO: I suppose we'll end up supporting it anyway, only model
 
 /// Props configure an Actors' properties such as mailbox and dispatcher semantics.
 ///
-/// Mnemonic: "props" are what an actor in real life uses when acting on stage,
-///           e.g. a skull that would be used for "to be, or, not to be?
+/// - Mnemonic: "props" are what an actor in real life uses when acting on stage,
+///             e.g. a skull that would be used for "to be, or, not to be?
 public struct Props {
 
-    let mailbox: MailboxProps
-    let dispatcher: DispatcherProps
+    var mailbox: MailboxProps
+    var dispatcher: DispatcherProps
 
     public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
         self.mailbox = mailbox
@@ -31,10 +31,12 @@ public struct Props {
     public init() {
         self.init(mailbox: .default(), dispatcher: .default)
     }
-    
+
+    /// Creates copy of this [Props] changing the dispatcher props.
     public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
         return self.copy(dispatcher: dispatcher)
     }
+    /// Creates copy of this [Props] changing the mailbox props.
     public func withMailbox(_ mailbox: MailboxProps) -> Props {
         return self.copy(mailbox: mailbox)
     }
