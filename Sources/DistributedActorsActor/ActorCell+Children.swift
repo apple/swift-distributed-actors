@@ -46,7 +46,7 @@ public struct Children {
         guard let child = self.container[uniquePath.name] else { return false }
         return child.path == uniquePath
     }
-    
+
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
         guard let boxedChild = container[name] else {
@@ -55,7 +55,7 @@ public struct Children {
 
         return boxedChild.internal_exposeAs(ActorRef<T>.self)
     }
-    
+
     public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
         self.container[childRef.path.name] = childRef.internal_boxAnyReceivesSystemMessages()
     }
@@ -82,14 +82,11 @@ public struct Children {
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
     @usableFromInline
-        return remove(path: childRef.path)
-    }
-
-    @usableFromInline
-    internal mutating func remove(path: ActorPath) -> Bool {
+    internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let ref = container[path.name] {
             if ref.path.uid == path.uid {
                 return container.removeValue(forKey: path.name) != nil
+            } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
 
         return false

@@ -25,6 +25,10 @@ services:
 
   unit-tests:
     <<: *common
+    command: /bin/bash -cl "swift test"
+
+  unit-tests-until-failure:
+    <<: *common
     command: /bin/bash -cl "while swift test; do :; done"
 
   integration-tests:

@@ -47,6 +47,28 @@ internal struct FaultHandling {
         return sact_get_error_jmp_buf()
     }
 
+    internal static func getCrashDetails() -> CrashDetails? {
+        if let cdetailsPtr = sact_get_crash_details() {
+            let cdetails = cdetailsPtr.move()
+
+            defer { cdetailsPtr.deallocate() }
+            defer { cdetails.backtrace.deallocate() }
+
+            var backtrace: [String] = []
+
+            for i in 0 ..< Int(cdetails.backtrace_length) {
+                let str = String(cString: cdetails.backtrace[i]!)
+                backtrace.append(str)
+            }
+
+            return CrashDetails(
+                backtrace: backtrace
+            )
+        }
+
+        return nil
+    }
+
     /// Installs the global (shared across all threads in the process) signal handler,
     /// responsible for intercepting fatal errors, such as arithmetic or other illegal operations or `fatalErrors`.
     ///
@@ -125,19 +147,8 @@ internal struct FaultHandling {
     }
 }
 
-/// Context wrapper for c-interop.
-/// Carries all context needed for handling a fault if it were to occur during a mailbox run.
-internal struct CellFailureContext {
-    private let _fail: (Int32, Int32) -> ()
-
-    init(fail: @escaping (Int32, Int32) -> ()) {
-        self._fail = fail
-    }
-
-    @inlinable
-    func fail(signo: Int32, sicode: Int32) -> () {
-        _fail(signo, sicode)
-    }
+internal struct CrashDetails {
+    let backtrace: [String]
 }
 
 /// Error related to, or failure "caught" by the failure handling mechanism.

@@ -47,14 +47,8 @@ typedef enum {
     Close = -1,
     Done = 0,
     Reschedule = 1,
-    Error = 2
+    Failure = 2
 } CMailboxRunResult;
-
-typedef enum {
-    Resume = 0,
-    Restart = 1,
-    Stop = 2
-} SupervisorStrategy;
 
 /*
  * Callback type for Swift interop.
@@ -70,8 +64,6 @@ typedef bool (* InterpretMessageCallback)(void*, void*);
 
 /* Drop message, when draining mailbox into dead letters. */
 typedef void (* DropMessageCallback)(void*, void*); // TODO rename, deadletters
-
-typedef SupervisorStrategy (* SupervisorCallback)(void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
@@ -98,7 +90,8 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 CMailboxRunResult cmailbox_run(
     CMailbox* mailbox,
     void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
-    InterpretMessageCallback interpret_message, DropMessageCallback drop_message, jmp_buf* error_jmp_buf);
+    InterpretMessageCallback interpret_message, DropMessageCallback drop_message, jmp_buf* error_jmp_buf,
+    void** failed_message);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 

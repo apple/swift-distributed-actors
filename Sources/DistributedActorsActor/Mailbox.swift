@@ -15,6 +15,7 @@
 import NIOConcurrencyHelpers
 import CQueue
 import CDungeon
+import Foundation
 
 /// INTERNAL API
 struct Envelope<Message> {
@@ -211,10 +212,14 @@ final class Mailbox<Message> {
         FaultHandling.enableFailureHandling()
         defer { FaultHandling.disableFailureHandling() }
 
+        // in case processing fails, this will be set to the message that caused the failure
+        let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
+        defer { failedMessagePtr.deallocate() }
+
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
             &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
-            interpretMessage, dropMessage, FaultHandling.getErrorJmpBuf())
+            interpretMessage, dropMessage, FaultHandling.getErrorJmpBuf(), failedMessagePtr)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -231,8 +236,17 @@ final class Mailbox<Message> {
             // We do this since while the mailbox was running, more messages could have been enqueued,
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
-        } else if schedulingDecision == Error {
-            self.cell.crashFail(error: NSError(domain: "error", code: -1, userInfo: nil))
+        } else if schedulingDecision == Failure {
+            if let crashDetails = FaultHandling.getCrashDetails() {
+                if let failedMessage = failedMessagePtr.pointee?.assumingMemoryBound(to: Message.self) {
+                    defer { failedMessage.deallocate() }
+                    self.cell.crashFail(error: MessageProcessingFailure(messageStr: "\(failedMessage.move())", backtrace: crashDetails.backtrace))
+                } else {
+                    self.cell.crashFail(error: MessageProcessingFailure(messageStr: "UNKNOWN", backtrace: crashDetails.backtrace))
+                }
+            } else {
+                self.cell.crashFail(error: NSError(domain: "Error received, but no details set", code: -1, userInfo: nil))
+            }
         }
     }
 
@@ -247,6 +261,17 @@ final class Mailbox<Message> {
         traceLog_Mailbox("<<< SET_FAILED \(self.cell.path) >>>")
         cmailbox_set_terminating(self.mailbox)
     }
-
 }
 
+internal struct MessageProcessingFailure: Error {
+    let messageStr: String
+    let backtrace: [String]
+}
+
+extension MessageProcessingFailure: CustomStringConvertible {
+    var description: String {
+        // TODO: add message that caused failure
+        let backtraceStr = backtrace.joined(separator: "\n")
+        return "Actor failed while processing message '\(messageStr)':\n\(backtraceStr)"
+    }
+}

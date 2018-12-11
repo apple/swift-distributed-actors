@@ -35,7 +35,9 @@
  * Swift names will be mangled.
  * Paste as: `pbpaste | ./scripts/sact_backtrace_demangle` to easily demangle the entire trace.
  */
-void sact_dump_backtrace();
+void sact_dump_backtrace(void);
+
+int sact_get_backtrace(char*** strs);
 
 /* emit `md2` assembly, simulating a trap */
 void sact_simulate_trap(void);

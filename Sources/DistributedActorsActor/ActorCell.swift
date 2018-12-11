@@ -250,10 +250,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             return
         }
 
-        if ref.path.isChildOf(self.path) {
-            _ = children.remove(path: ref.path)
-        }
-
         let next: Behavior<Message>
         if case let .signalHandling(_, handleSignal) = self.behavior {
             next = try handleSignal(context, terminated)
