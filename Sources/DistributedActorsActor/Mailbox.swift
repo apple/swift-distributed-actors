@@ -117,13 +117,13 @@ final class Mailbox<Message> {
             let envelope = envelopePtr.move()
             let msg = envelope.payload
             traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(DeadLetter(msg))
+            cell.sendToDeadLetters(message: msg)
         })
         self.deadLetterSystemMessageCallbackContext = WrappedDropClosure(drop: { ptr in
             let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(DeadLetter(msg))
+            cell.sendToDeadLetters(message: msg)
         })
 
         self.interpretMessage = { (ctxPtr, msgPtr) in
@@ -193,13 +193,12 @@ final class Mailbox<Message> {
             self.cell.dispatcher.execute(self.run)
         } else if schedulingDecision < 0 {
             // not enqueued, mailbox is closed, actor is terminating/terminated
-            // special handle in-line certain system messages
-            if case .tombstone = systemMessage {
-                // nothing to do // FIXME handle this nicer
-            } else {
-                traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
-                self.cell.sendToDeadLetters(DeadLetter(systemMessage))
-            }
+            //
+            // it is crucial for correctness of death watch that we drain messages to dead letters,
+            // which in turn is able to handle watch() automatically for us there;
+            // knowing that the watch() was sent to a terminating or dead actor.
+            traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
+            self.cell.sendToDeadLetters(message: systemMessage) // IMPORTANT
         } else { // schedulingDecision > 0 {
             // this means we enqueued, and the mailbox already will be scheduled by someone else
             traceLog_Mailbox("\(self.cell) Enqueued system message \(systemMessage), someone scheduled already")

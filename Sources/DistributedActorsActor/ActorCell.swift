@@ -100,8 +100,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         }
     }
 
-    func sendToDeadLetters(_ letter: DeadLetter) {
-        system.deadLetters.tell(letter) // TODO metadata
+    func sendToDeadLetters<M>(message: M) {
+        system.deadLetters.tell(DeadLetter(message)) // TODO metadata
     }
 
     func dropMessage(_ message: Message) {
@@ -191,8 +191,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         case let .unwatch(_, watcher):
             self.interpretSystemUnwatch(watcher: watcher)
 
-        case let .terminated(ref, _):
-            let terminated = Signals.Terminated(path: ref.path)
+        case let .terminated(ref, existenceConfirmed):
+            let terminated = Signals.Terminated(path: ref.path, existenceConfirmed: existenceConfirmed)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
         case let .childTerminated(ref):
             let terminated = Signals.ChildTerminated(path: ref.path, error: nil) // TODO what about the errors
@@ -246,7 +246,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warn("Actor not known yet [.terminated] received for it.")
+            log.warn("Actor not known yet [\(terminated)] received for it.")
             return
         }
 
@@ -406,11 +406,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // Implementation note: bridge method so Mailbox can call this when needed
     // TODO: not sure about this design yet
     func notifyWatchersWeDied() {
-        traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD \(self.path)")
+        traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.path)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
     func notifyParentWeDied() {
-        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD \(self.path)")
+        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD self: \(self.path)")
         let parent: AnyReceivesSystemMessages = self._parent
         parent.sendSystemMessage(.childTerminated(ref: myself.internal_boxAnyAddressableActorRef()))
     }

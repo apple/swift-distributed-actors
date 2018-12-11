@@ -31,7 +31,7 @@ import Dispatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
     public mutating func watch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>) {
-        traceLog_DeathWatch("watch: \(watchee) (from \(watcher) (myself))")
+        traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watchee.path != watcher.path else {
             return ()
@@ -48,7 +48,7 @@ import Dispatch
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
     public mutating func unwatch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>) {
-        traceLog_DeathWatch("unwatch: watchee: \(watchee) (from \(watcher) myself)")
+        traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if let removed = watching.remove(watchee) {
             removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: watcher.internal_boxAnyReceivesSystemMessages()))

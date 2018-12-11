@@ -55,11 +55,14 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
 
     private func specialHandle(_ message: SystemMessage) -> Bool {
         switch message {
+        case .tombstone:
+            traceLog_Mailbox("Tombstone arrived in dead letters. TODO: make sure these dont happen")
+            return true // TODO would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case let .watch(watchee, watcher):
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters
             //   - was indeed sent to deadLetters directly, which immediately shall notify terminated; deadLetters is "undead"
-            watcher.sendSystemMessage(.terminated(ref: watchee, existenceConfirmed: false)) // existence confirmed = false
+            watcher.sendSystemMessage(.terminated(ref: watchee, existenceConfirmed: false))
             return true
         default:
             // ignore other messages, no special handling needed

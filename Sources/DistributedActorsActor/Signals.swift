@@ -34,13 +34,15 @@ public enum Signals {
     /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
     public class Terminated: Signal, CustomStringConvertible {
         public let path: UniqueActorPath
+        public let existenceConfirmed: Bool
 
-        public init(path: UniqueActorPath) {
+        public init(path: UniqueActorPath, existenceConfirmed: Bool) {
             self.path = path
+            self.existenceConfirmed = existenceConfirmed
         }
 
         public var description: String {
-            return "Terminated(\(self.path))"
+            return "Terminated(\(self.path), existenceConfirmed:\(self.existenceConfirmed))"
         }
     }
 
@@ -64,7 +66,7 @@ public enum Signals {
 
         public init(path: UniqueActorPath, error: Error?) {
             self.cause = error
-            super.init(path: path)
+            super.init(path: path, existenceConfirmed: true)
         }
 
         override public var description: String {
