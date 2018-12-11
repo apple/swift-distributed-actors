@@ -31,6 +31,7 @@ extension ParentChildActorTests {
                 ("test_spawnStopSpawn_shouldWorkWithSameChildName", test_spawnStopSpawn_shouldWorkWithSameChildName),
                 ("test_throwOfSpawnedChild_shouldNotCauseParentToTerminate", test_throwOfSpawnedChild_shouldNotCauseParentToTerminate),
                 ("test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate", test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate),
+                ("test_spawnWatched_shouldSpawnAWatchedActor", test_spawnWatched_shouldSpawnAWatchedActor),
            ]
    }
 }
