@@ -27,8 +27,7 @@ public final class LinkedBlockingQueue<A> {
 
     private var producer: Node<A>
     private var consumer: Node<A>
-    private let putLock: Mutex = Mutex()
-    private let takeLock: Mutex = Mutex()
+    private let lock: Mutex = Mutex()
     private let notEmpty: Condition = Condition()
     private var count: Atomic<Int> = Atomic(value: 0)
 
@@ -38,39 +37,35 @@ public final class LinkedBlockingQueue<A> {
     }
 
     public func enqueue(_ item: A) -> Void {
-        var oldCount = 0
-        putLock.synchronized {
+        lock.synchronized {
             let next = Node(item)
             producer.next = next
             producer = next
-            oldCount = count.add(1)
-        }
 
-        if oldCount == 0 {
-            takeLock.synchronized {
+            if count.add(1) == 0 {
                 notEmpty.signal()
             }
         }
     }
 
     public func dequeue() -> A {
-        return takeLock.synchronized { () -> A in
+        return lock.synchronized { () -> A in
             while true {
                 if let elem = take() {
                     return elem
                 }
-                notEmpty.wait(takeLock)
+                notEmpty.wait(lock)
             }
         }
     }
 
     public func poll(_ timeout: TimeAmount) -> A? {
-        return takeLock.synchronized { () -> A? in
+        return lock.synchronized { () -> A? in
             if let item = take() {
                 return item
             }
 
-            guard notEmpty.wait(takeLock, amount: timeout) else {
+            guard notEmpty.wait(lock, amount: timeout) else {
                 return nil
             }
 
