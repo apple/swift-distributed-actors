@@ -50,7 +50,7 @@ RUN apt-get update && apt-get install -y libsqlite3-dev
 RUN gem install jazzy --no-ri --no-rdoc
 
 # swift
-ARG swift_version=4.0.3
+ARG swift_version=4.2.1
 ARG swift_flavour=RELEASE
 ARG swift_builds_suffix=release
 
