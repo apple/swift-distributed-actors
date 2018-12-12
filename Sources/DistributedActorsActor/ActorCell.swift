@@ -421,6 +421,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         return try self.internal_spawn(behavior, name: name, props: props)
     }
 
+    public override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
+        return self.watch(try self.spawn(behavior, name: name, props: props))
+    }
+
     public override func stop<M>(child ref: ActorRef<M>) throws {
         return try self.internal_stop(child: ref)
     }

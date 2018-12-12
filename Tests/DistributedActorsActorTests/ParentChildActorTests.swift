@@ -323,4 +323,33 @@ class ParentChildActorTests: XCTestCase {
         try p.expectTerminated(parent)
     }
 
+    func test_spawnWatched_shouldSpawnAWatchedActor() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let parentBehavior: Behavior<String> = .receive { context, message in
+            switch message {
+            case "spawn":
+                let childRef: ChildRef = try context.spawnWatched(.stopped, name: "child")
+                p.tell(.spawned(child: childRef))
+            default:
+                ()
+            }
+            return .same
+        }
+
+        let parent = try system.spawnAnonymous(parentBehavior.receiveSignal { (_, signal) in
+            if case let terminated as Signals.Terminated = signal {
+                p.tell(.childStopped(name: terminated.path.name))
+            }
+
+            return .same
+        })
+
+        parent.tell("spawn")
+
+        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.failure() }
+        guard case let .childStopped(name) = try p.expectMessage() else { throw p.failure() }
+
+        childRef.path.name.shouldEqual(name)
+    }
 }
