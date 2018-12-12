@@ -190,7 +190,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     int64_t status = set_processing_system_messages(mailbox);
 
     int64_t processed_activations[1];
-    *processed_activations = has_system_messages(status) ? 0b10 : 0;
+    *processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     int64_t run_length = max(message_count(status), mailbox->max_run_length);
 
