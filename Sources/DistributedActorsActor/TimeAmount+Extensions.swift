@@ -14,7 +14,7 @@
 
 
 import Foundation
-import NIO
+import struct NIO.TimeAmount
 
 /// "Pretty" time amount rendering, useful for human readable durations in tests
 extension TimeAmount {

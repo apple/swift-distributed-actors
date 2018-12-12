@@ -158,7 +158,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         #if SACT_TRACE_CELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
+
         let next = try self.behavior.interpretMessage(context: context, message: message)
+
         #if SACT_TRACE_CELL
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
@@ -261,14 +263,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             return
         }
 
-        let next: Behavior<Message>
-        if case let .signalHandling(_, handleSignal) = self.behavior {
-            next = try handleSignal(context, terminated)
-        } else {
-            // no signal handling installed is semantically equivalent to unhandled
-            // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
-            next = Behavior<Message>.unhandled
-        }
+        let next = try self.behavior.interpretSignal(context: self, signal: terminated)
 
         switch next {
         case .unhandled:

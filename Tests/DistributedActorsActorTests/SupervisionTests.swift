@@ -22,22 +22,6 @@ import Darwin
 import Glibc
 #endif
 
-// TODO: just prototyping, not sure yet
-struct Failure {
-    var isError = false
-    var isFatalError = false
-    var isFailure = false
-
-    var underlyingSignal = Optional(EINVAL) // underlying error signal if it was a Failure
-
-}
-
-private extension Behavior {
-    func supervise(_ decide: (Failure) -> Supervision.Directive) -> Behavior<Message> {
-        return self // FIXME not a real impl of course; replace with real impl in Swift Distributed ActorsActor
-    }
-}
-
 class SupervisionTests: XCTestCase {
 
     let system = ActorSystem("SupervisionTests")
@@ -47,30 +31,15 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_compile() throws {
-        let b: Behavior<String> = .receiveMessage { s in
-            return .same
-        }
+        let faultyWorker: Behavior<String> = .ignore
 
-        let _: Behavior<String> = b.supervise { failure -> Supervision.Directive in
-            return .restart
-        }
-    }
+        // supervise
 
-    func test_supervise_allChildrenOfFaultDomainMaster() throws {
-//        let master: ActorRef<FaultDomainMasterMessages> = try system.spawn(.receive { context, message in
-//
-//            switch message {
-//            case let .spawn(b):
-//                context.s
-//
-//            }
-//
-//            return .same
-//        }, name: "master")
+        let _: Behavior<String> = .supervise(faultyWorker, withStrategy: .stop)
+        let _: Behavior<String> = .supervise(faultyWorker, withStrategy: .restart)
+
+        // supervised
     }
 
 }
 
-enum FaultDomainMasterMessages {
-    case spawn(workerBehavior: Behavior<String>)
-}

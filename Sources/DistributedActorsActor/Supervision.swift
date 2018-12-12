@@ -12,20 +12,104 @@
 //
 //===----------------------------------------------------------------------===//
 
+import struct NIO.TimeAmount
+
+public enum SupervisionStrategy {
+
+    case stop
+    case restart(atMost: Int) // TODO: within: TimeAmount etc
+    // TODO: how to plug in custom one
+}
+
 public struct Supervision {
 
-    public struct Failure {
+    public static func supervisorFor<Message>(_ strategy: SupervisionStrategy) -> Supervisor<Message> {
+        switch strategy {
+        case .stop: return StoppingSupervisor() // TODO: strategy could carry additional configuration
+        case .restart: return RestartingSupervisor() // TODO: strategy could carry additional configuration
+        }
+    }
+    
+    public enum Fault {
         // TODO: figure out how to represent failures, carry error code, actor path etc I think
+        case error(error: Error)
     }
 
-    // TODO: settings for all of those
+    /// Supervision directives instruct the actor system to apply a specific
     public enum Directive {
-        case resume
+        /// TODO: document
+        case stop
+
+        /// TODO: document
+        case escalate
+
+        /// TODO: document
         case restart
+
         // TODO: exponential backoff settings, best as config object for easier extension?
         case backoffRestart
-        case stop
-        case escalate
+    }
+}
+
+public class Supervisor<Message>: Interceptor<Message> {
+
+    final override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        do {
+            return try target.interpretSignal(context: context, signal: signal)
+        } catch {
+            return self.handleSignalFault(error: .error(error))
+        }
     }
 
+    final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+        do {
+            return try target.interpretMessage(context: context, message: message) // no-op implementation by default
+        } catch {
+            return self.handleMessageHandlingFault(error: .error(error)) // TODO also message?
+        }
+    }
+
+    // MARK: Internal Supervisor API
+
+    /// Handle a fault that
+    func handleMessageFault(error: Supervision.Fault)  -> Behavior<Message> {
+        return undefined()
+    }
+
+    func handleSignalFault(error: Supervision.Fault)  -> Behavior<Message> {
+        return undefined()
+    }
+
+    func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
+        return undefined()
+    }
+}
+
+
+final class StoppingSupervisor<Message>: Supervisor<Message> {
+    override func handleMessageFault(error: Supervision.Fault)  -> Behavior<Message> {
+        fatalError("handleMessageHandlingFault(error:) has not been implemented")
+    }
+
+    override func handleSignalFault(error: Supervision.Fault)  -> Behavior<Message> {
+        fatalError("handleSignalHandlingFault(error:) has not been implemented")
+    }
+
+    override func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
+        fatalError("isSameAs(to:) has not been implemented")
+    }
+}
+
+final class RestartingSupervisor<Message>: Supervisor<Message> {
+    override func handleMessageFault(error: Supervision.Fault)  -> Behavior<Message> {
+        fatalError("handleMessageHandlingFault(error:) has not been implemented")
+    }
+
+    override func handleSignalFault(error: Supervision.Fault)  -> Behavior<Message> {
+        fatalError("handleSignalHandlingFault(error:) has not been implemented")
+    }
+
+    override func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
+        fatalError("isSameAs(to:) has not been implemented")
+    }
 }

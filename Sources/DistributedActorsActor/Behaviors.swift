@@ -60,6 +60,9 @@ public enum Behavior<Message> {
     // TODO internal and should not be used by people (likely we may need to change Behaviors away from an enum to allow such things?
     indirect case supervised(supervisor: AnyReceivesSystemMessages, behavior: Behavior<Message>)
 
+    /// Intercepts all incoming messages and signals, allowing to transform them before they are delivered to the wrapped behavior.
+    indirect case intercept(behavior: Behavior<Message>, with: Interceptor<Message>) // TODO for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
+
     /// Causes a message to be assumed unhandled by the runtime.
     /// Unhandled messages are logged by default, and other behaviors may use this information to implement `apply1.orElse(apply2)` style logic.
     /// TODO: and their logging rate should be configurable
@@ -94,7 +97,7 @@ public enum Behavior<Message> {
 
 }
 
-// MARK: Behavior combinators
+// MARK: Signal receiving behaviors
 
 extension Behavior {
 
@@ -111,6 +114,21 @@ extension Behavior {
     }
 }
 
+// MARK: Supervision behaviors
+
+extension Behavior {
+
+    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
+        let supervisor: Supervisor<Message> = Supervision.supervisorFor(strategy)
+        return Behavior<Message>.intercept(behavior: behavior, with: supervisor)
+    }
+
+//    // TODO not happy with API types here
+//    public func supervised(with strategy: SupervisionStrategy) -> Behavior<Message> {
+//
+//    }
+}
+
 
 public enum IllegalBehaviorError<M>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
@@ -119,6 +137,7 @@ public enum IllegalBehaviorError<M>: Error {
 }
 
 
+/// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
 open class ActorBehavior<Message> {
     open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
         return undefined(hint: "MUST override receive(context:message:) when extending ActorBehavior")
@@ -129,11 +148,31 @@ open class ActorBehavior<Message> {
     }
 }
 
+// MARK: Interceptor
+
+/// Used in combination with `Behavior.intercept` to intercept messages and signals delivered to a behavior.
+public class Interceptor<Message> {
+    // TODO: spent a lot of time trying to figure out the balance between using a struct or class here,
+    //       struct makes it quite weird to use, and using a protocol is hard since we need the associated type
+    //       and the supervisor has to be stored inside of the intercept() behavior, so that won't fly...
+    //       Implementing using class for now, and we may revisit; though supervision does not need to be high performance
+    //       it is more about "weight of actor ref that contains many layers of supervisors. though perhaps I'm over worrying
+
+    @inlinable func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
+        return try target.interpretSignal(context: context, signal: signal)
+    }
+
+    @inlinable func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+        // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
+        return try target.interpretMessage(context: context, message: message)
+    }
+}
+
 // MARK: Internal tools to work with Behaviors
 
 /// Internal operations for behavior manipulation
 internal extension Behavior {
-    // TODO: was thinking to make it a class since then we could "hide it more" from users... Do we need to though? they can't call them anyway -- ktoso
 
     /// Interpret the passed in message.
     ///
@@ -142,12 +181,13 @@ internal extension Behavior {
     @inlinable
     func interpretMessage(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         switch self {
-        case let .receiveMessage(recv):       return try recv(message)
-        case let .receive(recv):              return try recv(context, message)
-        case .ignore:                         return .same // ignore message and remain .same
-        case let .custom(behavior):           return behavior.receive(context: context, message: message)
-        case let .signalHandling(recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
-        case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
+        case let .receiveMessage(recv):          return try recv(message)
+        case let .receive(recv):                 return try recv(context, message)
+        case .ignore:                            return .same // ignore message and remain .same
+        case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
+        case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
+        case let .intercept(inner, interceptor): return try interceptor.interceptMessage(target: inner, context: context, message: message)
+        case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
             var nextBehavior = try first.interpretMessage(context: context, message: message)
             if nextBehavior.isUnhandled() {
@@ -158,6 +198,7 @@ internal extension Behavior {
         }
     }
 
+    /// Applies `interpretMessage` to an iterator of messages, while canonicalizing the behavior after every reduction.
     @inlinable
     func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) throws -> Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: Behavior<Message> = self
@@ -171,6 +212,18 @@ internal extension Behavior {
         }
 
         return currentBehavior
+    }
+
+    /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled`
+    /// if no `Behavior.signalHandling` was found.
+    @inlinable
+    internal func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        if case let .signalHandling(_, handleSignal) = self {
+            return try handleSignal(context, signal)
+        } else {
+            // no signal handling installed is semantically equivalent to unhandled
+            return .unhandled
+        }
     }
 
     /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
@@ -224,13 +277,14 @@ internal extension Behavior {
         var canonical = next
         while true {
             switch canonical {
-            case .same:               return self
-            case .ignore:             return self
-            case .unhandled:          return self
-            case .custom:             return self
-            case .stopped:            return .stopped
-            case let .setup(onStart): canonical = try onStart(context)
-            default:                  return canonical
+            case .same:                  return self
+            case .ignore:                return self
+            case .unhandled:             return self
+            case .custom:                return self
+            case .stopped:               return .stopped
+            case let .intercept(b, int): canonical = try .intercept(behavior: b.canonicalize(context, next: next), with: int)
+            case let .setup(onStart):    canonical = try onStart(context)
+            default:                     return canonical
             }
         }
 
