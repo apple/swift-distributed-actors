@@ -211,6 +211,21 @@ class ParentChildActorTests: XCTestCase {
         try p.expectTerminated(parent)
     }
 
+    func test_contextStop_shouldThrowIfRefIsMyself() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let parent: ActorRef<String> = try system.spawn(.receive { (context, msg) in
+            try context.stop(child: context.myself)
+            return .same
+        }, name: "parent-5")
+
+        p.watch(parent)
+
+        parent.tell("stop")
+
+        try p.expectTerminated(parent)
+    }
+
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
         let p: ActorTestProbe<Never> = testKit.spawnTestProbe(name: "p")
         let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p1")

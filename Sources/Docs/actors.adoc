@@ -45,6 +45,20 @@ Parent-child relationships add a few more guarantees:
 - if the parent spawns AND watches the child though, the same death pact principles apply,
   and a failing child WILL cause the parent to terminate as well.
 
+==== Stopping the current actor
+
+Has to be performed by returning `Behavior.stopped` from a receive block.
+This synchronously guarantees that no further messages will be processed after this stopped is returned.
+
+NOTE: that one MAY NOT use the `context.stop(child:)` function to stop `myself`.
+
+==== Stopping child actors
+
+A parent actor may stop child actors by using `context.stop(child:)` on them,
+which is implemented as a system message send asking the child to stop.
+
+The child MAY NOT refuse such stop command and it is effective immediately once the message arrives at the child actor.
+Bear in mind though that this stopping operation, by virtue of being a message send, is an asynchronous operation.
 
 === Monitoring and reacting to Termination
 
