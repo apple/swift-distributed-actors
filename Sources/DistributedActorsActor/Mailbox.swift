@@ -214,6 +214,7 @@ final class Mailbox<Message> {
 
         // in case processing fails, this will be set to the message that caused the failure
         let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
+        failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
@@ -240,9 +241,10 @@ final class Mailbox<Message> {
             if let crashDetails = FaultHandling.getCrashDetails() {
                 if let failedMessage = failedMessagePtr.pointee?.assumingMemoryBound(to: Message.self) {
                     defer { failedMessage.deallocate() }
-                    self.cell.crashFail(error: MessageProcessingFailure(messageStr: "\(failedMessage.move())", backtrace: crashDetails.backtrace))
+                    let message = failedMessage.move()
+                    self.cell.crashFail(error: MessageProcessingFailure(messageDescription: "[\(message)]:\(Message.self)", backtrace: crashDetails.backtrace))
                 } else {
-                    self.cell.crashFail(error: MessageProcessingFailure(messageStr: "UNKNOWN", backtrace: crashDetails.backtrace))
+                    self.cell.crashFail(error: MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace))
                 }
             } else {
                 self.cell.crashFail(error: NSError(domain: "Error received, but no details set", code: -1, userInfo: nil))
@@ -264,14 +266,13 @@ final class Mailbox<Message> {
 }
 
 internal struct MessageProcessingFailure: Error {
-    let messageStr: String
+    let messageDescription: String
     let backtrace: [String]
 }
 
 extension MessageProcessingFailure: CustomStringConvertible {
     var description: String {
-        // TODO: add message that caused failure
         let backtraceStr = backtrace.joined(separator: "\n")
-        return "Actor failed while processing message '\(messageStr)':\n\(backtraceStr)"
+        return "Actor failed while processing message '\(messageDescription)':\n\(backtraceStr)"
     }
 }

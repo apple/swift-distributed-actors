@@ -48,25 +48,25 @@ internal struct FaultHandling {
     }
 
     internal static func getCrashDetails() -> CrashDetails? {
-        if let cdetailsPtr = sact_get_crash_details() {
-            let cdetails = cdetailsPtr.move()
-
-            defer { cdetailsPtr.deallocate() }
-            defer { cdetails.backtrace.deallocate() }
-
-            var backtrace: [String] = []
-
-            for i in 0 ..< Int(cdetails.backtrace_length) {
-                let str = String(cString: cdetails.backtrace[i]!)
-                backtrace.append(str)
-            }
-
-            return CrashDetails(
-                backtrace: backtrace
-            )
+        guard let cdetailsPtr = sact_get_crash_details() else {
+            return nil
         }
 
-        return nil
+        let cdetails = cdetailsPtr.move()
+
+        defer { cdetailsPtr.deallocate() }
+        defer { cdetails.backtrace.deallocate() }
+
+        var backtrace: [String] = []
+
+        for i in 0 ..< Int(cdetails.backtrace_length) {
+            let str = String(cString: cdetails.backtrace[i]!)
+            backtrace.append(str)
+        }
+
+        return CrashDetails(
+            backtrace: backtrace
+        )
     }
 
     /// Installs the global (shared across all threads in the process) signal handler,
