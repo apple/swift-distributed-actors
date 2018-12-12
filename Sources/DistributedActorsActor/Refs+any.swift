@@ -76,6 +76,16 @@ extension AnyAddressableActorRef {
     }
 }
 
+extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        return "\(anyRef)"
+    }
+
+    public var debugDescription: String {
+        return "BoxedHashableAnyAddressableActorRef(\(anyRef.path))"
+    }
+}
+
 /// Internal helper container for identifying an without a reference
 // FIXME: this seems wrong... we only have it for sending a terminated for after when we niled out the ActorCell already;
 // this should never happen as finishTerminating should be the last thing to ever run, yet currently we too eagerly call finishTerminating in fail().
@@ -161,8 +171,12 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
     }
 }
 
-extension BoxedHashableAnyReceivesSystemMessages: CustomStringConvertible {
+extension BoxedHashableAnyReceivesSystemMessages: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
+        return "\(anyRef)"
+    }
+
+    public var debugDescription: String {
         return "BoxedHashableAnyReceivesSystemMessages(\(anyRef.path))"
     }
 }
