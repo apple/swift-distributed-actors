@@ -50,6 +50,11 @@ typedef enum {
     Failure = 2
 } CMailboxRunResult;
 
+typedef enum {
+    System = 0,
+    User = 1
+} ProcessingStage;
+
 /*
  * Callback type for Swift interop.
  *
@@ -91,7 +96,7 @@ CMailboxRunResult cmailbox_run(
     CMailbox* mailbox,
     void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
     InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-    jmp_buf* error_jmp_buf, void** failed_message);
+    jmp_buf* error_jmp_buf, void** failed_message, ProcessingStage* processing_stage);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 

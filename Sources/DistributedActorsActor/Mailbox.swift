@@ -216,11 +216,15 @@ final class Mailbox<Message> {
         let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
+        // will be set to the last active processing stage when run return, so
+        // in case of a failure, we know what stage failed
+        var processingStage: ProcessingStage = System
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
             &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
-            interpretMessage, dropMessage, FaultHandling.getErrorJmpBuf(), failedMessagePtr)
+            interpretMessage, dropMessage, FaultHandling.getErrorJmpBuf(),
+            failedMessagePtr, &processingStage)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -239,10 +243,18 @@ final class Mailbox<Message> {
             self.sendSystemMessage(.tombstone) // Rest in Peace
         } else if schedulingDecision == Failure {
             if let crashDetails = FaultHandling.getCrashDetails() {
-                if let failedMessage = failedMessagePtr.pointee?.assumingMemoryBound(to: Message.self) {
-                    defer { failedMessage.deallocate() }
-                    let message = failedMessage.move()
-                    self.cell.crashFail(error: MessageProcessingFailure(messageDescription: "[\(message)]:\(Message.self)", backtrace: crashDetails.backtrace))
+                if let failedMessageRaw = failedMessagePtr.pointee {
+                    defer { failedMessageRaw.deallocate() }
+                    let messageDescription: String
+                    if processingStage == System {
+                        let systemMessage = failedMessageRaw.assumingMemoryBound(to: SystemMessage.self).move()
+                        messageDescription = "[\(systemMessage)]:\(SystemMessage.self)"
+                    } else {
+                        let message = failedMessageRaw.assumingMemoryBound(to: Message.self).move()
+                        messageDescription = "[\(message)]:\(Message.self)"
+                    }
+
+                    self.cell.crashFail(error: MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace))
                 } else {
                     self.cell.crashFail(error: MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace))
                 }
