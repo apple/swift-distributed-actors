@@ -174,10 +174,10 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
 // TODO: was boolean for need to schedule, but we need to signal to swift that termination things should now happen
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
 CMailboxRunResult cmailbox_run(CMailbox* mailbox,
-                  void* context, void* system_context,
-                  void* dead_letter_context, void* dead_letter_system_context,
-                  InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-                  jmp_buf* error_jmp_buf, void** failed_message) {
+                               void* context, void* system_context,
+                               void* dead_letter_context, void* dead_letter_system_context,
+                               InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
+                               jmp_buf* error_jmp_buf, void** failed_message, ProcessingStage* processing_stage) {
     print_debug_status(mailbox, "Entering run");
 
     // We store the message in a void** here so that it is still accessible after
@@ -214,12 +214,13 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
         // run system messages ------
         if (has_system_messages(status)) {
-            void* system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+            *processing_stage = System;
+            *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
 
-            while (system_message != NULL && keep_running) {
+            while (*message != NULL && keep_running) {
                 // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-                keep_running = interpret_message(system_context, system_message);
-                system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+                keep_running = interpret_message(system_context, *message);
+                *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
             }
 
             // was our run was interrupted by a system message causing termination?
@@ -236,16 +237,16 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                 //
                 // Never run user messages before draining system messages, system messages must be processed with priority,
                 // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
-                if (system_message == NULL) {
-                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+                if (*message == NULL) {
+                    *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
                 }
-                while (system_message != NULL) {
+                while (*message != NULL) {
                     print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
                     // drain all messages to dead letters
                     // this is very important since dead letters will handle any posthumous watches for us
-                    drop_message(dead_letter_system_context, system_message);
+                    drop_message(dead_letter_system_context, *message);
 
-                    system_message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
+                    *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
                 }
             }
         }
@@ -258,6 +259,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // run user messages ------
 
         if (keep_running) {
+            *processing_stage = User;
             *message = cmpsc_linked_queue_dequeue(mailbox->messages);
             while (*message != NULL && keep_running) {
                 // we need to add 2 to processed_activations because the user message count is stored
@@ -290,7 +292,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             *message = cmpsc_linked_queue_dequeue(mailbox->messages);
             while (*message != NULL) {
                 drop_message(dead_letter_context, *message);
-            *processed_activations += SINGLE_USER_MESSAGE_MASK;
+                *processed_activations += SINGLE_USER_MESSAGE_MASK;
                 *message = cmpsc_linked_queue_dequeue(mailbox->messages); // keep draining
             }
         }
@@ -335,18 +337,18 @@ int64_t cmailbox_message_count(CMailbox* mailbox) {
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
-    #ifdef SACT_TRACE_MAILBOX
+#ifdef SACT_TRACE_MAILBOX
     int64_t status = atomic_load_explicit(&mailbox->status, memory_order_acquire);
 
     char buffer[33];
     itoa(status, buffer, 2);
 
-    #ifdef __APPLE__
+#ifdef __APPLE__
     int thread_id = pthread_mach_thread_np(pthread_self());
-    #else
+#else
     // on linux
     pthread_t thread_id = pthread_self();
-    #endif
+#endif
 
     printf("[SACT_TRACE_MAILBOX][c]"
            "[thread:%d] "
@@ -364,8 +366,8 @@ void print_debug_status(CMailbox* mailbox, char* msg) {
            message_count(status),
            is_terminating(status) ? "Y" : "N",
            is_closed(status) ? "Y" : "N"
-    );
-    #endif
+           );
+#endif
 }
 
 int64_t get_status(CMailbox* mailbox) {
@@ -391,7 +393,7 @@ int64_t set_status_terminating(CMailbox* mailbox) {
 }
 
 int64_t set_status_closed(CMailbox* mailbox) {
-     return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
+    return atomic_fetch_or_explicit(&mailbox->status, CLOSED, memory_order_acq_rel);
 }
 
 // Checks if the 'has system messages' bit is set and if it is, unsets it and
