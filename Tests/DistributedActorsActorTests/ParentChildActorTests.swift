@@ -81,7 +81,7 @@ class ParentChildActorTests: XCTestCase {
 
             case .stopByName(let name):
                 if let kid = context.children.find(named: name, withType: ChildProtocol.self) {
-                    try context.stop(child: kid) // FIXME must allow plain try
+                    try context.stop(child: kid)
                     probe.tell(.childFound(name: name, ref: kid))
                 } else {
                     probe.tell(.childNotFound(name: name))
@@ -189,12 +189,7 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
-        _ = try p.expectMessageMatching { x throws -> ActorRef<ChildProtocol>? in
-            switch x {
-            case let .spawned(child): return child
-            default: return nil
-            }
-        }
+        guard case .spawned = try p.expectMessage() else { throw p.failure() }
 
         parent.tell(.stopByName(name: "kid"))
 
