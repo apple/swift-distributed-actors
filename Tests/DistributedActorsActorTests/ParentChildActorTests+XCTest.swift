@@ -28,6 +28,7 @@ extension ParentChildActorTests {
                 ("test_contextSpawn_duplicateNameShouldFail", test_contextSpawn_duplicateNameShouldFail),
                 ("test_contextStop_shouldStopChild", test_contextStop_shouldStopChild),
                 ("test_contextStop_shouldThrowIfRefIsNotChild", test_contextStop_shouldThrowIfRefIsNotChild),
+                ("test_contextStop_shouldThrowIfRefIsMyself", test_contextStop_shouldThrowIfRefIsMyself),
                 ("test_spawnStopSpawn_shouldWorkWithSameChildName", test_spawnStopSpawn_shouldWorkWithSameChildName),
                 ("test_throwOfSpawnedChild_shouldNotCauseParentToTerminate", test_throwOfSpawnedChild_shouldNotCauseParentToTerminate),
                 ("test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate", test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate),

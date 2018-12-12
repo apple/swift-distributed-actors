@@ -143,7 +143,11 @@ extension ActorCell: ChildActorRefFactory {
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
         // we immediately attempt the remove since
         guard ref.path.isChildPathOf(self.path) else {
-            throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
+            if ref.path == context.myself.path {
+                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref)
+            } else {
+                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
+            }
         }
 
         if self.children.removeChild(identifiedBy: ref.path) {
@@ -161,6 +165,15 @@ extension ActorCell: ChildActorRefFactory {
 
 /// Errors which can occur while executing actions on the [ActorContext].
 public enum ActorContextError: Error {
+    /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
+    /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
+    /// it should return `Behavior.stopped` from its receive block, which will cause it to immediately stop processing
+    /// any further messages.
+    case attemptedStoppingMyselfUsingContext(ref: AnyAddressableActorRef)
+    /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
+    /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
+    /// perpetually exist.
     case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
+    /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)
 }
