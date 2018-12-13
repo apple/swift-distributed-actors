@@ -57,7 +57,7 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
-            return self.handleSignalFault(error: .error(error))
+            return self.handleSignalFault(error: .error(error: error))
         }
     }
 
@@ -65,7 +65,7 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
-            return self.handleMessageHandlingFault(error: .error(error)) // TODO also message?
+            return self.handleMessageFault(error: .error(error: error)) // TODO also message?
         }
     }
 

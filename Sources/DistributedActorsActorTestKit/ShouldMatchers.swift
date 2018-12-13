@@ -66,17 +66,12 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     /// sub-prefix (if any), so one can easier spot at which position the sequences differ.
     public func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Collection, T.Element == PossiblePrefix.Element {
         if !it.starts(with: prefix) {
-            let partialMatchMessage: String
             let partialMatch = it.commonPrefix(with: prefix)
-            if partialMatch.underestimatedCount == 0 {
-                partialMatchMessage = "Sequence does not start with any part of the prefix."
-            } else {
-                partialMatchMessage = "Partial match, SubSequence of prefix matched: [\(partialMatch)](count:\(partialMatch.underestimatedCount)]"
-            }
 
             // classic printout without prefix matching:
             // let msg = self.callSite.detailedMessage("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
 
+            // fancy printout:
             var m = "Expected "
             if isTty { m += "[\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
@@ -90,7 +85,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
             if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
 
-            var msg = self.callSite.detailedMessage(m)
+            let msg = self.callSite.detailedMessage(m)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
     }
