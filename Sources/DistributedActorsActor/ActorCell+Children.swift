@@ -57,7 +57,7 @@ public struct Children {
     }
 
     public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
-        self.container[childRef.path.name] = childRef.internal_boxAnyReceivesSystemMessages()
+        self.container[childRef.path.name] = childRef._boxAnyReceivesSystemMessages()
     }
 
     /// Imprecise contains function, which only checks for the existence of a child actor by its name,
@@ -116,7 +116,7 @@ extension ActorCell: ChildActorRefFactory {
 
         let cell: ActorCell<M> = ActorCell<M>(
             system: self.system,
-            parent: self.myself.internal_boxAnyReceivesSystemMessages(),
+            parent: self.myself._boxAnyReceivesSystemMessages(),
             behavior: behavior,
             path: path,
             props: props,
@@ -151,7 +151,7 @@ extension ActorCell: ChildActorRefFactory {
         }
 
         if self.children.removeChild(identifiedBy: ref.path) {
-            ref.internal_downcast.sendSystemMessage(.stop)
+            ref._downcastUnsafe.sendSystemMessage(.stop)
         }
     }
 

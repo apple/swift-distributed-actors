@@ -242,7 +242,7 @@ public extension ActorUID {
     /// To be used ONLY by special actors whose existence is perpetual, such as `/system/deadLetters`
     static let opaque: ActorUID = ActorUID(value: 0) // TODO need better name, plz help?
 
-    public static func random() -> ActorUID {
+    static func random() -> ActorUID {
         return ActorUID(value: UInt32.random(in: 1 ... .max))
     }
 }

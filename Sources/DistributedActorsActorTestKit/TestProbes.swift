@@ -75,7 +75,7 @@ final public class ActorTestProbe<Message> {
                                  signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
                                  terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { (context, message) in
-            let cell = context.myself.internal_downcast.cell
+            let cell = context.myself._downcastUnsafe.cell
 
             switch message {
             case let .realMessage(msg):
@@ -336,7 +336,7 @@ extension ActorTestProbe {
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
+        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee._boxAnyReceivesSystemMessages()))
         return watchee
     }
 
@@ -350,7 +350,7 @@ extension ActorTestProbe {
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
     public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.internal_boxAnyReceivesSystemMessages()))
+        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee._boxAnyReceivesSystemMessages()))
         return watchee
     }
 

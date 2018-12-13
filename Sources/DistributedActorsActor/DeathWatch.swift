@@ -41,7 +41,7 @@ import Dispatch
             return ()
         }
 
-        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: watcher.internal_boxAnyReceivesSystemMessages()))
+        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: watcher._boxAnyReceivesSystemMessages()))
         self.watching.insert(watchee)
         subscribeAddressTerminatedEvents()
     }
@@ -51,7 +51,7 @@ import Dispatch
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if let removed = watching.remove(watchee) {
-            removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: watcher.internal_boxAnyReceivesSystemMessages()))
+            removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: watcher._boxAnyReceivesSystemMessages()))
         }
     }
 

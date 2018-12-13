@@ -224,7 +224,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             // finishTerminating() shall be the LAST thing an actor ever executes, thus no more watch processing after it has (since them myself is nil), so we hack around it here with the "fake path based ref"
             switch _myselfInACell {
             case .some(let cell):
-                watcher.sendSystemMessage(.terminated(ref: cell.internal_boxAnyAddressableActorRef(), existenceConfirmed: true))
+                watcher.sendSystemMessage(.terminated(ref: cell._boxAnyAddressableActorRef(), existenceConfirmed: true))
             case .none:
                 watcher.sendSystemMessage(.terminated(ref: PathOnlyHackAnyAddressableActorRef(path: self.path), existenceConfirmed: true))
             }
@@ -411,7 +411,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     func notifyParentWeDied() {
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD self: \(self.path)")
         let parent: AnyReceivesSystemMessages = self._parent
-        parent.sendSystemMessage(.childTerminated(ref: myself.internal_boxAnyAddressableActorRef()))
+        parent.sendSystemMessage(.childTerminated(ref: myself._boxAnyAddressableActorRef()))
     }
 
     // MARK: Spawn
@@ -432,12 +432,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // MARK: Death Watch
 
     override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
+        self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
         return watchee
     }
 
     override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.unwatch(watchee: watchee.internal_boxAnyReceivesSystemMessages(), myself: context.myself)
+        self.deathWatch.unwatch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
         return watchee
     }
 }

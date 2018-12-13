@@ -133,7 +133,7 @@ internal extension Behavior {
     /// Note: The returned behavior MUST be [[Behavior.canonicalize]]-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
     @inlinable
-    internal func interpretMessage(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    func interpretMessage(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         switch self {
         case let .receiveMessage(recv):       return try recv(message)
         case let .receive(recv):              return try recv(context, message)
@@ -146,7 +146,7 @@ internal extension Behavior {
     }
 
     @inlinable
-    internal func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) throws -> Behavior<Message> where Iterator.Element == Message {
+    func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) throws -> Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: Behavior<Message> = self
         while currentBehavior.isStillAlive() {
             if let message = messages.next() {
@@ -180,7 +180,7 @@ internal extension Behavior {
 
     /// Shorthand for checking if the current behavior is a `.unhandled`
     @inlinable
-    internal func isUnhandled() -> Bool {
+    func isUnhandled() -> Bool {
         switch self {
         case .unhandled: return true
         default: return false
@@ -189,7 +189,7 @@ internal extension Behavior {
 
     /// Shorthand for checking if the current behavior is a `.stopped` or `.failed`.
     @inlinable
-    internal func isTerminal() -> Bool {
+    func isTerminal() -> Bool {
         switch self {
         case .stopped, .failed: return true
         default: return false
@@ -198,14 +198,14 @@ internal extension Behavior {
 
     /// Shorthand for any [[Behavior]] that is NOT `.stopped`.
     @inlinable
-    internal func isStillAlive() -> Bool {
+    func isStillAlive() -> Bool {
         return !self.isTerminal()
     }
 
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
     /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
     @inlinable
-    internal func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
+    func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
 
         var canonical = next
