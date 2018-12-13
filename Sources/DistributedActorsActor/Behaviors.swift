@@ -18,6 +18,8 @@
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
 public enum Behavior<Message> {
 
+    // TODO likely move away into structs with these, for evolvability?
+
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     case receiveMessage(_ handle: (Message) throws -> Behavior<Message>) // TODO: make them throws?
 
@@ -27,10 +29,6 @@ public enum Behavior<Message> {
 
     // TODO: receiveExactly(_ expected: Message, orElse: Behavior<Message> = /* .ignore */, atMost = /* 5.seconds */)
 
-    // TODO: above is receiveMessage(M -> B)
-    // TODO: we need receive((Context, M) -> B) as well, leaving it for later
-
-    // FIXME: use labeled parameter again, once SR-9675 has been fixed
     /// Runs once the actor has been started, also exposing the `ActorContext`
     ///
     /// This can be used to obtain the context, logger or perform actions right when the actor starts
@@ -53,12 +51,9 @@ public enum Behavior<Message> {
 
     case failed(error: Error)
 
-    /// Allows handling messages
+    /// Allows handling signals such as termination or lifecycle events.
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
-
-    // TODO internal and should not be used by people (likely we may need to change Behaviors away from an enum to allow such things?
-    indirect case supervised(supervisor: AnyReceivesSystemMessages, behavior: Behavior<Message>)
 
     /// Intercepts all incoming messages and signals, allowing to transform them before they are delivered to the wrapped behavior.
     indirect case intercept(behavior: Behavior<Message>, with: Interceptor<Message>) // TODO for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
@@ -151,6 +146,7 @@ open class ActorBehavior<Message> {
 // MARK: Interceptor
 
 /// Used in combination with `Behavior.intercept` to intercept messages and signals delivered to a behavior.
+
 public class Interceptor<Message> {
     // TODO: spent a lot of time trying to figure out the balance between using a struct or class here,
     //       struct makes it quite weird to use, and using a protocol is hard since we need the associated type
@@ -158,14 +154,89 @@ public class Interceptor<Message> {
     //       Implementing using class for now, and we may revisit; though supervision does not need to be high performance
     //       it is more about "weight of actor ref that contains many layers of supervisors. though perhaps I'm over worrying
 
+    @inlinable func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+        // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
+        return try target.interpretMessage(context: context, message: message)
+    }
+
     @inlinable func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
         return try target.interpretSignal(context: context, signal: signal)
     }
+}
 
-    @inlinable func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
-        return try target.interpretMessage(context: context, message: message)
+/// Convenience factories for creating simple in-line defined interceptors.
+/// For more complex interceptors which may need ot keep state it is recommended to extend `Interceptor` directly.
+///
+/// An interceptor MAY apply an incoming `message` to the `target` behavior or choose to not do so
+/// which results in dropping the message. In this case it SHOULD return `Behavior.ignore` or `Behavior.unhandled`,
+/// such that the usual logging mechanisms work as expected.
+///
+/// - SeeAlso: `Interceptor`
+enum Intercept {
+
+    /// Create unnamed `Interceptor` which intercepts all incoming messages.
+    public static func messages<Message>(file: StaticString = #file, line: UInt = #line,
+                                         _ onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>) -> Interceptor<Message> {
+        return FunctionInterceptor(
+            interceptMessage: onMessage,
+            interceptSignal: { try $0.interpretSignal(context: $1, signal: $2) },
+            file: file, line: line
+        )
+    }
+
+    public static func signals<Message>(file: StaticString = #file, line: UInt = #line,
+                                        _ onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Interceptor<Message> {
+        return FunctionInterceptor(
+            interceptMessage: { try $0.interpretMessage(context: $1, message: $2) },
+            interceptSignal: onSignal,
+            file: file, line: line
+        )
+    }
+
+    public static func all<Message>(
+        onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>,
+        onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>,
+        file: StaticString = #file, line: UInt = #line) -> Interceptor<Message> {
+        return FunctionInterceptor(
+            interceptMessage: onMessage,
+            interceptSignal: onSignal,
+            file: file, line: line
+        )
+    }
+}
+
+/// Interceptor defined by passing interception functions.
+/// Useful for small in-line definitions of interceptors which do not need to hold state.
+final class FunctionInterceptor<Message>: Interceptor<Message> {
+
+    let onMessage: (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>
+    let onSignal: (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>
+
+    let file: StaticString
+    let line: UInt
+
+    init(interceptMessage onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>,
+         interceptSignal onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>,
+         file: StaticString = #file, line: UInt = #line) {
+        self.onSignal = onSignal
+        self.onMessage = onMessage
+        self.file = file
+        self.line = line
+    }
+
+    override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+        return try self.onMessage(target, context, message)
+    }
+
+    override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        return try self.onSignal(target, context, signal)
+    }
+}
+
+extension FunctionInterceptor: CustomStringConvertible {
+    public var description: String {
+        return "FunctionInterceptor(defined at \(self.file):\(self.line)"
     }
 }
 
@@ -187,6 +258,13 @@ internal extension Behavior {
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
         case let .intercept(inner, interceptor): return try interceptor.interceptMessage(target: inner, context: context, message: message)
+
+        // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
+        case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
+        // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
+        case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
+        case .setup: return FIXME("Illegal attempt to interpret message with .setup behavior! This is illegal, behaviors always MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.")
+        case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)")
         case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
             var nextBehavior = try first.interpretMessage(context: context, message: message)
@@ -217,7 +295,7 @@ internal extension Behavior {
     /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled`
     /// if no `Behavior.signalHandling` was found.
     @inlinable
-    internal func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         if case let .signalHandling(_, handleSignal) = self {
             return try handleSignal(context, signal)
         } else {

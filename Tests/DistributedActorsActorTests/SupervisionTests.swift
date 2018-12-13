@@ -35,8 +35,8 @@ class SupervisionTests: XCTestCase {
 
         // supervise
 
-        let _: Behavior<String> = .supervise(faultyWorker, withStrategy: .stop)
-        let _: Behavior<String> = .supervise(faultyWorker, withStrategy: .restart)
+        let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .stop)
+        let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .restart(atMost: 3))
 
         // supervised
     }

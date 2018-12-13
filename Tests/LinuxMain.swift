@@ -41,6 +41,7 @@ import XCTest
          testCase(ConcurrencyHelpersTests.allTests),
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
+         testCase(InterceptorTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(ParentChildActorTests.allTests),
          testCase(RingBufferTests.allTests),
