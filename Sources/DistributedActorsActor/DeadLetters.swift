@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct DeadLetter {
+public struct DeadLetter {
     let message: Any
     // TODO: from, to, other metadata
 

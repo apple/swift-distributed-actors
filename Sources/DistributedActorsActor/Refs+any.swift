@@ -28,7 +28,7 @@ public protocol AnyAddressableActorRef {
 // Implementation notes:
 // Any [[AddressableRef]] is Hashable as well as can be packed as AnyHashable (for type-erasure)
 public extension AddressableActorRef {
-    public func asHashable() -> AnyHashable {
+    func asHashable() -> AnyHashable {
         return AnyHashable(self)
     }
 }
@@ -56,7 +56,7 @@ extension AnyAddressableActorRef {
 
     /// WARNING: Performs an `internal_downcast`
     public init<M>(_ ref: ActorRef<M>) {
-        self.init(ref: ref.internal_downcast)
+        self.init(ref: ref._downcastUnsafe)
     }
 
     func hash(into hasher: inout Hasher) {
@@ -71,6 +71,7 @@ extension AnyAddressableActorRef {
         return self.anyRef.path
     }
 
+    @usableFromInline
     func asHashable() -> AnyHashable {
         return self.anyRef.asHashable()
     }
@@ -141,7 +142,7 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
 
     /// WARNING: Performs an `internal_downcast`
     public init<M>(_ ref: ActorRef<M>) {
-        self.init(ref: ref.internal_downcast)
+        self.init(ref: ref._downcastUnsafe)
     }
 
     func hash(into hasher: inout Hasher) {
@@ -191,17 +192,27 @@ internal extension AnyReceivesSystemMessages {
 
 // MARK: Internal boxing helpers
 
-/// INTERNAL API
 internal extension ActorRef {
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    @usableFromInline internal func internal_boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
-        return BoxedHashableAnyReceivesSystemMessages(ref: self.internal_downcast)
+    @usableFromInline
+    func _boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
+        return BoxedHashableAnyReceivesSystemMessages(ref: self._downcastUnsafe)
     }
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
-    @usableFromInline internal func internal_boxAnyAddressableActorRef() -> AnyAddressableActorRef {
-        return BoxedHashableAnyAddressableActorRef(ref: self.internal_downcast)
+    @usableFromInline
+    func _boxAnyAddressableActorRef() -> AnyAddressableActorRef {
+        return BoxedHashableAnyAddressableActorRef(ref: self._downcastUnsafe)
+    }
+
+    /// INTERNAL API: UNSAFE, DO NOT TOUCH.
+    @usableFromInline
+    var _downcastUnsafe: ActorRefWithCell<Message> {
+        switch self {
+        case let withCell as ActorRefWithCell<Message>: return withCell
+        default: fatalError("Illegal downcast attempt from \(self) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        }
     }
 }
 
