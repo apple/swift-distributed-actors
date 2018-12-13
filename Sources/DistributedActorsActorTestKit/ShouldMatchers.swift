@@ -20,7 +20,7 @@ import XCTest
 
 fileprivate let isTty = isatty(fileno(stdin)) == 0
 
-struct TestMatchers<T> {
+public struct TestMatchers<T> {
 
     private let it: T
 
@@ -39,7 +39,7 @@ struct TestMatchers<T> {
     }
 }
 
-extension TestMatchers where T: Equatable {
+public extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
         let msg = self.callSite.detailedMessage(got: it, expected: expected)
         XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
@@ -55,6 +55,52 @@ extension TestMatchers where T: Equatable {
             let msg = self.callSite.detailedMessage(got: it, expected: expected)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
+    }
+}
+
+public extension TestMatchers where T: Sequence, T.Element: Equatable {
+
+    /// Asserts that `it` starts with the passed in `prefix`.
+    ///
+    /// If `it` does not completely start with the passed in `prefix`, the error message will also include the a matching
+    /// sub-prefix (if any), so one can easier spot at which position the sequences differ.
+    public func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Sequence, T.Element == PossiblePrefix.Element {
+        if !it.starts(with: prefix) {
+            let partialMatchMessage: String
+            let partialMatch = it.commonPrefix(with: prefix)
+            if partialMatch.underestimatedCount == 0 {
+                partialMatchMessage = "Sequence does not start with any part of the prefix."
+            } else {
+                partialMatchMessage = "Partial match, SubSequence of prefix matched: [\(partialMatch)](count:\(partialMatch.underestimatedCount)]"
+            }
+
+            // classic printout without prefix matching:
+            // let msg = self.callSite.detailedMessage("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
+
+            var m = "Expected "
+            if isTty { m += "[\(ANSIColors.bold.rawValue)" }
+            m += "\(partialMatch)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "\(it.dropFirst(partialMatch.underestimatedCount))] "
+            m += "to start with prefix: "
+            if isTty { m += "\n                " } // align with "[error] Expected "
+            if isTty { m += "[\(ANSIColors.bold.rawValue)" }
+            m += "\(partialMatch)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
+            if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
+
+            var msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
+  
+}
+
+private extension Sequence where Element: Equatable {
+    func commonPrefix<OtherSequence>(with other: OtherSequence) -> SubSequence where OtherSequence: Sequence, Element == OtherSequence.Element {
+        var otherIterator = other.makeIterator()
+        return self.prefix(while: { el in el == otherIterator.next() })
     }
 }
 
@@ -103,6 +149,14 @@ extension Bool {
     public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toEqual(true)
+    }
+}
+
+extension Sequence where Element: Equatable {
+    public func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
+        where PossiblePrefix: Sequence, Element == PossiblePrefix.Element {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }
 }
 
@@ -241,5 +295,8 @@ enum ANSIColors: String {
     case magenta = "\u{001B}[0;35m"
     case cyan = "\u{001B}[0;36m"
     case white = "\u{001B}[0;37m"
+
+    case bold = "\u{001B}[1m"
+
     case reset = "\u{001B}[0;0m"
 }

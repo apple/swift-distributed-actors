@@ -200,7 +200,12 @@ class ParentChildActorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let parent: ActorRef<String> = try system.spawn(.receive { (context, msg) in
-            try context.stop(child: p.ref)
+            do {
+                try context.stop(child: p.ref)
+            } catch {
+                p.tell("Errored:\(error)")
+                throw error // throw as if we did not catch it
+            }
             return .same
         }, name: "parent-4")
 
@@ -208,6 +213,8 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("stop")
 
+        let erroredStr = try p.expectMessage()
+        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: ActorRef<String>(/user/testProbe")
         try p.expectTerminated(parent)
     }
 
@@ -215,7 +222,12 @@ class ParentChildActorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let parent: ActorRef<String> = try system.spawn(.receive { (context, msg) in
-            try context.stop(child: context.myself)
+            do {
+                try context.stop(child: context.myself)
+            } catch {
+                p.tell("Errored:\(error)")
+                throw error // throw as if we did not catch it
+            }
             return .same
         }, name: "parent-5")
 
@@ -223,6 +235,8 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("stop")
 
+        let erroredStr = try p.expectMessage()
+        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: ActorRef<String>(/user/parent-5")
         try p.expectTerminated(parent)
     }
 
