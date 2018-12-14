@@ -116,9 +116,7 @@ final public class ActorTestProbe<Message> {
 
 }
 
-extension ActorTestProbe where Message: Equatable {
-
-    // MARK: Expecting messages
+extension ActorTestProbe {
 
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
@@ -141,6 +139,11 @@ extension ActorTestProbe where Message: Equatable {
             throw callSite.failure(message: message)
         }
     }
+}
+
+extension ActorTestProbe where Message: Equatable {
+
+    // MARK: Expecting messages
 
     /// Fails in nice readable ways:
     ///
@@ -185,6 +188,8 @@ extension ActorTestProbe where Message: Equatable {
 
 }
 
+// MARK: TestProbes can ReceivesMessages
+
 extension ActorTestProbe: ReceivesMessages {
     public var path: UniqueActorPath {
         return self.exposedRef.path
@@ -192,6 +197,21 @@ extension ActorTestProbe: ReceivesMessages {
 
     public func tell(_ message: Message) {
         self.exposedRef.tell(message)
+    }
+}
+
+// MARK: TestProbes can intercept all messages send to a Behavior
+
+public extension ActorTestProbe {
+
+    // TODO would be nice to be able to also intercept system messages hm...
+
+    public func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
+        let interceptor: Interceptor<Message> = Intercept.messages { target, context, message in
+            self.tell(message)
+            return try target.interpretMessage(context: context, message: message)
+        }
+        return .intercept(behavior: behavior, with: interceptor)
     }
 }
 
@@ -233,7 +253,7 @@ extension ActorTestProbe {
     /// Examples:
     ///
     ///     guard ... else { throw p.failure("failed to extract expected information") }
-    ///     guard case let .spawned(child) = p.expectMessage() else { throw p.failure() }
+    ///     guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
     public func failure(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
@@ -354,13 +374,13 @@ extension ActorTestProbe {
         return watchee
     }
 
-    /// Returns the `terminated` message (TODO SIGNAL)
-    /// since one may want to perform additional assertions on the termination reason perhaps
+    /// Returns the `Signals.Terminated` signal since one may want to perform additional assertions on the termination reason.
     ///
     /// - Warning: Remember to first `watch` the actor you are expecting termination for,
     ///            otherwise the termination signal will never be received.
     /// - Returns: the matched `.terminated` message
     @discardableResult
+    // TODO expectTermination(of: ...) maybe nicer wording?
     public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 

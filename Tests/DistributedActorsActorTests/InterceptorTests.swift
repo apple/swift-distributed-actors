@@ -56,11 +56,11 @@ class InterceptorTests: XCTestCase {
 
         let spyOnTerminationSignals: Interceptor<String> =
             Intercept.signals { target, context, signal in
-                context.log.info("intercepted: \(signal)")
                 switch signal {
                 case let terminated as Signals.Terminated:
                     p.tell(terminated) // we forward all termination signals to someone
-                default: ()
+                default:
+                    ()
                 }
                 return try target.interpretSignal(context: context, signal: signal)
             }
