@@ -218,7 +218,7 @@ final class Mailbox<Message> {
         defer { failedMessagePtr.deallocate() }
         // will be set to the last active processing stage when run return, so
         // in case of a failure, we know what stage failed
-        var processingStage: ProcessingStage = System
+        var processingStage: ProcessedMessageType = System
 
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
             &messageCallbackContext, &systemMessageCallbackContext,
