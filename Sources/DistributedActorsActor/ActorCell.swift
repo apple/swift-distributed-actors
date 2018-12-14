@@ -31,6 +31,8 @@ internal protocol FailableActorCell {
 // The cell is mutable, as it may replace the behavior it hosts
 public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
+    typealias SelfBehavior = Behavior<Message>
+
     // TODO: impl note: we need to ref hold the cell somehow, but the handed our refs dont have to, since they should go to deadletters once we terminate
 
     // Implementation notes:
@@ -188,7 +190,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
-            // initialization:
+        // initialization
         case .start:
             try self.interpretSystemStart()
 
@@ -268,7 +270,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         switch next {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
-            message: "Death Pact error: [\(context.path)] has not handled .terminated signal received from watched [\(deadRef)] actor. " +
+            message: "Death Pact error: [\(context.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
                 "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
@@ -326,7 +328,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
         case let DeathPactError.unhandledDeathPact(ref, _, message):
-            log.error("Terminated: [\(ref)]: \(message)") // TODO configurable logging? in props?
+            log.error("\(message)") // TODO configurable logging? in props?
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
@@ -363,13 +365,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable
     internal func interpretSystemStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
-        if case .setup(let onStart) = behavior {
-            let next = try onStart(context)
-            try self.becomeNext(behavior: next) // for system messages we check separately if we should trigger stopping
-        } else {
-            try self.becomeNext(behavior: .same)
-        }
-        // and canonicalize() will make sure that any nested `.setup` are handled immediately as well
+        let started = try self.behavior._start(context: self)
+        try self.becomeNext(behavior: started)
     }
 
     // MARK: Lifecycle and DeathWatch TODO move death watch things all into an extension
