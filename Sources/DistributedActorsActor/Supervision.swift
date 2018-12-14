@@ -53,25 +53,27 @@ public struct Supervision {
 
 public class Supervisor<Message>: Interceptor<Message> {
 
-    final override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
-        do {
-            return try target.interpretSignal(context: context, signal: signal)
-        } catch {
-            return self.handleSignalFault(error: .error(error: error))
-        }
-    }
-
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
+            pprint("FAULT DETECTED: \(error) HANDLING IN \(self)")
             return self.handleMessageFault(error: .error(error: error)) // TODO also message?
+        }
+    }
+
+    final override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        do {
+            return try target.interpretSignal(context: context, signal: signal)
+        } catch {
+            pprint("FAULT DETECTED: \(error) HANDLING IN \(self)")
+            return self.handleSignalFault(error: .error(error: error))
         }
     }
 
     // MARK: Internal Supervisor API
 
-    /// Handle a fault that
+    /// Handle a fault that happened during message processing
     func handleMessageFault(error: Supervision.Fault)  -> Behavior<Message> {
         return undefined()
     }
