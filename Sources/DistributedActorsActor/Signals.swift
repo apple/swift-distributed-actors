@@ -79,5 +79,16 @@ public enum Signals {
             return "ChildTerminated(\(self.path)\(reason))"
         }
     }
+}
 
+extension Signals.Terminated: Equatable, Hashable {
+    public static func ==(lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
+        return lhs.path == rhs.path &&
+            lhs.existenceConfirmed == rhs.existenceConfirmed
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        self.path.hash(into: &hasher)
+        self.existenceConfirmed.hash(into: &hasher)
+    }
 }

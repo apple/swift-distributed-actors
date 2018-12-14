@@ -240,10 +240,10 @@ extension FunctionInterceptor: CustomStringConvertible {
     }
 }
 
-// MARK: Internal tools to work with Behaviors
+// MARK: Behavior interpretation
 
-/// Internal operations for behavior manipulation
-internal extension Behavior {
+/// Offers the capability to interpret messages and signals
+public extension Behavior {
 
     /// Interpret the passed in message.
     ///
@@ -254,10 +254,11 @@ internal extension Behavior {
         switch self {
         case let .receiveMessage(recv):          return try recv(message)
         case let .receive(recv):                 return try recv(context, message)
-        case .ignore:                            return .same // ignore message and remain .same
-        case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
+        case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .intercept(inner, interceptor): return try interceptor.interceptMessage(target: inner, context: context, message: message)
+
+        case .ignore:                            return .same // ignore message and remain .same
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
         case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
@@ -268,13 +269,29 @@ internal extension Behavior {
         case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
             var nextBehavior = try first.interpretMessage(context: context, message: message)
-            if nextBehavior.isUnhandled() {
-                nextBehavior = try second.interpretMessage(context: context, message: message)
-            }
-            return nextBehavior
-        default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self)")
         }
     }
+
+    /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled`
+    /// if no `Behavior.signalHandling` was found.
+    @inlinable
+    func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        switch self {
+        case .signalHandling(_, let handleSignal):
+            return try handleSignal(context, signal)
+        case let .intercept(behavior, interceptor):
+            return try interceptor.interceptSignal(target: behavior, context: context, signal: signal)
+        default:
+            // no signal handling installed is semantically equivalent to unhandled
+            return .unhandled
+        }
+    }
+}
+
+// MARK: Internal tools to work with Behaviors
+
+/// Internal operations for behavior manipulation
+internal extension Behavior {
 
     /// Applies `interpretMessage` to an iterator of messages, while canonicalizing the behavior after every reduction.
     @inlinable
@@ -290,18 +307,6 @@ internal extension Behavior {
         }
 
         return currentBehavior
-    }
-
-    /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled`
-    /// if no `Behavior.signalHandling` was found.
-    @inlinable
-    func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
-        if case let .signalHandling(_, handleSignal) = self {
-            return try handleSignal(context, signal)
-        } else {
-            // no signal handling installed is semantically equivalent to unhandled
-            return .unhandled
-        }
     }
 
     /// Validate if a Behavior is legal to be used as "initial" behavior (when an Actor is spawned),
@@ -355,16 +360,37 @@ internal extension Behavior {
         var canonical = next
         while true {
             switch canonical {
-            case .same:                  return self
-            case .ignore:                return self
-            case .unhandled:             return self
-            case .custom:                return self
-            case .stopped:               return .stopped
-            case let .intercept(b, int): canonical = try .intercept(behavior: b.canonicalize(context, next: next), with: int)
-            case let .setup(onStart):    canonical = try onStart(context)
-            default:                     return canonical
+            case .same:      return self
+            case .ignore:    return self
+            case .unhandled: return self
+            case .custom:    return self
+            case .stopped:   return .stopped
+
+            case let .setup(onStart):
+                canonical = try onStart(context)
+
+            case let .intercept(inner, interceptor):
+                let innerCanonicalized: Behavior<Message> = try inner.canonicalize(context, next: .same)
+                return .intercept(behavior: innerCanonicalized, with: interceptor)
+
+            default:
+                return canonical
             }
         }
+    }
 
+    /// Starting a behavior means triggering all onStart actions of nested `.setup` calls.
+    /// Interceptors are left in-place, and other behaviors remain unaffected.
+    // TODO make not recursive perhaps since could blow up on large chain?
+    @inlinable func _start(context: ActorContext<Message>) throws -> Behavior<Message> {
+        switch self {
+        case let .intercept(inner, interceptor):
+            return .intercept(behavior: try inner._start(context: context), with: interceptor)
+        case .setup(let onStart):
+            let unwrapped: Behavior<Message> = try onStart(context)
+            return try unwrapped._start(context: context) // since the .setup may contain another .setup
+        default:
+            return self
+        }
     }
 }
