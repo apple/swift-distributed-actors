@@ -20,7 +20,8 @@ import Glibc
 
 /// Not intended to be used by end users
 public final class Mutex {
-    public var mutex: pthread_mutex_t = pthread_mutex_t()
+    @usableFromInline
+    var mutex: pthread_mutex_t = pthread_mutex_t()
 
     public init() {
         var attr: pthread_mutexattr_t = pthread_mutexattr_t()
@@ -79,5 +80,16 @@ public final class Mutex {
         }
 
         return f()
+    }
+
+    @inlinable
+    public func synchronized<A>(_ f: () throws -> A) throws -> A {
+        lock()
+
+        defer {
+            unlock()
+        }
+
+        return try f()
     }
 }

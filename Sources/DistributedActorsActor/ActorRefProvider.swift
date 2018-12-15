@@ -26,20 +26,19 @@ internal protocol ActorRefProvider {
         system: ActorSystem,
         behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
-    ) -> ActorRef<Message>
+    ) throws -> ActorRef<Message>
 }
 
 // FIXME sadly this is the wrong way to model "oh yeah, that one as process"
 
 internal struct LocalActorRefProvider: ActorRefProvider {
-
-    let root: ReceivesSystemMessages
+    let root: Guardian
 
     var rootPath: UniqueActorPath {
         return root.path
     }
 
-    init(root: ReceivesSystemMessages) {
+    init(root: Guardian) {
         self.root = root
     }
 
@@ -47,33 +46,35 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         system: ActorSystem,
         behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
-    ) -> ActorRef<Message> {
+    ) throws -> ActorRef<Message> {
 
         pprint("Spawning [\(path)], with behavior: [\(behavior)]")
-        
-        // the cell that holds the actual "actor", though one could say the cell *is* the actor...
-        let cell: ActorCell<Message> = ActorCell(
-            system: system,
-            parent: root,
-            behavior: behavior,
-            path: path,
-            props: props,
-            dispatcher: dispatcher
-        )
 
-        // the mailbox of the actor
-        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
-        // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
+        return try root.makeChild(path: path) {
+            // the cell that holds the actual "actor", though one could say the cell *is* the actor...
+            let cell: ActorCell<Message> = ActorCell(
+                system: system,
+                parent: root,
+                behavior: behavior,
+                path: path,
+                props: props,
+                dispatcher: dispatcher
+            )
 
-        let refWithCell = ActorRefWithCell(
-            path: path,
-            cell: cell,
-            mailbox: mailbox
-        )
+            // the mailbox of the actor
+            let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
+            // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
 
-        cell.set(ref: refWithCell)
-        refWithCell.sendSystemMessage(.start)
+            let refWithCell = ActorRefWithCell(
+                path: path,
+                cell: cell,
+                mailbox: mailbox
+            )
 
-        return refWithCell
+            cell.set(ref: refWithCell)
+            refWithCell.sendSystemMessage(.start)
+
+            return refWithCell
+        }
     }
 }

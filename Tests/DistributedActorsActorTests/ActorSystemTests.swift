@@ -14,16 +14,44 @@
 
 import Foundation
 import XCTest
-import Swift Distributed ActorsActor
+@testable import Swift Distributed ActorsActor
+import SwiftDistributedActorsActorTestKit
 
 class ActorSystemTests: XCTestCase {
 
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     let system = ActorSystem("ActorSystemTests")
+    lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
         // system.terminate()
     }
 
+    func test_spawn_shouldThrowOnDuplicateName() throws {
+        let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+
+        let error = shouldThrow {
+            let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+        }
+
+        guard case let ActorContextError.duplicateActorPath(path) = error else {
+            XCTFail()
+            return
+        }
+
+        let expected = try ActorPath(root: "user") / ActorPathSegment("test")
+        path.shouldEqual(expected)
+    }
+
+    func test_spawn_shouldNotThrowOnNameReUse() throws {
+        let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        // re-using a name of an actor that has been stopped is fine
+        let ref: ActorRef<String> = try system.spawn(.stopped, name: "test")
+
+        p.watch(ref)
+        try p.expectTerminated(ref)
+
+        let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+    }
 }
