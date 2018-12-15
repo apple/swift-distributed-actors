@@ -186,10 +186,12 @@ extension TheOneWhoHasNoParentActorRef: CustomStringConvertible, CustomDebugStri
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
 /// (unlike actors spawned from within other actors, by using `context.spawn`).
 @usableFromInline // "the one who walks the bubbles of space time"
-internal struct Guardian: ReceivesSystemMessages {
-
+internal class Guardian: ReceivesSystemMessages {
     @usableFromInline
     let path: UniqueActorPath
+    // any access to children has to be protected by `lock`
+    var children: Children
+    let lock: Mutex = Mutex()
 
     init(parent: ReceivesSystemMessages, name: String) {
         assert(parent.path == UniqueActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
@@ -199,15 +201,16 @@ internal struct Guardian: ReceivesSystemMessages {
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
+        self.children = Children()
     }
 
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage) {
         switch message {
-        case .childTerminated:
-            // silently drop, guardians can't do anything about child termination.
-            // it is up to supervision behavior wrappers to provide restart etc capabilities.
-            ()
+        case let .childTerminated(ref):
+            lock.synchronized {
+                _ = children.removeChild(identifiedBy: ref.path)
+            }
         default:
             CDungeon.sact_dump_backtrace()
             fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
@@ -217,5 +220,30 @@ internal struct Guardian: ReceivesSystemMessages {
     @usableFromInline
     func asHashable() -> AnyHashable {
         return AnyHashable(path)
+    }
+
+    func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorRef<Message>) throws -> ActorRef<Message> {
+        return try lock.synchronized {
+            if children.contains(name: path.name) {
+                throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
+            }
+
+            let ref = try spawn()
+            children.insert(ref)
+
+            return ref
+        }
+    }
+
+    func stopChild(_ childRef: ReceivesSystemMessages) throws {
+        return try lock.synchronized {
+            guard children.contains(identifiedBy: childRef.path) else {
+                throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
+            }
+
+            if children.removeChild(identifiedBy: childRef.path) {
+                childRef.sendSystemMessage(.stop)
+            }
+        }
     }
 }

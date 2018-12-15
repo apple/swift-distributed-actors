@@ -21,7 +21,8 @@ import Glibc
 import NIO
 
 public final class Condition {
-    public var condition: pthread_cond_t = pthread_cond_t()
+    @usableFromInline
+    var condition: pthread_cond_t = pthread_cond_t()
 
     public init() {
         let error = pthread_cond_init(&condition, nil)

@@ -154,7 +154,7 @@ extension ActorSystem: ActorRefFactory {
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let refWithCell: ActorRef<Message> = userProvider.spawn(
+        let refWithCell: ActorRef<Message> = try userProvider.spawn(
             system: self,
             behavior: behavior, path: path,
             dispatcher: dispatcher, props: props
