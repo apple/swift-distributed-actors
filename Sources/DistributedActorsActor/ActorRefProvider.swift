@@ -27,6 +27,8 @@ internal protocol ActorRefProvider {
         behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message>
+
+    func stop() throws
 }
 
 // FIXME sadly this is the wrong way to model "oh yeah, that one as process"
@@ -76,5 +78,9 @@ internal struct LocalActorRefProvider: ActorRefProvider {
 
             return refWithCell
         }
+    }
+
+    internal func stop() throws {
+        try root.stop()
     }
 }

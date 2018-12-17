@@ -14,7 +14,7 @@
 
 import NIOConcurrencyHelpers
 
-public final class FixedThreadPool: MessageDispatcher {
+public final class FixedThreadPool: StoppableMessageDispatcher {
     public var name: String {
         return _hackyPThreadThreadId()
     }

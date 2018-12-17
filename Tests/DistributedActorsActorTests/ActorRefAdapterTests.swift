@@ -23,7 +23,7 @@ class ActorRefAdapterTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        // Await.on(system.terminate()) // FIXME termination that actually does so
+        try! system.shutdown()
     }
 
     func test_ActorBehavior_adapt() throws {
