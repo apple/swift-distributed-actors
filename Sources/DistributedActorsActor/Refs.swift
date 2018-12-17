@@ -235,7 +235,7 @@ internal class Guardian: ReceivesSystemMessages {
         }
     }
 
-    func stopChild(_ childRef: ReceivesSystemMessages) throws {
+    func stopChild(_ childRef: AnyReceivesSystemMessages) throws {
         return try lock.synchronized {
             guard children.contains(identifiedBy: childRef.path) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
@@ -245,5 +245,9 @@ internal class Guardian: ReceivesSystemMessages {
                 childRef.sendSystemMessage(.stop)
             }
         }
+    }
+
+    func stop() throws {
+        try children.forEach(self.stopChild)
     }
 }

@@ -25,7 +25,7 @@ class ActorSystemTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        // system.terminate()
+        try! system.shutdown()
     }
 
     func test_spawn_shouldThrowOnDuplicateName() throws {
@@ -53,5 +53,24 @@ class ActorSystemTests: XCTestCase {
         try p.expectTerminated(ref)
 
         let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+    }
+
+    func test_shutdown_shouldStopAllActors() throws {
+        let system2 = ActorSystem("ShutdownSystem")
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let echoBehavior: Behavior<String> = .receiveMessage { message in
+            p.tell(message)
+            return .same
+        }
+
+        let ref1 = try system2.spawnAnonymous(echoBehavior)
+        let ref2 = try system2.spawnAnonymous(echoBehavior)
+
+        try system.shutdown()
+
+        ref1.tell("ref1")
+        ref2.tell("ref2")
+
+        try p.expectNoMessage(for: .milliseconds(200))
     }
 }

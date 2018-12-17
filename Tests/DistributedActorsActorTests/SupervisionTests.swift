@@ -43,7 +43,7 @@ class SupervisionTests: XCTestCase {
     let system = ActorSystem("SupervisionTests")
 
     override func tearDown() {
-        // Await.on(system.terminate()) // FIXME termination that actually does so
+        try! system.shutdown()
     }
 
     func test_compile() throws {

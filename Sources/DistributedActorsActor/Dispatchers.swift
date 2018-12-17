@@ -29,3 +29,10 @@ public protocol MessageDispatcher {
 
     func execute(_ f: @escaping () -> Void)
 }
+
+internal protocol StoppableMessageDispatcher: MessageDispatcher {
+    /// Gracefully terminates the dispatcher, waiting for active execution runs
+    /// to finish. Does not wait for scheduled, but not active work items to be
+    /// completed.
+    func shutdown()
+}
