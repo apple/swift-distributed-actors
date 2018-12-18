@@ -101,7 +101,7 @@ public final class ActorSystem {
     public func shutdown() throws {
         try userProvider.stop()
         try systemProvider.stop()
-        self.dispatcher.shutdown()
+        try self.dispatcher.shutdown()
     }
 
     // TODO: should we depend on NIO already? I guess so hm they have the TimeAmount... Tho would be nice to split it out maybe

@@ -20,6 +20,7 @@ import Glibc
 #endif
 
 import NIO
+import NIOConcurrencyHelpers
 
 public enum ThreadError: Error {
     case threadCreationFailed
@@ -36,9 +37,20 @@ private class BoxedClosure {
 
 public class Thread {
     private let thread: pthread_t
+    private let lock: Mutex
+    private var isRunning: Atomic<Bool>
 
     public init(_ f: @escaping () -> Void) throws {
-        let ref = Unmanaged.passRetained(BoxedClosure(f: f))
+        let lock = Mutex()
+        let isRunning = Atomic<Bool>(value: true)
+        let ref = Unmanaged.passRetained(BoxedClosure {
+            defer {
+                lock.lock()
+                defer { lock.unlock() }
+                isRunning.store(false)
+            }
+            f()
+        })
 
         #if os(Linux)
         var t: pthread_t = pthread_t()
@@ -52,34 +64,32 @@ public class Thread {
         }
 
         #if os(Linux)
-        thread = t
+        self.thread = t
         #else
-        thread = t!
+        self.thread = t!
         #endif
-    }
+        self.isRunning = isRunning
+        self.lock = lock
 
-    public func join() throws {
-        let status = pthread_join(thread, nil)
-        if status != 0 {
-            throw ThreadError.threadJoinFailed
-        }
+        pthread_detach(thread)
     }
 
     public func cancel() -> Void {
-        let error = pthread_cancel(thread)
+        lock.lock()
+        defer { lock.unlock() }
 
-        switch error {
-        case 0:
-            return
-        case ESRCH:
-            fatalError("Cancel failed because no thread could be found with id: \(thread)")
-        default:
-            fatalError("Cancel failed with unspecified error: \(error)")
+        if isRunning.load() {
+            let error = pthread_cancel(thread)
+
+            switch error {
+            case 0:
+                return
+            case ESRCH:
+                fatalError("Cancel failed because no thread could be found with id: \(thread)")
+            default:
+                fatalError("Cancel failed with unspecified error: \(error)")
+            }
         }
-    }
-
-    deinit {
-        pthread_detach(thread)
     }
 
     public static func sleep(_ amount: TimeAmount) -> Void {

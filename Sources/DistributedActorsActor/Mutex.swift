@@ -72,6 +72,22 @@ public final class Mutex {
     }
 
     @inlinable
+    public func tryLock() -> Bool {
+        let error = pthread_mutex_trylock(&mutex)
+
+        switch error {
+        case 0:
+            return true
+        case EBUSY:
+            return false
+        case EDEADLK:
+            fatalError("Mutex could not be acquired because it would have caused a deadlock")
+        default:
+            fatalError("Failed with unspecified error: \(error)")
+        }
+    }
+
+    @inlinable
     public func synchronized<A>(_ f: () -> A) -> A {
         lock()
 

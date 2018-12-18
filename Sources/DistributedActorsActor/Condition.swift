@@ -102,4 +102,18 @@ public final class Condition {
             fatalError("Signal failed with unspecified error: \(error)")
         }
     }
+
+    @inlinable
+    public func signalAll() {
+        let error = pthread_cond_broadcast(&condition)
+
+        switch error {
+        case 0:
+            return
+        case EINVAL:
+            fatalError("Signal failed, condition is not valid")
+        default:
+            fatalError("Signal failed with unspecified error: \(error)")
+        }
+    }
 }
