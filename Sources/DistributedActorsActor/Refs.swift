@@ -230,8 +230,7 @@ internal class Guardian: ReceivesSystemMessages {
     func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorRef<Message>) throws -> ActorRef<Message> {
         return try lock.synchronized {
             if stopping {
-                // FIXME: use proper exception type
-                throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
+                throw ActorContextError.alreadyStopping
             }
 
             if children.contains(name: path.name) {

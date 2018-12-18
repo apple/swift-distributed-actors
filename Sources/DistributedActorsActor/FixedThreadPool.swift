@@ -39,7 +39,8 @@ public final class FixedThreadPool: StoppableMessageDispatcher {
         return _hackyPThreadThreadId()
     }
 
-    public let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
+    @usableFromInline
+    let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
     private var workers: [Worker] = []
 
     @usableFromInline
