@@ -120,6 +120,8 @@ CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
 }
 
 void cmailbox_destroy(CMailbox* mailbox) {
+    cmpsc_linked_queue_destroy(mailbox->system_messages);
+    cmpsc_linked_queue_destroy(mailbox->messages);
     free(mailbox);
 }
 
@@ -138,6 +140,7 @@ bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
         decrement_status_activations(mailbox, SINGLE_USER_MESSAGE_MASK);
         print_debug_status(mailbox, "cmailbox_send_message dropping... ");
         // TODO: emit the message as ".dropped(msg)"
+        free(envelope);
         return false;
     } else {
         // If the mailbox is not full, we insert it into the queue and return,

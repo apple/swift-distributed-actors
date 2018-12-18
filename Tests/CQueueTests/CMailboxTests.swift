@@ -23,16 +23,20 @@ class CMailboxTests: XCTestCase {
     func test_MailboxCapacityLimit() {
         let mailbox = cmailbox_create(3, 1)
         defer { cmailbox_destroy(mailbox) }
+
+        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_message_count(mailbox).shouldEqual(1)
+        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_message_count(mailbox).shouldEqual(2)
+        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_message_count(mailbox).shouldEqual(3)
+        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_message_count(mailbox).shouldEqual(3)
+    }
+
+    private func newIntPtr() -> UnsafeMutablePointer<Int> {
         let ptr = UnsafeMutablePointer<Int>.allocate(capacity: 1)
         ptr.initialize(to: 0)
-
-        cmailbox_send_message(mailbox, ptr)
-        cmailbox_message_count(mailbox).shouldEqual(1)
-        cmailbox_send_message(mailbox, ptr)
-        cmailbox_message_count(mailbox).shouldEqual(2)
-        cmailbox_send_message(mailbox, ptr)
-        cmailbox_message_count(mailbox).shouldEqual(3)
-        cmailbox_send_message(mailbox, ptr)
-        cmailbox_message_count(mailbox).shouldEqual(3)
+        return ptr
     }
 }
