@@ -183,4 +183,6 @@ public enum ActorContextError: Error {
     case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
     /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)
+    /// It is not allowed to spawn new actors when the system is stopping
+    case alreadyStopping
 }
