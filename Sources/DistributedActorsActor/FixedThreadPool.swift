@@ -13,6 +13,26 @@
 //===----------------------------------------------------------------------===//
 
 import NIOConcurrencyHelpers
+import Foundation
+
+internal final class Worker {
+    var thread: Thread? = nil
+    var completedTasks: Int = 0
+
+    private let _lock: Mutex = Mutex()
+
+    func lock() {
+        self._lock.lock()
+    }
+
+    func tryLock() -> Bool {
+        return self._lock.tryLock()
+    }
+
+    func unlock() {
+        return self._lock.unlock()
+    }
+}
 
 public final class FixedThreadPool: StoppableMessageDispatcher {
     public var name: String {
@@ -20,35 +40,41 @@ public final class FixedThreadPool: StoppableMessageDispatcher {
     }
 
     public let q: LinkedBlockingQueue<() -> Void> = LinkedBlockingQueue()
-    private var threads: [Thread] = []
-    private var stopping: Atomic<Bool> = Atomic(value: false)
+    private var workers: [Worker] = []
+
+    @usableFromInline
+    internal var stopping: Atomic<Bool> = Atomic(value: false)
 
     public init(_ threadCount: Int) throws {
         for _ in 1...threadCount {
+            let worker = Worker()
             let thread = try Thread {
                 while !self.stopping.load() {
-                    self.q.dequeue()()
+                    if let runnable = self.q.poll(.milliseconds(100)) {
+                        worker.lock()
+                        defer { worker.unlock() }
+                        runnable()
+                    }
                 }
             }
+            worker.thread = thread
 
-            self.threads.append(thread)
+            self.workers.append(worker)
         }
     }
 
-    public func shutdown() -> Void {
-        stopping.store(true)
-    }
-
-    public func shutdownNow() -> Void {
-        shutdown()
-        threads.forEach {
-            $0.cancel()
+    public func shutdown() throws -> Void {
+        if !stopping.exchange(with: true) {
+            workers.removeAll()
+            q.clear()
         }
     }
 
     @inlinable
     public func submit(_ f: @escaping () -> Void) -> Void {
-        q.enqueue(f)
+        if !stopping.load() {
+            q.enqueue(f)
+        }
     }
 
     @inlinable

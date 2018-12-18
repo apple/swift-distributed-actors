@@ -59,6 +59,15 @@ public final class LinkedBlockingQueue<A> {
         }
     }
 
+    public func clear() {
+        lock.synchronized {
+            self.producer = Node(nil)
+            self.consumer = producer
+            self.count.store(0)
+            notEmpty.signalAll()
+        }
+    }
+
     public func poll(_ timeout: TimeAmount) -> A? {
         return lock.synchronized { () -> A? in
             if let item = take() {
