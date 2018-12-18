@@ -61,8 +61,7 @@ public final class LinkedBlockingQueue<A> {
 
     public func clear() {
         lock.synchronized {
-            self.producer = Node(nil)
-            self.consumer = producer
+            while let _ = take() {}
             self.count.store(0)
             notEmpty.signalAll()
         }

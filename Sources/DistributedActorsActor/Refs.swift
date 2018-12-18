@@ -190,8 +190,10 @@ internal class Guardian: ReceivesSystemMessages {
     @usableFromInline
     let path: UniqueActorPath
     // any access to children has to be protected by `lock`
-    var children: Children
-    let lock: Mutex = Mutex()
+    private var children: Children
+    private let lock: Mutex = Mutex()
+    private let allChildrenRemoved: Condition = Condition()
+    private var stopping: Bool = false
 
     init(parent: ReceivesSystemMessages, name: String) {
         assert(parent.path == UniqueActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
@@ -210,6 +212,9 @@ internal class Guardian: ReceivesSystemMessages {
         case let .childTerminated(ref):
             lock.synchronized {
                 _ = children.removeChild(identifiedBy: ref.path)
+                if children.isEmpty {
+                    allChildrenRemoved.signalAll()
+                }
             }
         default:
             CDungeon.sact_dump_backtrace()
@@ -224,6 +229,11 @@ internal class Guardian: ReceivesSystemMessages {
 
     func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorRef<Message>) throws -> ActorRef<Message> {
         return try lock.synchronized {
+            if stopping {
+                // FIXME: use proper exception type
+                throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
+            }
+
             if children.contains(name: path.name) {
                 throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
             }
@@ -247,7 +257,13 @@ internal class Guardian: ReceivesSystemMessages {
         }
     }
 
-    func stop() throws {
-        try children.forEach(self.stopChild)
+    func stop() {
+        lock.synchronized {
+            stopping = true
+            if !children.isEmpty {
+                children.forEach { $0.sendSystemMessage(.stop) }
+                allChildrenRemoved.wait(lock)
+            }
+        }
     }
 }

@@ -95,6 +95,10 @@ public struct Children {
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
         try container.values.forEach(body)
     }
+
+    internal var isEmpty: Bool {
+        return container.isEmpty
+    }
 }
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
