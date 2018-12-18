@@ -45,9 +45,9 @@ public class Thread {
         let isRunning = Atomic<Bool>(value: true)
         let ref = Unmanaged.passRetained(BoxedClosure {
             defer {
-                lock.lock()
-                defer { lock.unlock() }
-                isRunning.store(false)
+                lock.synchronized {
+                    isRunning.store(false)
+                }
             }
             f()
         })

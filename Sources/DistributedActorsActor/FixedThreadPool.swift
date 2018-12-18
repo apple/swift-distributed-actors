@@ -55,6 +55,7 @@ public final class FixedThreadPool: StoppableMessageDispatcher {
                         worker.lock()
                         defer { worker.unlock() }
                         runnable()
+                        worker.completedTasks += 1
                     }
                 }
             }
