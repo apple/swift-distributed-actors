@@ -30,7 +30,7 @@ internal protocol ActorRefProvider {
 
     /// Stops all actors created by this `ActorRefProvider` and blocks until
     /// they have all stopped.
-    func stop()
+    func stopAll()
 }
 
 // FIXME sadly this is the wrong way to model "oh yeah, that one as process"
@@ -82,7 +82,7 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         }
     }
 
-    internal func stop() {
-        root.stop()
+    internal func stopAll() {
+        root.stopAll()
     }
 }

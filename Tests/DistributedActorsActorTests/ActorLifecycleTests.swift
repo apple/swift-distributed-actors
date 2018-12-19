@@ -23,7 +23,7 @@ class ActorLifecycleTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.shutdown()
+        try! system.terminate()
     }
 
     // MARK: starting actors

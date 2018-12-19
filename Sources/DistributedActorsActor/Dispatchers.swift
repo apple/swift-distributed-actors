@@ -30,9 +30,24 @@ public protocol MessageDispatcher {
     func execute(_ f: @escaping () -> Void)
 }
 
-internal protocol StoppableMessageDispatcher: MessageDispatcher {
-    /// Gracefully terminates the dispatcher, waiting for active execution runs
+// TODO: discuss naming of `InternalMessageDispatcher`
+
+/// Contains dispatcher methods that we need internally, but don't want to
+/// expose the users, because they are not safe to call from user code.
+internal protocol InternalMessageDispatcher: MessageDispatcher {
+    /// Gracefully shuts down the dispatcher, waiting for active execution runs
     /// to finish. Does not wait for scheduled, but not active work items to be
     /// completed.
-    func shutdown() throws
+    func shutdown()
+}
+
+extension FixedThreadPool: InternalMessageDispatcher {
+    public var name: String {
+        return _hackyPThreadThreadId()
+    }
+
+    @inlinable
+    public func execute(_ task: @escaping () -> Void) {
+        self.submit(task)
+    }
 }
