@@ -2,7 +2,7 @@
 
 `./scripts/generate_linux_tests.rb`
 
-res = `git status -s`
+res = `git status -s Tests/`
 
 unless res.empty?
 	puts "Linux tests where not properly generated:\n #{res}"
