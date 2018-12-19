@@ -66,7 +66,13 @@ class ActorSystemTests: XCTestCase {
         let ref1 = try system2.spawnAnonymous(echoBehavior)
         let ref2 = try system2.spawnAnonymous(echoBehavior)
 
-        try system.shutdown()
+        p.watch(ref1)
+        p.watch(ref2)
+
+        try system2.shutdown()
+
+        try p.expectTerminated(ref1)
+        try p.expectTerminated(ref2)
 
         ref1.tell("ref1")
         ref2.tell("ref2")
