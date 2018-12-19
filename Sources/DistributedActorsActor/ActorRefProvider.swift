@@ -28,7 +28,9 @@ internal protocol ActorRefProvider {
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message>
 
-    func stop() throws
+    /// Stops all actors created by this `ActorRefProvider` and blocks until
+    /// they have all stopped.
+    func stop()
 }
 
 // FIXME sadly this is the wrong way to model "oh yeah, that one as process"
@@ -80,7 +82,7 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         }
     }
 
-    internal func stop() throws {
-        try root.stop()
+    internal func stop() {
+        root.stop()
     }
 }
