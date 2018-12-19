@@ -25,7 +25,7 @@ class ActorSystemTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.shutdown()
+        try! system.terminate()
     }
 
     func test_spawn_shouldThrowOnDuplicateName() throws {
@@ -55,7 +55,7 @@ class ActorSystemTests: XCTestCase {
         let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
     }
 
-    func test_shutdown_shouldStopAllActors() throws {
+    func test_terminate_shouldStopAllActors() throws {
         let system2 = ActorSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receiveMessage { message in
@@ -69,7 +69,7 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        try system2.shutdown()
+        try system2.terminate()
 
         try p.expectTerminated(ref1)
         try p.expectTerminated(ref2)
@@ -78,5 +78,22 @@ class ActorSystemTests: XCTestCase {
         ref2.tell("ref2")
 
         try p.expectNoMessage(for: .milliseconds(200))
+    }
+
+    func test_terminate_selfSendingActorShouldNotDeadlockSystem() throws {
+        let system2 = ActorSystem("ShutdownSystem")
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let echoBehavior: Behavior<String> = .receive { context, message in
+            context.myself.tell(message)
+            return .same
+        }
+
+        let selfSender = try system2.spawnAnonymous(echoBehavior)
+
+        p.watch(selfSender)
+
+        try system2.terminate()
+
+        try p.expectTerminated(selfSender)
     }
 }

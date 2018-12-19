@@ -58,7 +58,7 @@ public class Thread {
         var t: pthread_t?
         #endif
 
-        guard pthread_create(&t, nil, runnerCallback, ref.toOpaque()) == 0 else {
+        guard pthread_create(&t, nil, Thread.runnerCallback, ref.toOpaque()) == 0 else {
             ref.release()
             throw ThreadError.threadCreationFailed
         }
@@ -71,23 +71,23 @@ public class Thread {
         self.isRunning = isRunning
         self.lock = lock
 
-        pthread_detach(thread)
+        // we detach to free all of its resources without another thread having to join it
+        pthread_detach(self.thread)
     }
 
     public func cancel() -> Void {
-        lock.lock()
-        defer { lock.unlock() }
+        self.lock.synchronized {
+            if self.isRunning.load() {
+                let error = pthread_cancel(self.thread)
 
-        if isRunning.load() {
-            let error = pthread_cancel(thread)
-
-            switch error {
-            case 0:
-                return
-            case ESRCH:
-                fatalError("Cancel failed because no thread could be found with id: \(thread)")
-            default:
-                fatalError("Cancel failed with unspecified error: \(error)")
+                switch error {
+                case 0:
+                    return
+                case ESRCH:
+                    fatalError("Cancel failed because no thread could be found with id: \(self.thread)")
+                default:
+                    fatalError("Cancel failed with unspecified error: \(error)")
+                }
             }
         }
     }
@@ -112,24 +112,25 @@ public class Thread {
     public static func exit(code: inout Int) {
         pthread_exit(&code)
     }
-}
 
-#if os(Linux)
-typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
-#else
-typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer) -> UnsafeMutableRawPointer?
-#endif
+    #if os(Linux)
+    typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
+    #else
+    typealias CRunnerCallback = @convention(c) (UnsafeMutableRawPointer) -> UnsafeMutableRawPointer?
+    #endif
 
-private var runnerCallback: CRunnerCallback {
-    return { arg in
-        let unmanaged: Unmanaged<BoxedClosure>
-        #if os(Linux)
-        unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg!)
-        #else
-        unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg)
-        #endif
-        unmanaged.takeUnretainedValue().f()
-        unmanaged.release()
-        return nil
+    static var runnerCallback: CRunnerCallback {
+        return { arg in
+            let unmanaged: Unmanaged<BoxedClosure>
+            #if os(Linux)
+            unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg!)
+            #else
+            unmanaged = Unmanaged<BoxedClosure>.fromOpaque(arg)
+            #endif
+            defer { unmanaged.release() }
+            unmanaged.takeUnretainedValue().f()
+
+            return nil
+        }
     }
 }

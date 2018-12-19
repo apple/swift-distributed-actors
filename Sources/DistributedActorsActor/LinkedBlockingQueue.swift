@@ -16,83 +16,98 @@ import NIO
 import NIOConcurrencyHelpers
 
 public final class LinkedBlockingQueue<A> {
-    public class Node<A> {
+    @usableFromInline
+    internal class Node<A> {
         var item: A?
+        @usableFromInline
         var next: Node<A>?
 
         public init(_ item: A?) {
             self.item = item
         }
     }
+    @usableFromInline
+    internal var producer: Node<A>
+    @usableFromInline
+    internal var consumer: Node<A>
+    @usableFromInline
+    internal let lock: Mutex = Mutex()
+    @usableFromInline
+    internal let notEmpty: Condition = Condition()
+    @usableFromInline
+    internal var count: Int = 0
 
-    private var producer: Node<A>
-    private var consumer: Node<A>
-    private let lock: Mutex = Mutex()
-    private let notEmpty: Condition = Condition()
-    private var count: Atomic<Int> = Atomic(value: 0)
 
     public init() {
-        producer = Node(nil)
-        consumer = producer
+        self.producer = Node(nil)
+        self.consumer = producer
     }
 
+    @inlinable
     public func enqueue(_ item: A) -> Void {
-        lock.synchronized {
+        self.lock.synchronized {
             let next = Node(item)
-            producer.next = next
-            producer = next
+            self.producer.next = next
+            self.producer = next
 
-            if count.add(1) == 0 {
-                notEmpty.signal()
+            if self.count == 0 {
+                self.notEmpty.signal()
             }
+
+            self.count += 1
         }
     }
 
+    @inlinable
     public func dequeue() -> A {
-        return lock.synchronized { () -> A in
+        return self.lock.synchronized { () -> A in
             while true {
-                if let elem = take() {
+                if let elem = self.take() {
                     return elem
                 }
-                notEmpty.wait(lock)
+                self.notEmpty.wait(self.lock)
             }
         }
     }
 
+    @inlinable
     public func clear() {
-        lock.synchronized {
-            while let _ = take() {}
-            self.count.store(0)
-            notEmpty.signalAll()
+        self.lock.synchronized {
+            while let _ = self.take() {}
+            self.count = 0
+            self.notEmpty.signalAll()
         }
     }
 
+    @inlinable
     public func poll(_ timeout: TimeAmount) -> A? {
-        return lock.synchronized { () -> A? in
-            if let item = take() {
+        return self.lock.synchronized { () -> A? in
+            if let item = self.take() {
                 return item
             }
 
-            guard notEmpty.wait(lock, amount: timeout) else {
+            guard self.notEmpty.wait(lock, amount: timeout) else {
                 return nil
             }
 
-            return take()
+            return self.take()
         }
     }
 
     // Helper function to actually take an element out of the queue.
     // This function is not synchronized and expects the caller to
     // already hold the lock.
-    private func take() -> A? {
-        if count.load() > 0 {
-            let newNext = consumer.next!
+    @usableFromInline
+    internal func take() -> A? {
+        if self.count > 0 {
+            let newNext = self.consumer.next!
             let res = newNext.item!
             newNext.item = nil
-            consumer.next = nil
-            consumer = newNext
-            if count.sub(1) > 1 {
-                notEmpty.signal()
+            self.consumer.next = nil
+            self.consumer = newNext
+            self.count -= 1
+            if self.count > 0 {
+                self.notEmpty.signal()
             }
             return res
         } else {
@@ -101,6 +116,8 @@ public final class LinkedBlockingQueue<A> {
     }
 
     public func size() -> Int {
-        return count.load()
+        return lock.synchronized {
+            return self.count
+        }
     }
 }

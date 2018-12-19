@@ -24,7 +24,7 @@ class StashBufferTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.shutdown()
+        try! system.terminate()
     }
 
     func test_stashMessages() throws {

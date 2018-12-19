@@ -39,7 +39,7 @@ public final class ActorSystem {
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
-    private let dispatcher: StoppableMessageDispatcher
+    private let dispatcher: InternalMessageDispatcher
 
     // Note: This differs from Akka, we do full separate trees here
     private let systemProvider: ActorRefProvider // TODO maybe we don't need this?
@@ -94,27 +94,17 @@ public final class ActorSystem {
         self.init("ActorSystem")
     }
 
-    // FIXME we don't do any hierarchy right now
 
+    // FIXME: make termination async and add an awaitable that signals completion of the termination
 
     /// Forcefully stops this actor system and all actors that live within.
-    public func shutdown() throws {
-        try userProvider.stop()
-        try systemProvider.stop()
-        try self.dispatcher.shutdown()
-    }
-
-    // TODO: should we depend on NIO already? I guess so hm they have the TimeAmount... Tho would be nice to split it out maybe
-    public func terminate(/* TimeAmount */) -> Awaitable {
-        // TODO: cause termination here
-        return whenTerminated()
-    }
-
+    ///
     /// - Warning: Blocks current thread until the system has terminated.
     ///            Do not call from within actors or you may deadlock shutting down the system.
-    public func whenTerminated() -> Awaitable {
-        // return Awaitable(underlyingLock: terminationLock)
-        return undefined() // FIXME: implement this
+    public func terminate() {
+        self.userProvider.stopAll()
+        self.systemProvider.stopAll()
+        self.dispatcher.shutdown()
     }
 }
 

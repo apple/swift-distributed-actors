@@ -211,58 +211,73 @@ internal class Guardian: ReceivesSystemMessages {
         switch message {
         case let .childTerminated(ref):
             lock.synchronized {
-                _ = children.removeChild(identifiedBy: ref.path)
-                if children.isEmpty {
-                    allChildrenRemoved.signalAll()
+                _ = self.children.removeChild(identifiedBy: ref.path)
+                // if we are stopping and all children have been stopped,
+                // we need to notify waiting threads about it
+                if self.stopping && self.children.isEmpty {
+                    self.allChildrenRemoved.signalAll()
                 }
             }
         default:
             CDungeon.sact_dump_backtrace()
-            fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
+            fatalError("The \(self.path) actor MUST NOT receive any messages. Yet received \(message)")
         }
     }
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(path)
+        return AnyHashable(self.path)
     }
 
     func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorRef<Message>) throws -> ActorRef<Message> {
-        return try lock.synchronized {
-            if stopping {
+        return try self.lock.synchronized {
+            if self.stopping {
                 throw ActorContextError.alreadyStopping
             }
 
-            if children.contains(name: path.name) {
+            if self.children.contains(name: path.name) {
                 throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
             }
 
             let ref = try spawn()
-            children.insert(ref)
+            self.children.insert(ref)
 
             return ref
         }
     }
 
     func stopChild(_ childRef: AnyReceivesSystemMessages) throws {
-        return try lock.synchronized {
-            guard children.contains(identifiedBy: childRef.path) else {
+        return try self.lock.synchronized {
+            guard self.children.contains(identifiedBy: childRef.path) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
 
-            if children.removeChild(identifiedBy: childRef.path) {
+            if self.children.removeChild(identifiedBy: childRef.path) {
                 childRef.sendSystemMessage(.stop)
             }
         }
     }
 
-    func stop() {
+    /// Stops all children and waits for them to signal termination
+    func stopAll() {
         lock.synchronized {
-            stopping = true
-            if !children.isEmpty {
-                children.forEach { $0.sendSystemMessage(.stop) }
-                allChildrenRemoved.wait(lock)
+            if self.children.isEmpty {
+                // if there are no children, we are done
+                self.stopping = true
+                return
+            } else if self.stopping {
+                // stopping has already been initiated, so we only have to wait
+                // for all children to be removed
+                self.allChildrenRemoved.wait(lock)
+                return
             }
+
+            // set stopping, so no new actors can be created
+            self.stopping = true
+
+            // tell all children to stop and wait for them to be stopped
+            self.children.forEach { $0.sendSystemMessage(.stop) }
+            self.allChildrenRemoved.wait(lock)
         }
     }
 }
