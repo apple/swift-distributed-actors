@@ -43,7 +43,7 @@ class SupervisionTests: XCTestCase {
     let system = ActorSystem("SupervisionTests")
 
     override func tearDown() {
-        try! system.terminate()
+        system.terminate()
     }
 
     func test_compile() throws {

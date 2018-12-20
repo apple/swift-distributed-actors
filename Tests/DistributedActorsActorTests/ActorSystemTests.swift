@@ -25,7 +25,7 @@ class ActorSystemTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.terminate()
+        system.terminate()
     }
 
     func test_spawn_shouldThrowOnDuplicateName() throws {

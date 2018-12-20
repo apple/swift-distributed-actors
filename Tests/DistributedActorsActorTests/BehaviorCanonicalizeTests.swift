@@ -23,7 +23,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.terminate()
+        system.terminate()
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
