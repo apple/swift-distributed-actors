@@ -43,6 +43,11 @@ public final class LinkedBlockingQueue<A> {
         self.consumer = producer
     }
 
+    /// Adds the given item to the back of the queue. If the queue was empty
+    /// before, waiting threads will be notified that a new element has been
+    /// added, so they can wake up and process that element.
+    ///
+    /// - Parameter item: The item to be added to the queue.
     @inlinable
     public func enqueue(_ item: A) -> Void {
         self.lock.synchronized {
@@ -58,6 +63,10 @@ public final class LinkedBlockingQueue<A> {
         }
     }
 
+    /// Removes the current head from the queue and returns it. If the queue
+    /// is empty, the call will block until an item is available.
+    ///
+    /// - Returns: The item at the head of the queue
     @inlinable
     public func dequeue() -> A {
         return self.lock.synchronized { () -> A in
@@ -70,6 +79,8 @@ public final class LinkedBlockingQueue<A> {
         }
     }
 
+    /// Removes all items from the queue, resets the count and signals all
+    /// waiting threads.
     @inlinable
     public func clear() {
         self.lock.synchronized {
@@ -79,6 +90,13 @@ public final class LinkedBlockingQueue<A> {
         }
     }
 
+    /// Removes the current head from the queue and returns it. If the queue
+    /// is empty, the call will block until an item is available or the timeout
+    /// is exceeded.
+    ///
+    /// - Parameter timeout: The maximum amount of time to wait for an item
+    ///                      in case the queue is empty.
+    /// - Returns: The head of the queue or nil, when the timeout is exceeded.
     @inlinable
     public func poll(_ timeout: TimeAmount) -> A? {
         return self.lock.synchronized { () -> A? in
