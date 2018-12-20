@@ -29,7 +29,7 @@ class DeathWatchTests: XCTestCase {
     }
 
     override func tearDown() {
-        try! system.terminate()
+        system.terminate()
     }
 
     // MARK: stopping actors

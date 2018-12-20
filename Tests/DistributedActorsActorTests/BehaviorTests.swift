@@ -23,7 +23,7 @@ class BehaviorTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        try! system.terminate()
+        system.terminate()
     }
 
     public struct TestMessage {
