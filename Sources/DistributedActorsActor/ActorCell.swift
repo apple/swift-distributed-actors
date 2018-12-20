@@ -164,7 +164,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
         try self.becomeNext(behavior: next)
-        return self.behavior.isStillAlive()
+
+        if !self.behavior.isStillAlive() {
+            children.forEach { $0.sendSystemMessage(.stop) }
+        }
+
+        return self.continueRunning
     }
 
     // MARK: Handling system messages
@@ -207,10 +212,16 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             return false
 
         case .stop:
+            children.forEach { $0.sendSystemMessage(.stop) }
             try self.becomeNext(behavior: .stopped)
         }
 
-        return self.behavior.isStillAlive()
+        return self.continueRunning
+    }
+
+    @usableFromInline
+    internal var continueRunning: Bool {
+        return self.behavior.isStillAlive() || self.children.nonEmpty
     }
 
     @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {

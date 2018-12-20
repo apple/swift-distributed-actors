@@ -32,6 +32,7 @@ class ParentChildActorTests: XCTestCase {
 
         case stopByName(name: String)
         case findByName(name: String)
+        case stop
     }
 
     typealias ChildRef = ActorRef<ChildProtocol>
@@ -39,6 +40,7 @@ class ParentChildActorTests: XCTestCase {
         case howAreYou(replyTo: ActorRef<String>)
         case fail
         case throwWhoops
+        case spawnChild(behavior: Behavior<ChildProtocol>, name: String)
     }
 
     typealias ParentChildProbeRef = ActorRef<ParentChildProbeProtocol>
@@ -58,6 +60,7 @@ class ParentChildActorTests: XCTestCase {
     func parentBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ParentProtocol> {
         return Behavior<ParentProtocol>.receive { context, message in
             switch message {
+            case .stop: return .stopped
             case let .spawnChild(behavior, name):
                 do {
                     let kid = try context.spawn(behavior, name: name)
@@ -99,7 +102,7 @@ class ParentChildActorTests: XCTestCase {
         }
     }
 
-    func childBehavior(probe: ParentChildProbeRef)  -> Behavior<ChildProtocol> {
+    func childBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ChildProtocol> {
         return .setup { context in
             context.log.info("Hello...")
 
@@ -112,6 +115,16 @@ class ParentChildActorTests: XCTestCase {
                     fatalError("Ohh no~!")
                 case .throwWhoops:
                     throw ChildError.whoops
+                case let .spawnChild(behavior, name):
+                    do {
+                        let kid = try context.spawn(behavior, name: name)
+                        if notifyWhenChildStops {
+                            context.watch(kid)
+                        }
+                        probe.tell(.spawned(child: kid))
+                    } catch let ActorContextError.duplicateActorPath(path) {
+                        probe.tell(.spawnFailed(path: path))
+                    } // bubble up others
                 }
                 return .same
             }
@@ -380,5 +393,27 @@ class ParentChildActorTests: XCTestCase {
         guard case let .childStopped(name) = try p.expectMessage() else { throw p.failure() }
 
         childRef.path.name.shouldEqual(name)
+    }
+
+    func test_stopParent_shouldWaitForChildrenToStop() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let parent = try system.spawn(parentBehavior(probe: p.ref), name: "parent")
+        parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "child"))
+        p.watch(parent)
+
+        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.failure() }
+        p.watch(childRef)
+
+        childRef.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "grandchild"))
+
+        guard case let .spawned(grandchildRef) = try p.expectMessage() else { throw p.failure() }
+        p.watch(grandchildRef)
+
+        parent.tell(.stop)
+
+        try p.expectTerminated(grandchildRef)
+        try p.expectTerminated(childRef)
+        try p.expectTerminated(parent)
     }
 }

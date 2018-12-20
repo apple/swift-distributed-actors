@@ -69,10 +69,9 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        try system2.terminate()
+        system2.terminate()
 
-        try p.expectTerminated(ref1)
-        try p.expectTerminated(ref2)
+        try p.expectTerminatedAnyOrder([ref1, ref2])
 
         ref1.tell("ref1")
         ref2.tell("ref2")
@@ -92,7 +91,7 @@ class ActorSystemTests: XCTestCase {
 
         p.watch(selfSender)
 
-        try system2.terminate()
+        system2.terminate()
 
         try p.expectTerminated(selfSender)
     }

@@ -49,7 +49,7 @@ public struct Children {
 
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
-        guard let boxedChild = container[name] else {
+        guard let boxedChild = self.container[name] else {
             return nil
         }
 
@@ -65,7 +65,7 @@ public struct Children {
     ///
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
-        return container.keys.contains(name)
+        return self.container.keys.contains(name)
     }
     /// Precise contains function, which checks if this children container contains the specific actor
     /// identified by the passed in path.
@@ -83,21 +83,28 @@ public struct Children {
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
     @usableFromInline
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
-        if let ref = container[path.name] {
+        if let ref = self.container[path.name] {
             if ref.path.uid == path.uid {
-                return container.removeValue(forKey: path.name) != nil
+                return self.container.removeValue(forKey: path.name) != nil
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
 
         return false
     }
 
+    @usableFromInline
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
-        try container.values.forEach(body)
+        try self.container.values.forEach(body)
     }
 
+    @usableFromInline
     internal var isEmpty: Bool {
-        return container.isEmpty
+        return self.container.isEmpty
+    }
+
+    @usableFromInline
+    internal var nonEmpty: Bool {
+        return !self.isEmpty
     }
 }
 
