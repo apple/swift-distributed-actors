@@ -25,26 +25,28 @@ public final class MPSCLinkedQueue<A> {
         cmpsc_linked_queue_destroy(q)
     }
 
+    /// Adds the given item to the end of the queue. This operation is atomic,
+    /// wait free, and will always succeed.
+    ///
+    /// - Parameter item: The item to be added to the queue
     @inlinable
     public func enqueue(_ item: A) -> Void {
-        // When using this, A has to be constrained to AnyObject, but
-        // performance is better
-        //
-        // let unmanaged = Unmanaged<A>.passRetained(item)
-
         let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
         ptr.initialize(to: item)
         cmpsc_linked_queue_enqueue(q, ptr)
     }
 
+    /// Removes the current head from the queue and returns it. This operation
+    /// is only safe to be called from a single thread, but can be called
+    /// concurrently with any number of calls to `enqueue`. This operation
+    /// is lock-free, but not wait-free. If a new item has been added to the
+    /// queue, but is not connected yet, this call will spin until the item
+    /// is visible.
+    ///
+    /// - Returns: The head of the queue if it is non-empty, nil otherwise.
     @inlinable
     public func dequeue() -> A? {
         if let p = cmpsc_linked_queue_dequeue(q) {
-            // When using this, A has to be constrained to AnyObject, but
-            // performance is better
-            //
-            // return Unmanaged<A>.fromOpaque(p).takeRetainedValue()
-
             let ptr = p.assumingMemoryBound(to: A.self)
             defer {
                 ptr.deallocate()
@@ -55,12 +57,20 @@ public final class MPSCLinkedQueue<A> {
         return nil
     }
 
+    /// Checks whether this queue is empty. This is safe to be called from any
+    /// any thread.
+    ///
+    /// - Returns: `true` if the queue is empty, `false` otherwise.
     @inlinable
     public func isEmpty() -> Bool {
         return cmpsc_linked_queue_is_empty(q) != 0
     }
 
-    @inline(__always)
+    /// Checks whether this queue is non-empty. This is safe to be called from
+    /// any thread
+    ///
+    /// - Returns: `false` if the queue is empty, `true` otherwise.
+    @inlinable
     public func nonEmpty() -> Bool {
         return !isEmpty()
     }
