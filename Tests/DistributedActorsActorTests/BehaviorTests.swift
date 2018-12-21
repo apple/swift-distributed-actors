@@ -213,7 +213,7 @@ class BehaviorTests: XCTestCase {
         for i in (0...100).reversed() {
             behavior = Behavior<Int>.receiveMessage { message in
                 if message == i {
-                    p.tell(i)
+                    p.tell(-i)
                     return .same
                 } else {
                     return .unhandled
@@ -224,9 +224,9 @@ class BehaviorTests: XCTestCase {
         let ref = try system.spawnAnonymous(behavior)
 
         ref.tell(50)
-        try p.expectMessage(50)
+        try p.expectMessage(-50)
 
-        p.tell(-255)
-        try p.expectMessage(-255)
+        p.tell(255)
+        try p.expectMessage(255)
     }
 }

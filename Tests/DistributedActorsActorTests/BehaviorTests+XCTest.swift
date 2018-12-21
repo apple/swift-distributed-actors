@@ -32,6 +32,7 @@ extension BehaviorTests {
                 ("test_orElse_shouldExecuteFirstBehavior", test_orElse_shouldExecuteFirstBehavior),
                 ("test_orElse_shouldExecuteSecondBehavior", test_orElse_shouldExecuteSecondBehavior),
                 ("test_orElse_shouldNotExecuteSecondBehaviorOnIgnore", test_orElse_shouldNotExecuteSecondBehaviorOnIgnore),
+                ("test_orElse_shouldProperlyHandleDeeplyNestedBehaviors", test_orElse_shouldProperlyHandleDeeplyNestedBehaviors),
            ]
    }
 }
