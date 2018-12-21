@@ -73,6 +73,10 @@ public enum Behavior<Message> {
     /// Returning `ignore` implies remaining the same behavior, the same way as would returning `.same`.
     case ignore
 
+    /// Combines two partial behaviors. If the first behavior returns `.unhandled`, the second will be called
+    /// with the unhandled message.
+    indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
+
 //  /// Apply given supervision to behavior
 //  /// TODO: more docs
 //  indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO: I assume this causes us to lose all benefits of being an enum? since `indirect`
@@ -92,7 +96,7 @@ public enum Behavior<Message> {
 extension Behavior {
 
     public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
-        return TODO("Not implemented yet:: orElse")
+        return .orElse(first: self, second: alternativeBehavior)
     }
 
     public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
@@ -141,6 +145,12 @@ internal extension Behavior {
         case let .custom(behavior):           return behavior.receive(context: context, message: message)
         case let .signalHandling(recvMsg, _): return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case .stopped:                        return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
+        case let .orElse(first, second):
+            var nextBehavior = try first.interpretMessage(context: context, message: message)
+            if nextBehavior.isUnhandled() {
+                nextBehavior = try second.interpretMessage(context: context, message: message)
+            }
+            return nextBehavior
         default:                              return TODO("NOT IMPLEMENTED YET: handling of: \(self)")
         }
     }
