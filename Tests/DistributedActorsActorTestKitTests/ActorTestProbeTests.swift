@@ -22,7 +22,7 @@ class ActorTestProbeTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        // Await.on(system.terminate())
+        system.terminate()
     }
 
     func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
