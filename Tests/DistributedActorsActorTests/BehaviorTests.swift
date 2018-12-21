@@ -202,4 +202,31 @@ class BehaviorTests: XCTestCase {
         ref.tell(.other)
         try p.expectNoMessage(for: .milliseconds(100))
     }
+
+    func test_orElse_shouldProperlyHandleDeeplyNestedBehaviors() throws {
+        let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        var behavior: Behavior<Int> = .receiveMessage { message in
+            p.tell(message)
+            return .same
+        }
+
+        for i in (0...100).reversed() {
+            behavior = Behavior<Int>.receiveMessage { message in
+                if message == i {
+                    p.tell(i)
+                    return .same
+                } else {
+                    return .unhandled
+                }
+            }.orElse(behavior)
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell(50)
+        try p.expectMessage(50)
+
+        p.tell(-255)
+        try p.expectMessage(-255)
+    }
 }

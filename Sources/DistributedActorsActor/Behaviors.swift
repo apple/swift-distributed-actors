@@ -73,8 +73,10 @@ public enum Behavior<Message> {
     /// Returning `ignore` implies remaining the same behavior, the same way as would returning `.same`.
     case ignore
 
-    /// Combines two partial behaviors. If the first behavior returns `.unhandled`, the second will be called
-    /// with the unhandled message.
+    /// An incoming message or signal is first applied to the `first` behavior,
+    /// and if it returns `Behavior.unhandled` the second behavior is invoked.
+    ///
+    /// The orElse behavior may be used to arbitrarily deeply nest such alternatives.
     indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
 
 //  /// Apply given supervision to behavior
