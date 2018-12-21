@@ -35,7 +35,7 @@ class BehaviorTests: XCTestCase {
         let p = testKit.spawnTestProbe(name: "testActor-1", expecting: String.self)
 
         let message = "EHLO"
-        let _: ActorRef<String> = try! system.spawnAnonymous(.setup { context in
+        let _: ActorRef<String> = try system.spawnAnonymous(.setup { context in
             p.tell(message)
             return .stopped
         })
@@ -148,9 +148,58 @@ class BehaviorTests: XCTestCase {
         }
     }
 
-    func test_expectNoMessage() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
+    enum OrElseProtocol {
+        case first
+        case second
+        case other
+    }
 
+    func firstBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+        return .receiveMessage { message in
+            switch message {
+            case .first:
+                probe.tell(.first)
+                return .same
+            case .second:
+                return .unhandled
+            default:
+                return .ignore
+            }
+        }
+    }
+
+    func secondBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+        return .receiveMessage { message in
+            probe.tell(message)
+            return .same
+        }
+    }
+
+    func combinedBehavior(_ probe: ActorRef<OrElseProtocol>) -> Behavior<OrElseProtocol> {
+        return firstBehavior(probe).orElse(secondBehavior(probe))
+    }
+
+    func test_orElse_shouldExecuteFirstBehavior() throws {
+        let p: ActorTestProbe<OrElseProtocol> = testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseProtocol> = try system.spawnAnonymous(combinedBehavior(p.ref))
+
+        ref.tell(.first)
+        try p.expectMessage(.first)
+    }
+
+    func test_orElse_shouldExecuteSecondBehavior() throws {
+        let p: ActorTestProbe<OrElseProtocol> = testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseProtocol> = try system.spawnAnonymous(combinedBehavior(p.ref))
+
+        ref.tell(.second)
+        try p.expectMessage(.second)
+    }
+
+    func test_orElse_shouldNotExecuteSecondBehaviorOnIgnore() throws {
+        let p: ActorTestProbe<OrElseProtocol> = testKit.spawnTestProbe()
+        let ref: ActorRef<OrElseProtocol> = try system.spawnAnonymous(combinedBehavior(p.ref))
+
+        ref.tell(.other)
         try p.expectNoMessage(for: .milliseconds(100))
     }
 }
