@@ -379,7 +379,7 @@ extension ActorTestProbe {
     ///
     /// - Warning: Remember to first `watch` the actora you are expecting termination for,
     ///            otherwise the termination signal will never be received.
-    public func expectTerminatedAnyOrder(_ refs: [AnyAddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectTerminatedInAnyOrder(_ refs: [AnyAddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var pathSet: Set<UniqueActorPath> = Set(refs.map { $0.path })
 
