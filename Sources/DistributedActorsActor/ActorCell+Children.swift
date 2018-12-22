@@ -37,9 +37,11 @@ public struct Children {
     // as well as actor tree traversal.
     typealias Name = String
     private var container: [Name: BoxedHashableAnyReceivesSystemMessages]
+    private var stopping: [UniqueActorPath: BoxedHashableAnyReceivesSystemMessages]
 
     public init() {
         self.container = [:]
+        self.stopping = [:]
     }
 
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
@@ -82,10 +84,25 @@ public struct Children {
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
     /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
     @usableFromInline
+    @discardableResult
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let ref = self.container[path.name] {
             if ref.path.uid == path.uid {
                 return self.container.removeValue(forKey: path.name) != nil
+            } // else we either tried to remove a child twice, or it was not our child so nothing to remove
+        }
+
+        return self.stopping.removeValue(forKey: path) != nil
+    }
+
+    @usableFromInline
+    @discardableResult
+    internal mutating func markStopping(identifiedBy path: UniqueActorPath) -> Bool {
+        if let ref = self.container[path.name] {
+            if ref.path.uid == path.uid {
+                self.container.removeValue(forKey: path.name)
+                self.stopping[path] = ref
+                return true
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
 
@@ -99,7 +116,7 @@ public struct Children {
 
     @usableFromInline
     internal var isEmpty: Bool {
-        return self.container.isEmpty
+        return self.container.isEmpty && self.stopping.isEmpty
     }
 
     @usableFromInline
@@ -164,7 +181,7 @@ extension ActorCell: ChildActorRefFactory {
             }
         }
 
-        if self.children.removeChild(identifiedBy: ref.path) {
+        if self.children.markStopping(identifiedBy: ref.path) {
             ref._downcastUnsafe.sendSystemMessage(.stop)
         }
     }
