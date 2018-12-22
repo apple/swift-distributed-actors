@@ -60,7 +60,7 @@ public struct ActorLogger: Logger {
     public init<T>(_ context: ActorContext<T>) {
         self.init(LoggingContext(
             name: context.path.description,
-            dispatcher: { () in context.dispatcher.name }
+            dispatcher: { [weak ctx = context] in ctx?.dispatcher.name ?? "unknown" }
         ))
     }
 
