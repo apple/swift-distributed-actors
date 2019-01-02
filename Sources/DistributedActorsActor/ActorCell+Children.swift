@@ -82,7 +82,7 @@ public struct Children {
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
-    /// Returns: `true` upon successful removal and the the passed in ref was indeed a child of this actor, `false` otherwise
+    /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
@@ -95,9 +95,11 @@ public struct Children {
         return self.stopping.removeValue(forKey: path) != nil
     }
 
+    /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
+    /// Returns: `true` upon successfulky marking the ref identified by passed in path as stopping
     @usableFromInline
     @discardableResult
-    internal mutating func markStopping(identifiedBy path: UniqueActorPath) -> Bool {
+    internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let ref = self.container[path.name] {
             if ref.path.uid == path.uid {
                 self.container.removeValue(forKey: path.name)
@@ -181,7 +183,7 @@ extension ActorCell: ChildActorRefFactory {
             }
         }
 
-        if self.children.markStopping(identifiedBy: ref.path) {
+        if self.children.markAsStoppingChild(identifiedBy: ref.path) {
             ref._downcastUnsafe.sendSystemMessage(.stop)
         }
     }
