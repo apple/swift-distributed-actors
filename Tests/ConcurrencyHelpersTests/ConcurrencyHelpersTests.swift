@@ -69,6 +69,19 @@ class ConcurrencyHelpersTests: XCTestCase {
         XCTAssertTrue(ab.compareAndExchange(expected: false, desired: true))
     }
 
+    func testCompareAndExchangeWeakBool() {
+        let ab = Atomic<Bool>(value: true)
+
+        XCTAssertFalse(ab.compareAndExchangeWeak(expected: false, desired: false))
+        XCTAssertTrue(ab.compareAndExchangeWeak(expected: true, desired: true))
+
+        XCTAssertFalse(ab.compareAndExchangeWeak(expected: false, desired: false))
+        XCTAssertTrue(ab.compareAndExchangeWeak(expected: true, desired: false))
+
+        XCTAssertTrue(ab.compareAndExchangeWeak(expected: false, desired: false))
+        XCTAssertTrue(ab.compareAndExchangeWeak(expected: false, desired: true))
+    }
+
     func testAllOperationsBool() {
         let ab = Atomic<Bool>(value: false)
         XCTAssertEqual(false, ab.load())
@@ -83,6 +96,10 @@ class ConcurrencyHelpersTests: XCTestCase {
         XCTAssertEqual(false, ab.exchange(with: false))
         XCTAssertTrue(ab.compareAndExchange(expected: false, desired: true))
         XCTAssertFalse(ab.compareAndExchange(expected: false, desired: true))
+        XCTAssertTrue(ab.and(false))
+        XCTAssertFalse(ab.or(true))
+        XCTAssertTrue(ab.xor(true))
+        XCTAssertFalse(ab.load())
     }
 
     func testCompareAndExchangeUInts() {
@@ -115,6 +132,36 @@ class ConcurrencyHelpersTests: XCTestCase {
         testFor(UInt.self)
     }
 
+    func testCompareAndExchangeWeakUInts() {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & UnsignedInteger>(_ value: T.Type) {
+            let zero: T = 0
+            let max = ~zero
+
+            let ab = Atomic<T>(value: max)
+
+            XCTAssertFalse(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: max, desired: max))
+
+            XCTAssertFalse(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: max, desired: zero))
+
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: max))
+
+            var counter = max
+            for _ in 0..<255 {
+                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter-1))
+                counter = counter - 1
+            }
+        }
+
+        testFor(UInt8.self)
+        testFor(UInt16.self)
+        testFor(UInt32.self)
+        testFor(UInt64.self)
+        testFor(UInt.self)
+    }
+
     func testCompareAndExchangeInts() {
         func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_ value: T.Type) {
             let zero: T = 0
@@ -135,6 +182,37 @@ class ConcurrencyHelpersTests: XCTestCase {
             for _ in 0..<255 {
                 XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter-1))
                 XCTAssertFalse(ab.compareAndExchange(expected: counter, desired: counter))
+                counter = counter - 1
+            }
+        }
+
+        testFor(Int8.self)
+        testFor(Int16.self)
+        testFor(Int32.self)
+        testFor(Int64.self)
+        testFor(Int.self)
+    }
+
+    func testCompareAndExchangeWeakInts() {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_ value: T.Type) {
+            let zero: T = 0
+            let upperBound: T = 127
+
+            let ab = Atomic<T>(value: upperBound)
+
+            XCTAssertFalse(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: upperBound, desired: upperBound))
+
+            XCTAssertFalse(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: upperBound, desired: zero))
+
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: zero))
+            XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: upperBound))
+
+            var counter = upperBound
+            for _ in 0..<255 {
+                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter-1))
+                XCTAssertFalse(ab.compareAndExchangeWeak(expected: counter, desired: counter))
                 counter = counter - 1
             }
         }
