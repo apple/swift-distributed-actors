@@ -14,7 +14,7 @@
 
 import Foundation
 @testable import Swift Distributed ActorsActor
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import NIO // TODO: feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 

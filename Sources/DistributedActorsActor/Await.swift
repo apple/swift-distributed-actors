@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 
 public class Awaitable {
     fileprivate let underlyingLock: Lock

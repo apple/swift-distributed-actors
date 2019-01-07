@@ -14,12 +14,16 @@ header_start = %{//===----------------------------------------------------------
 //
 }
 
-puts header_start
-
 violations = []
 
+excludes = [
+    "Sources/ConcurrencyHelpers",
+    "Sources/CAtomics",
+    "Tests/ConcurrencyHelpersTests"
+]
+
 new_files.each do |file|
-  unless `head -4 #{file}` == header_start
+  unless `head -4 #{file}` == header_start || excludes.find { |exclude| file.start_with? exclude }
     violations << file
   end
 end

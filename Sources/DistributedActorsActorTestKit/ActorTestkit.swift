@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import Swift Distributed ActorsActor
 
 import XCTest

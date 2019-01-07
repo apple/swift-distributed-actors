@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import Dispatch // TODO: abstract away depending on it here somehow, we only want "the scheduler that we have"
 
 // FIXME: this is very rough and needs a reimpl with a proper "scheduler" abstraction

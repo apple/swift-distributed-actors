@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import NIOConcurrencyHelpers
 
 public final class LinkedBlockingQueue<A> {
     @usableFromInline
