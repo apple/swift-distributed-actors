@@ -22,6 +22,7 @@ import XCTest
 
 #if os(Linux) || os(FreeBSD)
    @testable import CQueueTests
+   @testable import DistributedActorsConcurrencyHelpersTests
    @testable import SwiftDistributedActorsActorTestKitTests
    @testable import Swift Distributed ActorsActorTests
 
@@ -37,6 +38,7 @@ import XCTest
          testCase(BehaviorTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),
          testCase(CMailboxTests.allTests),
+         testCase(ConcurrencyHelpersTests.allTests),
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
