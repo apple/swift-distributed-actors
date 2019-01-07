@@ -89,6 +89,45 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
         return T.atomic_sub(self.value, rhs)
     }
 
+    /// Atomically execute a bitwise `and` with `rhs` on this object.
+    ///
+    /// This implementation uses a *relaxed* memory ordering. This guarantees nothing
+    /// more than that this operation is atomic: there is no guarantee that any other
+    /// event will be ordered before or after this one.
+    ///
+    /// - Parameter rhs: The value to `and` this object with.
+    /// - Returns: The previous value of this object, before the `and` occurred.
+    @inlinable
+    public func and(_ rhs: T) -> T {
+        return T.atomic_and(self.value, rhs)
+    }
+
+    /// Atomically execute a bitwise `or` with `rhs` on this object.
+    ///
+    /// This implementation uses a *relaxed* memory ordering. This guarantees nothing
+    /// more than that this operation is atomic: there is no guarantee that any other
+    /// event will be ordered before or after this one.
+    ///
+    /// - Parameter rhs: The value to `or` this object with.
+    /// - Returns: The previous value of this object, before the `or` occurred.
+    @inlinable
+    public func or(_ rhs: T) -> T {
+        return T.atomic_or(self.value, rhs)
+    }
+
+    /// Atomically execute a bitwise `xor` with `rhs` on this object.
+    ///
+    /// This implementation uses a *relaxed* memory ordering. This guarantees nothing
+    /// more than that this operation is atomic: there is no guarantee that any other
+    /// event will be ordered before or after this one.
+    ///
+    /// - Parameter rhs: The value to `xor` this object with.
+    /// - Returns: The previous value of this object, before the `xor` occurred.
+    @inlinable
+    public func xor(_ rhs: T) -> T {
+        return T.atomic_xor(self.value, rhs)
+    }
+
     /// Atomically exchanges `value` for the current value of this object.
     ///
     /// This implementation uses a *relaxed* memory ordering. This guarantees nothing
@@ -209,6 +248,21 @@ public final class Atomic<T: AtomicPrimitive> {
         return self.embedded.sub(rhs)
     }
 
+    @inlinable
+    public func and(_ rhs: T) -> T {
+        return self.embedded.and(rhs)
+    }
+
+    @inlinable
+    public func or(_ rhs: T) -> T {
+        return self.embedded.or(rhs)
+    }
+
+    @inlinable
+    public func xor(_ rhs: T) -> T {
+        return self.embedded.xor(rhs)
+    }
+
     /// Atomically exchanges `value` for the current value of this object.
     ///
     /// This implementation uses a *relaxed* memory ordering. This guarantees nothing
@@ -262,6 +316,9 @@ public protocol AtomicPrimitive {
     static var atomic_compare_and_exchange: (OpaquePointer, Self, Self) -> Bool { get }
     static var atomic_add: (OpaquePointer, Self) -> Self { get }
     static var atomic_sub: (OpaquePointer, Self) -> Self { get }
+    static var atomic_and: (OpaquePointer, Self) -> Self { get }
+    static var atomic_or: (OpaquePointer, Self) -> Self { get }
+    static var atomic_xor: (OpaquePointer, Self) -> Self { get }
     static var atomic_exchange: (OpaquePointer, Self) -> Self { get }
     static var atomic_load: (OpaquePointer) -> Self { get }
     static var atomic_store: (OpaquePointer, Self) -> Void { get }
@@ -273,6 +330,9 @@ extension Bool: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic__Bool_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic__Bool_add
     public static let atomic_sub                  = __catmc_atomic__Bool_sub
+    public static let atomic_and                  = __catmc_atomic__Bool_and
+    public static let atomic_or                   = __catmc_atomic__Bool_or
+    public static let atomic_xor                  = __catmc_atomic__Bool_xor
     public static let atomic_exchange             = __catmc_atomic__Bool_exchange
     public static let atomic_load                 = __catmc_atomic__Bool_load
     public static let atomic_store                = __catmc_atomic__Bool_store
@@ -284,6 +344,9 @@ extension Int8: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_int_least8_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_int_least8_t_add
     public static let atomic_sub                  = __catmc_atomic_int_least8_t_sub
+    public static let atomic_and                  = __catmc_atomic_int_least8_t_and
+    public static let atomic_or                   = __catmc_atomic_int_least8_t_or
+    public static let atomic_xor                  = __catmc_atomic_int_least8_t_xor
     public static let atomic_exchange             = __catmc_atomic_int_least8_t_exchange
     public static let atomic_load                 = __catmc_atomic_int_least8_t_load
     public static let atomic_store                = __catmc_atomic_int_least8_t_store
@@ -295,6 +358,9 @@ extension UInt8: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_uint_least8_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_uint_least8_t_add
     public static let atomic_sub                  = __catmc_atomic_uint_least8_t_sub
+    public static let atomic_and                  = __catmc_atomic_uint_least8_t_and
+    public static let atomic_or                   = __catmc_atomic_uint_least8_t_or
+    public static let atomic_xor                  = __catmc_atomic_uint_least8_t_xor
     public static let atomic_exchange             = __catmc_atomic_uint_least8_t_exchange
     public static let atomic_load                 = __catmc_atomic_uint_least8_t_load
     public static let atomic_store                = __catmc_atomic_uint_least8_t_store
@@ -306,6 +372,9 @@ extension Int16: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_int_least16_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_int_least16_t_add
     public static let atomic_sub                  = __catmc_atomic_int_least16_t_sub
+    public static let atomic_and                  = __catmc_atomic_int_least16_t_and
+    public static let atomic_or                   = __catmc_atomic_int_least16_t_or
+    public static let atomic_xor                  = __catmc_atomic_int_least16_t_xor
     public static let atomic_exchange             = __catmc_atomic_int_least16_t_exchange
     public static let atomic_load                 = __catmc_atomic_int_least16_t_load
     public static let atomic_store                = __catmc_atomic_int_least16_t_store
@@ -317,6 +386,9 @@ extension UInt16: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_uint_least16_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_uint_least16_t_add
     public static let atomic_sub                  = __catmc_atomic_uint_least16_t_sub
+    public static let atomic_and                  = __catmc_atomic_uint_least16_t_and
+    public static let atomic_or                   = __catmc_atomic_uint_least16_t_or
+    public static let atomic_xor                  = __catmc_atomic_uint_least16_t_xor
     public static let atomic_exchange             = __catmc_atomic_uint_least16_t_exchange
     public static let atomic_load                 = __catmc_atomic_uint_least16_t_load
     public static let atomic_store                = __catmc_atomic_uint_least16_t_store
@@ -328,6 +400,9 @@ extension Int32: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_int_least32_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_int_least32_t_add
     public static let atomic_sub                  = __catmc_atomic_int_least32_t_sub
+    public static let atomic_and                  = __catmc_atomic_int_least32_t_and
+    public static let atomic_or                   = __catmc_atomic_int_least32_t_or
+    public static let atomic_xor                  = __catmc_atomic_int_least32_t_xor
     public static let atomic_exchange             = __catmc_atomic_int_least32_t_exchange
     public static let atomic_load                 = __catmc_atomic_int_least32_t_load
     public static let atomic_store                = __catmc_atomic_int_least32_t_store
@@ -339,6 +414,9 @@ extension UInt32: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_uint_least32_t_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_uint_least32_t_add
     public static let atomic_sub                  = __catmc_atomic_uint_least32_t_sub
+    public static let atomic_and                  = __catmc_atomic_uint_least32_t_and
+    public static let atomic_or                   = __catmc_atomic_uint_least32_t_or
+    public static let atomic_xor                  = __catmc_atomic_uint_least32_t_xor
     public static let atomic_exchange             = __catmc_atomic_uint_least32_t_exchange
     public static let atomic_load                 = __catmc_atomic_uint_least32_t_load
     public static let atomic_store                = __catmc_atomic_uint_least32_t_store
@@ -350,6 +428,9 @@ extension Int64: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_long_long_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_long_long_add
     public static let atomic_sub                  = __catmc_atomic_long_long_sub
+    public static let atomic_and                  = __catmc_atomic_long_long_and
+    public static let atomic_or                   = __catmc_atomic_long_long_or
+    public static let atomic_xor                  = __catmc_atomic_long_long_xor
     public static let atomic_exchange             = __catmc_atomic_long_long_exchange
     public static let atomic_load                 = __catmc_atomic_long_long_load
     public static let atomic_store                = __catmc_atomic_long_long_store
@@ -361,6 +442,9 @@ extension UInt64: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_unsigned_long_long_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_unsigned_long_long_add
     public static let atomic_sub                  = __catmc_atomic_unsigned_long_long_sub
+    public static let atomic_and                  = __catmc_atomic_unsigned_long_long_and
+    public static let atomic_or                   = __catmc_atomic_unsigned_long_long_or
+    public static let atomic_xor                  = __catmc_atomic_unsigned_long_long_xor
     public static let atomic_exchange             = __catmc_atomic_unsigned_long_long_exchange
     public static let atomic_load                 = __catmc_atomic_unsigned_long_long_load
     public static let atomic_store                = __catmc_atomic_unsigned_long_long_store
@@ -372,6 +456,9 @@ extension Int: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_long_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_long_add
     public static let atomic_sub                  = __catmc_atomic_long_sub
+    public static let atomic_and                  = __catmc_atomic_long_and
+    public static let atomic_or                   = __catmc_atomic_long_or
+    public static let atomic_xor                  = __catmc_atomic_long_xor
     public static let atomic_exchange             = __catmc_atomic_long_exchange
     public static let atomic_load                 = __catmc_atomic_long_load
     public static let atomic_store                = __catmc_atomic_long_store
@@ -383,10 +470,15 @@ extension UInt: AtomicPrimitive {
     public static let atomic_compare_and_exchange = __catmc_atomic_unsigned_long_compare_and_exchange
     public static let atomic_add                  = __catmc_atomic_unsigned_long_add
     public static let atomic_sub                  = __catmc_atomic_unsigned_long_sub
+    public static let atomic_and                  = __catmc_atomic_unsigned_long_and
+    public static let atomic_or                   = __catmc_atomic_unsigned_long_or
+    public static let atomic_xor                  = __catmc_atomic_unsigned_long_xor
     public static let atomic_exchange             = __catmc_atomic_unsigned_long_exchange
     public static let atomic_load                 = __catmc_atomic_unsigned_long_load
     public static let atomic_store                = __catmc_atomic_unsigned_long_store
 }
+
+
 
 /// `AtomicBox` is a heap-allocated box which allows atomic access to an instance of a Swift class.
 ///

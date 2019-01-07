@@ -91,7 +91,20 @@ void __catmc_atomic_flag_destroy(struct __catmc_atomic_flag *flag) {
 */ /*
 */ void __catmc_atomic_##type##_store(struct __catmc_atomic_##type *wrapper, type value) { /*
 */     atomic_store_explicit(&wrapper->value, value, memory_order_relaxed); /*
+*/ } /*
+*/ /*
+*/ type __catmc_atomic_##type##_and(struct __catmc_atomic_##type *wrapper, type value) { /*
+*/     return atomic_fetch_and_explicit(&wrapper->value, value, memory_order_relaxed); /*
+*/ } /*
+*/ /*
+*/ type __catmc_atomic_##type##_or(struct __catmc_atomic_##type *wrapper, type value) { /*
+*/     return atomic_fetch_or_explicit(&wrapper->value, value, memory_order_relaxed); /*
+*/ } /*
+*/ /*
+*/ type __catmc_atomic_##type##_xor(struct __catmc_atomic_##type *wrapper, type value) { /*
+*/     return atomic_fetch_xor_explicit(&wrapper->value, value, memory_order_relaxed); /*
 */ }
+
 
 typedef signed char signed_char;
 typedef signed short signed_short;

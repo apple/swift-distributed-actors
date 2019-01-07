@@ -31,9 +31,9 @@ import Glibc
 #endif
 import Dispatch
 import XCTest
-@testable import NIOConcurrencyHelpers
+@testable import DistributedActorsConcurrencyHelpers
 
-class NIOConcurrencyHelpersTests: XCTestCase {
+class ConcurrencyHelpersTests: XCTestCase {
     private func sumOfIntegers(until n: UInt64) -> UInt64 {
         return n*(n+1)/2
     }
@@ -44,7 +44,7 @@ class NIOConcurrencyHelpersTests: XCTestCase {
 
         let q = DispatchQueue(label: "q", attributes: .concurrent)
         let g = DispatchGroup()
-        let ai = NIOConcurrencyHelpers.Atomic<UInt64>(value: 0)
+        let ai = ConcurrencyHelpers.Atomic<UInt64>(value: 0)
         for thread in 1...noAsyncs {
             q.async(group: g) {
                 for _ in 0..<noCounts {
@@ -162,6 +162,76 @@ class NIOConcurrencyHelpersTests: XCTestCase {
             XCTAssertEqual(42, ab.sub(41))
             XCTAssertEqual(1, ab.sub(1))
 
+            XCTAssertEqual(0, ab.load())
+        }
+
+        testFor(Int8.self)
+        testFor(Int16.self)
+        testFor(Int32.self)
+        testFor(Int64.self)
+        testFor(Int.self)
+        testFor(UInt8.self)
+        testFor(UInt16.self)
+        testFor(UInt32.self)
+        testFor(UInt64.self)
+        testFor(UInt.self)
+    }
+
+    func testAnd() {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+            let initial: T = 0b00001111
+
+            let ab = Atomic<T>(value: initial)
+
+            XCTAssertEqual(initial, ab.and(initial))
+            XCTAssertEqual(initial, ab.and(0b11110000))
+            XCTAssertEqual(0, ab.load())
+        }
+
+        testFor(Int8.self)
+        testFor(Int16.self)
+        testFor(Int32.self)
+        testFor(Int64.self)
+        testFor(Int.self)
+        testFor(UInt8.self)
+        testFor(UInt16.self)
+        testFor(UInt32.self)
+        testFor(UInt64.self)
+        testFor(UInt.self)
+    }
+
+    func testOr() {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+            let initial: T = 0b00001111
+
+            let ab = Atomic<T>(value: initial)
+
+            XCTAssertEqual(initial, ab.or(initial))
+            XCTAssertEqual(initial, ab.or(0b11110000))
+            XCTAssertEqual(0b11111111, ab.load())
+        }
+
+        testFor(Int8.self)
+        testFor(Int16.self)
+        testFor(Int32.self)
+        testFor(Int64.self)
+        testFor(Int.self)
+        testFor(UInt8.self)
+        testFor(UInt16.self)
+        testFor(UInt32.self)
+        testFor(UInt64.self)
+        testFor(UInt.self)
+    }
+
+    func testXor() {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+            let initial: T = 0b00001111
+
+            let ab = Atomic<T>(value: initial)
+
+            XCTAssertEqual(initial, ab.xor(0b11110000))
+            XCTAssertEqual(0b11111111, ab.xor(0b11110000))
+            XCTAssertEqual(initial, ab.xor(initial))
             XCTAssertEqual(0, ab.load())
         }
 
