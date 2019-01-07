@@ -39,9 +39,12 @@ extension ConcurrencyHelpersTests {
       return [
                 ("testLargeContendedAtomicSum", testLargeContendedAtomicSum),
                 ("testCompareAndExchangeBool", testCompareAndExchangeBool),
+                ("testCompareAndExchangeWeakBool", testCompareAndExchangeWeakBool),
                 ("testAllOperationsBool", testAllOperationsBool),
                 ("testCompareAndExchangeUInts", testCompareAndExchangeUInts),
+                ("testCompareAndExchangeWeakUInts", testCompareAndExchangeWeakUInts),
                 ("testCompareAndExchangeInts", testCompareAndExchangeInts),
+                ("testCompareAndExchangeWeakInts", testCompareAndExchangeWeakInts),
                 ("testAddSub", testAddSub),
                 ("testAnd", testAnd),
                 ("testOr", testOr),
