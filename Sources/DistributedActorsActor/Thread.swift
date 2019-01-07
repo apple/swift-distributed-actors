@@ -20,7 +20,7 @@ import Glibc
 #endif
 
 import NIO
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 
 public enum ThreadError: Error {
     case threadCreationFailed

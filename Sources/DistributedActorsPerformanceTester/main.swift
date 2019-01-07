@@ -14,7 +14,7 @@
 
 
 import Swift Distributed ActorsActor
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import NIO
 import Foundation
 

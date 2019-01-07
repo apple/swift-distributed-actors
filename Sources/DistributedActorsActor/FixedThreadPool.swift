@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import Foundation
 
 // TODO: Discuss naming of `Worker`

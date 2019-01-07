@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import CQueue
 import CDungeon
 import Foundation

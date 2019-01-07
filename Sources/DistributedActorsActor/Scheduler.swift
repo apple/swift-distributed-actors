@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 import Dispatch
 
 public protocol Cancellable {

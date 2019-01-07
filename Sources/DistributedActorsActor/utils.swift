@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIOConcurrencyHelpers
+import DistributedActorsConcurrencyHelpers
 
 // FIXME: KM I've grown convinced we should improve on the anonymous naming generation, see examples:
 //   - https://twitter.com/ktosopl/status/1047147815019851776
