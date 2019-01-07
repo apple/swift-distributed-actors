@@ -377,7 +377,7 @@ extension ActorTestProbe {
 
     /// Awaits termination of all passed in actors in any order within the default [[expectationTimeout]].
     ///
-    /// - Warning: Remember to first `watch` the actora you are expecting termination for,
+    /// - Warning: Remember to first `watch` the actors you are expecting termination for,
     ///            otherwise the termination signal will never be received.
     public func expectTerminatedInAnyOrder(_ refs: [AnyAddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
