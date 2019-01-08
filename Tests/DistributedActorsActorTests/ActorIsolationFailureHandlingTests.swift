@@ -72,7 +72,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-1")
-        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
+        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-1")
 
         let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
             name: "healthyMaster")
@@ -101,7 +101,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
     func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-2")
-        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
+        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-2")
 
         let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
             name: "healthyMaster")

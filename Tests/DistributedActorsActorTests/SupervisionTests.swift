@@ -32,7 +32,7 @@ class SupervisionTests: XCTestCase {
         system.terminate()
     }
     enum FaultyError: Error {
-        case boom
+        case boom(message: String)
     }
     enum FaultyMessages  {
         case pleaseThrow(error: Error)
@@ -94,7 +94,7 @@ class SupervisionTests: XCTestCase {
         guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
 
         p.watch(faultyWorker)
-        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom))
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 111")))
 
         // it should have stopped on the failure
         try p.expectTerminated(faultyWorker)
@@ -121,7 +121,7 @@ class SupervisionTests: XCTestCase {
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "parent-2")
         guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
         p.watch(faultyWorker)
-        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom))
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 222")))
         try p.expectNoTerminationSignal(for: .milliseconds(300)) // did NOT terminate! Seems supervision restarted it...
 
         // meaning that the .stop did not accidentally also cause the parent to die
