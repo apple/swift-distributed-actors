@@ -553,6 +553,10 @@ extension UInt: AtomicPrimitive {
 public class AtomicBox<T: AnyObject> {
     private let storage: Atomic<UInt>
 
+    public init() {
+        self.storage = Atomic(value: 0x0)
+    }
+
     public init(value: T) {
         let ptr = Unmanaged<T>.passRetained(value)
         self.storage = Atomic(value: UInt(bitPattern: ptr.toOpaque()))
@@ -560,8 +564,10 @@ public class AtomicBox<T: AnyObject> {
 
     deinit {
         let oldPtrBits = self.storage.exchange(with: 0xdeadbee)
-        let oldPtr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: oldPtrBits)!)
-        oldPtr.release()
+        if oldPtrBits != 0 {
+            let oldPtr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: oldPtrBits)!)
+            oldPtr.release()
+        }
     }
 
     /// Atomically compares the value against `expected` and, if they are equal,
@@ -579,15 +585,17 @@ public class AtomicBox<T: AnyObject> {
     ///     succeeds.
     /// - Returns: `True` if the exchange occurred, or `False` if `expected` did not
     ///     match the current value and so no exchange occurred.
-    public func compareAndExchange(expected: T, desired: T) -> Bool {
-        return withExtendedLifetime(desired) {
-            let expectedPtr = Unmanaged<T>.passUnretained(expected)
-            let desiredPtr = Unmanaged<T>.passUnretained(desired)
+    public func compareAndExchange(expected expectedOpt: T?, desired desiredOpt: T?) -> Bool {
+        return withExtendedLifetime(desiredOpt) {
+            let expectedPtr = expectedOpt.map(Unmanaged<T>.passUnretained)
+            let desiredPtr = desiredOpt.map(Unmanaged<T>.passUnretained)
+            let expectedBitPtr: UInt = expectedPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
+            let desiredBitPtr: UInt = desiredPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
 
-            if self.storage.compareAndExchange(expected: UInt(bitPattern: expectedPtr.toOpaque()),
-                                               desired: UInt(bitPattern: desiredPtr.toOpaque())) {
-                _ = desiredPtr.retain()
-                expectedPtr.release()
+            if self.storage.compareAndExchange(expected: expectedBitPtr,
+                                               desired: desiredBitPtr) {
+                _ = desiredPtr?.retain()
+                expectedPtr?.release()
                 return true
             } else {
                 return false
@@ -603,9 +611,18 @@ public class AtomicBox<T: AnyObject> {
     ///
     /// - Parameter value: The new value to set this object to.
     /// - Returns: The value previously held by this object.
-    public func exchange(with value: T) -> T {
-        let newPtr = Unmanaged<T>.passRetained(value)
-        let oldPtrBits = self.storage.exchange(with: UInt(bitPattern: newPtr.toOpaque()))
+    public func exchange(with value: T?) -> T? {
+        let newPtrBits: UInt = value.map { value in
+            let newPtr = Unmanaged<T>.passRetained(value)
+            return UInt(bitPattern: newPtr.toOpaque())
+        } ?? 0
+
+        let oldPtrBits = self.storage.exchange(with: newPtrBits)
+
+        if oldPtrBits == 0 {
+            return nil
+        }
+
         let oldPtr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: oldPtrBits)!)
         return oldPtr.takeRetainedValue()
     }
@@ -617,8 +634,12 @@ public class AtomicBox<T: AnyObject> {
     /// event will be ordered before or after this one.
     ///
     /// - Returns: The value of this object
-    public func load() -> T {
+    public func load() -> T? {
         let ptrBits = self.storage.load()
+        if ptrBits == 0 {
+            return nil
+        }
+
         let ptr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: ptrBits)!)
         return ptr.takeUnretainedValue()
     }
@@ -630,7 +651,7 @@ public class AtomicBox<T: AnyObject> {
     /// event will be ordered before or after this one.
     ///
     /// - Parameter value: The new value to set the object to.
-    public func store(_ value: T) -> Void {
+    public func store(_ value: T?) -> Void {
         _ = self.exchange(with: value)
     }
 }
