@@ -14,15 +14,11 @@
 
 // MARK: Type erasure for ActorRef
 
-
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
 public protocol AnyAddressableActorRef {
     var path: UniqueActorPath { get }
     func asHashable() -> AnyHashable
-
-    static func ==(lhs: AnyAddressableActorRef, rhs: AnyAddressableActorRef) -> Bool
-
 }
 
 // Implementation notes:
@@ -46,7 +42,8 @@ extension AnyAddressableActorRef {
 }
 
 /// Internal box to type-erase the type details of an `ActorRef` yet keep its other properties (e.g. hash-ability)
-@usableFromInline internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {
+@usableFromInline
+internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {
     private let anyRef: AnyAddressableActorRef
 
     /// Easiest used with [[ActorRefWithCell]]
@@ -59,14 +56,17 @@ extension AnyAddressableActorRef {
         self.init(ref: ref._downcastUnsafe)
     }
 
+    @usableFromInline
     func hash(into hasher: inout Hasher) {
         self.anyRef.asHashable().hash(into: &hasher)
     }
 
+    @usableFromInline
     static func ==(lhs: BoxedHashableAnyAddressableActorRef, rhs: BoxedHashableAnyAddressableActorRef) -> Bool {
         return lhs.path == rhs.path
     }
 
+    @usableFromInline
     var path: UniqueActorPath {
         return self.anyRef.path
     }
@@ -108,10 +108,12 @@ extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDe
         return lhs.path == rhs.path
     }
 
+    @usableFromInline
     var path: UniqueActorPath {
         return self._path
     }
 
+    @usableFromInline
     func asHashable() -> AnyHashable {
         return AnyHashable(self.path)
     }
@@ -132,6 +134,7 @@ public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
 }
 
 /// INTERNAL API: DO NOT TOUCH.
+@usableFromInline
 internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSystemMessages {
     private let anyRef: AnyReceivesSystemMessages
 
@@ -145,14 +148,17 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
         self.init(ref: ref._downcastUnsafe)
     }
 
+    @usableFromInline
     func hash(into hasher: inout Hasher) {
         self.anyRef.asHashable().hash(into: &hasher)
     }
 
+    @usableFromInline
     static func ==(lhs: BoxedHashableAnyReceivesSystemMessages, rhs: BoxedHashableAnyReceivesSystemMessages) -> Bool {
         return lhs.path == rhs.path // TODO: sanity check the path equality assumption
     }
 
+    @usableFromInline
     func sendSystemMessage(_ message: SystemMessage) {
         self.anyRef.sendSystemMessage(message)
     }
@@ -161,13 +167,15 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
         return self.anyRef.path
     }
 
+    @usableFromInline
     func asHashable() -> AnyHashable {
         fatalError("asHashable() has not been implemented")
     }
 
     /// INTERNAL API: exposes the underlying wrapped anyRef as the expected ActorRef type (or nil if types dont match)
     // TODO make it throw maybe?
-    internal func internal_exposeAs<T, R: ActorRef<T>>(_ refType: R.Type) -> R? {
+    @usableFromInline
+    func internal_exposeAs<T, R: ActorRef<T>>(_ refType: R.Type) -> R? {
         return self.anyRef as? R
     }
 }
@@ -185,7 +193,7 @@ extension BoxedHashableAnyReceivesSystemMessages: CustomStringConvertible, Custo
 internal extension AnyReceivesSystemMessages {
     
     /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSystemMessages where it is KNOWN guaranteed that it is a box
-    internal func internal_exposeBox() -> BoxedHashableAnyReceivesSystemMessages {
+    func internal_exposeBox() -> BoxedHashableAnyReceivesSystemMessages {
         return self as! BoxedHashableAnyReceivesSystemMessages
     }
 }
