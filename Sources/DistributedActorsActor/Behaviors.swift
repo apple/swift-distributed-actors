@@ -257,11 +257,9 @@ public extension Behavior {
         case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .intercept(inner, interceptor): return try interceptor.interceptMessage(target: inner, context: context, message: message)
-
         case .ignore:                            return .same // ignore message and remain .same
+        case .unhandled:                         return FIXME("NOT IMPLEMENTED YET")
 
-        // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
-        case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
         case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
         case .setup: return FIXME("Illegal attempt to interpret message with .setup behavior! This is illegal, behaviors always MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.")
@@ -269,6 +267,10 @@ public extension Behavior {
         case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
             var nextBehavior = try first.interpretMessage(context: context, message: message)
+            if nextBehavior.isUnhandled() {
+                nextBehavior = try second.interpretMessage(context: context, message: message)
+            }
+            return nextBehavior
         }
     }
 

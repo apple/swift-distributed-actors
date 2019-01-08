@@ -327,7 +327,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
         // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
-        case let DeathPactError.unhandledDeathPact(ref, _, message):
+        case let DeathPactError.unhandledDeathPact(_, _, message):
             log.error("\(message)") // TODO configurable logging? in props?
             self.finishTerminating() // FIXME likely too eagerly
 
