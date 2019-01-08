@@ -61,6 +61,9 @@ extension ConcurrencyHelpersTests {
                 ("testAtomicBoxCompareAndExchangeWorksIfNotEqual", testAtomicBoxCompareAndExchangeWorksIfNotEqual),
                 ("testAtomicBoxStoreWorks", testAtomicBoxStoreWorks),
                 ("testAtomicBoxCompareAndExchangeOntoItselfWorks", testAtomicBoxCompareAndExchangeOntoItselfWorks),
+                ("testAtomicBoxEmpty", testAtomicBoxEmpty),
+                ("testAtomicBoxStoreNil", testAtomicBoxStoreNil),
+                ("testAtomicBoxCOmpareExchangeNil", testAtomicBoxCOmpareExchangeNil),
            ]
    }
 }

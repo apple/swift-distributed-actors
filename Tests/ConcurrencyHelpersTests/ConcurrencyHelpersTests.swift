@@ -707,4 +707,35 @@ class ConcurrencyHelpersTests: XCTestCase {
         })()
         XCTAssertNil(weakInstance)
     }
+
+    func testAtomicBoxEmpty() {
+        class SomeClass {}
+        let atomic: AtomicBox<SomeClass> = AtomicBox()
+
+        XCTAssertNil(atomic.load())
+    }
+
+    func testAtomicBoxStoreNil() {
+        class SomeClass {}
+        let atomic: AtomicBox<SomeClass> = AtomicBox(value: SomeClass())
+
+        atomic.store(nil)
+        XCTAssertNil(atomic.load())
+    }
+
+    func testAtomicBoxCOmpareExchangeNil() {
+        class SomeClass {}
+        let atomic: AtomicBox<SomeClass> = AtomicBox()
+        let instance = SomeClass()
+
+        XCTAssertTrue(atomic.compareAndExchange(expected: nil, desired: instance))
+        XCTAssertNotNil(atomic.load())
+        XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: nil))
+        XCTAssertNil(atomic.load())
+        XCTAssertFalse(atomic.compareAndExchange(expected: instance, desired: nil))
+        XCTAssertNil(atomic.load())
+        atomic.store(instance)
+        XCTAssertFalse(atomic.compareAndExchange(expected: nil, desired: instance))
+        XCTAssertNotNil(atomic.load())
+    }
 }
