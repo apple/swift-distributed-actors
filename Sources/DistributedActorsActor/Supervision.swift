@@ -57,8 +57,8 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
-            pprint("FAULT DETECTED: \(error) HANDLING IN \(self)")
-            return self.handleMessageFault(error: .error(error: error)) // TODO also message?
+            context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
+            return self.handleMessageFault(error: .error(error: error))
         }
     }
 
@@ -66,7 +66,7 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
-            pprint("FAULT DETECTED: \(error) HANDLING IN \(self)")
+            context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
             return self.handleSignalFault(error: .error(error: error))
         }
     }
@@ -90,11 +90,11 @@ public class Supervisor<Message>: Interceptor<Message> {
 
 final class StoppingSupervisor<Message>: Supervisor<Message> {
     override func handleMessageFault(error: Supervision.Fault)  -> Behavior<Message> {
-        fatalError("handleMessageHandlingFault(error:) has not been implemented")
+        return .stopped
     }
 
     override func handleSignalFault(error: Supervision.Fault)  -> Behavior<Message> {
-        fatalError("handleSignalHandlingFault(error:) has not been implemented")
+        return .stopped
     }
 
     override func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
