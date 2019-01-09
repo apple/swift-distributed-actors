@@ -161,6 +161,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
 
+        // if a behavior was wrapped with supervision, this interpretMessage would encapsulate and contain the throw
         let next = try self.behavior.interpretMessage(context: context, message: message)
 
         #if SACT_TRACE_CELL
@@ -365,7 +366,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable
     internal func interpretSystemStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
-        let started = try self.behavior._start(context: self)
+        let started = try self.behavior.start(context: self)
         try self.becomeNext(behavior: started)
     }
 
