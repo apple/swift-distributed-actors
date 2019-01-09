@@ -554,15 +554,15 @@ extension UInt: AtomicPrimitive {
 /// It behaves very much like `Atomic<T>` but for objects, maintaining the correct retain counts.
 public class AtomicBox<T: AnyObject> {
     @usableFromInline
-    internal let storage: Atomic<UInt>
+    internal let storage: UnsafeEmbeddedAtomic<UInt>
 
     public init() {
-        self.storage = Atomic(value: 0x0)
+        self.storage = UnsafeEmbeddedAtomic(value: 0x0)
     }
 
     public init(value: T) {
         let ptr = Unmanaged<T>.passRetained(value)
-        self.storage = Atomic(value: UInt(bitPattern: ptr.toOpaque()))
+        self.storage = UnsafeEmbeddedAtomic(value: UInt(bitPattern: ptr.toOpaque()))
     }
 
     deinit {
@@ -571,6 +571,7 @@ public class AtomicBox<T: AnyObject> {
             let oldPtr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: oldPtrBits)!)
             oldPtr.release()
         }
+        storage.destroy()
     }
 
     /// Atomically compares the value against `expected` and, if they are equal,
