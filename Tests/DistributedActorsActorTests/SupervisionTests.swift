@@ -37,6 +37,7 @@ class SupervisionTests: XCTestCase {
     enum FaultyMessages  {
         case pleaseThrow(error: Error)
         case pleaseFatalError()
+        case echo(message: String, replyTo: ActorRef<WorkerMessages>)
     }
 
     enum SimpleProbeMessages: Equatable {
@@ -44,12 +45,13 @@ class SupervisionTests: XCTestCase {
         case echoing(message: String)
     }
 
-    enum WorkerLifecycleMessages {
+    enum WorkerMessages: Equatable {
         case setupRunning(ref: ActorRef<FaultyMessages>)
+        case echo(message: String)
     }
 
 
-    func faulty(probe: ActorRef<WorkerLifecycleMessages>?) -> Behavior<FaultyMessages> {
+    func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessages> {
         return .setup { context in
             probe?.tell(.setupRunning(ref: context.myself))
 
@@ -59,6 +61,9 @@ class SupervisionTests: XCTestCase {
                     throw error
                 case .pleaseFatalError:
                     fatalError("Boom!")
+                case let .echo(msg, sender):
+                    sender.tell(.echo(message: "echo:\(msg)"))
+                    return .same
                 }
             }
         }
@@ -72,12 +77,14 @@ class SupervisionTests: XCTestCase {
         let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .stop)
         let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .restart(atMost: 3))
 
+        let _: Behavior<String> = faultyWorker.supervisedWith(strategy: .stop)
+
         // supervised
 
     }
 
     func test_stopSupervised_throws_shouldStop() throws {
-        let p = testKit.spawnTestProbe(expecting: WorkerLifecycleMessages.self)
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
         let strategy: SupervisionStrategy = .stop
@@ -93,7 +100,7 @@ class SupervisionTests: XCTestCase {
 
         guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
 
-        p.watch(faultyWorker)
+        p.watch(faultyWorker)WhateverSupervisor
         faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 111")))
 
         // it should have stopped on the failure
@@ -106,7 +113,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_restartSupervised_throws_shouldRestart() throws {
-        let p = testKit.spawnTestProbe(expecting: WorkerLifecycleMessages.self)
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
         let strategy: SupervisionStrategy = .restart(atMost: 1)
@@ -119,16 +126,34 @@ class SupervisionTests: XCTestCase {
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
 
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "parent-2")
+        pp.watch(parent)
+
         guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
         p.watch(faultyWorker)
-        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 222")))
-        try p.expectNoTerminationSignal(for: .milliseconds(300)) // did NOT terminate! Seems supervision restarted it...
 
-        // meaning that the .stop did not accidentally also cause the parent to die
-        // after all, it dod NOT watch the faulty actor, so death pact also does not come into play
-        pp.watch(parent)
-        try pp.expectNoTerminationSignal(for: .milliseconds(100))
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
 
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 222_1")))
+        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+
+        pinfo("Now expecting it to run setup again...")
+        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
+
+        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+        faultyWorkerRestarted.shouldEqual(faultyWorker)
+        pinfo("The new restarted ref is equal. good.")
+
+        pinfo("Not expecting a reply from it")
+        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
+
+
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 222_2")))
+        try p.expectNoTerminationSignal(for: .milliseconds(300))
+
+        pinfo("Now it boomed but did not crash again!")
     }
 
 }

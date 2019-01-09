@@ -114,14 +114,24 @@ extension Behavior {
 extension Behavior {
 
     public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
-        let supervisor: Supervisor<Message> = Supervision.supervisorFor(strategy)
+        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
+        return .supervise(behavior, supervisor: supervisor)
+    }
+
+    public static func supervise(_ behavior: Behavior<Message>, supervisor: Supervisor<Message>) -> Behavior<Message> {
         return Behavior<Message>.intercept(behavior: behavior, with: supervisor)
     }
 
-//    // TODO not happy with API types here
-//    public func supervised(with strategy: SupervisionStrategy) -> Behavior<Message> {
-//
-//    }
+    /// Wrap current behavior with a supervisor.
+    /// Fluent-API equivalent to `Behavior.supervise(strategy:)`.
+    public func supervisedWith(strategy: SupervisionStrategy) -> Behavior<Message> {
+        return .supervise(self, withStrategy: strategy)
+    }
+    /// Wrap current behavior with a supervisor.
+    /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
+    public func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
+        return .supervise(self, supervisor: supervisor)
+    }
 }
 
 
@@ -208,6 +218,9 @@ enum Intercept {
 
 /// Interceptor defined by passing interception functions.
 /// Useful for small in-line definitions of interceptors which do not need to hold state.
+///
+/// - For intercepting only messages use `Intercept.messages` instead of directly instantiating this class.
+/// - For intercepting only signals use `Intercept.signals` instead of directly instantiating this class.
 final class FunctionInterceptor<Message>: Interceptor<Message> {
 
     let onMessage: (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>
@@ -338,7 +351,7 @@ internal extension Behavior {
         }
     }
 
-    /// Shorthand for checking if the current behavior is a `.stopped` or `.failed`.
+    /// Shorthand for checking if the `Behavior` is `.stopped` or `.failed`.
     @inlinable
     func isTerminal() -> Bool {
         switch self {
@@ -347,7 +360,7 @@ internal extension Behavior {
         }
     }
 
-    /// Shorthand for any [[Behavior]] that is NOT `.stopped`.
+    /// Shorthand for checking if the `Behavior` is NOT `.stopped` or `.failed`.
     @inlinable
     func isStillAlive() -> Bool {
         return !self.isTerminal()
@@ -355,6 +368,9 @@ internal extension Behavior {
 
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
     /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
+    ///
+    /// Warning: Remember that a first start (or re-start) of a behavior must be triggered using `Behavior.start`
+    ///          rather than just canonicalize since we want to recursively trigger
     @inlinable
     func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
@@ -384,13 +400,13 @@ internal extension Behavior {
     /// Starting a behavior means triggering all onStart actions of nested `.setup` calls.
     /// Interceptors are left in-place, and other behaviors remain unaffected.
     // TODO make not recursive perhaps since could blow up on large chain?
-    @inlinable func _start(context: ActorContext<Message>) throws -> Behavior<Message> {
+    @inlinable func start(context: ActorContext<Message>) throws -> Behavior<Message> {
         switch self {
         case let .intercept(inner, interceptor):
-            return .intercept(behavior: try inner._start(context: context), with: interceptor)
+            return .intercept(behavior: try inner.start(context: context), with: interceptor)
         case .setup(let onStart):
             let unwrapped: Behavior<Message> = try onStart(context)
-            return try unwrapped._start(context: context) // since the .setup may contain another .setup
+            return try unwrapped.start(context: context) // since the .setup may contain another .setup
         default:
             return self
         }
