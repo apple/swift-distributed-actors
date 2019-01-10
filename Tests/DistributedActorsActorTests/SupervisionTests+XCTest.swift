@@ -27,6 +27,7 @@ extension SupervisionTests {
                 ("test_compile", test_compile),
                 ("test_stopSupervised_throws_shouldStop", test_stopSupervised_throws_shouldStop),
                 ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),
+                ("test_restartSupervised_fatalError_shouldRestart", test_restartSupervised_fatalError_shouldRestart),
            ]
    }
 }

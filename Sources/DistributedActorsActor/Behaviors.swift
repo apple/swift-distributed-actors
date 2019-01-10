@@ -78,18 +78,6 @@ public enum Behavior<Message> {
     /// The orElse behavior may be used to arbitrarily deeply nest such alternatives.
     indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
 
-//  /// Apply given supervision to behavior
-//  /// TODO: more docs
-//  indirect case supervise(_ behavior: Behavior<Message>, strategy: (Supervision.Failure) -> Supervision.Directive) // TODO: I assume this causes us to lose all benefits of being an enum? since `indirect`
-//
-//  /// Supervise the passed in behavior and return the such supervised behavior.
-//  /// The returned behavior will supervised be given supervision decision to any crash of this actor.to behavior
-//  public static func supervise(_ behavior: Behavior<Message>, directive: Supervision.Directive) -> Behavior<Message> {
-//    return .supervise(behavior) { _ in
-//      directive
-//    }
-//  }
-
 }
 
 // MARK: Signal receiving behaviors

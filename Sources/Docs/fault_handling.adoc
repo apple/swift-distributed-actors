@@ -4,22 +4,92 @@ General description
 
 === Vocabulary
 
-Since there are various "types" of error conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
+Since there are various "types" of failures conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
 failure handling scenarios harder to misunderstand:
 
-- *Fault* - the most general term for any kind of "faulty" behavior, including: errors, throws, crashes, fatal errors,
+- *Failure* - the most general term for any kind of "faulty" behavior, including: errors, throws, crashes, fatal errors,
 - *Error* as in "throw an error" - the classic meaning of "error" in Swift, which is bound to the `Error` type,
   and means any operation that can throw an error.
-- *Crash* as in "crash the actor" – an
+- *Fault* as in "faulty operation"
 
 You may wonder how the various other words used by the underlying OS relate to them.
 For example, in POSIX systems faults are signalled by "error codes" and "signals".
 Some of such conditions are recoverable _within an actor_ and Swift Distributed Actors allows doing so,
 however code execution beyond a faulty line of code is never allowed.
 
+Summing up, any Error or Fault is a type of Failure in Swift Distributed Actors wording. We hope that this wording remains consistent
+enough with the rest of the ecosystem.
 
 Further, you can expect to hear the following phrases:
 
-- "the actor has thrown" - an error was thrown during message or signal processing
+- "the actor has thrown", "an error during message processing" - an error was thrown during message or signal processing
 - "the actor crashed" - meaning that the actor was stopped in response to a failure
 
+== Supervision
+
+Actor supervision in Swift Distributed Actors is a core concept that allows for building resilient concurrent and distributed actor systems.
+
+NOTE: Supervision is a concept core to most, if not all, actor implementations.
+      The most notable implementations heavily relying on supervision concepts are Erlang/OTP, Akka.
+      While the core ideas and mechanisms are very similar in Swift Distributed Actors, be aware that each runtime has its own specific
+      challenges and as such may differ slightly in wording or implementation.
+
+
+Supervision in Swift Distributed Actors is offered to users via Behavior decorators, that are recognized and executed by the actor system
+when failures occur.
+
+
+NOTE: It is NOT possible to supervise code running outside of actors.
+
+NOTE: Implementation limitation: the current fault handling mechanisms rely on signal handlers, and as such may not mix
+      well with other libraries which rely on this functionality. Our goal is to eventually solve this using a dedicated mechanism inside the runtime.
+
+=== Supervision hierarchies
+
+Swift Distributed Actors enforces a strict parent-child relationship between actors. Only an actors parent actor MAY supervise it.
+Other actors, be it siblings or other completely unrelated actors may only _watch_ a given actor for terminateion.
+
+This leads to the formation of so called supervision hierarchies or supervision "trees".
+It also allows us to structure our applications in ways that represent their _fault domains_.
+
+TODO: explain bulk heading and compartmentalization.
+
+=== A word of caution: fatal faults
+
+Swift Distributed Actors does NOT allow recovering from "fatal faults" such as segmentation faults (segfaults) or similar faults.
+Some faults are serious enough that continuing running after they have occurred is too risky and should not be taken lightly.
+
+At the same time, bear in mind that while it may be possible to recover from some faults using Swift Distributed Actors, it may not be the best course of action,
+sometimes faults are legitimate problems and can leave your system vulnerable. Make sure to always investigate fault crashes
+of your actors and aim to build systems where faults do not occur on regular basis.
+
+
+=== Nested supervision
+
+Since supervision is applied to behaviors by wrapping them using a supervision behavior,
+it is possible to have multiple supervisors wrapping a behavior. When this happens, the order in which
+supervisors will be notified about a fault is "from inner most, to outer most."
+
+The assumption here is that
+supervisors "closer to" the inner behavior are applied by code that is more aware of its internal workings, e.g.
+a library author may know that the code may sometimes harmlessly fail due to some problem in the internally used library,
+outside users of this behavior should not be exposed to the fact that this library is used by the actor, so it handles all
+errors that this library may throw.
+
+As users adopt this behavior, they may notice that sometimes a timeout error occurs and crashes the actor.
+It MAY be fine to wrap this behavior in a backoff restarting supervisor to handle this timeout situation.
+
+
+Examples:
+
+    let providedByLibrary = internalBehavior.supervisedWith(strategy: restart ...)
+    let prepped = providedByLibrary.supervisedWith(strategy: handleTimeouts)
+    system.spawn(prepped, name: "worker")
+
+== Analysing Back Traces (Crash Logs)
+
+An excellent talk from WWDC 2018 titled https://developer.apple.com/videos/play/wwdc2018/414/?time=176[Understanding Crashes and Crash Logs]
+is available and explains how to read and use crash logs (backtraces) which Swift Distributed Actors will log on crashes to use crash logs to isolate and locate
+problems in your code.
+
+Another useful resource to understand crash logs is https://developer.apple.com/library/archive/technotes/tn2151/_index.html[Understanding and Analyzing Application Crash Reports]

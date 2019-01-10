@@ -34,102 +34,36 @@ struct Envelope<Message> {
     // and don't need to do any magic around it
 }
 
-/// Wraps context for use in closures passed to C
-private struct WrappedClosure {
-    private let _exec: (UnsafeMutableRawPointer) throws -> Bool
-    private let _fail: (Error) -> ()
-
-    init(exec: @escaping (UnsafeMutableRawPointer) throws -> Bool,
-         fail: @escaping (Error) -> ()) {
-        self._exec = exec
-        self._fail = fail
-    }
-
-    @inlinable
-    func exec(with ptr: UnsafeMutableRawPointer) throws -> Bool {
-        return try _exec(ptr)
-    }
-
-    @inlinable
-    func fail(error: Error) -> Bool {
-        _fail(error) // mutates ActorCell to become failed
-        return false // TODO: cell to decide if to continue later on (supervision)
-    }
-}
-
-/// Wraps context for use in closures passed to C
-private struct WrappedDropClosure {
-    private let _drop: (UnsafeMutableRawPointer) throws -> ()
-
-    init(drop: @escaping (UnsafeMutableRawPointer) throws -> ()) {
-        self._drop = drop
-    }
-
-    @inlinable
-    func drop(with ptr: UnsafeMutableRawPointer) throws -> () {
-        return try _drop(ptr)
-    }
-
-}
-
 // TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
 final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CMailbox>
     private var cell: ActorCell<Message>
 
-    // Implementation note: WrappedClosures are used for C-interop
-    private var messageCallbackContext: WrappedClosure
-    private var systemMessageCallbackContext: WrappedClosure
-    private var deadLetterMessageCallbackContext: WrappedDropClosure
-    private var deadLetterSystemMessageCallbackContext: WrappedDropClosure
+    // Implementation note: context for closure callbacks used for C-interop
+    // They are never mutated, yet have to be `var` since passed to C (need inout semantics)
+    private var messageClosureContext: InterpretMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
+    private var systemMessageClosureContext: InterpretMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
+    private var deadLetterMessageClosureContext: DropMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
+    private var deadLetterSystemMessageClosureContext: DropMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
+    private var invokeSupervisionClosureContext: InvokeSupervisionClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
 
+    // Implementation note: closure callbacks passed to C-mailbox
     private let interpretMessage: InterpretMessageCallback
     private let dropMessage: DropMessageCallback
+    // Enables supervision to work for faults (and not only errors).
+    // If the currently run behavior is wrapped using a supervision interceptor,
+    // we store a reference to its Supervisor handler, that we invoke
+    private let invokeSupervision: InvokeSupervisionCallback
 
     init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
 
-        // Implementation note:
-        // contexts aim to capture self.cell, but can't since we are not done initializing
-        // all self references so Swift does not allow us to write self.cell in them.
-
-        self.messageCallbackContext = WrappedClosure(exec: { ptr in
-            let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
-            let envelope = envelopePtr.move()
-            let msg = envelope.payload
-            traceLog_Mailbox("INVOKE MSG: \(msg)")
-            return try cell.interpretMessage(message: msg)
-        }, fail: { error in
-            cell.fail(error: error)
-        })
-
-        self.systemMessageCallbackContext = WrappedClosure(exec: { ptr in
-            let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
-            let msg = envelopePtr.move()
-            traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
-            return try cell.interpretSystemMessage(message: msg)
-        }, fail: { error in
-            cell.fail(error: error)
-        })
-
-        self.deadLetterMessageCallbackContext = WrappedDropClosure(drop: { ptr in
-            let envelopePtr = ptr.assumingMemoryBound(to: Envelope<Message>.self)
-            let envelope = envelopePtr.move()
-            let msg = envelope.payload
-            traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(message: msg)
-        })
-        self.deadLetterSystemMessageCallbackContext = WrappedDropClosure(drop: { ptr in
-            let envelopePtr = ptr.assumingMemoryBound(to: SystemMessage.self)
-            let msg = envelopePtr.move()
-            traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(message: msg)
-        })
+        // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
         self.interpretMessage = { (ctxPtr, msgPtr) in
             defer { msgPtr?.deallocate() }
-            let ctx = ctxPtr?.assumingMemoryBound(to: WrappedClosure.self)
+            let ctx = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self)
 
             var shouldContinue: Bool
             do {
@@ -145,13 +79,118 @@ final class Mailbox<Message> {
         }
         self.dropMessage = { (ctxPtr, msgPtr) in
             defer { msgPtr?.deallocate() }
-            let ctx = ctxPtr?.assumingMemoryBound(to: WrappedDropClosure.self)
+            let ctx = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
             do {
                 try ctx?.pointee.drop(with: msgPtr!)
             } catch {
                 traceLog_Mailbox("Error while dropping message! Was: \(error) TODO supervision decisions...")
             }
         }
+        self.invokeSupervision = { (ctxPtr, failedMessagePtr) in
+            traceLog_Mailbox("TIME FOR SUPERVISION DECISION !!!!!! Ohh, what will it be?!")
+
+            if let crashDetails = FaultHandling.getCrashDetails() {
+                if let ctx = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
+//                let context: ActorContext<Message> = ctx.pointee.cell.context
+//                let supervisor: Supervisor<Message>? = ctx.pointee.cell.supervisedBy
+
+                    let processedMessageType: ProcessedMessageType = User // FIXME
+                    let messageDescription = /*Mailbox.*/renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessagePtr!) // FIXME that !
+                    let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
+
+                    do {
+                        pprint("!!!!!!! invoking... handleMessageFailure")
+                        let v = try ctx.handleMessageFailure(.fault(failure), whileProcessing: processedMessageType)
+                        pprint("!!!!!!! returned \(MailboxRunResult.description(v))")
+                        return v
+                    } catch {
+                        pprint("DOUBLE FAULT: \(error)")
+                        exit(-1)
+                    }
+                } else {
+
+                    pprint("No crash details...")
+                    // no crash details, so we can't invoke supervision; Let it Crash!
+                    return Failure
+                }
+            }else {
+
+                pprint("No crash details...")
+                // no crash details, so we can't invoke supervision; Let it Crash!
+                return Failure
+            }
+        }
+
+        // Contexts aim to capture self.cell, but can't since we are not done initializing
+        // all self references so Swift does not allow us to write self.cell in them.
+
+        self.messageClosureContext = InterpretMessageClosureContext(exec: { envelopePtr in
+            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
+            let envelope = envelopePtr.move()
+            let msg = envelope.payload
+            traceLog_Mailbox("INVOKE MSG: \(msg)")
+            return try self.cell.interpretMessage(message: msg)
+        }, fail: { error in
+            self.cell.fail(error: error)
+        })
+        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr in
+            let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
+            let msg = envelopePtr.move()
+            traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
+            return try self.cell.interpretSystemMessage(message: msg)
+        }, fail: { error in
+            self.cell.fail(error: error)
+        })
+
+        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { envelopePtr in
+            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
+            let envelope = envelopePtr.move()
+            let msg = envelope.payload
+            traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
+            self.cell.sendToDeadLetters(message: msg)
+        })
+        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { sysMsgPtr in
+            let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
+            let msg = envelopePtr.move()
+            traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
+            self.cell.sendToDeadLetters(message: msg)
+        })
+
+        self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(handleMessageFailure: { supervisionFailure, msgType in
+            traceLog_Mailbox("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
+
+            let supervisionResultingBehavior: Behavior<Message>?
+            if msgType == User {
+                supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
+            } else if msgType == System {
+                supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
+            } else {
+                fatalError("Bug! Unexpected msgType = \(msgType)")
+            }
+
+            // TODO: this handling MUST be aligned with the throws handling.
+            switch supervisionResultingBehavior {
+            case .none:
+                // no supervisor, thus: Let it Crash!
+                return Failure
+            case .some(.stopped):
+                // decision is to stop which is terminal, thus: Let it Crash!
+                return Failure
+            case .some(.failed(let error)):
+                // decision is to fail, Let it Crash!
+                // TODO substitute error with the one from failed
+                return Failure
+            case .some(let restartWithBehavior):
+                // received new behavior, attempting restart:
+                do {
+                    try self.cell.restart(behavior: restartWithBehavior)
+                } catch {
+                    self.cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
+                    fatalError("Double fault while restarting actor \(self.cell.path). Terminating.")
+                }
+                return FailureRestart
+            }
+        })
     }
 
     deinit {
@@ -208,23 +247,27 @@ final class Mailbox<Message> {
 
     @inlinable
     func run() {
-        // Implementation notes: for every run we make
-        FaultHandling.enableFailureHandling()
-        defer { FaultHandling.disableFailureHandling() }
+        // For every run we make we mark "we are inside of an mailbox run now" and remove the marker once the run completes.
+        // This is because fault handling MUST ONLY be triggered for mailbox runs, we do not want to handle arbitrary failures on this thread.
+        FaultHandling.enableFaultHandling()
+        defer { FaultHandling.disableFaultHandling() }
 
-        // in case processing fails, this will be set to the message that caused the failure
+        // Prepare failure context pointers:
+        // In case processing of a message fails, this pointer will point to the message that caused the failure
         let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
-        // will be set to the last active processing stage when run return, so
-        // in case of a failure, we know what stage failed
+        // In case of a processing failure, this will mark if the fault occurred while processing System or User messages.
         var processedMessageType: ProcessedMessageType = System
 
+        // Run the mailbox:
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
-            &messageCallbackContext, &systemMessageCallbackContext,
-            &deadLetterMessageCallbackContext, &deadLetterSystemMessageCallbackContext,
-            interpretMessage, dropMessage, FaultHandling.getErrorJmpBuf(),
-            failedMessagePtr, &processedMessageType)
+            &messageClosureContext, &systemMessageClosureContext,
+            &deadLetterMessageClosureContext, &deadLetterSystemMessageClosureContext,
+            interpretMessage, dropMessage,
+            // fault handling:
+            FaultHandling.getErrorJmpBuf(), 
+            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr, &processedMessageType)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -236,13 +279,19 @@ final class Mailbox<Message> {
             // no more messages to run, we are done here
             return
         } else if schedulingDecision == Close {
-            // termination has been set as mailbox status and we should send ourselfes the .tombstone
+            // termination has been set as mailbox status and we should send ourselves the .tombstone
             // which serves as final system message after which termination will completely finish.
             // We do this since while the mailbox was running, more messages could have been enqueued,
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
         } else if schedulingDecision == Failure {
             self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, processedMessageType: processedMessageType)
+        } else if schedulingDecision == FailureRestart {
+            // FIXME: !!! we must know if we should schedule or not after a restart...
+            pprint("MAILBOX RUN COMPLETE, FailureRestart !!! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)")
+            cell.dispatcher.execute(self.run)
+        } else {
+            fatalError("BUG: Mailbox did not account for run scheduling decision: \(schedulingDecision)")
         }
     }
 
@@ -267,26 +316,17 @@ extension Mailbox {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }
 
-                let messageDescription = self.renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessageRaw)
-                self.cell.crashFail(error: MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace))
+                let messageDescription = /*Mailbox.*/renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessageRaw)
+                let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
+                self.cell.crashFail(error: failure)
             } else {
-                self.cell.crashFail(error: MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace))
+                let failure = MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace)
+                self.cell.crashFail(error: failure)
             }
         } else {
-            self.cell.crashFail(error: NSError(domain: "Error received, but no details set", code: -1, userInfo: nil)) // TODO: MessageProcessingFailure
+            let failure: MessageProcessingFailure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
+            self.cell.crashFail(error: failure)
         }
-    }
-
-    private func renderMessageDescription(processedMessageType: ProcessedMessageType, failedMessageRaw: UnsafeMutableRawPointer) -> String {
-        let messageDescription: String
-        if processedMessageType == System {
-            let systemMessage = failedMessageRaw.assumingMemoryBound(to: SystemMessage.self).move()
-            messageDescription = "[\(systemMessage)]:\(SystemMessage.self)"
-        } else {
-            let message = failedMessageRaw.assumingMemoryBound(to: Message.self).move()
-            messageDescription = "[\(message)]:\(Message.self)"
-        }
-        return messageDescription
     }
 }
 
@@ -298,6 +338,99 @@ internal struct MessageProcessingFailure: Error {
 extension MessageProcessingFailure: CustomStringConvertible {
     var description: String {
         let backtraceStr = backtrace.joined(separator: "\n")
-        return "Actor failed while processing message '\(messageDescription)':\n\(backtraceStr)"
+        return "Actor faulted while processing message '\(messageDescription)':\n\(backtraceStr)"
+    }
+}
+
+// Implementation note: As free function because we need to access it in C callbacks,
+// which are not allowed to close over generic context which a Mailbox type is (even if statically accessing it).
+fileprivate func renderMessageDescription(processedMessageType: ProcessedMessageType, failedMessageRaw: UnsafeMutableRawPointer) -> String {
+    let messageDescription: String
+    if processedMessageType == System {
+        let systemMessage = failedMessageRaw.assumingMemoryBound(to: SystemMessage.self).move()
+        messageDescription = "[\(systemMessage)]:\(SystemMessage.self)"
+    } else {
+//        let message = failedMessageRaw.assumingMemoryBound(to: Message.self).move()
+//        messageDescription = "[\(message)]:\(Message.self)"
+        messageDescription = "message description not available because generics....."
+    }
+    return messageDescription
+}
+
+
+// MARK: Closure contexts for interop with C-mailbox
+
+/// Wraps context for use in closures passed to C
+private struct InterpretMessageClosureContext {
+    private let _exec: (UnsafeMutableRawPointer) throws -> Bool
+    private let _fail: (Error) -> ()
+
+    init(exec: @escaping (UnsafeMutableRawPointer) throws -> Bool,
+         fail: @escaping (Error) -> ()) {
+        self._exec = exec
+        self._fail = fail
+    }
+
+    @inlinable
+    func exec(with ptr: UnsafeMutableRawPointer) throws -> Bool {
+        return try self._exec(ptr)
+    }
+
+    @inlinable
+    func fail(error: Error) -> Bool {
+        _fail(error) // mutates ActorCell to become failed
+        return false // TODO: cell to decide if to continue later on (supervision)
+    }
+}
+/// Wraps context for use in closures passed to C
+private struct DropMessageClosureContext {
+    private let _drop: (UnsafeMutableRawPointer) throws -> ()
+
+    init(drop: @escaping (UnsafeMutableRawPointer) throws -> ()) {
+        self._drop = drop
+    }
+
+    @inlinable
+    func drop(with ptr: UnsafeMutableRawPointer) throws -> () {
+        return try self._drop(ptr)
+    }
+}
+/// Wraps context for use in closures passed to C
+private struct InvokeSupervisionClosureContext {
+    // Implementation note: we wold like to execute the usual handle failure here, but we can't since the passed
+    // over to C ClosureContext may not close over generic context. Thus the passed in closure here has to contain all the logic,
+    // and only yield us the "supervised run result", which usually will be `Failure` or `FailureRestart`
+    //
+    // private let _handleMessageFailure: (UnsafeMutableRawPointer) throws -> Behavior<Message>
+    private let _handleMessageFailureBecauseC: (Supervision.Failure, ProcessedMessageType) throws -> CMailboxRunResult
+
+    init(handleMessageFailure: @escaping (Supervision.Failure, ProcessedMessageType) throws -> CMailboxRunResult) {
+        self._handleMessageFailureBecauseC = handleMessageFailure
+    }
+
+    @inlinable
+    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing msgType: ProcessedMessageType) throws -> CMailboxRunResult {
+        return try self._handleMessageFailureBecauseC(failure, msgType)
+    }
+}
+
+/// Helper for rendering the C defined `CMailboxRunResult` enum in human readable format
+enum MailboxRunResult {
+    static func description(_ v: CMailboxRunResult) -> String {
+        if v == Close {
+            return "CMailboxRunResult(Close)"
+        } else if v == Done {
+            return "CMailboxRunResult(Done)"
+        } else if v == Reschedule {
+            return "CMailboxRunResult(Reschedule)"
+        } else if v == Reschedule {
+            return "CMailboxRunResult(Reschedule)"
+        } else if v == Failure {
+            return "CMailboxRunResult(Failure)"
+        } else if v == FailureRestart {
+            return "CMailboxRunResult(FailureRestart)"
+        } else {
+            fatalError("This is a bug. Unexpected \(v)")
+        }
     }
 }

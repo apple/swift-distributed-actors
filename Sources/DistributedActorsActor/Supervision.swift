@@ -30,9 +30,10 @@ public struct Supervision {
         }
     }
 
-    public enum Fault {
+    public enum Failure {
         // TODO: figure out how to represent failures, carry error code, actor path etc I think
-        case error(error: Error)
+        case error(Error)
+        case fault(Error)
     }
 
     /// Supervision directives instruct the actor system to apply a specific
@@ -51,6 +52,10 @@ public struct Supervision {
     }
 }
 
+/// Handles failures that may occur during message (or signal) handling within an actor.
+///
+/// To implement your own `Supervisor` implement the `handleMessageFailure` and `handleSignalFailure` methods,
+/// OR use the
 public class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
@@ -58,7 +63,7 @@ public class Supervisor<Message>: Interceptor<Message> {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
             context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
-            return try self.handleMessageFault(context, error: .error(error: error))
+            return try self.handleMessageFailure(context, failure: .error(error))
         }
     }
 
@@ -67,7 +72,7 @@ public class Supervisor<Message>: Interceptor<Message> {
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
             context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
-            return try self.handleSignalFault(context, error: .error(error: error))
+            return try self.handleSignalFailure(context, failure: .error(error))
         }
     }
 
@@ -75,11 +80,11 @@ public class Supervisor<Message>: Interceptor<Message> {
 
     /// Handle a fault that happened during message processing
     // TODO clarify what happens on faults here -- they should not be recovered I think; no double faults allowed
-    func handleMessageFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
-    func handleSignalFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
@@ -90,11 +95,11 @@ public class Supervisor<Message>: Interceptor<Message> {
 
 
 final class StoppingSupervisor<Message>: Supervisor<Message> {
-    override func handleMessageFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return .stopped
     }
 
-    override func handleSignalFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return .stopped
     }
 
@@ -114,14 +119,14 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         super.init()
     }
 
-    override func handleMessageFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         self.failures += 1
         pprint("!!!!!!RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)")
         // TODO has to modify restart counters here and supervise with modified supervisor
         return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
     }
 
-    override func handleSignalFault(_ context: ActorContext<Message>, error: Supervision.Fault) throws -> Behavior<Message> {
+    override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         pprint("!!!!!!RESTART!!!!!! >>>> \(initialBehavior)")
         return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
     }

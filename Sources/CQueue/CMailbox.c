@@ -177,10 +177,13 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
 // TODO: was boolean for need to schedule, but we need to signal to swift that termination things should now happen
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
 CMailboxRunResult cmailbox_run(CMailbox* mailbox,
-                               void* context, void* system_context,
-                               void* dead_letter_context, void* dead_letter_system_context,
+                               // message processing:
+                               void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
                                InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-                               jmp_buf* error_jmp_buf, void** failed_message, ProcessedMessageType* processing_stage) {
+                               // failure handling:
+                               jmp_buf* error_jmp_buf,
+                               void* supervision_context, InvokeSupervisionCallback supervision_invoke,
+                               void** failed_message, ProcessedMessageType* processing_stage) {
     print_debug_status(mailbox, "Entering run");
 
     // We store the message in a void** here so that it is still accessible after
@@ -207,12 +210,23 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
     // it to jump back here in case an error occurs during message processing.
     // `sigsetjmp` also stores the signal mask when the second argument is non-zero.
     if (sigsetjmp(*error_jmp_buf, 1)) {
-        cmailbox_set_terminating(mailbox);
-        // we still have to decrement the status activations to keep the correct message count
-        // in case we restart the actor
-        decrement_status_activations(mailbox, *processed_activations);
-        *failed_message = *message;
-        return Failure;
+        // Supervision re-entry point; once a fault has occurred we resume here.
+
+        // We attempt to invoke a supervisor for this crashing behavior:
+        CMailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, *message);
+
+        if (supervisionRunResult == FailureRestart) {
+            // TODO cover all things
+            // we have to decrement the status activations to keep the correct message count because we restart the actor
+            decrement_status_activations(mailbox, *processed_activations);
+
+            return FailureRestart;
+        } else {
+            cmailbox_set_terminating(mailbox);
+
+            *failed_message = *message;
+            return Failure;
+        }
     } else {
 
         // run system messages ------

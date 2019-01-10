@@ -21,7 +21,7 @@ import Glibc
 #endif
 
 /// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-/// !!            THIS IS A Proof-of-Concept, the mechanisms (signal hijacking+parking) is NOT A FINAL SOLUTION       !!
+/// !!            THIS IS A Proof-of-Concept, the mechanism (signal hijacking+parking) is NOT A FINAL SOLUTION        !!
 /// !!                                                                                                                !!
 /// !! While this mechanism works, it also leaks an entire thread if an actor encounters a failure.                   !!
 /// !! With this PoC we aim to show the semantics what would be modeled if we had an "unwind" feature.                !!
@@ -87,11 +87,11 @@ internal struct FaultHandling {
         }
     }
 
-    /// Register the failure context for the currently executing [ActorCell].
+    /// Register the failure context for the currently executing `ActorCell`.
     ///
-    /// Important: Remember to clear it once the run is complete
-    internal static func enableFailureHandling() {
-        CDungeon.sact_enable_failure_handling() // TODO not really needed as threadlocal
+    /// Important: Remember to invoke `disableFailureHandling` once the run is complete.
+    internal static func enableFaultHandling() {
+        CDungeon.sact_enable_fault_handling() // TODO not really needed as threadlocal
     }
 
     /// Clear the current cell failure context after a successful (or failed) run.
@@ -99,8 +99,8 @@ internal struct FaultHandling {
     /// Important: Always call this once a run completes, in order to avoid mistakenly invoking a cleanup action on the wrong "previous" cell.
     // Implementation notes: The reason we allow passing in the context even though we don't use it is to make sure the
     // lifetime of the context is longer than the mailbox run. Otherwise a failure may attempt using an already deallocated context.
-    internal static func disableFailureHandling() {
-        CDungeon.sact_disable_failure_handling()
+    internal static func disableFaultHandling() {
+        CDungeon.sact_disable_fault_handling()
     }
 
     /// Convert error signal codes to their [FaultHandlingError] representation.
