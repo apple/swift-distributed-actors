@@ -34,5 +34,6 @@ do
   de_mangled=$(echo "$mangled" | swift demangle)
 
   echo -n "$line" | awk 'BEGIN{}{ printf "%s\t%s\t%s\t demangled:", $1, $2, $3 }'
-  echo -e "$CYAN$de_mangled$NC"
+  echo -ne "$CYAN$de_mangled + "
+  echo -e "$line$NC" | awk '{ print $NF }'
 done
