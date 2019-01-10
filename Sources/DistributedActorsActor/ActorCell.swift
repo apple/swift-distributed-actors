@@ -31,6 +31,11 @@ internal protocol FailableActorCell {
 // The cell is mutable, as it may replace the behavior it hosts
 public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
+    // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
+    @usableFromInline internal var system: ActorSystem
+
+    // MARK: The actors' "self" and relationships
+
     typealias SelfBehavior = Behavior<Message>
 
     // TODO: impl note: we need to ref hold the cell somehow, but the handed our refs dont have to, since they should go to deadletters once we terminate
@@ -40,13 +45,18 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // on each message being applied the actor may return a new behavior that will be handling the next message.
     public var behavior: Behavior<Message>
 
-    @usableFromInline internal var system: ActorSystem
-
     internal let _parent: AnyReceivesSystemMessages
 
     internal let _path: UniqueActorPath
 
     internal let _props: Props
+
+    // MARK: Fault handling infrastructure
+
+    // FIXME not sure yet... we may need to keep "supervisor" around like this to be accessible for fault handling
+    @usableFromInline internal var supervisedBy: Supervisor<Message>? = nil // TODO may need to be a stack
+
+    // MARK: Death watch infrastructure
 
     // Implementation of DeathWatch
     @usableFromInline internal var deathWatch: DeathWatch<Message>!
@@ -60,6 +70,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
     }
+
+    // MARK: ActorCell implementation
 
     internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
                   behavior: Behavior<Message>, path: UniqueActorPath,
@@ -160,6 +172,22 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         #if SACT_TRACE_CELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
+
+        // FIXME TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR --------------
+        // TODO this will be fixed once we make supervision a special case, rather than an interceptor
+        // note that akka does not need this since they always have exceptions, and we need to do this extra dance; so we have to specialize the behavior type
+        switch self.behavior {
+        // TODO due to this dance I think we need to do separate supervision Behavior...
+        case .intercept(_, let interceptor):
+            if let supervisor = interceptor as? Supervisor<Message> {
+                self.supervisedBy = supervisor
+                pprint("~~~~~~ executing interpretMessage, we know we are supervised, by: \(supervisor)")
+            }
+        default:
+            // nothing to do, we only fish for interceptors
+            break
+        }
+        // FIXME END OF TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR -------
 
         // if a behavior was wrapped with supervision, this interpretMessage would encapsulate and contain the throw
         let next = try self.behavior.interpretMessage(context: context, message: message)
@@ -350,6 +378,15 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
 
         self.finishTerminating() // FIXME likely too eagerly
+    }
+
+    /// Used by supervision, from Fault recovery.
+    /// In such case the cell must be restarted while the mailbox remain in-tact.
+    //
+    // TODO??? /// Important: Once the run and mailbox cleanup has concluded, the cell MUST be started again.
+    @inlinable public func restart(behavior: Behavior<Message>) throws {
+        self.behavior = behavior
+        try self.interpretSystemStart()
     }
 
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors

@@ -35,8 +35,8 @@ typedef struct {
     int backtrace_length;
 } CCrashDetails;
 
-void sact_enable_failure_handling(void);
-void sact_disable_failure_handling(void);
+void sact_enable_fault_handling(void);
+void sact_disable_fault_handling(void);
 
 int sact_install_swift_crash_handler(void);
 

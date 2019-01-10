@@ -44,10 +44,12 @@ typedef struct {
 
 /** Result of mailbox run, instructs swift part of code to perform follow up actions */
 typedef enum {
-    Close = -1,
-    Done = 0,
-    Reschedule = 1,
-    Failure = 2
+    Close          = -1,
+    Done           = 0b00,
+    Reschedule     = 0b01,
+    // failure and supervision:
+    Failure        = 0b10,
+    FailureRestart = 0b11,
 } CMailboxRunResult;
 
 typedef enum {
@@ -55,8 +57,13 @@ typedef enum {
     User = 1
 } ProcessedMessageType;
 
+typedef void InterpretMessageClosureContext;
+typedef void InterpretSystemMessageClosureContext;
+typedef void DropMessageClosureContext;
+typedef void SupervisionClosureContext;
+
 /*
- * Callback type for Swift interop.
+ * Callback for Swift interop.
  *
  * Accepts a context and message pointer.
  *
@@ -65,13 +72,29 @@ typedef enum {
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef bool (* InterpretMessageCallback)(void*, void*);
+typedef bool (* InterpretMessageCallback)(DropMessageClosureContext*, void*);
 
-/* Drop message, when draining mailbox into dead letters. */
-typedef void (* DropMessageCallback)(void*, void*); // TODO rename, deadletters
+/*
+ * Callback for Swift interop.
+ *
+ * Drop message, when draining mailbox into dead letters.
+ */
+typedef void (* DropMessageCallback)(DropMessageClosureContext*, void*); // TODO rename, deadletters
+
+/*
+ * Callback for Swift interop.
+ *
+ * Accepts pointer to message which caused the failure.
+ *
+ * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
+ */
+typedef CMailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
+/*
+ * Safely destroy and deallocate passed in mailbox.
+ */
 void cmailbox_destroy(CMailbox* mailbox);
 
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
@@ -94,9 +117,14 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
  */
 CMailboxRunResult cmailbox_run(
     CMailbox* mailbox,
-    void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
+    // message processing:
+    InterpretMessageClosureContext* context, InterpretSystemMessageClosureContext* system_context,
+    DropMessageClosureContext* dead_letter_context, DropMessageClosureContext* dead_letter_system_context,
     InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-    jmp_buf* error_jmp_buf, void** failed_message, ProcessedMessageType* processing_stage);
+    // fault handling:
+    jmp_buf* error_jmp_buf,
+    SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
+    void** failed_message, ProcessedMessageType* processing_stage);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 

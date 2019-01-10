@@ -36,7 +36,7 @@ class SupervisionTests: XCTestCase {
     }
     enum FaultyMessages  {
         case pleaseThrow(error: Error)
-        case pleaseFatalError()
+        case pleaseFatalError(message: String)
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
     }
 
@@ -59,8 +59,8 @@ class SupervisionTests: XCTestCase {
                 switch $0 {
                 case .pleaseThrow(let error):
                     throw error
-                case .pleaseFatalError:
-                    fatalError("Boom!")
+                case .pleaseFatalError(let msg):
+                    fatalError(msg)
                 case let .echo(msg, sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
@@ -77,11 +77,13 @@ class SupervisionTests: XCTestCase {
         let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .stop)
         let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .restart(atMost: 3))
 
-        let _: Behavior<String> = faultyWorker.supervisedWith(strategy: .stop)
-
         // supervised
 
+        let _: Behavior<String> = faultyWorker.supervisedWith(strategy: .stop)
+
     }
+
+    // MARK: Handling Swift Errors
 
     func test_stopSupervised_throws_shouldStop() throws {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
@@ -91,7 +93,7 @@ class SupervisionTests: XCTestCase {
         let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.faulty(probe: p.ref), withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "faulty-1")
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "erroring-1")
             return .same
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior) // TODO intercept not needed
@@ -100,7 +102,7 @@ class SupervisionTests: XCTestCase {
 
         guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
 
-        p.watch(faultyWorker)WhateverSupervisor
+        p.watch(faultyWorker)
         faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 111")))
 
         // it should have stopped on the failure
@@ -120,7 +122,7 @@ class SupervisionTests: XCTestCase {
         let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.faulty(probe: p.ref), withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "faulty-2")
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "erroring-2")
             return .same
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
@@ -155,6 +157,53 @@ class SupervisionTests: XCTestCase {
 
         pinfo("Now it boomed but did not crash again!")
     }
+
+    // MARK: Handling faults
+
+    func test_restartSupervised_fatalError_shouldRestart() throws {
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 1)
+        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.faulty(probe: p.ref), withStrategy: strategy)
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "faulty-2")
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "parent-2")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        p.watch(faultyWorker)
+
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+
+        faultyWorker.tell(.pleaseFatalError(message: "Boom: 333_1"))
+        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+
+        pinfo("Now expecting it to run setup again...")
+        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
+
+        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+        faultyWorkerRestarted.shouldEqual(faultyWorker)
+        pinfo("The new restarted ref is equal. good.")
+
+        pinfo("Not expecting a reply from it")
+        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
+
+
+        faultyWorker.tell(.pleaseFatalError(message: "Boom: 333_1"))
+        try p.expectNoTerminationSignal(for: .milliseconds(300))
+
+        pinfo("Now it boomed but did not crash again!")
+    }
+
 
 }
 

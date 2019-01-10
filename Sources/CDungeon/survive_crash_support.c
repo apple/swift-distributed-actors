@@ -54,7 +54,7 @@ static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 //
 // Each executing actor sets this value for the duration of its mailbox run.
 // if NULL, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
-static _Thread_local bool failure_handling_enabled = false;
+static _Thread_local bool tl_fault_handling_enabled = false;
 
 static _Thread_local jmp_buf error_jmp_buf;
 
@@ -90,7 +90,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
                     sact_my_tid(), sig, siginfo->si_code);
     #endif
 
-    if (!failure_handling_enabled) {
+    if (!tl_fault_handling_enabled) {
         // fault happened outside of a fault handling actor, we MUST NOT handle it!
         #ifdef SACT_TRACE_CRASH
         fprintf(stderr, "[SACT_TRACE_CRASH][thread:%d] Thread is not executing an actor. Applying default signal handling.\n", sact_my_tid());
@@ -100,15 +100,13 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
         return;
     }
 
-    // TODO carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
+    // TODO: carefully analyze the signal code to figure out if to exit process or attempt to kill thread and terminate actor
     // https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
-
-    // TODO: we could log a bit of a backtrace if we wanted to perhaps as well:
-    // http://man7.org/linux/man-pages/man3/backtrace.3.html
 
     char** frames;
     int frame_count = sact_get_backtrace(&frames);
 
+    // TODO(ktoso): safety wise perhaps better to keep some preallocated space for crash details
     crash_details = malloc(sizeof(CCrashDetails));
     crash_details->backtrace = frames;
     crash_details->backtrace_length = frame_count;
@@ -147,12 +145,12 @@ void sact_complain_and_pause_thread(void* ctx) {
     // kill_pthread_self(); // terminates entire process
 }
 
-void sact_enable_failure_handling() {
-    failure_handling_enabled = true;
+void sact_enable_fault_handling() {
+    tl_fault_handling_enabled = true;
 }
 
-void sact_disable_failure_handling() {
-    failure_handling_enabled = false;
+void sact_disable_fault_handling() {
+    tl_fault_handling_enabled = false;
 }
 
 /* returns errno and sets errno appropriately, 0 on success */
