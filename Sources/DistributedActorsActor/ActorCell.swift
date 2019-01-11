@@ -176,16 +176,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         // FIXME TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR --------------
         // TODO this will be fixed once we make supervision a special case, rather than an interceptor
         // note that akka does not need this since they always have exceptions, and we need to do this extra dance; so we have to specialize the behavior type
-        switch self.behavior {
-        // TODO due to this dance I think we need to do separate supervision Behavior...
-        case .intercept(_, let interceptor):
-            if let supervisor = interceptor as? Supervisor<Message> {
-                self.supervisedBy = supervisor
-                pprint("~~~~~~ executing interpretMessage, we know we are supervised, by: \(supervisor)")
-            }
-        default:
-            // nothing to do, we only fish for interceptors
-            break
+        if case .intercept(_, let interceptor) = self.behavior,
+           let supervisor = interceptor as? Supervisor<Message>{
+            self.supervisedBy = supervisor
         }
         // FIXME END OF TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR -------
 
