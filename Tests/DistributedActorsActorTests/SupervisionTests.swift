@@ -69,6 +69,18 @@ class SupervisionTests: XCTestCase {
         }
     }
 
+    // TODO: test a double fault (throwing inside of a supervisor
+
+    // TODO: test div by zero or similar things, all "should just work", but we want to know in case swift changes something
+
+    // TODO: test that does some really bad things and segfaults; we DO NOT want to handle this and should hard crash
+
+    // TODO: exceed max restarts counter of a restart supervisor
+
+    // TODO: implement and test exponential backoff supervision
+
+    // TODO: test failures inside signal handling
+
     func test_compile() throws {
         let faultyWorker: Behavior<String> = .ignore
 
@@ -80,7 +92,6 @@ class SupervisionTests: XCTestCase {
         // supervised
 
         let _: Behavior<String> = faultyWorker.supervisedWith(strategy: .stop)
-
     }
 
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
@@ -174,8 +185,14 @@ class SupervisionTests: XCTestCase {
 
     // MARK: Handling faults
 
+    func test_stopSupervised_fatalError_shouldStop() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
+            FaultyMessages.pleaseFatalError(message: msg)
+        })
+    }
+
     func test_restartSupervised_fatalError_shouldRestart() throws {
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
+        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
             FaultyMessages.pleaseFatalError(message: msg)
         })
     }

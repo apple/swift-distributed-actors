@@ -35,9 +35,9 @@
 #include "CMPSCLinkedQueue.h"
 
 typedef struct {
-    int64_t capacity;
-    int64_t max_run_length;
-    _Atomic int64_t status;
+            int64_t   capacity;
+            int64_t   max_run_length;
+    _Atomic int64_t   status;
     CMPSCLinkedQueue* system_messages;
     CMPSCLinkedQueue* messages;
 } CMailbox;
@@ -52,10 +52,11 @@ typedef enum {
     FailureRestart = 0b11,
 } CMailboxRunResult;
 
+/** Used to mark in which phase of a mailbox run we are currently in. */
 typedef enum {
-    System = 0,
-    User = 1
-} ProcessedMessageType;
+    ProcessingSystemMessages = 0,
+    ProcessingUserMessages   = 1,
+} MailboxRunPhase;
 
 typedef void InterpretMessageClosureContext;
 typedef void InterpretSystemMessageClosureContext;
@@ -93,7 +94,7 @@ typedef CMailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContex
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
 /*
- * Safely destroy and deallocate passed in mailbox.
+ * Destroy and deallocate passed in mailbox.
  */
 void cmailbox_destroy(CMailbox* mailbox);
 
@@ -124,7 +125,7 @@ CMailboxRunResult cmailbox_run(
     // fault handling:
     jmp_buf* error_jmp_buf,
     SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
-    void** failed_message, ProcessedMessageType* processing_stage);
+    void** failed_message, MailboxRunPhase* run_phase);
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
 

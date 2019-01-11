@@ -54,8 +54,8 @@ public struct Supervision {
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
-/// To implement your own `Supervisor` implement the `handleMessageFailure` and `handleSignalFailure` methods,
-/// OR use the
+/// in order to implement a custom `Supervisor` implement the `handleMessageFailure` and `handleSignalFailure` methods,
+/// or use the Supervise
 public class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
@@ -78,16 +78,19 @@ public class Supervisor<Message>: Interceptor<Message> {
 
     // MARK: Internal Supervisor API
 
-    /// Handle a fault that happened during message processing
-    // TODO clarify what happens on faults here -- they should not be recovered I think; no double faults allowed
+    /// Handle a fault that happened during message processing.
+    // TODO wording and impl on double-faults
     func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
+    /// Handle a failure that occurred during signal processing.
+    // TODO wording and impl on double-faults
     func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
+    // TODO: implement so we don't get infinite nesting?
     func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
         return undefined()
     }

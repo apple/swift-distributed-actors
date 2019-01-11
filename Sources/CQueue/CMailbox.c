@@ -183,7 +183,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                                // failure handling:
                                jmp_buf* error_jmp_buf,
                                void* supervision_context, InvokeSupervisionCallback supervision_invoke,
-                               void** failed_message, ProcessedMessageType* processing_stage) {
+                               void** failed_message, MailboxRunPhase* run_phase) {
     print_debug_status(mailbox, "Entering run");
 
     // We store the message in a void** here so that it is still accessible after
@@ -231,7 +231,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
         // run system messages ------
         if (has_system_messages(status)) {
-            *processing_stage = System;
+            *run_phase = ProcessingSystemMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
 
             while (*message != NULL && keep_running) {
@@ -276,7 +276,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // run user messages ------
 
         if (keep_running) {
-            *processing_stage = User;
+            *run_phase = ProcessingUserMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->messages);
             while (*message != NULL && keep_running) {
                 // we need to add 2 to processed_activations because the user message count is stored
