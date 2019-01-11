@@ -87,24 +87,19 @@ final class Mailbox<Message> {
             }
         }
         self.invokeSupervision = { (ctxPtr, failedMessagePtr) in
-            traceLog_Mailbox("TIME FOR SUPERVISION DECISION !!!!!! Ohh, what will it be?!")
+            traceLog_Mailbox("Supervision: Supervised actor has faulted, supervisor to decide course of action.")
 
             if let crashDetails = FaultHandling.getCrashDetails() {
                 if let ctx = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
-//                let context: ActorContext<Message> = ctx.pointee.cell.context
-//                let supervisor: Supervisor<Message>? = ctx.pointee.cell.supervisedBy
 
                     let processedMessageType: ProcessedMessageType = User // FIXME
-                    let messageDescription = /*Mailbox.*/renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessagePtr!) // FIXME that !
+                    let messageDescription = ctx.renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessagePtr!) // FIXME that !
                     let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
 
                     do {
-                        pprint("!!!!!!! invoking... handleMessageFailure")
-                        let v = try ctx.handleMessageFailure(.fault(failure), whileProcessing: processedMessageType)
-                        pprint("!!!!!!! returned \(MailboxRunResult.description(v))")
-                        return v
+                        return try ctx.handleMessageFailure(.fault(failure), whileProcessing: processedMessageType)
                     } catch {
-                        pprint("DOUBLE FAULT: \(error)")
+                        pprint("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
                         exit(-1)
                     }
                 } else {
@@ -156,41 +151,47 @@ final class Mailbox<Message> {
             self.cell.sendToDeadLetters(message: msg)
         })
 
-        self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(handleMessageFailure: { supervisionFailure, msgType in
-            traceLog_Mailbox("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
+        self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
+            logger: self.cell.log,
+            handleMessageFailure: { supervisionFailure, msgType in
+                traceLog_Mailbox("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
-            let supervisionResultingBehavior: Behavior<Message>?
-            if msgType == User {
-                supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
-            } else if msgType == System {
-                supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
-            } else {
-                fatalError("Bug! Unexpected msgType = \(msgType)")
-            }
-
-            // TODO: this handling MUST be aligned with the throws handling.
-            switch supervisionResultingBehavior {
-            case .none:
-                // no supervisor, thus: Let it Crash!
-                return Failure
-            case .some(.stopped):
-                // decision is to stop which is terminal, thus: Let it Crash!
-                return Failure
-            case .some(.failed(let error)):
-                // decision is to fail, Let it Crash!
-                // TODO substitute error with the one from failed
-                return Failure
-            case .some(let restartWithBehavior):
-                // received new behavior, attempting restart:
-                do {
-                    try self.cell.restart(behavior: restartWithBehavior)
-                } catch {
-                    self.cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
-                    fatalError("Double fault while restarting actor \(self.cell.path). Terminating.")
+                let supervisionResultingBehavior: Behavior<Message>?
+                if msgType == User {
+                    supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
+                } else if msgType == System {
+                    supervisionResultingBehavior = try self.cell.supervisedBy?.handleMessageFailure(self.cell.context, failure: supervisionFailure)
+                } else {
+                    fatalError("Bug! Unexpected msgType = \(msgType)")
                 }
-                return FailureRestart
-            }
-        })
+
+                // TODO: this handling MUST be aligned with the throws handling.
+                switch supervisionResultingBehavior {
+                case .none:
+                    // no supervisor, thus: Let it Crash!
+                    return Failure
+                case .some(.stopped):
+                    // decision is to stop which is terminal, thus: Let it Crash!
+                    return Failure
+                case .some(.failed(let error)):
+                    // decision is to fail, Let it Crash!
+                    // TODO substitute error with the one from failed
+                    return Failure
+                case .some(let restartWithBehavior):
+                    // received new behavior, attempting restart:
+                    do {
+                        try self.cell.restart(behavior: restartWithBehavior)
+                    } catch {
+                        self.cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
+                        fatalError("Double fault while restarting actor \(self.cell.path). Terminating.")
+                    }
+                    return FailureRestart
+                }
+            },
+            describeMessage: { failedMessageRawPtr in
+                // guaranteed to be of our generic Message type, however the context could not close over the generic type
+                return renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
+            })
     }
 
     deinit {
@@ -316,7 +317,8 @@ extension Mailbox {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }
 
-                let messageDescription = /*Mailbox.*/renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessageRaw)
+                // apropriately render the message (recovering generic information thanks to the passed in type)
+                let messageDescription = renderMessageDescription(processedMessageType: processedMessageType, failedMessageRaw: failedMessageRaw, userMessageType: Message.self)
                 let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
                 self.cell.crashFail(error: failure)
             } else {
@@ -341,22 +343,6 @@ extension MessageProcessingFailure: CustomStringConvertible {
         return "Actor faulted while processing message '\(messageDescription)':\n\(backtraceStr)"
     }
 }
-
-// Implementation note: As free function because we need to access it in C callbacks,
-// which are not allowed to close over generic context which a Mailbox type is (even if statically accessing it).
-fileprivate func renderMessageDescription(processedMessageType: ProcessedMessageType, failedMessageRaw: UnsafeMutableRawPointer) -> String {
-    let messageDescription: String
-    if processedMessageType == System {
-        let systemMessage = failedMessageRaw.assumingMemoryBound(to: SystemMessage.self).move()
-        messageDescription = "[\(systemMessage)]:\(SystemMessage.self)"
-    } else {
-//        let message = failedMessageRaw.assumingMemoryBound(to: Message.self).move()
-//        messageDescription = "[\(message)]:\(Message.self)"
-        messageDescription = "message description not available because generics....."
-    }
-    return messageDescription
-}
-
 
 // MARK: Closure contexts for interop with C-mailbox
 
@@ -404,14 +390,67 @@ private struct InvokeSupervisionClosureContext {
     // private let _handleMessageFailure: (UnsafeMutableRawPointer) throws -> Behavior<Message>
     private let _handleMessageFailureBecauseC: (Supervision.Failure, ProcessedMessageType) throws -> CMailboxRunResult
 
-    init(handleMessageFailure: @escaping (Supervision.Failure, ProcessedMessageType) throws -> CMailboxRunResult) {
+    // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
+    private let _describeMessage: (UnsafeMutableRawPointer) -> String
+
+    /// The cell's logger may be used to log information about the supervision handling.
+    /// We assume that since we run supervision only for "not fatal faults" the logger should still be in an usable state
+    /// as we run the supervision handling. The good thing is that all metadata of the cells logger will be included in
+    /// crash logs then. It may we worth reconsidering if we need to be even more defensive here, e.g.
+    /// take a logger without potential user changes made to it etc.
+    private let _log: Logger
+
+    init(logger: Logger, handleMessageFailure: @escaping (Supervision.Failure, ProcessedMessageType) throws -> CMailboxRunResult,
+         describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
+        self._log = logger
         self._handleMessageFailureBecauseC = handleMessageFailure
+        self._describeMessage = describeMessage
     }
 
     @inlinable
     func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing msgType: ProcessedMessageType) throws -> CMailboxRunResult {
         return try self._handleMessageFailureBecauseC(failure, msgType)
     }
+
+    // hides the generic Message and provides same capabilities of rendering messages as the free function of the same name
+    @inlinable
+    func renderMessageDescription(processedMessageType: ProcessedMessageType, failedMessageRaw: UnsafeMutableRawPointer) -> String {
+        if processedMessageType == System {
+            // we can invoke it directly since it is not generic
+            return renderSystemMessageDescription(failedMessageRaw)
+        } else {
+            // since Message is generic, we need to hop over the provided function which was allowed to close over the generic state
+            return self._describeMessage(failedMessageRaw)
+        }
+    }
+
+    @inlinable
+    var log: Logger {
+        return self._log
+    }
+
+}
+
+/// Renders a `SystemMessage` or user `Message` appropriately given a raw pointer to such message.
+/// Only really needed due to the c-interop of failure handling where we need to recover the lost generic information this way.
+private func renderMessageDescription<Message>(processedMessageType: ProcessedMessageType, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
+    if processedMessageType == System {
+        return renderSystemMessageDescription(failedMessageRaw)
+    } else {
+        return renderUserMessageDescription(failedMessageRaw, type: Message.self)
+    }
+}
+
+// Extracted like this since we need to use it directly, as well as from contexts which may not carry generic information
+// such as the InvokeSupervisionClosureContext where we invoke things via a function calling into this one to avoid the
+// generics issue.
+private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointer, type: Message.Type) -> String {
+    let message = ptr.assumingMemoryBound(to: Message.self).move()
+    return "[\(message)]:\(Message.self)"
+}
+private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
+    let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).move()
+    return "[\(systemMessage)]:\(SystemMessage.self)"
 }
 
 /// Helper for rendering the C defined `CMailboxRunResult` enum in human readable format

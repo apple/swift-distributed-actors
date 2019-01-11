@@ -115,6 +115,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     siglongjmp(error_jmp_buf, 1);
 }
 
+// TODO(ktoso): This is not currently used as we jump to fault handling rather than halting a thread
 void block_thread() {
     fprintf(stderr, "[ERROR][SACT_CRASH][thread:%d] Blocking thread forever to prevent progressing into undefined behavior. "
            "Process remains alive.\n", sact_my_tid());
