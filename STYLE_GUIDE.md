@@ -31,12 +31,39 @@ This is not fleshed out, we should chat about it.
 - death watch, watch, unwatch - the API allowing for monitoring actors for termination, when a watched actor terminates, the watcher will receive a .terminated signal about it 
 - death pact - signed automatically when watching another actor, and is put into effect when the resulting .terminated signal about the other party is not handled; it causes the watcher to also terminate then
 
+- failure - the most general word for all kinds of throws / faults
+- error - a type of _failure_, it means specifically the Swift `Error` and associated `throws` keywords
+- fault - a type of _failure_, generally not "catchable" faults such as division by zero, accessing an array out of bounds 
+          or a fault signalled by `fatalError()` invocations 
+- fatal faults - serious _faults_ such as segmentation faults or similar, which Swift Distributed Actors does _not_ allow recovering from 
+                 as they are deemed dangerous enough that they in all likelyhood have invalidated the consistency of the entire system, 
+                 and not only the current actor. 
+
+- crash - the _result_ of a failure, an actor can crash by which we mean it has stopped after a failure, or an entire 
+          actor system can crash, by which we mean that some failure was so serious or that it "bubbled up" that the 
+          entire system terminated in response to it.
+  - also key to the "Let it Crash!" motto, employed by Swift Distributed Actors and other actor systems.
+
+- supervision - the general concept that a parent actor _supervises_ a child actor and some decisions may be made about 
+                restarting or stopping such child on a failure.
+                
+- supervision decision - the return value of a supervisor, invoked when a failure has occurred.  
+
+- mailbox run - the execution of a mailbox, in other words, the process of the mailbox dequeueing messages and applying them to the appropriate actor.
+- mailbox run length - the maximum amount of messages to be processed within a single run. The concept is quite similar to "fuel" in other such systems,
+                       where a run continues until all fuel is exhausted. If messages remain after an exhausted run, another run will be scheduled.
+
 ## Code style hints
 
 - Whenever working with behaviors and an `ActorContext` is also passed, prefer passing the context as the first parameter
   - then (if present) followed by a `Behavior`
   - then (if present) followed by a message
-  - examples: `interpret(context, behavior, message)`, `handle { context, message ...` 
+  - examples: `interpret(context, behavior, message)`, `handle { context, message ...`
+
+- Logging
+  - Loggers stored in fields should be stored as `log` unless there's a reason not to
+  - Make sure that a logger carries useful information such as the actor path that it relates to
+  - Use a common prefix or tag to easily group log statements of a specific feature ("supervision", "deathwatch") 
 
 ## Logging messages
 
