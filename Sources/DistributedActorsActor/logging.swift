@@ -14,103 +14,230 @@
 // FIXME remove this; this is only here to experiment with the WWSG proposal logging API
 // FIXME Remove; This is `sswg-logger-api-pitch`
 
-import Foundation
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+import Darwin
+#else
+import Glibc
+#endif
 
-/// The most important type, the one the users will actually interact with and for example write:
-///
-///     let myModuleLogger = LoggerFactory.make(label: "example.myproject.FooModule")
-///     class MyClass {
-///         func something() {
-///             myModuleLogger.warn("something isn't a great function name")
-///         }
-///     }
-public protocol Logger {
+import DistributedActorsConcurrencyHelpers
 
-    /// not called directly, only by the helper methods like `info(...)`
-    func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt)
+/// This is the protocol a custom logger implements.
+public protocol LogHandler {
+    // This is the custom logger implementation's log function. A user would not invoke this but rather go through
+    // `Logger`'s `info`, `error`, or `warning` functions.
+    //
+    // An implementation does not need to check the log level because that has been done before by `Logger` itself.
+    func log(level: Logging.Level, message: String, metadata: Logging.Metadata?, error: Error?, file: StaticString, function: StaticString, line: UInt)
 
-    /// This adds diagnostic context to a place the concrete logger considers appropriate. Some loggers
-    /// might not support this feature at all.
-    subscript(diagnosticKey diagnosticKey: String) -> String? { get set }
+    // This adds metadata to a place the concrete logger considers appropriate. Some loggers
+    // might not support this feature at all.
+    subscript(metadataKey _: String) -> Logging.MetadataValue? { get set } /// ????
+
+    // All available metadata
+    var metadata: Logging.Metadata { get set }
+
+    // The log level
+    var logLevel: Logging.Level { get set }
 }
 
-extension Logger {
+// This is the logger itself. It can either have value or reference semantics, depending on the `LogHandler` implementation.
+public struct Logger {
+    @usableFromInline
+    var handler: LogHandler
 
-    public func debug(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
-        self._log(level: .debug, message: message, file: file, function: function, line: line)
+    internal init(_ handler: LogHandler) {
+        self.handler = handler
     }
 
-    public func info(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
-        self._log(level: .info, message: message, file: file, function: function, line: line)
+    @inlinable
+    func log(level: Logging.Level, message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        if self.logLevel <= level {
+            self.handler.log(level: level, message: message(), metadata: metadata(), error: error, file: file, function: function, line: line)
+        }
     }
 
-    public func warn(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
-        self._log(level: .warn, message: message, file: file, function: function, line: line)
+    @inlinable
+    public func trace(_ message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        self.log(level: .trace, message: message, metadata: metadata, error: error, file: file, function: function, line: line)
     }
 
-    public func error(_ message: @autoclosure () -> String, file: String = #file, function: String = #function, line: UInt = #line) {
-        self._log(level: .error, message: message, file: file, function: function, line: line)
+    @inlinable
+    public func debug(_ message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        self.log(level: .debug, message: message, metadata: metadata, error: error, file: file, function: function, line: line)
     }
 
-    // lots of to bikeshed more log methods
+    @inlinable
+    public func info(_ message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        self.log(level: .info, message: message, metadata: metadata, error: error, file: file, function: function, line: line)
+    }
+
+    @inlinable
+    public func warning(_ message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        self.log(level: .warning, message: message, metadata: metadata, error: error, file: file, function: function, line: line)
+    }
+
+    @inlinable
+    public func error(_ message: @autoclosure () -> String, metadata: @autoclosure () -> Logging.Metadata? = nil, error: Error? = nil, file: StaticString = #file, function: StaticString = #function, line: UInt = #line) {
+        self.log(level: .error, message: message, metadata: metadata, error: error, file: file, function: function, line: line)
+    }
+
+    @inlinable
+    public subscript(metadataKey metadataKey: String) -> Logging.MetadataValue? {
+        get {
+            return self.handler[metadataKey: metadataKey]
+        }
+        set {
+            self.handler[metadataKey: metadataKey] = newValue
+        }
+    }
+
+    @inlinable
+    public var metadata: Logging.Metadata {
+        get {
+            return self.handler.metadata
+        }
+        set {
+            self.handler.metadata = newValue
+        }
+    }
+
+    @inlinable
+    public var logLevel: Logging.Level {
+        get {
+            return self.handler.logLevel
+        }
+        set {
+            self.handler.logLevel = newValue
+        }
+    }
 }
 
-public enum LogLevel: Int {
-    case debug
-    case info
-    case warn
-    case error
+// This is the logging system itself, it's mostly used to obtain loggers and to set the type of the `LogHandler`
+// implementation.
+public enum Logging {
+    private static let lock = ReadWriteLock()
+    private static var _factory: ((String) -> LogHandler) = StdoutLogger.init
+
+    // Configures which `LogHandler` to use in the application.
+    public static func bootstrap(_ factory: @escaping (String) -> LogHandler) {
+        self.lock.withWriterLock {
+            self._factory = factory
+        }
+    }
+
+    public static func make(_ label: String) -> Logger {
+        return self.lock.withReaderLock { Logger(self._factory(label)) }
+    }
 }
 
-extension LogLevel: Comparable {
-    public static func <(lhs: LogLevel, rhs: LogLevel) -> Bool {
+public extension Logging {
+    public typealias Metadata = [String: MetadataValue]
+
+    public enum MetadataValue {
+        case string(String)
+        case stringConvertible(CustomStringConvertible)
+        case dictionary(Metadata)
+        case array([Metadata.Value])
+    }
+
+    public enum Level: Int {
+        case trace
+        case debug
+        case info
+        case warning
+        case error
+    }
+}
+
+extension Logging.Level: Comparable {
+    public static func < (lhs: Logging.Level, rhs: Logging.Level) -> Bool {
         return lhs.rawValue < rhs.rawValue
     }
 }
 
-/// The second most important type, this is where users will get a logger from.
-public enum LoggerFactory {
-    private static let lock = NSLock()
-    private static var _factory: (String) -> Logger = StdoutLogger.init
-    public static var factory: (String) -> Logger {
-        get {
-            return self.lock.withLock {
-                self._factory
-            }
+extension Logging.MetadataValue: Equatable {
+    public static func ==(lhs: Logging.MetadataValue, rhs: Logging.MetadataValue) -> Bool {
+        switch (lhs, rhs) {
+        case (.string(let lhs), .string(let rhs)):
+            return lhs.description == rhs.description
+        case (.stringConvertible(let lhs), .stringConvertible(let rhs)):
+            return lhs.description == rhs.description
+        case (.array(let lhs), .array(let rhs)):
+            return lhs == rhs
+        case (.dictionary(let lhs), .dictionary(let rhs)):
+            return lhs == rhs
+        default:
+            return false
         }
-        set {
-            self.lock.withLock {
-                self._factory = newValue
-            }
-        }
-    }
-
-    // this is used to create a logger for a certain unit which might be a module, file, class/struct, function, whatever works for the concrete application. Systems that pass the logger explicitly would not use this function.
-    public static func make(identifier: String) -> Logger {
-        return self.factory(identifier)
     }
 }
 
-/// Ships with the logging module, really boring just prints something using the `print` function
-final public class StdoutLogger: Logger {
+extension Logging.MetadataValue: ExpressibleByStringLiteral {
+    public typealias StringLiteralType = String
 
-    private let lock = NSLock()
-    private var context: [String: String] = [:] {
-        didSet {
-            if self.context.isEmpty {
-                self.prettyContext = ""
-            } else {
-                self.prettyContext = " \(self.context.description)"
-            }
+    public init(stringLiteral value: String) {
+        self = .string(value)
+    }
+}
+
+extension Logging.MetadataValue: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .dictionary(let dict):
+            return dict.mapValues { $0.description }.description
+        case .array(let list):
+            return list.map { $0.description }.description
+        case .string(let str):
+            return str.description
+        case .stringConvertible(let repr):
+            return repr.description
         }
     }
-    private var prettyContext: String = ""
-    private var _logLevel: LogLevel = .info
-    public var logLevel: LogLevel {
+}
+
+extension Logging.MetadataValue: ExpressibleByStringInterpolation {
+    #if !swift(>=5.0)
+    public init(stringInterpolation strings: Logging.MetadataValue...) {
+        self = .string(strings.map { $0.description }.reduce("", +))
+    }
+
+    public init<T>(stringInterpolationSegment expr: T) {
+        self = .string(String(stringInterpolationSegment: expr))
+    }
+    #endif
+}
+
+extension Logging.MetadataValue: ExpressibleByDictionaryLiteral {
+    public typealias Key = String
+    public typealias Value = Logging.MetadataValue
+
+    public init(dictionaryLiteral elements: (String, Logging.MetadataValue)...) {
+        self = .dictionary(.init(uniqueKeysWithValues: elements))
+    }
+}
+
+extension Logging.MetadataValue: ExpressibleByArrayLiteral {
+    public typealias ArrayLiteralElement = Logging.MetadataValue
+
+    public init(arrayLiteral elements: Logging.MetadataValue...) {
+        self = .array(elements)
+    }
+}
+
+
+// ------------ log handler example from proposal
+
+
+internal final class StdoutLogger: LogHandler {
+    private let lock = Lock()
+
+    public init(label: String) {}
+
+    private var _logLevel: Logging.Level = .info
+    public var logLevel: Logging.Level {
         get {
-            return self.lock.withLock {
-                self._logLevel
-            }
+            return self.lock.withLock { self._logLevel }
         }
         set {
             self.lock.withLock {
@@ -119,36 +246,148 @@ final public class StdoutLogger: Logger {
         }
     }
 
-
-    public init(identifier: String) {
-    }
-
-    public func _log(level: LogLevel, message: @autoclosure () -> String, file: String, function: String, line: UInt) {
-        if level >= self.logLevel {
-            print("STDOUT_LOG: \(message())\(self.prettyContext)")
+    private var prettyMetadata: String?
+    private var _metadata = Logging.Metadata() {
+        didSet {
+            self.prettyMetadata = self.prettify(self._metadata)
         }
     }
 
-    public subscript(diagnosticKey diagnosticKey: String) -> String? {
+    public func log(level: Logging.Level, message: String, metadata: Logging.Metadata?, error: Error?, file: StaticString, function: StaticString, line: UInt) {
+        let prettyMetadata = metadata?.isEmpty ?? true ? self.prettyMetadata : self.prettify(self.metadata.merging(metadata!, uniquingKeysWith: { _, new in new }))
+        print("\(self.timestamp()) \(level)\(prettyMetadata.map { " \($0)" } ?? "") \(message)\(error.map { " \($0)" } ?? "")")
+    }
+
+    public var metadata: Logging.Metadata {
         get {
-            return self.lock.withLock {
-                self.context[diagnosticKey]
-            }
+            return self.lock.withLock { self._metadata }
+        }
+        set {
+            self.lock.withLock { self._metadata = newValue }
+        }
+    }
+
+    public subscript(metadataKey metadataKey: String) -> Logging.MetadataValue? {
+        get {
+            return self.lock.withLock { self._metadata[metadataKey] }
         }
         set {
             self.lock.withLock {
-                self.context[diagnosticKey] = newValue
+                self._metadata[metadataKey] = newValue
             }
         }
     }
+
+    private func prettify(_ metadata: Logging.Metadata) -> String? {
+        return !metadata.isEmpty ? metadata.map { "\($0)=\($1)" }.joined(separator: " ") : nil
+    }
+
+    private func timestamp() -> String {
+        var buffer = [Int8](repeating: 0, count: 255)
+        var timestamp = time(nil)
+        let localTime = localtime(&timestamp)
+        strftime(&buffer, buffer.count, "%Y-%m-%dT%H:%M:%S%z", localTime)
+        return buffer.map { UInt8($0) }.withUnsafeBufferPointer { ptr in
+            String.decodeCString(ptr.baseAddress, as: UTF8.self, repairingInvalidCodeUnits: true)
+        }?.0 ?? "\(timestamp)"
+    }
 }
 
-private extension NSLock {
-    func withLock<T>(_ body: () -> T) -> T {
-        self.lock()
+
+// ------------ "locks.swift" of the proposal
+
+/// A threading lock based on `libpthread` instead of `libdispatch`.
+///
+/// This object provides a lock on top of a single `pthread_mutex_t`. This kind
+/// of lock is safe to use with `libpthread`-based threading models, such as the
+/// one used by NIO.
+internal final class ReadWriteLock {
+    fileprivate let rwlock: UnsafeMutablePointer<pthread_rwlock_t> = UnsafeMutablePointer.allocate(capacity: 1)
+
+    /// Create a new lock.
+    public init() {
+        let err = pthread_rwlock_init(self.rwlock, nil)
+        precondition(err == 0)
+    }
+
+    deinit {
+        let err = pthread_rwlock_destroy(self.rwlock)
+        precondition(err == 0)
+        self.rwlock.deallocate()
+    }
+
+    /// Acquire a reader lock.
+    ///
+    /// Whenever possible, consider using `withLock` instead of this method and
+    /// `unlock`, to simplify lock handling.
+    public func lockRead() {
+        let err = pthread_rwlock_rdlock(self.rwlock)
+        precondition(err == 0)
+    }
+
+    /// Acquire a writer lock.
+    ///
+    /// Whenever possible, consider using `withLock` instead of this method and
+    /// `unlock`, to simplify lock handling.
+    public func lockWrite() {
+        let err = pthread_rwlock_wrlock(self.rwlock)
+        precondition(err == 0)
+    }
+
+    /// Release the lock.
+    ///
+    /// Whenver possible, consider using `withLock` instead of this method and
+    /// `lock`, to simplify lock handling.
+    public func unlock() {
+        let err = pthread_rwlock_unlock(self.rwlock)
+        precondition(err == 0)
+    }
+}
+
+extension ReadWriteLock {
+    /// Acquire the reader lock for the duration of the given block.
+    ///
+    /// This convenience method should be preferred to `lock` and `unlock` in
+    /// most situations, as it ensures that the lock will be released regardless
+    /// of how `body` exits.
+    ///
+    /// - Parameter body: The block to execute while holding the lock.
+    /// - Returns: The value returned by the block.
+    @inlinable
+    public func withReaderLock<T>(_ body: () throws -> T) rethrows -> T {
+        self.lockRead()
         defer {
             self.unlock()
         }
-        return body()
+        return try body()
+    }
+
+    /// Acquire the writer lock for the duration of the given block.
+    ///
+    /// This convenience method should be preferred to `lock` and `unlock` in
+    /// most situations, as it ensures that the lock will be released regardless
+    /// of how `body` exits.
+    ///
+    /// - Parameter body: The block to execute while holding the lock.
+    /// - Returns: The value returned by the block.
+    @inlinable
+    public func withWriterLock<T>(_ body: () throws -> T) rethrows -> T {
+        self.lockWrite()
+        defer {
+            self.unlock()
+        }
+        return try body()
+    }
+
+    // specialise Void return (for performance)
+    @inlinable
+    public func withReaderLockVoid(_ body: () throws -> Void) rethrows {
+        try self.withReaderLock(body)
+    }
+
+    // specialise Void return (for performance)
+    @inlinable
+    public func withWriterLockVoid(_ body: () throws -> Void) rethrows {
+        try self.withWriterLock(body)
     }
 }

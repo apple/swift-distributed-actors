@@ -32,6 +32,8 @@ struct Envelope<Message> {
     // Envelopes are also used to enable tracing, both within an local actor system as well as across systems
     // the beauty here is that we basically have the "right place" to put the trace metadata - the envelope
     // and don't need to do any magic around it
+
+    // TODO: let trace: TraceMetadata
 }
 
 // TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
@@ -123,6 +125,10 @@ final class Mailbox<Message> {
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
+
+            let oldMetadata = Mailbox.populateLoggerMetadata(cell, from: envelope)
+            defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
+
             traceLog_Mailbox("INVOKE MSG: \(msg)")
             return try cell.interpretMessage(message: msg)
         }, fail: { error in
@@ -334,6 +340,20 @@ extension Mailbox {
             let failure: MessageProcessingFailure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
             self.cell.crashFail(error: failure)
         }
+    }
+}
+
+// TODO separate metadata things from the mailbox, perhaps rather we should do it inside the run (pain to do due to C interop a bit?)
+extension Mailbox {
+    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logging.Metadata {
+        let old = cell.log.metadata
+        #if SACT_DEBUG
+        cell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
+        #endif
+        return old
+    }
+    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logging.Metadata) {
+        cell.log.metadata = metadata
     }
 }
 
