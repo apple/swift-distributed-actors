@@ -50,7 +50,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
                 pw.tell(n / divideBy)
                 return .same
             case let .throwError(error):
-                context.log.warn("Throwing as instructed, error: \(error)")
+                context.log.warning("Throwing as instructed, error: \(error)")
                 throw error
             }
         }

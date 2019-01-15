@@ -48,7 +48,7 @@ public /* but really internal... */ enum SystemMessage: Equatable { // TODO syst
     // TODO: this is incomplete
 
     // exciting future ideas:
-    // case setLogLevel(_ level: LogLevel)
+    // case setLogLevel(_ level: Logging.Level)
 }
 
 // Implementation notes:

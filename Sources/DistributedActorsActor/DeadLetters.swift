@@ -45,11 +45,11 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
             let handled = specialHandle(systemMessage)
             if !handled {
                 // TODO maybe dont log them...?
-                log.warn("[deadLetters] System message [\(deadLetter)]:\(type(of: deadLetter.message)) was not delivered. Dead letter encountered.")
+                log.warning("[deadLetters] System message [\(deadLetter):\(type(of: deadLetter.message))] was not delivered. Dead letter encountered.")
             }
         } else {
             // TODO more metadata (from Envelope)
-            log.warn("[deadLetters] Message [\(deadLetter):\(type(of: deadLetter.message))] was not delivered. Dead letter encountered.")
+            log.warning("[deadLetters] Message [\(deadLetter):\(type(of: deadLetter.message))] was not delivered. Dead letter encountered.")
         }
     }
 

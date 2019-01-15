@@ -125,7 +125,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     func dropMessage(_ message: Message) {
         // TODO implement support for logging dropped messages; those are different than deadLetters
         pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
-        // system.deadLetters.tell(DeadLetter(message)) // TODO metadata
+        // system.deadLetters.tell(Dropped(message)) // TODO metadata
     }
     
     // MARK: Conforming to ActorContext
@@ -155,9 +155,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     }
 
     // access only from within actor
-    private lazy var _log = ActorLogger(self.context)
+    private lazy var _log = ActorLogger.make(context: self.context)
     override public var log: Logger {
-        return self._log
+        get {
+            return self._log
+        }
+        set {
+            self._log = newValue
+        }
     }
 
     override public var dispatcher: MessageDispatcher {
@@ -287,7 +292,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warn("Actor not known yet [\(terminated)] received for it.")
+            log.warning("Actor not known yet [\(terminated)] received for it.")
             return
         }
 

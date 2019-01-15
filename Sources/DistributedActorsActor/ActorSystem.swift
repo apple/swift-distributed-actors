@@ -56,7 +56,7 @@ public final class ActorSystem {
 
     // FIXME should link to the logging infra rather than be ad hoc (init will be tricky, chicken-and-egg ;-))
     // TODO: lazy var is unsafe here
-    public lazy var log: ActorLogger = ActorLogger(self)
+    public lazy var log: Logger = ActorLogger.make(system: self)
     // the tricky stuff is due to
     // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorSystem.swift:55:16: error: 'self' used before all stored properties are initialized
     // self.log = ActorLogger(self)
@@ -77,7 +77,7 @@ public final class ActorSystem {
         // dead letters init
         // TODO actually attach dead letters to a parent?
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
-        let deadLog = LoggerFactory.make(identifier: deadLettersPath.description)
+        let deadLog = Logging.make(deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
         self.dispatcher = try! FixedThreadPool(4) // TODO: better guesstimate on start and also make it tuneable
