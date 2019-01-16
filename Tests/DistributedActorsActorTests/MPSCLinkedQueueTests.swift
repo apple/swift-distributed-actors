@@ -21,14 +21,27 @@ class MPSCLinkedQueueTests: XCTestCase {
     func testIsEmptyWhenEmpty() {
         let q = MPSCLinkedQueue<Int>()
 
-        XCTAssertTrue(q.isEmpty())
+        XCTAssertTrue(q.isEmpty)
     }
 
     func testIsEmptyWhenNonEmpty() {
         let q = MPSCLinkedQueue<Int>()
         q.enqueue(1)
 
-        XCTAssertFalse(q.isEmpty())
+        XCTAssertFalse(q.isEmpty)
+    }
+
+    func testNonEmptyWhenEmpty() {
+        let q = MPSCLinkedQueue<Int>()
+
+        XCTAssertFalse(q.nonEmpty)
+    }
+
+    func testNonEmptyWhenNonEmpty() {
+        let q = MPSCLinkedQueue<Int>()
+        q.enqueue(1)
+
+        XCTAssertTrue(q.nonEmpty)
     }
 
     func testDequeueWhenEmpty() {
