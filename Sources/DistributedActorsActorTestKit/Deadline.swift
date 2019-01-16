@@ -26,10 +26,10 @@ public struct Deadline: Equatable {
     }
 
     public static func fromNow(amount: TimeAmount) -> Deadline {
-        return fromNow(now: Date(), amount: amount)
+        return fromNow(Date(), amount: amount)
     }
 
-    public static func fromNow(now: Date, amount: TimeAmount) -> Deadline {
+    public static func fromNow(_ now: Date, amount: TimeAmount) -> Deadline {
         let v = TimeInterval(Int(Double(exactly: amount.nanoseconds)! / 1e+9))
         return Deadline(instant: now.addingTimeInterval(v)) // FIXME how can I go below seconds?
     }
@@ -41,17 +41,13 @@ public struct Deadline: Equatable {
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
     func isOverdue(now: Date) -> Bool {
-        if now == Date.distantFuture {
-            return false
-        } else {
-            return instant.compare(now) == .orderedAscending
-        }
+        return instant.compare(now) == .orderedAscending
     }
 
     func remainingFrom(_ now: Date) -> TimeAmount {
-        let d = Int(instant.timeIntervalSince1970.rounded())
-        let n = Int(now.timeIntervalSince1970.rounded())
+        let d = instant.timeIntervalSince1970.rounded()
+        let n = now.timeIntervalSince1970.rounded()
         let delta = d - n
-        return .milliseconds(delta)
+        return .milliseconds(Int(delta * 1000))
     }
 }
