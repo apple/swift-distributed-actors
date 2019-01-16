@@ -26,6 +26,8 @@ extension MPSCLinkedQueueTests {
       return [
                 ("testIsEmptyWhenEmpty", testIsEmptyWhenEmpty),
                 ("testIsEmptyWhenNonEmpty", testIsEmptyWhenNonEmpty),
+                ("testNonEmptyWhenEmpty", testNonEmptyWhenEmpty),
+                ("testNonEmptyWhenNonEmpty", testNonEmptyWhenNonEmpty),
                 ("testDequeueWhenEmpty", testDequeueWhenEmpty),
                 ("testEnqueueDequeue", testEnqueueDequeue),
            ]
