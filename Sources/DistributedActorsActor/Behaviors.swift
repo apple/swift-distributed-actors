@@ -30,11 +30,12 @@ public enum Behavior<Message> {
     // TODO: above is receiveMessage(M -> B)
     // TODO: we need receive((Context, M) -> B) as well, leaving it for later
 
+    // FIXME: use labeled parameter again, once SR-9675 has been fixed
     /// Runs once the actor has been started, also exposing the `ActorContext`
     ///
     /// This can be used to obtain the context, logger or perform actions right when the actor starts
     /// (e.g. send an initial message, or subscribe to some event stream, configure receive timeouts, etc.).
-    case setup(onStart: (ActorContext<Message>) throws -> Behavior<Message>)
+    case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
     /// Allows defining actors by extending the [[ActorBehavior]] class.
     ///

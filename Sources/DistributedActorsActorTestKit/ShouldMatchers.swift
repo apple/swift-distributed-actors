@@ -58,13 +58,13 @@ public extension TestMatchers where T: Equatable {
     }
 }
 
-public extension TestMatchers where T: Sequence, T.Element: Equatable {
+public extension TestMatchers where T: Collection, T.Element: Equatable {
 
     /// Asserts that `it` starts with the passed in `prefix`.
     ///
     /// If `it` does not completely start with the passed in `prefix`, the error message will also include the a matching
     /// sub-prefix (if any), so one can easier spot at which position the sequences differ.
-    public func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Sequence, T.Element == PossiblePrefix.Element {
+    public func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Collection, T.Element == PossiblePrefix.Element {
         if !it.starts(with: prefix) {
             let partialMatchMessage: String
             let partialMatch = it.commonPrefix(with: prefix)
@@ -97,8 +97,8 @@ public extension TestMatchers where T: Sequence, T.Element: Equatable {
   
 }
 
-private extension Sequence where Element: Equatable {
-    func commonPrefix<OtherSequence>(with other: OtherSequence) -> SubSequence where OtherSequence: Sequence, Element == OtherSequence.Element {
+private extension Collection where Element: Equatable {
+    func commonPrefix<OtherSequence>(with other: OtherSequence) -> SubSequence where OtherSequence: Collection, Element == OtherSequence.Element {
         var otherIterator = other.makeIterator()
         return self.prefix(while: { el in el == otherIterator.next() })
     }
@@ -152,9 +152,9 @@ extension Bool {
     }
 }
 
-extension Sequence where Element: Equatable {
+extension Collection where Element: Equatable {
     public func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
-        where PossiblePrefix: Sequence, Element == PossiblePrefix.Element {
+        where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }

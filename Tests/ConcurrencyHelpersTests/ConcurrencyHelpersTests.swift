@@ -280,13 +280,13 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testOr() {
         func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
-            let initial: T = 0b00001111
+            let initial: T = 0b0011
 
             let ab = Atomic<T>(value: initial)
 
             XCTAssertEqual(initial, ab.or(initial))
-            XCTAssertEqual(initial, ab.or(0b11110000))
-            XCTAssertEqual(0b11111111, ab.load())
+            XCTAssertEqual(initial, ab.or(0b1100))
+            XCTAssertEqual(0b1111, ab.load())
         }
 
         testFor(Int8.self)
@@ -303,12 +303,12 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testXor() {
         func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
-            let initial: T = 0b00001111
+            let initial: T = 0b0011
 
             let ab = Atomic<T>(value: initial)
 
-            XCTAssertEqual(initial, ab.xor(0b11110000))
-            XCTAssertEqual(0b11111111, ab.xor(0b11110000))
+            XCTAssertEqual(initial, ab.xor(0b1100))
+            XCTAssertEqual(0b1111, ab.xor(0b1100))
             XCTAssertEqual(initial, ab.xor(initial))
             XCTAssertEqual(0, ab.load())
         }
