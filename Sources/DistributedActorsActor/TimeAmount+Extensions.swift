@@ -114,4 +114,8 @@ extension TimeAmount {
         }
 
     }
+
+    public static func +(a: TimeAmount, b: TimeAmount) -> TimeAmount {
+        return .nanoseconds(a.nanoseconds + b.nanoseconds)
+    }
 }
