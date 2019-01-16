@@ -47,5 +47,6 @@ import XCTest
          testCase(StashBufferTests.allTests),
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),
+         testCase(TimeSpecTests.allTests),
     ])
 #endif
