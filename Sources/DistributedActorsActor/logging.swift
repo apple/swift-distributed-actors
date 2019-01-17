@@ -156,6 +156,7 @@ extension Logging.Level: Comparable {
     }
 }
 
+// FIXME: can't
 extension Logging.MetadataValue: Equatable {
     public static func ==(lhs: Logging.MetadataValue, rhs: Logging.MetadataValue) -> Bool {
         switch (lhs, rhs) {
@@ -184,28 +185,16 @@ extension Logging.MetadataValue: ExpressibleByStringLiteral {
 extension Logging.MetadataValue: CustomStringConvertible {
     public var description: String {
         switch self {
-        case .dictionary(let dict):
-            return dict.mapValues { $0.description }.description
-        case .array(let list):
-            return list.map { $0.description }.description
         case .string(let str):
             return str.description
         case .stringConvertible(let repr):
             return repr.description
+        case .array(let list):
+            return list.map { $0.description }.description
+        case .dictionary(let dict):
+            return dict.mapValues { $0.description }.description
         }
     }
-}
-
-extension Logging.MetadataValue: ExpressibleByStringInterpolation {
-    #if !swift(>=5.0)
-    public init(stringInterpolation strings: Logging.MetadataValue...) {
-        self = .string(strings.map { $0.description }.reduce("", +))
-    }
-
-    public init<T>(stringInterpolationSegment expr: T) {
-        self = .string(String(stringInterpolationSegment: expr))
-    }
-    #endif
 }
 
 extension Logging.MetadataValue: ExpressibleByDictionaryLiteral {

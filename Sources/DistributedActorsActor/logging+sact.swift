@@ -115,7 +115,6 @@ public struct ActorOriginLogHandler: LogHandler {
                 message: message,
                 effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO should force lazies
                 error: error,
-
                 file: file,
                 function: function,
                 line: line
@@ -209,12 +208,12 @@ public struct LogMessage {
 
 // MARK: Extend logging metadata storage capabilities
 
-extension Optional where Wrapped == Logging.Metadata.Value {
+extension Optional where Wrapped == Logging.MetadataValue {
     /// Delays rendering of value by boxing it in a `LazyMetadataBox`
-    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logging.Metadata.Value {
+    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logging.MetadataValue {
         return .stringConvertible(LazyMetadataBox({ makeValue() }))
     }
-    static func lazyString(_ makeValue: @escaping () -> String) -> Logging.Metadata.Value {
+    static func lazyString(_ makeValue: @escaping () -> String) -> Logging.MetadataValue {
         return self.lazyStringConvertible(makeValue)
     }
 }

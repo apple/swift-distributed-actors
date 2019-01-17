@@ -102,7 +102,7 @@ public final class ActorSystem {
     /// - Warning: Blocks current thread until the system has terminated.
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
-        self.log._log(level: .warn, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self.log.log(level: .warning, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()

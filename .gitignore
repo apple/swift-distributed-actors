@@ -1,4 +1,6 @@
 .DS_Store
+.swift-version
+
 *.orig
 
 /.build

@@ -195,7 +195,7 @@ final class Mailbox<Message> {
                         return FailureRestart
                     }
                 } else {
-                    cell.log.warn("Supervision: Not supervised actor, encountered failure: \(supervisionFailure)")
+                    cell.log.warning("Supervision: Not supervised actor, encountered failure: \(supervisionFailure)")
                     return Failure
                 }
             },

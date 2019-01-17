@@ -61,7 +61,7 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
-            context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
             return try self.handleMessageFailure(context, failure: .error(error))
         }
     }
@@ -70,7 +70,7 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
-            context.log.warn("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
             return try self.handleSignalFailure(context, failure: .error(error))
         }
     }
