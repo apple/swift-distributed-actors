@@ -151,6 +151,11 @@ void sact_enable_fault_handling() {
 }
 
 void sact_disable_fault_handling() {
+    if (crash_details) {
+        free(crash_details->backtrace);
+        free(crash_details);
+        crash_details = NULL;
+    }
     tl_fault_handling_enabled = false;
 }
 

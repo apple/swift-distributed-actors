@@ -52,10 +52,7 @@ internal struct FaultHandling {
             return nil
         }
 
-        let cdetails = cdetailsPtr.move()
-
-        defer { cdetailsPtr.deallocate() }
-        defer { cdetails.backtrace.deallocate() }
+        let cdetails = cdetailsPtr.pointee
 
         var backtrace: [String] = []
 
