@@ -124,17 +124,17 @@ final class Mailbox<Message> {
             let envelope = envelopePtr.move()
             let msg = envelope.payload
             traceLog_Mailbox("INVOKE MSG: \(msg)")
-            return try self.cell.interpretMessage(message: msg)
+            return try cell.interpretMessage(message: msg)
         }, fail: { error in
-            self.cell.fail(error: error)
+            cell.fail(error: error)
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
-            return try self.cell.interpretSystemMessage(message: msg)
+            return try cell.interpretSystemMessage(message: msg)
         }, fail: { error in
-            self.cell.fail(error: error)
+            cell.fail(error: error)
         })
 
         self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { envelopePtr in
@@ -142,13 +142,13 @@ final class Mailbox<Message> {
             let envelope = envelopePtr.move()
             let msg = envelope.payload
             traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            self.cell.sendToDeadLetters(message: msg)
+            cell.sendToDeadLetters(message: msg)
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            self.cell.sendToDeadLetters(message: msg)
+            cell.sendToDeadLetters(message: msg)
         })
 
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
@@ -156,14 +156,14 @@ final class Mailbox<Message> {
             handleMessageFailure: { supervisionFailure, runPhase in
                 traceLog_Mailbox("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
-                if let supervisor = self.cell.supervisedBy {
+                if let supervisor = cell.supervisedBy {
 
                     // TODO: these could throw, make sure they do what is expected there.
                     let supervisionResultingBehavior: Behavior<Message>
                     if runPhase == ProcessingUserMessages {
-                        supervisionResultingBehavior = try supervisor.handleMessageFailure(self.cell.context, failure: supervisionFailure)
+                        supervisionResultingBehavior = try supervisor.handleMessageFailure(cell.context, failure: supervisionFailure)
                     } else if runPhase == ProcessingSystemMessages {
-                        supervisionResultingBehavior = try supervisor.handleSignalFailure(self.cell.context, failure: supervisionFailure)
+                        supervisionResultingBehavior = try supervisor.handleSignalFailure(cell.context, failure: supervisionFailure)
                     } else {
                         // This branch need not exist, but the enum we use is C enum so `switch` seems to not work well.
                         fatalError("Bug! The only runPhases that exist should already be taken care of here.")
@@ -181,15 +181,15 @@ final class Mailbox<Message> {
                     case let restartWithBehavior:
                         // received new behavior, attempting restart:
                         do {
-                            try self.cell.restart(behavior: restartWithBehavior)
+                            try cell.restart(behavior: restartWithBehavior)
                         } catch {
-                            self.cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
-                            fatalError("Double fault while restarting actor \(self.cell.path). Terminating.")
+                            cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
+                            fatalError("Double fault while restarting actor \(cell.path). Terminating.")
                         }
                         return FailureRestart
                     }
                 } else {
-                    self.cell.log.warn("Supervision: Not supervised actor, encountered failure: \(supervisionFailure)")
+                    cell.log.warn("Supervision: Not supervised actor, encountered failure: \(supervisionFailure)")
                     return Failure
                 }
             },
@@ -218,7 +218,7 @@ final class Mailbox<Message> {
 
         let shouldSchedule = cmailbox_send_message(mailbox, ptr)
         if shouldSchedule { // TODO: if we were the same as the cmailbox, a single status read would tell us if we can exec or not (see above guard)
-            cell.dispatcher.execute(self.run)
+            self.cell.dispatcher.execute(self.run)
         }
     }
 
@@ -280,7 +280,7 @@ final class Mailbox<Message> {
         // we could offer even more callbacks to C but that is also not quite nice...
         if schedulingDecision == Reschedule {
             // pending messages, and we are the one who should should reschedule
-            cell.dispatcher.execute(self.run)
+            self.cell.dispatcher.execute(self.run)
         } else if schedulingDecision == Done {
             // no more messages to run, we are done here
             return
@@ -295,7 +295,7 @@ final class Mailbox<Message> {
         } else if schedulingDecision == FailureRestart {
             // FIXME: !!! we must know if we should schedule or not after a restart...
             pprint("MAILBOX RUN COMPLETE, FailureRestart !!! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)")
-            cell.dispatcher.execute(self.run)
+            self.cell.dispatcher.execute(self.run)
         } else {
             fatalError("BUG: Mailbox did not account for run scheduling decision: \(schedulingDecision)")
         }
