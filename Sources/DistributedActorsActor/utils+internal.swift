@@ -15,6 +15,7 @@
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
 func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
     pprint(message(), file: file, line: line)
@@ -22,6 +23,7 @@ func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticStrin
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
 func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
     pprint(message(), file: file, line: line)
@@ -29,6 +31,7 @@ func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString =
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
 func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_CELL
     pprint(message(), file: file, line: line)
@@ -36,6 +39,7 @@ func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #f
 }
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
 func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
     pprint(message(), file: file, line: line)

@@ -164,7 +164,7 @@ public class Interceptor<Message> {
 }
 
 /// Convenience factories for creating simple in-line defined interceptors.
-/// For more complex interceptors which may need ot keep state it is recommended to extend `Interceptor` directly.
+/// For more complex interceptors which may need to keep state it is recommended to extend `Interceptor` directly.
 ///
 /// An interceptor MAY apply an incoming `message` to the `target` behavior or choose to not do so
 /// which results in dropping the message. In this case it SHOULD return `Behavior.ignore` or `Behavior.unhandled`,
@@ -389,14 +389,22 @@ internal extension Behavior {
     /// Interceptors are left in-place, and other behaviors remain unaffected.
     // TODO make not recursive perhaps since could blow up on large chain?
     @inlinable func start(context: ActorContext<Message>) throws -> Behavior<Message> {
-        switch self {
-        case let .intercept(inner, interceptor):
-            return .intercept(behavior: try inner.start(context: context), with: interceptor)
-        case .setup(let onStart):
-            let unwrapped: Behavior<Message> = try onStart(context)
-            return try unwrapped.start(context: context) // since the .setup may contain another .setup
-        default:
-            return self
+        var starting = self
+        startLoop: while true {
+            switch starting {
+            case let .intercept(inner, interceptor):
+                // FIXME this should technically offload onto storage and then apply them again...
+                return .intercept(behavior: try inner.start(context: context), with: interceptor)
+
+            case .setup(let onStart):
+                let onStarted: Behavior<Message> = try onStart(context)
+                starting = onStarted
+
+            default:
+                break startLoop
+            }
         }
+
+        return starting
     }
 }

@@ -23,7 +23,7 @@ class InterceptorTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        // Await.on(system.terminate()) // FIXME termination that actually does so
+        system.terminate()
     }
 
     func test_interceptor_shouldConvertMessages() throws {
@@ -48,6 +48,50 @@ class InterceptorTests: XCTestCase {
 
         for i in 0...10 {
             try p.expectMessage("hello:\(i)!!!")
+        }
+    }
+
+    func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let i: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let makeStringsLouderInterceptor: Interceptor<String> = Intercept.messages { target, context, message in
+            i.ref.tell("from-interceptor:\(message)")
+            return try target.interpretMessage(context: context, message: message + "!") // we keep adding one ! per interception level
+        }
+
+        // just like in the movie "Inception"
+        func interceptionInceptionBehavior(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
+            let behavior: Behavior<String>
+            if depth < limit {
+                // add another "setup layer"
+                behavior = interceptionInceptionBehavior(currentDepth: depth + 1, stopAt: limit)
+            } else {
+                behavior = .receiveMessage { msg in
+                    p.tell("received:\(msg)")
+                    return .stopped
+                }
+            }
+
+            return .intercept(behavior: behavior, with: makeStringsLouderInterceptor)
+        }
+
+
+        let forwardToProbe: Behavior<String> = .receiveMessage { message in
+            p.tell(message)
+            return .same
+        }
+
+        let ref: ActorRef<String> = try system.spawn(
+            interceptionInceptionBehavior(currentDepth: 0, stopAt: 100),
+            name: "theWallsHaveEars")
+
+        ref.tell("hello")
+
+        try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        for j in 0...100 {
+            let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
+            try i.expectMessage(m)
         }
     }
 

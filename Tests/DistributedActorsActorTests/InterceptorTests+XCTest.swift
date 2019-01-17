@@ -25,6 +25,7 @@ extension InterceptorTests {
    static var allTests : [(String, (InterceptorTests) -> () throws -> Void)] {
       return [
                 ("test_interceptor_shouldConvertMessages", test_interceptor_shouldConvertMessages),
+                ("test_interceptor_shouldSurviveDeeplyNestedInterceptors", test_interceptor_shouldSurviveDeeplyNestedInterceptors),
                 ("test_interceptor_shouldInterceptSignals", test_interceptor_shouldInterceptSignals),
            ]
    }
