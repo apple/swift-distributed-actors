@@ -53,8 +53,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     // MARK: Fault handling infrastructure
 
-    // FIXME not sure yet... we may need to keep "supervisor" around like this to be accessible for fault handling
-    @usableFromInline internal var supervisedBy: Supervisor<Message>? = nil // TODO may need to be a stack
+    // TODO: would be nice to not have to keep it around like this; however:
+    // from fault handling we need to be able to quickly invoke "the supervisor",
+    // and this may actually not only be ONE but a chain of them, since we want to apply the "inner most one"
+    // first and then we apply outer ones; this allows for stacking supervision. Note also that then we need to store them
+    // here during canonicalization... TODO: need to well define the expected behaviors here.
+    @usableFromInline internal var supervisedBy: Supervisor<Message>? = nil
 
     // MARK: Death watch infrastructure
 
@@ -373,10 +377,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self.finishTerminating() // FIXME likely too eagerly
     }
 
-    /// Used by supervision, from Fault recovery.
+    /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
-    //
-    // TODO??? /// Important: Once the run and mailbox cleanup has concluded, the cell MUST be started again.
     @inlinable public func restart(behavior: Behavior<Message>) throws {
         self.behavior = behavior
         try self.interpretSystemStart()
@@ -396,6 +398,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable
     internal func interpretSystemStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
+
+        traceLog_Cell("START on... \(self.behavior)")
         let started = try self.behavior.start(context: self)
         try self.becomeNext(behavior: started)
     }

@@ -54,8 +54,7 @@ public struct Supervision {
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
-/// in order to implement a custom `Supervisor` implement the `handleMessageFailure` and `handleSignalFailure` methods,
-/// or use the Supervise
+/// To implement a custom `Supervisor` override either (or both) the `handleMessageFailure` and `handleSignalFailure` methods.
 public class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
@@ -124,7 +123,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         self.failures += 1
-        pprint("!!!!!!RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)")
+        // pprint("!!!!!!RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
         // TODO has to modify restart counters here and supervise with modified supervisor
         return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
     }

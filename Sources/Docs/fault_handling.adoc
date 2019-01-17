@@ -46,8 +46,8 @@ NOTE: Implementation limitation: the current fault handling mechanisms rely on s
 
 === Supervision hierarchies
 
-Swift Distributed Actors enforces a strict parent-child relationship between actors. Only an actors parent actor MAY supervise it.
-Other actors, be it siblings or other completely unrelated actors may only _watch_ a given actor for terminateion.
+Swift Distributed Actors enforces a strict parent-child relationship between actors. Only an actor's parent actor MAY supervise it.
+Other actors - be it siblings or other completely unrelated actors - may only _watch_ a given actor for termination.
 
 This leads to the formation of so called supervision hierarchies or supervision "trees".
 It also allows us to structure our applications in ways that represent their _fault domains_.
@@ -87,8 +87,8 @@ Examples:
 
 == Analysing Back Traces (Crash Logs)
 
-An excellent talk from WWDC 2018 titled https://developer.apple.com/videos/play/wwdc2018/414/?time=176[Understanding Crashes and Crash Logs]
-is available and explains how to read and use crash logs (backtraces) which Swift Distributed Actors will log on crashes to use crash logs to isolate and locate
-problems in your code.
+When a fault occurs, Swift Distributed Actors will print a crash log. An excellent talk from WWDC 2018 titled
+https://developer.apple.com/videos/play/wwdc2018/414/["Understanding Crashes and Crash Logs"] is available and explains
+how to read and use crash logs (backtraces) to locate and isolate problems in your code.
 
-Another useful resource to understand crash logs is https://developer.apple.com/library/archive/technotes/tn2151/_index.html[Understanding and Analyzing Application Crash Reports]
+Another useful resource to understand crash logs is https://developer.apple.com/library/archive/technotes/tn2151/_index.html[Understanding and Analyzing Application Crash Reports].

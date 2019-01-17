@@ -399,8 +399,8 @@ private struct InvokeSupervisionClosureContext {
     private let _describeMessage: (UnsafeMutableRawPointer) -> String
 
     /// The cell's logger may be used to log information about the supervision handling.
-    /// We assume that since we run supervision only for "not fatal faults" the logger should still be in an usable state
-    /// as we run the supervision handling. The good thing is that all metadata of the cells logger will be included in
+    /// We assume that since we run supervision only for "not fatal faults" the logger should still be in a usable state
+    /// as we run the supervision handling. The good thing is that all metadata of the cell's logger will be included in
     /// crash logs then. It may we worth reconsidering if we need to be even more defensive here, e.g.
     /// take a logger without potential user changes made to it etc.
     private let _log: Logger
