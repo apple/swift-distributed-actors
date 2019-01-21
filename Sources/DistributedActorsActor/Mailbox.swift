@@ -179,9 +179,8 @@ final class Mailbox<Message> {
                     case .stopped:
                         // decision is to stop which is terminal, thus: Let it Crash!
                         return Failure
-                    case .failed(let error):
+                    case .failed(let error): // TODO: Carry this error to supervision?
                         // decision is to fail, Let it Crash!
-                        // TODO substitute error with the one from failed
                         return Failure
                     case let restartWithBehavior:
                         // received new behavior, attempting restart:
@@ -299,7 +298,7 @@ final class Mailbox<Message> {
             self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: runPhase)
         } else if schedulingDecision == FailureRestart {
             // FIXME: !!! we must know if we should schedule or not after a restart...
-            pprint("MAILBOX RUN COMPLETE, FailureRestart !!! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)")
+            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
             self.cell.dispatcher.execute(self.run)
         } else {
             fatalError("BUG: Mailbox did not account for run scheduling decision: \(schedulingDecision)")
