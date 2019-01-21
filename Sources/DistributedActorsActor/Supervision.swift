@@ -14,6 +14,60 @@
 
 import struct NIO.TimeAmount
 
+
+// MARK: Supervision behaviors
+
+extension Behavior {
+
+    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
+        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
+        return .supervise(behavior, supervisor: supervisor)
+    }
+
+    public static func supervise(_ behavior: Behavior<Message>, supervisor: Supervisor<Message>) -> Behavior<Message> {
+        return Behavior<Message>.intercept(behavior: behavior, with: supervisor)
+    }
+
+    /// Wrap current behavior with a supervisor.
+    /// Fluent-API equivalent to `Behavior.supervise(strategy:)`.
+    ///
+    /// Supervisor wrappers MAY perform "flattening" of supervision wrapper behaviors, i.e. if attempting to wrap with
+    /// the same (or equivalent) supervisor an already supervised behavior, the wrapping may remove one of the wrappers.
+    /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
+    /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
+    /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
+    public func supervisedWith(strategy: SupervisionStrategy) -> Behavior<Message> {
+        let supervisor = Supervision.supervisorFor(self, strategy)
+
+        // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
+        switch self {
+        case .intercept(_, let interceptor): // TODO need to look into inner too?
+            if let existingSupervisor = interceptor as? Supervisor<Message> {
+                if existingSupervisor.isSameAs(supervisor) {
+                    // we perform no wrapping if the existing supervisor already handles everything the new one would.
+                    // this allows us to avoid infinitely wrapping supervisors of the same behavior if someone wrote code
+                    // returning `self.supervised(...)` inside their behavior.
+                    return self
+                } else {
+                    return .supervise(self, supervisor: supervisor)
+                }
+            } else {
+                return .supervise(self, supervisor: supervisor)
+            }
+
+        default:
+            return .supervise(self, supervisor: supervisor)
+        }
+    }
+    /// Wrap current behavior with a supervisor.
+    /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
+    public func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
+        return .supervise(self, supervisor: supervisor)
+    }
+}
+
+// MARK: Supervision strategies and supervisors
+
 public enum SupervisionStrategy {
 
     case stop
@@ -89,8 +143,11 @@ public class Supervisor<Message>: Interceptor<Message> {
         return undefined()
     }
 
-    // TODO: implement so we don't get infinite nesting?
-    func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
+    /// Invoked when wrapping (with this `Supervisor`) a `Behavior` that already is supervised.
+    ///
+    /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
+    /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
+    func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
         return undefined()
     }
 }
@@ -105,14 +162,19 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         return .stopped
     }
 
-    override func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
-        fatalError("isSameAs(to:) has not been implemented")
+    override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+        if newSupervisor is StoppingSupervisor<Message> {
+            // we could have more configuration options to check here
+            return true
+        } else {
+            return false
+        }
     }
 }
 
 final class RestartingSupervisor<Message>: Supervisor<Message> {
 
-    private let initialBehavior: Behavior<Message>
+    internal let initialBehavior: Behavior<Message>
 
     private var failures: Int = 0
 
@@ -123,17 +185,24 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         self.failures += 1
-        // pprint("!!!!!!RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
+        traceLog_Supervision("Supervision: RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
         // TODO has to modify restart counters here and supervise with modified supervisor
         return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        pprint("!!!!!!RESTART!!!!!! >>>> \(initialBehavior)")
+        traceLog_Supervision("Supervision: RESTART!!!!!! >>>> \(initialBehavior)")
         return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
     }
 
-    override func isSameAs(_ supervisor: Supervisor<Message>) -> Bool {
-        fatalError("isSameAs(to:) has not been implemented")
+    override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+        if let s = newSupervisor as? RestartingSupervisor<Message> {
+            // we only check if the target restart behavior is the same; number of restarts is not taken into account
+            return true // FIXME: we need to check the other options
+            // return self.initialBehavior == s.initialBehavior // FIXME: we need to compare behaviors hm
+        } else {
+            return false
+        }
+
     }
 }

@@ -14,7 +14,7 @@
 
 
 import DistributedActorsConcurrencyHelpers
-import Swift Distributed ActorsActor
+@testable import Swift Distributed ActorsActor
 
 import XCTest
 
@@ -51,4 +51,66 @@ final public class ActorTestKit {
         })
     }
 
+    /// Creates an `ActorContext` which can be used to pass around to fulfil type argument requirements,
+    /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
+    public func makeFailingContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
+        return MockActorContext()
+    }
+    public func makeFailingContext<M>(for: Behavior<M>) -> ActorContext<M> {
+        return self.makeFailingContext(forType: M.self)
+    }
+
+    // TODO: we could implement EffectfulContext most likely which should be able to perform all such actions and allow asserting on it.
+    // It's quite harder to do and not entirely sure about safety of that so not attempting to do so for now
+}
+
+struct MockActorContextError: Error, CustomStringConvertible {
+    var description: String {
+        return "MockActorContextError(" +
+            "A mock context can not be used to perform any real actions! " +
+            "If you find yourself needing to perform assertions on an actor context please file a ticket." + // this would be "EffectfulContext"
+            ")"
+    }
+}
+
+final class MockActorContext<Message>: ActorContext<Message> {
+    override var path: UniqueActorPath {
+        return super.path
+    }
+    override var name: String {
+        return "MockActorContext<\(Message.self)>"
+    }
+    override var myself: ActorRef<Message> {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+    override var log: Logger {
+        return LoggerFactory.make(identifier: "\(type(of: self))")
+    }
+    override var dispatcher: MessageDispatcher {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
+        return super.watch(watchee)
+    }
+
+    override func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override var children: Children {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override func stop<M>(child ref: ActorRef<M>) throws {
+        fatalError("Failed: \(MockActorContextError())")
+    }
 }

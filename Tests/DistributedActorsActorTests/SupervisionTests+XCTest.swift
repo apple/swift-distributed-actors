@@ -29,6 +29,8 @@ extension SupervisionTests {
                 ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),
                 ("test_stopSupervised_fatalError_shouldStop", test_stopSupervised_fatalError_shouldStop),
                 ("test_restartSupervised_fatalError_shouldRestart", test_restartSupervised_fatalError_shouldRestart),
+                ("test_wrappingWithSupervisionStrategy_shouldNotInfinitelyKeepGrowingTheBehaviorDepth", test_wrappingWithSupervisionStrategy_shouldNotInfinitelyKeepGrowingTheBehaviorDepth),
+                ("test_wrappingWithSupervisionStrategy_shouldWrapProperlyIfDifferentStrategy", test_wrappingWithSupervisionStrategy_shouldWrapProperlyIfDifferentStrategy),
            ]
    }
 }

@@ -197,6 +197,46 @@ class SupervisionTests: XCTestCase {
         })
     }
 
+    // MARK: Flattening supervisors so we do not end up with infinite stacks of same supervisor
+
+    func test_wrappingWithSupervisionStrategy_shouldNotInfinitelyKeepGrowingTheBehaviorDepth() throws {
+        let behavior: Behavior<String> = .receiveMessage { message in
+            return .stopped
+        }
+
+        let w1 = behavior.supervisedWith(strategy: .stop)
+        let w2 = w1.supervisedWith(strategy: .stop)
+
+        let context: ActorContext<String> = testKit.makeFailingContext()
+
+        let depth1 = try w1.nestingDepth(context: context)
+        pinfo("w1 is: \n\(try w1.prettyFormat(context: context))")
+
+        let depth2 = try w2.nestingDepth(context: context)
+        pinfo("w2 is: \n\(try w2.prettyFormat(context: context))")
+
+        depth1.shouldEqual(depth2)
+    }
+
+    func test_wrappingWithSupervisionStrategy_shouldWrapProperlyIfDifferentStrategy() throws {
+        let behavior: Behavior<String> = .receiveMessage { message in
+            return .stopped
+        }
+
+        let w1 = behavior.supervisedWith(strategy: .restart(atMost: 3)) // e.g. "we can restart a few times"
+        let w2 = w1.supervisedWith(strategy: .stop) // "but of those fail, and bubble up, we need to stop"
+
+        let context: ActorContext<String> = testKit.makeFailingContext()
+
+        let depth1 = try w1.nestingDepth(context: context)
+        pinfo("w1 is: \n\(try w1.prettyFormat(context: context))")
+
+        let depth2 = try w2.nestingDepth(context: context)
+        pinfo("w2 is: \n\(try w2.prettyFormat(context: context))")
+
+        depth2.shouldEqual(depth1 + 1) // since the wrapping SHOULD have happened
+    }
+
 
 }
 

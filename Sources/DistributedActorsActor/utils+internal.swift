@@ -45,3 +45,11 @@ func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #
     pprint(message(), file: file, line: line)
     #endif
 }
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_SUPERVISION
+    pprint(message(), file: file, line: line)
+    #endif
+}
