@@ -237,7 +237,6 @@ class SupervisionTests: XCTestCase {
         depth2.shouldEqual(depth1 + 1) // since the wrapping SHOULD have happened
     }
 
-
     // MARK: Decision validations
 
     func test_supervise_mustValidateTheWrappedInitialBehaviorAsOkeyAsInitial() throws {
@@ -271,6 +270,52 @@ class SupervisionTests: XCTestCase {
         override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
             return .same // that's an illegal decision there is no "same" to use, since the current behavior may have been corrupted
         }
+    }
+
+    // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
+
+    func test_supervise_notSuperviseStackOverflow() throws {
+        #if !SACT_TESTS_CRASH
+        pnote("Skipping test \(#function); The test exists to confirm that this type of fault remains NOT supervised. See it crash run with `-D SACT_TESTS_CRASH`")
+        return ()
+        #endif
+        _ = "Skipping test \(#function); The test exists to confirm that this type of fault remains NOT supervised. See it crash run with `-D SACT_TESTS_CRASH`"
+
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let stackOverflowFaulty: Behavior<SupervisionTests.FaultyMessages> = .setup { context in
+            p.tell(.setupRunning(ref: context.myself))
+            return .receiveMessage { message in
+                return self.daDoRunRunRunDaDoRunRun()
+            }
+        }
+        let supervisedBehavior = stackOverflowFaulty.supervisedWith(strategy: .restart(atMost: 3))
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "bad-decision-erroring-2")
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "bad-decision-parent-2")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        p.watch(faultyWorker)
+
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 1st (bad-decision)")))
+        try p.expectTerminated(faultyWorker) // faulty worker DID terminate, since the decision was bogus (".same")
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+    }
+    func daDoRunRunRun() -> Behavior<SupervisionTests.FaultyMessages> {
+        return daDoRunRunRunDaDoRunRun() // mutually recursive to not trigger warnings; cause stack overflow
+    }
+    func daDoRunRunRunDaDoRunRun() -> Behavior<SupervisionTests.FaultyMessages> {
+        return daDoRunRunRun() // mutually recursive to not trigger warnings; cause stack overflow
     }
 
 

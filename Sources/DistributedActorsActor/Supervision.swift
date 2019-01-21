@@ -99,21 +99,6 @@ public struct Supervision {
     public enum DecisionError: Error {
         case illegalDecision(String, handledError: Error, error: Error)
     }
-
-    /// Supervision directives instruct the actor system to apply a specific
-    public enum Directive {
-        /// TODO: document
-        case stop
-
-        /// TODO: document
-        case escalate
-
-        /// TODO: document
-        case restart
-
-        // TODO: exponential backoff settings, best as config object for easier extension?
-        case backoffRestart
-    }
 }
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
