@@ -118,8 +118,9 @@ open class ActorBehavior<Message> {
 // MARK: Interceptor
 
 /// Used in combination with `Behavior.intercept` to intercept messages and signals delivered to a behavior.
+open class Interceptor<Message> {
+    public init() {}
 
-public class Interceptor<Message> {
     // TODO: spent a lot of time trying to figure out the balance between using a struct or class here,
     //       struct makes it quite weird to use, and using a protocol is hard since we need the associated type
     //       and the supervisor has to be stored inside of the intercept() behavior, so that won't fly...
@@ -295,6 +296,12 @@ internal extension Behavior {
         case .unhandled: throw IllegalBehaviorError.notAllowedAsInitial(self)
         default: return ()
         }
+    }
+    /// Same as `validateAsInitial`, however useful in chaining expressions as it returns the itself when the validation has passed successfully.
+    @inlinable
+    func validatedAsInitial() throws -> Behavior<Message> {
+        try self.validateAsInitial()
+        return self
     }
 
     func validateAsInitialFatal(file: StaticString = #file, line: UInt = #line) {

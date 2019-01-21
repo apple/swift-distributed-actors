@@ -207,7 +207,7 @@ class SupervisionTests: XCTestCase {
         let w1 = behavior.supervisedWith(strategy: .stop)
         let w2 = w1.supervisedWith(strategy: .stop)
 
-        let context: ActorContext<String> = testKit.makeFailingContext()
+        let context: ActorContext<String> = testKit.makeFakeContext()
 
         let depth1 = try w1.nestingDepth(context: context)
         pinfo("w1 is: \n\(try w1.prettyFormat(context: context))")
@@ -226,7 +226,7 @@ class SupervisionTests: XCTestCase {
         let w1 = behavior.supervisedWith(strategy: .restart(atMost: 3)) // e.g. "we can restart a few times"
         let w2 = w1.supervisedWith(strategy: .stop) // "but of those fail, and bubble up, we need to stop"
 
-        let context: ActorContext<String> = testKit.makeFailingContext()
+        let context: ActorContext<String> = testKit.makeFakeContext()
 
         let depth1 = try w1.nestingDepth(context: context)
         pinfo("w1 is: \n\(try w1.prettyFormat(context: context))")
@@ -235,6 +235,42 @@ class SupervisionTests: XCTestCase {
         pinfo("w2 is: \n\(try w2.prettyFormat(context: context))")
 
         depth2.shouldEqual(depth1 + 1) // since the wrapping SHOULD have happened
+    }
+
+
+    // MARK: Decision validations
+
+    func test_supervise_mustValidateTheWrappedInitialBehaviorAsOkeyAsInitial() throws {
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor()
+        let faulty2: Behavior<SupervisionTests.FaultyMessages> = self.faulty(probe: p.ref)
+        let supervisedBehavior = faulty2.supervisedWith(supervisor: supervisor)
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "bad-decision-erroring-2")
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "bad-decision-parent-2")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        p.watch(faultyWorker)
+
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+
+        faultyWorker.tell(.pleaseThrow(error: FaultyError.boom(message: "Boom: 1st (bad-decision)")))
+        try p.expectTerminated(faultyWorker) // faulty worker DID terminate, since the decision was bogus (".same")
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+    }
+    final class IllegalDecisionSupervisor<Message>: Supervisor<Message> {
+        override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+            return .same // that's an illegal decision there is no "same" to use, since the current behavior may have been corrupted
+        }
     }
 
 

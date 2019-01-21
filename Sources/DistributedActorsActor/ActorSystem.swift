@@ -141,7 +141,7 @@ extension ActorSystem: ActorRefFactory {
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
     private func spawnInternal<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        try behavior.validateAsInitial() // TODO: good example of what would be a soft crash...
+        try behavior.validateAsInitial()
 
         let path = try self.userProvider.rootPath.makeChildPath(name: name, uid: .random())
         // TODO: reserve the name, atomically
