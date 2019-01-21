@@ -19,16 +19,21 @@ import struct NIO.TimeAmount
 
 extension Behavior {
 
+    // MARK: Supervise with SupervisionStrategy
+
+    /// Wrap current behavior with a supervisor.
+    ///
+    /// Supervisor wrappers MAY perform "flattening" of supervision wrapper behaviors, i.e. if attempting to wrap with
+    /// the same (or equivalent) supervisor an already supervised behavior, the wrapping may remove one of the wrappers.
+    /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
+    /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
+    /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
+    ///
+    /// SeeAlso:
+    ///  - `supervisedWith(strategy)`
     public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
         let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
-        return .supervise(behavior, with: supervisor)
-    }
-
-    public static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, with supervisor: S) -> Behavior<Message> {
-        return .intercept(behavior: behavior, with: supervisor)
-    }
-    public static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
-        return .intercept(behavior: behavior, with: supervisor)
+        return .supervise(behavior, withSupervisor: supervisor)
     }
 
     /// Wrap current behavior with a supervisor.
@@ -39,34 +44,45 @@ extension Behavior {
     /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
     /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
     /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
+    /// SeeAlso:
+    ///  - `supervise(_:withStrategy)`
     public func supervisedWith(strategy: SupervisionStrategy) -> Behavior<Message> {
         let supervisor = Supervision.supervisorFor(self, strategy)
-
-        // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
-        switch self {
-        case .intercept(_, let interceptor): // TODO need to look into inner too?
-            if let existingSupervisor = interceptor as? Supervisor<Message> {
-                if existingSupervisor.isSameAs(supervisor) {
-                    // we perform no wrapping if the existing supervisor already handles everything the new one would.
-                    // this allows us to avoid infinitely wrapping supervisors of the same behavior if someone wrote code
-                    // returning `self.supervised(...)` inside their behavior.
-                    return self
-                } else {
-                    return .supervise(self, with: supervisor)
-                }
-            } else {
-                return .supervise(self, with: supervisor)
-            }
-
-        default:
-            return .supervise(self, with: supervisor)
-        }
+        return .supervise(self, withSupervisor: supervisor)
     }
 
+    // MARK: Internal API: Supervise with Supervisors
+
+    /// INTERNAL API: We do not want to expose the full power of supervision with arbitrary behavior substitution to users unless we know for sure it is needed.
+    ///
+    /// This API is a more powerful version of supervision which is able to accept (potentially stateful) supervisor implementations.
+    /// Those implementations MAY contain counters, timers and logic which determines how to handle a failure.
+    ///
+    /// Swift Distributed Actors provides the most important supervisors out of the box, which are selected and configured using supervision strategies.
+    /// Uses are requested to use those instead, and if they seem lacking some feature, requests for specific features should be opened first.
+    internal static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
+        // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
+        switch behavior {
+        case .intercept(_, let interceptor): // TODO need to look into inner too?
+            let existingSupervisor: Supervisor<Message>? = interceptor as? Supervisor<Message>
+            if existingSupervisor?.isSameAs(supervisor) ?? false {
+                // we perform no wrapping if the existing supervisor already handles everything the new one would.
+                // this allows us to avoid infinitely wrapping supervisors of the same behavior if someone wrote code
+                // returning `behavior.supervised(...)` inside their behavior.
+                return behavior
+            }
+        default:
+            break
+        }
+
+        return .intercept(behavior: behavior, with: supervisor)
+    }
+
+    /// INTERNAL API: We do not want to expose the full power of supervision with arbitrary behavior substitution to users unless we know for sure it is needed.
     /// Wrap current behavior with a supervisor.
     /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
-    public func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return .supervise(self, with: supervisor)
+    internal func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
+        return .supervise(self, withSupervisor: supervisor)
     }
 }
 
