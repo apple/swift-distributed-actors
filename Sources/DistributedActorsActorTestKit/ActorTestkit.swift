@@ -51,13 +51,15 @@ final public class ActorTestKit {
         })
     }
 
-    /// Creates an `ActorContext` which can be used to pass around to fulfil type argument requirements,
+    /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFailingContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
+    public func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
         return MockActorContext()
     }
-    public func makeFailingContext<M>(for: Behavior<M>) -> ActorContext<M> {
-        return self.makeFailingContext(forType: M.self)
+    /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
+    /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
+    public func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
+        return self.makeFakeContext(forType: M.self)
     }
 
     // TODO: we could implement EffectfulContext most likely which should be able to perform all such actions and allow asserting on it.

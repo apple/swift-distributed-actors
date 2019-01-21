@@ -21,11 +21,14 @@ extension Behavior {
 
     public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
         let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
-        return .supervise(behavior, supervisor: supervisor)
+        return .supervise(behavior, with: supervisor)
     }
 
-    public static func supervise(_ behavior: Behavior<Message>, supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return Behavior<Message>.intercept(behavior: behavior, with: supervisor)
+    public static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, with supervisor: S) -> Behavior<Message> {
+        return .intercept(behavior: behavior, with: supervisor)
+    }
+    public static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
+        return .intercept(behavior: behavior, with: supervisor)
     }
 
     /// Wrap current behavior with a supervisor.
@@ -49,20 +52,21 @@ extension Behavior {
                     // returning `self.supervised(...)` inside their behavior.
                     return self
                 } else {
-                    return .supervise(self, supervisor: supervisor)
+                    return .supervise(self, with: supervisor)
                 }
             } else {
-                return .supervise(self, supervisor: supervisor)
+                return .supervise(self, with: supervisor)
             }
 
         default:
-            return .supervise(self, supervisor: supervisor)
+            return .supervise(self, with: supervisor)
         }
     }
+
     /// Wrap current behavior with a supervisor.
     /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
     public func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return .supervise(self, supervisor: supervisor)
+        return .supervise(self, with: supervisor)
     }
 }
 
@@ -90,6 +94,12 @@ public struct Supervision {
         case fault(Error)
     }
 
+    /// Thrown in the case of illegal supervision decisions being made, e.g. returning `.same` as decision,
+    /// or other situations where supervision failed in some other way.
+    public enum DecisionError: Error {
+        case illegalDecision(String, handledError: Error, error: Error)
+    }
+
     /// Supervision directives instruct the actor system to apply a specific
     public enum Directive {
         /// TODO: document
@@ -108,15 +118,22 @@ public struct Supervision {
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
-/// To implement a custom `Supervisor` override either (or both) the `handleMessageFailure` and `handleSignalFailure` methods.
-public class Supervisor<Message>: Interceptor<Message> {
+/// To implement a custom `Supervisor` you have to override:
+///   - either (or both) the `handleMessageFailure` and `handleSignalFailure` methods,
+///   - and the `isSameAs` method.
+open class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
-            return try self.handleMessageFailure(context, failure: .error(error))
+            let err = error
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), handling with \(self)")
+            do {
+                return try self.handleMessageFailure(context, failure: .error(err)).validatedAsInitial()
+            } catch {
+                throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
+            }
         }
     }
 
@@ -124,8 +141,13 @@ public class Supervisor<Message>: Interceptor<Message> {
         do {
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), HANDLING IN \(self)")
-            return try self.handleSignalFailure(context, failure: .error(error))
+            let err = error
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), handling with \(self)")
+            do {
+                return try self.handleMessageFailure(context, failure: .error(error)).validatedAsInitial()
+            } catch {
+                throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
+            }
         }
     }
 
@@ -133,13 +155,13 @@ public class Supervisor<Message>: Interceptor<Message> {
 
     /// Handle a fault that happened during message processing.
     // TODO wording and impl on double-faults
-    func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    open func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
     /// Handle a failure that occurred during signal processing.
     // TODO wording and impl on double-faults
-    func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    open func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
@@ -147,7 +169,7 @@ public class Supervisor<Message>: Interceptor<Message> {
     ///
     /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
     /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
-    func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+    public func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
         return undefined()
     }
 }
@@ -196,7 +218,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
-        if let s = newSupervisor as? RestartingSupervisor<Message> {
+        if newSupervisor is RestartingSupervisor<Message> {
             // we only check if the target restart behavior is the same; number of restarts is not taken into account
             return true // FIXME: we need to check the other options
             // return self.initialBehavior == s.initialBehavior // FIXME: we need to compare behaviors hm
