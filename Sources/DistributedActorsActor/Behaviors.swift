@@ -97,32 +97,6 @@ extension Behavior {
     }
 }
 
-// MARK: Supervision behaviors
-
-extension Behavior {
-
-    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
-        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
-        return .supervise(behavior, supervisor: supervisor)
-    }
-
-    public static func supervise(_ behavior: Behavior<Message>, supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return Behavior<Message>.intercept(behavior: behavior, with: supervisor)
-    }
-
-    /// Wrap current behavior with a supervisor.
-    /// Fluent-API equivalent to `Behavior.supervise(strategy:)`.
-    public func supervisedWith(strategy: SupervisionStrategy) -> Behavior<Message> {
-        return .supervise(self, withStrategy: strategy)
-    }
-    /// Wrap current behavior with a supervisor.
-    /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
-    public func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return .supervise(self, supervisor: supervisor)
-    }
-}
-
-
 public enum IllegalBehaviorError<M>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
