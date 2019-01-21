@@ -46,7 +46,7 @@ extension Behavior {
     /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
     /// SeeAlso:
     ///  - `supervise(_:withStrategy)`
-    public func supervisedWith(strategy: SupervisionStrategy) -> Behavior<Message> {
+    public func supervised(withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
         let supervisor = Supervision.supervisorFor(self, strategy)
         return .supervise(self, withSupervisor: supervisor)
     }
@@ -81,18 +81,23 @@ extension Behavior {
     /// INTERNAL API: We do not want to expose the full power of supervision with arbitrary behavior substitution to users unless we know for sure it is needed.
     /// Wrap current behavior with a supervisor.
     /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
-    internal func supervisedWith(supervisor: Supervisor<Message>) -> Behavior<Message> {
+    internal func supervised(supervisor: Supervisor<Message>) -> Behavior<Message> {
         return .supervise(self, withSupervisor: supervisor)
     }
 }
 
 // MARK: Supervision strategies and supervisors
 
+/// Supervision strategies are a way to select and configure pre-defined supervisors included in Swift Distributed Actors.
+///
+/// These supervisors implement basic supervision patterns and can be combined by wrapping behaviors in multiple supervisors,
+/// e.g. by first attempting to restart immediately a few times, and then resorting to back off supervision etc.
+///
+/// In most cases it is not necessary to apply the `.stop` strategy, as this is the default behavior of actors with
+/// when no supervisors are present.
 public enum SupervisionStrategy {
-
     case stop
     case restart(atMost: Int) // TODO: within: TimeAmount etc
-    // TODO: how to plug in custom one
 }
 
 public struct Supervision {
@@ -104,9 +109,19 @@ public struct Supervision {
         }
     }
 
+    /// Represents (and unifies) actor failures, i.e. what happens when code running inside an actor throws,
+    /// or if such code encounters a fault (such as `fatalError`, divides by zero or causes an out-of-bounds fault
+    /// by un-safely accessing an array.
     public enum Failure {
         // TODO: figure out how to represent failures, carry error code, actor path etc I think
+        /// The failure was caused by the actor throwing during its execution.
+        /// The carried `Error` is the error that the actor has thrown.
         case error(Error)
+        /// The failure was caused by the actor encountering a fault.
+        /// The fault (i.e. error code) has been represented as an `Error` and carried inside this fault case.
+        ///
+        /// Do note that - by design - not all faults will be caught by supervision; some faults are considered so-called
+        /// "fatal faults", and will not be offered to supervisors.
         case fault(Error)
     }
 
@@ -210,12 +225,12 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         self.failures += 1
         traceLog_Supervision("Supervision: RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
         // TODO has to modify restart counters here and supervise with modified supervisor
-        return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
+        return try initialBehavior.start(context: context).supervised(supervisor: self)
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         traceLog_Supervision("Supervision: RESTART!!!!!! >>>> \(initialBehavior)")
-        return try initialBehavior.start(context: context).supervisedWith(supervisor: self)
+        return try initialBehavior.start(context: context).supervised(supervisor: self)
     }
 
     override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {

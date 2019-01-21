@@ -37,6 +37,7 @@ class SupervisionTests: XCTestCase {
     enum FaultyMessages  {
         case pleaseThrow(error: Error)
         case pleaseFatalError(message: String)
+        case pleaseDivideByZero
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
     }
 
@@ -61,6 +62,10 @@ class SupervisionTests: XCTestCase {
                     throw error
                 case .pleaseFatalError(let msg):
                     fatalError(msg)
+                case .pleaseDivideByZero:
+                    let zero = Int("0")!
+                    _ = 100 / zero
+                    return .same
                 case let .echo(msg, sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
@@ -91,7 +96,7 @@ class SupervisionTests: XCTestCase {
 
         // supervised
 
-        let _: Behavior<String> = faultyWorker.supervisedWith(strategy: .stop)
+        let _: Behavior<String> = faultyWorker.supervised(withStrategy: .stop)
     }
 
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
@@ -197,6 +202,21 @@ class SupervisionTests: XCTestCase {
         })
     }
 
+    // MARK: Handling faults, divide by zero
+    // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
+
+    func test_stopSupervised_divideByZero_shouldStop() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
+            FaultyMessages.pleaseDivideByZero
+        })
+    }
+
+    func test_restartSupervised_divideByZero_shouldRestart() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
+            FaultyMessages.pleaseDivideByZero
+        })
+    }
+
     // MARK: Flattening supervisors so we do not end up with infinite stacks of same supervisor
 
     func test_supervisedWith_shouldNotInfinitelyKeepGrowingTheBehaviorDepth() throws {
@@ -204,8 +224,8 @@ class SupervisionTests: XCTestCase {
             return .stopped
         }
 
-        let w1 = behavior.supervisedWith(strategy: .stop)
-        let w2 = w1.supervisedWith(strategy: .stop)
+        let w1 = behavior.supervised(withStrategy: .stop)
+        let w2 = w1.supervised(withStrategy: .stop)
 
         let context: ActorContext<String> = testKit.makeFakeContext()
 
@@ -223,8 +243,8 @@ class SupervisionTests: XCTestCase {
             return .stopped
         }
 
-        let w1 = behavior.supervisedWith(strategy: .restart(atMost: 3)) // e.g. "we can restart a few times"
-        let w2 = w1.supervisedWith(strategy: .stop) // "but of those fail, and bubble up, we need to stop"
+        let w1 = behavior.supervised(withStrategy: .restart(atMost: 3)) // e.g. "we can restart a few times"
+        let w2 = w1.supervised(withStrategy: .stop) // "but of those fail, and bubble up, we need to stop"
 
         let context: ActorContext<String> = testKit.makeFakeContext()
 
@@ -283,7 +303,7 @@ class SupervisionTests: XCTestCase {
 
         let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor()
         let faulty2: Behavior<SupervisionTests.FaultyMessages> = self.faulty(probe: p.ref)
-        let supervisedBehavior = faulty2.supervisedWith(supervisor: supervisor)
+        let supervisedBehavior = faulty2.supervised(supervisor: supervisor)
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "bad-decision-erroring-2")
@@ -328,7 +348,7 @@ class SupervisionTests: XCTestCase {
                 return self.daDoRunRunRunDaDoRunRun()
             }
         }
-        let supervisedBehavior = stackOverflowFaulty.supervisedWith(strategy: .restart(atMost: 3))
+        let supervisedBehavior = stackOverflowFaulty.supervised(withStrategy: .restart(atMost: 3))
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "bad-decision-erroring-2")
