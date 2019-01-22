@@ -32,6 +32,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 
+#include "c_mailbox_phase.h"
 #include "CMPSCLinkedQueue.h"
 
 typedef struct {
@@ -51,12 +52,6 @@ typedef enum {
     Failure        = 0b10,
     FailureRestart = 0b11,
 } CMailboxRunResult;
-
-/** Used to mark in which phase of a mailbox run we are currently in. */
-typedef enum {
-    ProcessingSystemMessages = 0,
-    ProcessingUserMessages   = 1,
-} MailboxRunPhase;
 
 typedef void InterpretMessageClosureContext;
 typedef void InterpretSystemMessageClosureContext;
@@ -89,7 +84,7 @@ typedef void (* DropMessageCallback)(DropMessageClosureContext*, void*); // TODO
  *
  * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
  */
-typedef CMailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, void*);
+typedef CMailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, CMailboxRunPhase, void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
@@ -100,6 +95,9 @@ void cmailbox_destroy(CMailbox* mailbox);
 
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
+
+/* Returns in what phase the mailbox currently is, or was when a fault occurred. */
+CMailboxRunPhase cmailbox_get_run_phase();
 
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
@@ -125,9 +123,11 @@ CMailboxRunResult cmailbox_run(
     // fault handling:
     jmp_buf* error_jmp_buf,
     SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
-    void** failed_message, MailboxRunPhase* run_phase);
+    void** failed_message// , CMailboxRunPhase* run_phase
+    );
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
+
 
 /*
  * Returns `true` if the mailbox is terminating or terminated, messages should not be enqueued to it.

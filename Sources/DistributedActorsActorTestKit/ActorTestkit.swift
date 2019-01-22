@@ -90,8 +90,14 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override var myself: ActorRef<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
+    private lazy var _log: Logger = Logging.make("\(type(of: self))") 
     override var log: Logger {
-        return LoggerFactory.make(identifier: "\(type(of: self))")
+        get {
+            return self._log
+        }
+        set {
+            self._log = newValue
+        }
     }
     override var dispatcher: MessageDispatcher {
         fatalError("Failed: \(MockActorContextError())")

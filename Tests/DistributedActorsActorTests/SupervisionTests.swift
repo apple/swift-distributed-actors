@@ -347,92 +347,43 @@ class SupervisionTests: XCTestCase {
 
     // MARK: Handling faults inside receiveSignal
 
-    func test_throwInSignalHandling_shouldRestart() throws {
-        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = testKit.spawnTestProbe(expecting: Never.self)
+    func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
+        let probe = testKit.spawnTestProbe(expecting: WorkerMessages.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 1)
-        let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: p.ref, failBy: .throwing)
+        let strategy: SupervisionStrategy = .restart(atMost: 3) // TODO implement the restart limiting
+        let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: probe.ref, failBy: failureMode)
         let supervisedBehavior: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "fault-in-receiveSignal-erroring-1")
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "\(failureMode)-in-receiveSignal-erroring-1")
             return .same
         }
-        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+        let parent: ActorRef<Never> = try system.spawn(parentBehavior, name: "\(failureMode)-in-receiveSignal-parent-1")
+        probe.watch(parent)
 
-        let parent: ActorRef<Never> = try system.spawn(behavior, name: "fault-in-receiveSignal-parent-1")
-        pp.watch(parent)
+        // parent's setup has executed:
+        guard case let .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
 
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
-        p.watch(faultyWorker)
+        parentRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
 
-        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
-//        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
-//
-        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
-        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
-//
-//        pinfo("Now expecting it to run setup again...")
-//        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
-//
-//        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
-//        faultyWorkerRestarted.shouldEqual(faultyWorker)
-//
-//        pinfo("Not expecting a reply from it")
-//        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
-//        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
-//
-//
-//        faultyWorker.tell(makeEvilMessage("Boom: 2nd (\(runName))"))
-//        try p.expectNoTerminationSignal(for: .milliseconds(300))
-//
-//        pinfo("Now it boomed but did not crash again!")
+        try probe.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+
+        // parent's setup has executed again, since it was restarted in its entirety, so the setup has also run again:
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
+
+        // TODO: once restart limiting is implemented the following should pass:
+        // try watchParentProbe.expectTerminated(parentRef) // parent did terminate after the 3rd attempt
+    }
+
+    func test_throwInSignalHandling_shouldRestart() throws {
+        try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .throwing)
     }
 
     func test_faultInSignalHandling_shouldRestart() throws {
-        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
-        let pp = testKit.spawnTestProbe(expecting: Never.self)
-
-        let strategy: SupervisionStrategy = .restart(atMost: 1)
-        let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: p.ref, failBy: .faulting)
-        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
-
-        let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "fault-in-receiveSignal-erroring-1")
-            return .same
-        }
-        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
-
-        let parent: ActorRef<Never> = try system.spawn(behavior, name: "fault-in-receiveSignal-parent-1")
-        pp.watch(parent)
-
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
-        p.watch(faultyWorker)
-
-        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
-//        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
-//
-        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
-        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
-//
-//        pinfo("Now expecting it to run setup again...")
-//        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
-//
-//        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
-//        faultyWorkerRestarted.shouldEqual(faultyWorker)
-//
-//        pinfo("Not expecting a reply from it")
-//        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
-//        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
-//
-//
-//        faultyWorker.tell(makeEvilMessage("Boom: 2nd (\(runName))"))
-//        try p.expectNoTerminationSignal(for: .milliseconds(300))
-//
-//        pinfo("Now it boomed but did not crash again!")
+        try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .faulting)
     }
-
 
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 

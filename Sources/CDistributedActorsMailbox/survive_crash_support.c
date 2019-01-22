@@ -44,21 +44,19 @@
 #include "include/crash_support.h"
 
 void sact_complain_and_pause_thread(void* ctx);
-/** Return current (p)Thread ID*/
+/** Return current (p)Thread ID */
 int sact_my_tid();
 
 // we assume that setting the signal handler once for our application does the job.
 static atomic_flag handler_set = ATOMIC_FLAG_INIT;
 
-// Thread local containing the ActorCell and failure handling logic, implemented in Swift.
-//
 // Each executing actor sets this value for the duration of its mailbox run.
-// if NULL, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
+// If `false`, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
 static _Thread_local bool tl_fault_handling_enabled = false;
 
 static _Thread_local jmp_buf error_jmp_buf;
 
-static _Thread_local CCrashDetails* crash_details = NULL;
+static _Thread_local CCrashDetails* tl_crash_details = NULL;
 
 pthread_mutex_t lock;
 
@@ -67,7 +65,7 @@ jmp_buf* sact_get_error_jmp_buf() {
 }
 
 CCrashDetails* sact_get_crash_details() {
-    return crash_details;
+    return tl_crash_details;
 }
 
 void sact_unrecoverable_sighandler(int sig, siginfo_t* siginfo, void* data) {
@@ -107,9 +105,10 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     int frame_count = sact_get_backtrace(&frames);
 
     // TODO(ktoso): safety wise perhaps better to keep some preallocated space for crash details
-    crash_details = malloc(sizeof(CCrashDetails));
-    crash_details->backtrace = frames;
-    crash_details->backtrace_length = frame_count;
+    tl_crash_details = malloc(sizeof(CCrashDetails));
+    tl_crash_details->backtrace = frames;
+    tl_crash_details->backtrace_length = frame_count;
+    // crash_details->run_phase = ; // TODO have to set it right here
 
     // we are jumping back to the mailbox to properly handle the crash and kill the actor
     siglongjmp(error_jmp_buf, 1);
@@ -151,10 +150,10 @@ void sact_enable_fault_handling() {
 }
 
 void sact_disable_fault_handling() {
-    if (crash_details) {
-        free(crash_details->backtrace);
-        free(crash_details);
-        crash_details = NULL;
+    if (tl_crash_details) {
+        free(tl_crash_details->backtrace);
+        free(tl_crash_details);
+        tl_crash_details = NULL;
     }
     tl_fault_handling_enabled = false;
 }

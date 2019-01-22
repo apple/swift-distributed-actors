@@ -18,7 +18,7 @@
 @inlinable
 func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
-    pprint(message(), file: file, line: line)
+    pprint("SACT_TRACE_DEATHWATCH: \(message())", file: file, line: line)
     #endif
 }
 
@@ -26,7 +26,7 @@ func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticStrin
 @inlinable
 func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
-    pprint(message(), file: file, line: line)
+    pprint("SACT_TRACE_MAILBOX: \(message())", file: file, line: line)
     #endif
 }
 
@@ -34,7 +34,7 @@ func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString =
 @inlinable
 func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_CELL
-    pprint(message(), file: file, line: line)
+    pprint("SACT_TRACE_CELL: \(message())", file: file, line: line)
     #endif
 }
 
@@ -42,7 +42,7 @@ func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #f
 @inlinable
 func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
-    pprint(message(), file: file, line: line)
+    pprint("SACT_TRACE_PROBE: \(message())", file: file, line: line)
     #endif
 }
 
@@ -50,6 +50,6 @@ func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #
 @inlinable
 func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
-    pprint(message(), file: file, line: line)
+    pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
     #endif
 }

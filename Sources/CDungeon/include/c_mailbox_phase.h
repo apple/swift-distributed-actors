@@ -25,26 +25,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SACT_SURVIVE_CRASH_SUPPORT_H
-#define SACT_SURVIVE_CRASH_SUPPORT_H
+#ifndef SACTANA_C_MAILBOX_PHASE_H
+#define SACTANA_C_MAILBOX_PHASE_H
 
-#include "c_mailbox_phase.h"
-#include <setjmp.h>
+/** Used to mark in which phase of a mailbox run we are currently in. */
+// TODO leaks somewhat -- this is a Mailbox thing -- consider making CDungeon part of CMailbox (rename CQueue to CMailbox)
+typedef enum {
+    ProcessingSystemMessages = 0,
+    ProcessingUserMessages   = 1,
+} CMailboxRunPhase;
 
-typedef struct {
-    char** backtrace;
-    int backtrace_length;
-
-    CMailboxRunPhase run_phase;
-} CCrashDetails;
-
-void sact_enable_fault_handling(void);
-void sact_disable_fault_handling(void);
-
-int sact_install_swift_crash_handler(void);
-
-jmp_buf* sact_get_error_jmp_buf(void);
-
-CCrashDetails* sact_get_crash_details(void);
-
-#endif // SACT_SURVIVE_CRASH_SUPPORT_H
+#endif //SACTANA_C_MAILBOX_PHASE_H
