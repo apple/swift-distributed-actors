@@ -24,7 +24,6 @@ extension SupervisionTests {
 
    static var allTests : [(String, (SupervisionTests) -> () throws -> Void)] {
       return [
-                ("test_compile", test_compile),
                 ("test_stopSupervised_throws_shouldStop", test_stopSupervised_throws_shouldStop),
                 ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),
                 ("test_stopSupervised_fatalError_shouldStop", test_stopSupervised_fatalError_shouldStop),

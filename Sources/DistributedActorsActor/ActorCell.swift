@@ -343,8 +343,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     ///
     /// May ONLY be invoked by the Mailbox.
     ///
-    /// TODO: any kind of supervision things.
-    ///
     /// Special handling is applied to [[DeathPactError]] since if that error is passed in here, we know that `.terminated`
     /// was not handled and we have to adhere to the DeathPact contract by stopping this actor as well.
     ///
@@ -363,7 +361,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
-            log.error("Actor failing, reason: [\(error)]:\(type(of: error))") // TODO configurable logging? in props?
+            log.error("Actor threw error, reason: [\(error)]:\(type(of: error))") // TODO configurable logging? in props?
+            // sact_dump_backtrace() // shows mostly mailbox info, not so useful for users
+
             self.finishTerminating() // FIXME likely too eagerly
         }
     }
@@ -466,6 +466,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     public override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
         return self.watch(try self.spawn(behavior, name: name, props: props))
     }
+
+    // TODO: spawnAnonymous
+
+    // TODO: spawnWatchedAnonymous
 
     public override func stop<M>(child ref: ActorRef<M>) throws {
         return try self.internal_stop(child: ref)

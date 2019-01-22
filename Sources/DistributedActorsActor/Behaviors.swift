@@ -80,18 +80,29 @@ public enum Behavior<Message> {
 
 }
 
+// MARK: Behavior combinators
+
+extension Behavior {
+
+    /// Creates a new Behavior which on an incoming message will first execute the first (current) behavior,
+    /// and if it returns `.unhandled` applies the alternative behavior passed in here.
+    ///
+    /// If the alternative behavior contains a `.setup` or other deferred behavior, it will be canonicalized on its first execution // TODO: make a test for it
+    public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
+        return .orElse(first: self, second: alternativeBehavior)
+    }
+}
+
 // MARK: Signal receiving behaviors
 
 extension Behavior {
 
-    public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
-        return .orElse(first: self, second: alternativeBehavior)
-    }
-
-    public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
+    /// While throwing in signal handlers is not permitted, supervision does take care of faults that could occur while handling a signal
+    public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior<Message>.signalHandling(handleMessage: self, handleSignal: handle)
     }
 
+    /// -- || --
     public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
         return Behavior<Message>.signalHandling(handleMessage: .unhandled, handleSignal: handle)
     }
@@ -238,7 +249,7 @@ public extension Behavior {
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
         case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
-        case .setup: return FIXME("Illegal attempt to interpret message with .setup behavior! This is illegal, behaviors always MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.")
+        case .setup: return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.")
         case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)")
         case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
@@ -256,9 +267,9 @@ public extension Behavior {
     func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         switch self {
         case .signalHandling(_, let handleSignal):
-            return try handleSignal(context, signal)
+            return try handleSignal(context, signal) // TODO do we need to try?
         case let .intercept(behavior, interceptor):
-            return try interceptor.interceptSignal(target: behavior, context: context, signal: signal)
+            return try interceptor.interceptSignal(target: behavior, context: context, signal: signal) // TODO do we need to try?
         default:
             // no signal handling installed is semantically equivalent to unhandled
             return .unhandled
@@ -380,6 +391,9 @@ internal extension Behavior {
             case .setup(let onStart):
                 let onStarted: Behavior<Message> = try onStart(context)
                 starting = onStarted
+
+            case .signalHandling(let onMessageBehavior, let onSignal):
+                return .signalHandling(handleMessage: try onMessageBehavior.start(context: context), handleSignal: onSignal)
 
             default:
                 break startLoop

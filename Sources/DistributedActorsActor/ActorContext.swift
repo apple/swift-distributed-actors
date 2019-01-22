@@ -114,10 +114,21 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    public func spawnAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
+        return undefined()
+    }
+
     /// Spawn a child actor and start watching it to get notified about termination.
     ///
     /// - SeeAlso: `spawn` and `watch`.
     public func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
+        return undefined()
+    }
+
+    /// Spawn a child actor and start watching it to get notified about termination.
+    ///
+    /// - SeeAlso: `spawn` and `watch`.
+    public func spawnWatchedAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
         return undefined()
     }
 
