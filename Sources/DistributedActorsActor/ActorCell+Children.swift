@@ -96,7 +96,10 @@ public struct Children {
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
-    /// Returns: `true` upon successfulky marking the ref identified by passed in path as stopping
+    ///
+    /// Once marked as stopping the actor MUST be sent a `.stop` system message.
+    ///
+    /// Returns: `true` upon successfully marking the ref identified by passed in path as stopping
     @usableFromInline
     @discardableResult
     internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
@@ -126,6 +129,38 @@ public struct Children {
         return !self.isEmpty
     }
 }
+
+/// MARK: Convenience methods for stopping children
+
+extension Children {
+
+    /// TODO revise surface API what we want to expose; stopping by just name may be okey?
+
+    /// Stops given child actor (if it exists) regardless of what type of messages it can handle.
+    ///
+    /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
+    mutating func stop(named name: String) -> Bool {
+        // implementation similar to find, however we do not care about the underlying type
+        if let boxedChild = self.container[name],
+           self.markAsStoppingChild(identifiedBy: boxedChild.path) {
+            boxedChild.sendSystemMessage(.stop)
+            return true
+        }
+        return false
+    }
+
+    /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
+    // We may open this up once it is requested enough however...
+    internal mutating func stopAll() {
+        self.container.forEach { name, boxedRef in
+            if self.markAsStoppingChild(identifiedBy: boxedRef.path) {
+                boxedRef.sendSystemMessage(.stop)
+            }
+        }
+    }
+}
+
+// MARK: Extending ActorCell with internal operations
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorCell: ChildActorRefFactory {
@@ -157,6 +192,7 @@ extension ActorCell: ChildActorRefFactory {
         )
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
+        // TODO: should be DEBUG once we clean up log messages more
         log.info("Spawning [\(behavior)], on path: [\(path)]")
 
         let refWithCell = ActorRefWithCell(
@@ -186,6 +222,10 @@ extension ActorCell: ChildActorRefFactory {
         if self.children.markAsStoppingChild(identifiedBy: ref.path) {
             ref._downcastUnsafe.sendSystemMessage(.stop)
         }
+    }
+
+    internal func stopAllChildren() {
+        self.children.stopAll()
     }
 
     private func validateUniqueName(_ name: String) throws {

@@ -292,7 +292,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warning("Actor not known yet [\(terminated)] received for it.")
+            log.warning("Actor not known yet [\(terminated)] received for it. Ignoring.")
             return
         }
 
