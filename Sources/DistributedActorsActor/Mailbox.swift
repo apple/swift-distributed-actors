@@ -193,7 +193,7 @@ final class Mailbox<Message> {
                         return FailureRestart
                     }
                 } else {
-                    cell.log.warning("Supervision: Not supervised actor, encountered failure: \(supervisionFailure)")
+                    // no need to log here as we'll log while crashing the actor
                     return Failure
                 }
             },
@@ -357,7 +357,7 @@ extension Mailbox {
 
 internal struct MessageProcessingFailure: Error {
     let messageDescription: String
-    let backtrace: [String]
+    let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?
 }
 
 extension MessageProcessingFailure: CustomStringConvertible {

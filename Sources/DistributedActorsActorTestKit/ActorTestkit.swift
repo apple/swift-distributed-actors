@@ -28,6 +28,8 @@ final public class ActorTestKit {
 
     private let system: ActorSystem
 
+    private let spawnProbesLock = Lock()
+
     private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testProbe-")
 
     public init(_ system: ActorSystem) {
@@ -38,6 +40,9 @@ final public class ActorTestKit {
 
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
     public func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
+        self.spawnProbesLock.lock()
+        defer { self.spawnProbesLock.unlock() }
+
         let name = maybeName ?? testProbeNames.nextName()
         return ActorTestProbe(spawn: { probeBehavior in
 
@@ -105,6 +110,10 @@ final class MockActorContext<Message>: ActorContext<Message> {
     }
 
     override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+        fatalError("Failed: \(MockActorContextError())")
+    }
+
+    override func spawnWatchedAnonymous<M>(_ behavior: Behavior<M>, props: Props) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
 

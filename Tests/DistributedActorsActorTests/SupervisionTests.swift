@@ -63,13 +63,37 @@ class SupervisionTests: XCTestCase {
                 case .pleaseFatalError(let msg):
                     fatalError(msg)
                 case .pleaseDivideByZero:
-                    let zero = Int("0")!
+                    let zero = Int("0")! // to trick swiftc into allowing us to write "/ 0", which it otherwise catches at compile time
                     _ = 100 / zero
                     return .same
                 case let .echo(msg, sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
                 }
+            }
+        }
+    }
+
+    func failOnTerminatedHandling(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessages> {
+        return .setup { context in
+            probe?.tell(.setupRunning(ref: context.myself))
+
+            return Behavior<FaultyMessages>.setup { context in
+                let watched: ActorRef<String> = try context.spawnWatched(.receiveMessage { message in
+                    throw FaultyError.boom(message: "I'm dying, as expected.")
+                }, name: "dying-\(Date().hashValue)") // FIXME: when we restart should not get into dupe name problem
+                watched.tell("anything we send here will cause it to die") // and send us the Terminated
+
+                return .ignore
+            }.receiveSignal { context, signal in
+                context.log.info("HANDLING SIGNAL \(signal)")
+                if signal is Signals.Terminated {
+                    // we fault here as we intend to see if restarting works properly
+                    // fatalError("Boom, faulted inside signal handling!")
+                    throw FaultyError.boom(message: "Boom, thrown inside signal handling!")
+                }
+
+                return .same
             }
         }
     }
@@ -83,21 +107,6 @@ class SupervisionTests: XCTestCase {
     // TODO: exceed max restarts counter of a restart supervisor
 
     // TODO: implement and test exponential backoff supervision
-
-    // TODO: test failures inside signal handling
-
-    func test_compile() throws {
-        let faultyWorker: Behavior<String> = .ignore
-
-        // supervise
-
-        let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .stop)
-        let _: Behavior<String> = Behavior.supervise(faultyWorker, withStrategy: .restart(atMost: 3))
-
-        // supervised
-
-        let _: Behavior<String> = faultyWorker.supervised(withStrategy: .stop)
-    }
 
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
 
@@ -329,6 +338,51 @@ class SupervisionTests: XCTestCase {
             return .same // that's an illegal decision there is no "same" to use, since the current behavior may have been corrupted
         }
     }
+
+    // MARK: Handling faults inside receiveSignal
+
+    func test_faultInSignalHandling_shouldRestart() throws {
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 1)
+        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.failOnTerminatedHandling(probe: p.ref), withStrategy: strategy)
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "fault-in-receiveSignal-erroring-1")
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "fault-in-receiveSignal-parent-1")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        p.watch(faultyWorker)
+
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+//        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+//
+        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+//
+//        pinfo("Now expecting it to run setup again...")
+//        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
+//
+//        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+//        faultyWorkerRestarted.shouldEqual(faultyWorker)
+//
+//        pinfo("Not expecting a reply from it")
+//        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
+//        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
+//
+//
+//        faultyWorker.tell(makeEvilMessage("Boom: 2nd (\(runName))"))
+//        try p.expectNoTerminationSignal(for: .milliseconds(300))
+//
+//        pinfo("Now it boomed but did not crash again!")
+    }
+
 
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 

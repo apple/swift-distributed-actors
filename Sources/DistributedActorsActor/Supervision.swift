@@ -141,10 +141,11 @@ open class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
+            pprint("INTERCEPT MSG APPLY: \(target) @@@@ \(message)")
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), handling with \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(err)]:\(type(of: err)) while interpreting message, handling with \(self)")
             do {
                 return try self.handleMessageFailure(context, failure: .error(err)).validatedAsInitial()
             } catch {
@@ -155,10 +156,11 @@ open class Supervisor<Message>: Interceptor<Message> {
 
     final override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         do {
+            pprint("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)), handling with \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting signal, handling with \(self)")
             do {
                 return try self.handleMessageFailure(context, failure: .error(error)).validatedAsInitial()
             } catch {
@@ -200,6 +202,7 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         return .stopped
     }
 
+    // TODO complete impl
     override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
         if newSupervisor is StoppingSupervisor<Message> {
             // we could have more configuration options to check here
@@ -216,6 +219,8 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     private var failures: Int = 0
 
+    // TODO Implement respecting restart(atMost restarts: Int) !!!
+
     public init(initialBehavior behavior: Behavior<Message>) {
         self.initialBehavior = behavior
         super.init()
@@ -223,16 +228,19 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         self.failures += 1
-        traceLog_Supervision("Supervision: RESTART (\(self.failures)-th time)!!!!!! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
+        // TODO make proper .ordinalString function
+        traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
         // TODO has to modify restart counters here and supervise with modified supervisor
         return try initialBehavior.start(context: context).supervised(supervisor: self)
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        traceLog_Supervision("Supervision: RESTART!!!!!! >>>> \(initialBehavior)")
+        self.failures += 1
+        traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
         return try initialBehavior.start(context: context).supervised(supervisor: self)
     }
 
+    // TODO complete impl
     override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
         if newSupervisor is RestartingSupervisor<Message> {
             // we only check if the target restart behavior is the same; number of restarts is not taken into account
