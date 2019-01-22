@@ -30,8 +30,6 @@
 #include <pthread.h>
 #include <execinfo.h>
 
-// TODO: getting better code completion this way... works ok in xcode and friends this way too?
-//#include "CMailbox.h"
 #include "include/CMailbox.h"
 #include "include/itoa.h"
 
@@ -108,6 +106,10 @@ bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_mes
 
 int64_t max(int64_t a, int64_t b);
 
+// TODO(ktoso): Would want to avoid this one though had some trouble with setting the shared runPhase of a Swift value...
+// Note that the entire dance around keeping info in which phase we failed is so complex due to the swift/c interop and fault handlers,
+// normally it would be very simple, though we cannot close over generic context, so we use this flag to carry "to what type to cast the msg"
+static _Thread_local CMailboxRunPhase tl_current_run_phase = ProcessingSystemMessages;
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
     CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
@@ -183,7 +185,9 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
                                // failure handling:
                                jmp_buf* error_jmp_buf,
                                void* supervision_context, InvokeSupervisionCallback supervision_invoke,
-                               void** failed_message, MailboxRunPhase* run_phase) {
+                               void** failed_message
+                               // , CMailboxRunPhase* run_phase
+                               ) {
     print_debug_status(mailbox, "Entering run");
 
     // We store the message in a void** here so that it is still accessible after
@@ -213,7 +217,7 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // Supervision re-entry point; once a fault has occurred we resume here.
 
         // We attempt to invoke a supervisor for this crashing behavior:
-        CMailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, *message);
+        CMailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, tl_current_run_phase, *message);
 
         if (supervisionRunResult == FailureRestart) {
             // TODO cover all things
@@ -231,7 +235,8 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
 
         // run system messages ------
         if (has_system_messages(status)) {
-            *run_phase = ProcessingSystemMessages;
+            // *run_phase = ProcessingSystemMessages;
+            tl_current_run_phase = ProcessingSystemMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
 
             while (*message != NULL && keep_running) {
@@ -276,7 +281,8 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
         // run user messages ------
 
         if (keep_running) {
-            *run_phase = ProcessingUserMessages;
+            // *run_phase = ProcessingUserMessages;
+            tl_current_run_phase = ProcessingUserMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->messages);
             while (*message != NULL && keep_running) {
                 // we need to add 2 to processed_activations because the user message count is stored
@@ -347,6 +353,10 @@ CMailboxRunResult cmailbox_run(CMailbox* mailbox,
             return Done;
         }
     }
+}
+
+CMailboxRunPhase cmailbox_get_run_phase() {
+    return tl_current_run_phase;
 }
 
 int64_t cmailbox_message_count(CMailbox* mailbox) {

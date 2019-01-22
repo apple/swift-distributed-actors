@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import CSwiftDistributedActorsMailbox
+import CQueue // TODO: rename to CMailbox? It contains the queue but also mailbox
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -55,6 +56,7 @@ internal struct FaultHandling {
         let cdetails = cdetailsPtr.pointee
 
         var backtrace: [String] = []
+        backtrace.reserveCapacity(Int(cdetails.backtrace_length))
 
         for i in 0 ..< Int(cdetails.backtrace_length) {
             let str = String(cString: cdetails.backtrace[i]!)
@@ -62,7 +64,8 @@ internal struct FaultHandling {
         }
 
         return CrashDetails(
-            backtrace: backtrace
+            backtrace: backtrace,
+            runPhase: cdetails.run_phase
         )
     }
 
@@ -144,8 +147,26 @@ internal struct FaultHandling {
     }
 }
 
+/// Carries information regarding where a fault has occurred.
 internal struct CrashDetails {
     let backtrace: [String]
+    let runPhase: CMailboxRunPhase
+}
+
+// TODO: Would like to use this, but the hopping back and forth C makes is not really worth it...
+// What was that trick to make C-interop with enums pleasant?
+//
+internal enum MailboxRunPhase {
+    case processingSystemMessages
+    case processingUserMessages
+
+    static func adapt(from cRunPhase: CMailboxRunPhase) -> MailboxRunPhase {
+        if cRunPhase == ProcessingSystemMessages {
+            return .processingSystemMessages
+        } else {
+            return .processingUserMessages
+        }
+    }
 }
 
 /// Error related to, or failure "caught" by the failure handling mechanism.

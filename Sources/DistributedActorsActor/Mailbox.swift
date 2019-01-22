@@ -87,31 +87,39 @@ final class Mailbox<Message> {
                 traceLog_Mailbox("Error while dropping message! Was: \(error) TODO supervision decisions...")
             }
         }
-        self.invokeSupervision = { (ctxPtr, failedMessagePtr) in
-            traceLog_Mailbox("Supervision: Actor has faulted, supervisor to decide course of action.")
+        self.invokeSupervision = { ctxPtr, runPhasePtr, failedMessagePtr in
+            traceLog_Mailbox("Actor has faulted, supervisor to decide course of action.")
 
             if let crashDetails = FaultHandling.getCrashDetails() {
-                if let ctx = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
+                if let ctx: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
 
-                    let runPhase: MailboxRunPhase = ProcessingUserMessages // FIXME
-                    let messageDescription = ctx.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!) // FIXME that !
+                    let runPhase: CMailboxRunPhase = runPhasePtr
+                    traceLog_Mailbox("Run failed in phase \(MailboxRunPhase.adapt(from: runPhase))")
+
+                    let msgRaw = failedMessagePtr!
+                    traceLog_Mailbox("msgRaw === \(msgRaw)")
+                    if runPhase == ProcessingSystemMessages {
+                        traceLog_Mailbox("IT IS === \(msgRaw)")
+                    }
+
+                    let messageDescription = ctx.renderMessageDescription(runPhase: runPhase, failedMessageRaw: msgRaw)
                     let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
 
                     do {
                         return try ctx.handleMessageFailure(.fault(failure), whileProcessing: runPhase)
                     } catch {
-                        pprint("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
+                        traceLog_Supervision("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
                         exit(-1)
                     }
                 } else {
 
-                    pprint("No crash details...")
+                    traceLog_Supervision("No crash details...")
                     // no crash details, so we can't invoke supervision; Let it Crash!
                     return Failure
                 }
             } else {
 
-                pprint("No crash details...")
+                traceLog_Supervision("No crash details...")
                 // no crash details, so we can't invoke supervision; Let it Crash!
                 return Failure
             }
@@ -121,6 +129,8 @@ final class Mailbox<Message> {
         // all self references so Swift does not allow us to write self.cell in them.
 
         self.messageClosureContext = InterpretMessageClosureContext(exec: { envelopePtr in
+            // assert(self.runPhase == ProcessingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
@@ -134,6 +144,8 @@ final class Mailbox<Message> {
             cell.fail(error: error)
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr in
+            // assert(self.runPhase == ProcessingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
@@ -163,8 +175,9 @@ final class Mailbox<Message> {
 
                 if let supervisor = cell.supervisedBy {
 
-                    // TODO: these could throw, make sure they do what is expected there.
+                    // TODO: would like to use MailboxRunPhase to switch over it here... What was the trick to nicely interop on enums?
                     let supervisionResultingBehavior: Behavior<Message>
+
                     if runPhase == ProcessingUserMessages {
                         supervisionResultingBehavior = try supervisor.handleMessageFailure(cell.context, failure: supervisionFailure)
                     } else if runPhase == ProcessingSystemMessages {
@@ -267,8 +280,10 @@ final class Mailbox<Message> {
         let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
-        // In case of a processing failure, this will mark if the fault occurred while processing System or User messages.
-        var runPhase: MailboxRunPhase = ProcessingSystemMessages
+
+//        // In case of a processing failure, this will mark if the fault occurred while processing System or User messages.
+//        // This has to be the C enum and not Swift enum... // TODO: can we find a nicer middle ground? I'd like to switch over the enum rather than if/ifelse/else{bug}
+//        private var runPhase: CMailboxRunPhase = ProcessingSystemMessages
 
         // Run the mailbox:
         let schedulingDecision: CMailboxRunResult = cmailbox_run(mailbox,
@@ -277,7 +292,7 @@ final class Mailbox<Message> {
             interpretMessage, dropMessage,
             // fault handling:
             FaultHandling.getErrorJmpBuf(), 
-            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr, &runPhase)
+            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr/*, &runPhase*/)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -295,7 +310,8 @@ final class Mailbox<Message> {
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
         } else if schedulingDecision == Failure {
-            self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: runPhase)
+            let failedRunPhase = cmailbox_get_run_phase()
+            self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
         } else if schedulingDecision == FailureRestart {
             // FIXME: !!! we must know if we should schedule or not after a restart...
             traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
@@ -321,7 +337,7 @@ final class Mailbox<Message> {
 // MARK: Crash handling functions for Mailbox
 
 extension Mailbox {
-    private func crashFailCellWithBestPossibleError(failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
+    private func crashFailCellWithBestPossibleError(failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: CMailboxRunPhase) {
         if let crashDetails = FaultHandling.getCrashDetails() {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }
@@ -411,7 +427,7 @@ private struct InvokeSupervisionClosureContext {
     // and only yield us the "supervised run result", which usually will be `Failure` or `FailureRestart`
     //
     // private let _handleMessageFailure: (UnsafeMutableRawPointer) throws -> Behavior<Message>
-    private let _handleMessageFailureBecauseC: (Supervision.Failure, MailboxRunPhase) throws -> CMailboxRunResult
+    private let _handleMessageFailureBecauseC: (Supervision.Failure, CMailboxRunPhase) throws -> CMailboxRunResult
 
     // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
     private let _describeMessage: (UnsafeMutableRawPointer) -> String
@@ -423,7 +439,7 @@ private struct InvokeSupervisionClosureContext {
     /// take a logger without potential user changes made to it etc.
     private let _log: Logger
 
-    init(logger: Logger, handleMessageFailure: @escaping (Supervision.Failure, MailboxRunPhase) throws -> CMailboxRunResult,
+    init(logger: Logger, handleMessageFailure: @escaping (Supervision.Failure, CMailboxRunPhase) throws -> CMailboxRunResult,
          describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
         self._log = logger
         self._handleMessageFailureBecauseC = handleMessageFailure
@@ -431,17 +447,20 @@ private struct InvokeSupervisionClosureContext {
     }
 
     @inlinable
-    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing msgType: MailboxRunPhase) throws -> CMailboxRunResult {
-        return try self._handleMessageFailureBecauseC(failure, msgType)
+    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing runPhase: CMailboxRunPhase) throws -> CMailboxRunResult {
+        return try self._handleMessageFailureBecauseC(failure, runPhase)
     }
 
     // hides the generic Message and provides same capabilities of rendering messages as the free function of the same name
     @inlinable
-    func renderMessageDescription(runPhase: MailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer) -> String {
+    func renderMessageDescription(runPhase: CMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer) -> String {
+        traceLog_Mailbox("!!!!!!!!!!!!! INSIDE THE SUPERVISION  CONTEXT")
         if runPhase == ProcessingSystemMessages {
+            traceLog_Mailbox("!!!!!!!!!!!!! INSIDE THE SUPERVISION  CONTEXT!!!!!")
             // we can invoke it directly since it is not generic
             return renderSystemMessageDescription(failedMessageRaw)
         } else {
+            traceLog_Mailbox("!!!!!!!!!!!!! INSIDE THE SUPERVISION  CONTEXT NEIN")
             // since Message is generic, we need to hop over the provided function which was allowed to close over the generic state
             return self._describeMessage(failedMessageRaw)
         }
@@ -456,7 +475,8 @@ private struct InvokeSupervisionClosureContext {
 
 /// Renders a `SystemMessage` or user `Message` appropriately given a raw pointer to such message.
 /// Only really needed due to the c-interop of failure handling where we need to recover the lost generic information this way.
-private func renderMessageDescription<Message>(runPhase: MailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
+private func renderMessageDescription<Message>(runPhase: CMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
+    traceLog_Mailbox("!!!!!!!!!!!!! GOT HERE \(runPhase == ProcessingSystemMessages)")
     if runPhase == ProcessingSystemMessages {
         return renderSystemMessageDescription(failedMessageRaw)
     } else {
@@ -472,6 +492,8 @@ private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointe
     return "[\(message)]:\(Message.self)"
 }
 private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
+    traceLog_Mailbox("!!!!!!!!!!!!! RENDRERRRRRRR")
+
     let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).move()
     return "[\(systemMessage)]:\(SystemMessage.self)"
 }

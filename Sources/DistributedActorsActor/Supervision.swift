@@ -255,3 +255,10 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     }
 }
+
+extension RestartingSupervisor: CustomStringConvertible {
+    public var description: String {
+        // TODO: don't forget to include config in string repr once we do it
+        return "RestartingSupervisor(initialBehavior: \(initialBehavior), failures: \(failures))"
+    }
+}
