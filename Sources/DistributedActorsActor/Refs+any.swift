@@ -173,7 +173,6 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
     }
 
     /// INTERNAL API: exposes the underlying wrapped anyRef as the expected ActorRef type (or nil if types dont match)
-    // TODO make it throw maybe?
     @usableFromInline
     func internal_exposeAs<T, R: ActorRef<T>>(_ refType: R.Type) -> R? {
         return self.anyRef as? R

@@ -51,6 +51,10 @@ class SupervisionTests: XCTestCase {
         case echo(message: String)
     }
 
+    enum FailureMode {
+        case throwing
+        case faulting
+    }
 
     func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessages> {
         return .setup { context in
@@ -74,7 +78,7 @@ class SupervisionTests: XCTestCase {
         }
     }
 
-    func failOnTerminatedHandling(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessages> {
+    func failOnTerminatedHandling(probe: ActorRef<WorkerMessages>?, failBy failureMode: FailureMode) -> Behavior<FaultyMessages> {
         return .setup { context in
             probe?.tell(.setupRunning(ref: context.myself))
 
@@ -89,8 +93,10 @@ class SupervisionTests: XCTestCase {
                 context.log.info("HANDLING SIGNAL \(signal)")
                 if signal is Signals.Terminated {
                     // we fault here as we intend to see if restarting works properly
-                    // fatalError("Boom, faulted inside signal handling!")
-                    throw FaultyError.boom(message: "Boom, thrown inside signal handling!")
+                    switch failureMode {
+                    case .faulting: fatalError("Boom, faulted inside signal handling!")
+                    case .throwing: throw FaultyError.boom(message: "Boom, thrown inside signal handling!")
+                    }
                 }
 
                 return .same
@@ -341,12 +347,56 @@ class SupervisionTests: XCTestCase {
 
     // MARK: Handling faults inside receiveSignal
 
+    func test_throwInSignalHandling_shouldRestart() throws {
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 1)
+        let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: p.ref, failBy: .throwing)
+        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "fault-in-receiveSignal-erroring-1")
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "fault-in-receiveSignal-parent-1")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        p.watch(faultyWorker)
+
+        faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+//        try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+//
+        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+//
+//        pinfo("Now expecting it to run setup again...")
+//        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
+//
+//        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+//        faultyWorkerRestarted.shouldEqual(faultyWorker)
+//
+//        pinfo("Not expecting a reply from it")
+//        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
+//        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
+//
+//
+//        faultyWorker.tell(makeEvilMessage("Boom: 2nd (\(runName))"))
+//        try p.expectNoTerminationSignal(for: .milliseconds(300))
+//
+//        pinfo("Now it boomed but did not crash again!")
+    }
+
     func test_faultInSignalHandling_shouldRestart() throws {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
         let strategy: SupervisionStrategy = .restart(atMost: 1)
-        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.failOnTerminatedHandling(probe: p.ref), withStrategy: strategy)
+        let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: p.ref, failBy: .faulting)
+        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "fault-in-receiveSignal-erroring-1")

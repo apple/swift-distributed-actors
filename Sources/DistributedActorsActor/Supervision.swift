@@ -231,6 +231,9 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         // TODO make proper .ordinalString function
         traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
         // TODO has to modify restart counters here and supervise with modified supervisor
+
+        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+
         return try initialBehavior.start(context: context).supervised(supervisor: self)
     }
 

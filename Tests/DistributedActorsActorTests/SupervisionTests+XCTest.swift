@@ -35,6 +35,8 @@ extension SupervisionTests {
                 ("test_supervise_shouldNotInfinitelyKeepGrowingTheBehaviorDepth", test_supervise_shouldNotInfinitelyKeepGrowingTheBehaviorDepth),
                 ("test_supervise_shouldWrapProperlyIfDifferentStrategy", test_supervise_shouldWrapProperlyIfDifferentStrategy),
                 ("test_supervise_mustValidateTheWrappedInitialBehaviorAsOkeyAsInitial", test_supervise_mustValidateTheWrappedInitialBehaviorAsOkeyAsInitial),
+                ("test_throwInSignalHandling_shouldRestart", test_throwInSignalHandling_shouldRestart),
+                ("test_faultInSignalHandling_shouldRestart", test_faultInSignalHandling_shouldRestart),
                 ("test_supervise_notSuperviseStackOverflow", test_supervise_notSuperviseStackOverflow),
            ]
    }
