@@ -149,23 +149,7 @@ internal struct FaultHandling {
 /// Carries information regarding where a fault has occurred.
 internal struct CrashDetails {
     let backtrace: [String]
-    let runPhase: CMailboxRunPhase
-}
-
-// TODO: Would like to use this, but the hopping back and forth C makes is not really worth it...
-// What was that trick to make C-interop with enums pleasant?
-//
-internal enum MailboxRunPhase {
-    case processingSystemMessages
-    case processingUserMessages
-
-    static func adapt(from cRunPhase: CMailboxRunPhase) -> MailboxRunPhase {
-        if cRunPhase == ProcessingSystemMessages {
-            return .processingSystemMessages
-        } else {
-            return .processingUserMessages
-        }
-    }
+    let runPhase: MailboxRunPhase
 }
 
 /// Error related to, or failure "caught" by the failure handling mechanism.

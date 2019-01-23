@@ -130,7 +130,7 @@ public struct Children {
     }
 }
 
-/// MARK: Convenience methods for stopping children
+// MARK: Convenience methods for stopping children
 
 extension Children {
 

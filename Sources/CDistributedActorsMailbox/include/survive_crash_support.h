@@ -35,7 +35,7 @@ typedef struct {
     char** backtrace;
     int backtrace_length;
 
-    CMailboxRunPhase run_phase;
+    MailboxRunPhase run_phase;
 } CCrashDetails;
 
 void sact_enable_fault_handling(void);
