@@ -11,6 +11,23 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef SACT_ITOA_H
+#define SACT_ITOA_H
+
 #include <string.h>
 
 // Based on the "The C Programming Language" implementation of itoa (since part of standard C), and extended to accept radix.
@@ -43,3 +60,5 @@ void itoa(int n, char s[], int radix) {
     s[i] = '\0';
     reverse(s);
 }
+
+#endif // SACT_ITOA_H

@@ -21,7 +21,7 @@ import XCTest
 ///
 
 #if os(Linux) || os(FreeBSD)
-   @testable import CQueueTests
+   @testable import CSwiftDistributedActorsMailboxTests
    @testable import DistributedActorsConcurrencyHelpersTests
    @testable import SwiftDistributedActorsActorTestKitTests
    @testable import Swift Distributed ActorsActorTests

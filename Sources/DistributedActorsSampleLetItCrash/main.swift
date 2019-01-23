@@ -14,7 +14,7 @@
 
 import Foundation
 import Swift Distributed ActorsActor
-import CDungeon
+import CSwiftDistributedActorsMailbox
 
 
 let system = ActorSystem("ActorSystemTests")

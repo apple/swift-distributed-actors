@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CDungeon
+import CSwiftDistributedActorsMailbox
 
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
@@ -164,7 +164,7 @@ internal struct TheOneWhoHasNoParentActorRef: ReceivesSystemMessages {
 
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage) {
-        CDungeon.sact_dump_backtrace()
+        CSwift Distributed ActorsMailbox.sact_dump_backtrace()
         fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message)")
     }
 
@@ -219,7 +219,7 @@ internal class Guardian: ReceivesSystemMessages {
                 }
             }
         default:
-            CDungeon.sact_dump_backtrace()
+            CSwift Distributed ActorsMailbox.sact_dump_backtrace()
             fatalError("The \(self.path) actor MUST NOT receive any messages. Yet received \(message)")
         }
     }

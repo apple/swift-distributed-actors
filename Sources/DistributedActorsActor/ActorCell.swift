@@ -14,7 +14,7 @@
 
 import NIO
 import Dispatch
-import CDungeon
+import CSwiftDistributedActorsMailbox
 
 // MARK: Internal implementations, the so-called "cell"
 
@@ -136,7 +136,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
         guard let unwrapped = self._myselfInACell else {
-            CDungeon.sact_dump_backtrace()
+            CSwift Distributed ActorsMailbox.sact_dump_backtrace()
 
             fatalError("Illegal `myself` access! Unwrapped `_myselfInACell` was nil in [thread:\(_hackyPThreadThreadId())]. " +
                 "This should never happen, and is likely an implementation bug in Swift Distributed Actors, please file a ticket. " +

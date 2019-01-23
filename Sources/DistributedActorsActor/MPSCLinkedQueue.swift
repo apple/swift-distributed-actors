@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CQueue
+import CSwiftDistributedActorsMailbox
 
 public final class MPSCLinkedQueue<A> {
     public let q: UnsafeMutablePointer<CMPSCLinkedQueue>;

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CDungeon
+import CSwiftDistributedActorsMailbox
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -72,7 +72,7 @@ internal struct FaultHandling {
     /// The fault handler is effective only *during* an actor run, and should not trap errors made outside of actors.
     static func installCrashHandling() throws {
 
-        let handlerInstalledCode = CDungeon.sact_install_swift_crash_handler()
+        let handlerInstalledCode = CSwift Distributed ActorsMailbox.sact_install_swift_crash_handler()
 
         switch handlerInstalledCode {
         case 0:
@@ -88,7 +88,7 @@ internal struct FaultHandling {
     ///
     /// Important: Remember to invoke `disableFailureHandling` once the run is complete.
     internal static func enableFaultHandling() {
-        CDungeon.sact_enable_fault_handling() // TODO not really needed as threadlocal
+        CSwift Distributed ActorsMailbox.sact_enable_fault_handling() // TODO not really needed as threadlocal
     }
 
     /// Clear the current cell failure context after a successful (or failed) run.
@@ -97,7 +97,7 @@ internal struct FaultHandling {
     // Implementation notes: The reason we allow passing in the context even though we don't use it is to make sure the
     // lifetime of the context is longer than the mailbox run. Otherwise a failure may attempt using an already deallocated context.
     internal static func disableFaultHandling() {
-        CDungeon.sact_disable_fault_handling()
+        CSwift Distributed ActorsMailbox.sact_disable_fault_handling()
     }
 
     /// Convert error signal codes to their [FaultHandlingError] representation.
