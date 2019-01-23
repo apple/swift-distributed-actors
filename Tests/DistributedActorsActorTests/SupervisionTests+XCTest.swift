@@ -38,6 +38,10 @@ extension SupervisionTests {
                 ("test_throwInSignalHandling_shouldRestart", test_throwInSignalHandling_shouldRestart),
                 ("test_faultInSignalHandling_shouldRestart", test_faultInSignalHandling_shouldRestart),
                 ("test_supervise_notSuperviseStackOverflow", test_supervise_notSuperviseStackOverflow),
+                ("test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType", test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType),
+                ("test_supervisor_shouldOnlyHandle_anyThrows", test_supervisor_shouldOnlyHandle_anyThrows),
+                ("test_supervisor_shouldOnlyHandle_anyFault", test_supervisor_shouldOnlyHandle_anyFault),
+                ("test_supervisor_shouldOnlyHandle_anyFailure", test_supervisor_shouldOnlyHandle_anyFailure),
            ]
    }
 }

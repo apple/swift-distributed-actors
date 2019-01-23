@@ -316,7 +316,7 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor()
+        let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor(errorType: Supervise.AllFailures.self)
         let faulty2: Behavior<SupervisionTests.FaultyMessages> = self.faulty(probe: p.ref)
         let supervisedBehavior = faulty2.supervised(supervisor: supervisor)
 
@@ -431,6 +431,115 @@ class SupervisionTests: XCTestCase {
         return daDoRunRunRun() // mutually recursive to not trigger warnings; cause stack overflow
     }
 
+    // MARK: Tests for selective failure handlers
+
+    /// Throws all Errors it receives, EXCEPT `PleaseReply` to which it replies to the probe
+    private func throwerBehavior(probe: ActorTestProbe<PleaseReply>) -> Behavior<Error> {
+        return .receiveMessage { error in
+            switch error {
+            case let reply as PleaseReply:
+                probe.tell(reply)
+            case is PleaseFatalError:
+                fatalError("Boom! Fatal error on demand.")
+            default:
+                throw error
+            }
+            return .same
+        }
+    }
+
+    func test_supervisor_shouldOnlyHandle_throwsOfSpecifiedErrorType() throws {
+        let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
+
+        let supervisedThrower: ActorRef<Error> = try system.spawn(
+            throwerBehavior(probe: p).supervised(withStrategy: .restart(atMost: 100), for: EasilyCatchable.self),
+            name: "thrower-1")
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(EasilyCatchable()) // will cause restart
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(CatchMe()) // will NOT be supervised
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectNoMessage(for: .milliseconds(50))
+
+    }
+    func test_supervisor_shouldOnlyHandle_anyThrows() throws {
+        let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
+
+        let supervisedThrower: ActorRef<Error> = try system.spawn(
+            throwerBehavior(probe: p).supervised(withStrategy: .restart(atMost: 100), for: Supervise.AllErrors.self),
+            name: "thrower-2")
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(EasilyCatchable()) // will cause restart
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(CatchMe()) // will cause restart
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+    }
+    func test_supervisor_shouldOnlyHandle_anyFault() throws {
+        let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
+
+        let supervisedThrower: ActorRef<Error> = try system.spawn(
+            throwerBehavior(probe: p).supervised(withStrategy: .restart(atMost: 100), for: Supervise.AllFaults.self),
+            name: "mr-fawlty-1")
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(PleaseFatalError()) // will cause restart
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(CatchMe()) // will NOT cause restart, we only handle faults here (as unusual of a decision this is, yeah)
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectNoMessage(for: .milliseconds(50))
+    }
+    func test_supervisor_shouldOnlyHandle_anyFailure() throws {
+        let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
+
+        let supervisedThrower: ActorRef<Error> = try system.spawn(
+            throwerBehavior(probe: p).supervised(withStrategy: .restart(atMost: 100), for: Supervise.AllFailures.self),
+            name: "any-failure-1")
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(PleaseFatalError()) // will cause restart
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+
+        supervisedThrower.tell(CatchMe()) // will cause restart
+
+        supervisedThrower.tell(PleaseReply())
+        try p.expectMessage(PleaseReply())
+    }
+
+    private struct PleaseReply: Error, Equatable, CustomStringConvertible {
+        var description: String { return "PleaseReply" }
+    }
+    private struct EasilyCatchable: Error, Equatable, CustomStringConvertible {
+        var description: String { return "EasilyCatchable" }
+    }
+    private struct PleaseFatalError: Error, Equatable, CustomStringConvertible {
+        var description: String { return "PleaseFatalError" }
+    }
+    private struct CatchMe: Error, Equatable, CustomStringConvertible {
+        var description: String { return "CatchMe" }
+    }
 
 }
 

@@ -29,10 +29,14 @@ extension Behavior {
     /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
     /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
     ///
+    /// Parameters:
+    ///  - `behavior` behavior that is going to be wrapped with supervision
+    ///  - `withStrategy` the supervision strategy for which a supervisor should be created and wrapped around the passed in behavior
+    ///
     /// SeeAlso:
     ///  - `supervisedWith(strategy)`
-    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
-        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy)
+    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy, for errorType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
+        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy, errorType)
         return .supervise(behavior, withSupervisor: supervisor)
     }
 
@@ -46,8 +50,8 @@ extension Behavior {
     /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
     /// SeeAlso:
     ///  - `supervise(_:withStrategy)`
-    public func supervised(withStrategy strategy: SupervisionStrategy) -> Behavior<Message> {
-        let supervisor = Supervision.supervisorFor(self, strategy)
+    public func supervised(withStrategy strategy: SupervisionStrategy, for errorType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
+        let supervisor = Supervision.supervisorFor(self, strategy, errorType)
         return .supervise(self, withSupervisor: supervisor)
     }
 
@@ -99,14 +103,15 @@ extension Behavior {
 public enum SupervisionStrategy {
     case stop
     case restart(atMost: Int) // TODO: within: TimeAmount etc
+    // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
 }
 
 public struct Supervision {
 
-    public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy) -> Supervisor<Message> {
+    public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ errorType: Error.Type) -> Supervisor<Message> {
         switch strategy {
-        case .stop: return StoppingSupervisor() // TODO: strategy could carry additional configuration
-        case .restart: return RestartingSupervisor(initialBehavior: behavior) // TODO: strategy could carry additional configuration
+        case .stop: return StoppingSupervisor(errorType: errorType)
+        case .restart: return RestartingSupervisor(initialBehavior: behavior, errorType: errorType)
         }
     }
 
@@ -133,6 +138,14 @@ public struct Supervision {
     }
 }
 
+// MARK: Phantom types for registering supervisors
+
+public enum Supervise {
+    public enum AllErrors: Error {}
+    public enum AllFaults: Error {}
+    public enum AllFailures: Error {}
+}
+
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
 /// To implement a custom `Supervisor` you have to override:
@@ -140,9 +153,16 @@ public struct Supervision {
 ///   - and the `isSameAs` method.
 open class Supervisor<Message>: Interceptor<Message> {
 
+    fileprivate let canHandle: Error.Type
+
+    public init(errorType: Error.Type) {
+        self.canHandle = errorType
+        super.init()
+    }
+
     final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
-            pprint("INTERCEPT MSG APPLY: \(target) @@@@ \(message)")
+            pprint("INTERCEPT MSG APPLY: \(target) @@@@ [\(message)]:\(type(of: message))")
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
             let err = error
@@ -195,11 +215,23 @@ open class Supervisor<Message>: Interceptor<Message> {
 
 
 final class StoppingSupervisor<Message>: Supervisor<Message> {
+    override init(errorType: Error.Type) {
+        super.init(errorType: errorType)
+    }
+
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) else {
+            return .stopped // TODO .escalate ???
+        }
+
         return .stopped
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) else {
+            return .stopped // TODO .escalate ???
+        }
+
         return .stopped
     }
 
@@ -222,12 +254,16 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     // TODO Implement respecting restart(atMost restarts: Int) !!!
 
-    public init(initialBehavior behavior: Behavior<Message>) {
+    public init(initialBehavior behavior: Behavior<Message>, errorType: Error.Type) {
         self.initialBehavior = behavior
-        super.init()
+        super.init(errorType: errorType)
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) else {
+            return .stopped // TODO .escalate ???
+        }
+
         self.failures += 1
         // TODO make proper .ordinalString function
         traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
@@ -239,6 +275,10 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) else {
+            return .stopped // TODO .escalate ???
+        }
+
         self.failures += 1
         traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
         return try initialBehavior.start(context: context).supervised(supervisor: self)
@@ -259,6 +299,25 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 extension RestartingSupervisor: CustomStringConvertible {
     public var description: String {
         // TODO: don't forget to include config in string repr once we do it
-        return "RestartingSupervisor(initialBehavior: \(initialBehavior), failures: \(failures))"
+        return "RestartingSupervisor(initialBehavior: \(initialBehavior), failures: \(failures), canHandle: \(self.canHandle))"
+    }
+}
+
+// MARK: Supervision.Failure extensions for more fluent writing of supervisors
+
+extension Supervision.Failure {
+    func shouldBeHandledBy<M>(_ supervisor: Supervisor<M>) -> Bool {
+        let supervisorHandlesEverything = supervisor.canHandle == Supervise.AllFailures.self
+
+        func matchErrorTypes0() -> Bool {
+            switch self {
+            case .error(let error):
+                return supervisor.canHandle == Supervise.AllErrors.self || supervisor.canHandle == type(of: error)
+            case .fault(let errorRepr):
+                return supervisor.canHandle == Supervise.AllFaults.self || supervisor.canHandle == type(of: errorRepr)
+            }
+        }
+
+        return supervisorHandlesEverything || matchErrorTypes0()
     }
 }
