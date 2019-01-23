@@ -41,7 +41,9 @@ final public class ActorTestKit {
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
     public func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
-        defer { self.spawnProbesLock.unlock() }
+        defer {
+            self.spawnProbesLock.unlock()
+        }
 
         let name = maybeName ?? testProbeNames.nextName()
         return ActorTestProbe(spawn: { probeBehavior in
@@ -61,6 +63,7 @@ final public class ActorTestKit {
     public func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
         return MockActorContext()
     }
+
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     public func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
@@ -69,6 +72,117 @@ final public class ActorTestKit {
 
     // TODO: we could implement EffectfulContext most likely which should be able to perform all such actions and allow asserting on it.
     // It's quite harder to do and not entirely sure about safety of that so not attempting to do so for now
+}
+
+// MARK: Supervisor TestProbe
+
+public extension ActorTestKit {
+
+    /// Wrap the passed in `behavior` using a `Supervisor` which, in addition to applying the the provided `strategy` as usual,
+    /// also sends `SupervisionProbeMessages` for inspection to the returned `ActorTestProbe`.
+    ///
+    /// Usage example:
+    /// ```
+    ///     let (supervisedBehavior, probe) testKit.superviseWithSupervisionTestProbe(behavior, withStrategy: ...)
+    ///     system.spawnAnonymous(supervisedBehavior)
+    ///
+    ///     probe.expectHandledMessageFailure()
+    /// ```
+    public func superviseWithSupervisionTestProbe<M>(_ behavior: Behavior<M>, withStrategy strategy: SupervisionStrategy) -> (Behavior<M>, SupervisorTestProbe<M>) {
+        let probe: ActorTestProbe<SupervisionProbeMessages<M>> = self.spawnTestProbe()
+        let underlying: Supervisor<M> = Supervision.supervisorFor(behavior, strategy)
+        let supervisorProbe = SupervisorTestProbe(probe: probe, underlying: underlying)
+
+        let supervised: Behavior<M> = .supervise(behavior, withSupervisor: supervisorProbe)
+        return (supervised, supervisorProbe)
+    }
+
+    // TODO we COULD decide to offer a withSupervisor version as well; though I'm not keen on making it very prominent (withSupervisor) just yet
+}
+
+public final class SupervisorTestProbe<Message>: Supervisor<Message> {
+    private let probe: ActorTestProbe<SupervisionProbeMessages<Message>>
+    private let underlying: Supervisor<Message>
+
+    public init(probe: ActorTestProbe<SupervisionProbeMessages<Message>>, underlying: Supervisor<Message>) {
+        self.probe = probe
+        self.underlying = underlying
+        super.init()
+    }
+
+    override public func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        do {
+            let decision = try self.underlying.handleSignalFailure(context, failure: failure)
+            self.probe.tell(.handledMessageFailure(failure: failure, decision: decision))
+            return decision
+        } catch {
+            self.probe.tell(.failedWhileHandlingMessageFailure(failure: failure, errorWhileHandling: error))
+            throw error // escalate
+        }
+    }
+
+    override public func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        do {
+            let decision = try self.underlying.handleSignalFailure(context, failure: failure)
+            self.probe.tell(.handledSignalFailure(failure: failure, decision: decision))
+            return decision
+        } catch {
+            self.probe.tell(.failedWhileHandlingSignalFailure(failure: failure, errorWhileHandling: error))
+            throw error // escalate
+        }
+    }
+
+    override public func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+        return false // TODO mock impl
+    }
+}
+
+public extension SupervisorTestProbe {
+    public func expectHandledMessageFailure() throws -> SupervisionProbeMessages<Message> {
+        let got = try self.probe.expectMessage()
+        switch got {
+        case .handledMessageFailure:
+            return got
+        default:
+            throw self.probe.error("Expected `handledMessageFailure`")
+        }
+    }
+    func expectFailedWhileHandlingMessageFailure() throws -> SupervisionProbeMessages<Message> {
+        let got = try self.probe.expectMessage()
+        switch got {
+        case .failedWhileHandlingMessageFailure:
+            return got
+        default:
+            throw self.probe.error("Expected `failedWhileHandlingMessageFailure`")
+        }
+    }
+
+    func expectHandledSignalFailure() throws -> SupervisionProbeMessages<Message> {
+        let got = try self.probe.expectMessage()
+        switch got {
+        case .handledMessageFailure:
+            return got
+        default:
+            throw self.probe.error("Expected `handledMessageFailure`")
+        }
+    }
+    func expectFailedWhileHandlingSignalFailure() throws -> SupervisionProbeMessages<Message> {
+        let got = try self.probe.expectMessage()
+        switch got {
+        case .failedWhileHandlingSignalFailure:
+             return got
+        default:
+            throw self.probe.error("Expected `handledSignalFailure`")
+        }
+    }
+}
+
+public enum SupervisionProbeMessages<M> {
+    case handledMessageFailure(failure: Supervision.Failure, decision: Behavior<M>)
+    case failedWhileHandlingMessageFailure(failure: Supervision.Failure, errorWhileHandling: Error)
+
+    case handledSignalFailure(failure: Supervision.Failure, decision: Behavior<M>)
+    case failedWhileHandlingSignalFailure(failure: Supervision.Failure, errorWhileHandling: Error)
 }
 
 struct MockActorContextError: Error, CustomStringConvertible {
@@ -90,7 +204,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override var myself: ActorRef<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
-    private lazy var _log: Logger = Logging.make("\(type(of: self))") 
+    private lazy var _log: Logger = Logging.make("\(type(of: self))")
     override var log: Logger {
         get {
             return self._log

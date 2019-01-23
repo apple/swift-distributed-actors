@@ -137,7 +137,7 @@ class ParentChildActorTests: XCTestCase {
         let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent")
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
         pnote("Hello: \(child)")
 
         let unknownName = "capybara"
@@ -189,7 +189,7 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "kid"))
 
-        guard case .spawned = try p.expectMessage() else { throw p.failure() }
+        guard case .spawned = try p.expectMessage() else { throw p.error() }
 
         parent.tell(.stopByName(name: "kid"))
 
@@ -277,9 +277,9 @@ class ParentChildActorTests: XCTestCase {
         parent.tell("spawn")
 
         // TODO would be useful to provide some expectSpawned since it's such a common thing
-        guard case let .spawned(childA) = try p1.expectMessage() else { throw p1.failure() }
+        guard case let .spawned(childA) = try p1.expectMessage() else { throw p1.error() }
         p1.watch(childA)
-        guard case let .spawned(childB) = try p2.expectMessage() else { throw p2.failure() }
+        guard case let .spawned(childB) = try p2.expectMessage() else { throw p2.error() }
         p2.watch(childB)
 
         try p1.expectTerminated(childA)
@@ -308,7 +308,7 @@ class ParentChildActorTests: XCTestCase {
         p.watch(parent)
         parent.tell("spawn")
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
 
         child.tell(.throwWhoops)
@@ -350,7 +350,7 @@ class ParentChildActorTests: XCTestCase {
         p.watch(parent)
         parent.tell("spawn")
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
 
         child.tell(.throwWhoops)
@@ -384,8 +384,8 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("spawn")
 
-        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.failure() }
-        guard case let .childStopped(name) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.error() }
+        guard case let .childStopped(name) = try p.expectMessage() else { throw p.error() }
 
         childRef.path.name.shouldEqual(name)
     }
@@ -397,12 +397,12 @@ class ParentChildActorTests: XCTestCase {
         parent.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "child"))
         p.watch(parent)
 
-        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.error() }
         p.watch(childRef)
 
         childRef.tell(.spawnChild(behavior: childBehavior(probe: p.ref), name: "grandchild"))
 
-        guard case let .spawned(grandchildRef) = try p.expectMessage() else { throw p.failure() }
+        guard case let .spawned(grandchildRef) = try p.expectMessage() else { throw p.error() }
         p.watch(grandchildRef)
 
         parent.tell(.stop)

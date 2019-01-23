@@ -19,6 +19,11 @@
 /// - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A ActorRefFactory
 
+    /// Returns `ActorSystem` which this context belongs to.
+    public var system: ActorSystem {
+        return undefined()
+    }
+
     /// Uniquely identifies this actor by its path and unique identifier in the current actor hierarchy.
     /// Segments are separated by "/" and signify the parent actors of each individual level in the hierarchy.
     ///

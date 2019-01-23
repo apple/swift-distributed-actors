@@ -80,7 +80,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell("spawnFaultyWorker")
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.failure() }
+        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
 
         // watch the worker and see that it works correctly:
         pw.watch(worker)
@@ -109,7 +109,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.failure() }
+        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
 
         // watch the worker and see that it works correctly:
         pw.watch(worker)
@@ -133,7 +133,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // we are also now able to start a replacement actor for the terminated child:
         healthyMaster.tell(spawnFaultyWorkerCommand)
         pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
-        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.failure() }
+        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
 
         let workerPath: UniqueActorPath = worker.path
         let replacementPath: UniqueActorPath = workerReplacement.path
@@ -156,7 +156,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.failure() }
+        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
         pw.watch(worker)
 
         // watch the worker and see that it works correctly:
@@ -174,7 +174,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         // we are also now able to start a replacement actor for the terminated child:
         healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.failure() }
+        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
         pw.watch(workerReplacement)
 
         let workerPath: UniqueActorPath = worker.path
