@@ -26,7 +26,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <stdlib.h>
-#include "CMPSCLinkedQueue.h"
+#include "c_mpsc_linked_queue.h"
 
 // This queue is based on the algorithm presented in:
 // http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue

@@ -32,8 +32,14 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 
-#include "c_mailbox_phase.h"
-#include "CMPSCLinkedQueue.h"
+#include "c_mpsc_linked_queue.h"
+
+
+/** Used to mark in which phase of a mailbox run we are currently in. */
+typedef enum {
+    ProcessingSystemMessages = 0,
+    ProcessingUserMessages   = 1,
+} CMailboxRunPhase;
 
 typedef struct {
             int64_t   capacity;

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import CSwiftDistributedActorsMailbox
-import CQueue // TODO: rename to CMailbox? It contains the queue but also mailbox
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
