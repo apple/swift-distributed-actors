@@ -194,7 +194,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         pnote("Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
         #endif
-        _ = "Skipping test, can't that a fatalError() kills the process, it would kill the test suite; To see it crash, run with 'test -Xswiftc=\"-DSACT_TESTS_CRASH\"'"
+        _ = "Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`"
 
         fatalError("Boom like usual!")
         // this MUST NOT trigger Swift Distributed Actors failure handling, we are not inside of an actor!

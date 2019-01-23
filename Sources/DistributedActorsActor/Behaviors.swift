@@ -267,7 +267,7 @@ public extension Behavior {
     func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         switch self {
         case .signalHandling(_, let handleSignal):
-            return try handleSignal(context, signal) // TODO do we need to try?
+            return try handleSignal(context, signal)
         case let .intercept(behavior, interceptor):
             return try interceptor.interceptSignal(target: behavior, context: context, signal: signal) // TODO do we need to try?
         default:
@@ -308,7 +308,7 @@ internal extension Behavior {
         default: return ()
         }
     }
-    /// Same as `validateAsInitial`, however useful in chaining expressions as it returns the itself when the validation has passed successfully.
+    /// Same as `validateAsInitial`, however useful in chaining expressions as it returns itself when the validation has passed successfully.
     @inlinable
     func validatedAsInitial() throws -> Behavior<Message> {
         try self.validateAsInitial()

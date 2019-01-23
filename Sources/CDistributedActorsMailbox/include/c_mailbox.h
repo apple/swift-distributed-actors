@@ -34,12 +34,22 @@
 
 #include "c_mpsc_linked_queue.h"
 
+// Implementation note regarding Swift-and-C inter-op for the enums:
+// By defining the cases using such prefix they get imported as `.close` into Swift,
+// without the prefix they end up as `.Close`. The prefix also avoids name collisions in C.
+
+
+#if __has_attribute(enum_extensibility)
+#define SWIFT_CLOSED_ENUM(name) typedef enum __attribute__((enum_extensibility(closed))) name
+#else
+#define SWIFT_CLOSED_ENUM(name) typedef enum name
+#endif
 
 /** Used to mark in which phase of a mailbox run we are currently in. */
-typedef enum {
-    ProcessingSystemMessages = 0,
-    ProcessingUserMessages   = 1,
-} CMailboxRunPhase;
+SWIFT_CLOSED_ENUM(MailboxRunPhase) {
+    MailboxRunPhase_ProcessingSystemMessages,
+    MailboxRunPhase_ProcessingUserMessages,
+} MailboxRunPhase;
 
 typedef struct {
             int64_t   capacity;
@@ -50,14 +60,14 @@ typedef struct {
 } CMailbox;
 
 /** Result of mailbox run, instructs swift part of code to perform follow up actions */
-typedef enum {
-    Close          = -1,
-    Done           = 0b00,
-    Reschedule     = 0b01,
+SWIFT_CLOSED_ENUM(MailboxRunResult) {
+    MailboxRunResult_Close          = -1,
+    MailboxRunResult_Done           = 0b00,
+    MailboxRunResult_Reschedule     = 0b01,
     // failure and supervision:
-    Failure        = 0b10,
-    FailureRestart = 0b11,
-} CMailboxRunResult;
+    MailboxRunResult_Failure        = 0b10,
+    MailboxRunResult_FailureRestart = 0b11,
+} MailboxRunResult;
 
 typedef void InterpretMessageClosureContext;
 typedef void InterpretSystemMessageClosureContext;
@@ -90,7 +100,7 @@ typedef void (* DropMessageCallback)(DropMessageClosureContext*, void*); // TODO
  *
  * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
  */
-typedef CMailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, CMailboxRunPhase, void*);
+typedef MailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, MailboxRunPhase, void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
@@ -103,7 +113,7 @@ void cmailbox_destroy(CMailbox* mailbox);
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
 
 /* Returns in what phase the mailbox currently is, or was when a fault occurred. */
-CMailboxRunPhase cmailbox_get_run_phase();
+MailboxRunPhase cmailbox_get_run_phase();
 
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
@@ -120,7 +130,7 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 /*
  * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.
  */
-CMailboxRunResult cmailbox_run(
+MailboxRunResult cmailbox_run(
     CMailbox* mailbox,
     // message processing:
     InterpretMessageClosureContext* context, InterpretSystemMessageClosureContext* system_context,
@@ -129,7 +139,7 @@ CMailboxRunResult cmailbox_run(
     // fault handling:
     jmp_buf* error_jmp_buf,
     SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
-    void** failed_message// , CMailboxRunPhase* run_phase
+    void** failed_message// , MailboxRunPhase* run_phase
     );
 
 int64_t cmailbox_message_count(CMailbox* mailbox);

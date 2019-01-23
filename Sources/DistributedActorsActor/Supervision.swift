@@ -59,7 +59,7 @@ extension Behavior {
     /// Those implementations MAY contain counters, timers and logic which determines how to handle a failure.
     ///
     /// Swift Distributed Actors provides the most important supervisors out of the box, which are selected and configured using supervision strategies.
-    /// Uses are requested to use those instead, and if they seem lacking some feature, requests for specific features should be opened first.
+    /// Users are requested to use those instead, and if they seem lacking some feature, requests for specific features should be opened first.
     internal static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
         // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
         switch behavior {
@@ -247,8 +247,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
         if newSupervisor is RestartingSupervisor<Message> {
             // we only check if the target restart behavior is the same; number of restarts is not taken into account
-            return true // FIXME: we need to check the other options
-            // return self.initialBehavior == s.initialBehavior // FIXME: we need to compare behaviors hm
+            return true
         } else {
             return false
         }

@@ -128,11 +128,19 @@ public struct ActorOriginLogHandler: LogHandler {
 
         var l = logMessage
 
+        // TODO: decide if we want to use those "extract into known place in format" things or not
+        // It makes reading the logs more uniform, so I think yes.
         let dispatcherPart: String
         if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
             dispatcherPart = "[\(d)]"
         } else {
             dispatcherPart = ""
+        }
+        let actorPathPart: String
+        if let d = l.effectiveMetadata?.removeValue(forKey: "actorPath") {
+            actorPathPart = "[\(d)]"
+        } else {
+            actorPathPart = ""
         }
 
         // mock impl until we get the real infra
@@ -146,7 +154,7 @@ public struct ActorOriginLogHandler: LogHandler {
 
         msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
         msg += "\(dispatcherPart)"
-        msg += "[\(l.identifier)]"
+        msg += "\(actorPathPart)"
         msg += " \(l.message)"
 
         print(msg)

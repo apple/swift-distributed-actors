@@ -76,12 +76,6 @@ class InterceptorTests: XCTestCase {
             return .intercept(behavior: behavior, with: makeStringsLouderInterceptor)
         }
 
-
-        let forwardToProbe: Behavior<String> = .receiveMessage { message in
-            p.tell(message)
-            return .same
-        }
-
         let ref: ActorRef<String> = try system.spawn(
             interceptionInceptionBehavior(currentDepth: 0, stopAt: 100),
             name: "theWallsHaveEars")
