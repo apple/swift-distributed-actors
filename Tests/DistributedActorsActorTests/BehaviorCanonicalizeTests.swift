@@ -72,7 +72,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
 
         // we attempt to cause a stack overflow by nesting tons of setups inside each other.
         // this could fail if canonicalization were implemented in some naive way.
-        let depthLimit = 1024 * 8 // not a good idea, but we should not crash
+        let depthLimit = system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
         let ref = try system.spawn(deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit), name: "deepSetupNestedRabbitHole")
 
         ref.tell("ping")
@@ -104,6 +104,28 @@ class BehaviorCanonicalizeTests: XCTestCase {
         ref.tell("ping")
         try p.expectMessage("intercepted:ping")
         try p.expectMessage("received:ping")
+    }
+
+    func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "startBehaviorProbe")
+
+        /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
+        func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> Behavior<String> {
+            return .setup { context in
+                p.tell("at:\(depth)")
+                return setupDaDoRunRunRunDaDoRunRun(depth: depth + 1)
+            }
+        }
+
+        // TODO: if https://github.com/apple/swift-distributed-actors/issues/244 is implemented, we cna supervise and "spy on" start() failures making this test much more specific
+
+        let behavior = setupDaDoRunRunRunDaDoRunRun()
+        let ref = try system.spawn(behavior, name: "nestedSetups")
+
+        for depth in 0..<system.settings.actor.maxBehaviorNestingDepth {
+            try p.expectMessage("at:\(depth)")
+        }
+        try p.expectNoMessage(for: .milliseconds(50))
     }
 
 }

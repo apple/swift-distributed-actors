@@ -254,7 +254,7 @@ extension ActorTestProbe {
     ///
     ///     guard ... else { throw p.failure("failed to extract expected information") }
     ///     guard case let .spawned(child) = try p.expectMessage() else { throw p.failure() }
-    public func failure(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         var fullMessage: String = message ?? "ActorTestProbe failure."

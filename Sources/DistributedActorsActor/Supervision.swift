@@ -53,7 +53,7 @@ extension Behavior {
 
     // MARK: Internal API: Supervise with Supervisors
 
-    /// INTERNAL API: We do not want to expose the full power of supervision with arbitrary behavior substitution to users unless we know for sure it is needed.
+    /// WARNING: Use with caution. For most uses it is highly recommended to stick to pre-defined supervision strategies.
     ///
     /// This API is a more powerful version of supervision which is able to accept (potentially stateful) supervisor implementations.
     /// Those implementations MAY contain counters, timers and logic which determines how to handle a failure.
@@ -78,9 +78,10 @@ extension Behavior {
         return .intercept(behavior: behavior, with: supervisor)
     }
 
-    /// INTERNAL API: We do not want to expose the full power of supervision with arbitrary behavior substitution to users unless we know for sure it is needed.
+    /// WARNING: Use with caution. For most uses it is highly recommended to stick to pre-defined supervision strategies.
+    ///
     /// Wrap current behavior with a supervisor.
-    /// Fluent-API equivalent to `Behavior.supervise(supervisor:)`.
+    /// Fluent-API equivalent to `Behavior.supervise(:withSupervisor:)`.
     internal func supervised(supervisor: Supervisor<Message>) -> Behavior<Message> {
         return .supervise(self, withSupervisor: supervisor)
     }

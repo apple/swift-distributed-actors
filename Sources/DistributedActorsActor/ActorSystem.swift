@@ -49,6 +49,11 @@ public final class ActorSystem {
 
     private let terminationLock = Lock()
 
+    /// Allows inspecting settings that were used to configure this actor system.
+    /// Settings are immutable and may not be changed once the system is running.
+    // TODO: We currently do not allow configuring it at all, which is fine for now.
+    public let settings: ActorSystemSettings = ActorSystemSettings()
+
 //  // TODO: provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see

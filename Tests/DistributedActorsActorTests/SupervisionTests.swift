@@ -131,7 +131,7 @@ class SupervisionTests: XCTestCase {
 
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "\(runName)-parent")
 
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
 
         p.watch(faultyWorker)
         faultyWorker.tell(makeEvilMessage("Boom"))
@@ -162,7 +162,7 @@ class SupervisionTests: XCTestCase {
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "\(runName)-parent-2")
         pp.watch(parent)
 
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
         faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
@@ -173,7 +173,7 @@ class SupervisionTests: XCTestCase {
         try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
 
         pinfo("Now expecting it to run setup again...")
-        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.failure() }
+        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.error() }
 
         // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
         faultyWorkerRestarted.shouldEqual(faultyWorker)
@@ -329,7 +329,7 @@ class SupervisionTests: XCTestCase {
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "bad-decision-parent-2")
         pp.watch(parent)
 
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
         faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
@@ -362,16 +362,16 @@ class SupervisionTests: XCTestCase {
         probe.watch(parent)
 
         // parent's setup has executed:
-        guard case let .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
+        guard case let .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
 
         parentRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
 
         try probe.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
 
         // parent's setup has executed again, since it was restarted in its entirety, so the setup has also run again:
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.failure() }
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
+        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
 
         // TODO: once restart limiting is implemented the following should pass:
         // try watchParentProbe.expectTerminated(parentRef) // parent did terminate after the 3rd attempt
@@ -414,7 +414,7 @@ class SupervisionTests: XCTestCase {
         let parent: ActorRef<Never> = try system.spawn(behavior, name: "bad-decision-parent-2")
         pp.watch(parent)
 
-        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.failure() }
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
         p.watch(faultyWorker)
 
         faultyWorker.tell(.echo(message: "one", replyTo: p.ref))

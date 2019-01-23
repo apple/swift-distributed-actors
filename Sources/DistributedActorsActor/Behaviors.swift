@@ -111,7 +111,16 @@ extension Behavior {
 public enum IllegalBehaviorError<M>: Error {
     /// Some behaviors, like `.same` and `.unhandled` are not allowed to be used as initial behaviors.
     /// See their individual documentation for the rationale why that is so.
-    indirect case notAllowedAsInitial(_ behavior: Behavior<M>)
+    case notAllowedAsInitial(_ behavior: Behavior<M>)
+
+    /// Too deeply nested deferred behaviors (such a .setup) are not supported,
+    /// and are often an indication of programming errors - e.g. infinitely infinitely
+    /// growing behavior depth may be a mistake of accidentally needlessly wrapping behaviors with decorators they already contained.
+    ///
+    /// While technically it would be possible to support very very deep behaviors, in practice those are rare and Swift Distributed Actors
+    /// currently opts to eagerly fail for those situations. If you have a legitimate need for such deeply nested deferred behaviors,
+    /// please do not hesitate to open a ticket.
+    case tooDeeplyNestedBehavior(reached: Behavior<M>, depth: Int)
 }
 
 
@@ -364,7 +373,7 @@ internal extension Behavior {
             case .custom:    return self
             case .stopped:   return .stopped
 
-            case let .setup(onStart):
+            case .setup(let onStart):
                 canonical = try onStart(context)
 
             case let .intercept(inner, interceptor):
@@ -379,27 +388,35 @@ internal extension Behavior {
 
     /// Starting a behavior means triggering all onStart actions of nested `.setup` calls.
     /// Interceptors are left in-place, and other behaviors remain unaffected.
+    ///
+    /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
+    ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     // TODO make not recursive perhaps since could blow up on large chain?
     @inlinable func start(context: ActorContext<Message>) throws -> Behavior<Message> {
-        var starting = self
-        startLoop: while true {
-            switch starting {
+        let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
+
+        func start0(_ behavior: Behavior<Message>, depth: Int) throws -> Behavior<Message> {
+            guard depth < failAtDepth else {
+                throw IllegalBehaviorError.tooDeeplyNestedBehavior(reached: behavior, depth: depth)
+            }
+
+            switch behavior {
             case let .intercept(inner, interceptor):
                 // FIXME this should technically offload onto storage and then apply them again...
-                return .intercept(behavior: try inner.start(context: context), with: interceptor)
+                return .intercept(behavior: try start0(inner, depth: depth + 1), with: interceptor)
 
             case .setup(let onStart):
-                let onStarted: Behavior<Message> = try onStart(context)
-                starting = onStarted
+                let started: Behavior<Message> = try onStart(context)
+                return try start0(started, depth: depth + 1)
 
             case .signalHandling(let onMessageBehavior, let onSignal):
-                return .signalHandling(handleMessage: try onMessageBehavior.start(context: context), handleSignal: onSignal)
+                return .signalHandling(handleMessage: try start0(onMessageBehavior, depth: depth + 1), handleSignal: onSignal)
 
             default:
-                break startLoop
+                return behavior
             }
         }
 
-        return starting
+        return try start0(self, depth: 0)
     }
 }

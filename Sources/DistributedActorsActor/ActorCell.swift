@@ -32,7 +32,10 @@ internal protocol FailableActorCell {
 public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
     // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
-    @usableFromInline internal var system: ActorSystem
+    @usableFromInline internal var _system: ActorSystem
+    public override var system: ActorSystem {
+        return self._system
+    }
 
     // MARK: The actors' "self" and relationships
 
@@ -80,7 +83,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
                   behavior: Behavior<Message>, path: UniqueActorPath,
                   props: Props, dispatcher: MessageDispatcher) {
-        self.system = system
+        self._system = system
         self._parent = parent
 
         self.behavior = behavior
