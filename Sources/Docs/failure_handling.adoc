@@ -85,6 +85,30 @@ Examples:
     let prepped = providedByLibrary.supervisedWith(strategy: handleTimeouts)
     system.spawn(prepped, name: "worker")
 
+=== Supervising specific Errors
+
+It is also possible to constrain which type of failure a supervisor should supervise. For example, when working with APIs
+that might throw errors when they are "overwhelmed" and our goal is simply to drop the message which caused this fault,
+yet do not terminate the actor but continue processing other messages as they are independent requests, we might want to
+supervise only for this `SomeLibraryOverloadedError`, yet leave all other errors to crash the actor and leave any compensating
+actions to its parent.
+
+// TODO snippets, explain that the match must be EXACT, we do not perform any "is subclass of" checks etc.
+// TODO: We COULD, but then we have to make the Supervisor<Message, Error>
+
+While this mechanism is useful, it should _not_ be used to replace traditional `do/catch` blocks which usually are much
+better positioned to perform appropriate cleanup or compensating actions closer to the origin of the issue. For example
+one might want to a connection or file before stopping the actor cleanly, or performing the cleanup and causing the actor
+to crash by throwing a different Error which then can carry more contextual information about why this crash happened,
+which can be useful in later diagnosis and fixing of the issue.
+
+NOTE: Supervision is not intended to replace `do/catch` blocks, and should be used for "unexpected" failures.
+      Try to use the "let it crash" philosophy when designing your actors and their interactions.
+      Make sure that a crash would carry enough useful information to be able to attempt fixing it later on,
+      e.g. by carrying trace or similar metadata which could help identify if it the error exists only for a specific
+      entity or situation.
+
+
 == Analysing Back Traces (Crash Logs)
 
 When a fault occurs, Swift Distributed Actors will print a crash log. An excellent talk from WWDC 2018 titled
