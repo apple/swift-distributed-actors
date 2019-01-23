@@ -30,7 +30,7 @@
 #include <pthread.h>
 #include <execinfo.h>
 
-#include "include/CMailbox.h"
+#include "include/c_mailbox.h"
 #include "include/itoa.h"
 
 // Implementation notes:

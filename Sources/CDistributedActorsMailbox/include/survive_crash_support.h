@@ -28,7 +28,7 @@
 #ifndef SACT_SURVIVE_CRASH_SUPPORT_H
 #define SACT_SURVIVE_CRASH_SUPPORT_H
 
-#include "c_mailbox_phase.h"
+#include "c_mailbox.h"
 #include <setjmp.h>
 
 typedef struct {
