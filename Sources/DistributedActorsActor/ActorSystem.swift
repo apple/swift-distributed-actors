@@ -14,7 +14,7 @@
 
 import DistributedActorsConcurrencyHelpers
 import Dispatch
-import CDungeon
+import CSwiftDistributedActorsMailbox
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
@@ -85,7 +85,7 @@ public final class ActorSystem {
         do {
             try FaultHandling.installCrashHandling()
         } catch {
-            CDungeon.sact_dump_backtrace()
+            CSwift Distributed ActorsMailbox.sact_dump_backtrace()
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
         }
     }

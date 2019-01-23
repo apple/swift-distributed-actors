@@ -44,4 +44,4 @@ jmp_buf* sact_get_error_jmp_buf(void);
 
 CCrashDetails* sact_get_crash_details(void);
 
-#endif
+#endif // SACT_SURVIVE_CRASH_SUPPORT_H

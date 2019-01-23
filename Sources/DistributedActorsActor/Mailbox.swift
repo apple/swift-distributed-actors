@@ -13,8 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-import CQueue
-import CDungeon
+import CSwiftDistributedActorsMailbox
 import Foundation
 
 /// INTERNAL API

@@ -16,7 +16,7 @@ import Foundation
 
 import Foundation
 import XCTest
-import CQueue
+import CSwiftDistributedActorsMailbox
 import SwiftDistributedActorsActorTestKit
 
 class CMailboxTests: XCTestCase {
