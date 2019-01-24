@@ -316,9 +316,9 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor(errorType: Supervise.AllFailures.self)
+        let supervisor: SupervisionTests.IllegalDecisionSupervisor<FaultyMessages> = IllegalDecisionSupervisor(failureType: Supervise.AllFailures.self)
         let faulty2: Behavior<SupervisionTests.FaultyMessages> = self.faulty(probe: p.ref)
-        let supervisedBehavior = faulty2.supervised(supervisor: supervisor)
+        let supervisedBehavior = faulty2._supervised(by: supervisor)
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "bad-decision-erroring-2")

@@ -105,7 +105,7 @@ which can be useful in later diagnosis and fixing of the issue.
 NOTE: Supervision is not intended to replace `do/catch` blocks, and should be used for "unexpected" failures.
       Try to use the "let it crash" philosophy when designing your actors and their interactions.
       Make sure that a crash would carry enough useful information to be able to attempt fixing it later on,
-      e.g. by carrying trace or similar metadata which could help identify if it the error exists only for a specific
+      e.g. by carrying trace or similar metadata which could help identify if the error exists only for a specific
       entity or situation.
 
 

@@ -88,12 +88,12 @@ public extension ActorTestKit {
     ///
     ///     probe.expectHandledMessageFailure()
     /// ```
-    public func superviseWithSupervisionTestProbe<M>(_ behavior: Behavior<M>, withStrategy strategy: SupervisionStrategy) -> (Behavior<M>, SupervisorTestProbe<M>) {
+    public func superviseWithSupervisionTestProbe<M>(_ behavior: Behavior<M>, withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> (Behavior<M>, SupervisorTestProbe<M>) {
         let probe: ActorTestProbe<SupervisionProbeMessages<M>> = self.spawnTestProbe()
-        let underlying: Supervisor<M> = Supervision.supervisorFor(behavior, strategy)
-        let supervisorProbe = SupervisorTestProbe(probe: probe, underlying: underlying)
+        let underlying: Supervisor<M> = Supervision.supervisorFor(behavior, strategy, failureType)
+        let supervisorProbe = SupervisorTestProbe(probe: probe, underlying: underlying, failureType: failureType)
 
-        let supervised: Behavior<M> = .supervise(behavior, withSupervisor: supervisorProbe)
+        let supervised: Behavior<M> = ._supervise(behavior, withSupervisor: supervisorProbe)
         return (supervised, supervisorProbe)
     }
 
@@ -104,10 +104,10 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
     private let probe: ActorTestProbe<SupervisionProbeMessages<Message>>
     private let underlying: Supervisor<Message>
 
-    public init(probe: ActorTestProbe<SupervisionProbeMessages<Message>>, underlying: Supervisor<Message>) {
+    public init(probe: ActorTestProbe<SupervisionProbeMessages<Message>>, underlying: Supervisor<Message>, failureType: Error.Type) {
         self.probe = probe
         self.underlying = underlying
-        super.init()
+        super.init(failureType: failureType)
     }
 
     override public func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {

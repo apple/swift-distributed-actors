@@ -32,12 +32,13 @@ extension Behavior {
     /// Parameters:
     ///  - `behavior` behavior that is going to be wrapped with supervision
     ///  - `withStrategy` the supervision strategy for which a supervisor should be created and wrapped around the passed in behavior
+    ///  - `for` error type for which the supervisor should apply its logic, for all others it will escalate. See `Supervise` for special "catch all" error types.
     ///
     /// SeeAlso:
     ///  - `supervisedWith(strategy)`
-    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy, for errorType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
-        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy, errorType)
-        return .supervise(behavior, withSupervisor: supervisor)
+    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
+        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy, failureType)
+        return ._supervise(behavior, withSupervisor: supervisor)
     }
 
     /// Wrap current behavior with a supervisor.
@@ -48,11 +49,12 @@ extension Behavior {
     /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
     /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
     /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
+    ///
     /// SeeAlso:
     ///  - `supervise(_:withStrategy)`
-    public func supervised(withStrategy strategy: SupervisionStrategy, for errorType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
-        let supervisor = Supervision.supervisorFor(self, strategy, errorType)
-        return .supervise(self, withSupervisor: supervisor)
+    public func supervised(withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
+        let supervisor = Supervision.supervisorFor(self, strategy, failureType)
+        return ._supervise(self, withSupervisor: supervisor)
     }
 
     // MARK: Internal API: Supervise with Supervisors
@@ -64,7 +66,7 @@ extension Behavior {
     ///
     /// Swift Distributed Actors provides the most important supervisors out of the box, which are selected and configured using supervision strategies.
     /// Users are requested to use those instead, and if they seem lacking some feature, requests for specific features should be opened first.
-    internal static func supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
+    internal static func _supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
         // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
         switch behavior {
         case .intercept(_, let interceptor): // TODO need to look into inner too?
@@ -86,8 +88,8 @@ extension Behavior {
     ///
     /// Wrap current behavior with a supervisor.
     /// Fluent-API equivalent to `Behavior.supervise(:withSupervisor:)`.
-    internal func supervised(supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return .supervise(self, withSupervisor: supervisor)
+    internal func _supervised(by supervisor: Supervisor<Message>) -> Behavior<Message> {
+        return ._supervise(self, withSupervisor: supervisor)
     }
 }
 
@@ -108,10 +110,10 @@ public enum SupervisionStrategy {
 
 public struct Supervision {
 
-    public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ errorType: Error.Type) -> Supervisor<Message> {
+    public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ failureType: Error.Type) -> Supervisor<Message> {
         switch strategy {
-        case .stop: return StoppingSupervisor(errorType: errorType)
-        case .restart: return RestartingSupervisor(initialBehavior: behavior, errorType: errorType)
+        case .stop: return StoppingSupervisor(failureType: failureType)
+        case .restart: return RestartingSupervisor(initialBehavior: behavior, failureType: failureType)
         }
     }
 
@@ -153,10 +155,16 @@ public enum Supervise {
 ///   - and the `isSameAs` method.
 open class Supervisor<Message>: Interceptor<Message> {
 
+    // By storing it like this we avoid another type parameter on the class,
+    // yet still are able to perform == checks on failures when they happen.
+    //
+    // If we ever wanted to implement `failure is E` checks (which would work with subclasses),
+    // we'd have to carry the generic E in the Supervisor type; Discussion if it is worth it here:
+    // https://github.com/apple/swift-distributed-actors/issues/252
     fileprivate let canHandle: Error.Type
 
-    public init(errorType: Error.Type) {
-        self.canHandle = errorType
+    public init(failureType: Error.Type) {
+        self.canHandle = failureType
         super.init()
     }
 
@@ -215,8 +223,8 @@ open class Supervisor<Message>: Interceptor<Message> {
 
 
 final class StoppingSupervisor<Message>: Supervisor<Message> {
-    override init(errorType: Error.Type) {
-        super.init(errorType: errorType)
+    override init(failureType: Error.Type) {
+        super.init(failureType: failureType)
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
@@ -254,9 +262,9 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     // TODO Implement respecting restart(atMost restarts: Int) !!!
 
-    public init(initialBehavior behavior: Behavior<Message>, errorType: Error.Type) {
+    public init(initialBehavior behavior: Behavior<Message>, failureType: Error.Type) {
         self.initialBehavior = behavior
-        super.init(errorType: errorType)
+        super.init(failureType: failureType)
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
@@ -271,7 +279,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
         (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
 
-        return try initialBehavior.start(context: context).supervised(supervisor: self)
+        return try initialBehavior.start(context: context)._supervised(by: self)
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
@@ -281,7 +289,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
         self.failures += 1
         traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
-        return try initialBehavior.start(context: context).supervised(supervisor: self)
+        return try initialBehavior.start(context: context)._supervised(by: self)
     }
 
     // TODO complete impl
