@@ -106,10 +106,10 @@ bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_mes
 
 int64_t max(int64_t a, int64_t b);
 
-// TODO(ktoso): Would want to avoid this one though had some trouble with setting the shared runPhase of a Swift value...
-// Note that the entire dance around keeping info in which phase we failed is so complex due to the swift/c interop and fault handlers,
-// normally it would be very simple, though we cannot close over generic context, so we use this flag to carry "to what type to cast the msg"
-static _Thread_local MailboxRunPhase tl_current_run_phase = MailboxRunPhase_ProcessingSystemMessages;
+//// TODO(ktoso): Would want to avoid this one though had some trouble with setting the shared runPhase of a Swift value...
+//// Note that the entire dance around keeping info in which phase we failed is so complex due to the swift/c interop and fault handlers,
+//// normally it would be very simple, though we cannot close over generic context, so we use this flag to carry "to what type to cast the msg"
+//static _Thread_local MailboxRunPhase tl_current_run_phase = MailboxRunPhase_ProcessingSystemMessages;
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
     CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
@@ -178,16 +178,16 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
 
 // TODO: was boolean for need to schedule, but we need to signal to swift that termination things should now happen
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
-MailboxRunResult cmailbox_run(CMailbox* mailbox,
-                               // message processing:
-                               void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
-                               InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
-                               // failure handling:
-                               jmp_buf* error_jmp_buf,
-                               void* supervision_context, InvokeSupervisionCallback supervision_invoke,
-                               void** failed_message
-                               // , MailboxRunPhase* run_phase
-                               ) {
+MailboxRunResult cmailbox_run(
+      CMailbox* mailbox,
+      // message processing:
+      void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
+      InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
+      // failure handling:
+      jmp_buf* error_jmp_buf,
+      void* supervision_context, InvokeSupervisionCallback supervision_invoke,
+      void** failed_message,
+      MailboxRunPhase* run_phase) {
     print_debug_status(mailbox, "Entering run");
 
     // We store the message in a void** here so that it is still accessible after
@@ -217,7 +217,7 @@ MailboxRunResult cmailbox_run(CMailbox* mailbox,
         // Supervision re-entry point; once a fault has occurred we resume here.
 
         // We attempt to invoke a supervisor for this crashing behavior:
-        MailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, tl_current_run_phase, *message);
+        MailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, *run_phase, *message);
 
         if (supervisionRunResult == MailboxRunResult_FailureRestart) {
             // we have to decrement the status activations to keep the correct message count because we restart the actor
@@ -234,8 +234,7 @@ MailboxRunResult cmailbox_run(CMailbox* mailbox,
 
         // run system messages ------
         if (has_system_messages(status)) {
-            // *run_phase = ProcessingSystemMessages; // FIXME: https://github.com/apple/swift-distributed-actors/issues/240
-            tl_current_run_phase = MailboxRunPhase_ProcessingSystemMessages;
+            *run_phase = MailboxRunPhase_ProcessingSystemMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
 
             while (*message != NULL && keep_running) {
@@ -280,9 +279,9 @@ MailboxRunResult cmailbox_run(CMailbox* mailbox,
         // run user messages ------
 
         if (keep_running) {
-            // *run_phase = ProcessingUserMessages; // FIXME: https://github.com/apple/swift-distributed-actors/issues/240
-            tl_current_run_phase = MailboxRunPhase_ProcessingUserMessages;
+            *run_phase = MailboxRunPhase_ProcessingUserMessages;
             *message = cmpsc_linked_queue_dequeue(mailbox->messages);
+
             while (*message != NULL && keep_running) {
                 // we need to add 2 to processed_activations because the user message count is stored
                 // shifted by 1 in the status and we use the same field to clear the
@@ -352,10 +351,6 @@ MailboxRunResult cmailbox_run(CMailbox* mailbox,
             return MailboxRunResult_Done;
         }
     }
-}
-
-MailboxRunPhase cmailbox_get_run_phase() {
-    return tl_current_run_phase;
 }
 
 int64_t cmailbox_message_count(CMailbox* mailbox) {

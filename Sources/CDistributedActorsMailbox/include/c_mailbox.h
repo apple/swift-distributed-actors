@@ -32,18 +32,12 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 
+#include "swift_interop.h"
 #include "c_mpsc_linked_queue.h"
 
 // Implementation note regarding Swift-and-C inter-op for the enums:
 // By defining the cases using such prefix they get imported as `.close` into Swift,
 // without the prefix they end up as `.Close`. The prefix also avoids name collisions in C.
-
-
-#if __has_attribute(enum_extensibility)
-#define SWIFT_CLOSED_ENUM(name) typedef enum __attribute__((enum_extensibility(closed))) name
-#else
-#define SWIFT_CLOSED_ENUM(name) typedef enum name
-#endif
 
 /** Used to mark in which phase of a mailbox run we are currently in. */
 SWIFT_CLOSED_ENUM(MailboxRunPhase) {
@@ -84,14 +78,14 @@ typedef void SupervisionClosureContext;
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef bool (* InterpretMessageCallback)(DropMessageClosureContext*, void*);
+typedef bool (*InterpretMessageCallback)(DropMessageClosureContext*, void*);
 
 /*
  * Callback for Swift interop.
  *
  * Drop message, when draining mailbox into dead letters.
  */
-typedef void (* DropMessageCallback)(DropMessageClosureContext*, void*); // TODO rename, deadletters
+typedef void (*DropMessageCallback)(DropMessageClosureContext*, void*); // TODO rename, deadletters
 
 /*
  * Callback for Swift interop.
@@ -100,7 +94,7 @@ typedef void (* DropMessageCallback)(DropMessageClosureContext*, void*); // TODO
  *
  * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
  */
-typedef MailboxRunResult (* InvokeSupervisionCallback)(SupervisionClosureContext*, MailboxRunPhase, void*);
+typedef MailboxRunResult (*InvokeSupervisionCallback)(SupervisionClosureContext*, MailboxRunPhase, void*);
 
 CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 
@@ -111,9 +105,6 @@ void cmailbox_destroy(CMailbox* mailbox);
 
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
 bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
-
-/* Returns in what phase the mailbox currently is, or was when a fault occurred. */
-MailboxRunPhase cmailbox_get_run_phase();
 
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
@@ -139,7 +130,8 @@ MailboxRunResult cmailbox_run(
     // fault handling:
     jmp_buf* error_jmp_buf,
     SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
-    void** failed_message// , MailboxRunPhase* run_phase
+    void** failed_message,
+    MailboxRunPhase* run_phase
     );
 
 int64_t cmailbox_message_count(CMailbox* mailbox);
