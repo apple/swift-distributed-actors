@@ -78,7 +78,7 @@ typedef void SupervisionClosureContext;
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef bool (*InterpretMessageCallback)(DropMessageClosureContext*, void*);
+typedef bool (*InterpretMessageCallback)(DropMessageClosureContext*, void*, MailboxRunPhase);
 
 /*
  * Callback for Swift interop.
