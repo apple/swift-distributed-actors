@@ -56,6 +56,8 @@ final class Mailbox<Message> {
     // we store a reference to its Supervisor handler, that we invoke
     private let invokeSupervision: InvokeSupervisionCallback
 
+    private var runPhase: MailboxRunPhase = .processingSystemMessages
+
     init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
@@ -121,9 +123,7 @@ final class Mailbox<Message> {
         // all self references so Swift does not allow us to write self.cell in them.
 
         self.messageClosureContext = InterpretMessageClosureContext(exec: { envelopePtr in
-            // TODO: avoid thread local for runPhase, there should be no need for it; then unlock this assertion;
-            // FIXME: https://github.com/apple/swift-distributed-actors/issues/240
-            // assert(self.runPhase == ProcessingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+            assert(self.runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
 
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
@@ -138,8 +138,7 @@ final class Mailbox<Message> {
             cell.fail(error: error)
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr in
-            // TODO: avoid thread local for runPhase, there should be no need for it; then unlock this assertion;
-            // assert(self.runPhase == ProcessingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+            assert(self.runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
 
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
@@ -273,11 +272,6 @@ final class Mailbox<Message> {
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
-//        // FIXME: https://github.com/apple/swift-distributed-actors/issues/240
-//        // In case of a processing failure, this will mark if the fault occurred while processing System or User messages.
-//        // This has to be the C enum and not Swift enum... // TODO: can we find a nicer middle ground? I'd like to switch over the enum rather than if/ifelse/else{bug}
-//        private var runPhase: MailboxRunPhase = MailboxRunPhase_ProcessingSystemMessages
-
         // Run the mailbox:
         let mailboxRunResult: MailboxRunResult = cmailbox_run(mailbox,
             &messageClosureContext, &systemMessageClosureContext,
@@ -285,7 +279,7 @@ final class Mailbox<Message> {
             interpretMessage, dropMessage,
             // fault handling:
             FaultHandling.getErrorJmpBuf(), 
-            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr/*, &runPhase*/)
+            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr, &runPhase)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -305,7 +299,7 @@ final class Mailbox<Message> {
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
         case .failure:
-            let failedRunPhase = cmailbox_get_run_phase()
+            let failedRunPhase = self.runPhase
             self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
         case .failureRestart:
             // FIXME: !!! we must know if we should schedule or not after a restart...
