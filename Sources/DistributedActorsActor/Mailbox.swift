@@ -56,21 +56,19 @@ final class Mailbox<Message> {
     // we store a reference to its Supervisor handler, that we invoke
     private let invokeSupervision: InvokeSupervisionCallback
 
-    private var runPhase: MailboxRunPhase = .processingSystemMessages
-
     init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
-        self.interpretMessage = { (ctxPtr, msgPtr) in
+        self.interpretMessage = { ctxPtr, msgPtr, runPhase in
             defer { msgPtr?.deallocate() }
             let ctx = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self)
 
             var shouldContinue: Bool
             do {
-                shouldContinue = try ctx?.pointee.exec(with: msgPtr!) ?? false
+                shouldContinue = try ctx?.pointee.exec(with: msgPtr!, runPhase: runPhase) ?? false
             } catch {
                 traceLog_Mailbox("Error while processing message! Was: \(error) TODO supervision decisions...")
 
@@ -122,8 +120,8 @@ final class Mailbox<Message> {
         // Contexts aim to capture self.cell, but can't since we are not done initializing
         // all self references so Swift does not allow us to write self.cell in them.
 
-        self.messageClosureContext = InterpretMessageClosureContext(exec: { envelopePtr in
-            assert(self.runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+        self.messageClosureContext = InterpretMessageClosureContext(exec: { envelopePtr, runPhase in
+            assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
 
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
@@ -137,8 +135,8 @@ final class Mailbox<Message> {
         }, fail: { error in
             cell.fail(error: error)
         })
-        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr in
-            assert(self.runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
+        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { sysMsgPtr, runPhase in
+            assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
 
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
@@ -272,6 +270,8 @@ final class Mailbox<Message> {
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
+        var runPhase: MailboxRunPhase = .processingSystemMessages
+
         // Run the mailbox:
         let mailboxRunResult: MailboxRunResult = cmailbox_run(mailbox,
             &messageClosureContext, &systemMessageClosureContext,
@@ -299,7 +299,7 @@ final class Mailbox<Message> {
             // and now we need to handle those that made it in, before the terminating status was set.
             self.sendSystemMessage(.tombstone) // Rest in Peace
         case .failure:
-            let failedRunPhase = self.runPhase
+            let failedRunPhase = runPhase
             self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
         case .failureRestart:
             // FIXME: !!! we must know if we should schedule or not after a restart...
@@ -374,18 +374,18 @@ extension MessageProcessingFailure: CustomStringConvertible {
 
 /// Wraps context for use in closures passed to C
 private struct InterpretMessageClosureContext {
-    private let _exec: (UnsafeMutableRawPointer) throws -> Bool
+    private let _exec: (UnsafeMutableRawPointer, MailboxRunPhase) throws -> Bool
     private let _fail: (Error) -> ()
 
-    init(exec: @escaping (UnsafeMutableRawPointer) throws -> Bool,
+    init(exec: @escaping (UnsafeMutableRawPointer, MailboxRunPhase) throws -> Bool,
          fail: @escaping (Error) -> ()) {
         self._exec = exec
         self._fail = fail
     }
 
     @inlinable
-    func exec(with ptr: UnsafeMutableRawPointer) throws -> Bool {
-        return try self._exec(ptr)
+    func exec(with ptr: UnsafeMutableRawPointer, runPhase: MailboxRunPhase) throws -> Bool {
+        return try self._exec(ptr, runPhase)
     }
 
     @inlinable

@@ -239,7 +239,7 @@ MailboxRunResult cmailbox_run(
 
             while (*message != NULL && keep_running) {
                 // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-                keep_running = interpret_message(system_context, *message);
+                keep_running = interpret_message(system_context, *message, *run_phase);
                 *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
             }
 
@@ -289,7 +289,7 @@ MailboxRunResult cmailbox_run(
                 *processed_activations += SINGLE_USER_MESSAGE_MASK;
                 // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
                 // TODO: fix this dance
-                bool still_alive = interpret_message(context, *message); // TODO: we can optimize the keep_running into the processed counter?
+                bool still_alive = interpret_message(context, *message, *run_phase); // TODO: we can optimize the keep_running into the processed counter?
                 keep_running = still_alive;
 
                 // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
