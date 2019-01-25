@@ -112,8 +112,8 @@ public struct Supervision {
 
     public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ failureType: Error.Type) -> Supervisor<Message> {
         switch strategy {
-        case .stop: return StoppingSupervisor(failureType: failureType)
-        case .restart: return RestartingSupervisor(initialBehavior: behavior, failureType: failureType)
+        case .stop: return StoppingSupervisor(failureType: failureType) // TODO: strategy could carry additional configuration
+        case let .restart(atMost): return RestartingSupervisor(initialBehavior: behavior, failureType: failureType, maxRestarts: atMost) // TODO: strategy could carry additional configuration
         }
     }
 
@@ -259,17 +259,22 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     internal let initialBehavior: Behavior<Message>
 
     private var failures: Int = 0
+    private let maxRestarts: Int
 
     // TODO Implement respecting restart(atMost restarts: Int) !!!
 
-    public init(initialBehavior behavior: Behavior<Message>, failureType: Error.Type) {
+    public init(initialBehavior behavior: Behavior<Message>, failureType: Error.Type, maxRestarts: Int) {
         self.initialBehavior = behavior
+        self.maxRestarts = maxRestarts
         super.init(failureType: failureType)
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
+        }
+        if self.failures >= self.maxRestarts {
+            return .stopped
         }
 
         self.failures += 1
@@ -286,9 +291,15 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
         }
+        if self.failures >= self.maxRestarts {
+            return .stopped
+        }
 
         self.failures += 1
         traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
+
+        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+
         return try initialBehavior.start(context: context)._supervised(by: self)
     }
 
