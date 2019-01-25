@@ -86,9 +86,11 @@ class SupervisionTests: XCTestCase {
                 let watched: ActorRef<String> = try context.spawnWatched(.receiveMessage { message in
                     throw FaultyError.boom(message: "I'm dying, as expected.")
                 }, name: "dying-\(Date().hashValue)") // FIXME: when we restart should not get into dupe name problem
-                watched.tell("anything we send here will cause it to die") // and send us the Terminated
 
-                return .ignore
+                return .receiveMessage { message in
+                    watched.tell("BOOOOM")
+                    return .same
+                }
             }.receiveSignal { context, signal in
                 context.log.info("HANDLING SIGNAL \(signal)")
                 if signal is Signals.Terminated {
@@ -150,7 +152,7 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 1)
+        let strategy: SupervisionStrategy = .restart(atMost: 2)
         let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.faulty(probe: p.ref), withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
@@ -350,31 +352,34 @@ class SupervisionTests: XCTestCase {
     func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
         let probe = testKit.spawnTestProbe(expecting: WorkerMessages.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 3) // TODO implement the restart limiting
+        let strategy: SupervisionStrategy = .restart(atMost: 3)
         let faultyBehavior: Behavior<FaultyMessages> = self.failOnTerminatedHandling(probe: probe.ref, failBy: failureMode)
-        let supervisedBehavior: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
+        let supervised: Behavior<FaultyMessages> = .supervise(faultyBehavior, withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "\(failureMode)-in-receiveSignal-erroring-1")
+            let _: ActorRef<FaultyMessages> = try context.spawnWatched(supervised, name: "\(failureMode)-in-receiveSignal-erroring-1")
             return .same
         }
+
         let parent: ActorRef<Never> = try system.spawn(parentBehavior, name: "\(failureMode)-in-receiveSignal-parent-1")
         probe.watch(parent)
 
-        // parent's setup has executed:
-        guard case let .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
+        // faulty's setup has executed:
+        guard case let .setupRunning(faultyRef) = try probe.expectMessage() else { throw probe.error() }
 
-        parentRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
+        faultyRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
 
         try probe.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
 
         // parent's setup has executed again, since it was restarted in its entirety, so the setup has also run again:
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
-        guard case .setupRunning(parentRef) = try probe.expectMessage() else { throw probe.error() }
+        guard case .setupRunning(faultyRef) = try probe.expectMessage() else { throw probe.error() }
+        faultyRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
+        guard case .setupRunning(faultyRef) = try probe.expectMessage() else { throw probe.error() }
+        faultyRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
+        guard case .setupRunning(faultyRef) = try probe.expectMessage() else { throw probe.error() }
+        faultyRef.tell(.echo(message: "Cause termination of child, which causes parent to fail in Terminated() handling", replyTo: probe.ref))
 
-        // TODO: once restart limiting is implemented the following should pass:
-        // try watchParentProbe.expectTerminated(parentRef) // parent did terminate after the 3rd attempt
+        try probe.expectTerminated(parent) // parent did terminate after the 3rd attempt
     }
 
     func test_throwInSignalHandling_shouldRestart() throws {
