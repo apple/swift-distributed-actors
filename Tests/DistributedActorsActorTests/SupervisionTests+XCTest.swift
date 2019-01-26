@@ -42,6 +42,8 @@ extension SupervisionTests {
                 ("test_supervisor_shouldOnlyHandle_anyThrows", test_supervisor_shouldOnlyHandle_anyThrows),
                 ("test_supervisor_shouldOnlyHandle_anyFault", test_supervisor_shouldOnlyHandle_anyFault),
                 ("test_supervisor_shouldOnlyHandle_anyFailure", test_supervisor_shouldOnlyHandle_anyFailure),
+                ("test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting", test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting),
+                ("test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting", test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting),
            ]
    }
 }

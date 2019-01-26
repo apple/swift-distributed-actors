@@ -120,7 +120,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         // TODO: if https://github.com/apple/swift-distributed-actors/issues/244 is implemented, we cna supervise and "spy on" start() failures making this test much more specific
 
         let behavior = setupDaDoRunRunRunDaDoRunRun()
-        let ref = try system.spawn(behavior, name: "nestedSetups")
+        _ = try system.spawn(behavior, name: "nestedSetups")
 
         for depth in 0..<system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")
@@ -128,4 +128,42 @@ class BehaviorCanonicalizeTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
+    func test_stopWithoutPostStop_shouldUsePreviousBehavior() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = Behavior.receiveMessage { _ in
+            .stopped
+        }.receiveSignal { _, signal in
+            if signal is Signals.PostStop {
+                p.tell("postStop")
+            }
+            return .same
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+
+        try p.expectMessage("postStop")
+        try p.expectTerminated(ref)
+    }
+
+    func test_stopWithPostStop_shouldUseItFOrPostStopSignalHandling() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = Behavior.receiveMessage { _ in
+            return .stopped { _ in
+                p.tell("postStop")
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+
+        try p.expectMessage("postStop")
+        try p.expectTerminated(ref)
+    }
 }

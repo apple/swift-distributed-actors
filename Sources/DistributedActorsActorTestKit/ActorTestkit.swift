@@ -110,9 +110,9 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
         super.init(failureType: failureType)
     }
 
-    override public func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override public func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         do {
-            let decision = try self.underlying.handleSignalFailure(context, failure: failure)
+            let decision = try self.underlying.handleSignalFailure(context, target: target, failure: failure)
             self.probe.tell(.handledMessageFailure(failure: failure, decision: decision))
             return decision
         } catch {
@@ -121,9 +121,9 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
         }
     }
 
-    override public func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override public func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         do {
-            let decision = try self.underlying.handleSignalFailure(context, failure: failure)
+            let decision = try self.underlying.handleSignalFailure(context, target: target, failure: failure)
             self.probe.tell(.handledSignalFailure(failure: failure, decision: decision))
             return decision
         } catch {

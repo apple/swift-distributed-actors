@@ -229,4 +229,36 @@ class BehaviorTests: XCTestCase {
         p.tell(255)
         try p.expectMessage(255)
     }
+
+    func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<Never> = .stopped { _ in
+            p.tell("postStop")
+        }
+
+        _ = try system.spawnAnonymous(behavior)
+
+        try p.expectMessage("postStop")
+    }
+
+    enum TestError: Error {
+        case error
+    }
+
+    func test_stoppedWithPostStopThrows_shouldTerminate() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<Never> = .stopped(postStop: .signalHandling(handleMessage: .ignore) { _, signal in
+            p.tell("postStop")
+            throw TestError.error
+        })
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        p.watch(ref)
+
+        try p.expectMessage("postStop")
+        try p.expectTerminated(ref)
+    }
 }
