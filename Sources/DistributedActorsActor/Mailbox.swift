@@ -171,9 +171,9 @@ final class Mailbox<Message> {
 
                     switch runPhase {
                     case .processingSystemMessages:
-                        supervisionResultingBehavior = try supervisor.handleSignalFailure(cell.context, failure: supervisionFailure)
+                        supervisionResultingBehavior = try supervisor.handleSignalFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
                     case .processingUserMessages:
-                        supervisionResultingBehavior = try supervisor.handleMessageFailure(cell.context, failure: supervisionFailure)
+                        supervisionResultingBehavior = try supervisor.handleMessageFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
                     }
 
                     // TODO: this handling MUST be aligned with the throws handling.

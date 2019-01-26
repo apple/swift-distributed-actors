@@ -388,6 +388,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
     @inlinable public func restart(behavior: Behavior<Message>) throws {
+        try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
         self.behavior = behavior
         try self.interpretSystemStart()
     }
@@ -439,6 +440,13 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self.notifyWatchersWeDied()
         self.notifyParentWeDied()
         // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
+
+        do {
+            _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PostStop())
+        } catch {
+            // TODO: should probably .escalate instead
+            self.context.log.error("Exception in postStop", error: error)
+        }
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil

@@ -342,7 +342,7 @@ class SupervisionTests: XCTestCase {
         try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
     }
     final class IllegalDecisionSupervisor<Message>: Supervisor<Message> {
-        override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
             return .same // that's an illegal decision there is no "same" to use, since the current behavior may have been corrupted
         }
     }
@@ -531,6 +531,39 @@ class SupervisionTests: XCTestCase {
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
+    }
+
+    func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = Behavior.receiveMessage { _ in
+            switch failureMode {
+            case .throwing: throw FaultyError.boom(message: "test")
+            case .faulting: fatalError("BOOM")
+            }
+        }.receiveSignal { _, signal in
+            if signal is Signals.PreRestart {
+                p.tell("preRestart")
+            }
+            return .same
+        }.supervised(withStrategy: .restart(atMost: 1))
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectMessage("preRestart")
+
+        ref.tell("test")
+        try p.expectTerminated(ref)
+    }
+
+    func test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting() throws {
+        try sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .throwing)
+    }
+
+    func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
+        try sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .faulting)
     }
 
     private struct PleaseReply: Error, Equatable, CustomStringConvertible {

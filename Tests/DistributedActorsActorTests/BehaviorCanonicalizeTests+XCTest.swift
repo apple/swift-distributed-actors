@@ -28,6 +28,8 @@ extension BehaviorCanonicalizeTests {
                 ("test_canonicalize_doesSurviveDeeplyNestedSetups", test_canonicalize_doesSurviveDeeplyNestedSetups),
                 ("test_canonicalize_unwrapInterceptBehaviors", test_canonicalize_unwrapInterceptBehaviors),
                 ("test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups", test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups),
+                ("test_stopWithoutPostStop_shouldUsePreviousBehavior", test_stopWithoutPostStop_shouldUsePreviousBehavior),
+                ("test_stopWithPostStop_shouldUseItFOrPostStopSignalHandling", test_stopWithPostStop_shouldUseItFOrPostStopSignalHandling),
            ]
    }
 }

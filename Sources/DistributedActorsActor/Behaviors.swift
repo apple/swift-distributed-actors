@@ -45,9 +45,12 @@ public enum Behavior<Message> {
     /// Defines that the same behavior should remain
     case same
 
-    /// A stopped behavior signifies that the actor will cease processing messages (they will be "dropped"),
-    /// and the actor itself will stop. Return this behavior to stop your actors.
-    case stopped
+    /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
+    /// and the actor itself will stop. Return this behavior to stop your actors. If a `postStop` behavior is
+    /// set, it will be used to handle the `PostStop` signal after the actor has stopped. Otherwise the last
+    /// assigned behavior will be used. This allows users to use the same signal handler (chain) to process
+    /// all events.
+    indirect case stopped(postStop: Behavior<Message>?)
 
     case failed(error: Error)
 
@@ -91,6 +94,27 @@ extension Behavior {
     public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
         return .orElse(first: self, second: alternativeBehavior)
     }
+
+    /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
+    /// and the actor itself will stop. Return this behavior to stop your actors. The last assigned behavior
+    /// will be used to handle the `PostStop` signal after the actor has stopped. This allows users to use
+    /// the same signal handler (chain) to process all events.
+    public static var stopped: Behavior<Message> {
+        return .stopped(postStop: nil)
+    }
+
+    /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
+    /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenienve overload that
+    /// allows users to specify a closure that will only be called on receival of `PostStop` and therefore does not
+    /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
+    public static func stopped(_ postStop: @escaping (ActorContext<Message>) throws -> ()) -> Behavior<Message> {
+        return .stopped(postStop: Behavior.receiveSignal { context, signal in
+            if signal is Signals.PostStop {
+                try postStop(context)
+            }
+            return .same // will be ignored
+        })
+    }
 }
 
 // MARK: Signal receiving behaviors
@@ -103,7 +127,7 @@ extension Behavior {
     }
 
     /// -- || --
-    public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) -> Behavior<Message>) -> Behavior<Message> {
+    public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior<Message>.signalHandling(handleMessage: .unhandled, handleSignal: handle)
     }
 }
@@ -275,6 +299,8 @@ public extension Behavior {
     @inlinable
     func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         switch self {
+        case let .stopped(.some(postStop)):
+            return try .stopped(postStop: postStop.interpretSignal(context: context, signal: signal))
         case .signalHandling(_, let handleSignal):
             return try handleSignal(context, signal)
         case let .intercept(behavior, interceptor):
@@ -367,11 +393,12 @@ internal extension Behavior {
         var canonical = next
         while true {
             switch canonical {
-            case .same:      return self
-            case .ignore:    return self
-            case .unhandled: return self
-            case .custom:    return self
-            case .stopped:   return .stopped
+            case .same:             return self
+            case .ignore:           return self
+            case .unhandled:        return self
+            case .custom:           return self
+            case .stopped(.none):   return .stopped(postStop: self)
+            case .stopped(.some):   return canonical
 
             case .setup(let onStart):
                 canonical = try onStart(context)

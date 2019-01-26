@@ -176,7 +176,7 @@ open class Supervisor<Message>: Interceptor<Message> {
             let err = error
             context.log.warning("Supervision: Actor has THROWN [\(err)]:\(type(of: err)) while interpreting message, handling with \(self)")
             do {
-                return try self.handleMessageFailure(context, failure: .error(err)).validatedAsInitial()
+                return try self.handleMessageFailure(context, target: target, failure: .error(err)).validatedAsInitial()
             } catch {
                 throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
             }
@@ -191,7 +191,7 @@ open class Supervisor<Message>: Interceptor<Message> {
             let err = error
             context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting signal, handling with \(self)")
             do {
-                return try self.handleMessageFailure(context, failure: .error(error)).validatedAsInitial()
+                return try self.handleMessageFailure(context, target: target, failure: .error(error)).validatedAsInitial()
             } catch {
                 throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
             }
@@ -202,13 +202,13 @@ open class Supervisor<Message>: Interceptor<Message> {
 
     /// Handle a fault that happened during message processing.
     // TODO wording and impl on double-faults
-    open func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    open func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
     /// Handle a failure that occurred during signal processing.
     // TODO wording and impl on double-faults
-    open func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    open func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         return undefined()
     }
 
@@ -227,7 +227,7 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         super.init(failureType: failureType)
     }
 
-    override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
         }
@@ -235,7 +235,7 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         return .stopped
     }
 
-    override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
         }
@@ -269,7 +269,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         super.init(failureType: failureType)
     }
 
-    override func handleMessageFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
         }
@@ -284,10 +284,12 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
         (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
 
+        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
+
         return try initialBehavior.start(context: context)._supervised(by: self)
     }
 
-    override func handleSignalFailure(_ context: ActorContext<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) else {
             return .stopped // TODO .escalate ???
         }
@@ -299,6 +301,8 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
 
         (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+
+        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
         return try initialBehavior.start(context: context)._supervised(by: self)
     }

@@ -79,6 +79,18 @@ public enum Signals {
             return "ChildTerminated(\(self.path)\(reason))"
         }
     }
+
+    /// This is sent right before an actor gets restarted
+    public struct PreRestart: Signal {
+        @usableFromInline
+        init() {}
+    }
+
+    /// This is sent right after the actor has stopped
+    public struct PostStop: Signal {
+        @usableFromInline
+        init() {}
+    }
 }
 
 extension Signals.Terminated: Equatable, Hashable {
