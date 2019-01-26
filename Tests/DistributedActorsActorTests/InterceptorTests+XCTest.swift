@@ -27,6 +27,7 @@ extension InterceptorTests {
                 ("test_interceptor_shouldConvertMessages", test_interceptor_shouldConvertMessages),
                 ("test_interceptor_shouldSurviveDeeplyNestedInterceptors", test_interceptor_shouldSurviveDeeplyNestedInterceptors),
                 ("test_interceptor_shouldInterceptSignals", test_interceptor_shouldInterceptSignals),
+                ("test_interceptor_shouldRemainWHenReturningStoppingWithPostStop", test_interceptor_shouldRemainWHenReturningStoppingWithPostStop),
            ]
    }
 }

@@ -199,22 +199,29 @@ extension Interceptor {
 
     @inlinable
     static func deduplicate(context: ActorContext<Message>, behavior: Behavior<Message>, interceptor: Interceptor<Message>) throws -> Behavior<Message> {
-        let started = try behavior.start(context: context)
-        if started.isUnhandled || started.isSame || started.isTerminal {
-            return started
-        }
+        func deduplicate0(_ behavior: Behavior<Message>) -> Behavior<Message> {
+            let hasDuplicatedIntercept = behavior.existsInStack { b in
+                switch b {
+                case .intercept(_, let otherInterceptor):   return interceptor.isSame(as: otherInterceptor)
+                default:                                    return false
+                }
+            }
 
-        let hasDuplicatedIntercept: Bool = started.existsInStack { behavior in
-            switch behavior {
-            case .intercept(_, let otherInterceptor):   return interceptor.isSame(as: otherInterceptor)
-            default:                                    return false
+            if hasDuplicatedIntercept {
+                return behavior
+            } else {
+                return .intercept(behavior: behavior, with: interceptor)
             }
         }
 
-        if hasDuplicatedIntercept {
+        let started = try behavior.start(context: context)
+
+        if case let .stopped(.some(postStop)) = started {
+            return .stopped(postStop: deduplicate0(postStop))
+        } else if started.isUnhandled || started.isSame || started.isTerminal {
             return started
         } else {
-            return .intercept(behavior: started, with: interceptor)
+            return deduplicate0(started)
         }
     }
 }
