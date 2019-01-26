@@ -91,10 +91,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
                     return .same
                 }
             }
-        }, with: Intercept.messages({ behavior, context, message in
-            p.tell("intercepted:\(message)")
-            return try behavior.interpretMessage(context: context, message: message)
-        }))
+            }, with: ProbeInterceptor(probe: p))
 
         let ref = try system.spawn(b, name: "nestedSetups")
 
@@ -102,7 +99,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         try p.expectMessage("inner-2")
         try p.expectNoMessage(for: .milliseconds(100))
         ref.tell("ping")
-        try p.expectMessage("intercepted:ping")
+        try p.expectMessage("ping")
         try p.expectMessage("received:ping")
     }
 

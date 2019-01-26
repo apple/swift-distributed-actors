@@ -203,7 +203,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         try self.becomeNext(behavior: next)
 
-        if !self.behavior.isStillAlive() {
+        if !self.behavior.isStillAlive {
             children.forEach { $0.sendSystemMessage(.stop) }
         }
 
@@ -259,11 +259,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     @usableFromInline
     internal var continueRunning: Bool {
-        return self.behavior.isStillAlive() || self.children.nonEmpty
+        return self.behavior.isStillAlive || self.children.nonEmpty
     }
 
     @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
-        if self.behavior.isStillAlive() {
+        if self.behavior.isStillAlive {
             // TODO: make DeathWatch methods available via extension
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
         } else {

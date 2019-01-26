@@ -71,7 +71,7 @@ extension Behavior {
         switch behavior {
         case .intercept(_, let interceptor): // TODO need to look into inner too?
             let existingSupervisor: Supervisor<Message>? = interceptor as? Supervisor<Message>
-            if existingSupervisor?.isSameAs(supervisor) ?? false {
+            if existingSupervisor?.isSame(as: supervisor) ?? false {
                 // we perform no wrapping if the existing supervisor already handles everything the new one would.
                 // this allows us to avoid infinitely wrapping supervisors of the same behavior if someone wrote code
                 // returning `behavior.supervised(...)` inside their behavior.
@@ -168,7 +168,7 @@ open class Supervisor<Message>: Interceptor<Message> {
         super.init()
     }
 
-    final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    override open func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
             pprint("INTERCEPT MSG APPLY: \(target) @@@@ [\(message)]:\(type(of: message))")
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
@@ -183,7 +183,7 @@ open class Supervisor<Message>: Interceptor<Message> {
         }
     }
 
-    final override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    override open func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         do {
             pprint("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
             return try target.interpretSignal(context: context, signal: signal)
@@ -216,7 +216,7 @@ open class Supervisor<Message>: Interceptor<Message> {
     ///
     /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
     /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
-    public func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+    override open func isSame(as other: Interceptor<Message>) -> Bool {
         return undefined()
     }
 }
@@ -244,8 +244,8 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
     }
 
     // TODO complete impl
-    override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
-        if newSupervisor is StoppingSupervisor<Message> {
+    override func isSame(as other: Interceptor<Message>) -> Bool {
+        if other is StoppingSupervisor<Message> {
             // we could have more configuration options to check here
             return true
         } else {
@@ -308,8 +308,8 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     // TODO complete impl
-    override func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
-        if newSupervisor is RestartingSupervisor<Message> {
+    override open func isSame(as other: Interceptor<Message>) -> Bool {
+        if other is RestartingSupervisor<Message> {
             // we only check if the target restart behavior is the same; number of restarts is not taken into account
             return true
         } else {
