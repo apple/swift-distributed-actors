@@ -147,4 +147,36 @@ class InterceptorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
+    class SignalToStringInterceptor<Message>: Interceptor<Message> {
+        let probe: ActorTestProbe<String>
+
+        init(_ probe: ActorTestProbe<String>) {
+            self.probe = probe
+        }
+
+        override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+            self.probe.tell("intercepted:\(signal)")
+            return try target.interpretSignal(context: context, signal: signal)
+        }
+    }
+
+    func test_interceptor_shouldRemainWHenReturningStoppingWithPostStop() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .receiveMessage { _ in
+            return .stopped { _ in
+                p.tell("postStop")
+            }
+        }
+
+        let interceptedBahvior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
+
+        let ref = try system.spawnAnonymous(interceptedBahvior)
+        p.watch(ref)
+        ref.tell("test")
+
+        try p.expectMessage("intercepted:PostStop()")
+        try p.expectMessage("postStop")
+        try p.expectTerminated(ref)
+    }
 }
