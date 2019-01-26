@@ -132,7 +132,7 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
         }
     }
 
-    override public func isSameAs(_ newSupervisor: Supervisor<Message>) -> Bool {
+    override public func isSame(as other: Interceptor<Message>) -> Bool {
         return false // TODO mock impl
     }
 }

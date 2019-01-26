@@ -17,6 +17,41 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
+final class ShoutingInterceptor: Interceptor<String> {
+    let probe: ActorTestProbe<String>?
+
+    init(probe: ActorTestProbe<String>? = nil) {
+        self.probe = probe
+    }
+
+    override func interceptMessage(target: Behavior<String>, context: ActorContext<String>, message: String) throws -> Behavior<String> {
+        self.probe?.tell("from-interceptor:\(message)")
+        return try target.interpretMessage(context: context, message: message + "!")
+    }
+
+    override func isSame(as other: Interceptor<String>) -> Bool {
+        return false
+    }
+}
+
+final class TerminatedInterceptor<Message>: Interceptor<Message> {
+    let probe: ActorTestProbe<Signals.Terminated>
+
+    init(probe: ActorTestProbe<Signals.Terminated>) {
+        self.probe = probe
+    }
+
+    override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        switch signal {
+        case let terminated as Signals.Terminated:
+            self.probe.tell(terminated) // we forward all termination signals to someone
+        default:
+            ()
+        }
+        return try target.interpretSignal(context: context, signal: signal)
+    }
+}
+
 class InterceptorTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
@@ -29,9 +64,7 @@ class InterceptorTests: XCTestCase {
     func test_interceptor_shouldConvertMessages() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let makeStringsLouderInterceptor: Interceptor<String> = Intercept.messages { target, context, message in
-            try target.interpretMessage(context: context, message: message + "!!!")
-        }
+        let interceptor = ShoutingInterceptor()
 
         let forwardToProbe: Behavior<String> = .receiveMessage { message in
             p.tell(message)
@@ -39,7 +72,7 @@ class InterceptorTests: XCTestCase {
         }
 
         let ref: ActorRef<String> = try system.spawn(
-            .intercept(behavior: forwardToProbe, with: makeStringsLouderInterceptor),
+            .intercept(behavior: forwardToProbe, with: interceptor),
             name: "theWallsHaveEars")
 
         for i in 0...10 {
@@ -47,7 +80,7 @@ class InterceptorTests: XCTestCase {
         }
 
         for i in 0...10 {
-            try p.expectMessage("hello:\(i)!!!")
+            try p.expectMessage("hello:\(i)!")
         }
     }
 
@@ -55,10 +88,7 @@ class InterceptorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let i: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let makeStringsLouderInterceptor: Interceptor<String> = Intercept.messages { target, context, message in
-            i.ref.tell("from-interceptor:\(message)")
-            return try target.interpretMessage(context: context, message: message + "!") // we keep adding one ! per interception level
-        }
+        let makeStringsLouderInterceptor = ShoutingInterceptor(probe: i)
 
         // just like in the movie "Inception"
         func interceptionInceptionBehavior(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
@@ -92,16 +122,7 @@ class InterceptorTests: XCTestCase {
     func test_interceptor_shouldInterceptSignals() throws {
         let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe()
 
-        let spyOnTerminationSignals: Interceptor<String> =
-            Intercept.signals { target, context, signal in
-                switch signal {
-                case let terminated as Signals.Terminated:
-                    p.tell(terminated) // we forward all termination signals to someone
-                default:
-                    ()
-                }
-                return try target.interpretSignal(context: context, signal: signal)
-            }
+        let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
         let spawnSomeStoppers: Behavior<String> = .setup { context in
             let one: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in

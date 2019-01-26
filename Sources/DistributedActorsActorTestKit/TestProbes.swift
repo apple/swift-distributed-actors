@@ -202,15 +202,25 @@ extension ActorTestProbe: ReceivesMessages {
 
 // MARK: TestProbes can intercept all messages send to a Behavior
 
+public final class ProbeInterceptor<Message>: Interceptor<Message> {
+    let probe: ActorTestProbe<Message>
+
+    public init(probe: ActorTestProbe<Message>) {
+        self.probe = probe
+    }
+
+    final override public func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+        self.probe.tell(message)
+        return try target.interpretMessage(context: context, message: message)
+    }
+}
+
 public extension ActorTestProbe {
 
     // TODO would be nice to be able to also intercept system messages hm...
 
     public func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
-        let interceptor: Interceptor<Message> = Intercept.messages { target, context, message in
-            self.tell(message)
-            return try target.interpretMessage(context: context, message: message)
-        }
+        let interceptor: Interceptor<Message> = ProbeInterceptor(probe: self)
         return .intercept(behavior: behavior, with: interceptor)
     }
 }

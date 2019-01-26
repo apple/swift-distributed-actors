@@ -171,92 +171,51 @@ open class Interceptor<Message> {
     //       Implementing using class for now, and we may revisit; though supervision does not need to be high performance
     //       it is more about "weight of actor ref that contains many layers of supervisors. though perhaps I'm over worrying
 
-    @inlinable func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    @inlinable
+    open func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
         return try target.interpretMessage(context: context, message: message)
     }
 
-    @inlinable func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    @inlinable
+    open func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         // no-op interception by default; interceptors may be interested only in the signals or only in messages after all
         return try target.interpretSignal(context: context, signal: signal)
     }
-}
 
-/// Convenience factories for creating simple in-line defined interceptors.
-/// For more complex interceptors which may need to keep state it is recommended to extend `Interceptor` directly.
-///
-/// An interceptor MAY apply an incoming `message` to the `target` behavior or choose to not do so
-/// which results in dropping the message. In this case it SHOULD return `Behavior.ignore` or `Behavior.unhandled`,
-/// such that the usual logging mechanisms work as expected.
-///
-/// - SeeAlso: `Interceptor`
-enum Intercept {
-
-    /// Create unnamed `Interceptor` which intercepts all incoming messages.
-    public static func messages<Message>(file: StaticString = #file, line: UInt = #line,
-                                         _ onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>) -> Interceptor<Message> {
-        return FunctionInterceptor(
-            interceptMessage: onMessage,
-            interceptSignal: { try $0.interpretSignal(context: $1, signal: $2) },
-            file: file, line: line
-        )
-    }
-
-    public static func signals<Message>(file: StaticString = #file, line: UInt = #line,
-                                        _ onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Interceptor<Message> {
-        return FunctionInterceptor(
-            interceptMessage: { try $0.interpretMessage(context: $1, message: $2) },
-            interceptSignal: onSignal,
-            file: file, line: line
-        )
-    }
-
-    public static func all<Message>(
-        onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>,
-        onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>,
-        file: StaticString = #file, line: UInt = #line) -> Interceptor<Message> {
-        return FunctionInterceptor(
-            interceptMessage: onMessage,
-            interceptSignal: onSignal,
-            file: file, line: line
-        )
+    @inlinable
+    open func isSame(as other: Interceptor<Message>) -> Bool {
+        return self === other
     }
 }
 
-/// Interceptor defined by passing interception functions.
-/// Useful for small in-line definitions of interceptors which do not need to hold state.
-///
-/// - For intercepting only messages use `Intercept.messages` instead of directly instantiating this class.
-/// - For intercepting only signals use `Intercept.signals` instead of directly instantiating this class.
-final class FunctionInterceptor<Message>: Interceptor<Message> {
+extension Interceptor {
+    @inlinable
+    static func handleMessage(context: ActorContext<Message>, behavior: Behavior<Message>, interceptor: Interceptor<Message>, message: Message) throws -> Behavior<Message> {
+        let next = try interceptor.interceptMessage(target: behavior, context: context, message: message)
 
-    let onMessage: (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>
-    let onSignal: (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>
-
-    let file: StaticString
-    let line: UInt
-
-    init(interceptMessage onMessage: @escaping (Behavior<Message>, ActorContext<Message>, Message) throws -> Behavior<Message>,
-         interceptSignal onSignal: @escaping (Behavior<Message>, ActorContext<Message>, Signal) throws -> Behavior<Message>,
-         file: StaticString = #file, line: UInt = #line) {
-        self.onSignal = onSignal
-        self.onMessage = onMessage
-        self.file = file
-        self.line = line
+        return try Interceptor.deduplicate(context: context, behavior: next, interceptor: interceptor)
     }
 
-    override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        return try self.onMessage(target, context, message)
-    }
+    @inlinable
+    static func deduplicate(context: ActorContext<Message>, behavior: Behavior<Message>, interceptor: Interceptor<Message>) throws -> Behavior<Message> {
+        let started = try behavior.start(context: context)
+        if started.isUnhandled || started.isSame || started.isTerminal {
+            return started
+        }
 
-    override func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
-        return try self.onSignal(target, context, signal)
-    }
-}
+        let hasDuplicatedIntercept: Bool = started.existsInStack { behavior in
+            switch behavior {
+            case .intercept(_, let otherInterceptor):   return interceptor.isSame(as: otherInterceptor)
+            default:                                    return false
+            }
+        }
 
-extension FunctionInterceptor: CustomStringConvertible {
-    public var description: String {
-        return "FunctionInterceptor(defined at \(self.file):\(self.line)"
+        if hasDuplicatedIntercept {
+            return started
+        } else {
+            return .intercept(behavior: started, with: interceptor)
+        }
     }
 }
 
@@ -276,7 +235,7 @@ public extension Behavior {
         case let .receive(recv):                 return try recv(context, message)
         case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
-        case let .intercept(inner, interceptor): return try interceptor.interceptMessage(target: inner, context: context, message: message)
+        case let .intercept(inner, interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case .ignore:                            return .same // ignore message and remain .same
         case .unhandled:                         return FIXME("NOT IMPLEMENTED YET")
 
@@ -287,7 +246,7 @@ public extension Behavior {
         case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
         case let .orElse(first, second):
             var nextBehavior = try first.interpretMessage(context: context, message: message)
-            if nextBehavior.isUnhandled() {
+            if nextBehavior.isUnhandled {
                 nextBehavior = try second.interpretMessage(context: context, message: message)
             }
             return nextBehavior
@@ -321,7 +280,7 @@ internal extension Behavior {
     @inlinable
     func interpretMessages<Iterator: IteratorProtocol>(context: ActorContext<Message>, messages: inout Iterator) throws -> Behavior<Message> where Iterator.Element == Message {
         var currentBehavior: Behavior<Message> = self
-        while currentBehavior.isStillAlive() {
+        while currentBehavior.isStillAlive {
             if let message = messages.next() {
                 let nextBehavior = try currentBehavior.interpretMessage(context: context, message: message)
                 currentBehavior = try currentBehavior.canonicalize(context, next: nextBehavior)
@@ -359,7 +318,7 @@ internal extension Behavior {
 
     /// Shorthand for checking if the current behavior is a `.unhandled`
     @inlinable
-    func isUnhandled() -> Bool {
+    var isUnhandled: Bool {
         switch self {
         case .unhandled: return true
         default: return false
@@ -368,7 +327,7 @@ internal extension Behavior {
 
     /// Shorthand for checking if the `Behavior` is `.stopped` or `.failed`.
     @inlinable
-    func isTerminal() -> Bool {
+    var isTerminal: Bool {
         switch self {
         case .stopped, .failed: return true
         default: return false
@@ -377,8 +336,16 @@ internal extension Behavior {
 
     /// Shorthand for checking if the `Behavior` is NOT `.stopped` or `.failed`.
     @inlinable
-    func isStillAlive() -> Bool {
-        return !self.isTerminal()
+    var isStillAlive: Bool {
+        return !self.isTerminal
+    }
+
+    @inlinable
+    var isSame: Bool {
+        switch self {
+        case .same: return true
+        default:    return false
+        }
     }
 
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
@@ -445,5 +412,23 @@ internal extension Behavior {
         }
 
         return try start0(self, depth: 0)
+    }
+
+    /// Looks for a behavior in the stack that returns `true` for the passed in predicate.
+    ///
+    /// - Parameter predicate: used to check if any behavior in the stack has a specific property
+    /// - Returns: `true` if a behavior exists that matches the predicate, `false` otherwise
+    @inlinable
+    func existsInStack(_ predicate: (Behavior<Message>) -> Bool) -> Bool {
+        if predicate(self) {
+            return true
+        }
+
+        switch self {
+        case .intercept(let behavior, _):   return behavior.existsInStack(predicate)
+        case let .orElse(first, second):    return first.existsInStack(predicate) || second.existsInStack(predicate)
+        case let .stopped(.some(postStop)): return postStop.existsInStack(predicate)
+        default:                            return false
+        }
     }
 }
