@@ -85,3 +85,47 @@ internal func _hackyPThreadThreadId() -> String {
 
     return "thread:\(threadId)"
 }
+
+
+
+// MARK: Functions used for debug tracing, eventually likely to be removed
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_DEATHWATCH
+    pprint("SACT_TRACE_DEATHWATCH: \(message())", file: file, line: line)
+    #endif
+}
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_Mailbox(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_MAILBOX
+    pprint("SACT_TRACE_MAILBOX: \(message())", file: file, line: line)
+    #endif
+}
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_CELL
+    pprint("SACT_TRACE_CELL: \(message())", file: file, line: line)
+    #endif
+}
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_PROBE
+    pprint("SACT_TRACE_PROBE: \(message())", file: file, line: line)
+    #endif
+}
+
+/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+@inlinable
+func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+    #if SACT_TRACE_SUPERVISION
+    pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
+    #endif
+}

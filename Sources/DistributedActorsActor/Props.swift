@@ -12,47 +12,55 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch // TODO: I suppose we'll end up supporting it anyway, only modeling it for now tho
+import Dispatch // TODO: This is here for potential future "run on dispatch" dispatcher
 
-/// Props configure an Actors' properties such as mailbox and dispatcher semantics.
+/// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///
-/// - Mnemonic: "props" are what an actor in real life uses when acting on stage,
-///             e.g. a skull that would be used for "to be, or, not to be?
+/// `Props` can easily changed in-line using the fluent APIs provided.
+/// Functions starting with `add...` are additive, i.e. they add another setting of the same kind to the props (possibly
+/// overriding a previously existing one), while functions starting with `with...` are replacement functions, always
+/// replacing the entire inner props with the new one
+///
+/// Naming mnemonic: "Props" are what an theater actor may use during a performance.
+/// For example, a skull would be a classic example of a "prop" used while performing the William Shakespeare's
+/// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
+/// props for Swift Distributed Actors actors are accompanying objects/settings, which help the actor perform its duties.
 public struct Props {
 
     var mailbox: MailboxProps
     var dispatcher: DispatcherProps
 
-    public init(mailbox: MailboxProps, dispatcher: DispatcherProps) {
+    var supervision: SupervisionProps
+
+    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, supervision: SupervisionProps) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
+        self.supervision = supervision
     }
 
     public init() {
-        self.init(mailbox: .default(), dispatcher: .default)
-    }
-
-    /// Creates copy of this [Props] changing the dispatcher props.
-    public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
-        return self.copy(dispatcher: dispatcher)
-    }
-    /// Creates copy of this [Props] changing the mailbox props.
-    public func withMailbox(_ mailbox: MailboxProps) -> Props {
-        return self.copy(mailbox: mailbox)
-    }
-
-    private func copy(
-        mailbox: MailboxProps? = nil,
-        dispatcher: DispatcherProps? = nil
-    ) -> Props {
-        return .init(
-            mailbox: mailbox ?? self.mailbox,
-            dispatcher: dispatcher ?? self.dispatcher
-        )
+        self.init(mailbox: .default(), dispatcher: .default, supervision: .init())
     }
 }
 
+// MARK: Dispatcher Props
+
 // TODO: likely better as class hierarchy, by we'll see...
+
+public extension Props {
+    /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
+    public static func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+        var props = Props()
+        props.dispatcher = dispatcher
+        return props
+    }
+    /// Creates copy of this `Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
+    public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+        var props = self
+        props.dispatcher = dispatcher
+        return props
+    }
+}
 
 public enum DispatcherProps {
 
@@ -80,7 +88,25 @@ public enum DispatcherProps {
     case PinnedThread
 }
 
+// MARK: Mailbox Props
+
+extension Props {
+    /// Creates a new `Props` with default values, and overrides the `mailbox` with the provided one.
+    public static func withMailbox(_ mailbox: MailboxProps) -> Props {
+        var props = Props()
+        props.mailbox = mailbox
+        return props
+    }
+    /// Creates copy of this `Props` changing the `mailbox` props.
+    public func withMailbox(_ mailbox: MailboxProps) -> Props {
+        var props = self
+        props.mailbox = mailbox
+        return props
+    }
+}
+
 public enum MailboxProps {
+    /// Default mailbox.
     case `default`(capacity: Int, onOverflow: MailboxOverflowStrategy)
 
     static func `default`(capacity: Int = Int.max) -> MailboxProps {

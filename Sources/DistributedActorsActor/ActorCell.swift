@@ -56,12 +56,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     // MARK: Fault handling infrastructure
 
-    // TODO: would be nice to not have to keep it around like this; however:
-    // from fault handling we need to be able to quickly invoke "the supervisor",
-    // and this may actually not only be ONE but a chain of them, since we want to apply the "inner most one"
-    // first and then we apply outer ones; this allows for stacking supervision. Note also that then we need to store them
-    // here during canonicalization... TODO: need to well define the expected behaviors here.
-    @usableFromInline internal var supervisedBy: Supervisor<Message>? = nil
+    // We always have a supervisor in place, even if it is just the ".stop" one.
+    @usableFromInline internal let supervisor: Supervisor<Message>
+    // TODO: we can likely optimize not having to call "through" supervisor if we are .stopped anyway
 
     // MARK: Death watch infrastructure
 
@@ -90,6 +87,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self._path = path
         self._props = props
         self._dispatcher = dispatcher
+
+        self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
         self.deathWatch = DeathWatch()
     }
@@ -185,17 +184,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
 
-        // FIXME TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR --------------
-        // TODO this will be fixed once we make supervision a special case, rather than an interceptor
-        // note that akka does not need this since they always have exceptions, and we need to do this extra dance; so we have to specialize the behavior type
-        if case .intercept(_, let interceptor) = self.behavior,
-           let supervisor = interceptor as? Supervisor<Message> {
-            self.supervisedBy = supervisor
-        }
-        // FIXME END OF TERRIBLE HACK TO DETECT IF WE HAVE SUPERVISOR -------
-
         // if a behavior was wrapped with supervision, this interpretMessage would encapsulate and contain the throw
-        let next = try self.behavior.interpretMessage(context: context, message: message)
+        let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
         #if SACT_TRACE_CELL
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
@@ -226,7 +216,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         switch message {
         // initialization
         case .start:
-            try self.interpretSystemStart()
+            try self.interpretStart()
 
         // death watch
         case let .watch(_, watcher):
@@ -265,86 +255,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @usableFromInline
     internal var continueRunning: Bool {
         return self.behavior.isStillAlive || self.children.nonEmpty
-    }
-
-    @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
-        if self.behavior.isStillAlive {
-            // TODO: make DeathWatch methods available via extension
-            self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
-        } else {
-            // so we are in the middle of terminating already anyway
-
-            // FIXME: The need of special casing here is a hack and should not be needed. It is because we too eagerly invoke finishTerminating when we do fail()
-            // finishTerminating() shall be the LAST thing an actor ever executes, thus no more watch processing after it has (since them myself is nil), so we hack around it here with the "fake path based ref"
-            switch _myselfInACell {
-            case .some(let cell):
-                watcher.sendSystemMessage(.terminated(ref: cell._boxAnyAddressableActorRef(), existenceConfirmed: true))
-            case .none:
-                watcher.sendSystemMessage(.terminated(ref: PathOnlyHackAnyAddressableActorRef(path: self.path), existenceConfirmed: true))
-            }
-        }
-    }
-
-    @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSystemMessages) {
-        self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO: make DeathWatch methods available via extension
-    }
-
-    /// Interpret incoming .terminated system message
-    ///
-    /// Mutates actor cell behavior.
-    /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
-    @inlinable internal func interpretTerminatedSignal(who deadRef: AnyAddressableActorRef, terminated: Signals.Terminated) throws {
-        #if SACT_TRACE_CELL
-        log.info("Received terminated: \(deadRef)")
-        #endif
-
-        guard self.deathWatch.receiveTerminated(terminated) else {
-            // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warning("Actor not known yet [\(terminated)] received for it. Ignoring.")
-            return
-        }
-
-        let next = try self.behavior.interpretSignal(context: self, signal: terminated)
-
-        switch next {
-        case .unhandled:
-            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
-            message: "Death Pact error: [\(context.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
-                "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
-        default:
-            try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
-        }
-    }
-    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {
-        #if SACT_TRACE_CELL
-        log.info("Received \(terminated)")
-        #endif
-
-        // we always first need to remove the now terminated child from our children
-        _ = self.children.removeChild(identifiedBy: terminatedRef.path)
-        // Implementation notes:
-        // Normally this does not happen, however it MAY occur when the parent actor (self)
-        // immediately performed a `stop()` on the child, and thus removes it from its
-        // children container immediately; The following termination notification would therefore
-        // reach the parent in which the child was already removed.
-
-        // next we may apply normal deathWatch logic if the child was being watched
-        if self.deathWatch.isWatching(path: terminatedRef.path) {
-            return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
-        } else {
-            // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
-
-            let next: Behavior<Message>
-            if case let .signalHandling(_, handleSignal) = self.behavior {
-                next = try handleSignal(context, terminated)
-            } else {
-                // no signal handling installed is semantically equivalent to unhandled
-                // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
-                next = Behavior<Message>.unhandled
-            }
-
-            try becomeNext(behavior: next)
-        }
     }
 
     /// Fails the actor using the passed in error.
@@ -395,7 +305,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     @inlinable public func restart(behavior: Behavior<Message>) throws {
         try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
         self.behavior = behavior
-        try self.interpretSystemStart()
+        try self.interpretStart()
     }
 
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
@@ -410,10 +320,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     }
 
     @inlinable
-    internal func interpretSystemStart() throws {
+    internal func interpretStart() throws {
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
 
-        traceLog_Cell("START on... \(self.behavior)")
+        traceLog_Cell("START with behavior: \(self.behavior)")
         let started = try self.behavior.start(context: self)
         try self.becomeNext(behavior: started)
     }
@@ -473,7 +383,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         parent.sendSystemMessage(.childTerminated(ref: myself._boxAnyAddressableActorRef()))
     }
 
-    // MARK: Spawn
+    // MARK: Spawn implementations
 
     public override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
         return try self.internal_spawn(behavior, name: name, props: props)
@@ -483,14 +393,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         return self.watch(try self.spawn(behavior, name: name, props: props))
     }
 
-    // TODO: spawnAnonymous
-
-    // TODO: spawnWatchedAnonymous
-
     public override func stop<M>(child ref: ActorRef<M>) throws {
         return try self.internal_stop(child: ref)
     }
-
 
     // MARK: Death Watch
 
@@ -502,6 +407,93 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.unwatch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
         return watchee
+    }
+}
+
+// MARK: Internal system message / signal handling functions
+
+extension ActorCell {
+    @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
+        if self.behavior.isStillAlive {
+            // TODO: make DeathWatch methods available via extension
+            self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
+        } else {
+            // so we are in the middle of terminating already anyway
+
+            // FIXME: The need of special casing here is a hack and should not be needed. It is because we too eagerly invoke finishTerminating when we do fail()
+            // finishTerminating() shall be the LAST thing an actor ever executes, thus no more watch processing after it has (since them myself is nil), so we hack around it here with the "fake path based ref"
+            switch _myselfInACell {
+            case .some(let cell):
+                watcher.sendSystemMessage(.terminated(ref: cell._boxAnyAddressableActorRef(), existenceConfirmed: true))
+            case .none:
+                watcher.sendSystemMessage(.terminated(ref: PathOnlyHackAnyAddressableActorRef(path: self.path), existenceConfirmed: true))
+            }
+        }
+    }
+
+    @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSystemMessages) {
+        self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO: make DeathWatch methods available via extension
+    }
+
+    /// Interpret incoming .terminated system message
+    ///
+    /// Mutates actor cell behavior.
+    /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
+    @inlinable internal func interpretTerminatedSignal(who deadRef: AnyAddressableActorRef, terminated: Signals.Terminated) throws {
+        #if SACT_TRACE_CELL
+        log.info("Received terminated: \(deadRef)")
+        #endif
+
+        guard self.deathWatch.receiveTerminated(terminated) else {
+            // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
+            log.warning("Actor not known yet [\(terminated)] received for it. Ignoring.")
+            return
+        }
+
+        let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+
+        switch next {
+        case .unhandled:
+            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
+                message: "Death Pact error: [\(context.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
+                    "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
+        default:
+            try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
+        }
+    }
+
+    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {
+        #if SACT_TRACE_CELL
+        log.info("Received \(terminated)")
+        #endif
+
+        // we always first need to remove the now terminated child from our children
+        _ = self.children.removeChild(identifiedBy: terminatedRef.path)
+        // Implementation notes:
+        // Normally this does not happen, however it MAY occur when the parent actor (self)
+        // immediately performed a `stop()` on the child, and thus removes it from its
+        // children container immediately; The following termination notification would therefore
+        // reach the parent in which the child was already removed.
+
+        // next we may apply normal deathWatch logic if the child was being watched
+        if self.deathWatch.isWatching(path: terminatedRef.path) {
+            return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
+        } else {
+            // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
+
+
+            let next: Behavior<Message>
+            if case .signalHandling = self.behavior {
+                // TODO we always want to call "through" the supervisor, make it more obvious that that should be the case internal API wise?
+                next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
+            } else {
+                // no signal handling installed is semantically equivalent to unhandled
+                // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
+                next = Behavior<Message>.unhandled
+            }
+
+            try becomeNext(behavior: next)
+        }
     }
 }
 
