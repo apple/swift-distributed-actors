@@ -259,7 +259,7 @@ internal class Guardian: ReceivesSystemMessages {
     }
 
     /// Stops all children and waits for them to signal termination
-    func stopAll() {
+    func stopAllAwait() {
         lock.synchronized {
             if self.children.isEmpty {
                 // if there are no children, we are done

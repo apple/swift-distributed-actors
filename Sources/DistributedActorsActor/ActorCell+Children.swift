@@ -151,7 +151,7 @@ extension Children {
 
     /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
     // We may open this up once it is requested enough however...
-    internal mutating func stopAll() {
+    public mutating func stopAll() {
         self.container.forEach { name, boxedRef in
             if self.markAsStoppingChild(identifiedBy: boxedRef.path) {
                 boxedRef.sendSystemMessage(.stop)
@@ -210,7 +210,6 @@ extension ActorCell: ChildActorRefFactory {
     }
 
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
-        // we immediately attempt the remove since
         guard ref.path.isChildPathOf(self.path) else {
             if ref.path == context.myself.path {
                 throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref)

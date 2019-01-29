@@ -216,7 +216,7 @@ class SupervisionTests: XCTestCase {
 
         pinfo("\(Date()) :: Giving enough breathing time to replenish the restart period (\(failurePeriod))")
         Thread.sleep(failurePeriod)
-        pinfo("\(Date()) :: Done seeping...")
+        pinfo("\(Date()) :: Done sleeping...")
 
         pinfo("2nd boom...")
         faultyWorker.tell(makeEvilMessage("Boom: 2nd period, 1st failure in period (2nd total) (\(runName))"))
@@ -264,7 +264,6 @@ class SupervisionTests: XCTestCase {
         })
         #endif
     }
-
     func test_restartSupervised_throws_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
             FaultyMessages.pleaseThrow(error: FaultyError.boom(message: msg))
@@ -274,6 +273,11 @@ class SupervisionTests: XCTestCase {
     func test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in 
             FaultyMessages.pleaseThrow(error: FaultyError.boom(message: msg))
+        })
+    }
+    func test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
+        try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in
+            FaultyMessages.pleaseFatalError(message: msg)
         })
     }
 

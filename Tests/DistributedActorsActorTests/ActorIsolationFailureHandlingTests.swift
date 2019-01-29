@@ -144,7 +144,6 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         workerReplacement.tell(.work(n: 1000, divideBy: 100))
         try pw.expectMessage(10)
-        // FIXME this is not complete
         #endif
     }
 
