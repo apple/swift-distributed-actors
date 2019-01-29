@@ -252,6 +252,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         case .stop:
             children.forEach { $0.sendSystemMessage(.stop) }
             try self.becomeNext(behavior: .stopped)
+
+        case let .timerSignal(key, generation, owner):
+            let timerSignal = Signals.TimerSignal(key: key, generation: generation, owner: owner)
+            let nextBehavior = try self.behavior.interpretSignal(context: self.context, signal: timerSignal)
+            try self.becomeNext(behavior: nextBehavior)
         }
 
         return self.continueRunning

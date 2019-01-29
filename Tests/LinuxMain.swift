@@ -50,5 +50,6 @@ import XCTest
          testCase(SupervisionTests.allTests),
          testCase(TimeAmountTests.allTests),
          testCase(TimeSpecTests.allTests),
+         testCase(TimersTests.allTests),
     ])
 #endif

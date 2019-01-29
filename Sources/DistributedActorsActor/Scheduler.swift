@@ -14,75 +14,80 @@
 
 import DistributedActorsConcurrencyHelpers
 import Dispatch
+import struct NIO.TimeAmount
 
-public protocol Cancellable {
+@usableFromInline
+protocol Cancelable {
     /// Attempts to cancel the cancellable. Returns true when successful, or false
     /// when unsuccessful, or it was already cancelled.
-    func cancel() -> Bool
+    func cancel()
 
     /// Returns true if the cancellable has already been cancelled, false otherwise.
-    func isCancelled() -> Bool
+    var isCanceled: Bool {
+        get
+    }
 }
 
-public protocol Scheduler {
-    func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable
+internal protocol Scheduler {
+    func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
 
-    func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable
+    func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
 
-    func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable
+    func schedule(initialDelay: TimeAmount, interval: TimeAmount, _ f: @escaping () -> Void) -> Cancelable
 
-//  public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
+    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable
 }
 
-class FlagCancellable: Cancellable {
+class FlagCancelable: Cancelable {
     private let flag = Atomic<Bool>(value: false)
 
-    func cancel() -> Bool {
-        return flag.compareAndExchange(expected: false, desired: true)
+    func cancel() {
+        _ = flag.compareAndExchange(expected: false, desired: true)
     }
 
-    func isCancelled() -> Bool {
+    var isCanceled: Bool {
         return flag.load()
+    }
+}
+
+extension DispatchWorkItem: Cancelable {
+    var isCanceled: Bool {
+        return self.isCancelled
     }
 }
 
 // TODO: this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
 extension DispatchQueue: Scheduler {
 
-    public func scheduleOnce(delay: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable {
-        let cancellable = FlagCancellable()
-        self.asyncAfter(deadline: .now() + delay) {
-            if (!cancellable.isCancelled()) {
-                f()
-            }
-        }
-
-        return cancellable
+    func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable {
+        let workItem = DispatchWorkItem(block: f)
+        self.asyncAfter(deadline: .now() + .nanoseconds(delay.nanoseconds), execute: workItem)
+        return workItem
     }
 
-    public func scheduleOnce<Message>(delay: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
+    func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
         return scheduleOnce(delay: delay) {
             receiver.tell(message)
         }
     }
 
-    public func schedule(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, _ f: @escaping () -> Void) -> Cancellable {
-        let cancellable = FlagCancellable()
+    func schedule(initialDelay: TimeAmount, interval: TimeAmount, _ f: @escaping () -> Void) -> Cancelable {
+        let cancellable = FlagCancelable()
 
-        func sched() -> Void {
-            if (!cancellable.isCancelled()) {
-                let nextDeadline = DispatchTime.now() + interval
+        func sched() {
+            if (!cancellable.isCanceled) {
+                let nextDeadline = DispatchTime.now() + .nanoseconds(interval.nanoseconds)
                 f()
                 self.asyncAfter(deadline: nextDeadline, execute: sched)
             }
         }
 
-        self.asyncAfter(deadline: .now() + initialDelay, execute: sched)
+        self.asyncAfter(deadline: .now() + .nanoseconds(initialDelay.nanoseconds), execute: sched)
 
         return cancellable
     }
 
-    public func schedule<Message>(initialDelay: DispatchTimeInterval, interval: DispatchTimeInterval, receiver: ActorRef<Message>, message: Message) -> Cancellable {
+    func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
         return schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }

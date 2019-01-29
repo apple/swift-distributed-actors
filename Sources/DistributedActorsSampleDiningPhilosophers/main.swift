@@ -35,10 +35,10 @@ let fork4: Fork.Ref = try! system.spawn(Fork.behavior, name: "fork-4")
 let fork5: Fork.Ref = try! system.spawn(Fork.behavior, name: "fork-5")
 
 // 5 philosophers, sitting in a circle, with the forks between them:
-let p1: Philosopher.Ref = try! system.spawn(Philosopher(left: fork5, right: fork1).thinking, name: "Konrad")
-let p2: Philosopher.Ref = try! system.spawn(Philosopher(left: fork1, right: fork2).thinking, name: "Dario")
-let p3: Philosopher.Ref = try! system.spawn(Philosopher(left: fork2, right: fork3).thinking, name: "Johannes")
-let p4: Philosopher.Ref = try! system.spawn(Philosopher(left: fork3, right: fork4).thinking, name: "Cory")
-let p5: Philosopher.Ref = try! system.spawn(Philosopher(left: fork4, right: fork5).thinking, name: "Norman")
+let p1: Philosopher.Ref = try! system.spawn(Philosopher(left: fork5, right: fork1).start, name: "Konrad")
+let p2: Philosopher.Ref = try! system.spawn(Philosopher(left: fork1, right: fork2).start, name: "Dario")
+let p3: Philosopher.Ref = try! system.spawn(Philosopher(left: fork2, right: fork3).start, name: "Johannes")
+let p4: Philosopher.Ref = try! system.spawn(Philosopher(left: fork3, right: fork4).start, name: "Cory")
+let p5: Philosopher.Ref = try! system.spawn(Philosopher(left: fork4, right: fork5).start, name: "Norman")
 
 Thread.sleep(.seconds(10))

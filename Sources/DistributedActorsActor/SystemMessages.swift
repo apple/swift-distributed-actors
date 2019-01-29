@@ -48,7 +48,8 @@ public /* but really internal... */ enum SystemMessage: Equatable { // TODO syst
     // TODO: this is incomplete
 
     // exciting future ideas:
-    // case setLogLevel(_ level: Logging.Level)
+    // case setLogLevel(_ level: LogLevel)
+    case timerSignal(key: String, generation: Int, owner: AnyReceivesSystemMessages)
 }
 
 // Implementation notes:
@@ -69,6 +70,8 @@ extension SystemMessage {
 
         case (.tombstone, .tombstone): return true
         case (.stop, .stop): return true
+        case let (.timerSignal(lKey, lGeneration, lOwner), .timerSignal(rKey, rGeneration, rOwner)):
+            return lKey == rKey && lGeneration == rGeneration && lOwner.path == rOwner.path
 
             // listing cases rather than a full-on `default` to get an error when we add a new system message
         case (.start, _),
@@ -77,7 +80,8 @@ extension SystemMessage {
              (.tombstone, _),
              (.terminated, _),
              (.childTerminated, _),
-             (.stop, _): return false
+             (.stop, _),
+             (.timerSignal, _): return false
         }
     }
 }
