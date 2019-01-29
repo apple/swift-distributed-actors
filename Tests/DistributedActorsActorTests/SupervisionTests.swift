@@ -108,12 +108,6 @@ class SupervisionTests: XCTestCase {
 
     // TODO: test a double fault (throwing inside of a supervisor
 
-    // TODO: test div by zero or similar things, all "should just work", but we want to know in case swift changes something
-
-    // TODO: test that does some really bad things and segfaults; we DO NOT want to handle this and should hard crash
-
-    // TODO: exceed max restarts counter of a restart supervisor
-
     // TODO: implement and test exponential backoff supervision
 
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
@@ -195,11 +189,12 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let strategy: SupervisionStrategy = .restart(atMost: 2, within: .seconds(1))
+        let failurePeriod: TimeAmount = .seconds(1) // .milliseconds(300)
+        let strategy: SupervisionStrategy = .restart(atMost: 2, within: failurePeriod)
         let supervisedBehavior: Behavior<FaultyMessages> = .supervise(self.faulty(probe: p.ref), withStrategy: strategy)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "\(runName)-erroring-2")
+            let _: ActorRef<FaultyMessages> = try context.spawn(supervisedBehavior, name: "\(runName)-erroring-within-2")
             return .same
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
@@ -213,23 +208,33 @@ class SupervisionTests: XCTestCase {
         faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
         try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
 
+        pinfo("1st boom...")
         faultyWorker.tell(makeEvilMessage("Boom: 1st (\(runName))"))
-        try p.expectNoTerminationSignal(for: .milliseconds(300)) // faulty worker did not terminate, it restarted
-        try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
+        try p.expectNoTerminationSignal(for: .milliseconds(30)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(10)) // parent did not terminate
+        guard case .setupRunning = try p.expectMessage() else { throw p.error() }
 
-        pinfo("Now expecting it to run setup again...")
-        guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.error() }
+        pinfo("\(Date()) :: Giving enough breathing time to replenish the restart period (\(failurePeriod))")
+        Thread.sleep(failurePeriod)
+        pinfo("\(Date()) :: Done seeping...")
 
-        // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
-        faultyWorkerRestarted.shouldEqual(faultyWorker)
+        pinfo("2nd boom...")
+        faultyWorker.tell(makeEvilMessage("Boom: 2nd period, 1st failure in period (2nd total) (\(runName))"))
+        try p.expectNoTerminationSignal(for: .milliseconds(30)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(10)) // parent did not terminate
+        guard case .setupRunning = try p.expectMessage() else { throw p.error() }
 
-        pinfo("Not expecting a reply from it")
-        faultyWorker.tell(.echo(message: "two", replyTo: p.ref))
-        try p.expectMessage(WorkerMessages.echo(message: "echo:two"))
+        pinfo("3rd boom...")
+        // cause another failure right away -- meaning in this period we are up to 2/2 failures
+        faultyWorker.tell(makeEvilMessage("Boom: 2nd period, 2nd failure in period (3rd total) (\(runName))"))
+        try p.expectNoTerminationSignal(for: .milliseconds(30)) // faulty worker did not terminate, it restarted
+        try pp.expectNoTerminationSignal(for: .milliseconds(10)) // parent did not terminate
 
-
-        faultyWorker.tell(makeEvilMessage("Boom: 2nd (\(runName))"))
-        try p.expectNoTerminationSignal(for: .milliseconds(300))
+        pinfo("4th boom...")
+        faultyWorker.tell(makeEvilMessage("Boom: 2nd period, 3rd failure in period (4th total) (\(runName))"))
+        try p.expectTerminated(faultyWorker)
+        try pp.expectNoTerminationSignal(for: .milliseconds(10)) // parent did not terminate
+        guard case .setupRunning = try p.expectMessage() else { throw p.error() }
 
         pinfo("Now it boomed but did not crash again!")
     }

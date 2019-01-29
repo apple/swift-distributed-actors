@@ -285,7 +285,7 @@ final class SimpleCounterRestartingSupervisor<Message>: Supervisor<Message> {
 
         self.failures += 1
         // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
+        traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") 
         // TODO has to modify restart counters here and supervise with modified supervisor
 
         (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
@@ -332,7 +332,7 @@ internal struct RestartStrategy {
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
-    private var restartsPeriodDeadline: Deadline = Deadline.distantFuture
+    private var restartsPeriodDeadline: Deadline = Deadline.distantPast
 
     init(maxRestarts: Int, within: TimeAmount) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
@@ -355,7 +355,7 @@ internal struct RestartStrategy {
     }
 
     private var periodHasTimeLeft:  Bool {
-        return self.restartsPeriodDeadline.hasTimeLeft()
+        return self.restartsPeriodDeadline.hasTimeLeft(until: .now())
     }
 
     private var isWithinMaxRestarts: Bool {
@@ -364,7 +364,7 @@ internal struct RestartStrategy {
     
     /// Human readable description of how the status of the restart supervision strategy
     var remainingRestartsDescription: String {
-        return "\(self.restartsWithinCurrentPeriod) of \(self.maxRestarts) max restarts consumed, within:\(within)"
+        return "\(self.restartsWithinCurrentPeriod) of \(self.maxRestarts) max restarts consumed, within: \(within.prettyDescription)"
     }
 }
 
@@ -382,11 +382,12 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+            traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
         // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
+        traceLog_Supervision("Supervision: RESTART from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") 
         // TODO has to modify restart counters here and supervise with modified supervisor
 
         (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
@@ -398,6 +399,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
         guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+            traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
