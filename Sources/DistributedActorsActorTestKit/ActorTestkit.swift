@@ -238,7 +238,12 @@ final class MockActorContext<Message>: ActorContext<Message> {
     }
 
     override var children: Children {
-        fatalError("Failed: \(MockActorContextError())")
+        get {
+            fatalError("Failed: \(MockActorContextError())")
+        }
+        set {
+            fatalError("Failed: \(MockActorContextError())")
+        }
     }
 
     override func stop<M>(child ref: ActorRef<M>) throws {

@@ -143,7 +143,13 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// For less dynamic scenarios it is recommended to keep actors refs in your own collection types or as values in your behavior,
     /// since looking up actors by name has an inherent seek cost associated with it.
     public var children: Children {
-        return undefined()
+        get {
+            return undefined()
+        }
+        set {
+            return undefined()
+        }
+
     }
 
     /// Stop a child actor identified by the passed in actor ref.

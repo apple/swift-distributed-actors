@@ -160,7 +160,7 @@ public enum Supervise {
 ///
 /// To implement a custom `Supervisor` you have to override:
 ///   - either (or both) the `handleMessageFailure` and `handleSignalFailure` methods,
-///   - and the `isSameAs` method.
+///   - and the `isSame(as:)` method.
 open class Supervisor<Message>: Interceptor<Message> {
 
     // By storing it like this we avoid another type parameter on the class,
@@ -288,8 +288,7 @@ final class SimpleCounterRestartingSupervisor<Message>: Supervisor<Message> {
         traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") 
         // TODO has to modify restart counters here and supervise with modified supervisor
 
-        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
-
+        context.children.stopAll()
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
         return try initialBehavior.start(context: context)._supervised(by: self)
@@ -306,7 +305,7 @@ final class SimpleCounterRestartingSupervisor<Message>: Supervisor<Message> {
         self.failures += 1
         traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
 
-        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+        context.children.stopAll()
 
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
@@ -330,6 +329,8 @@ internal struct RestartStrategy {
     let maxRestarts: Int
     let within: TimeAmount
 
+    typealias ShouldRestart = Bool
+
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
     private var restartsPeriodDeadline: Deadline = Deadline.distantPast
@@ -342,15 +343,17 @@ internal struct RestartStrategy {
         self.within = within
     }
 
-    /// By inspecting the current failing state decides if we should escalate or restart.
-    /// Returns: `true` if the actor should restart, `false` if it should escalate the error
-    mutating func attemptRestart() -> Bool {
+    /// Increment the failure counter (and possibly reset the failure period deadline).
+    ///
+    /// MUST be called whenever a failure reaches a supervisor.
+    mutating func recordFailure() -> ShouldRestart {
         if self.restartsPeriodDeadline.isOverdue() {
             // thus the next period starts, and we will start counting the failures within that time window anew
             self.restartsPeriodDeadline = .fromNow(self.within)
             self.restartsWithinCurrentPeriod = 0
         }
         self.restartsWithinCurrentPeriod += 1
+
         return self.periodHasTimeLeft && self.isWithinMaxRestarts
     }
 
@@ -381,7 +384,8 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+        let shouldRestart: RestartStrategy.ShouldRestart = self.strategy.recordFailure()
+        guard failure.shouldBeHandledBy(self) && shouldRestart else {
             traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
@@ -390,7 +394,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         traceLog_Supervision("Supervision: RESTART from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") 
         // TODO has to modify restart counters here and supervise with modified supervisor
 
-        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+        context.children.stopAll()
 
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
@@ -398,14 +402,15 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+        let shouldRestart: RestartStrategy.ShouldRestart = self.strategy.recordFailure()
+        guard failure.shouldBeHandledBy(self) && shouldRestart else {
             traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
         traceLog_Supervision("Supervision: RESTART form signal (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
 
-        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+        context.children.stopAll()
 
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
@@ -414,13 +419,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 
     // TODO complete impl
     override public func isSame(as other: Interceptor<Message>) -> Bool {
-        if other is RestartingSupervisor<Message> {
-            // we only check if the target restart behavior is the same; number of restarts is not taken into account
-            return true
-        } else {
-            return false
-        }
-
+        return other is RestartingSupervisor<Message>
     }
 }
 

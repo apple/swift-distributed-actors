@@ -83,6 +83,6 @@ internal struct LocalActorRefProvider: ActorRefProvider {
     }
 
     internal func stopAll() {
-        root.stopAll()
+        root.stopAllAwait()
     }
 }

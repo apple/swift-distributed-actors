@@ -36,11 +36,9 @@ class DeadlineTests: XCTestCase {
         let now = Deadline.now()
 
         let t1Millis = 12000
-        let t1 = TimeAmount.milliseconds(t1Millis)
         let d1 = now + .milliseconds(t1Millis)
 
         let t2Millis = 1200000
-        let t2 = TimeAmount.milliseconds(t2Millis)
         let d2 = now + .milliseconds(t2Millis)
 
         d1.isBefore(d2).shouldBeTrue()
