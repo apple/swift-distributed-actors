@@ -582,6 +582,28 @@ class SupervisionTests: XCTestCase {
         #endif
     }
 
+    func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior = Behavior<String>.receiveMessage { msg in
+            p.tell("crashing:\(msg)")
+            return .stopped { _ in
+                throw FaultyError.boom(message: "test")
+            }
+        }.supervised(withStrategy: .restart(atMost: 5))
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+
+        try p.expectMessage("crashing:test")
+        try p.expectTerminated(ref)
+
+        ref.tell("test2")
+        try p.expectNoMessage(for: .milliseconds(50))
+    }
+
     private struct PleaseReply: Error, Equatable, CustomStringConvertible {
         var description: String { return "PleaseReply" }
     }
