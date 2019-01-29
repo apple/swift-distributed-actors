@@ -37,12 +37,16 @@ public class Philosopher {
         self.right = right
     }
 
+    public lazy var start: Behavior<Messages> = .withTimers { timers in
+        return self.thinking(timers: timers)
+    }
+
     /// Initial and public state from which a Philosopher starts its life
-    public var thinking: SelfBehavior {
+    private func thinking(timers: Timers<Messages>) -> SelfBehavior {
         return .setup { context in
             context.log.info("I'm thinking...")
             // remember to eat after some time!
-            context.timers.scheduleOnce(after: .milliseconds(500), reminder: .eat)
+            timers.startSingleTimer(key: "eat", message: .eat, delay: .milliseconds(500))
 
             return .receiveMessage { msg in
                 switch msg {
@@ -50,7 +54,7 @@ public class Philosopher {
                     context.log.info("I'm becoming hungry, trying to grab forks...")
                     self.left.tell(Fork.Messages.take(by: context.myself))
                     self.right.tell(Fork.Messages.take(by: context.myself))
-                    return self.hungry
+                    return self.hungry(timers: timers)
 
                 case .think:
                     fatalError("Already thinking")
@@ -64,14 +68,14 @@ public class Philosopher {
     }
 
     /// A hungry philosopher is waiting to obtain both forks before it can start eating
-    private var hungry: SelfBehavior {
+    private func hungry(timers: Timers<Messages>) -> SelfBehavior {
         return .receive { (context, msg) in
             switch msg {
             case let .forkReply(.pickedUp(fork)):
                 let other: Fork.Ref = (fork == self.left) ? self.right : self.left
 
                 // context.log.info("Picked up \(fork), will now wait for the other one: \(other)")
-                return self.hungryAwaitingFinalFork(inHand: fork, pending: other)
+                return self.hungryAwaitingFinalFork(inHand: fork, pending: other, timers: timers)
 
             case .forkReply(.busy):
                 // let side = self.forkSideName(fork)
@@ -85,10 +89,10 @@ public class Philosopher {
                     case let .forkReply(.pickedUp(fork)):
                         // sadly we have to put it back, we know we won't succeed this time
                         fork.tell(.putBack(by: context.myself))
-                        return self.thinking
+                        return self.thinking(timers: timers)
                     case .forkReply(.busy(_)):
                         // we failed picking up either of the forks, time to become thinking about obtaining forks again
-                        return self.thinking
+                        return self.thinking(timers: timers)
                     default:
                         return .ignore
                     }
@@ -102,11 +106,11 @@ public class Philosopher {
         }
     }
 
-    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref) -> SelfBehavior {
+    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref, timers: Timers<Messages>) -> SelfBehavior {
         return .receive { (context, msg) in
             switch msg {
             case .forkReply(.pickedUp(pending)):
-                return self.eating
+                return self.eating(timers: timers)
             case let .forkReply(.pickedUp(fork)):
                 fatalError("Received fork which I already hold in hand: \(fork), this is wrong!")
 
@@ -114,7 +118,7 @@ public class Philosopher {
                 // context.log.info("The pending \(pending) busy, I'll think about obtaining it...")
                 // the Fork we attempted to pick up is already in use (busy), we'll back off and try again
                 inHand.tell(.putBack(by: context.myself))
-                return self.thinking
+                return self.thinking(timers: timers)
             case let .forkReply(.busy(fork)):
                 fatalError("Received fork busy response from an unexpected fork: \(fork)! Already in hand: \(inHand), and pending: \(pending)")
 
@@ -127,13 +131,13 @@ public class Philosopher {
 
     /// A state reached by successfully obtaining two forks and becoming "eating".
     /// Once the Philosopher is done eating, it will putBack both forks and become thinking again.
-    private var eating: SelfBehavior {
+    private func eating(timers: Timers<Messages>) -> SelfBehavior {
         return .setup { context in
             // here we act as if we "think and then eat"
             context.log.info("Setup eating, I have: \(self.left) and \(self.right)")
 
             // simulate that eating takes time; once done, notify myself to become thinking again
-            context.timers.scheduleOnce(after: .milliseconds(100), reminder: .think)
+            timers.startSingleTimer(key: "think", message: .think, delay: .milliseconds(100))
 
             return .receiveMessage { // TODO: `receiveExactly` would be nice here
                 switch $0 {
@@ -141,7 +145,7 @@ public class Philosopher {
                     context.log.info("I've had a good meal, returning forks, and become thinking!")
                     self.left.tell(.putBack(by: context.myself))
                     self.right.tell(.putBack(by: context.myself))
-                    return self.thinking
+                    return self.thinking(timers: timers)
 
                 default:
                     return .ignore // ignore eat and others, since I'm eating already!
