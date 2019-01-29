@@ -26,6 +26,7 @@ public enum Behavior<Message> {
     /// Defines a behavior that will be executed with an incoming message by its hosting actor.
     /// Additionally exposes `ActorContext` which can be used to e.g. log messages, spawn child actors etc.
     case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>) // TODO: make them throws?
+    // TODO stayReceive(_ handle: (ActorContext<Message>, Message) throws -> ()) which automatically does `return .same`?
 
     // TODO: receiveExactly(_ expected: Message, orElse: Behavior<Message> = /* .ignore */, atMost = /* 5.seconds */)
 
@@ -42,7 +43,7 @@ public enum Behavior<Message> {
     // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
     case custom(behavior: ActorBehavior<Message>)
 
-    /// Defines that the same behavior should remain
+    /// Defines that the same behavior should remain in use for handling the next message.
     case same
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
@@ -150,7 +151,7 @@ public enum IllegalBehaviorError<M>: Error {
 
 /// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
 open class ActorBehavior<Message> {
-    open func receive(context: ActorContext<Message>, message: Message) -> Behavior<Message> {
+    open func receive(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         return undefined(hint: "MUST override receive(context:message:) when extending ActorBehavior")
     }
 
@@ -164,12 +165,6 @@ open class ActorBehavior<Message> {
 /// Used in combination with `Behavior.intercept` to intercept messages and signals delivered to a behavior.
 open class Interceptor<Message> {
     public init() {}
-
-    // TODO: spent a lot of time trying to figure out the balance between using a struct or class here,
-    //       struct makes it quite weird to use, and using a protocol is hard since we need the associated type
-    //       and the supervisor has to be stored inside of the intercept() behavior, so that won't fly...
-    //       Implementing using class for now, and we may revisit; though supervision does not need to be high performance
-    //       it is more about "weight of actor ref that contains many layers of supervisors. though perhaps I'm over worrying
 
     @inlinable
     open func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
@@ -236,27 +231,22 @@ public extension Behavior {
     /// Note: The returned behavior MUST be [[Behavior.canonicalize]]-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
     @inlinable
-    func interpretMessage(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    func interpretMessage(context: ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> Behavior<Message> {
         switch self {
         case let .receiveMessage(recv):          return try recv(message)
         case let .receive(recv):                 return try recv(context, message)
-        case let .custom(behavior):              return behavior.receive(context: context, message: message) // TODO rename "custom"
+        case let .custom(behavior):              return try behavior.receive(context: context, message: message) // TODO rename "custom"
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .intercept(inner, interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
+        case let .orElse(first, second):         return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
         case .ignore:                            return .same // ignore message and remain .same
         case .unhandled:                         return FIXME("NOT IMPLEMENTED YET")
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
-        case .same: return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.")
-        case .setup: return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.")
-        case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)")
-        case .stopped:                           return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.")
-        case let .orElse(first, second):
-            var nextBehavior = try first.interpretMessage(context: context, message: message)
-            if nextBehavior.isUnhandled {
-                nextBehavior = try second.interpretMessage(context: context, message: message)
-            }
-            return nextBehavior
+        case .same:                     return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
+        case .setup:                    return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.", file: file, line: line)
+        case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
+        case .stopped:                  return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.", file: file, line: line)
         }
     }
 
@@ -282,6 +272,17 @@ public extension Behavior {
 
 /// Internal operations for behavior manipulation
 internal extension Behavior {
+
+    @inlinable
+    func interpretOrElse(context: ActorContext<Message>,
+                         first: Behavior<Message>, orElse second: Behavior<Message>, message: Message,
+                         file: StaticString = #file, line: UInt = #line) throws -> Behavior<Message> {
+        var nextBehavior = try first.interpretMessage(context: context, message: message, file: file, line: line)
+        if nextBehavior.isUnhandled {
+            nextBehavior = try second.interpretMessage(context: context, message: message, file: file, line: line)
+        }
+        return nextBehavior
+    }
 
     /// Applies `interpretMessage` to an iterator of messages, while canonicalizing the behavior after every reduction.
     @inlinable

@@ -89,12 +89,13 @@ public extension ActorTestKit {
     ///     probe.expectHandledMessageFailure()
     /// ```
     public func superviseWithSupervisionTestProbe<M>(_ behavior: Behavior<M>, withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> (Behavior<M>, SupervisorTestProbe<M>) {
-        let probe: ActorTestProbe<SupervisionProbeMessages<M>> = self.spawnTestProbe()
-        let underlying: Supervisor<M> = Supervision.supervisorFor(behavior, strategy, failureType)
-        let supervisorProbe = SupervisorTestProbe(probe: probe, underlying: underlying, failureType: failureType)
+//        let probe: ActorTestProbe<SupervisionProbeMessages<M>> = self.spawnTestProbe()
+//        let underlying: Supervisor<M> = Supervision.supervisorFor(behavior, strategy, failureType)
+//        let supervisorProbe = SupervisorTestProbe(probe: probe, underlying: underlying, failureType: failureType)
 
-        let supervised: Behavior<M> = ._supervise(behavior, withSupervisor: supervisorProbe)
-        return (supervised, supervisorProbe)
+        fatalError("NOT IMPLEMENTED in new scheme")
+//        let supervised: Behavior<M> = ._supervise(behavior, withSupervisor: supervisorProbe)
+//        return (supervised, supervisorProbe)
     }
 
     // TODO we COULD decide to offer a withSupervisor version as well; though I'm not keen on making it very prominent (withSupervisor) just yet
@@ -107,7 +108,6 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
     public init(probe: ActorTestProbe<SupervisionProbeMessages<Message>>, underlying: Supervisor<Message>, failureType: Error.Type) {
         self.probe = probe
         self.underlying = underlying
-        super.init(failureType: failureType)
     }
 
     override public func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
@@ -132,7 +132,7 @@ public final class SupervisorTestProbe<Message>: Supervisor<Message> {
         }
     }
 
-    override public func isSame(as other: Interceptor<Message>) -> Bool {
+    override public func isSame(as other: Supervisor<Message>) -> Bool {
         return false // TODO mock impl
     }
 }

@@ -229,6 +229,17 @@ extension TimeAmount {
     }
 }
 
+extension TimeAmount {
+    /// Largest time amount expressible using this type.
+    /// Roughly equivalent to 292 years, which for the intents and purposes of this type can serve as "infinite".
+    static var effectivelyInfinite: TimeAmount {
+        return TimeAmount(Value.max)
+    }
+    static var zero: TimeAmount {
+        return TimeAmount(0)
+    }
+}
+
 // MARK: Deadline
 
 // TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso

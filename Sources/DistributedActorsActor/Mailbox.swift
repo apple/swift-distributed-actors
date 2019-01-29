@@ -163,40 +163,34 @@ final class Mailbox<Message> {
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
             logger: self.cell.log,
             handleMessageFailure: { supervisionFailure, runPhase in
-                traceLog_Mailbox("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
+                traceLog_Supervision("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
-                if let supervisor = cell.supervisedBy {
+                let supervisionResultingBehavior: Behavior<Message>
 
-                    let supervisionResultingBehavior: Behavior<Message>
+                switch runPhase {
+                case .processingSystemMessages:
+                    supervisionResultingBehavior = try cell.supervisor.handleSignalFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
+                case .processingUserMessages:
+                    supervisionResultingBehavior = try cell.supervisor.handleMessageFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
+                }
 
-                    switch runPhase {
-                    case .processingSystemMessages:
-                        supervisionResultingBehavior = try supervisor.handleSignalFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
-                    case .processingUserMessages:
-                        supervisionResultingBehavior = try supervisor.handleMessageFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
-                    }
-
-                    // TODO: this handling MUST be aligned with the throws handling.
-                    switch supervisionResultingBehavior {
-                    case .stopped:
-                        // decision is to stop which is terminal, thus: Let it Crash!
-                        return .failure
-                    case .failed(let error): // TODO: Carry this error to supervision?
-                        // decision is to fail, Let it Crash!
-                        return .failure
-                    case let restartWithBehavior:
-                        // received new behavior, attempting restart:
-                        do {
-                            try cell.restart(behavior: restartWithBehavior)
-                        } catch {
-                            cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
-                            fatalError("Double fault while restarting actor \(cell.path). Terminating.")
-                        }
-                        return .failureRestart
-                    }
-                } else {
-                    // no need to log here as we'll log while crashing the actor
+                // TODO: this handling MUST be aligned with the throws handling.
+                switch supervisionResultingBehavior {
+                case .stopped:
+                    // decision is to stop which is terminal, thus: Let it Crash!
                     return .failure
+                case .failed(let error): // TODO: Carry this error to supervision?
+                    // decision is to fail, Let it Crash!
+                    return .failure
+                case let restartWithBehavior:
+                    // received new behavior, attempting restart:
+                    do {
+                        try cell.restart(behavior: restartWithBehavior)
+                    } catch {
+                        cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
+                        fatalError("Double fault while restarting actor \(cell.path). Terminating.")
+                    }
+                    return .failureRestart
                 }
             },
             describeMessage: { failedMessageRawPtr in

@@ -12,116 +12,129 @@
 //
 //===----------------------------------------------------------------------===//
 
-// MARK: Supervision behaviors
+// MARK: Supervision props and strategies
 
-extension Behavior {
+public struct SupervisionProps {
+    internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
 
-    // MARK: Supervise with SupervisionStrategy
+    public init() {
+        self.supervisionMappings = [:]
+    }
+    public mutating func add(strategy: SupervisionStrategy, for failureType: Error.Type) {
+        self.supervisionMappings[ErrorTypeIdentifier(failureType)] = strategy
+    }
+    public func adding(strategy: SupervisionStrategy, for failureType: Error.Type) -> SupervisionProps {
+        var p = self
+        p.add(strategy: strategy, for: failureType)
+        return p
+    }
+}
 
-    /// Wrap current behavior with a supervisor.
+public extension Props {
+    /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
+    public static func addSupervision(strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Props {
+        var props = Props()
+        props.supervision = props.supervision.adding(strategy: strategy, for: failureType)
+        return props
+    }
+
+    /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
+    public func addSupervision(strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Props {
+        var props = self
+        props.supervision.add(strategy: strategy, for: failureType)
+        return props
+    }
+}
+
+/// Supervision strategies are a way to select and configure pre-defined supervisors.
+public enum SupervisionStrategy {
+    /// Default supervision strategy applied to all actors, unless a different one is selected in their `Props`.
     ///
-    /// Supervisor wrappers MAY perform "flattening" of supervision wrapper behaviors, i.e. if attempting to wrap with
-    /// the same (or equivalent) supervisor an already supervised behavior, the wrapping may remove one of the wrappers.
-    /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
-    /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
-    /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
+    /// Semantically equivalent to not applying any supervision strategy at all, since not applying a strategy
+    /// also means that upon encountering a failure the given actor is terminated and all of its watchers are terminated.
+    ///
+    /// SeeAlso: - `DeathWatch` for discussion about how to be notified about an actor stopping / failing.
+    case stop
+
+    /// Supervision strategy allowing the supervised actor to be restarted `atMost` times `within` a time period.
+    ///
+    /// The following visualization may be useful in understanding failure periods and their meaning to the "intensity"
+    /// of how many restarts are allowed within a failure period:
+    /// ```
+    /// Assuming supervision with: .restart(atMost: 2, within: .seconds(10))
+    ///
+    ///      fail-per-1  fail-per-2                    failure-period-3
+    /// Tfp: 0123456789  0123456789                       0123456789
+    ///     [x        x][x         ][... no failures ...][x   x  x!!]`
+    ///      ^        ^  ^                                ^      ^
+    ///      |        |  |                                |      \ and whenever we hit a 3rd failure within it, we escalate (do do restart, and the actor is stopped)
+    ///      |        |  |                                \ any new failure after a while causes a new failure period
+    ///      |        |  \ another, 3rd in total, failure happens; however it is the beginning of a new failure period; we allow the restart
+    ///      |        \ another failure happens in before the end of the period, atMost: 2, so we perform the restart
+    ///      \- a failure begins a failure period of 10 seconds
+    /// ```
+    ///
+    /// WARNING: While it is possible to omit the `within` parameter, it has a specific effect which may not often be useful:
+    /// a `restart` supervision directive without a `within` parameter set effectively means that a given actor is allowed to restart
+    /// `atMost` times _in total_ (in its entire lifetime). This rarely is a behavior one would desire, however it may sometimes come in handy.
     ///
     /// Parameters:
-    ///  - `behavior` behavior that is going to be wrapped with supervision
-    ///  - `withStrategy` the supervision strategy for which a supervisor should be created and wrapped around the passed in behavior
-    ///  - `for` error type for which the supervisor should apply its logic, for all others it will escalate. See `Supervise` for special "catch all" error types.
-    ///
-    /// SeeAlso:
-    ///  - `supervisedWith(strategy)`
-    public static func supervise(_ behavior: Behavior<Message>, withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
-        let supervisor: Supervisor<Message> = Supervision.supervisorFor(behavior, strategy, failureType)
-        return ._supervise(behavior, withSupervisor: supervisor)
-    }
-
-    /// Wrap current behavior with a supervisor.
-    /// Fluent-API equivalent to `Behavior.supervise(strategy:)`.
-    ///
-    /// Supervisor wrappers MAY perform "flattening" of supervision wrapper behaviors, i.e. if attempting to wrap with
-    /// the same (or equivalent) supervisor an already supervised behavior, the wrapping may remove one of the wrappers.
-    /// For example, `receive` supervised with a `SupervisionStrategy.stop` which would be about to be wrapped in another
-    /// `supervise(alreadyStopSupervised, withStrategy: .stop)` would flatten the outer supervisor since it would have no change
-    /// in supervision semantics if it were to wrap the behavior with the another layer of the same supervision semantics.
-    ///
-    /// SeeAlso:
-    ///  - `supervise(_:withStrategy)`
-    public func supervised(withStrategy strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Behavior<Message> {
-        let supervisor = Supervision.supervisorFor(self, strategy, failureType)
-        return ._supervise(self, withSupervisor: supervisor)
-    }
-
-    // MARK: Internal API: Supervise with Supervisors
-
-    /// WARNING: Use with caution. For most uses it is highly recommended to stick to pre-defined supervision strategies.
-    ///
-    /// This API is a more powerful version of supervision which is able to accept (potentially stateful) supervisor implementations.
-    /// Those implementations MAY contain counters, timers and logic which determines how to handle a failure.
-    ///
-    /// Swift Distributed Actors provides the most important supervisors out of the box, which are selected and configured using supervision strategies.
-    /// Users are requested to use those instead, and if they seem lacking some feature, requests for specific features should be opened first.
-    internal static func _supervise<S: Supervisor<Message>>(_ behavior: Behavior<Message>, withSupervisor supervisor: S) -> Behavior<Message> {
-        // TODO: much nesting here, we can avoid it if we do .supervise as behavior rather than AN interceptor...
-        switch behavior {
-        case .intercept(_, let interceptor): // TODO need to look into inner too?
-            let existingSupervisor: Supervisor<Message>? = interceptor as? Supervisor<Message>
-            if existingSupervisor?.isSame(as: supervisor) ?? false {
-                // we perform no wrapping if the existing supervisor already handles everything the new one would.
-                // this allows us to avoid infinitely wrapping supervisors of the same behavior if someone wrote code
-                // returning `behavior.supervised(...)` inside their behavior.
-                return behavior
-            }
-        default:
-            break
-        }
-
-        return .intercept(behavior: behavior, with: supervisor)
-    }
-
-    /// WARNING: Use with caution. For most uses it is highly recommended to stick to pre-defined supervision strategies.
-    ///
-    /// Wrap current behavior with a supervisor.
-    /// Fluent-API equivalent to `Behavior.supervise(:withSupervisor:)`.
-    internal func _supervised(by supervisor: Supervisor<Message>) -> Behavior<Message> {
-        return ._supervise(self, withSupervisor: supervisor)
-    }
-}
-
-// MARK: Supervision strategies and supervisors
-
-/// Supervision strategies are a way to select and configure pre-defined supervisors included in Swift Distributed Actors.
-///
-/// These supervisors implement basic supervision patterns and can be combined by wrapping behaviors in multiple supervisors,
-/// e.g. by first attempting to restart immediately a few times, and then resorting to back off supervision etc.
-///
-/// In most cases it is not necessary to apply the `.stop` strategy, as this is the default behavior of actors with
-/// when no supervisors are present.
-public enum SupervisionStrategy {
-    case stop
-    case restart(atMost: Int, within: TimeAmount?) // TODO some renames here? the "typical one" is the with `within` after all
+    ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0.
+    ///   - `within`
+    case restart(atMost: Int, within: TimeAmount?) // TODO would like to remove the `?` and model more properly
     // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
 }
-public extension SupervisionStrategy {
-    static func restart(atMost: Int) -> SupervisionStrategy {
-        precondition(atMost > 0, "atMost MUST be > 0, was \(atMost)")
-        return .restart(atMost: atMost, within: nil)
+
+internal struct ErrorTypeIdentifier: Hashable, CustomStringConvertible {
+    let id: ObjectIdentifier
+    let failureType: Error.Type // keeping it around for human readability purposes more than anything else
+
+    init(_ forType: Error.Type) {
+        self.failureType = forType
+        self.id = ObjectIdentifier(forType)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        id.hash(into: &hasher)
+    }
+
+    static func ==(lhs: ErrorTypeIdentifier, rhs: ErrorTypeIdentifier) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    var description: String {
+        return "ErrorTypeIdentifier(forType: \(failureType))"
     }
 }
 
 public struct Supervision {
 
-    public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ failureType: Error.Type) -> Supervisor<Message> {
-        switch strategy {
-        case let .restart(atMost, .some(within)):
-            let strategy = RestartStrategy(maxRestarts: atMost, within: within)
-            return RestartingSupervisor(initialBehavior: behavior, strategy: strategy, failureType: failureType)
-        case let .restart(atMost, .none):
-            return SimpleCounterRestartingSupervisor(initialBehavior: behavior, failureType: failureType, maxRestarts: atMost)
-        case .stop:
-            return StoppingSupervisor(failureType: failureType) // TODO: strategy could carry additional configuration
+    internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: Behavior<Message>, props: SupervisionProps) -> Supervisor<Message> {
+        func supervisorFor0(failureType: Error.Type, strategy: SupervisionStrategy) -> Supervisor<Message> {
+            switch strategy {
+            case let .restart(atMost, within):
+                let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within)
+                return RestartingSupervisor(initialBehavior: initialBehavior, restartLogic: strategy, failureType: failureType)
+            case .stop:
+                return StoppingSupervisor(failureType: failureType)
+            }
+        }
+
+        switch props.supervisionMappings.count {
+        case 0:
+            // "no supervisor" is equivalent to a stopping one, this way we can centralize reporting and logging of failures
+            return StoppingSupervisor(failureType: Supervise.AllFailures.self)
+        case 1:
+            let (key, strategy) = props.supervisionMappings.first!
+            return supervisorFor0(failureType: key.failureType, strategy: strategy)
+        default:
+            var supervisors: [Supervisor<Message>] = []
+            supervisors.reserveCapacity(props.supervisionMappings.count)
+            for (key, strategy) in props.supervisionMappings {
+                let supervisor = supervisorFor0(failureType: key.failureType, strategy: strategy)
+                supervisors.append(supervisor)
+            }
+            return CompositeSupervisor(supervisors: supervisors)
         }
     }
 
@@ -158,31 +171,18 @@ public enum Supervise {
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
-/// To implement a custom `Supervisor` you have to override:
-///   - either (or both) the `handleMessageFailure` and `handleSignalFailure` methods,
-///   - and the `isSame(as:)` method.
-open class Supervisor<Message>: Interceptor<Message> {
+/// Currently not for user extension.
+@usableFromInline
+internal class Supervisor<Message> {
 
-    // By storing it like this we avoid another type parameter on the class,
-    // yet still are able to perform == checks on failures when they happen.
-    //
-    // If we ever wanted to implement `failure is E` checks (which would work with subclasses),
-    // we'd have to carry the generic E in the Supervisor type; Discussion if it is worth it here:
-    // https://github.com/apple/swift-distributed-actors/issues/252
-    fileprivate let canHandle: Error.Type
-
-    public init(failureType: Error.Type) {
-        self.canHandle = failureType
-        super.init()
-    }
-
-    override open func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    @inlinable
+    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         do {
-            pprint("INTERCEPT MSG APPLY: \(target) @@@@ [\(message)]:\(type(of: message))")
+            traceLog_Supervision("CALL WITH SUPERVISION: \(target) @@@@ [\(message)]:\(type(of: message))")
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(err)]:\(type(of: err)) while interpreting message, handling with \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(err)]:\(type(of: err)) while interpreting message, handling with \(self)", error: error)
             do {
                 return try self.handleMessageFailure(context, target: target, failure: .error(err)).validatedAsInitial()
             } catch {
@@ -191,13 +191,14 @@ open class Supervisor<Message>: Interceptor<Message> {
         }
     }
 
-    override open func interceptSignal(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    @inlinable
+    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         do {
-            pprint("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
+            traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
             return try target.interpretSignal(context: context, signal: signal)
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting signal, handling with \(self)")
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting signal, handling with \(self)", error: error)
             do {
                 return try self.handleMessageFailure(context, target: target, failure: .error(error)).validatedAsInitial()
             } catch {
@@ -220,114 +221,101 @@ open class Supervisor<Message>: Interceptor<Message> {
         return undefined()
     }
 
+    /// Implement and return `true` if this supervisor can handle the failure or not.
+    /// If `false` is returned and other supervisors are present, they will be tied in order, until a supervisor which
+    /// can handle the failure is found, or if no such supervisor exists the failure will cause the actor to crash (as expected).
+    open func canHandle(failure: Supervision.Failure) -> Bool {
+        return undefined()
+    }
+
     /// Invoked when wrapping (with this `Supervisor`) a `Behavior` that already is supervised.
     ///
     /// The method is always invoked _on_ the existing supervisor with the "new" supervisor.
     /// If this method returns `true` the new supervisor will be dropped and no wrapping will be performed.
-    override open func isSame(as other: Interceptor<Message>) -> Bool {
+    func isSame(as other: Supervisor<Message>) -> Bool {
         return undefined()
     }
 }
 
 
 final class StoppingSupervisor<Message>: Supervisor<Message> {
-    override init(failureType: Error.Type) {
-        super.init(failureType: failureType)
+    internal let failureType: Error.Type
+
+    internal init(failureType: Error.Type) {
+        self.failureType = failureType
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) else {
-            return .stopped // TODO .escalate ???
+        guard failure.shouldBeHandled(bySupervisorHandling: failureType) else {
+            // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
+            return .stopped // TODO .escalate could be nicer
         }
 
         return .stopped
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) else {
-            return .stopped // TODO .escalate ???
+        guard self.canHandle(failure: failure) else {
+            // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
+            return .stopped // TODO .escalate could be nicer
         }
 
         return .stopped
     }
 
-    // TODO complete impl
-    override func isSame(as other: Interceptor<Message>) -> Bool {
-        if other is StoppingSupervisor<Message> {
-            // we could have more configuration options to check here
-            return true
+    override func isSame(as other: Supervisor<Message>) -> Bool {
+        if let other = other as? StoppingSupervisor<Message> {
+            return self.failureType == other.failureType
         } else {
             return false
         }
     }
+
+    override func canHandle(failure: Supervision.Failure) -> Bool {
+        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+    }
 }
 
-final class SimpleCounterRestartingSupervisor<Message>: Supervisor<Message> {
+// There are a few ways we could go about implementing this, we currently do a simple scan for "first one that handles",
+// which should be quite good enough esp. since we expect the supervisors to be usually not more than just a few.
+//
+// The scan also makes implementing the "catch" all types `Supervision.AllFailures` etc simpler rather than having to search
+// the underlying map for the catch all handlers as well as the specific error.
+final class CompositeSupervisor<Message>: Supervisor<Message> {
+    private let supervisors: [Supervisor<Message>]
 
-    internal let initialBehavior: Behavior<Message>
-
-    private var failures: Int = 0
-    private let maxRestarts: Int
-
-    public init(initialBehavior behavior: Behavior<Message>, failureType: Error.Type, maxRestarts: Int) {
-        self.initialBehavior = behavior
-        self.maxRestarts = maxRestarts
-        super.init(failureType: failureType)
+    init(supervisors: [Supervisor<Message>]) {
+        assert(supervisors.count > 1, "There is no need to use a composite supervisor if only one supervisor is passed in. Consider this a Swift Distributed Actors bug.")
+        self.supervisors = supervisors
+        super.init()
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) else {
-            return .stopped // TODO .escalate ???
+        for supervisor in supervisors {
+            if supervisor.canHandle(failure: failure) {
+                return try supervisor.handleMessageFailure(context, target: target, failure: failure)
+            }
         }
-        if self.failures >= self.maxRestarts {
-            return .stopped
-        }
-
-        self.failures += 1
-        // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from message (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)") 
-        // TODO has to modify restart counters here and supervise with modified supervisor
-
-        context.children.stopAll()
-        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
-
-        return try initialBehavior.start(context: context)._supervised(by: self)
+        return .stopped // TODO: escalate could be nicer
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard failure.shouldBeHandledBy(self) else {
-            return .stopped // TODO .escalate ???
+        for supervisor in supervisors {
+            if supervisor.canHandle(failure: failure) {
+                return try supervisor.handleMessageFailure(context, target: target, failure: failure)
+            }
         }
-        if self.failures >= self.maxRestarts {
-            return .stopped
-        }
-
-        self.failures += 1
-        traceLog_Supervision("Supervision: RESTART form signal (\(self.failures)-th time), failure was: \(failure)! >>>> \(initialBehavior)")
-
-        context.children.stopAll()
-
-        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
-
-        return try initialBehavior.start(context: context)._supervised(by: self)
+        return .stopped // TODO: escalate could be nicer
     }
 
-    // TODO complete impl
-    override public func isSame(as other: Interceptor<Message>) -> Bool {
-        if other is RestartingSupervisor<Message> {
-            // we only check if the target restart behavior is the same; number of restarts is not taken into account
-            return true
-        } else {
-            return false
-        }
-
+    override func canHandle(failure: Supervision.Failure) -> Bool {
+        return self.supervisors.contains { $0.canHandle(failure: failure) }
     }
 }
 
-/// Encapsulates logic surrounding deciding to restart an actor or not.
-internal struct RestartStrategy {
+internal struct RestartDecisionLogic {
     let maxRestarts: Int
-    let within: TimeAmount
+    let within: TimeAmount?
 
     typealias ShouldRestart = Bool
 
@@ -335,12 +323,18 @@ internal struct RestartStrategy {
     private var restartsWithinCurrentPeriod: Int = 0
     private var restartsPeriodDeadline: Deadline = Deadline.distantPast
 
-    init(maxRestarts: Int, within: TimeAmount) {
+    init(maxRestarts: Int, within: TimeAmount?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
-        precondition(within.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
-
         self.maxRestarts = maxRestarts
-        self.within = within
+        if let failurePeriodTime = within {
+            precondition(failurePeriodTime.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
+            self.within = failurePeriodTime
+        } else {
+            // if within was not set, we treat is as if "no time limit", which we mimic by a Deadline far far away in time
+            self.restartsPeriodDeadline = .distantFuture
+            self.within = nil
+        }
+
     }
 
     /// Increment the failure counter (and possibly reset the failure period deadline).
@@ -349,7 +343,10 @@ internal struct RestartStrategy {
     mutating func recordFailure() -> ShouldRestart {
         if self.restartsPeriodDeadline.isOverdue() {
             // thus the next period starts, and we will start counting the failures within that time window anew
-            self.restartsPeriodDeadline = .fromNow(self.within)
+
+            // ! safe, because we are guaranteed to never exceed the .distantFuture deadline that is set when within is nil
+            let failurePeriodTimeAmount = self.within!
+            self.restartsPeriodDeadline = .fromNow(failurePeriodTimeAmount)
             self.restartsWithinCurrentPeriod = 0
         }
         self.restartsWithinCurrentPeriod += 1
@@ -367,58 +364,63 @@ internal struct RestartStrategy {
     
     /// Human readable description of how the status of the restart supervision strategy
     var remainingRestartsDescription: String {
-        return "\(self.restartsWithinCurrentPeriod) of \(self.maxRestarts) max restarts consumed, within: \(within.prettyDescription)"
+        var s = "\(self.restartsWithinCurrentPeriod) of \(self.maxRestarts) max restarts consumed"
+        if let within = self.within {
+            s += ", within: \(within.prettyDescription)"
+        }
+        return s
     }
 }
 
 final class RestartingSupervisor<Message>: Supervisor<Message> {
+    internal let failureType: Error.Type
 
     internal let initialBehavior: Behavior<Message>
 
-    private var strategy: RestartStrategy
+    private var restartDecider: RestartDecisionLogic
 
-    public init(initialBehavior behavior: Behavior<Message>, strategy: RestartStrategy, failureType: Error.Type) {
+    public init(initialBehavior behavior: Behavior<Message>, restartLogic: RestartDecisionLogic, failureType: Error.Type) {
         self.initialBehavior = behavior
-        self.strategy = strategy
-        super.init(failureType: failureType)
+        self.restartDecider = restartLogic
+        self.failureType = failureType
     }
 
     override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        let shouldRestart: RestartStrategy.ShouldRestart = self.strategy.recordFailure()
-        guard failure.shouldBeHandledBy(self) && shouldRestart else {
-            traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+        let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
+        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
+            traceLog_Supervision("Supervision: STOP from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
         // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") 
+        traceLog_Supervision("Supervision: RESTART from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") 
         // TODO has to modify restart counters here and supervise with modified supervisor
 
         context.children.stopAll()
 
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
-        return try initialBehavior.start(context: context)._supervised(by: self)
+        return try initialBehavior.start(context: context)
     }
 
     override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        let shouldRestart: RestartStrategy.ShouldRestart = self.strategy.recordFailure()
-        guard failure.shouldBeHandledBy(self) && shouldRestart else {
-            traceLog_Supervision("Supervision: STOP from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+        let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
+        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
+            traceLog_Supervision("Supervision: STOP from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
-        traceLog_Supervision("Supervision: RESTART form signal (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+        traceLog_Supervision("Supervision: RESTART form signal (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
 
         context.children.stopAll()
 
         _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
 
-        return try initialBehavior.start(context: context)._supervised(by: self)
+        return try initialBehavior.start(context: context)
     }
 
     // TODO complete impl
-    override public func isSame(as other: Interceptor<Message>) -> Bool {
+    override public func isSame(as other: Supervisor<Message>) -> Bool {
         return other is RestartingSupervisor<Message>
     }
 }
@@ -426,22 +428,20 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 extension RestartingSupervisor: CustomStringConvertible {
     public var description: String {
         // TODO: don't forget to include config in string repr once we do it
-        return "RestartingSupervisor(initialBehavior: \(initialBehavior), strategy: \(self.strategy), canHandle: \(self.canHandle))"
+        return "RestartingSupervisor(initialBehavior: \(initialBehavior), strategy: \(self.restartDecider), canHandle: \(self.failureType))"
     }
 }
 
-// MARK: Supervision.Failure extensions for more fluent writing of supervisors
-
-extension Supervision.Failure {
-    func shouldBeHandledBy<M>(_ supervisor: Supervisor<M>) -> Bool {
-        let supervisorHandlesEverything = supervisor.canHandle == Supervise.AllFailures.self
+fileprivate extension Supervision.Failure {
+    func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
+        let supervisorHandlesEverything = handledType == Supervise.AllFailures.self
 
         func matchErrorTypes0() -> Bool {
             switch self {
             case .error(let error):
-                return supervisor.canHandle == Supervise.AllErrors.self || supervisor.canHandle == type(of: error)
+                return handledType == Supervise.AllErrors.self || handledType == type(of: error)
             case .fault(let errorRepr):
-                return supervisor.canHandle == Supervise.AllFaults.self || supervisor.canHandle == type(of: errorRepr)
+                return handledType == Supervise.AllFaults.self || handledType == type(of: errorRepr)
             }
         }
 
