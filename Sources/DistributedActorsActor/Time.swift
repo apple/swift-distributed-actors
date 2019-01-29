@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
+import struct Foundation.Date
 import struct Dispatch.DispatchTime
 
 // TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
@@ -208,6 +208,27 @@ extension TimeAmount {
     }
 }
 
+extension TimeAmount {
+    var microseconds: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
+    }
+    var milliseconds: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
+    }
+    var seconds: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
+    }
+    var minutes: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
+    }
+    var hours: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
+    }
+    var days: Int64 {
+        return self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
+    }
+}
+
 // MARK: Deadline
 
 // TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso
@@ -297,17 +318,17 @@ public extension Deadline {
 
     /// - Returns: true if the deadline is still pending with respect to the passed in `now` time instant
     public func hasTimeLeft() -> Bool {
-        return self.hasTimeLeft(.now())
+        return self.hasTimeLeft(until: .now())
     }
-    public func hasTimeLeft(_ until: Deadline) -> Bool {
-        return !self.isOverdue(until)
+    public func hasTimeLeft(until: Deadline) -> Bool {
+        return !self.isBefore(until)
     }
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
     public func isOverdue() -> Bool {
-        return self.isOverdue(.now())
+        return self.isBefore(.now())
     }
-    public func isOverdue(_ until: Deadline) -> Bool {
+    public func isBefore(_ until: Deadline) -> Bool {
         return self.uptimeNanoseconds < until.uptimeNanoseconds
     }
 

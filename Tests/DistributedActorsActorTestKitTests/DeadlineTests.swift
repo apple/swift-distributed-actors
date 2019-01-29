@@ -25,23 +25,25 @@ class DeadlineTests: XCTestCase {
         let beforeDeadline = now - .seconds(100)
         let pastDeadline = now + .seconds(10)
 
-        now.isOverdue(Deadline.distantPast).shouldBeFalse()
-        now.isOverdue(beforeDeadline).shouldBeFalse()
-        now.isOverdue(now).shouldBeFalse()
-        now.isOverdue(pastDeadline).shouldBeTrue()
-        now.isOverdue(Deadline.distantFuture).shouldBeTrue()
+        now.isBefore(Deadline.distantPast).shouldBeFalse()
+        now.isBefore(beforeDeadline).shouldBeFalse()
+        now.isBefore(now).shouldBeFalse()
+        now.isBefore(pastDeadline).shouldBeTrue()
+        now.isBefore(Deadline.distantFuture).shouldBeTrue()
     }
 
     func test_deadline_remainingShouldReturnExpectedTimeAmounts() {
         let now = Deadline.now()
 
         let t1Millis = 12000
-        let t1 = TimeAmount.milliseconds(Int64(t1Millis))
+        let t1 = TimeAmount.milliseconds(t1Millis)
         let d1 = now + .milliseconds(t1Millis)
 
         let t2Millis = 1200000
         let t2 = TimeAmount.milliseconds(t2Millis)
         let d2 = now + .milliseconds(t2Millis)
+
+        d1.isBefore(d2).shouldBeTrue()
     }
 
     func test_deadline_hasTimeLeft() {
@@ -49,11 +51,11 @@ class DeadlineTests: XCTestCase {
         let beforeDeadline = now - .seconds(100)
         let pastDeadline = now + .seconds(10)
 
-        now.hasTimeLeft(Deadline.distantPast).shouldBeTrue()
-        now.hasTimeLeft(beforeDeadline).shouldBeTrue()
-        now.hasTimeLeft(pastDeadline).shouldBeFalse()
-        now.hasTimeLeft(now).shouldBeTrue()
-        now.hasTimeLeft(Deadline.distantFuture).shouldBeFalse()
+        now.hasTimeLeft(until: Deadline.distantPast).shouldBeTrue()
+        now.hasTimeLeft(until: beforeDeadline).shouldBeTrue()
+        now.hasTimeLeft(until: pastDeadline).shouldBeFalse()
+        now.hasTimeLeft(until: now).shouldBeTrue()
+        now.hasTimeLeft(until: Deadline.distantFuture).shouldBeFalse()
     }
 
     func test_fromNow() {
