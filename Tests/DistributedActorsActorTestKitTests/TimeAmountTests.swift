@@ -14,8 +14,8 @@
 
 import XCTest
 import Foundation
+@testable import Swift Distributed ActorsActor
 @testable import SwiftDistributedActorsActorTestKit
-import NIO
 
 class TimeAmountTests: XCTestCase {
 

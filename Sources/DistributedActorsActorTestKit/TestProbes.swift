@@ -15,7 +15,6 @@
 import Foundation
 @testable import Swift Distributed ActorsActor
 import DistributedActorsConcurrencyHelpers
-import NIO // TODO: feels so so to import entire NIO for the TimeAmount only hm...
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
@@ -232,12 +231,12 @@ extension ActorTestProbe {
     @discardableResult
     private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
         // FIXME implement by scheduling checks rather than spinning
-        let deadline = Deadline.fromNow(amount: timeout)
+        let deadline = Deadline.fromNow(timeout)
 
         var lastObservedError: Error? = nil
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
-        while !deadline.isOverdue(now: Date()) {
+        while !deadline.isOverdue(.now()) {
             do {
                 let res: T = try block()
                 return res

@@ -14,59 +14,52 @@
 
 import XCTest
 import Foundation
-import NIO
 @testable import SwiftDistributedActorsActorTestKit
+import Swift Distributed ActorsActor
 
 class DeadlineTests: XCTestCase {
 
 
     func test_deadline_nowIsNotPastNow() {
-        let now = Date()
-        let beforeDeadline = now - 100
-        let pastDeadline = now + 10
+        let now = Deadline.now()
+        let beforeDeadline = now - .seconds(100)
+        let pastDeadline = now + .seconds(10)
 
-        let deadline = Deadline(instant: now)
-        deadline.isOverdue(now: Date.distantPast).shouldBeFalse()
-        deadline.isOverdue(now: beforeDeadline).shouldBeFalse()
-        deadline.isOverdue(now: now).shouldBeFalse()
-        deadline.isOverdue(now: pastDeadline).shouldBeTrue()
-        deadline.isOverdue(now: Date.distantFuture).shouldBeTrue()
+        now.isOverdue(Deadline.distantPast).shouldBeFalse()
+        now.isOverdue(beforeDeadline).shouldBeFalse()
+        now.isOverdue(now).shouldBeFalse()
+        now.isOverdue(pastDeadline).shouldBeTrue()
+        now.isOverdue(Deadline.distantFuture).shouldBeTrue()
     }
 
     func test_deadline_remainingShouldReturnExpectedTimeAmounts() {
-        let now = Date()
+        let now = Deadline.now()
 
         let t1Millis = 12000
-        let t1 = TimeAmount.milliseconds(t1Millis)
-        let d1 = Deadline(instant: now.addingTimeInterval(TimeInterval(exactly: t1Millis / 1000)!))
-        d1.remainingFrom(now).prettyDescription().shouldEqual(t1.prettyDescription())
+        let t1 = TimeAmount.milliseconds(Int64(t1Millis))
+        let d1 = now + .milliseconds(t1Millis)
 
         let t2Millis = 1200000
         let t2 = TimeAmount.milliseconds(t2Millis)
-        let d2 = Deadline(instant: now.addingTimeInterval(TimeInterval(exactly: t2Millis / 1000)!))
-        d2.remainingFrom(now).prettyDescription().shouldEqual(t2.prettyDescription())
+        let d2 = now + .milliseconds(t2Millis)
     }
 
     func test_deadline_hasTimeLeft() {
-        let now = Date()
-        let beforeDeadline = now - 100
-        let pastDeadline = now + 10
+        let now = Deadline.now()
+        let beforeDeadline = now - .seconds(100)
+        let pastDeadline = now + .seconds(10)
 
-        let deadline = Deadline(instant: now)
-
-        deadline.hasTimeLeft(now: Date.distantPast).shouldBeTrue()
-        deadline.hasTimeLeft(now: beforeDeadline).shouldBeTrue()
-        deadline.hasTimeLeft(now: pastDeadline).shouldBeFalse()
-        deadline.hasTimeLeft(now: now).shouldBeTrue()
-        deadline.hasTimeLeft(now: Date.distantFuture).shouldBeFalse()
+        now.hasTimeLeft(Deadline.distantPast).shouldBeTrue()
+        now.hasTimeLeft(beforeDeadline).shouldBeTrue()
+        now.hasTimeLeft(pastDeadline).shouldBeFalse()
+        now.hasTimeLeft(now).shouldBeTrue()
+        now.hasTimeLeft(Deadline.distantFuture).shouldBeFalse()
     }
 
     func test_fromNow() {
-        let now = Date()
-        let deadline = Deadline.fromNow(now, amount: .seconds(1))
+        let now = Deadline.now()
+        let deadline = Deadline.fromNow(.seconds(3))
 
-        deadline.instant.shouldEqual(now + 1)
-
-        (Deadline.fromNow(amount: .hours(1)).instant > Date()).shouldBeTrue()
+        XCTAssert(now < deadline)
     }
 }

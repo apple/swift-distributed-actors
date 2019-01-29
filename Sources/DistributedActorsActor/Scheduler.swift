@@ -14,7 +14,6 @@
 
 import DistributedActorsConcurrencyHelpers
 import Dispatch
-import struct NIO.TimeAmount
 
 @usableFromInline
 protocol Cancelable {
@@ -61,7 +60,7 @@ extension DispatchQueue: Scheduler {
 
     func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable {
         let workItem = DispatchWorkItem(block: f)
-        self.asyncAfter(deadline: .now() + .nanoseconds(delay.nanoseconds), execute: workItem)
+        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
         return workItem
     }
 
@@ -76,13 +75,13 @@ extension DispatchQueue: Scheduler {
 
         func sched() {
             if (!cancellable.isCanceled) {
-                let nextDeadline = DispatchTime.now() + .nanoseconds(interval.nanoseconds)
+                let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
                 f()
                 self.asyncAfter(deadline: nextDeadline, execute: sched)
             }
         }
 
-        self.asyncAfter(deadline: .now() + .nanoseconds(initialDelay.nanoseconds), execute: sched)
+        self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(initialDelay.nanoseconds)), execute: sched)
 
         return cancellable
     }

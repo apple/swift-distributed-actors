@@ -27,9 +27,8 @@ public typealias TimeSpec = timespec
 // utilities to convert between TimeAmount and C timespec
 public extension TimeSpec {
     public static func from(timeAmount amount: TimeAmount) -> timespec {
-        let seconds = amount.nanoseconds / NANOS
-        let nanos = amount.nanoseconds % NANOS
-
+        let seconds = Int(amount.nanoseconds) / NANOS
+        let nanos = Int(amount.nanoseconds) % NANOS
         var time = timespec()
         time.tv_sec = seconds
         time.tv_nsec = nanos
@@ -51,11 +50,11 @@ public extension TimeSpec {
 }
 
 extension TimeSpec: Comparable {
-    public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+    public static func <(lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         return lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
     }
 
-    public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+    public static func ==(lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         return lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
     }
 }
