@@ -12,9 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct NIO.TimeAmount
-
-
 // MARK: Supervision behaviors
 
 extension Behavior {
@@ -104,16 +101,27 @@ extension Behavior {
 /// when no supervisors are present.
 public enum SupervisionStrategy {
     case stop
-    case restart(atMost: Int) // TODO: within: TimeAmount etc
+    case restart(atMost: Int, within: TimeAmount?) // TODO some renames here? the "typical one" is the with `within` after all
     // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
+}
+public extension SupervisionStrategy {
+    static func restart(atMost: Int) -> SupervisionStrategy {
+        precondition(atMost > 0, "atMost MUST be > 0, was \(atMost)")
+        return .restart(atMost: atMost, within: nil)
+    }
 }
 
 public struct Supervision {
 
     public static func supervisorFor<Message>(_ behavior: Behavior<Message>, _ strategy: SupervisionStrategy, _ failureType: Error.Type) -> Supervisor<Message> {
         switch strategy {
-        case .stop: return StoppingSupervisor(failureType: failureType) // TODO: strategy could carry additional configuration
-        case let .restart(atMost): return RestartingSupervisor(initialBehavior: behavior, failureType: failureType, maxRestarts: atMost) // TODO: strategy could carry additional configuration
+        case let .restart(atMost, .some(within)):
+            let strategy = RestartStrategy(maxRestarts: atMost, within: within)
+            return RestartingSupervisor(initialBehavior: behavior, strategy: strategy, failureType: failureType)
+        case let .restart(atMost, .none):
+            return SimpleCounterRestartingSupervisor(initialBehavior: behavior, failureType: failureType, maxRestarts: atMost)
+        case .stop:
+            return StoppingSupervisor(failureType: failureType) // TODO: strategy could carry additional configuration
         }
     }
 
@@ -254,14 +262,12 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
     }
 }
 
-final class RestartingSupervisor<Message>: Supervisor<Message> {
+final class SimpleCounterRestartingSupervisor<Message>: Supervisor<Message> {
 
     internal let initialBehavior: Behavior<Message>
 
     private var failures: Int = 0
     private let maxRestarts: Int
-
-    // TODO Implement respecting restart(atMost restarts: Int) !!!
 
     public init(initialBehavior behavior: Behavior<Message>, failureType: Error.Type, maxRestarts: Int) {
         self.initialBehavior = behavior
@@ -308,7 +314,104 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     }
 
     // TODO complete impl
-    override open func isSame(as other: Interceptor<Message>) -> Bool {
+    override public func isSame(as other: Interceptor<Message>) -> Bool {
+        if other is RestartingSupervisor<Message> {
+            // we only check if the target restart behavior is the same; number of restarts is not taken into account
+            return true
+        } else {
+            return false
+        }
+
+    }
+}
+
+/// Encapsulates logic surrounding deciding to restart an actor or not.
+internal struct RestartStrategy {
+    let maxRestarts: Int
+    let within: TimeAmount
+
+    // counts how many times we failed during the "current" `within` period
+    private var restartsWithinCurrentPeriod: Int = 0
+    private var restartsPeriodDeadline: Deadline = Deadline.distantFuture
+
+    init(maxRestarts: Int, within: TimeAmount) {
+        precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
+        precondition(within.nanoseconds > 0, "RestartStrategy.within MUST be > 0. For supervision without time bounds (i.e. absolute count of restarts allowed) use `.restart(:atMost)` instead.")
+
+        self.maxRestarts = maxRestarts
+        self.within = within
+    }
+
+    /// By inspecting the current failing state decides if we should escalate or restart.
+    /// Returns: `true` if the actor should restart, `false` if it should escalate the error
+    mutating func attemptRestart() -> Bool {
+        if self.restartsPeriodDeadline.isOverdue() {
+            // thus the next period starts, and we will start counting the failures within that time window anew
+            self.restartsPeriodDeadline = .fromNow(self.within)
+            self.restartsWithinCurrentPeriod = 0
+        }
+        self.restartsWithinCurrentPeriod += 1
+        return self.periodHasTimeLeft && self.isWithinMaxRestarts
+    }
+
+    private var periodHasTimeLeft:  Bool {
+        return self.restartsPeriodDeadline.hasTimeLeft()
+    }
+
+    private var isWithinMaxRestarts: Bool {
+        return self.restartsWithinCurrentPeriod <= self.maxRestarts
+    }
+    
+    /// Human readable description of how the status of the restart supervision strategy
+    var remainingRestartsDescription: String {
+        return "\(self.restartsWithinCurrentPeriod) of \(self.maxRestarts) max restarts consumed, within:\(within)"
+    }
+}
+
+final class RestartingSupervisor<Message>: Supervisor<Message> {
+
+    internal let initialBehavior: Behavior<Message>
+
+    private var strategy: RestartStrategy
+
+    public init(initialBehavior behavior: Behavior<Message>, strategy: RestartStrategy, failureType: Error.Type) {
+        self.initialBehavior = behavior
+        self.strategy = strategy
+        super.init(failureType: failureType)
+    }
+
+    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+            return .stopped // TODO .escalate ???
+        }
+
+        // TODO make proper .ordinalString function
+        traceLog_Supervision("Supervision: RESTART from message (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") // TODO introduce traceLog for supervision
+        // TODO has to modify restart counters here and supervise with modified supervisor
+
+        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+
+        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
+
+        return try initialBehavior.start(context: context)._supervised(by: self)
+    }
+
+    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+        guard failure.shouldBeHandledBy(self) && self.strategy.attemptRestart() else {
+            return .stopped // TODO .escalate ???
+        }
+
+        traceLog_Supervision("Supervision: RESTART form signal (\(self.strategy.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+
+        (context as! ActorCell<Message>).stopAllChildren() // FIXME this must be doable without casting
+
+        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
+
+        return try initialBehavior.start(context: context)._supervised(by: self)
+    }
+
+    // TODO complete impl
+    override public func isSame(as other: Interceptor<Message>) -> Bool {
         if other is RestartingSupervisor<Message> {
             // we only check if the target restart behavior is the same; number of restarts is not taken into account
             return true
@@ -322,7 +425,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 extension RestartingSupervisor: CustomStringConvertible {
     public var description: String {
         // TODO: don't forget to include config in string repr once we do it
-        return "RestartingSupervisor(initialBehavior: \(initialBehavior), failures: \(failures), canHandle: \(self.canHandle))"
+        return "RestartingSupervisor(initialBehavior: \(initialBehavior), strategy: \(self.strategy), canHandle: \(self.canHandle))"
     }
 }
 

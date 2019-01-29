@@ -16,6 +16,7 @@
 import Swift Distributed ActorsActor
 import DistributedActorsConcurrencyHelpers
 import NIO
+import struct Swift Distributed ActorsActor.TimeAmount // FIXME: figure out not conflicting...
 import Foundation
 
 // MARK: Test Harness

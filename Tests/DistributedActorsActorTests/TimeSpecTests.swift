@@ -15,7 +15,6 @@
 import XCTest
 import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
-import NIO
 
 fileprivate let NANOS = 1_000_000_000
 
@@ -39,9 +38,9 @@ class TimeSpecTests: XCTestCase {
     }
 
     func test_timeSpecShouldBeCreatedProperlyFromTimeAmount() {
-        total.toNanos().shouldEqual(totalAmount.nanoseconds)
-        total.tv_sec.shouldEqual(secondsAmount.nanoseconds / NANOS)
-        total.tv_nsec.shouldEqual(nanosAmount.nanoseconds)
+        total.toNanos().shouldEqual(Int(totalAmount.nanoseconds))
+        total.tv_sec.shouldEqual(Int(totalAmount.nanoseconds) / NANOS)
+        total.tv_nsec.shouldEqual(Int(totalAmount.nanoseconds) % NANOS)
     }
 
     func test_timeSpecAdd() {
