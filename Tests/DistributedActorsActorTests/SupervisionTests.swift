@@ -208,30 +208,38 @@ class SupervisionTests: XCTestCase {
     // MARK: Handling faults
 
     func test_stopSupervised_fatalError_shouldStop() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
             FaultyMessages.pleaseFatalError(message: msg)
         })
+        #endif
     }
 
     func test_restartSupervised_fatalError_shouldRestart() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
             FaultyMessages.pleaseFatalError(message: msg)
         })
+        #endif
     }
 
     // MARK: Handling faults, divide by zero
     // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
 
     func test_stopSupervised_divideByZero_shouldStop() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
             FaultyMessages.pleaseDivideByZero
         })
+        #endif
     }
 
     func test_restartSupervised_divideByZero_shouldRestart() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
             FaultyMessages.pleaseDivideByZero
         })
+        #endif
     }
 
     // MARK: Flattening supervisors so we do not end up with infinite stacks of same supervisor
@@ -387,7 +395,9 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_faultInSignalHandling_shouldRestart() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .faulting)
+        #endif
     }
 
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
@@ -494,6 +504,7 @@ class SupervisionTests: XCTestCase {
 
     }
     func test_supervisor_shouldOnlyHandle_anyFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
 
         let supervisedThrower: ActorRef<Error> = try system.spawn(
@@ -511,8 +522,10 @@ class SupervisionTests: XCTestCase {
 
         supervisedThrower.tell(PleaseReply())
         try p.expectNoMessage(for: .milliseconds(50))
+        #endif
     }
     func test_supervisor_shouldOnlyHandle_anyFailure() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let p = testKit.spawnTestProbe(expecting: PleaseReply.self)
 
         let supervisedThrower: ActorRef<Error> = try system.spawn(
@@ -531,6 +544,7 @@ class SupervisionTests: XCTestCase {
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
+        #endif
     }
 
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
@@ -563,7 +577,9 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .faulting)
+        #endif
     }
 
     private struct PleaseReply: Error, Equatable, CustomStringConvertible {

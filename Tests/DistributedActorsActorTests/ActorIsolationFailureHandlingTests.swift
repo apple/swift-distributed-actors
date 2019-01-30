@@ -100,6 +100,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-2")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-2")
 
@@ -144,9 +145,11 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         workerReplacement.tell(.work(n: 1000, divideBy: 100))
         try pw.expectMessage(10)
         // FIXME this is not complete
+        #endif
     }
 
     func test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-3")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
@@ -187,6 +190,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
         workerReplacement.tell(.work(n: 1000, divideBy: 100))
         try pw.expectMessage(10)
+        #endif
     }
 
     func test_crashOutsideOfActor_shouldStillFailLikeUsual() throws {
