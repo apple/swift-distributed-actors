@@ -48,6 +48,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     // on each message being applied the actor may return a new behavior that will be handling the next message.
     public var behavior: Behavior<Message>
 
+    override public var timers: Timers<Message> {
+        return self._timers
+    }
+
+    lazy var _timers: Timers<Message> = Timers(context: self)
+
     internal let _parent: AnyReceivesSystemMessages
 
     internal let _path: UniqueActorPath
@@ -242,11 +248,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         case .stop:
             children.forEach { $0.sendSystemMessage(.stop) }
             try self.becomeNext(behavior: .stopped)
-
-        case let .timerSignal(key, generation, owner):
-            let timerSignal = Signals.TimerSignal(key: key, generation: generation, owner: owner)
-            let nextBehavior = try self.behavior.interpretSignal(context: self.context, signal: timerSignal)
-            try self.becomeNext(behavior: nextBehavior)
         }
 
         return self.continueRunning
@@ -319,6 +320,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
     @inlinable public func restart(behavior: Behavior<Message>) throws {
+        self.timers.cancelAll()
         try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
         self.behavior = behavior
         try self.interpretStart()
@@ -366,6 +368,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
+
+        self.timers.cancelAll()
 
         // TODO avoid notifying parent two times (!)
         self.notifyWatchersWeDied()

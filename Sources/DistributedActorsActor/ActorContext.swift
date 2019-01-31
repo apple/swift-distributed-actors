@@ -72,6 +72,10 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    public var timers: Timers<Message> {
+        return undefined()
+    }
+
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
     /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
@@ -170,8 +174,8 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self] in
-            selfRef?.myself._downcastUnsafe.sendClosure($0)
+        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
+            selfRef?.sendClosure($0)
         }
     }
 }
