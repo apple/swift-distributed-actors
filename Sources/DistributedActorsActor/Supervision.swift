@@ -15,17 +15,20 @@
 // MARK: Supervision props and strategies
 
 public struct SupervisionProps {
-    internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
+    // internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
+    // on purpose stored as list, to keep order in which the supervisors are added as we "scan" from first to last when we handle
+    internal var supervisionMappings: [ErrorTypeBoundSupervisionStrategy]
 
     public init() {
-        self.supervisionMappings = [:]
+        self.supervisionMappings = []
     }
-    public mutating func add(strategy: SupervisionStrategy, for failureType: Error.Type) {
-        self.supervisionMappings[ErrorTypeIdentifier(failureType)] = strategy
+
+    public mutating func add(strategy: SupervisionStrategy, failureType: Error.Type) {
+        self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: failureType, strategy: strategy))
     }
     public func adding(strategy: SupervisionStrategy, errorType failureType: Error.Type) -> SupervisionProps {
         var p = self
-        p.add(strategy: strategy, for: failureType)
+        p.add(strategy: strategy, failureType: failureType)
         return p
     }
 }
@@ -59,7 +62,7 @@ public extension Props {
     ///   - `forType` error type selector, determining for what type of error the given supervisor should perform its logic.
     public func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
-        props.supervision.add(strategy: strategy, for: errorType)
+        props.supervision.add(strategy: strategy, failureType: errorType)
         return props
     }
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
@@ -111,26 +114,9 @@ public enum SupervisionStrategy {
     // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
 }
 
-internal struct ErrorTypeIdentifier: Hashable, CustomStringConvertible {
-    let id: ObjectIdentifier
-    let failureType: Error.Type // keeping it around for human readability purposes more than anything else
-
-    init(_ forType: Error.Type) {
-        self.failureType = forType
-        self.id = ObjectIdentifier(forType)
-    }
-
-    func hash(into hasher: inout Hasher) {
-        id.hash(into: &hasher)
-    }
-
-    static func ==(lhs: ErrorTypeIdentifier, rhs: ErrorTypeIdentifier) -> Bool {
-        return lhs.id == rhs.id
-    }
-
-    var description: String {
-        return "ErrorTypeIdentifier(forType: \(failureType))"
-    }
+internal struct ErrorTypeBoundSupervisionStrategy {
+    let failureType: Error.Type
+    let strategy: SupervisionStrategy
 }
 
 public struct Supervision {
@@ -151,13 +137,13 @@ public struct Supervision {
             // "no supervisor" is equivalent to a stopping one, this way we can centralize reporting and logging of failures
             return StoppingSupervisor(failureType: Supervise.AllFailures.self)
         case 1:
-            let (key, strategy) = props.supervisionMappings.first!
-            return supervisorFor0(failureType: key.failureType, strategy: strategy)
+            let typeBoundStrategy = props.supervisionMappings.first!
+            return supervisorFor0(failureType: typeBoundStrategy.failureType, strategy: typeBoundStrategy.strategy)
         default:
             var supervisors: [Supervisor<Message>] = []
             supervisors.reserveCapacity(props.supervisionMappings.count)
-            for (key, strategy) in props.supervisionMappings {
-                let supervisor = supervisorFor0(failureType: key.failureType, strategy: strategy)
+            for typeBoundStrategy in props.supervisionMappings {
+                let supervisor = supervisorFor0(failureType: typeBoundStrategy.failureType, strategy: typeBoundStrategy.strategy)
                 supervisors.append(supervisor)
             }
             return CompositeSupervisor(supervisors: supervisors)
