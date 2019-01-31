@@ -32,6 +32,8 @@ extension SupervisionTests {
                 ("test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod", test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod),
                 ("test_stopSupervised_divideByZero_shouldStop", test_stopSupervised_divideByZero_shouldStop),
                 ("test_restartSupervised_divideByZero_shouldRestart", test_restartSupervised_divideByZero_shouldRestart),
+                ("test_compositeSupervisor_shouldHandleUsingTheRightHandler", test_compositeSupervisor_shouldHandleUsingTheRightHandler),
+                ("test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler", test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler),
                 ("test_throwInSignalHandling_shouldRestart", test_throwInSignalHandling_shouldRestart),
                 ("test_faultInSignalHandling_shouldRestart", test_faultInSignalHandling_shouldRestart),
                 ("test_supervise_notSuperviseStackOverflow", test_supervise_notSuperviseStackOverflow),

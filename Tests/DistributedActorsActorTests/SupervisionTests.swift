@@ -104,9 +104,9 @@ class SupervisionTests: XCTestCase {
 
             _ = try self.system.spawn(behavior, name: "example",
                 props: Props()
-                    .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1)), for: EasilyCatchable.self)
+                    .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
                     .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                    .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)) // we allow 10 crashes _in total_ for this actor
+                    .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
             )
         }
     }
@@ -303,8 +303,54 @@ class SupervisionTests: XCTestCase {
         #endif
     }
 
-    // MARK: Flattening supervisors so we do not end up with infinite stacks of same supervisor
-    // TODO: implement for new scheme
+    // MARK: Composite handler tests
+
+    func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
+        let probe = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+
+        let faultyWorker = try system.spawn(self.faulty(probe: probe.ref), name: "compositeFailures-1", 
+            props: Props()
+                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
+                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self))
+
+        probe.watch(faultyWorker)
+
+        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
+        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        faultyWorker.tell(.pleaseThrow(error: EasilyCatchable()))
+        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        faultyWorker.tell(.pleaseThrow(error: CantTouchThis()))
+        try probe.expectTerminated(faultyWorker)
+    }
+
+    func test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler() throws {
+        let probe = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+
+        let faultyWorker = try system.spawn(self.faulty(probe: probe.ref), name: "compositeFailures-1", 
+            props: Props()
+                .addSupervision(strategy: .restart(atMost: 2, within: nil), forAll: .faults)
+                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self) // should not the limit that .faults has
+                .addSupervision(strategy: .restart(atMost: 1, within: nil), forAll: .failures) // matters, but first in chain is .faults with the 3 limit
+            )
+
+        probe.watch(faultyWorker)
+
+        faultyWorker.tell(.pleaseDivideByZero)
+        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        faultyWorker.tell(.pleaseDivideByZero)
+        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
+        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        faultyWorker.tell(.pleaseDivideByZero)
+        try probe.expectTerminated(faultyWorker)
+    }
+
+    // TODO: we should nail down and spec harder exact semantics of the failure counting, I'd say we do.
+    // I think that IFF we do subclassing checks then it makes sense to only increment the specific supervisor,
+    // but since we do NOT do the subclassing let's keep to the "linear scan during which we +1 every encountered one"
+    // and when we hit the right one we trigger its logic. In other words the counts are cumulative within the period --
+    // regardless which failures they caused...? Then one could argue that we need to always +1 all of them, which also is fair...
+    // All in all, TODO and cement the meaning in docs and tests.
 
     // MARK: Handling faults inside receiveSignal
 
@@ -438,7 +484,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "thrower-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), for: EasilyCatchable.self))
+            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forErrorType: EasilyCatchable.self))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -459,7 +505,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "thrower-2",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), for: Supervise.AllErrors.self))
+            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -481,7 +527,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "mr-fawlty-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), for: Supervise.AllFaults.self))
+            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .faults))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -503,7 +549,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "any-failure-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), for: Supervise.AllFailures.self))
+            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .failures))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -579,18 +625,11 @@ class SupervisionTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
-    private struct PleaseReply: Error, Equatable, CustomStringConvertible {
-        var description: String { return "PleaseReply" }
-    }
-    private struct EasilyCatchable: Error, Equatable, CustomStringConvertible {
-        var description: String { return "EasilyCatchable" }
-    }
-    private struct PleaseFatalError: Error, Equatable, CustomStringConvertible {
-        var description: String { return "PleaseFatalError" }
-    }
-    private struct CatchMe: Error, Equatable, CustomStringConvertible {
-        var description: String { return "CatchMe" }
-    }
+    private struct PleaseReply: Error, Equatable {}
+    private struct EasilyCatchable: Error, Equatable {}
+    private struct CantTouchThis: Error, Equatable {}
+    private struct PleaseFatalError: Error, Equatable {}
+    private struct CatchMe: Error, Equatable {}
 
 }
 
