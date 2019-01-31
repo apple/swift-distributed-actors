@@ -30,13 +30,11 @@ class TimersTests: XCTestCase {
     func test_startSingleTimer_shouldSendSingleMessage() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<String> = .setup { _ in
-            return .withTimers { timers in
-                timers.startSingleTimer(key: "message", message: "fromTimer", delay: .microseconds(100))
-                return .receiveMessage { message in
-                    p.tell(message)
-                    return .same
-                }
+        let behavior: Behavior<String> = .setup { context in
+            context.timers.startSingleTimer(key: "message", message: "fromTimer", delay: .microseconds(100))
+            return .receiveMessage { message in
+                p.tell(message)
+                return .same
             }
         }
 
@@ -48,19 +46,17 @@ class TimersTests: XCTestCase {
     func test_startPeriodicTimer_shouldSendPeriodicMessage() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<String> = .setup { _ in
-            return .withTimers { timers in
-                var i = 0
-                timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
-                return .receiveMessage { message in
-                    i += 1
-                    p.tell(message)
+        let behavior: Behavior<String> = .setup { context in
+            var i = 0
+            context.timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
+            return .receiveMessage { message in
+                i += 1
+                p.tell(message)
 
-                    if i >= 5 {
-                        return .stopped
-                    } else {
-                        return .same
-                    }
+                if i >= 5 {
+                    return .stopped
+                } else {
+                    return .same
                 }
             }
         }
@@ -75,19 +71,17 @@ class TimersTests: XCTestCase {
     func test_periodicTimer_shouldStopWhenCanceled() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<String> = .setup { _ in
-            return .withTimers { timers in
-                var i = 0
-                timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
-                return .receiveMessage { message in
-                    i += 1
-                    p.tell(message)
+        let behavior: Behavior<String> = .setup { context in
+            var i = 0
+            context.timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
+            return .receiveMessage { message in
+                i += 1
+                p.tell(message)
 
-                    if i >= 5 {
-                        timers.cancelTimer(forKey: "message")
-                    }
-                    return .same
+                if i >= 5 {
+                    context.timers.cancelTimer(forKey: "message")
                 }
+                return .same
             }
         }
 
@@ -99,49 +93,37 @@ class TimersTests: XCTestCase {
     }
 
     func test_singleTimer_shouldStopWhenCanceled() throws {
-        let timerProbe: ActorTestProbe<Signals.TimerSignal> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior = Behavior<String>.setup { _ in
-            return .withTimers { timers in
-                // We start the timer without delay and then sleep for a short
-                // amount of time, so the timer is triggered and sends the message.
-                // Because we cancel the timer in the same run, the message should
-                // not be processed and the probe should not receive a message.
-                timers.startSingleTimer(key: "message", message: "fromTimer", delay: .nanoseconds(0))
-                Swift Distributed ActorsActor.Thread.sleep(.milliseconds(10))
-                timers.cancelTimer(forKey: "message")
-                return .receiveMessage { message in
-                    p.tell(message)
-                    return .same
-                }
+        let behavior = Behavior<String>.setup { context in
+            // We start the timer without delay and then sleep for a short
+            // amount of time, so the timer is triggered and sends the message.
+            // Because we cancel the timer in the same run, the message should
+            // not be processed and the probe should not receive a message.
+            context.timers.startSingleTimer(key: "message", message: "fromTimer", delay: .nanoseconds(0))
+            Swift Distributed ActorsActor.Thread.sleep(.milliseconds(10))
+            context.timers.cancelTimer(forKey: "message")
+            return .receiveMessage { message in
+                p.tell(message)
+                return .same
             }
-        }.receiveSignal { _, signal in
-            if let s = signal as? Signals.TimerSignal {
-                timerProbe.tell(s)
-            }
-
-            return .same
         }
 
         _ = try system.spawnAnonymous(behavior)
-        _ = try timerProbe.expectMessage()
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
     func test_timers_cancelAllShouldStopAllTimers() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<String> = .setup { _ in
-            return .withTimers { timers in
-                timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
-                timers.startPeriodicTimer(key: "message2", message: "fromTimer2", interval: .milliseconds(50))
-                timers.startPeriodicTimer(key: "message3", message: "fromTimer3", interval: .milliseconds(50))
-                return .receiveMessage { message in
-                    p.tell(message)
-                    timers.cancelAll()
-                    return .same
-                }
+        let behavior: Behavior<String> = .setup { context in
+            context.timers.startPeriodicTimer(key: "message", message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodicTimer(key: "message2", message: "fromTimer2", interval: .milliseconds(50))
+            context.timers.startPeriodicTimer(key: "message3", message: "fromTimer3", interval: .milliseconds(50))
+            return .receiveMessage { message in
+                p.tell(message)
+                context.timers.cancelAll()
+                return .same
             }
         }
 

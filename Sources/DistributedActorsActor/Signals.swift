@@ -80,13 +80,6 @@ public enum Signals {
         }
     }
 
-    @usableFromInline
-    struct TimerSignal: Signal {
-        let key: String
-        let generation: Int
-        let owner: AnyReceivesSystemMessages
-    }
-
     /// This is sent right before an actor gets restarted
     public struct PreRestart: Signal {
         @usableFromInline
