@@ -23,7 +23,7 @@ public struct SupervisionProps {
     public mutating func add(strategy: SupervisionStrategy, for failureType: Error.Type) {
         self.supervisionMappings[ErrorTypeIdentifier(failureType)] = strategy
     }
-    public func adding(strategy: SupervisionStrategy, for failureType: Error.Type) -> SupervisionProps {
+    public func adding(strategy: SupervisionStrategy, errorType failureType: Error.Type) -> SupervisionProps {
         var p = self
         p.add(strategy: strategy, for: failureType)
         return p
@@ -31,18 +31,44 @@ public struct SupervisionProps {
 }
 
 public extension Props {
-    /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
-    public static func addSupervision(strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Props {
+    /// Creates a new `Props` appending an supervisor for the selected failure type.
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
+    ///
+    /// Parameters:
+    ///   - `strategy` supervision strategy to apply for the given class of failures
+    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    public static func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
-        props.supervision = props.supervision.adding(strategy: strategy, for: failureType)
+        props.supervision = props.supervision.adding(strategy: strategy, errorType: errorType)
         return props
+    }
+    /// Creates a new `Props` appending an supervisor for the selected failure type.
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
+    ///
+    /// Parameters:
+    ///   - `strategy` supervision strategy to apply for the given class of failures
+    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    public static func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
-    public func addSupervision(strategy: SupervisionStrategy, for failureType: Error.Type = Supervise.AllFailures.self) -> Props {
+    ///
+    /// Parameters:
+    ///   - `strategy` supervision strategy to apply for the given class of failures
+    ///   - `forType` error type selector, determining for what type of error the given supervisor should perform its logic.
+    public func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
-        props.supervision.add(strategy: strategy, for: failureType)
+        props.supervision.add(strategy: strategy, for: errorType)
         return props
+    }
+    /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
+    ///
+    /// Parameters:
+    ///   - `strategy` supervision strategy to apply for the given class of failures
+    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    public func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 }
 
@@ -164,9 +190,30 @@ public struct Supervision {
 // MARK: Phantom types for registering supervisors
 
 public enum Supervise {
-    public enum AllErrors: Error {}
-    public enum AllFaults: Error {}
-    public enum AllFailures: Error {}
+
+    /// Supervision failure "catch all" selectors.
+    /// By configuring supervision with one of the following you may configure a supervisor to catch only a specific
+    /// type of failures (e.g. only swift `Error`s or only faults).
+    ///
+    /// See also supervision overloads which accept an `Error.Type` which allows you to specifically select an error type to supervise.
+    public enum All {
+        case errors
+        case faults
+        case failures
+    }
+
+    // MARK: Phantom types for registering supervisors
+    internal static func internalErrorTypeFor(selector: Supervise.All) -> Error.Type {
+        switch selector {
+        case .errors: return AllErrors.self
+        case .faults: return AllFaults.self
+        case .failures: return AllFailures.self
+        }
+    }
+
+    internal enum AllErrors: Error {}
+    internal enum AllFaults: Error {}
+    internal enum AllFailures: Error {}
 }
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
@@ -419,6 +466,10 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         return try initialBehavior.start(context: context)
     }
 
+    override func canHandle(failure: Supervision.Failure) -> Bool {
+        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+    }
+
     // TODO complete impl
     override public func isSame(as other: Supervisor<Message>) -> Bool {
         return other is RestartingSupervisor<Message>
@@ -433,7 +484,7 @@ extension RestartingSupervisor: CustomStringConvertible {
 }
 
 fileprivate extension Supervision.Failure {
-    func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
+    fileprivate func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
         let supervisorHandlesEverything = handledType == Supervise.AllFailures.self
 
         func matchErrorTypes0() -> Bool {

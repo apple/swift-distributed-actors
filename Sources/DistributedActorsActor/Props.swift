@@ -41,6 +41,8 @@ public struct Props {
     public init() {
         self.init(mailbox: .default(), dispatcher: .default, supervision: .init())
     }
+
+
 }
 
 // MARK: Dispatcher Props
