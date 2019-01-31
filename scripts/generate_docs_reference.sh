@@ -26,6 +26,6 @@ if ! command -v asciidoctor > /dev/null; then
 fi
 
 declare -r target_dir="$root_path/reference/$version"
-asciidoctor -D $target_dir $root_path/Sources/Docs/index.adoc
+asciidoctor -D $target_dir -t -B $root_path/Sources/Docs $root_path/Sources/Docs/index.adoc
 
 echo "Docs generated: $target_dir/index.html"

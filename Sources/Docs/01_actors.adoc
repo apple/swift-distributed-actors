@@ -14,7 +14,14 @@ We should avoid "omg everything as an actor!" when people start adopting this :-
 
 === Starting and stopping Actors
 
-TODO
+[source, swift]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
+----
+<1> All Actors "live" within an `ActorSystem`, so in order to work with actors we need to first start a system.
+<2> An actor's "Behavior" contains all the logic and state that it will work with. There are numerous ways to define one, we'll learn about them very soon.
+<3> We `spawn` our actor using the `behavior` and we give it a `name` while we are at it as well. Names are tremendously helpful for understanding and debugging your application.
+<4> We "tell" our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message send to the actor.
 
 === Sending messages
 
@@ -40,7 +47,7 @@ Internal guarantees:
 
 Parent-child relationships add a few more guarantees:
 
-- a parent is always notified about its childs' failures
+- a parent is always notified about its child's failures
   - these DO NOT cause it to kill itself
 - if the parent spawns AND watches the child though, the same death pact principles apply,
   and a failing child WILL cause the parent to terminate as well.
