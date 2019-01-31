@@ -339,8 +339,8 @@ class SupervisionTests: XCTestCase {
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
         faultyWorker.tell(.pleaseDivideByZero)
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
-        try probe.expectNoTerminationSignal(for: .milliseconds(20))
+        //        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
+        //        try probe.expectNoTerminationSignal(for: .milliseconds(20))
         faultyWorker.tell(.pleaseDivideByZero)
         try probe.expectTerminated(faultyWorker)
     }
