@@ -1,26 +1,32 @@
 = Swift Distributed Actors Reference Documentation
+:toc-title: Swift Distributed Actors Reference Docs
 :toc:
 :toc: left
-:toc-title: Swift Distributed Actors Reference Docs
+ifndef::host-github[:ext-relative: {outfilesuffix}]
 :icons: font
 :idprefix:
+:doctype: book
+:favicon:
+:docinfo: shared
+
 :idseparator: -
 :sectanchors:
+
 :source-highlighter: pygments
 :pygments-style: tango
+pygments-linenums-mode: table
+:source-language: swift
+
+:stylesdir: stylesheets/
+:stylesheet: pygments.css
+
+:linkattrs:
 :mdash: &#8212;
 
-This will be a more "wordy" documentation rather than the plain API docs.
 
-Both are important as we need to explain not only the API but patterns and style etc.
+:dir_sact_doc_tests: ../../Tests/Swift Distributed ActorsDocumentationTests
+:dir_sact_actor:        ../Swift Distributed ActorsActor
+:dir_sact_actor_tests:  ../../Tests/Swift Distributed ActorsActorTests
 
-NOTE: Note to authors: If you are new to asciidoc, see here: https://asciidoctor.org/docs/user-manual/#include-directive
-
-NOTE: I know we could use Jazzy for this though feature wise was a bit meh. If we want to use Jazzy though for some reasons I'd be okey with it.
-This ofc would need to integrate the TOC.
-
-NOTE: *TODO* make it look like the other Apple project docs (Jazzy style).
-
-NOTE: *TODO* link to the API docs as well
-
-include::actors.adoc[]
+include::01_actors.adoc[]
+include::02_failure_handling.adoc[]

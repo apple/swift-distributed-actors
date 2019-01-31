@@ -1,6 +1,10 @@
-== Fault handling
 
-General description
+== Failure handling with Actors
+
+> Programming concurrent and distributed systems often involves having to deal with failure of other parts of your system,
+be it asynchronous computations or failures of entire nodes in a cluster.
+
+
 
 === Vocabulary
 
@@ -84,6 +88,11 @@ Examples:
     let providedByLibrary = internalBehavior.supervisedWith(strategy: restart ...)
     let prepped = providedByLibrary.supervisedWith(strategy: handleTimeouts)
     system.spawn(prepped, name: "worker")
+
+
+****
+Side thingy
+****
 
 === Supervising specific Errors
 
