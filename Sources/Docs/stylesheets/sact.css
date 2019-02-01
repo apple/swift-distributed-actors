@@ -43,6 +43,7 @@
     text-transform: lowercase;
     font-variant: small-caps;
 }
+
 #toc .sectlevel2 {
     font-variant: none;
 }
@@ -64,7 +65,7 @@
 }
 
 #toc ul li a:link {
-   text-decoration: none;
+    text-decoration: none;
     color: #333;
     letter-spacing: 1px;
     display: block;
@@ -129,10 +130,7 @@
 
 
 #header h1 {
-    visibility: hidden;
-    padding: 0;
-    margin: 0;
-    height: 0px;
+    display: none;
 }
 
 h1, h2, h3, #toctitle, .sidebarblock > .content > .title, h4, h5, h6 {
@@ -192,9 +190,22 @@ p > code, li > code, dd > code, blockquote > code, td > code {
 a {
     color: #577492;
 }
+
 a:hover {
-    color: #551A8B;
+    color: #0088cc;
 }
+
 a:visited {
     color: #577492;
+}
+
+.quoteblock blockquote::before {
+    content: "\201c";
+    float: left;
+    font-size: 2.75em;
+    font-weight: bold;
+    line-height: .6em;
+    margin-left: -.6em;
+    color: #6b95b0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .1)
 }

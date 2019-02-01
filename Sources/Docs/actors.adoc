@@ -1,7 +1,11 @@
 
 == Actors
 
-TODO: This is just placeholders. Not actual structure etc.
+> Actors provide a higher level of abstraction for building concurrent and distributed systems.
+> They are a fundamental building block of the http://en.wikipedia.org/wiki/Actor_model[Actor Model],
+> published by Carl Hewitt in 1973, but since gained popularity thanks to numerous implementations of the model.
+
+Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the Actor Model for Swift.
 
 === Minimal example
 
