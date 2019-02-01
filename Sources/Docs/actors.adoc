@@ -2,14 +2,35 @@
 == Actors
 
 > Actors provide a higher level of abstraction for building concurrent and distributed systems.
+>
 > They are a fundamental building block of the http://en.wikipedia.org/wiki/Actor_model[Actor Model],
 > published by Carl Hewitt in 1973, but since gained popularity thanks to numerous implementations of the model.
 
+
 Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the Actor Model for Swift.
 
-=== Minimal example
+=== Why Actors?
 
-TODO
+Using actors you will be able to:
+
+* **perform massively parallel computations** without having to think about low level concurrency,
+**  since actors provide you with a "illusion of single-threadedness" while scaling efficiently across cores and machines.
+*  easily **scale your systems across multiple nodes**, without changing the conceptual model of the system
+*  **isolate failures**, so that a failure of a single actor does not fail the entire process.
+** in order to build fault tolerant systems that span multiple cores and clustered nodes.
+
+==== What Actors are **_not_**
+
+Actors are not aimed to solve _all_ concurrency tasks, and as a matter of fact they would very well complement an Async/Await model,
+and Futures.
+
+Actors are focused on the bigger picture -- distribution.
+
+=== Motivating Example
+
+TODO: talk about MMO or some IoT things. Or some other massively multiplayer thing. where actors are lovely to model the entities.
+
+This should become our example, so here we can say "click here to follow the guided example", or continue to read about the concepts.
 
 === "Thinking in Actors"
 
