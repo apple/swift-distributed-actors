@@ -1,3 +1,4 @@
+
 == Actors
 
 TODO: This is just placeholders. Not actual structure etc.
@@ -14,7 +15,7 @@ We should avoid "omg everything as an actor!" when people start adopting this :-
 
 === Starting and stopping Actors
 
-[source, swift]
+[source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 ----
@@ -24,6 +25,14 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 <4> We "tell" our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message send to the actor.
 
 === Sending messages
+
+[source]
+if let actualNumber = Int(possibleNumber) {
+    print("The string \"\(possibleNumber)\" has an integer value of \(actualNumber)")
+} else {
+    print("The string \"\(possibleNumber)\" could not be converted to an integer")
+}
+// Prints "The string "123" has an integer value of 123"
 
 TODO
 
@@ -59,6 +68,20 @@ This synchronously guarantees that no further messages will be processed after t
 
 NOTE: that one MAY NOT use the `context.stop(child:)` function to stop `myself`.
 
+
+
+NOTE: this is a note
+
+TIP: This is a tip
+
+IMPORTANT: this is important
+
+CAUTION: nooooooo
+
+WARNING: warning
+
+
+
 ==== Stopping child actors
 
 A parent actor may stop child actors by using `context.stop(child:)` on them,
@@ -72,6 +95,10 @@ Bear in mind though that this stopping operation, by virtue of being a message s
 TODO
 
 === DeathWatch
+
+DeathWatch is similar, yet very different to <<supervision>>, since it only allows us to observe other actors fail,
+and not automatically (and while retaining their identity) restart them. The two techniques combined however serve
+as the cornerstone of building resilient applications with actors.
 
 ==== Guarantees
 

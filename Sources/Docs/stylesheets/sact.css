@@ -1,0 +1,193 @@
+#toctitle {
+    color: #333;
+    font-weight: 400;
+    background-image: url("../images/sact.png");
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 20px 0 13px 55px;
+    margin-bottom: 20px;
+}
+
+#toc.toc2 #toctitle {
+    font-size: 1.8em;
+}
+
+.toc-root {
+    color: #333;
+    font-weight: 600;
+    text-transform: lowercase;
+    font-variant: small-caps;
+}
+
+
+#toc {
+    width: 250px;
+    position: fixed;
+    overflow: scroll;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: #FAFAFA;
+    border-right: 1px solid #e6e6e6;
+    padding: 20px 30px
+}
+
+#toc ul {
+    border-top: 1px solid #e6e6e6;
+    font-weight: 400;
+    margin-bottom: 30px;
+    list-style: none
+}
+
+#toc ul ul {
+    list-style: none
+}
+
+#toc ul li {
+    border-bottom: 1px solid #e6e6e6
+}
+
+#toc ul li.active {
+    border-bottom: 1px solid #333
+}
+
+#toc ul li.active a {
+    font-weight: 700
+}
+
+#toc ul li a:link {
+    color: #333;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: block;
+    padding: 10px
+}
+
+#toc ul li a:visited {
+    color: #333
+}
+
+#toc ul li a:active {
+    font-weight: 700
+}
+
+#toc ul li a:hover {
+    color: #0088cc
+}
+
+#toc ul li ul {
+    margin-bottom: 10px;
+    border-top: none
+}
+
+#toc ul li ul li {
+    border-bottom: none;
+    padding: 0.1em
+}
+
+#toc ul li ul li.active {
+    border-bottom: none
+}
+
+#toc ul li ul li.active a {
+    font-weight: 700
+}
+
+#toc ul li ul a:link {
+    color: #0088cc;
+    text-decoration: none;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    display: block;
+    margin-left: 15px;
+    padding: 0 0 3px;
+    border-bottom: none;
+    font-weight: 300
+}
+
+#toc ul li ul a:hover {
+    text-decoration: underline
+}
+
+#toc h2 {
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: lowercase;
+    font-variant: small-caps;
+    color: #999;
+    padding-bottom: 0.5em
+}
+
+
+#header h1 {
+    visibility: hidden;
+    padding: 0;
+    margin: 0;
+    height: 0px;
+}
+
+h1, h2, h3, #toctitle, .sidebarblock > .content > .title, h4, h5, h6 {
+    font-weight: 300;
+    font-style: normal;
+    /*color: #ba3925;*/
+    text-rendering: optimizeLegibility;
+    margin-top: .5em;
+    margin-bottom: .8em;
+}
+
+pre {
+    border-left: 5px solid rgba(205, 233, 244, 1)
+}
+
+#footer {
+    font-size: 0.625em;
+    color: #ccc;
+    line-height: 2em;
+    padding: 2em;
+}
+
+
+.admonitionblock {
+    background-color: #f5f5f5;
+}
+
+.admonitionblock.note {
+    border-left: solid 5px #0088cc;
+}
+
+.admonitionblock.tip {
+    border-left: solid 5px #ccc;
+}
+
+.admonitionblock.important {
+    border-left: solid 5px #EE002A;
+}
+
+.admonitionblock.caution {
+    border-left: solid 5px #EE002A;
+}
+
+.admonitionblock.warning {
+    background-color: #FFFFEB;
+}
+
+p > code, li > code, dd > code, blockquote > code, td > code {
+    color: #666;
+    padding: 3px;
+    font-size: 0.9em;
+    font-family: Menlo, Consolas, Monaco, "Courier New", monospace, serif;
+    border: none;
+    background-color: transparent;
+}
+
+a {
+    color: #577492;
+}
+a:hover {
+    color: #551A8B;
+}
+a:visited {
+    color: #577492;
+}

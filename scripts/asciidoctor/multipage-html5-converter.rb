@@ -290,6 +290,8 @@ class MultipageHtml5Converter < Asciidoctor::Converter::Html5Converter
     sections = node.sections
     result = [%(<ul class="sectlevel#{sections[0].level}">)]
     sections.each do |section|
+      puts section
+
       slevel = section.level
       if section.caption
         stitle = section.captioned_title
@@ -434,7 +436,8 @@ class MultipageHtml5Converter < Asciidoctor::Converter::Html5Converter
     classes << 'toc-current' if node.id == doc.attr('docname')
     root = %(<span class="#{classes.join(' ')}">#{root_link}</span>)
     # Create and return the HTML
-    %(<p>#{root}</p>#{generate_outline(custom_outline_doc, opts)})
+    # %(<p>#{root}</p>#{generate_outline(custom_outline_doc, opts)})
+    %(#{generate_outline(custom_outline_doc, opts)})
   end
 
   # Change node parent to new parent recursively
@@ -583,10 +586,9 @@ class MultipageHtml5CSS < Asciidoctor::Extensions::DocinfoProcessor
   def process doc
     css = []
     # Style Table Of Contents entry for current page
-    css << %(.toc-current{font-weight: 600;})
+    css << %(.toc-current{font-weight: 600;text-transform: lowercase;font-variant: small-caps;})
     # Style Table Of Contents entry for root page
-    css << %(.toc-root{font-family: "Open Sans","DejaVu Sans",sans-serif;
-                       font-size: 0.9em;})
+    css << %(.toc-root{font-family: "Open Sans","DejaVu Sans",sans-serif;font-size: 0.9em;})
     # Style navigation bar at bottom of each page
     css << %(#content{display: flex; flex-direction: column; flex: 1 1 auto;}
              .nav-footer{text-align: center; margin-top: auto;}
