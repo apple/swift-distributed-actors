@@ -18,7 +18,7 @@ set -e
 
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
-declare -r version=$(git describe --abbrev=0 --tags || echo "0.0.0")
+declare -r version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
 
 # run asciidoctor
 if ! command -v asciidoctor > /dev/null; then
@@ -26,6 +26,15 @@ if ! command -v asciidoctor > /dev/null; then
 fi
 
 declare -r target_dir="$root_path/reference/$version"
-asciidoctor -D $target_dir -t -B $root_path/Sources/Docs $root_path/Sources/Docs/index.adoc
+asciidoctor \
+  -r $root_path/scripts/asciidoctor/multipage-html5-converter.rb \
+  -b multipage_html5 \
+  -D $target_dir \
+  $root_path/Sources/Docs/index.adoc
+
+cp -r $root_path/Sources/Docs/images $target_dir/
+cp -r $root_path/Sources/Docs/images/favicon/android-icon-48x48.png $target_dir/images/sact.png
+cp -r $root_path/Sources/Docs/images/favicon/*.ico $target_dir/
+cp -r $root_path/Sources/Docs/stylesheets $target_dir/
 
 echo "Docs generated: $target_dir/index.html"

@@ -1,11 +1,12 @@
 
-== Failure handling with Actors
+== Failure Handling
 
 > Programming concurrent and distributed systems often involves having to deal with failure of other parts of your system,
 be it asynchronous computations or failures of entire nodes in a cluster.
 
 
 
+[[supervision_vocabulary]]
 === Vocabulary
 
 Since there are various "types" of failures conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
@@ -29,7 +30,7 @@ Further, you can expect to hear the following phrases:
 - "the actor has thrown", "an error during message processing" - an error was thrown during message or signal processing
 - "the actor crashed" - meaning that the actor was stopped in response to a failure
 
-== Supervision
+=== Supervision
 
 Actor supervision in Swift Distributed Actors is a core concept that allows for building resilient concurrent and distributed actor systems.
 
@@ -118,7 +119,7 @@ NOTE: Supervision is not intended to replace `do/catch` blocks, and should be us
       entity or situation.
 
 
-== Analysing Back Traces (Crash Logs)
+=== Analysing Back Traces (Crash Logs)
 
 When a fault occurs, Swift Distributed Actors will print a crash log. An excellent talk from WWDC 2018 titled
 https://developer.apple.com/videos/play/wwdc2018/414/["Understanding Crashes and Crash Logs"] is available and explains

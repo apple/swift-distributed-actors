@@ -1,5 +1,4 @@
-= Swift Distributed Actors Reference Documentation
-:toc-title: Swift Distributed Actors Reference Docs
+:toc-title: Swift Distributed Actors Actors
 :toc:
 :toc: left
 ifndef::host-github[:ext-relative: {outfilesuffix}]
@@ -7,15 +6,22 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :idprefix:
 :doctype: book
 :favicon:
+
+:docinfodir: meta/
 :docinfo: shared
+:nofooter:
 
 :idseparator: -
 :sectanchors:
 
 :source-highlighter: pygments
-:pygments-style: tango
-pygments-linenums-mode: table
+:source-indent: 0
 :source-language: swift
+:source-linenums-option:
+:linkcss:
+:pygments-linenums-mode: table
+
+:multipage-level: 1
 
 :stylesdir: stylesheets/
 :stylesheet: pygments.css
@@ -28,5 +34,7 @@ pygments-linenums-mode: table
 :dir_sact_actor:        ../Swift Distributed ActorsActor
 :dir_sact_actor_tests:  ../../Tests/Swift Distributed ActorsActorTests
 
-include::01_actors.adoc[]
-include::02_failure_handling.adoc[]
+= Reference Documentation
+
+include::actors.adoc[]
+include::failure_handling.adoc[]
