@@ -22,6 +22,8 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :pygments-linenums-mode: table
 
 :multipage-level: 1
+:toclevels: 2
+:sectnumlevels: 3
 
 :stylesdir: stylesheets/
 :stylesheet: pygments.css

@@ -26,6 +26,8 @@ if ! command -v asciidoctor > /dev/null; then
 fi
 
 declare -r target_dir="$root_path/reference/$version"
+
+#  -r $root_path/scripts/asciidoctor/pygments_init.rb \
 asciidoctor \
   -r $root_path/scripts/asciidoctor/multipage-html5-converter.rb \
   -b multipage_html5 \
