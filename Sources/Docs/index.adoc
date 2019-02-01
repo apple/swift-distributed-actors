@@ -5,6 +5,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :icons: font
 :idprefix:
 :doctype: book
+:listing-caption: Listing
 :favicon:
 
 :docinfodir: meta/
@@ -36,7 +37,24 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :dir_sact_actor:        ../Swift Distributed ActorsActor
 :dir_sact_actor_tests:  ../../Tests/Swift Distributed ActorsActorTests
 
-= Reference Documentation
+= Swift Distributed Actors Actors Reference Guide
+
+Reference Guide for Swift Distributed Actors Actors
+
+This reference guide is written in a style intended to familiarize yourself with the concepts that the library includes,
+yet does not dive in depth into all parameters and details of the APIs. If you are looking to quickly skim over APIs
+and SwiftDoc you may want to check out the API Documentation here.
+
+**Getting in Touch**
+
+- Swift Distributed Actors team mailing list: TODO@APPLE.COM
+- Apple Github: https://github.com/apple/swift-distributed-actors
+
+**Reference Guide**
+
+The reference guide is composed of the following modules:
 
 include::actors.adoc[]
 include::failure_handling.adoc[]
+include::clustering.adoc[]
+include::examples.adoc[]
