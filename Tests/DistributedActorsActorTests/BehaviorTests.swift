@@ -261,4 +261,29 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("postStop")
         try p.expectTerminated(ref)
     }
+
+    func test_makeAsynchronousCallback_shouldExecuteClosureInActorContext() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .receive { context, msg in
+            let cb = context.makeAsynchronousCallback {
+                // This is a nasty trick to determine that the closure is
+                // actually being executed in the context of the actor. After
+                // calling the closure, it will check if the actor is still
+                // supposed to run and if it's not, it will be stopped.
+                context.myself._downcastUnsafe.cell.behavior = .stopped
+                p.tell("fromCallback:\(msg)")
+            }
+
+            cb.invoke(())
+            return .same
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectMessage("fromCallback:test")
+        try p.expectTerminated(ref)
+    }
 }

@@ -35,6 +35,7 @@ extension BehaviorTests {
                 ("test_orElse_shouldProperlyHandleDeeplyNestedBehaviors", test_orElse_shouldProperlyHandleDeeplyNestedBehaviors),
                 ("test_stoppedWithPostStop_shouldTriggerPostStopCallback", test_stoppedWithPostStop_shouldTriggerPostStopCallback),
                 ("test_stoppedWithPostStopThrows_shouldTerminate", test_stoppedWithPostStopThrows_shouldTerminate),
+                ("test_makeAsynchronousCallback_shouldExecuteClosureInActorContext", test_makeAsynchronousCallback_shouldExecuteClosureInActorContext),
            ]
    }
 }

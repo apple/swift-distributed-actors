@@ -202,6 +202,18 @@ public enum Supervise {
     internal enum AllFailures: Error {}
 }
 
+/// Used in `Supervisor` to determine what type of processing caused the failure
+///
+/// - message: failure happened during messsage processing
+/// - signal: failure happened during signal processing
+/// - closure: failure happened during closure processing
+@usableFromInline
+internal enum ProcessingType {
+    case message
+    case signal
+    case closure
+}
+
 /// Handles failures that may occur during message (or signal) handling within an actor.
 ///
 /// Currently not for user extension.
@@ -210,30 +222,38 @@ internal class Supervisor<Message> {
 
     @inlinable
     final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        do {
-            traceLog_Supervision("CALL WITH SUPERVISION: \(target) @@@@ [\(message)]:\(type(of: message))")
+        traceLog_Supervision("CALL WITH SUPERVISION: \(target) @@@@ [\(message)]:\(type(of: message))")
+        return try self.interpretSupervised0(target: target, context: context, processingType: .message) {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
-        } catch {
-            let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(err)]:\(type(of: err)) while interpreting message, handling with \(self)", error: error)
-            do {
-                return try self.handleMessageFailure(context, target: target, failure: .error(err)).validatedAsInitial()
-            } catch {
-                throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
-            }
         }
     }
 
     @inlinable
     final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
-        do {
-            traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
+        traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
+        return try self.interpretSupervised0(target: target, context: context, processingType: .signal) {
             return try target.interpretSignal(context: context, signal: signal)
+        }
+    }
+
+    @inlinable
+    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: () throws -> Void) throws -> Behavior<Message> {
+        traceLog_Supervision("CALLING CLOSURE")
+        return try self.interpretSupervised0(target: target, context: context, processingType: .closure) {
+            try closure()
+            return .same
+        }
+    }
+
+    @usableFromInline
+    func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingType: ProcessingType, block: () throws -> Behavior<Message>) throws -> Behavior<Message> {
+        do {
+            return try block()
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting signal, handling with \(self)", error: error)
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)", error: error)
             do {
-                return try self.handleMessageFailure(context, target: target, failure: .error(error)).validatedAsInitial()
+                return try self.handleFailure(context, target: target, failure: .error(error), processingType: processingType).validatedAsInitial()
             } catch {
                 throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
             }
@@ -242,15 +262,9 @@ internal class Supervisor<Message> {
 
     // MARK: Internal Supervisor API
 
-    /// Handle a fault that happened during message processing.
+    /// Handle a fault that happened during processing.
     // TODO wording and impl on double-faults
-    open func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        return undefined()
-    }
-
-    /// Handle a failure that occurred during signal processing.
-    // TODO wording and impl on double-faults
-    open func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    open func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
         return undefined()
     }
 
@@ -278,17 +292,8 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
         guard failure.shouldBeHandled(bySupervisorHandling: failureType) else {
-            // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
-            return .stopped // TODO .escalate could be nicer
-        }
-
-        return .stopped
-    }
-
-    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        guard self.canHandle(failure: failure) else {
             // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
             return .stopped // TODO .escalate could be nicer
         }
@@ -323,19 +328,10 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
         super.init()
     }
 
-    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
         for supervisor in supervisors {
             if supervisor.canHandle(failure: failure) {
-                return try supervisor.handleMessageFailure(context, target: target, failure: failure)
-            }
-        }
-        return .stopped // TODO: escalate could be nicer
-    }
-
-    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        for supervisor in supervisors {
-            if supervisor.canHandle(failure: failure) {
-                return try supervisor.handleMessageFailure(context, target: target, failure: failure)
+                return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
             }
         }
         return .stopped // TODO: escalate could be nicer
@@ -418,32 +414,16 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleMessageFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
         let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
         guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
-            traceLog_Supervision("Supervision: STOP from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+            traceLog_Supervision("Supervision: STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
             return .stopped // TODO .escalate ???
         }
 
         // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)") 
+        traceLog_Supervision("Supervision: RESTART from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
         // TODO has to modify restart counters here and supervise with modified supervisor
-
-        context.children.stopAll()
-
-        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
-
-        return try initialBehavior.start(context: context)
-    }
-
-    override func handleSignalFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure) throws -> Behavior<Message> {
-        let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
-        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
-            traceLog_Supervision("Supervision: STOP from message (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
-            return .stopped // TODO .escalate ???
-        }
-
-        traceLog_Supervision("Supervision: RESTART form signal (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
 
         context.children.stopAll()
 

@@ -149,7 +149,6 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         set {
             return undefined()
         }
-
     }
 
     /// Stop a child actor identified by the passed in actor ref.
@@ -163,5 +162,30 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///         An actor may not terminate another's child actors.
     public func stop<M>(child ref: ActorRef<M>) throws {
         return undefined()
+    }
+
+    /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
+    /// internal actor state from within an `AsynchronousCallback`.
+    ///
+    /// - Parameter callback: the closure that should be executed in this actor's context
+    /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
+    internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+        return AsynchronousCallback(callback: callback) { [weak selfRef = self] in
+            selfRef?.myself._downcastUnsafe.sendClosure($0)
+        }
+    }
+}
+
+public struct AsynchronousCallback<T> {
+    @usableFromInline
+    let callback: (T) throws -> Void
+    @usableFromInline
+    let send: (@escaping () throws -> Void) -> Void
+
+    @inlinable
+    public func invoke(_ arg: T) {
+        self.send {
+            try self.callback(arg)
+        }
     }
 }
