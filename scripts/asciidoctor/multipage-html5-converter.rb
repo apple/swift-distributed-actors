@@ -290,8 +290,6 @@ class MultipageHtml5Converter < Asciidoctor::Converter::Html5Converter
     sections = node.sections
     result = [%(<ul class="sectlevel#{sections[0].level}">)]
     sections.each do |section|
-      puts " section: #{section}"
-
       slevel = section.level
       if section.caption
         stitle = section.captioned_title
@@ -333,6 +331,46 @@ class MultipageHtml5Converter < Asciidoctor::Converter::Html5Converter
       end
       result << '</li>'
     end
+    result << '</ul>'
+    result.join LF
+  end
+
+  def generate_outline_shallow(node, opts = {})
+    # This is the same as Html5Converter outline()
+    return unless node.sections?
+    return if node.sections.empty?
+    sections = node.sections
+    result = [%(<ul class="sectlevel#{sections[0].level}">)]
+    section = sections.first
+
+    slevel = section.level
+    if section.caption
+      stitle = section.captioned_title
+    elsif section.numbered && slevel <= sectnumlevels
+      stitle = %(#{section.sectnum} #{section.title})
+    else
+      stitle = section.title
+    end
+    stitle = stitle.gsub DropAnchorRx, '' if stitle.include? '<a'
+
+    # And we also need to find the parent page of the target node
+    current = section
+    until current.mplevel != :content
+      current = current.parent
+    end
+    parent_chapter = current
+
+    # If the target is the top-level section of the parent page, there is no
+    # need to include the anchor.
+    if parent_chapter.id == section.id
+      link = %(#{parent_chapter.id}.html)
+    else
+      link = %(#{parent_chapter.id}.html##{section.id})
+    end
+
+    result << %(<li>)
+    result << %(<a href="#{link}">#{stitle}</a>)
+    result << '</li>'
     result << '</ul>'
     result.join LF
   end
@@ -427,52 +465,38 @@ class MultipageHtml5Converter < Asciidoctor::Converter::Html5Converter
 
     res = ""
 
+    root_file = %(#{doc.attr('docname')}#{doc.attr('outfilesuffix')})
+    # root_link = %(<a href="#{root_file}">#{doc.doctitle}</a>)
+    root_link = %(<a href="#{root_file}">⌂ Home</a>)
+    res += %(<ul><li class="sectlevel1">#{root_link}</li></ul>)
+
     @@full_outline.blocks.each do |section|
       # Find this node in the @@full_outline skeleton document
       page_node = section
 
-      puts "page_node"
-      puts page_node
-
-
       # Create a skeleton document for this particular page
-      custom_outline_doc = new_outline_doc(@@full_outline, for_page: page_node)
-      opts[:page_id] = node.id
-      # Generate an extra TOC entry for the root page. Add additional styling if
-      # the current page is the root page.
-      root_file = %(#{doc.attr('docname')}#{doc.attr('outfilesuffix')})
-      root_link = %(<a href="#{root_file}">#{doc.doctitle}</a>)
-      classes = ['toc-root']
-      classes << 'toc-current' if node.id == doc.attr('docname')
-      root = %(<span class="#{classes.join(' ')}">#{root_link}</span>)
-      # Create and return the HTML
+      if @@full_outline.find_by(id: node.id).first == page_node
+        custom_outline_doc = new_outline_doc(@@full_outline, for_page: page_node)
+        opts[:page_id] = node.id
+        # Generate an extra TOC entry for the root page.
+        # Add additional styling if the current page is the root page.
+        # classes = ['toc-root']
+        # classes << 'toc-current' if node.id == doc.attr('docname')
+        # Create and return the HTML
+        res += %(#{generate_outline(custom_outline_doc, opts)})
 
-      # res += %(<p>#{root}</p>#{generate_outline(custom_outline_doc, opts)})
-      res += %(#{generate_outline(custom_outline_doc, opts)})
+      else
+        opts[:page_id] = node.id
+        custom_outline_doc = new_outline_doc(@@full_outline, for_page: page_node)
+        opts[:page_id] = node.id
+        # Generate an extra TOC entry for the root page.
+        # Add additional styling if the current page is the root page.
+        # Create and return the HTML
+        res += %(#{generate_outline_shallow(custom_outline_doc, opts)})
+      end
     end
 
     res
-
-    # # Find this node in the @@full_outline skeleton document
-    # page_node = @@full_outline.find_by(id: node.id).first
-    #
-    # puts "page_node"
-    # puts page_node
-    #
-    #
-    # # Create a skeleton document for this particular page
-    # custom_outline_doc = new_outline_doc(@@full_outline, for_page: page_node)
-    # opts[:page_id] = node.id
-    # # Generate an extra TOC entry for the root page. Add additional styling if
-    # # the current page is the root page.
-    # root_file = %(#{doc.attr('docname')}#{doc.attr('outfilesuffix')})
-    # root_link = %(<a href="#{root_file}">#{doc.doctitle}</a>)
-    # classes = ['toc-root']
-    # classes << 'toc-current' if node.id == doc.attr('docname')
-    # root = %(<span class="#{classes.join(' ')}">#{root_link}</span>)
-    # # Create and return the HTML
-    #
-    # %(<p>#{root}</p>#{generate_outline(custom_outline_doc, opts)})
   end
 
   # Change node parent to new parent recursively
