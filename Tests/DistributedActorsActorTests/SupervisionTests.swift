@@ -606,7 +606,7 @@ class SupervisionTests: XCTestCase {
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior = Behavior<String>.receiveMessage { msg in
+        let behavior: Behavior<String> = .receiveMessage { msg in
             p.tell("crashing:\(msg)")
             return .stopped { _ in
                 throw FaultyError.boom(message: "test")
@@ -623,6 +623,52 @@ class SupervisionTests: XCTestCase {
 
         ref.tell("test2")
         try p.expectNoMessage(for: .milliseconds(50))
+    }
+
+    func sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy failureMode: FailureMode) throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { _ in
+            p.tell("setup")
+            return .receive { context, msg in
+                let cb: AsynchronousCallback<String> = context.makeAsynchronousCallback { str in
+                    p.tell("crashing:\(str)")
+                    switch failureMode {
+                    case .throwing: throw FaultyError.boom(message: "test")
+                    case .faulting: fatalError("test")
+                    }
+                }
+
+                context.dispatcher.execute {
+                    cb.invoke(msg)
+                }
+
+                return .same
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior, props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
+        p.watch(ref)
+
+        try p.expectMessage("setup")
+
+        ref.tell("test")
+        try p.expectMessage("crashing:test")
+        try p.expectNoTerminationSignal(for: .milliseconds(50))
+
+        try p.expectMessage("setup")
+        ref.tell("test2")
+        try p.expectMessage("crashing:test2")
+    }
+
+    func test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure() throws {
+        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy: .throwing)
+    }
+
+    func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy: .faulting)
+        #endif
     }
 
     private struct PleaseReply: Error, Equatable {}

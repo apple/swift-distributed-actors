@@ -16,9 +16,14 @@ import DistributedActorsConcurrencyHelpers
 import CSwiftDistributedActorsMailbox
 import Foundation
 
+enum WrappedMessage<Message> {
+    case userMessage(Message)
+    case closure(() throws -> Void)
+}
+
 /// INTERNAL API
 struct Envelope<Message> {
-    let payload: Message
+    let payload: WrappedMessage<Message>
 
     // Note that we can pass around senders however we can not automatically get the type of them right.
     // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
@@ -131,7 +136,10 @@ final class Mailbox<Message> {
             defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
 
             traceLog_Mailbox("INVOKE MSG: \(msg)")
-            return try cell.interpretMessage(message: msg)
+            switch msg {
+            case .userMessage(let message): return try cell.interpretMessage(message: message)
+            case .closure(let f):           return try cell.interpretClosure(f)
+            }
         }, fail: { error in
             cell.fail(error: error)
         })
@@ -169,9 +177,9 @@ final class Mailbox<Message> {
 
                 switch runPhase {
                 case .processingSystemMessages:
-                    supervisionResultingBehavior = try cell.supervisor.handleSignalFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
+                    supervisionResultingBehavior = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .signal)
                 case .processingUserMessages:
-                    supervisionResultingBehavior = try cell.supervisor.handleMessageFailure(cell.context, target: cell.behavior, failure: supervisionFailure)
+                    supervisionResultingBehavior = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .message)
                 }
 
                 // TODO: this handling MUST be aligned with the throws handling.
@@ -468,8 +476,11 @@ private func renderMessageDescription<Message>(runPhase: MailboxRunPhase, failed
 // such as the InvokeSupervisionClosureContext where we invoke things via a function calling into this one to avoid the
 // generics issue.
 private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointer, type: Message.Type) -> String {
-    let message = ptr.assumingMemoryBound(to: Message.self).move()
-    return "[\(message)]:\(Message.self)"
+    let envelope = ptr.assumingMemoryBound(to: Envelope<Message>.self).move()
+    switch envelope.payload {
+    case .closure: return "closure"
+    case .userMessage(let message): return "[\(message)]:\(Message.self)"
+    }
 }
 private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
     let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).move()

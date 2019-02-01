@@ -252,6 +252,22 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         return self.continueRunning
     }
 
+    func interpretClosure(_ closure: () throws -> Void) throws -> Bool {
+        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
+
+        #if SACT_TRACE_CELL
+        log.info("Applied closure, becoming: \(next)")
+        #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+
+        try self.becomeNext(behavior: next)
+
+        if !self.behavior.isStillAlive {
+            children.forEach { $0.sendSystemMessage(.stop) }
+        }
+
+        return self.continueRunning
+    }
+
     @usableFromInline
     internal var continueRunning: Bool {
         return self.behavior.isStillAlive || self.children.nonEmpty

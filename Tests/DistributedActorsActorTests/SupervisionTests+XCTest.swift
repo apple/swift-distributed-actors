@@ -44,6 +44,8 @@ extension SupervisionTests {
                 ("test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting", test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting),
                 ("test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting", test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting),
                 ("test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop", test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop),
+                ("test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure", test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure),
+                ("test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure", test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure),
            ]
    }
 }
