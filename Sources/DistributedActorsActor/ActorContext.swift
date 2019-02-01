@@ -72,6 +72,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<Message> {
         return undefined()
     }
