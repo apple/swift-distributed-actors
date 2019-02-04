@@ -61,7 +61,7 @@ public struct ActorLogger {
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
         var actorLogHandlerProxyLogHandler = ActorOriginLogHandler(context)
-        actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible({ context.path })
+        actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible { [weak ctx = context] in ctx?.path.description ?? "INVALID" }
 
         return Logger(actorLogHandlerProxyLogHandler)
     }
