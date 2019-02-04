@@ -27,7 +27,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :sectnumlevels: 3
 
 :stylesdir: stylesheets/
-:stylesheet: pygments.css
+:stylesheet: pygments-default.css
 
 :linkattrs:
 :mdash: &#8212;
@@ -37,24 +37,72 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :dir_sact_actor:        ../Swift Distributed ActorsActor
 :dir_sact_actor_tests:  ../../Tests/Swift Distributed ActorsActorTests
 
+
 = Swift Distributed Actors Actors Reference Guide
 
-Reference Guide for Swift Distributed Actors Actors
+
+++++
+<!--
+    Some trickery is made in the index.adoc file, as we use the +++ "pass through" blocks to avoid including the
+    sections here in the ToC since it would cause the index to become part of the "tree" (as in,
+    we'd become one level "nested" already on the index page, which is not what we want for our documentation).
+
+    The first h1 heading is used as title of the pdf documentation, as well as name of "top", no other h1 must be defined anywhere.
+-->
+++++
+
+++++
+<h2>Swift Distributed Actors Reference Guide</h2>
+++++
+
+> Swift Distributed Actors is an implementation of the https://en.wikipedia.org/wiki/Actor_model[Actor Model] for Swift.
+
+#Under Development - not all core features are implemented yet.#
+
+Using Swift Distributed Actors Actors enables you to build highly scalable distributed and concurrent systems without having to worry
+about the low level concurrency, networking, failure detection and recovery aspects of building such system - as they
+are provided to you in an simplified fashion though plain actor semantics.
+
+<<actors, Actors>> are entities with identity which communicate using messages. The same semantics are used for local
+and remote actors, which unifies distributed and "local" development, allowing for fast development cycles and one shared
+mental model for how a system communicates. Swift Distributed Actors actors are type-safe and able to handle various serialization mechanisms
+transparently, so you can focus on developing business logic, without serialization boilerplate getting in the way.
+
+Build in <<observability>> capabilities, so you can easily inspect your local as well as production systems
+using metrics, traces and ad hoc queries to the system. #TODO#
+
+Swift Distributed Actors's failure detection and handling mechanisms embrace the _"Let it crash!"_ philosophy, and provide utilities and
+mechanisms for building fault tolerant systems on top of this core observation. They also allow <<failure-isolation, isolating failures>> within
+a single actor rather than faulting the entire hosting process, as is normally the case with Swift applications.
+
+Swift Distributed Actors is heavily inspired by several real-world battle tested implementations of distributed actor systems,
+such as https://akka.io[Akka] and https://www.erlang.org[Erlang].
+
+Swift Distributed Actors's transport layer is implemented on top of https://github.com/apple/swift-nio[Swift NIO].
+
+
+++++
+<h3>Getting in Touch</h3>
+++++
+
+While the project is still in its early days, we are looking for early adopters or general discussion
+about use cases you might have for Swift Distributed Actors. Please feel free reach out to us:
+
+- **Direct mail** to our development team: TODO@APPLE.COM
+- Follow us or open issues on GitHub: https://github.com/apple/swift-distributed-actors
+
+++++
+<h3>Reference Guide</h3>
+++++
 
 This reference guide is written in a style intended to familiarize yourself with the concepts that the library includes,
 yet does not dive in depth into all parameters and details of the APIs. If you are looking to quickly skim over APIs
 and SwiftDoc you may want to check out the API Documentation here.
 
-**Getting in Touch**
-
-- Swift Distributed Actors team mailing list: TODO@APPLE.COM
-- Apple Github: https://github.com/apple/swift-distributed-actors
-
-**Reference Guide**
-
-The reference guide is composed of the following modules:
+The guide is composed of the following modules:
 
 include::actors.adoc[]
 include::failure_handling.adoc[]
 include::clustering.adoc[]
+include::observability.adoc[]
 include::examples.adoc[]

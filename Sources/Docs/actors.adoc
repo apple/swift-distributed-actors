@@ -11,7 +11,7 @@ Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the 
 
 === Why Actors?
 
-Using actors you will be able to:
+Using actors unlocks several exciting use-cases, just to name a few:
 
 * **perform massively parallel computations** without having to think about low level concurrency,
 **  since actors provide you with a "illusion of single-threadedness" while scaling efficiently across cores and machines.
@@ -19,26 +19,120 @@ Using actors you will be able to:
 *  **isolate failures**, so that a failure of a single actor does not fail the entire process.
 ** in order to build fault tolerant systems that span multiple cores and clustered nodes.
 
-==== What Actors are **_not_**
 
-Actors are not aimed to solve _all_ concurrency tasks, and as a matter of fact they would very well complement an Async/Await model,
-and Futures.
+They do so thanks to a few core principles everything else is built on top of:
 
-Actors are focused on the bigger picture -- distribution.
+. **Actors communicate _only_ using messages**,
+** which allows the implementation to handle all the synchronization for us, and withing the actor code we can program
+    as-if the actor was single-threaded, greatly simplifying our implementations based on actors.
+. **Actors can spawn other actors**, including "child actors"
+** which allows us to compartmentalize and structure our applications in so-called <<supervision_tree, supervision trees>>,
+    for better failure isolation and overall understandability of the system.
+. **Actors can change their behavior in reaction to a message**.
+** which allows us to model arbitrary state machines and _stateful_ logic using actors.
 
-=== Motivating Example
+A key observation here is that actors lean themselves very well to writing state machines which many of your programs
+already are albeit perhaps more implicitly than explicitly -- with actors you have a choice to model the behavior
+transitions more explicitly _or_ using a style with multiple mutable variables and mutating them within a single behavior.
+While we advertise for the first style, as enables modeling the state space such that programming mistakes are less likely,
+the second style indeed leads to less boilerplate. Both styles are fully supported by Swift Distributed Actors, so you can pick and choose
+which best works for a given problem.
 
-TODO: talk about MMO or some IoT things. Or some other massively multiplayer thing. where actors are lovely to model the entities.
+Essentially you can view an actor as an accumulator of state, that for every incoming message, returns a new behavior which based on its state may choose to act differently
+upon the next incoming message.
 
-This should become our example, so here we can say "click here to follow the guided example", or continue to read about the concepts.
+#TODO not so happy with the intro yet... We need to convey the main points, but also make it exciting.#
+
+==== What Actors are **_not_**?
+
+Actors are not aimed to solve _all_ concurrency tasks, nor do they replace Futures or async/await based models.
+
+In fact, they complement them -- as Futures or async/await are excellent ways to model the flow of data or avoid callbacks,
+however they do not provide addressable identities which are able to _keep state_ and communicate over network -- and this is where actor's excel at.
+
+In other words: actors are focused on on identity, state and distribution thereof.
 
 === "Thinking in Actors"
 
-TODO super important section.
+#TODO: Quite important section#
 
 We should avoid "omg everything as an actor!" when people start adopting this :-)
 
-=== Starting and stopping Actors
+=== Using Actors
+
+In this section we will learn the basics of using actors to implement simple messaging patterns.
+
+==== Defining Messages
+
+Before we dive in head-first into defining our actors, let's focus for a second what in reality might be the most
+important aspect of working with them to begin with: defining message protocols.
+
+While swift-distributed-actors does not limit what types of messages you can send between actors, you should keep in mind that you are
+working with inherently concurrent entities, and as such care should be taken to _not_ share any mutable references inside
+your messages. In order of preference (from best to worst) you should try to define messages using the following style:
+
+- as (deeply immutable) value types ^(best)^ -- e.g. as `structs` or `enums` which contains only other value types,
+- as value types -- which do contain references to non-value types, however those are either immutable, or thread-safe to access,
+- as immutable reference types -- as even if it is a reference type, you still guarantee that they won't be mutated accidentally by multiple actors at the same time,
+- as general reference types ^(worst;^ ^highly^ ^error^ ^prone)^ -- this is best avoided, as it can easily lead to accidentally sharing mutable references which may lead to concurrent access to those fields by multiple actors.
+
+In general it is best to keep messages sent between actors just that: plain messages.
+Avoid sending closures as part of messages, as you may accidentally introduce race conditions by means of closing over some shared mutable reference in such closure.
+
+#Internal note: While it would be lovely if we could require them to be "copyable". Similar to Rust's https://doc.rust-lang.org/std/marker/trait.Send.html[`Send`].#
+
+TIP: Messages SHOULD be immutable values. Prefer structs and enumerations wherever possible.
+
+#TODO: Add link to serialization engine docs once we have it.#
+
+#TODO: There should be another section eventually about designing message protocols.#
+
+
+==== Defining Simple Behaviors
+
+You might be surprised to find out that there is no "Actor" class to extend from in Swift Distributed Actors.
+This is because conceptually and Actor is the sum of three parts:
+
+1. A `Mailbox` containing all the pending messages that the actor should process
+2. A api:Behavior[enum]  that should be run for each subsequent message.
+3. A api:MessageDispatcher[protocol] which "runs the Actor".
+
+Those three elements together form one functioning actor. In other words, an actor is a behavior that is able to be run
+with messages from a mailbox. It is by-design that the actor itself can not be seen nor reached from user code, this
+allows Swift Distributed Actors to provide the memory isolation safety that actors are known for -- i.e. there is
+
+Another reason is, that semantically, it is not possible to "combine actors" as they are their own individual entities
+and always have to guarantee isolation from any 3rd parties. However, it is possible and tremendously useful to combine
+actor `Behaviors`.
+
+TIP: All actors are defined in terms of their api:Behavior[enum].
+
+For getting started, we'll focus on the most important behavior group, the `receive` functions, as they allow an
+actor to react to messages. The `receive` behavior comes in a few different flavours. Firstly, the `receiveMessage`
+is one of the more useful versions as it allows us to simply react on a message, and return the next behavior that the
+actor should _become_:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receiveMessage_behavior]
+----
+<1> Defines a reusable behavior that can receive `Greetings` messages. You can `spawn` multiple actors of the same behavior after all.
+<2> We do something with the message; here we only print it, but things will soon be much more exciting.
+<3> Lastly we return the "next behavior", since all behaviors are small state machines.
+
+As you can see, this already defines a mini state machine, albeit not a very interesting one, as the behavior will
+continuously become the `.same` one.
+
+
+You might be curious how the message type looks like, now that we've seen a behavior to handle them.
+In our example we do not yet worry about the serialization of the messages, so it can be in fact any type,
+however we strongly recommend
+
+
+==== Spawning Actors
+
+TIP: Starting actors is referred to as "spawning" them. In the same way one refers to spawning new threads by a thread pool or operating system.
+
 
 [source]
 ----
@@ -47,13 +141,29 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 <1> All Actors "live" within an `ActorSystem`, so in order to work with actors we need to first start a system.
 <2> An actor's "Behavior" contains all the logic and state that it will work with. There are numerous ways to define one, we'll learn about them very soon.
 <3> We `spawn` our actor using the `behavior` and we give it a `name` while we are at it as well. Names are tremendously helpful for understanding and debugging your application.
-<4> We "tell" our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message send to the actor.
 
-=== Sending messages
+==== Sending messages
 
-TODO
+Sending messages to actors is straight forward and can be done thanks to the api:ActorRef[class]`.tell(_:)` method.
+
+#TODO: ActorRef link should be ActorRef<Message>#
+
+For example, now that we have obtained a reference to
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=tell_1]
+----
+<1> We _tell_ our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message send to the actor.
+
+TIP: Sending messages to actors always has the same form, regardless if they are local or remote.
+     (This is one of the ways the _location transparency_ property surfaces in the APIs.)
+
+#TODO: complete this section#
 
 === Stopping actors
+
+#TODO: Diagram of actor lifecycle#
 
 ==== Guarantees
 
@@ -78,28 +188,44 @@ Parent-child relationships add a few more guarantees:
 - if the parent spawns AND watches the child though, the same death pact principles apply,
   and a failing child WILL cause the parent to terminate as well.
 
-==== Stopping the current actor
+==== Stopping the Current Actor (Myself)
 
-Has to be performed by returning `Behavior.stopped` from a receive block.
-This synchronously guarantees that no further messages will be processed after this stopped is returned.
+While an actor is running there exist only two ways in which it may decide end up _stopping itself_, either by:
 
-NOTE: that one MAY NOT use the `context.stop(child:)` function to stop `myself`.
+- stopping: returning returning a api:Behavior[enum]`.stopped` as the next behavior
+- crashing: by throwing an `Error` or causing a fault.
+** in which case <<supervision>> will handle the failure and determine what to do about it; by default stopping the actor.
 
+To see this in a more realistic example let's have a look at the following snippet:
 
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
+----
+<1> We invoke some business logic that does not have to be aware of the actor details at all
+<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[enum]`.stopped`
 
-NOTE: this is a note
+This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
+As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in in its lifecycle.
 
-TIP: This is a tip
+In practice such snippets would often be extracted into their own functions or extensions onto the domain objects, for example:
 
-IMPORTANT: this is important
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_refactored]
+----
 
-CAUTION: nooooooo
+Note that returning `.stopped` also _guarantees_ that no further messages will be processed after the stopped behavior
+has been returned. You may also use the `.stopped(postStop:)` overloads to perform cleanup operations, or even store your
+own "stopped" that would perform some cleanup logic if there was a need to do the similar cleanup for various actors in
+your system.
 
-WARNING: warning
+NOTE: It is NOT possible to stop yourself by calling the `context.stop(child:)` function to stop `myself`.
+      This is to not encourage another way of doing the same thing, and make stopping easier to track -- as it should
+      always result from a `return .stopped` or a failure. This makes analysing existing code bases simpler, as there
+      are only the two cases to look for.
 
-
-
-==== Stopping child actors
+==== Stopping Child Actors
 
 A parent actor may stop child actors by using `context.stop(child:)` on them,
 which is implemented as a system message send asking the child to stop.
@@ -107,33 +233,22 @@ which is implemented as a system message send asking the child to stop.
 The child MAY NOT refuse such stop command and it is effective immediately once the message arrives at the child actor.
 Bear in mind though that this stopping operation, by virtue of being a message send, is an asynchronous operation.
 
-=== Monitoring and reacting to Termination
+#TODO: complete this section#
 
-TODO
+[[props]]
+=== Working with Props
 
-=== DeathWatch
+api:Props[struct] are properties that are used to configure an actor as it is started
 
-DeathWatch is similar, yet very different to <<supervision>>, since it only allows us to observe other actors fail,
-and not automatically (and while retaining their identity) restart them. The two techniques combined however serve
-as the cornerstone of building resilient applications with actors.
+TIP: "Props" are what an theater actor may use during a performance. For example, a skull would be a classic example of
+     a "prop" used while performing the William Shakespeare's Hamlet Act III, scene 1, saying _"To be, or not to be, that is the question: [...]."_
+     In the same sense, api:Props[struct] for Swift Distributed Actors actors are accompanying objects/settings, which help the actor perform its duties.
 
-==== Guarantees
+=== Where to go from here?
 
-For the sake of describing those guarantees let us assume we have two actors, Romeo and Juliet.
-Romeo performs a `context.watch(juliet)` during its `setup`.
+> "One Actor, is No Actor. They come in Systems."
 
-It is by Swift Distributed Actors guaranteed that:
+This chapter has introduced you to the bare basics of building simple actors, however in reality you will want to utilize
+more of their capabilities including failure handling and clustering.
 
-- if Juliet terminated Romeo will receive a `.terminated` signal which it can handle by using an `Behavior.receiveSignal`,
-- the `.terminated` message will never be duplicated not lost. As it goes with system messages, one can assume "exactly once" processing for them,
-including in distributed settings (which is a stronger guarantee than given for plain user messages),
--
-
-Furthermore, if we imagine the above two actors be in the actual play of Shakespeare, then there would also be an audience,
-which would be watching both of these actors. This means that many actors (the audience) can be watching out "stage" actors.
-For this situation the following is guaranteed:
-
-- if an actor (any actor) is watching any of the terminating actors it WILL receive an `.terminated` message,
-- all of the actors watching a terminating actor WILL receive the `.terminated` message,
-  - even in distributed settings, if a watcher has "not noticed immediately" what was going on on stage (e.g. due to lack of network connectivity),
-    once it is informed by other actors (handled internally via cluster gossip), it will receive the outstanding `.terminated` as-if it had observed the death with its own eyes.
+We recommend continuing the read of this guide chapter by chapter, and later on referring to it while you work on your apps.

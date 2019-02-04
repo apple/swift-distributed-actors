@@ -1,54 +1,83 @@
 
 == Failure Handling
 
-> Programming concurrent and distributed systems often involves having to deal with failure of other parts of your system,
-be it asynchronous computations or failures of entire nodes in a cluster.
+> Failures in distributed systems are common place, and one has to design such systems to be resilient to failures.
+> Thankfully actors make this task much simpler, as all kinds of failures are unified into supervision or termination events,
+> to which one can react to.
 
-
+CAUTION: **The current supervision implementation** (of "faults" specifically) **is a Proof of Concept.** +
+         +
+         It "works, but..." will leak memory that the actor has allocated in case of
+         supervision handling a fault (e.g. a division by zero). The application process will remain alive, the fault
+         will be logged and handled by stopping or restarting the offending actor, however resources will leak. +
+         +
+         Supervision also handles `Error` throws which is safe in the same way throws in normal Swift applications are.
 
 [[supervision_vocabulary]]
-=== Vocabulary
+=== Failure Vocabulary
 
-Since there are various "types" of failures conditions, Swift Distributed Actors defines the following vocabulary in order to make discussing
-failure handling scenarios harder to misunderstand:
+Before we explain the mechanisms available to you to handle failures in Swift Distributed Actors, we first need to define a shared vocabulary
+that we will use while discussing these. Since there are various "types" of failure conditions, we want to be as specific
+as possible when discussing them.
 
-- *Failure* - the most general term for any kind of "faulty" behavior, including: errors, throws, crashes, fatal errors,
-- *Error* as in "throw an error" - the classic meaning of "error" in Swift, which is bound to the `Error` type,
-  and means any operation that can throw an error.
-- *Fault* as in "faulty operation"
+* *Error* as in "throw an error" - the classic meaning of "error" in Swift, which is bound to the `Error` type.
+** Examples: any `Error` that is `throw`n from inside of a Swift function.
+* *Fault* as in "faulty operation" - are most types of faults that Swift does not expose as Errors but would normally
+  result in terminating the entire process.
+** Examples: array-out-of-bounds access, forced `nil` unwrapping, division by zero, as well as calls to `fatalError`.
+* *Failure* - is the term Swift Distributed Actors uses to classify either an Error or Fault, as supervision works for both classes of failures.
+** Examples: either a Fault or an Error.
 
-You may wonder how the various other words used by the underlying OS relate to them.
-For example, in POSIX systems faults are signalled by "error codes" and "signals".
-Some of such conditions are recoverable _within an actor_ and Swift Distributed Actors allows doing so,
-however code execution beyond a faulty line of code is never allowed.
+Summing up, any error or fault is a kind of failure.
 
-Summing up, any Error or Fault is a type of Failure in Swift Distributed Actors wording. We hope that this wording remains consistent
-enough with the rest of the ecosystem.
+TIP: This wording is also in alignment with Swift's own https://github.com/apple/swift/blob/master/stdlib/public/core/Result.swift[`Result`] type,
+     where failed case is called `failure` and carries an `Error` instance.
 
-Further, you can expect to hear the following phrases:
-
-- "the actor has thrown", "an error during message processing" - an error was thrown during message or signal processing
-- "the actor crashed" - meaning that the actor was stopped in response to a failure
+Further more, you can expect see phases involving the word "crash". We use this word to mean a "stop" result of failure
+handling or a failure causing the stopping of an entire node. The wording should usually classify what the subject of the
+crash was, e.g. _"the system crashed"_ or _"the request handler (actor) crashed."_
 
 === Supervision
 
-Actor supervision in Swift Distributed Actors is a core concept that allows for building resilient concurrent and distributed actor systems.
+Actor supervision is a mechanism using which whoever is starting an actor (most often, its parent) can define
+how the actor should handle failures if they occur.
 
-NOTE: Supervision is a concept core to most, if not all, actor implementations.
-      The most notable implementations heavily relying on supervision concepts are Erlang/OTP, Akka.
-      While the core ideas and mechanisms are very similar in Swift Distributed Actors, be aware that each runtime has its own specific
-      challenges and as such may differ slightly in wording or implementation.
+Supervision is configured using api:Props[struct] (see <<props>>), and as such can only be configured when starting an actor.
+Swift Distributed Actors provides a number of built in supervision strategies (api:SupervisionStrategy[enum]) which we'll explore in depth soon.
+
+For now let's see how we could configure an actor to restart a few times, if it encountered a failure:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_props]
+----
+<1> TODO
+<2> TODO
+
+TIP: It is only possible to supervise code running "inside" of an actor. +
+     If you schedule some asynchronous operation onto a different thread from within the actor,
+     that failure is unlikely to return to the actor and make it fail. Be aware of this while integrating actors with other APIs.
+
+WARNING: PoC Limitation: the current _fault_ handling mechanisms rely on POSIX http://man7.org/linux/man-pages/man7/signal.7.html[signal handlers],
+         and as such may not mix well with other libraries which rely on this functionality.+
+         +
+         Our goal is to move away from this implementation detail eventually, however we can not commit at this point yet
+         as to when other `unwind` mechanisms would arrive in Swift itself. These would in turn allow implementing these
+         in a more compatible fashion.
 
 
-Supervision in Swift Distributed Actors is offered to users via Behavior decorators, that are recognized and executed by the actor system
-when failures occur.
 
 
-NOTE: It is NOT possible to supervise code running outside of actors.
+[[failure-isolation]]
+=== Failure isolation
 
-NOTE: Implementation limitation: the current fault handling mechanisms rely on signal handlers, and as such may not mix
-      well with other libraries which rely on this functionality. Our goal is to eventually solve this using a dedicated mechanism inside the runtime.
+NOTE: Failure isolation across nodes is simple, as such processes by design do not share memory and only communicate
+      using messages over the network, the failure of one component is already isolated thanks to the network boundary. +
+      +
+      We do however have the ability to detect and react to node failures, which we'll discuss in the <<cluster>> section
+      of the guide.
 
+[[supervision_tree]]
 === Supervision hierarchies
 
 Swift Distributed Actors enforces a strict parent-child relationship between actors. Only an actor's parent actor MAY supervise it.
@@ -68,34 +97,7 @@ At the same time, bear in mind that while it may be possible to recover from som
 sometimes faults are legitimate problems and can leave your system vulnerable. Make sure to always investigate fault crashes
 of your actors and aim to build systems where faults do not occur on regular basis.
 
-=== Nested supervision
-
-Since supervision is applied to behaviors by wrapping them using a supervision behavior,
-it is possible to have multiple supervisors wrapping a behavior. When this happens, the order in which
-supervisors will be notified about a fault is "from inner most, to outer most."
-
-The assumption here is that
-supervisors "closer to" the inner behavior are applied by code that is more aware of its internal workings, e.g.
-a library author may know that the code may sometimes harmlessly fail due to some problem in the internally used library,
-outside users of this behavior should not be exposed to the fact that this library is used by the actor, so it handles all
-errors that this library may throw.
-
-As users adopt this behavior, they may notice that sometimes a timeout error occurs and crashes the actor.
-It MAY be fine to wrap this behavior in a backoff restarting supervisor to handle this timeout situation.
-
-
-Examples:
-
-    let providedByLibrary = internalBehavior.supervisedWith(strategy: restart ...)
-    let prepped = providedByLibrary.supervisedWith(strategy: handleTimeouts)
-    system.spawn(prepped, name: "worker")
-
-
-****
-Side thingy
-****
-
-=== Supervising specific Errors
+==== Supervising specific Errors
 
 It is also possible to constrain which type of failure a supervisor should supervise. For example, when working with APIs
 that might throw errors when they are "overwhelmed" and our goal is simply to drop the message which caused this fault,
@@ -126,3 +128,28 @@ https://developer.apple.com/videos/play/wwdc2018/414/["Understanding Crashes and
 how to read and use crash logs (backtraces) to locate and isolate problems in your code.
 
 Another useful resource to understand crash logs is https://developer.apple.com/library/archive/technotes/tn2151/_index.html[Understanding and Analyzing Application Crash Reports].
+
+=== Death Watch and Terminated signals
+
+==== Guarantees
+
+For the sake of describing those guarantees let us assume we have two actors, Romeo and Juliet.
+Romeo performs a `context.watch(juliet)` during its `setup`.
+
+It is by Swift Distributed Actors guaranteed that:
+
+- if Juliet terminated Romeo will receive a `.terminated` signal which it can handle by using an `Behavior.receiveSignal`,
+- the `.terminated` message will never be duplicated not lost. As it goes with system messages, one can assume "exactly once" processing for them,
+including in distributed settings (which is a stronger guarantee than given for plain user messages),
+-
+
+Furthermore, if we imagine the above two actors be in the actual play of Shakespeare, then there would also be an audience,
+which would be watching both of these actors. This means that many actors (the audience) can be watching out "stage" actors.
+For this situation the following is guaranteed:
+
+- if an actor (any actor) is watching any of the terminating actors it WILL receive an `.terminated` message,
+- all of the actors watching a terminating actor WILL receive the `.terminated` message,
+  - even in distributed settings, if a watcher has "not noticed immediately" what was going on on stage (e.g. due to lack of network connectivity),
+    once it is informed by other actors (handled internally via cluster gossip), it will receive the outstanding `.terminated` as-if it had observed the death with its own eyes.
+
+#TODO: complete this section#
