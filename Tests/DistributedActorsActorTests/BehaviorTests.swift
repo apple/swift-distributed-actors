@@ -271,7 +271,7 @@ class BehaviorTests: XCTestCase {
                 // actually being executed in the context of the actor. After
                 // calling the closure, it will check if the actor is still
                 // supposed to run and if it's not, it will be stopped.
-                context.myself._downcastUnsafe.cell.behavior = .stopped
+                context.myself._downcastUnsafe.cell?.behavior = .stopped
                 p.tell("fromCallback:\(msg)")
             }
 
@@ -285,5 +285,32 @@ class BehaviorTests: XCTestCase {
         ref.tell("test")
         try p.expectMessage("fromCallback:test")
         try p.expectTerminated(ref)
+    }
+
+    enum ContextClosureMessage {
+        case context(() -> ActorRef<String>)
+    }
+
+    func test_myself_shouldStayValidAfterActorStopped() throws {
+        let p: ActorTestProbe<ContextClosureMessage> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            p.tell(.context {
+                return context.myself
+            })
+
+            return .stopped
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectTerminated(ref)
+        switch try p.expectMessage() {
+        case .context(let closure):
+            let ref2 = closure()
+            ref.shouldEqual(ref2)
+        }
     }
 }

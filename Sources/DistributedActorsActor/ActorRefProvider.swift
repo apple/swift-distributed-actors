@@ -65,17 +65,8 @@ internal struct LocalActorRefProvider: ActorRefProvider {
                 dispatcher: dispatcher
             )
 
-            // the mailbox of the actor
-            let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
-            // mailbox.set(cell) // TODO: remind myself why it had to be a setter back in Akka
+            let refWithCell = cell._myselfInACell
 
-            let refWithCell = ActorRefWithCell(
-                path: path,
-                cell: cell,
-                mailbox: mailbox
-            )
-
-            cell.set(ref: refWithCell)
             refWithCell.sendSystemMessage(.start)
 
             return refWithCell
