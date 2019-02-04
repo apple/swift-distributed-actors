@@ -120,7 +120,7 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     let mailbox: Mailbox<Message> // TODO: we need to be able to swap it for DeadLetters or find some other way
 
     // MARK: Internal details; HERE BE DRAGONS
-    internal let cell: ActorCell<Message>
+    internal weak var cell: ActorCell<Message>?
 
     public init(path: UniqueActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
         self._path = path

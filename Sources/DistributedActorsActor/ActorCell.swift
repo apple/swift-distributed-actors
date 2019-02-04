@@ -74,7 +74,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     /// Guaranteed to be set during ActorRef creation
     /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
-    @usableFromInline internal var _myselfInACell: ActorRefWithCell<Message>?
+    @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(path: self._path, cell: self, mailbox: Mailbox(cell: self, capacity: self._props.mailbox.capacity))
     @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages? {
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
@@ -149,14 +149,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     ///
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
-        guard let unwrapped = self._myselfInACell else {
-            CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-
-            fatalError("Illegal `myself` access! Unwrapped `_myselfInACell` was nil in [thread:\(_hackyPThreadThreadId())]. " +
-                "This should never happen, and is likely an implementation bug in Swift Distributed Actors, please file a ticket. " +
-                "Was a message handled by an already-dead actor which should never do so?")
-        }
-        return unwrapped
+        return self._myselfInACell
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
@@ -291,7 +284,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
     internal func fail(error: Error) {
-        self._myselfInACell?.mailbox.setFailed()
+        self._myselfInACell.mailbox.setFailed()
         // TODO: we could handle here "wait for children to terminate"
 
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
@@ -370,9 +363,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     ///
     // ./' It all comes, tumbling down, tumbling down, tumbling down... ./'
     internal func finishTerminating() {
-        self._myselfInACell?.mailbox.setClosed()
+        self._myselfInACell.mailbox.setClosed()
 
-        let myPath: UniqueActorPath? = self._myselfInACell?.path
+        let myPath: UniqueActorPath? = self._myselfInACell.path
         traceLog_Cell("FINISH TERMINATING \(self)")
 
         // TODO: stop all children? depends which style we'll end up with...
@@ -394,7 +387,6 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self.deathWatch = nil
-        self._myselfInACell = nil // TODO: maybe try inventing a ActorRefWithDeadCell(system: system, path: path)?
         self.behavior = .stopped // TODO or failed...
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
@@ -452,15 +444,7 @@ extension ActorCell {
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
         } else {
             // so we are in the middle of terminating already anyway
-
-            // FIXME: The need of special casing here is a hack and should not be needed. It is because we too eagerly invoke finishTerminating when we do fail()
-            // finishTerminating() shall be the LAST thing an actor ever executes, thus no more watch processing after it has (since them myself is nil), so we hack around it here with the "fake path based ref"
-            switch _myselfInACell {
-            case .some(let cell):
-                watcher.sendSystemMessage(.terminated(ref: cell._boxAnyAddressableActorRef(), existenceConfirmed: true))
-            case .none:
-                watcher.sendSystemMessage(.terminated(ref: PathOnlyHackAnyAddressableActorRef(path: self.path), existenceConfirmed: true))
-            }
+            watcher.sendSystemMessage(.terminated(ref: self._myselfInACell._boxAnyAddressableActorRef(), existenceConfirmed: true))
         }
     }
 
@@ -532,7 +516,7 @@ extension ActorCell {
 
 extension ActorCell: CustomStringConvertible {
     public var description: String {
-        let path = self._myselfInACell?.path.description ?? "/system/deadLetters#DEAD###" // FIXME path should always remain safe to touch, also after termination (!)
+        let path = self._myselfInACell.path.description
         return "\(type(of: self))(\(path))"
     }
 }

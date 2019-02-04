@@ -36,6 +36,7 @@ extension BehaviorTests {
                 ("test_stoppedWithPostStop_shouldTriggerPostStopCallback", test_stoppedWithPostStop_shouldTriggerPostStopCallback),
                 ("test_stoppedWithPostStopThrows_shouldTerminate", test_stoppedWithPostStopThrows_shouldTerminate),
                 ("test_makeAsynchronousCallback_shouldExecuteClosureInActorContext", test_makeAsynchronousCallback_shouldExecuteClosureInActorContext),
+                ("test_myself_shouldStayValidAfterActorStopped", test_myself_shouldStayValidAfterActorStopped),
            ]
    }
 }
