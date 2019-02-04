@@ -18,7 +18,6 @@ import CSwiftDistributedActorsMailbox
 
 // MARK: Internal implementations, the so-called "cell"
 
-/// INTERNAL API
 internal protocol FailableActorCell {
     /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
     func crashFail(error: Error)

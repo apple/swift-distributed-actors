@@ -53,6 +53,12 @@ public enum Behavior<Message> {
     /// all events.
     indirect case stopped(postStop: Behavior<Message>?)
 
+    /// Alternative way of expressing a failed actor.
+    ///
+    /// User code should normally not use this, and can instead revert to throwing or faulting.
+    ///
+    /// **Associated Values**
+    ///   - `error` cause of the actor's failing.
     case failed(error: Error)
 
     /// Allows handling signals such as termination or lifecycle events.

@@ -14,9 +14,9 @@
 
 /// The `ActorContext` exposes an actors details and capabilities, such as names and timers.
 ///
-/// Warning:
-/// - It MOST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
-/// - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
+/// - Warning:
+///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
+///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A ActorRefFactory
 
     /// Returns `ActorSystem` which this context belongs to.
