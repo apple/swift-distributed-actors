@@ -58,15 +58,7 @@ jazzy_args=(--clean
             --documentation=$root_path/Sources/Docs/*.md
             --theme fullwidth
            )
-cat > "$module_switcher" <<EOF
-# Swift Distributed Actors Docs
-
-Refer to the <a href="../../../reference/$version/index.html">Reference Docs</a> for a more guided experience,
-rather than raw API documentation which you will find below.
-
-Swift Distributed Actors contains multiple modules:
-
-EOF
+cat "$my_path/docs_includes/generate_docs_api_main.md" > "$module_switcher"
 
 for module in "${modules[@]}"; do
   echo " - [$module](../$module/index.html)" >> "$module_switcher"

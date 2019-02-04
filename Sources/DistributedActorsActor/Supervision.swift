@@ -14,6 +14,7 @@
 
 // MARK: Supervision props and strategies
 
+/// Properties configuring supervision for given actor.
 public struct SupervisionProps {
     // internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
     // on purpose stored as list, to keep order in which the supervisors are added as we "scan" from first to last when we handle
@@ -23,12 +24,14 @@ public struct SupervisionProps {
         self.supervisionMappings = []
     }
 
-    public mutating func add(strategy: SupervisionStrategy, failureType: Error.Type) {
-        self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: failureType, strategy: strategy))
+    /// Add another supervision strategy for a specific `Error` type to the supervision chain contained within these props.
+    public mutating func add(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
+        self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: errorType, strategy: strategy))
     }
-    public func adding(strategy: SupervisionStrategy, errorType failureType: Error.Type) -> SupervisionProps {
+    /// Non mutating version of `SupervisionProps.add(strategy:forErrorType:)`
+    public func adding(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> SupervisionProps {
         var p = self
-        p.add(strategy: strategy, failureType: failureType)
+        p.add(strategy: strategy, forErrorType: errorType)
         return p
     }
 }
@@ -37,39 +40,39 @@ public extension Props {
     /// Creates a new `Props` appending an supervisor for the selected failure type.
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
-    /// Parameters:
-    ///   - `strategy` supervision strategy to apply for the given class of failures
-    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
     public static func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
-        props.supervision = props.supervision.adding(strategy: strategy, errorType: errorType)
+        props.supervision = props.supervision.adding(strategy: strategy, forErrorType: errorType)
         return props
     }
     /// Creates a new `Props` appending an supervisor for the selected failure type.
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
-    /// Parameters:
-    ///   - `strategy` supervision strategy to apply for the given class of failures
-    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
     public static func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         return addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
     ///
-    /// Parameters:
-    ///   - `strategy` supervision strategy to apply for the given class of failures
-    ///   - `forType` error type selector, determining for what type of error the given supervisor should perform its logic.
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
     public func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
-        props.supervision.add(strategy: strategy, failureType: errorType)
+        props.supervision.add(strategy: strategy, forErrorType: errorType)
         return props
     }
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
     ///
-    /// Parameters:
-    ///   - `strategy` supervision strategy to apply for the given class of failures
-    ///   - `forAll` failure type selector, working as a "catch all" for the specific types of failures.
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
     public func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         return self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
@@ -82,7 +85,7 @@ public enum SupervisionStrategy {
     /// Semantically equivalent to not applying any supervision strategy at all, since not applying a strategy
     /// also means that upon encountering a failure the given actor is terminated and all of its watchers are terminated.
     ///
-    /// SeeAlso: - `DeathWatch` for discussion about how to be notified about an actor stopping / failing.
+    /// - SeeAlso: `DeathWatch` for discussion about how to be notified about an actor stopping / failing.
     case stop
 
     /// Supervision strategy allowing the supervised actor to be restarted `atMost` times `within` a time period.
@@ -93,8 +96,8 @@ public enum SupervisionStrategy {
     /// Assuming supervision with: .restart(atMost: 2, within: .seconds(10))
     ///
     ///      fail-per-1  fail-per-2                    failure-period-3
-    /// Tfp: 0123456789  0123456789                       0123456789
-    ///     [x        x][x         ][... no failures ...][x   x  x!!]`
+    /// TFP: 0123456789  0123456789                       0123456789
+    ///     [x        x][x         ][... no failures ...][x   x  x!!]
     ///      ^        ^  ^                                ^      ^
     ///      |        |  |                                |      \ and whenever we hit a 3rd failure within it, we escalate (do do restart, and the actor is stopped)
     ///      |        |  |                                \ any new failure after a while causes a new failure period
@@ -103,13 +106,16 @@ public enum SupervisionStrategy {
     ///      \- a failure begins a failure period of 10 seconds
     /// ```
     ///
-    /// WARNING: While it is possible to omit the `within` parameter, it has a specific effect which may not often be useful:
+    /// - Warning:
+    /// While it is possible to omit the `within` parameter, it has a specific effect which may not often be useful:
     /// a `restart` supervision directive without a `within` parameter set effectively means that a given actor is allowed to restart
     /// `atMost` times _in total_ (in its entire lifetime). This rarely is a behavior one would desire, however it may sometimes come in handy.
     ///
-    /// Parameters:
+    /// **Associated Values**
     ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0.
-    ///   - `within`
+    ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
+    ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
+    ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
     case restart(atMost: Int, within: TimeAmount?) // TODO would like to remove the `?` and model more properly
     // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
 }
@@ -121,6 +127,7 @@ internal struct ErrorTypeBoundSupervisionStrategy {
 
 public struct Supervision {
 
+    /// Internal conversion from supervision props to apropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: Behavior<Message>, props: SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
@@ -154,7 +161,6 @@ public struct Supervision {
     /// or if such code encounters a fault (such as `fatalError`, divides by zero or causes an out-of-bounds fault
     /// by un-safely accessing an array.
     public enum Failure {
-        // TODO: figure out how to represent failures, carry error code, actor path etc I think
         /// The failure was caused by the actor throwing during its execution.
         /// The carried `Error` is the error that the actor has thrown.
         case error(Error)
@@ -284,7 +290,9 @@ internal class Supervisor<Message> {
     }
 }
 
-
+/// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
+/// At the same time, it may be useful to sometimes explicitly specifiy that for some type of error we want to stop
+/// (e.g. when used with composite supervisors, which restart for all failures, yet should not do so for some specific type of error).
 final class StoppingSupervisor<Message>: Supervisor<Message> {
     internal let failureType: Error.Type
 
@@ -342,6 +350,7 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
     }
 }
 
+/// Encapsulates logic around when a restart is allowed, i.e. tracks the deadlines of failure periods.
 internal struct RestartDecisionLogic {
     let maxRestarts: Int
     let within: TimeAmount?

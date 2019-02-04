@@ -18,7 +18,7 @@ import Darwin
 import Glibc
 #endif
 
-/// Not intended to be used by end users
+/// :nodoc: Not intended to be used by end users.
 public final class Mutex {
     @usableFromInline
     var mutex: pthread_mutex_t = pthread_mutex_t()
