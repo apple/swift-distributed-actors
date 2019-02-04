@@ -13,25 +13,50 @@
 //===----------------------------------------------------------------------===//
 
 // tag::imports[]
+
 import Swift Distributed ActorsActor
+
 // end::imports[]
 
 class SupervisionDocExamples {
 
-    func example_spawn() throws {
-        // tag::top_level_spawn[]
-        let system = ActorSystem("ExampleSystem")
+    let system = ActorSystem("ExampleSystem")
 
-        let greeterBehavior: Behavior<String> = .receiveMessage { name in
-            print("Hello \(name)!")
-            return .same
+    func example_spawn() throws {
+
+        // tag::supervise_props[]
+        enum GreeterError: Error {
+            case doesNotLike(name: String)
         }
 
-        let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior, name: "greeter")
+        func isMyFriend(_ name: String) -> Bool {
+            fatalError("undefined")
+        }
 
-        greeterRef.tell("Caplin") // <>
+        func greeterBehavior(friends: [String]) -> Behavior<String> {
+            return .receive { context, name in
 
-        // "Hello Caplin!"
-        // end::top_level_spawn[]
+                guard isMyFriend(name) else {
+                    context.log.warning("Overreacting to \(name)... Letting it crash!")
+                    throw GreeterError.doesNotLike(name: name)
+                }
+
+                context.log.info("Hello \(name)!")
+                return .same
+            }
+        }
+
+        let friends = ["Caplin", "Kapi"]
+
+        let props = Props().addSupervision(strategy: .restart(atMost: 5, within: .seconds(1))) // <1>
+        let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior(friends: friends), name: "greeter",
+            props: props) // <2>
+
+        greeterRef.tell("Caplin") // ok!
+        greeterRef.tell("Beelzebub") // crash!
+        // greeter is restarted
+        greeterRef.tell("Kapi") // ok! 
+
+        // end::supervise_props[]
     }
 }
