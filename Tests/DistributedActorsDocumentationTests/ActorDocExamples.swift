@@ -13,7 +13,9 @@
 //===----------------------------------------------------------------------===//
 
 // tag::imports[]
+
 import Swift Distributed ActorsActor
+
 // end::imports[]
 
 import XCTest
@@ -21,20 +23,114 @@ import XCTest
 
 class ActorDocExamples: XCTestCase {
 
-    func example_spawn() throws {
+    // tag::message_greetings[]
+    enum Greetings {
+        case greet(name: String)
+        case greeting(String)
+    }
+
+    // end::message_greetings[]
+
+    func example_receive_behavior() throws {
+        // tag::receive_behavior[]
+        let behavior: Behavior<Greetings> = .receive { context, message in
+            // <1>
+            print("Received \(message)") // <2>
+            return .same // <3>
+        }
+        // end::receive_behavior[]
+    }
+
+    func example_receiveMessage_behavior() throws {
+        // tag::receiveMessage_behavior[]
+        let behavior: Behavior<Greetings> = .receiveMessage { message in
+            // <1>
+            print("Received \(message)") // <2>
+            return .same // <3>
+        }
+        // end::receiveMessage_behavior[]
+    }
+
+    func example_spawn_tell() throws {
         // tag::spawn[]
         let system = ActorSystem("ExampleSystem") // <1>
 
-        let greeterBehavior: Behavior<String> = .receiveMessage { name in // <2>
+        let greeterBehavior: Behavior<String> = .receiveMessage { name in
+            // <2>
             print("Hello \(name)!")
             return .same
         }
 
         let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior, name: "greeter") // <3>
+        // end::spawn[]
 
-        greeterRef.tell("Caplin") // <4>
+        // tag::tell_1[]
+        // greeterRef: ActorRef<String>
+        greeterRef.tell("Caplin") // <1>
 
         // prints: "Hello Caplin!"
-        // end::spawn[]
+        // end::tell_1[]
+    }
+
+    func example_stop_myself() throws {
+        // tag::stop_myself_1[]
+        enum LineByLineData {
+            case line(String)
+            case endOfFile
+        }
+
+        func readData() -> LineByLineData {
+            fatalError("undefined")
+        }
+
+        let lineHandling: Behavior<String> = .receive { context, message in
+            let data = readData() // <1>
+            // do things with `data`...
+
+            // and then...
+            switch data {
+            case .endOfFile: return .stopped // <2>
+            default:         return .same
+            }
+        }
+        // end::stop_myself_1[]
+    }
+
+    class X {
+        enum LineByLineData {
+            case line(String)
+            case endOfFile
+        }
+
+        // tag::stop_myself_refactored[]
+        private func stopForTerminal(_ data: LineByLineData) -> Behavior<String> {
+            switch data {
+            case .endOfFile: return .stopped
+            default:         return .same
+            }
+        }
+
+        // end::stop_myself_refactored[]
+    }
+
+    func example_stop_myself_refactored() throws {
+        func readData() -> X.LineByLineData {
+            fatalError("undefined")
+        }
+
+        func stopForTerminal(_ data: X.LineByLineData) -> Behavior<String> {
+            fatalError("undefined")
+        }
+
+
+        // tag::stop_myself_refactored[]
+        let lineHandling: Behavior<String> = .receive { context, message in
+            let data = readData()
+            // do things with `data`...
+
+            // and then...
+            return stopForTerminal(data)
+        }
+        // end::stop_myself_refactored[]
     }
 }

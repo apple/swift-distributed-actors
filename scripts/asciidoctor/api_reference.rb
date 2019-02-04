@@ -10,6 +10,8 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
   def process parent, target, attrs
     text = type_name = target
 
+    # we trim <T> from links, since they don't feature in the URLs
+    type_name.gsub!(/<.*>/, "")
 
     tpe = if (tpe = attrs['tpe']) == "enum"
       "Enums"
