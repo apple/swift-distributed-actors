@@ -25,6 +25,7 @@ extension ParentChildActorTests {
    static var allTests : [(String, (ParentChildActorTests) -> () throws -> Void)] {
       return [
                 ("test_contextSpawn_shouldSpawnChildActorOnAppropriatePath", test_contextSpawn_shouldSpawnChildActorOnAppropriatePath),
+                ("test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath", test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath),
                 ("test_contextSpawn_duplicateNameShouldFail", test_contextSpawn_duplicateNameShouldFail),
                 ("test_contextStop_shouldStopChild", test_contextStop_shouldStopChild),
                 ("test_contextStop_shouldThrowIfRefIsNotChild", test_contextStop_shouldThrowIfRefIsNotChild),
