@@ -98,14 +98,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self.deathWatch = DeathWatch()
 
         #if SACT_TESTS_LEAKS
-        system.cellInitCounter.add(1)
+        _ = system.cellInitCounter.add(1)
         #endif
     }
 
     deinit {
         pprint("deinit cell \(_path)")
         #if SACT_TESTS_LEAKS
-        system.cellInitCounter.sub(1)
+        _ = system.cellInitCounter.sub(1)
         #endif
     }
 
@@ -413,6 +413,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
 
     public override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
         return try self.internal_spawn(behavior, name: name, props: props)
+    }
+
+    public override func spawnAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
+        return try self.internal_spawn(behavior, name: self.system.anonymousNames.nextName(), props: props)
     }
 
     public override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
