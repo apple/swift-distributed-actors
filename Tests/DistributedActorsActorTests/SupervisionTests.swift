@@ -87,8 +87,8 @@ class SupervisionTests: XCTestCase {
             let behavior: Behavior<String> = undefined()
             _ = try self.system.spawn(behavior, name: "example")
             _ = try self.system.spawn(behavior, name: "example", props: Props())
-            _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.PinnedThread))
-            _ = try self.system.spawn(behavior, name: "example", props: Props().withDispatcher(.PinnedThread).addSupervision(strategy: .stop))
+            _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.pinnedThread))
+            _ = try self.system.spawn(behavior, name: "example", props: Props().withDispatcher(.pinnedThread).addSupervision(strategy: .stop))
             // nope: _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.PinnedThread).addSupervision(strategy: .stop))
             // /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTests/SupervisionTests.swift:120:15: error: expression type '()' is ambiguous without more context
             _ = try self.system.spawn(behavior, name: "example", props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
@@ -98,7 +98,7 @@ class SupervisionTests: XCTestCase {
             _ = try self.system.spawn(behavior, name: "example",
                 props: Props()
                     .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                    .withDispatcher(.PinnedThread)
+                    .withDispatcher(.pinnedThread)
                     .withMailbox(.default(capacity: 122, onOverflow: .crash))
             )
 

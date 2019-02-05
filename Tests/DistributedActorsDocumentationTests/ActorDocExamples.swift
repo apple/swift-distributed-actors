@@ -133,4 +133,41 @@ class ActorDocExamples: XCTestCase {
         }
         // end::stop_myself_refactored[]
     }
+
+    func example_props() throws {
+        // tag::props_example[]
+        var props = Props()
+        // end::props_example[]
+    }
+    func example_props_inline() throws {
+        let behavior: Behavior<String> = .ignore
+        let system = ActorSystem("ExampleSystem")
+
+        // tag::props_inline[]
+        try system.spawn(behavior, name: "worker", 
+            props: .withDispatcher(.default)
+        )
+        // end::props_inline[]
+    }
+
 }
+
+// tag::suggested_props_pattern[]
+struct ExampleWorker {
+    public static var suggested: (Behavior<WorkerMessages>, Props) {
+        return (behavior, ExampleWorker.props)
+    }
+    internal static var behavior: Behavior<WorkerMessages> = .receive { context, work in
+        context.log.info("Work, work!")
+        return .same
+    }
+    internal static var props: Props = Props().withDispatcher(.pinnedThread)
+}
+enum WorkerMessages {}
+
+func run(system: ActorSystem) throws {
+    let (b, props) = ExampleWorker.suggested
+    try system.spawn(b, name: "heavy-worker", props: props)
+}
+
+// end::suggested_props_pattern[]

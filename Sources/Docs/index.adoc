@@ -22,6 +22,9 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :linkcss:
 :pygments-linenums-mode: table
 
+// we don't want listtings to be prefixed with "Listing N." since not all are named and numbering gets weird
+:!listing-caption:
+
 :multipage-level: 1
 :toclevels: 2
 :sectnumlevels: 3
@@ -72,7 +75,7 @@ Build in <<observability>> capabilities, so you can easily inspect your local as
 using metrics, traces and ad hoc queries to the system. #TODO#
 
 Swift Distributed Actors's failure detection and handling mechanisms embrace the _"Let it crash!"_ philosophy, and provide utilities and
-mechanisms for building fault tolerant systems on top of this core observation. They also allow <<failure-isolation, isolating failures>> within
+mechanisms for building fault tolerant systems on top of this core observation. They also allow <<failure_isolation, isolating failures>> within
 a single actor rather than faulting the entire hosting process, as is normally the case with Swift applications.
 
 Swift Distributed Actors is heavily inspired by several real-world battle tested implementations of distributed actor systems,

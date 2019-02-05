@@ -12,6 +12,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
 
     # we trim <T> from links, since they don't feature in the URLs
     type_name.gsub!(/<.*>/, "")
+    type_name.gsub!(/&lt;.*&gt;/, "")
 
     tpe = if (tpe = attrs['tpe']) == "enum"
       "Enums"
@@ -39,7 +40,11 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     link = %{../../#{link}}
 
     parent.document.register :links, link
-    %(#{(create_anchor parent, text, type: :link, target: link).convert})
+    # %(#{(create_anchor parent, text, type: :link, target: link).convert})
+    %(<span class="api-tooltip api-#{attrs['tpe']}">
+        <code><a href="#{link}"" alt="">#{text}</a></code>
+        <span class="api-tooltiptext">#{attrs['tpe']} #{target}</span>
+      </span>)
   end
 end
 
