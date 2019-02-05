@@ -201,14 +201,14 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
-public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> T {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     do {
-        let _ = try block()
+        return try block()
     } catch {
         let msg = callSiteInfo.detailedMessage("Unexpected throw captured: [\(error)]")
         XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
-        fatalError("Failed: \(ShouldMatcherError.expectedErrorToBeThrown)")
+        throw ShouldMatcherError.unexpectedErrorWasThrown
     }
 }
 
@@ -216,6 +216,7 @@ public func shouldNotThrow<T>(_ block: () throws -> T, file: StaticString = #fil
 
 public enum ShouldMatcherError: Error {
     case expectedErrorToBeThrown
+    case unexpectedErrorWasThrown
 }
 
 struct CallSiteInfo {
