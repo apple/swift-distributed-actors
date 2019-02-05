@@ -27,10 +27,10 @@ import Dispatch // TODO: This is here for potential future "run on dispatch" dis
 /// props for Swift Distributed Actors actors are accompanying objects/settings, which help the actor perform its duties.
 public struct Props {
 
-    var mailbox: MailboxProps
-    var dispatcher: DispatcherProps
+    public var mailbox: MailboxProps
+    public var dispatcher: DispatcherProps
 
-    var supervision: SupervisionProps
+    public var supervision: SupervisionProps
 
     public init(mailbox: MailboxProps, dispatcher: DispatcherProps, supervision: SupervisionProps) {
         self.mailbox = mailbox
@@ -41,7 +41,6 @@ public struct Props {
     public init() {
         self.init(mailbox: .default(), dispatcher: .default, supervision: .init())
     }
-
 
 }
 
@@ -69,14 +68,8 @@ public enum DispatcherProps {
     /// Lets runtime determine the default dispatcher
     case `default`
 
-    case callingThread
-
-    /// Use the Dispatch library as underlying executor.
-    case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass) // TODO: we want diff actors to be able to run on diff priorities, thus this setting
-
-    // TODO: not entirely sure about how to best pull it off, but pretty sure we want a dispatcher that can use NIO's EventLoop
-    //       we'd need to pass EventLoop into the system, but I think this would be nice at the worst we'd "blow up if you want to use NIO event loops but it's not passed in"
-    case NIO
+    //    /// Use the Dispatch library as underlying executor.
+    //    case dispatch(qosClass: Dispatch.DispatchQoS.QoSClass) // TODO: we want diff actors to be able to run on diff priorities, thus this setting
 
     // TODO: definitely good, though likely not as first thing We can base it on Akka's recent "Affinity" one,
     // though in Akka we had a hard time really proving that it outperforms the FJP since here we have no FJP readily available, and the Affinity one is much simpler,
@@ -87,7 +80,14 @@ public enum DispatcherProps {
     ///
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
-    case PinnedThread
+    case pinnedThread // TODO implement pinned thread dispatcher
+
+
+    // TODO or hide it completely somehow; too dangerous
+    /// WARNING: Use with Caution!
+    ///
+    /// Dispatcher which hijacks the calling thread to schedule execution.
+    case callingThread
 }
 
 // MARK: Mailbox Props

@@ -326,6 +326,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
     @inlinable public func restart(behavior: Behavior<Message>) throws {
+        // TODO likely don't log here...
+        self.log.warning("Restarting.")
+
         self.timers.cancelAll()
         try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
         self.behavior = behavior

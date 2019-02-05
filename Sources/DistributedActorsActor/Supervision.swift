@@ -25,10 +25,14 @@ public struct SupervisionProps {
     }
 
     /// Add another supervision strategy for a specific `Error` type to the supervision chain contained within these props.
+    ///
+    /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
     public mutating func add(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervisionMappings.append(ErrorTypeBoundSupervisionStrategy(failureType: errorType, strategy: strategy))
     }
     /// Non mutating version of `SupervisionProps.add(strategy:forErrorType:)`
+    ///
+    /// - SeeAlso: The `Supervise.All.*` wildcard failure  type selectors may be used for the `forErrorType` parameter.
     public func adding(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> SupervisionProps {
         var p = self
         p.add(strategy: strategy, forErrorType: errorType)
@@ -176,6 +180,36 @@ public struct Supervision {
     /// or other situations where supervision failed in some other way.
     public enum DecisionError: Error {
         case illegalDecision(String, handledError: Error, error: Error)
+    }
+}
+
+extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvertible {
+    public var description: String {
+        switch self {
+        case .fault(let f):
+            switch f {
+            case let msgProcessingErr as MessageProcessingFailure:
+                return "fault(\(msgProcessingErr))"
+            default:
+                return "fault(\(f))"
+            }
+        case .error(let err):
+            return "error(\(err))"
+        }
+    }
+    public var debugDescription: String {
+        switch self {
+        case .fault(let f):
+            switch f {
+            case let msgProcessingErr as MessageProcessingFailure:
+                return "fault(\(String(reflecting: msgProcessingErr))"
+            default:
+                return "fault(\(f))"
+            }
+        case .error(let err):
+            return "error(\(err))"
+        }
+
     }
 }
 

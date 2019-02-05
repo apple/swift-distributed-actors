@@ -209,3 +209,85 @@ a:visited {
     color: #6b95b0;
     text-shadow: 0 1px 2px rgba(0, 0, 0, .1)
 }
+
+/* css for swiftdoc links from api: macro */
+
+.api-struct a {
+    color: #008080 !important;
+}
+.api-struct .api-tooltiptext {
+    background-color: #008080;
+}
+.api-struct .api-tooltip .api-tooltiptext::after {
+    border-color: transparent transparent #008080 transparent;
+}
+
+.api-enum a {
+    color: #008080;
+}
+.api-enum .api-tooltiptext {
+    background-color: #008080;
+}
+.api-enum .api-tooltip .api-tooltiptext::after {
+    border-color: transparent transparent #008080 transparent;
+}
+
+.api-class a {
+    color: #769AA5 !important;
+}
+.api-class .api-tooltiptext {
+    background-color: #769AA5;
+}
+.api-class .api-tooltip .api-tooltiptext::after {
+    border-color: transparent transparent #769AA5 transparent;
+}
+
+.api-protocol a {
+    color: #50861A;
+}
+.api-protocol .api-tooltiptext {
+    background-color: #50861A;
+}
+.api-protocol .api-tooltip .api-tooltiptext::after {
+    border-color: transparent transparent #50861A transparent;
+}
+
+.api-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+.api-tooltip:hover {
+    text-decoration: none;
+}
+.api-tooltiptext {
+    visibility: hidden;
+    font-family: Menlo, Consolas, Monaco, "Courier New", monospace, serif;
+    font-size: 12px;
+    background-color: black;
+    color: #fff;
+    position: absolute;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 6px;
+    white-space: pre;
+
+    /* Position the tooltip text - see examples below! */
+    top: 120%;
+    /*left: 50%;*/
+    margin-left: -50%; /* Use half of the width (120/2 = 60), to center the tooltip */
+
+    display: block;
+    z-index: 1;
+}
+.api-tooltip .api-tooltiptext::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;  /* At the top of the tooltip */
+    left: 50%;
+    border-style: solid;
+    border-color: transparent transparent black transparent;
+}
+.api-tooltip:hover .api-tooltiptext {
+    visibility: visible;
+}

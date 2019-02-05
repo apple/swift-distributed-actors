@@ -28,7 +28,7 @@ as possible when discussing them.
 * *Failure* - is the term Swift Distributed Actors uses to classify either an Error or Fault, as supervision works for both classes of failures.
 ** Examples: either a Fault or an Error.
 
-Summing up, any error or fault is a kind of failure.
+Summing up: any `Error` or _fault_ is a kind of _failure_.
 
 TIP: This wording is also in alignment with Swift's own https://github.com/apple/swift/blob/master/stdlib/public/core/Result.swift[`Result`] type,
      where failed case is called `failure` and carries an `Error` instance.
@@ -39,24 +39,207 @@ crash was, e.g. _"the system crashed"_ or _"the request handler (actor) crashed.
 
 === Supervision
 
+> Supervision allows actors to isolate failures and optionally restart by clearing their state and continuing to process
+their mailbox while retaining their identity.
+
 Actor supervision is a mechanism using which whoever is starting an actor (most often, its parent) can define
 how the actor should handle failures if they occur.
 
-Supervision is configured using api:Props[struct] (see <<props>>), and as such can only be configured when starting an actor.
-Swift Distributed Actors provides a number of built in supervision strategies (api:SupervisionStrategy[enum]) which we'll explore in depth soon.
+Supervision is configured using api:Props[struct] (see <<props>>), and as such can only be set while starting an actor.
 
-For now let's see how we could configure an actor to restart a few times, if it encountered a failure:
+Typically one would decide while starting an actor what supervision mechanism to apply to it, as it depends on the parents
+requirements and expectations of the to-be-started actor. Alternatively, the actor itself may want to suggest `props`
+to whomever is going to start it -- this pattern is explained in more depth in the <<suggested_props_pattern>>.
+
+The following snipped showcases how one can step by step prepare a props with a api:SupervisionStrategy[enum]`.restart`:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_props]
 ----
-<1> TODO
-<2> TODO
+<1> Create a new `Props` instance
+<2> Configure it by adding supervision strategies
+<3> Pass it as `props:` while spawning an actor
+
+Alternatively, it is possible to to define the supervision props in-line, using the following short-hand syntax:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_inline]
+----
+<1> Adding a single supervision strategy to the greeter actor in-line.
+
+In both cases, the `addSupervision(strategy:)` results in creating a simple catch-all supervision strategy which will
+be triggered for all kind of failures. It is possible to specific in more detail _which_ kinds of failures we are interested
+in supervising, as well defining a number of supervisors for different failure types. These more advanced supervision
+options are explained in depth in <<specific_failure_supervision>>.
 
 TIP: It is only possible to supervise code running "inside" of an actor. +
      If you schedule some asynchronous operation onto a different thread from within the actor,
      that failure is unlikely to return to the actor and make it fail. Be aware of this while integrating actors with other APIs.
+
+==== Supervision: Simple Error Handling Example
+
+Before explaining in depth the semantics of the various supervision strategies, we can already try out.
+We define a simple greeter actor which will greet persons it knows, however if it gets a name it does not
+recognize it throws an `Error.`
+
+NOTE: In reality such logic would be better served by explicit error handling rather than
+      allowing the actor failure handling to kick in, but sometimes it can be useful to implement even such simple things
+      as actors thanks to the restart mechanism they provide.
+
+.Messages and behavior
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_full_example]
+----
+
+.Spawning and interacting with a .restart supervised actor:
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_full_usage]
+----
+
+The above snippet would yield the following log output (with logLevel set to `INFO`):
+
+// we have to sed inline mode as the overflowing lines otherwise don't aling with the line numbers
+:pygments-linenums-mode: inline
+[source]
+----
+[INFO][main.swift:35][/user/greeter#113950253] Hello Alice!
+[WARN][main.swift:31][/user/greeter#113950253] Overreacting to Boom!... Letting it crash!
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures)
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Restarting.
+[INFO][main.swift:35][/user/greeter#113950253] Hello Bob!
+[WARN][main.swift:31][/user/greeter#113950253] Overreacting to Boom Boom!... Letting it crash!
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 299442569266554), canHandle: AllFailures)
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Restarting.
+[INFO][main.swift:35][/user/greeter#113950253] Hello Caplin!
+----
+// we have to set table mode again, as it is friendlier for copy/paste
+:pygments-linenums-mode: table
+
+The above example log contains all the information regarding the failure: what was thrown, which actor has failed, which
+supervisor has handled this failure as well as its state and supervision result, which in this case is a restart of the actor.
+Following a restart, the actor can seamlessly continue processing messages of its mailbox -- this means, that even if the
+mailbox already contained the next `"Bob"` message it would _not_ be dropped due to the restart. Additionally, the api:ActorRef[class]
+remains valid and other actors can continue to send messages to it, as if nothing ever happened.
+
+Internally however the greeter's state has been "reset" during a restart -- it started anew using the initial behavior
+that was originally used to start it. This is a safe way of restarting actors in a general fashion #TODO: if we solve the leaks#,
+as it may upon a restart recover other "good state" it may want to use for its functioning. Actors are _not_ allowed to assume that
+nothing bad happened to the state and just continue with the now potentially corrupt state -- this is core to the "Let it Crash!"
+philosophy. We focus on crashing and recovering, rather than continuing in "maybe good, maybe not" state.
+
+#TODO: it did not contain which message caused the failure, which should be added automatically by Swift Distributed Actors in case it is not obvious#
+
+==== Supervision: Simple Fault Supervision Example
+
+Having analysed the error handling example, we can now slightly modify the example to showcase _fault handling_ as well.
+We do so by changing our greeter to one which knows which fruit a person likes, and for any incoming name it prints
+this persons favourite fruit.
+
+The actor performs the fruit name lookup in an unsafe way however, by force unwrapping the result of the subscript.
+In reality this would be most likely a bug, and perhaps a harder to spot one like displayed here, but the example
+is good enough for being able to showcase the fault handling capabilities of supervision:
+
+.Modified behavior, now unsafely force unwrapping fruit names:
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_fault_example]
+----
+
+.Spawning and interacting with the actor remains unchanged:
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_fault_usage]
+----
+
+Before analyzing the log output of this application snippet, let us focus on the fact that while the actor now performs
+unsafe actions which result in a fault (which usually would bring down an entire Swift process), the use-site did not
+really change that much.
+
+The expectation is, that regardless of the actor performing possibly faulty operations (such as force unwrapping,
+index out of bounds, or similar fatal errors), the actor shall be restarted and remain usable -- without further 
+intervention of the caller. In other words, the faults of the fruit actor, are isolated within itself, and do not
+affect neither the entire process not the sending side of the messages.
+
+The log output obtained from running the above fault handling application snippet would look similar to the following: 
+
+WARNING: **WARNING:** The following shows the output of the "hacky signal handlers" supervision in action. We would like
+         to obtain proper unwind support in Swift such that we could implement more correctly (i.e. no leaks, better
+         backtrace perhaps, esp on linux). +
+         +
+         Having that said, let's look at how the current implementation handles faults.
+
+:pygments-linenums-mode: inline
+[source]
+----
+[INFO][main.swift:31][/user/favFruit#2041854707] Alice likes [Apples]!
+Fatal error: Unexpectedly found nil while unwrapping an Optional value
+[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom!]:String':
+0   Swift Distributed ActorsPerformanceTester            0x000000010eb0a9a4 sact_get_backtrace + 52
+1   Swift Distributed ActorsPerformanceTester            0x000000010eb0aec8 sact_sighandler + 88
+2   libsystem_platform.dylib            0x00007fff5a7d5b3d _sigtramp + 29
+3   ???                                 0x0000000000000000 0x0 + 0
+4   libswiftCore.dylib                  0x000000010f105e63 $Ss18_fatalErrorMessage__4file4line5flagss5NeverOs12StaticStringV_A2HSus6UInt32VtF + 19
+5   Swift Distributed ActorsPerformanceTester            0x000000010ece8188 $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_ + 328
+6   Swift Distributed ActorsPerformanceTester            0x000000010ece870d $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_TA + 13
+...
+[WARN][ActorCell.swift:323][/user/favFruit#2041854707] Restarting.
+[INFO][main.swift:31][/user/favFruit#2041854707] Bob likes [Bananas]!
+Fatal error: Unexpectedly found nil while unwrapping an Optional value
+[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 312506020116583), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom Boom!]:String':
+0   Swift Distributed ActorsPerformanceTester            0x000000010eb0a9a4 sact_get_backtrace + 52
+1   Swift Distributed ActorsPerformanceTester            0x000000010eb0aec8 sact_sighandler + 88
+2   libsystem_platform.dylib            0x00007fff5a7d5b3d _sigtramp + 29
+3   libsystem_malloc.dylib              0x00007fff5a79b4a4 tiny_malloc_from_free_list + 445
+4   libswiftCore.dylib                  0x000000010f105e63 $Ss18_fatalErrorMessage__4file4line5flagss5NeverOs12StaticStringV_A2HSus6UInt32VtF + 19
+5   Swift Distributed ActorsPerformanceTester            0x000000010ece8188 $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_ + 328
+6   Swift Distributed ActorsPerformanceTester            0x000000010ece870d $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_TA + 13
+...
+[WARN][ActorCell.swift:323][/user/favFruit#2041854707] Restarting.
+[INFO][main.swift:31][/user/favFruit#2041854707] Caplin likes [Cucumbers]!
+----
+
+So not only did the supervision indeed keep the process alive, dump a backtrace of the fault, but also did the supervisor
+properly decide that the actor shall be restarted. From a functional perspective this did not differ much from handling
+an error using supervision. Section <<backtraces>> dives deeper into analysing backtraces.
+
+At the same time however, **faults should be taken lightly as they most likely indicate a bug
+in the program**. Supervision enables easier location, debugging and potentially replicating scenarios (messages)
+which cause the fault condition, such that it is easier to fix the application and deploy a fixed version as soon as possible.
+
+TIP: Supervision is not a replacement to not fixing faults. Faults should be taken seriously, as they usually indicate a
+     programming error. +
+     +
+     Supervision does however help locate the fault by helping to narrow it down:
+     - to specific actor (e.g. representing a specific user for which this fault occurs),
+     - to message (or signal) which caused the fault,
+     - by offering a backtrace for each occurring fault.
+
+#TODO cleanup logs a bit, the supervisor is quite large in the printout#
+
+=== Supervision strategies
+
+As shown in the previous section, actors can be supervised by applying specific props settings to them at spawn-time.
+In a later section <<death_watch, Death Watch>> is introduced, which allows for more freedom with regards to observing actors for failure,
+however does not allow for identity preserving restarts of failing actors.
+
+Swift Distributed Actors provides a number of built in supervision strategies to choose from (see api:SupervisionStrategy[enum]).
+
+==== Supervision Strategy: .stop
+
+> Logs failure and crashes the given actor immediately.
+
+One can think of any actor being automatically supervised with the strategy `.stop`, as it deals with fault isolation and
+stops the failing actor unconditionally in case of any failure.
+
+For now let's see how we could configure an actor to restart a few times, if it encountered a failure:
+
+==== Supervision Strategy: .restart(atMost:within:)
+
+> Aggressively restarts actor, up until `atMost` restarts `within` a time period.
 
 WARNING: PoC Limitation: the current _fault_ handling mechanisms rely on POSIX http://man7.org/linux/man-pages/man7/signal.7.html[signal handlers],
          and as such may not mix well with other libraries which rely on this functionality.+
@@ -65,11 +248,72 @@ WARNING: PoC Limitation: the current _fault_ handling mechanisms rely on POSIX h
          as to when other `unwind` mechanisms would arrive in Swift itself. These would in turn allow implementing these
          in a more compatible fashion.
 
+==== Supervision Strategy: .restartWithBackoff
+
+> Restarts the actor, applying backoff pauses between the restart attempts
+
+#TODO: Not implemented yet and may affect API or merge into .restart entirely, where we pass in a backoff strategy etc.#
+
+One of the more advanced strategies is restarting with backoff. The term backoff here means that after a failure,
+the actor will remain "alive" however it will not be restarted until a certain amount of time has passed -- the backoff time.
+
+This strategy is useful for situations where rapid restarts (as they are by default) are not a good idea, and could
+potentially even be harmful to the system.
+
+#TODO implement and document completely#
+
+An example of where supervision _without_ backoff is even harmful includes situations where e.g. database goes down, and all actors crash and repeatedly try to re-establish the connection).
 
 
+[[specific_failure_supervision]]
+=== Supervising specific Failures
 
-[[failure-isolation]]
+> It is also possible to selectively apply supervision depending on the type of the failure.
+
+For example, when working with APIs that might throw errors when they are "overwhelmed" and our goal is simply to drop the message which caused this fault,
+yet do not terminate the actor but continue processing other messages as they are independent requests, we might want to
+supervise only for this `SomeLibraryOverloadedError`, yet leave all other errors to crash the actor and leave any compensating
+actions to its parent.
+
+For example, it is possible to supervise for a specific Error by always restarting, however all other Errors and faults
+will cause an immediate crash of the actor:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SupervisionDocExamples.swift[tag=supervise_specific_error_else_stop]
+----
+<1> The actor is implemented to "re-throw" all errors that are sent to it
+<2> The `.restart` supervision strategy is selected for the specific error type `CatchThisError`
+<3> An "catch all" `.stop` supervisor is always implicitly applied to the end of the supervisor chain.
+
+Using this mechanism we are able to supervise only for failures we know may occur and perhaps maybe for some reason
+can not do much about them right now and restarting the actor to reinitialize is the right thing to do.
+
+It is also possible to supervise "all errors" or "all faults" with a specific supervision strategy.
+This is done as shown in the above snipped in point 3. It is possible to explicitly select supervision strategies
+for "all" types of a failure category. This is done using the api:Supervise/All[enum]`.[errors|faults|failures]` cases
+and the `addSupervision(strategy:forAll:)` overload of the supervision chain builder.
+
+It is worth remembering that while supervision can deal with Errors, it is often times preferable to handle those using
+plain `do/catch` notation, as it has two benefits over supervision:
+
+- firstly, it allows for more control as `do/catch` may indeed catch
+  an error and decide that it was harmless and we should continue operations,
+- and secondly, it likely is the right thing to do semantically, as handling errors usually is normal in Swift applications,
+  and supervision should remain for those instances where unexpected problems arise or the supervision chain or backoff mechanisms
+  could be useful.
+
+NOTE: Supervision is not intended to replace `do/catch` blocks, and should be used for "unexpected" failures.
+      Try to use the "let it crash" philosophy when designing your actors and their interactions.
+      Make sure that a crash would carry enough useful information to be able to attempt fixing it later on,
+      e.g. by carrying trace or similar metadata which could help identify if the error exists only for a specific
+      entity or situation.
+
+
+[[failure_isolation]]
 === Failure isolation
+
+#TODO: write this#
 
 NOTE: Failure isolation across nodes is simple, as such processes by design do not share memory and only communicate
       using messages over the network, the failure of one component is already isolated thanks to the network boundary. +
@@ -79,6 +323,8 @@ NOTE: Failure isolation across nodes is simple, as such processes by design do n
 
 [[supervision_tree]]
 === Supervision hierarchies
+
+#TODO: write this#
 
 Swift Distributed Actors enforces a strict parent-child relationship between actors. Only an actor's parent actor MAY supervise it.
 Other actors - be it siblings or other completely unrelated actors - may only _watch_ a given actor for termination.
@@ -90,6 +336,8 @@ TODO: explain bulk heading and compartmentalization.
 
 === A word of caution: fatal faults
 
+#TODO: complete this#
+
 Swift Distributed Actors does NOT allow recovering from "fatal faults" such as segmentation faults (segfaults) or similar faults.
 Some faults are serious enough that continuing running after they have occurred is too risky and should not be taken lightly.
 
@@ -97,30 +345,7 @@ At the same time, bear in mind that while it may be possible to recover from som
 sometimes faults are legitimate problems and can leave your system vulnerable. Make sure to always investigate fault crashes
 of your actors and aim to build systems where faults do not occur on regular basis.
 
-==== Supervising specific Errors
-
-It is also possible to constrain which type of failure a supervisor should supervise. For example, when working with APIs
-that might throw errors when they are "overwhelmed" and our goal is simply to drop the message which caused this fault,
-yet do not terminate the actor but continue processing other messages as they are independent requests, we might want to
-supervise only for this `SomeLibraryOverloadedError`, yet leave all other errors to crash the actor and leave any compensating
-actions to its parent.
-
-// TODO snippets, explain that the match must be EXACT, we do not perform any "is subclass of" checks etc.
-// TODO: We COULD, but then we have to make the Supervisor<Message, Error>
-
-While this mechanism is useful, it should _not_ be used to replace traditional `do/catch` blocks which usually are much
-better positioned to perform appropriate cleanup or compensating actions closer to the origin of the issue. For example
-one might want to a connection or file before stopping the actor cleanly, or performing the cleanup and causing the actor
-to crash by throwing a different Error which then can carry more contextual information about why this crash happened,
-which can be useful in later diagnosis and fixing of the issue.
-
-NOTE: Supervision is not intended to replace `do/catch` blocks, and should be used for "unexpected" failures.
-      Try to use the "let it crash" philosophy when designing your actors and their interactions.
-      Make sure that a crash would carry enough useful information to be able to attempt fixing it later on,
-      e.g. by carrying trace or similar metadata which could help identify if the error exists only for a specific
-      entity or situation.
-
-
+[[backtraces]]
 === Analysing Back Traces (Crash Logs)
 
 When a fault occurs, Swift Distributed Actors will print a crash log. An excellent talk from WWDC 2018 titled
@@ -129,9 +354,66 @@ how to read and use crash logs (backtraces) to locate and isolate problems in yo
 
 Another useful resource to understand crash logs is https://developer.apple.com/library/archive/technotes/tn2151/_index.html[Understanding and Analyzing Application Crash Reports].
 
+==== Demangling backtraces
+
+#TODO This deserves a proper section about it. And likely our way isn't the best yet. Needs more work.#
+
+Swift applies name mangling to function names, and due to that raw backtraces may not be easy to read:
+
+[source,text,unnumbered]
+----
+0   Swift Distributed ActorsPerformanceTester            0x000000010eb0a9a4 sact_get_backtrace + 52
+1   Swift Distributed ActorsPerformanceTester            0x000000010eb0aec8 sact_sighandler + 88
+2   libsystem_platform.dylib            0x00007fff5a7d5b3d _sigtramp + 29
+3   libsystem_malloc.dylib              0x00007fff5a79b4a4 tiny_malloc_from_free_list + 445
+4   libswiftCore.dylib                  0x000000010f105e63 $Ss18_fatalErrorMessage__4file4line5flagss5NeverOs12StaticStringV_A2HSus6UInt32VtF + 19
+5   Swift Distributed ActorsPerformanceTester            0x000000010ece8188 $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_ + 328
+6   Swift Distributed ActorsPerformanceTester            0x000000010ece870d $S24Swift Distributed ActorsPerformanceTester22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_TA + 13
+7   Swift Distributed ActorsPerformanceTester            0x000000010ece8553 $S12Swift Distributed ActorsActor0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TR + 51
+8   Swift Distributed ActorsPerformanceTester            0x000000010ece876b $S12Swift Distributed ActorsActor0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TRTA + 27
+9   Swift Distributed ActorsPerformanceTester            0x000000010ec8bf44 $S12Swift Distributed ActorsActor8BehaviorO16interpretMessage7context7message4file4lineACyxGAA0B7ContextCyxG_xs12StaticStringVSutKF + 916
+----
+
+#TODO: Can we offer this in some nicer way?#
+#TODO: Can we offer this on Linux? (AFAIR it's more tricky)#
+
+Thankfully Swift also ships with a demangle function built right into the `swift` command line tool.
+Swift Distributed Actors offers #TODO likely we don't want to keep shipping this but offer something nicer# a simple script which allows
+pasting a mangled backtrace and get it back in an easier to read demangled format. Usage is fairly simple, and involves
+pasting a backtrace like the one above to the `scripts/sact_backtrace_demangle` script.
+
+[source,text,unnumbered]
+----
+$ pbpaste  | ./scripts/sact_backtrace_demangle
+0	Swift Distributed ActorsPerformanceTester	0x000000010eb0a9a4	 demangled:sact_get_backtrace + 52
+1	Swift Distributed ActorsPerformanceTester	0x000000010eb0aec8	 demangled:sact_sighandler + 88
+2	libsystem_platform.dylib	0x00007fff5a7d5b3d	 demangled:_sigtramp + 29
+3	libsystem_malloc.dylib	0x00007fff5a79b4a4	 demangled:tiny_malloc_from_free_list + 445
+4	libswiftCore.dylib	0x000000010f105e63	 demangled:Swift._fatalErrorMessage(_: Swift.StaticString, _: Swift.StaticString, file: Swift.StaticString, line: Swift.UInt, flags: Swift.UInt32) -> Swift.Never + 19
+5	Swift Distributed ActorsPerformanceTester	0x000000010ece8188	 demangled:closure #1 (Swift Distributed ActorsActor.ActorContext<Swift.String>, Swift.String) -> Swift Distributed ActorsActor.Behavior<Swift.String> in Swift Distributed ActorsPerformanceTester.favouriteFruitBehavior([Swift.String : Swift.String]) -> Swift Distributed ActorsActor.Behavior<Swift.String> + 328
+6	Swift Distributed ActorsPerformanceTester	0x000000010ece870d	 demangled:partial apply forwarder for closure #1 (Swift Distributed ActorsActor.ActorContext<Swift.String>, Swift.String) -> Swift Distributed ActorsActor.Behavior<Swift.String> in Swift Distributed ActorsPerformanceTester.favouriteFruitBehavior([Swift.String : Swift.String]) -> Swift Distributed ActorsActor.Behavior<Swift.String> + 13
+7	Swift Distributed ActorsPerformanceTester	0x000000010ece8553	 demangled:reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) + 51
+8	Swift Distributed ActorsPerformanceTester	0x000000010ece876b	 demangled:partial apply forwarder for reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) + 27
+----
+
+[[death_watch]]
 === Death Watch and Terminated signals
 
-==== Guarantees
+While supervision is very powerful, it is also (by design) limited to parent-child relationships. This is to guide system
+implementors towards structuring systems as supervision _trees_ where each parent makes an informed decision about how its
+children should be supervised.
+
+This however also means that this form of supervision is not dynamic -- i.e. it is not possible to supervise an actor
+started by a different parent, nor is it possible to supervise remote actors. This is a deliberate design choice based
+on years of experience with Akka based systems and a (now deprecated) feature called "remote deployment" which indeed
+allowed such remote supervision, however at an huge complexity -- both implementation and understandability -- cost.
+
+Swift Distributed Actors instead enforces the importance of "watch" mechanisms, which are strongly inspired by the `watch` mechanism
+in Akka and `link` mechanism in Erlang.
+
+TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<Message>[class].
+
+==== Death Watch Guarantees
 
 For the sake of describing those guarantees let us assume we have two actors, Romeo and Juliet.
 Romeo performs a `context.watch(juliet)` during its `setup`.

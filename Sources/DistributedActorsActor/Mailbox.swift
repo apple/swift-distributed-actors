@@ -175,6 +175,9 @@ final class Mailbox<Message> {
 
                 let supervisionResultingBehavior: Behavior<Message>
 
+                // TODO improve logging, should include what decision was taken; same for THROWN
+                cell.log.warning("Supervision: Actor has FAULTED [\(String(describing: supervisionFailure))]:\(type(of: supervisionFailure)) while interpreting \(runPhase), handling with \(cell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
+
                 switch runPhase {
                 case .processingSystemMessages:
                     supervisionResultingBehavior = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .signal)
@@ -365,8 +368,12 @@ internal struct MessageProcessingFailure: Error {
     let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?
 }
 
-extension MessageProcessingFailure: CustomStringConvertible {
+extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
     var description: String {
+        let backtraceStr = backtrace.joined(separator: "\n")
+        return "Actor faulted while processing message '\(messageDescription)', with backtrace"
+    }
+    public var debugDescription: String {
         let backtraceStr = backtrace.joined(separator: "\n")
         return "Actor faulted while processing message '\(messageDescription)':\n\(backtraceStr)"
     }
