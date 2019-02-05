@@ -28,6 +28,7 @@ import XCTest
 
    XCTMain([
          testCase(ActorIsolationFailureHandlingTests.allTests),
+         testCase(ActorLeakingTests.allTests),
          testCase(ActorLifecycleTests.allTests),
          testCase(ActorLoggingTests.allTests),
          testCase(ActorPathTests.allTests),

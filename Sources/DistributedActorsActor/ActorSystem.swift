@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActorsConcurrencyHelpers
-import Dispatch
 import CSwiftDistributedActorsMailbox
+import Dispatch
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
@@ -65,6 +65,10 @@ public final class ActorSystem {
     // the tricky stuff is due to
     // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorSystem.swift:55:16: error: 'self' used before all stored properties are initialized
     // self.log = ActorLogger(self)
+
+    #if SACT_TESTS_LEAKS
+    let cellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
+    #endif
 
     /// Creates a named ActorSystem; The name is useful for debugging cross system communication
     // TODO: /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)

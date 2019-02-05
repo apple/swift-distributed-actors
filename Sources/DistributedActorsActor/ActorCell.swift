@@ -96,10 +96,17 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
         self.deathWatch = DeathWatch()
+
+        #if SACT_TESTS_LEAKS
+        system.cellInitCounter.add(1)
+        #endif
     }
 
     deinit {
         pprint("deinit cell \(_path)")
+        #if SACT_TESTS_LEAKS
+        system.cellInitCounter.sub(1)
+        #endif
     }
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,

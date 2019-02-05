@@ -275,7 +275,7 @@ public struct Deadline: Equatable, Hashable {
     public static let distantFuture = Deadline(Value.max)
 
     public static func now() -> Deadline {
-        return Deadline(Deadline.Value(DispatchTime.now().uptimeNanoseconds))
+        return uptimeNanoseconds(Deadline.Value(DispatchTime.now().uptimeNanoseconds))
     }
 
     public static func uptimeNanoseconds(_ nanoseconds: Value) -> Deadline {

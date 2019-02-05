@@ -36,7 +36,11 @@ final public class ActorTestKit {
         self.system = system
     }
 
-    // MARK: Test Probes
+}
+
+// MARK: Test Probes
+
+public extension ActorTestKit {
 
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
     public func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
@@ -57,6 +61,57 @@ final public class ActorTestKit {
             return try system.spawn(probeBehavior, name: name, props: testProbeProps)
         })
     }
+}
+
+// MARK: Eventually
+
+public extension ActorTestKit {
+
+    /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
+    /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
+    ///
+    /// TODO does not handle blocking longer than `within` well
+    /// TODO: should use default `within` from TestKit
+    @discardableResult
+    public func eventually<T>(within: TimeAmount,
+                              file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+                              _ block: () throws -> T) throws -> T {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let deadline = Deadline.now() + within
+
+        var lastError: Error? = nil
+        var polledTimes = 0
+
+        while deadline.hasTimeLeft() {
+            do {
+                polledTimes += 1
+                let res  = try block()
+                return res
+            } catch {
+                lastError = error
+                // TODO: some sleep interval here to avoid hammering the query
+            }
+        }
+
+        let message = callSite.detailedMessage("No result within \(within.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
+        XCTFail(message, file: callSite.file, line: callSite.line)
+        throw EventuallyError(message: message, lastError: lastError)
+    }
+}
+
+public struct EventuallyError: Error {
+    let message: String
+    let lastError: Error?
+
+    public init(message: String, lastError: Error?) {
+        self.message = message
+        self.lastError = lastError
+    }
+}
+
+// MARK: Fake and mock contexts
+
+public extension ActorTestKit {
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
