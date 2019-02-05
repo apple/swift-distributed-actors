@@ -14,8 +14,8 @@ Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the 
 Using actors unlocks several exciting use-cases, just to name a few:
 
 * **perform massively parallel computations** without having to think about low level concurrency,
-**  since actors provide you with a "illusion of single-threadedness" while scaling efficiently across cores and machines.
-*  easily **scale your systems across multiple nodes**, without changing the conceptual model of the system
+**  since actors provide an "illusion of single threaded execution" while scaling efficiently across many cores and machines.
+*  easily **scale systems across multiple nodes**, without changing their conceptual model
 *  **isolate failures**, so that a failure of a single actor does not fail the entire process.
 ** in order to build fault tolerant systems that span multiple cores and clustered nodes.
 
@@ -23,22 +23,21 @@ Using actors unlocks several exciting use-cases, just to name a few:
 They do so thanks to a few core principles everything else is built on top of:
 
 . **Actors communicate _only_ using messages**,
-** which allows the implementation to handle all the synchronization for us, and withing the actor code we can program
-    as-if the actor was single-threaded, greatly simplifying our implementations based on actors.
+** which allows the implementation to handle all the synchronization internally, so that code in the actor can be written
+   with the assumption of executing _as-if_ in a single thread, greatly simplifying our implementations based on actors.
 . **Actors can spawn other actors**, including "child actors"
-** which allows us to compartmentalize and structure our applications in so-called <<supervision_tree, supervision trees>>,
+** which allows applications to be compartmentalized and structured in so-called <<supervision_tree, supervision trees>>,
     for better failure isolation and overall understandability of the system.
 . **Actors can change their behavior in reaction to a message**.
-** which allows us to model arbitrary state machines and _stateful_ logic using actors.
+** which allows the modeling of arbitrary state machines and _stateful_ logic using actors.
 
-A key observation here is that actors lean themselves very well to writing state machines which many of your programs
-already are albeit perhaps more implicitly than explicitly -- with actors you have a choice to model the behavior
-transitions more explicitly _or_ using a style with multiple mutable variables and mutating them within a single behavior.
-While we advertise for the first style, as enables modeling the state space such that programming mistakes are less likely,
-the second style indeed leads to less boilerplate. Both styles are fully supported by Swift Distributed Actors, so you can pick and choose
-which best works for a given problem.
+A key observation here is that actors lean themselves very well to writing state machines which many programs
+already are albeit perhaps more implicitly than explicitly -- ith actors transitions can be modeled more explicitly
+through behavior changes _or_ using a style with multiple mutable variables and mutating them within a single behavior.
+While we advertise for the first style, as it enables modeling the state space such that programming mistakes are less likely,
+the second style indeed leads to less boilerplate. Both styles are fully supported by Swift Distributed Actors and can be used at the user's discretion.
 
-Essentially you can view an actor as an accumulator of state, that for every incoming message, returns a new behavior which based on its state may choose to act differently
+Essentially an actor can be seen as an accumulator of state, that for every incoming message, returns a new behavior which based on its state may choose to act differently
 upon the next incoming message.
 
 #TODO not so happy with the intro yet... We need to convey the main points, but also make it exciting.#
@@ -48,9 +47,9 @@ upon the next incoming message.
 Actors are not aimed to solve _all_ concurrency tasks, nor do they replace Futures or async/await based models.
 
 In fact, they complement them -- as Futures or async/await are excellent ways to model the flow of data or avoid callbacks,
-however they do not provide addressable identities which are able to _keep state_ and communicate over network -- and this is where actor's excel at.
+however they do not provide addressable identities which are able to _keep state_ and communicate over network -- and this is where actors excel at.
 
-In other words: actors are focused on on identity, state and distribution thereof.
+In other words: actors are focused on identity, state, and distribution thereof.
 
 === "Thinking in Actors"
 
