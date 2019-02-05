@@ -37,7 +37,7 @@ public final class ActorSystem {
     @usableFromInline let deadLetters: ActorRef<DeadLetter>
 
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
-    private let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
+    internal let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
 
     private let dispatcher: InternalMessageDispatcher
 
