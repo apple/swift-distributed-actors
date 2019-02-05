@@ -29,6 +29,7 @@ class ParentChildActorTests: XCTestCase {
     typealias ParentRef = ActorRef<ParentProtocol>
     enum ParentProtocol {
         case spawnChild(behavior: Behavior<ChildProtocol>, name: String)
+        case spawnAnonymousChild(behavior: Behavior<ChildProtocol>)
 
         case stopByName(name: String)
         case findByName(name: String)
@@ -64,6 +65,16 @@ class ParentChildActorTests: XCTestCase {
             case let .spawnChild(behavior, name):
                 do {
                     let kid = try context.spawn(behavior, name: name)
+                    if notifyWhenChildStops {
+                        context.watch(kid)
+                    }
+                    probe.tell(.spawned(child: kid))
+                } catch let ActorContextError.duplicateActorPath(path) {
+                    probe.tell(.spawnFailed(path: path))
+                } // bubble up others
+            case .spawnAnonymousChild(let behavior):
+                do {
+                    let kid = try context.spawnAnonymous(behavior)
                     if notifyWhenChildStops {
                         context.watch(kid)
                     }
@@ -150,8 +161,27 @@ class ParentChildActorTests: XCTestCase {
         parent.tell(.stopByName(name: child.path.name)) // stopping by name
         try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
 
-        // FIXME This is not yet correct... stopping needs more work
-        // we expect the child actor to be dead now
+        p.watch(child) // watching dead ref triggers terminated
+        try p.expectTerminated(child)
+
+        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.path.name))
+    }
+    func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+
+        let parent: ActorRef<ParentProtocol> = try system.spawn(self.parentBehavior(probe: p.ref), name: "parent")
+        parent.tell(.spawnAnonymousChild(behavior: childBehavior(probe: p.ref)))
+
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        pnote("Hello: \(child)")
+
+        parent.tell(.findByName(name: child.path.name))
+        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // should return same (or equal) ref
+
+        parent.tell(.stopByName(name: child.path.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
+
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
