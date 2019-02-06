@@ -45,6 +45,7 @@ final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CMailbox>
     private let path: UniqueActorPath
     private weak var cell: ActorCell<Message>?
+    private let deadLetters: ActorRef<DeadLetter>
 
     // Implementation note: context for closure callbacks used for C-interop
     // They are never mutated, yet have to be `var` since passed to C (need inout semantics)
@@ -66,6 +67,7 @@ final class Mailbox<Message> {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
         self.path = cell.path
+        self.deadLetters = cell.system.deadLetters
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -265,17 +267,7 @@ final class Mailbox<Message> {
         // though that splits the logic between swift and C even more making it more confusing I think
 
         guard let cell = self.cell else {
-            switch systemMessage {
-            case let .watch(watchee, watcher):
-                let response: SystemMessage
-                if watcher.path.isParentOf(watchee.path) {
-                    response = .childTerminated(ref: watchee)
-                } else {
-                    response = .terminated(ref: watchee, existenceConfirmed: true)
-                }
-                watcher.sendSystemMessage(response)
-            default: () // ignore
-            }
+            self.deadLetters.tell(DeadLetter(systemMessage))
             traceLog_Mailbox("Actor(\(self.path)) has already stopped, dropping system message \(systemMessage)")
             return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
         }
