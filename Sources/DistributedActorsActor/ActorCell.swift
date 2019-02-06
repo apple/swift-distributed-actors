@@ -23,7 +23,7 @@ internal protocol FailableActorCell {
     func crashFail(error: Error)
 }
 
-// THe purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
+/// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractCell {
     var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
 }
