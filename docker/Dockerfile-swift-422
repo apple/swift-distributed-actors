@@ -9,7 +9,7 @@ ARG ubuntu_version
 ENV export ubuntu_version="18.04"
 ENV swift_version="4.2.2"
 ENV swift_flavour="RELEASE"
-ENV swift_builds_suffix="branch"
+ENV swift_builds_suffix="release"
 ENV skip_ruby_from_ppa="true"
 ### END OF SETUP VERSIONS ###
 ### Rest of file equal to Dockerfile ###
