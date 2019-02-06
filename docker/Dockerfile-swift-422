@@ -79,5 +79,4 @@ RUN echo 'export PATH="$HOME/.scripts:$PATH"' >> $HOME/.profile
 # Additionally expose to everyone, since we will build using `builder` user
 RUN cp -R $HOME/.swift/usr/* /usr
 RUN cp -R $HOME/.scripts/*   /usr/bin/
-RUN chown -R builder /usr
 
