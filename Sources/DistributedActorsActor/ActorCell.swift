@@ -23,13 +23,22 @@ internal protocol FailableActorCell {
     func crashFail(error: Error)
 }
 
+// THe purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractCell {
     var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
+}
+
+extension AbstractCell {
+    @inlinable
+    var receivesSystemMessagesRef: ReceivesSystemMessages { return self._myselfReceivesSystemMessages }
 }
 
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
+// A strong reference to `ActorCell` is stored in `Children`. This is the one reference that keeps the ActorCell alive
+// until the actor is logically stopped. We only store weak references to `ActorCell` everywhere else. We have to do this
+// to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
 //
 // The cell is mutable, as it may replace the behavior it hosts
 public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
