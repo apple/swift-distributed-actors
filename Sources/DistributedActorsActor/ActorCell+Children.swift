@@ -36,8 +36,8 @@ public struct Children {
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
     typealias Name = String
-    private var container: [Name: BoxedHashableAnyReceivesSystemMessages]
-    private var stopping: [UniqueActorPath: BoxedHashableAnyReceivesSystemMessages]
+    private var container: [Name: AbstractCell]
+    private var stopping: [UniqueActorPath: AbstractCell]
 
     public init() {
         self.container = [:]
@@ -46,7 +46,7 @@ public struct Children {
 
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         guard let child = self.container[uniquePath.name] else { return false }
-        return child.path == uniquePath
+        return child._myselfReceivesSystemMessages.path == uniquePath
     }
 
     // TODO (ktoso): Don't like the withType name... better ideas for this API?
@@ -55,11 +55,11 @@ public struct Children {
             return nil
         }
 
-        return boxedChild.internal_exposeAs(ActorRef<T>.self)
+        return boxedChild._myselfReceivesSystemMessages as? ActorRef<T>
     }
 
-    public mutating func insert<T, R: ActorRef<T>>(_ childRef: R) {
-        self.container[childRef.path.name] = childRef._boxAnyReceivesSystemMessages()
+    public mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
+        self.container[childCell.path.name] = childCell
     }
 
     /// Imprecise contains function, which only checks for the existence of a child actor by its name,
@@ -74,11 +74,11 @@ public struct Children {
     ///
     /// - SeeAlso: `contains(_:)`
     internal func contains(identifiedBy uniquePath: UniqueActorPath) -> Bool {
-        guard let boxedChild: BoxedHashableAnyReceivesSystemMessages = self.container[uniquePath.name] else {
+        guard let boxedChild = self.container[uniquePath.name] else {
             return false
         }
 
-        return boxedChild.path == uniquePath
+        return boxedChild._myselfReceivesSystemMessages.path == uniquePath
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
@@ -86,8 +86,8 @@ public struct Children {
     @usableFromInline
     @discardableResult
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
-        if let ref = self.container[path.name] {
-            if ref.path.uid == path.uid {
+        if let child = self.container[path.name] {
+            if child._myselfReceivesSystemMessages.path.uid == path.uid {
                 return self.container.removeValue(forKey: path.name) != nil
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
@@ -103,10 +103,10 @@ public struct Children {
     @usableFromInline
     @discardableResult
     internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
-        if let ref = self.container[path.name] {
-            if ref.path.uid == path.uid {
+        if let child = self.container[path.name] {
+            if child._myselfReceivesSystemMessages.path.uid == path.uid {
                 self.container.removeValue(forKey: path.name)
-                self.stopping[path] = ref
+                self.stopping[path] = child
                 return true
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
@@ -116,7 +116,7 @@ public struct Children {
 
     @usableFromInline
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
-        try self.container.values.forEach(body)
+        try self.container.values.forEach { try body($0._myselfReceivesSystemMessages) }
     }
 
     @usableFromInline
@@ -142,8 +142,8 @@ extension Children {
     mutating func stop(named name: String) -> Bool {
         // implementation similar to find, however we do not care about the underlying type
         if let boxedChild = self.container[name],
-           self.markAsStoppingChild(identifiedBy: boxedChild.path) {
-            boxedChild.sendSystemMessage(.stop)
+           self.markAsStoppingChild(identifiedBy: boxedChild._myselfReceivesSystemMessages.path) {
+            boxedChild._myselfReceivesSystemMessages.sendSystemMessage(.stop)
             return true
         }
         return false
@@ -153,8 +153,8 @@ extension Children {
     // We may open this up once it is requested enough however...
     public mutating func stopAll() {
         self.container.forEach { name, boxedRef in
-            if self.markAsStoppingChild(identifiedBy: boxedRef.path) {
-                boxedRef.sendSystemMessage(.stop)
+            if self.markAsStoppingChild(identifiedBy: boxedRef._myselfReceivesSystemMessages.path) {
+                boxedRef._myselfReceivesSystemMessages.sendSystemMessage(.stop)
             }
         }
     }
@@ -201,7 +201,7 @@ extension ActorCell: ChildActorRefFactory {
             mailbox: mailbox
         )
 
-        self.children.insert(refWithCell)
+        self.children.insert(cell)
 
         cell.set(ref: refWithCell)
         refWithCell.sendSystemMessage(.start)
