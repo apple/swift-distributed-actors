@@ -15,6 +15,9 @@ services:
   unit-tests:
     image: swift-nio:18.04-5.0
 
+  unit-tests-until-failure:
+    image: swift-nio:18.04-5.0
+
   integration-tests:
     image: swift-nio:18.04-5.0
 
