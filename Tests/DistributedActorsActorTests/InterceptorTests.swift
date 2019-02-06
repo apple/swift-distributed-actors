@@ -127,12 +127,12 @@ class InterceptorTests: XCTestCase {
         let spawnSomeStoppers: Behavior<String> = .setup { context in
             let one: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
                 return .stopped
-            }, name: "stopperOne") // entered death pact with stopperOne
+            }, name: "stopperOne")
             one.tell("stop")
 
             let two: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
                 return .stopped
-            }, name: "stopperTwo") // won't handle Terminated since will die after death pact from stopperOne
+            }, name: "stopperTwo")
             two.tell("stop")
 
             return .same
@@ -142,8 +142,11 @@ class InterceptorTests: XCTestCase {
             .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals),
             name: "theWallsHaveEarsForTermination")
 
+        // either of the two child actors can cause the death pact, depending on which one was scheduled first,
+        // so we have to check that the message we get is from one of them and afterwards we should not receive
+        // any additional messages
         let terminated = try p.expectMessage()
-        terminated.path.name.shouldEqual("stopperOne")
+        (terminated.path.name == "stopperOne" || terminated.path.name == "stopperTwo").shouldBeTrue()
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
