@@ -145,8 +145,8 @@ final class Mailbox<Message> {
             case .userMessage(let message): return try cell.interpretMessage(message: message)
             case .closure(let f):           return try cell.interpretClosure(f)
             }
-        }, fail: { error in
-            cell.fail(error: error)
+        }, fail: { [weak _cell = cell] error in
+            _cell?.fail(error: error)
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { [weak _cell = cell] sysMsgPtr, runPhase in
             assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
@@ -158,8 +158,8 @@ final class Mailbox<Message> {
             let msg = envelopePtr.move()
             traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
             return try cell.interpretSystemMessage(message: msg)
-        }, fail: { error in
-            cell.fail(error: error)
+        }, fail: { [weak _cell = cell] error in
+            _cell?.fail(error: error)
         })
 
         self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { [weak _cell = cell] envelopePtr in
@@ -173,7 +173,10 @@ final class Mailbox<Message> {
             traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
             cell.sendToDeadLetters(message: msg)
         })
-        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { sysMsgPtr in
+        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [weak _cell = cell] sysMsgPtr in
+            guard let cell = _cell else {
+                return
+            }
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
@@ -262,6 +265,17 @@ final class Mailbox<Message> {
         // though that splits the logic between swift and C even more making it more confusing I think
 
         guard let cell = self.cell else {
+            switch systemMessage {
+            case let .watch(watchee, watcher):
+                let response: SystemMessage
+                if watcher.path.isParentOf(watchee.path) {
+                    response = .childTerminated(ref: watchee)
+                } else {
+                    response = .terminated(ref: watchee, existenceConfirmed: true)
+                }
+                watcher.sendSystemMessage(response)
+            default: () // ignore
+            }
             traceLog_Mailbox("Actor(\(self.path)) has already stopped, dropping system message \(systemMessage)")
             return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
         }

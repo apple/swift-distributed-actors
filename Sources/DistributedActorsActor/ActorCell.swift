@@ -23,12 +23,16 @@ internal protocol FailableActorCell {
     func crashFail(error: Error)
 }
 
+internal protocol AbstractCell {
+    var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
+}
+
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
 // Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
 //
 // The cell is mutable, as it may replace the behavior it hosts
-public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
+public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
 
     // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
     @usableFromInline internal var _system: ActorSystem
@@ -75,7 +79,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell { // b
     /// Guaranteed to be set during ActorRef creation
     /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
     @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(path: self._path, cell: self, mailbox: Mailbox(cell: self, capacity: self._props.mailbox.capacity))
-    @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages? {
+    @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages {
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
     }
