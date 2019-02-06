@@ -69,7 +69,7 @@ internal struct LocalActorRefProvider: ActorRefProvider {
 
             refWithCell.sendSystemMessage(.start)
 
-            return refWithCell
+            return cell
         }
     }
 

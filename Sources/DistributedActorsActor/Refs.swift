@@ -235,7 +235,7 @@ internal class Guardian: ReceivesSystemMessages {
         return AnyHashable(self.path)
     }
 
-    func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorRef<Message>) throws -> ActorRef<Message> {
+    func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorCell<Message>) throws -> ActorRef<Message> {
         return try self.lock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping
@@ -245,10 +245,10 @@ internal class Guardian: ReceivesSystemMessages {
                 throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
             }
 
-            let ref = try spawn()
-            self.children.insert(ref)
+            let cell = try spawn()
+            self.children.insert(cell)
 
-            return ref
+            return cell._myselfInACell
         }
     }
 
