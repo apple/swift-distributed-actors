@@ -367,7 +367,7 @@ class ParentChildActorTests: XCTestCase {
         let parentBehavior = Behavior<String>.receive { (context, msg) in
             switch msg {
             case "spawn":
-                let childRef = try context.watch(context.spawn(stoppingChildBehavior, name: "child"))
+                let childRef = try context.spawnWatched(stoppingChildBehavior, name: "child")
                 p.tell(.spawned(child: childRef))
                 return .same
             default:
@@ -386,8 +386,7 @@ class ParentChildActorTests: XCTestCase {
         child.tell(.throwWhoops)
 
         // since the parent watched the child, it will also terminate
-        try p.expectTerminated(child)
-        try p.expectTerminated(parent)
+        try p.expectTerminatedInAnyOrder([child, parent])
     }
 
     func test_spawnWatched_shouldSpawnAWatchedActor() throws {
