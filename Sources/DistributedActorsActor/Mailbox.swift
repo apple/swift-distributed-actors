@@ -147,8 +147,11 @@ final class Mailbox<Message> {
             case .userMessage(let message): return try cell.interpretMessage(message: message)
             case .closure(let f):           return try cell.interpretClosure(f)
             }
-        }, fail: { [weak _cell = cell] error in
-            _cell?.fail(error: error)
+        }, fail: { [weak _cell = cell, path = self.path] error in
+            switch _cell {
+            case .some(let cell): cell.fail(error: error)
+            case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
+            }
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { [weak _cell = cell] sysMsgPtr, runPhase in
             assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
@@ -160,29 +163,25 @@ final class Mailbox<Message> {
             let msg = envelopePtr.move()
             traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
             return try cell.interpretSystemMessage(message: msg)
-        }, fail: { [weak _cell = cell] error in
-            _cell?.fail(error: error)
+        }, fail: { [weak _cell = cell, path = self.path] error in
+            switch _cell {
+            case .some(let cell): cell.fail(error: error)
+            case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
+            }
         })
 
-        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { [weak _cell = cell] envelopePtr in
-            guard let cell = _cell else {
-                return
-            }
-
+        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] envelopePtr in
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
             traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(message: msg)
+            deadLetters.tell(DeadLetter(msg))
         })
-        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [weak _cell = cell] sysMsgPtr in
-            guard let cell = _cell else {
-                return
-            }
+        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            cell.sendToDeadLetters(message: msg)
+            deadLetters.tell(DeadLetter(msg))
         })
 
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
@@ -287,7 +286,7 @@ final class Mailbox<Message> {
             // which in turn is able to handle watch() automatically for us there;
             // knowing that the watch() was sent to a terminating or dead actor.
             traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
-            cell.sendToDeadLetters(message: systemMessage) // FIXME: we need to have a ref to dead letters even if cell is gone
+            self.deadLetters.tell(DeadLetter(systemMessage))
         } else { // schedulingDecision > 0 {
             // this means we enqueued, and the mailbox already will be scheduled by someone else
             traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), someone scheduled already")
@@ -303,7 +302,7 @@ final class Mailbox<Message> {
 
         guard let cell = self.cell else {
             traceLog_Mailbox("Actor(\(self.path)) has already stopped, ignoring run")
-            return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
+            return
         }
 
         // Prepare failure context pointers:
@@ -342,7 +341,7 @@ final class Mailbox<Message> {
             self.sendSystemMessage(.tombstone) // Rest in Peace
         case .failure:
             let failedRunPhase = runPhase
-            self.crashFailCellWithBestPossibleError(failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
+            self.crashFailCellWithBestPossibleError(cell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
         case .failureRestart:
             // FIXME: !!! we must know if we should schedule or not after a restart...
             traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
@@ -366,12 +365,7 @@ final class Mailbox<Message> {
 // MARK: Crash handling functions for Mailbox
 
 extension Mailbox {
-    private func crashFailCellWithBestPossibleError(failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
-        guard let cell = self.cell else {
-            traceLog_Mailbox("Actor(\(self.path)) has already stopped, ignoring run")
-            return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
-        }
-
+    private func crashFailCellWithBestPossibleError(cell: ActorCell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
         if let crashDetails = FaultHandling.getCrashDetails() {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }

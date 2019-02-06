@@ -46,16 +46,15 @@ public struct Children {
 
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         guard let child = self.container[uniquePath.name] else { return false }
-        return child._myselfReceivesSystemMessages.path == uniquePath
+        return child.receivesSystemMessagesRef.path == uniquePath
     }
 
-    // TODO (ktoso): Don't like the withType name... better ideas for this API?
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
         guard let boxedChild = self.container[name] else {
             return nil
         }
 
-        return boxedChild._myselfReceivesSystemMessages as? ActorRef<T>
+        return boxedChild.receivesSystemMessagesRef as? ActorRef<T>
     }
 
     public mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
@@ -78,7 +77,7 @@ public struct Children {
             return false
         }
 
-        return boxedChild._myselfReceivesSystemMessages.path == uniquePath
+        return boxedChild.receivesSystemMessagesRef.path == uniquePath
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
@@ -87,7 +86,7 @@ public struct Children {
     @discardableResult
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let child = self.container[path.name] {
-            if child._myselfReceivesSystemMessages.path.uid == path.uid {
+            if child.receivesSystemMessagesRef.path.uid == path.uid {
                 return self.container.removeValue(forKey: path.name) != nil
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
@@ -104,7 +103,7 @@ public struct Children {
     @discardableResult
     internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let child = self.container[path.name] {
-            if child._myselfReceivesSystemMessages.path.uid == path.uid {
+            if child.receivesSystemMessagesRef.path.uid == path.uid {
                 self.container.removeValue(forKey: path.name)
                 self.stopping[path] = child
                 return true
@@ -116,7 +115,7 @@ public struct Children {
 
     @usableFromInline
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
-        try self.container.values.forEach { try body($0._myselfReceivesSystemMessages) }
+        try self.container.values.forEach { try body($0.receivesSystemMessagesRef) }
     }
 
     @usableFromInline
@@ -142,8 +141,8 @@ extension Children {
     mutating func stop(named name: String) -> Bool {
         // implementation similar to find, however we do not care about the underlying type
         if let boxedChild = self.container[name],
-           self.markAsStoppingChild(identifiedBy: boxedChild._myselfReceivesSystemMessages.path) {
-            boxedChild._myselfReceivesSystemMessages.sendSystemMessage(.stop)
+           self.markAsStoppingChild(identifiedBy: boxedChild.receivesSystemMessagesRef.path) {
+            boxedChild.receivesSystemMessagesRef.sendSystemMessage(.stop)
             return true
         }
         return false
@@ -153,8 +152,8 @@ extension Children {
     // We may open this up once it is requested enough however...
     public mutating func stopAll() {
         self.container.forEach { name, boxedRef in
-            if self.markAsStoppingChild(identifiedBy: boxedRef._myselfReceivesSystemMessages.path) {
-                boxedRef._myselfReceivesSystemMessages.sendSystemMessage(.stop)
+            if self.markAsStoppingChild(identifiedBy: boxedRef.receivesSystemMessagesRef.path) {
+                boxedRef.receivesSystemMessagesRef.sendSystemMessage(.stop)
             }
         }
     }
