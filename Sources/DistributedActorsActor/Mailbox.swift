@@ -406,7 +406,6 @@ internal struct MessageProcessingFailure: Error {
 
 extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
     var description: String {
-        let backtraceStr = backtrace.joined(separator: "\n")
         return "Actor faulted while processing message '\(messageDescription)', with backtrace"
     }
     public var debugDescription: String {
