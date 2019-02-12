@@ -54,6 +54,8 @@ public final class ActorSystem {
     // TODO: We currently do not allow configuring it at all, which is fine for now.
     public let settings: ActorSystemSettings = ActorSystemSettings()
 
+    public let serialization: Serialization
+
 //  // TODO: provider is what abstracts being able to fabricate remote or local actor refs
 //  // Implementation note:
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
@@ -72,16 +74,24 @@ public final class ActorSystem {
 
     /// Creates a named ActorSystem; The name is useful for debugging cross system communication
     // TODO: /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)
-    public init(_ name: String) {
+    public init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         self.name = name
+
+        var settings = ActorSystemSettings()
+        configureSettings(&settings)
+
 
         self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
         let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
         let userGuardian = Guardian(parent: theOne, name: "user")
         let systemGuardian = Guardian(parent: theOne, name: "system")
 
-        self.userProvider = LocalActorRefProvider(root: userGuardian)
-        self.systemProvider = LocalActorRefProvider(root: systemGuardian)
+        let userProvider = LocalActorRefProvider(root: userGuardian)
+        self.userProvider = userProvider
+        let systemProvider = LocalActorRefProvider(root: systemGuardian)
+        self.systemProvider = systemProvider
+
+        self.serialization = Serialization(settings: settings.serialization, userProvider: userProvider, systemProvider: systemProvider)
 
         // dead letters init
         // TODO actually attach dead letters to a parent?
@@ -89,7 +99,7 @@ public final class ActorSystem {
         let deadLog = Logging.make(deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
-        self.dispatcher = try! FixedThreadPool(4) // TODO: better guesstimate on start and also make it tuneable
+        self.dispatcher = try! FixedThreadPool(settings.threadPoolSize) // TODO: better guesstimate on start and also make it tuneable
 
         do {
             try FaultHandling.installCrashHandling()
@@ -188,4 +198,28 @@ extension ActorSystem: ActorRefFactory {
     public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
         return try spawnAnonymous(.custom(behavior: behavior), props: props)
     }
+}
+
+internal extension ActorSystem {
+    internal func _printTree() {
+        let context = TraversalContext<()>()
+
+        let _: TraversalResult<()> = self.userProvider._traverse(context: context) { context, ref in
+            print("\(String(repeating: "  ", count: context.depth)) - \(ref)")
+            return .continue
+        }
+        let _: TraversalResult<()> = self.systemProvider._traverse(context: context) { context, ref in
+            print("\(String(repeating: "  ", count: context.depth)) - \(ref)")
+            return .continue
+        }
+    }
+
+//    internal func _traverse<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+//        self.userProvider._traverse { context, ref in
+//            return visit(context, ref)
+//        }
+//        self.systemProvider._traverse { context, ref in
+//            return visit(context, ref)
+//        }
+//    }
 }

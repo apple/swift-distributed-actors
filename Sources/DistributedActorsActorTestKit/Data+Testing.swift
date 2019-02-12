@@ -12,17 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-// TODO none of these are currently configurable
-public struct ActorSystemSettings {
+import NIO
+import NIOFoundationCompat
+import Foundation
 
-    public var actor = ActorSettings()
-    public var serialization = SerializationSettings()
+// FIXME this is obviously not a good idea
+private let testOnlyAllocator = ByteBufferAllocator()
 
-    // FIXME should have more proper config section
-    public let threadPoolSize: Int = 4
-}
+extension Data {
 
-public struct ActorSettings {
-    // TODO: arbitrary depth limit, could be configurable
-    public let maxBehaviorNestingDepth: Int = 128 // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+    /// For easier testing, as we want all our assertions etc on ByteBuffers
+    public func copyToNewByteBuffer() -> ByteBuffer {
+        return self.withUnsafeBytes { bytes in
+            var out: ByteBuffer = testOnlyAllocator.buffer(capacity: self.count)
+            out.write(bytes: bytes)
+            return out
+        }
+    }
+
 }

@@ -235,15 +235,19 @@ private struct ValidActorPathSymbols {
 // MARK: Actor UID
 
 public struct ActorUID: Equatable, Hashable {
-    let value: UInt32
+    let value: Int // TODO redesign
+
+    public init(_ value: Int) {
+        self.value = value
+    }
 }
 
 public extension ActorUID {
     /// To be used ONLY by special actors whose existence is perpetual, such as `/system/deadLetters`
-    static let opaque: ActorUID = ActorUID(value: 0) // TODO need better name, plz help?
+    static let opaque: ActorUID = ActorUID(0)
 
     static func random() -> ActorUID {
-        return ActorUID(value: UInt32.random(in: 1 ... .max))
+        return ActorUID(Int.random(in: 1 ... .max))
     }
 }
 
