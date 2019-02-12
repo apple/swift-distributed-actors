@@ -65,11 +65,16 @@ public struct Serialization {
         self.register(systemMessageSerializer, for: SystemMessage.self, underId: nextSid())
         self.register(stringSerializer, for: String.self, underId: nextSid())
 
+        // FIXME: should also handle system provider
+        let serializationContext = ActorSerializationContext(provider: userProvider)
+
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
             // TODO: This is copy pasting registering...
             self.serializerIds[metaKey] = id // TODO check accidental overrides for keys?
-            self.serializers[id] = settings.userSerializers[id] // TODO check accidental overrides for keys?
+            let serializer = settings.userSerializers[id]
+            serializer?.setSerializationContext(serializationContext) // TODO: may need to set it per serialization "lane" or similar?
+            self.serializers[id] = serializer  // TODO check accidental overrides for keys?
         }
 
         self.debugPrintSerializerTable()
@@ -170,6 +175,7 @@ public extension CodingUserInfoKey {
 public struct ActorSerializationContext {
     internal let provider: ActorRefProvider
 
+    // FIXME: should also handle system provider
     internal init(provider: ActorRefProvider) {
         self.provider = provider
     }
@@ -177,6 +183,7 @@ public struct ActorSerializationContext {
     func resolve(path: UniqueActorPath) -> AnyAddressableActorRef? {
         var context = TraversalContext<AnyAddressableActorRef>()
         context.selectorSegments = path.segments[...]
+        pprint("RESOLVE: \(context.selectorSegments)")
         let res: TraversalResult<AnyAddressableActorRef> = self.provider._traverse(context: context) { context, ref in
             if ref.path.uid == path.uid {
                 return .return(ref)
@@ -280,7 +287,7 @@ public struct SerializationSettings {
     }
     mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
         let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
-            return CodableSerializer<T>(allocator)
+            return CodableSerializer<T>(allocator: allocator)
         }
         self.userSerializerIds[MetaType(type).asHashable()] = id
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(allocator))
@@ -300,10 +307,14 @@ open class Serializer<T> {
     public func deserialize(bytes: ByteBuffer) throws -> T {
         return undefined()
     }
+
+    func setSerializationContext(_ context: ActorSerializationContext) {
+        return undefined()
+    }
 }
 
 extension Serializer: AnySerializer {
-    public func unsafeUnwrapAs<M>(_ type: M.Type) -> Serializer<M> {
+    func unsafeUnwrapAs<M>(_ type: M.Type) -> Serializer<M> {
         return self as! Serializer<M>
     }
 }
@@ -312,14 +323,12 @@ extension Serializer: AnySerializer {
 final class CodableSerializer<T: Codable>: Serializer<T> {
 
     private let allocate: ByteBufferAllocator
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
+    internal var encoder: JSONEncoder = JSONEncoder()
+    internal var decoder: JSONDecoder = JSONDecoder()
 
     // TODO expose the encoder/decoder
-    public init(allocate: ByteBufferAllocator, encoder: JSONEncoder, decoder: JSONDecoder) {
-        self.allocate = allocate
-        self.encoder = encoder
-        self.decoder = decoder
+    init(allocator: ByteBufferAllocator) {
+        self.allocate = allocator
         super.init()
     }
 
@@ -341,10 +350,15 @@ final class CodableSerializer<T: Codable>: Serializer<T> {
 
         return try decoder.decode(T.self, from: data)
     }
+
+    override func setSerializationContext(_ context: ActorSerializationContext) {
+        self.decoder.userInfo[.actorSerializationContext] = context
+    }
 }
 
-public protocol AnySerializer {
+protocol AnySerializer {
     func unsafeUnwrapAs<M>(_ type: M.Type) -> Serializer<M>
+    func setSerializationContext(_ context: ActorSerializationContext)
 }
 
 internal struct BoxedAnySerializer: AnySerializer {
@@ -357,6 +371,10 @@ internal struct BoxedAnySerializer: AnySerializer {
     // TODO catch and throws
     func unsafeUnwrapAs<M>(_ type: M.Type) -> Serializer<M> {
         return serializer as! Serializer<M>
+    }
+
+    func setSerializationContext(_ context: ActorSerializationContext) {
+        self.serializer.setSerializationContext(context)
     }
 }
 
