@@ -63,7 +63,7 @@ class SerializationTests: XCTestCase {
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
-        let ref: ActorRef<String> = try system.spawn(.stopped, name: "hello")
+        let ref: ActorRef<String> = try system.spawn(.ignore, name: "hello")
         let hasRef = HasStringRef(containedRef: ref)
 
         pinfo("Before serialize: \(hasRef)")

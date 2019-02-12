@@ -17,15 +17,12 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
-extension JSONDecoder {
-
-    convenience init(context: ActorSerializationContext) {
-        self.init()
-        self.userInfo[.actorSerializationContext] = context
+extension Decoder {
+    public var actorSerializationContext: ActorSerializationContext? {
+        return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
-
-extension Decoder {
+extension Encoder {
     public var actorSerializationContext: ActorSerializationContext? {
         return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }

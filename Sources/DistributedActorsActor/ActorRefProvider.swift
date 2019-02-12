@@ -74,11 +74,14 @@ internal struct LocalActorRefProvider: ActorRefProvider {
     }
 
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        pprint("Traversal:  @provider \(context.selectorSegments)")
         switch context.selectorSegments {
         case .none:
+            pprint("Traversal: @provider NO criteria")
             return self.root._traverse(context: context.deeper, visit)
         case .some(let selectors) where self.root.path.segments.last == selectors.first:
             // so "/user" was selected by "/user/something/deeper"
+            pprint("Traversal: @provider selected \(self.root.path.name)")
             return self.root._traverse(context: context.deeper, visit)
         case .some:
             // selector did not match, we return
