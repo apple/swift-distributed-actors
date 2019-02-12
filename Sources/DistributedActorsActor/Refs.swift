@@ -200,10 +200,10 @@ internal class Guardian: ReceivesSystemMessages {
     private var _children: Children
     private let _childrenLock: Mutex = Mutex()
     private var childrenCopy: Children {
-//        self._childrenLock.lock()
-//        defer { self._childrenLock.lock() }
-        let copied = _children
-        return copied
+        return self._childrenLock.synchronized { () in
+            let copied = _children
+            return copied
+        }
     }
 
     private let allChildrenRemoved: Condition = Condition()
@@ -273,8 +273,28 @@ internal class Guardian: ReceivesSystemMessages {
     }
 
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        return self.childrenCopy._traverse(context: context) { depth, ref in
-            visit(depth, ref)
+        let children: Children = self.childrenCopy
+        pprint("kids to visit soon: \(children)")
+        switch visit(context, self) {
+        case .continue:
+            pprint("CONTINUE @ \(self)")
+            return children._traverse(context: context.deeper, visit)
+        case .return(let res):
+            pprint("RETURN @ \(self)")
+            return .result(res)
+        case .accumulateSingle(let t):
+            pprint("ACC @ \(self)")
+            var c = context.deeper
+            c.accumulated.append(t)
+            return children._traverse(context: c, visit)
+        case .accumulateMany(let ts):
+            pprint("ACCM @ \(self)")
+            var c = context.deeper
+            c.accumulated.append(contentsOf: ts)
+            return children._traverse(context: c, visit)
+        case .abort(let err):
+            pprint("ABRT @ \(self)")
+            return .failed(err)
         }
     }
 
