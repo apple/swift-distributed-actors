@@ -12,17 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-// TODO none of these are currently configurable
-public struct ActorSystemSettings {
+import Foundation
+@testable import Swift Distributed ActorsActor
 
-    public var actor = ActorSettings()
-    public var serialization = SerializationSettings()
+import DistributedActorsConcurrencyHelpers
+import XCTest
+import NIO
+import NIOFoundationCompat
 
-    // FIXME should have more proper config section
-    public let threadPoolSize: Int = 4
-}
+extension ByteBuffer {
 
-public struct ActorSettings {
-    // TODO: arbitrary depth limit, could be configurable
-    public let maxBehaviorNestingDepth: Int = 128 // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+    // For easier visual inspection of known utf8 data within a ByteBuffer, use with care (!)
+    public func stringDebugDescription() -> String {
+        return self.getString(at: 0, length: self.readableBytes)!
+    }
+
 }

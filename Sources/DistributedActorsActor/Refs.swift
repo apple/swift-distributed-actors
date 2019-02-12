@@ -26,7 +26,7 @@ import CSwiftDistributedActorsMailbox
 /// Useful for keeping an actor reference as key of some kind, e.g. in scenarios where an actor is
 /// "responsible for" other actors whose message types may be completely different, so keeping their references
 /// in a same-typed [ActorRef<M>] collection would not be possible.
-public protocol AddressableActorRef: Hashable {
+public protocol AddressableActorRef: Hashable, Codable {
 
     /// The [ActorPath] under which the actor is located.
     var path: UniqueActorPath { get }
@@ -195,9 +195,17 @@ extension TheOneWhoHasNoParentActorRef: CustomStringConvertible, CustomDebugStri
 internal class Guardian: ReceivesSystemMessages {
     @usableFromInline
     let path: UniqueActorPath
+
     // any access to children has to be protected by `lock`
-    private var children: Children
-    private let lock: Mutex = Mutex()
+    private var _children: Children
+    private let _childrenLock: Mutex = Mutex()
+    private var childrenCopy: Children {
+//        self._childrenLock.lock()
+//        defer { self._childrenLock.lock() }
+        let copied = _children
+        return copied
+    }
+
     private let allChildrenRemoved: Condition = Condition()
     private var stopping: Bool = false
 
@@ -209,18 +217,18 @@ internal class Guardian: ReceivesSystemMessages {
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
-        self.children = Children()
+        self._children = Children()
     }
 
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage) {
         switch message {
         case let .childTerminated(ref):
-            lock.synchronized {
-                _ = self.children.removeChild(identifiedBy: ref.path)
+            _childrenLock.synchronized {
+                _ = self._children.removeChild(identifiedBy: ref.path)
                 // if we are stopping and all children have been stopped,
                 // we need to notify waiting threads about it
-                if self.stopping && self.children.isEmpty {
+                if self.stopping && self._children.isEmpty {
                     self.allChildrenRemoved.signalAll()
                 }
             }
@@ -236,45 +244,51 @@ internal class Guardian: ReceivesSystemMessages {
     }
 
     func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorCell<Message>) throws -> ActorRef<Message> {
-        return try self.lock.synchronized {
+        return try self._childrenLock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping
             }
 
-            if self.children.contains(name: path.name) {
+            if self._children.contains(name: path.name) {
                 throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
             }
 
             let cell = try spawn()
-            self.children.insert(cell)
+            self._children.insert(cell)
 
             return cell._myselfInACell
         }
     }
 
     func stopChild(_ childRef: AnyReceivesSystemMessages) throws {
-        return try self.lock.synchronized {
-            guard self.children.contains(identifiedBy: childRef.path) else {
+        return try self._childrenLock.synchronized {
+            guard self._children.contains(identifiedBy: childRef.path) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
 
-            if self.children.removeChild(identifiedBy: childRef.path) {
+            if self._children.removeChild(identifiedBy: childRef.path) {
                 childRef.sendSystemMessage(.stop)
             }
         }
     }
 
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        return self.childrenCopy._traverse(context: context) { depth, ref in
+            visit(depth, ref)
+        }
+    }
+
     /// Stops all children and waits for them to signal termination
     func stopAllAwait() {
-        lock.synchronized {
-            if self.children.isEmpty {
+        _childrenLock.synchronized {
+            if self._children.isEmpty {
                 // if there are no children, we are done
                 self.stopping = true
                 return
             } else if self.stopping {
                 // stopping has already been initiated, so we only have to wait
                 // for all children to be removed
-                self.allChildrenRemoved.wait(lock)
+                self.allChildrenRemoved.wait(_childrenLock)
                 return
             }
 
@@ -282,8 +296,8 @@ internal class Guardian: ReceivesSystemMessages {
             self.stopping = true
 
             // tell all children to stop and wait for them to be stopped
-            self.children.forEach { $0.sendSystemMessage(.stop) }
-            self.allChildrenRemoved.wait(lock)
+            self._children.forEach { $0.sendSystemMessage(.stop) }
+            self.allChildrenRemoved.wait(_childrenLock)
         }
     }
 }

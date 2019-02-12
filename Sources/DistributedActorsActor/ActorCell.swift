@@ -16,22 +16,7 @@ import NIO
 import Dispatch
 import CSwiftDistributedActorsMailbox
 
-// MARK: Internal implementations, the so-called "cell"
-
-internal protocol FailableActorCell {
-    /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
-    func crashFail(error: Error)
-}
-
-/// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
-internal protocol AbstractCell {
-    var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
-}
-
-extension AbstractCell {
-    @inlinable
-    var receivesSystemMessagesRef: ReceivesSystemMessages { return self._myselfReceivesSystemMessages }
-}
+// MARK: Actor internals; The so-called "cell" contains the actual "actor"
 
 // Implementation notes:
 // The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
@@ -41,7 +26,8 @@ extension AbstractCell {
 // to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
 //
 // The cell is mutable, as it may replace the behavior it hosts
-public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell { // by the cell being the context we aim save space (does it save space in swift? in JVM it would)
+public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell {
+    // TODO: the cell IS-A context is how we saved space on the JVM, though if context is a struct it does not matter here, perhaps reconsider
 
     // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
     @usableFromInline internal var _system: ActorSystem
@@ -87,7 +73,11 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
     /// Guaranteed to be set during ActorRef creation
     /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
-    @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(path: self._path, cell: self, mailbox: Mailbox(cell: self, capacity: self._props.mailbox.capacity))
+    @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(
+        path: self._path,
+        cell: self,
+        mailbox: Mailbox(cell: self, capacity: self._props.mailbox.capacity)
+    )
     @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages {
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
@@ -116,7 +106,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     }
 
     deinit {
-        pprint("deinit cell \(_path)")
+        traceLog_Cell("deinit cell \(_path)")
         #if SACT_TESTS_LEAKS
         _ = system.cellInitCounter.sub(1)
         #endif
@@ -531,5 +521,52 @@ extension ActorCell: CustomStringConvertible {
     public var description: String {
         let path = self._myselfInACell.path.description
         return "\(type(of: self))(\(path))"
+    }
+}
+
+internal protocol FailableActorCell {
+    /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
+    func crashFail(error: Error)
+}
+
+/// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
+internal protocol AbstractCell {
+
+    // MARK: Cell contract
+
+    var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
+    var _children: Children { get }
+
+    // MARK: Internal generic capabilities
+
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
+}
+
+extension AbstractCell {
+    @inlinable
+    var receivesSystemMessages: ReceivesSystemMessages {
+        return self._myselfReceivesSystemMessages
+    }
+
+    @inlinable
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        switch visit(context, self._myselfReceivesSystemMessages) {
+        case .return(let ret): return .result(ret)
+        case .abort(let err): return .failed(err)
+
+        case .continue:
+            let res = self._children._traverse(context: context.deeper, visit)
+            return res
+        case .accumulateSingle(let t): // TODO is it worth doing this optimization to avoid the array alloc?
+            var c = context.deeper
+            c.accumulated.append(t)
+            let res = self._children._traverse(context: c, visit)
+            return res
+        case .accumulateMany(let ts):
+            var c = context.deeper
+            c.accumulated.append(contentsOf: ts)
+            let res = self._children._traverse(context: c, visit)
+            return res
+        }
     }
 }

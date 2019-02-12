@@ -46,7 +46,7 @@ public struct Children {
 
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         guard let child = self.container[uniquePath.name] else { return false }
-        return child.receivesSystemMessagesRef.path == uniquePath
+        return child.receivesSystemMessages.path == uniquePath
     }
 
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
@@ -54,7 +54,7 @@ public struct Children {
             return nil
         }
 
-        return boxedChild.receivesSystemMessagesRef as? ActorRef<T>
+        return boxedChild.receivesSystemMessages as? ActorRef<T>
     }
 
     public mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
@@ -77,7 +77,7 @@ public struct Children {
             return false
         }
 
-        return boxedChild.receivesSystemMessagesRef.path == uniquePath
+        return boxedChild.receivesSystemMessages.path == uniquePath
     }
 
     /// INTERNAL API: Only the ActorCell may mutate its children collection (as a result of spawning or stopping them).
@@ -86,7 +86,7 @@ public struct Children {
     @discardableResult
     internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let child = self.container[path.name] {
-            if child.receivesSystemMessagesRef.path.uid == path.uid {
+            if child.receivesSystemMessages.path.uid == path.uid {
                 return self.container.removeValue(forKey: path.name) != nil
             } // else we either tried to remove a child twice, or it was not our child so nothing to remove
         }
@@ -103,7 +103,7 @@ public struct Children {
     @discardableResult
     internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
         if let child = self.container[path.name] {
-            if child.receivesSystemMessagesRef.path.uid == path.uid {
+            if child.receivesSystemMessages.path.uid == path.uid {
                 self.container.removeValue(forKey: path.name)
                 self.stopping[path] = child
                 return true
@@ -115,7 +115,33 @@ public struct Children {
 
     @usableFromInline
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
-        try self.container.values.forEach { try body($0.receivesSystemMessagesRef) }
+        try self.container.values.forEach { try body($0.receivesSystemMessages) }
+    }
+
+    // TODO use from foreach
+    @usableFromInline
+    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        pprint("    Children Traversal: in \(self)....")
+        var c = context.deeper
+        for cell: AbstractCell in self.container.values {
+            switch visit(c, cell.receivesSystemMessages) {
+            case .return(let t): return .result(t)
+            case .abort(let err): return .failed(err)
+
+            case .continue:
+                continue
+            case .accumulateSingle(let t):
+                c.accumulated.append(t)
+                return .results(c.accumulated)
+            case .accumulateMany(let ts):
+                c.accumulated.append(contentsOf: ts)
+                return .results(c.accumulated)
+            }
+        }
+
+        // if we had no children or similar, we simply complete the traversal here; we are a "leaf"
+        pprint("Completed in \(self)")
+        return .completed
     }
 
     @usableFromInline
@@ -140,9 +166,9 @@ extension Children {
     /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
     mutating func stop(named name: String) -> Bool {
         // implementation similar to find, however we do not care about the underlying type
-        if let boxedChild = self.container[name],
-           self.markAsStoppingChild(identifiedBy: boxedChild.receivesSystemMessagesRef.path) {
-            boxedChild.receivesSystemMessagesRef.sendSystemMessage(.stop)
+        if let cell = self.container[name],
+           self.markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path) {
+            cell.receivesSystemMessages.sendSystemMessage(.stop)
             return true
         }
         return false
@@ -151,9 +177,9 @@ extension Children {
     /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
     // We may open this up once it is requested enough however...
     public mutating func stopAll() {
-        self.container.forEach { name, boxedRef in
-            if self.markAsStoppingChild(identifiedBy: boxedRef.receivesSystemMessagesRef.path) {
-                boxedRef.receivesSystemMessagesRef.sendSystemMessage(.stop)
+        self.container.forEach { name, cell in
+            if self.markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path) {
+                cell.receivesSystemMessages.sendSystemMessage(.stop)
             }
         }
     }
@@ -192,7 +218,7 @@ extension ActorCell: ChildActorRefFactory {
         let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
 
         // TODO: should be DEBUG once we clean up log messages more
-        log.info("Spawning [\(behavior)], on path: [\(path)]")
+        log.debug("Spawning [\(behavior)], on path: [\(path)]")
 
         let refWithCell = ActorRefWithCell(
             path: path,

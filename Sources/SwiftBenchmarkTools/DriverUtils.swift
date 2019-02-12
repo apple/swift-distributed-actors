@@ -16,6 +16,7 @@
 import Glibc
 #else
 import Darwin
+// import LibProc
 #endif
 
 public struct BenchResults {
@@ -55,6 +56,32 @@ enum TestAction {
     case listTests
 }
 
+enum TimeUnit {
+    case milliseconds
+    case microseconds
+    case nanoseconds
+
+    init (_ unit: String) {
+        switch unit {
+        case "ms": self = .milliseconds
+        case "μs": self = .microseconds
+        case "us": self = .microseconds
+        case "ns": self = .nanoseconds
+        default: fatalError("Unsupported time unit: \(unit)")
+        }
+    }
+}
+
+extension TimeUnit: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .milliseconds: return "ms"
+        case .microseconds: return "μs"
+        case .nanoseconds: return "ns"
+        }
+    }
+}
+
 struct TestConfig {
     /// The delimiter to use when printing output.
     let delim: String
@@ -81,6 +108,8 @@ struct TestConfig {
     /// Report quantiles with delta encoding.
     let delta: Bool
 
+    let timeUnit: TimeUnit
+
     /// Is verbose output enabled?
     let verbose: Bool
 
@@ -100,6 +129,7 @@ struct TestConfig {
 
         struct PartialTestConfig {
             var delim: String?
+            var timeUnit: String?
             var tags, skipTags: Set<BenchmarkCategory>?
             var numSamples: UInt?
             var numIters: UInt?
@@ -154,6 +184,9 @@ struct TestConfig {
         p.addArgument("--delim", \.delim,
             help:"value delimiter used for log output; default: ,",
             parser: { $0 })
+        p.addArgument("--time-unit", \.timeUnit,
+            help:"time unit to print results in; default; us (μs)",
+            parser: { $0 })
         p.addArgument("--tags", \PartialTestConfig.tags,
             help: "run tests matching all the specified categories",
             parser: tags)
@@ -177,6 +210,7 @@ struct TestConfig {
         numSamples = c.numSamples.map { Int($0) }
         quantile = c.quantile.map { Int($0) }
         delta = c.delta ?? false
+        timeUnit = TimeUnit(c.timeUnit ?? "μs")
         verbose = c.verbose ?? false
         logMemory = c.logMemory ?? false
         afterRunSleep = c.afterRunSleep
@@ -207,6 +241,7 @@ struct TestConfig {
                             SampleTime: \(sampleTime)
                             NumIters: \(numIters ?? 0)
                             Quantile: \(quantile ?? 0)
+                            Time Unit: \(timeUnit)
                             Delimiter: \(String(reflecting: delim))
                             Tests Filter: \(c.tests ?? [])
                             Tests to run: \(testList)
@@ -325,7 +360,9 @@ final class Timer {
 }
 
 extension UInt64 {
+    var nanoseconds: Int { return Int(self) }
     var microseconds: Int { return Int(self / 1000) }
+    var milliseconds: Int { return Int(self / 1_000_000) }
 }
 
 /// Performance test runner that measures benchmarks and reports the results.
@@ -419,7 +456,14 @@ final class TestRunner {
         if (spent + nextSampleEstimate < schedulerQuantum) {
             start = timer.getTime()
         } else {
-            logVerbose("    Yielding after ~\(spent.microseconds) μs")
+            switch c.timeUnit {
+            case .milliseconds:
+                logVerbose("    Yielding after ~\(spent.milliseconds) ms")
+            case .microseconds:
+                logVerbose("    Yielding after ~\(spent.microseconds) μs")
+            case .nanoseconds:
+                logVerbose("    Yielding after ~\(spent.nanoseconds) ns")
+            }
             let now = yield()
             (start, lastYield) = (now, now)
         }
@@ -453,7 +497,8 @@ final class TestRunner {
         name.withCString { p in stopTrackingObjects(p) }
         #endif
 
-        return lastSampleTime.microseconds / numIters
+        // return lastSampleTime.microseconds / numIters
+        return lastSampleTime.nanoseconds / numIters
     }
 
     func logVerbose(_ msg: @autoclosure () -> String) {
@@ -482,7 +527,7 @@ final class TestRunner {
         if let setUp = test.setUpFunction {
             setUp()
             stopMeasurement()
-            logVerbose("    SetUp \(lastSampleTime.microseconds)")
+            logVerbose("    SetUp \(lastSampleTime.nanoseconds)")
             resetMeasurements()
         }
 
@@ -530,7 +575,7 @@ final class TestRunner {
     }
 
     var header: String {
-        let withUnit = {$0 + "(μs)"}
+        let withUnit = {$0 + "(\(self.c.timeUnit))"}
         let withDelta = {"𝚫" + $0}
         func quantiles(q: Int) -> [String] {
             // See https://en.wikipedia.org/wiki/Quantile#Specialized_quantiles

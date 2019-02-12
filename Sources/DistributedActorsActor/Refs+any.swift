@@ -192,7 +192,7 @@ extension BoxedHashableAnyReceivesSystemMessages: CustomStringConvertible, Custo
 internal extension AnyReceivesSystemMessages {
     
     /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyReceivesSystemMessages where it is KNOWN guaranteed that it is a box
-    func internal_exposeBox() -> BoxedHashableAnyReceivesSystemMessages {
+    func _exposeBox() -> BoxedHashableAnyReceivesSystemMessages {
         return self as! BoxedHashableAnyReceivesSystemMessages
     }
 }
