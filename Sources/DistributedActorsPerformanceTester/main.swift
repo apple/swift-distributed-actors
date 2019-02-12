@@ -36,5 +36,6 @@ private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> ()
 }
 
 registerBenchmark(ActorPathBenchmarks)
+registerBenchmark(ActorTreeTraversalBenchmarks)
 
 main()

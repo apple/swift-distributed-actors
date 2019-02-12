@@ -73,13 +73,13 @@ import Dispatch
         }
 
         // traceLog_DeathWatch("Become watched by: \(watcher.path)     inside: \(myself)")
-        let boxedWatcher = watcher.internal_exposeBox()
+        let boxedWatcher = watcher._exposeBox()
         self.watchedBy.insert(boxedWatcher)
     }
 
     public mutating func removeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
         // traceLog_DeathWatch("Remove watched by: \(watcher.path)     inside: \(myself)")
-        let boxedWatcher = watcher.internal_exposeBox()
+        let boxedWatcher = watcher._exposeBox()
         self.watchedBy.remove(boxedWatcher)
     }
 

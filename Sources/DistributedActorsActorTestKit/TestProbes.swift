@@ -85,11 +85,11 @@ final public class ActorTestProbe<Message> {
 
                 // probe commands:
             case let .watchCommand(who):
-                cell?.deathWatch.watch(watchee: who.internal_exposeBox(), myself: context.myself)
+                cell?.deathWatch.watch(watchee: who._exposeBox(), myself: context.myself)
                 return .same
 
             case let .unwatchCommand(who):
-                cell?.deathWatch.unwatch(watchee: who.internal_exposeBox(), myself: context.myself)
+                cell?.deathWatch.unwatch(watchee: who._exposeBox(), myself: context.myself)
                 return .same
 
             case .stopCommand:

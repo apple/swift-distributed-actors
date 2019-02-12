@@ -170,7 +170,7 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    public var logLevel: Logging.Level = Logging.Level.trace
+    public var logLevel: Logging.Level = Logging.Level.info
 
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
     public var metadata: Logging.Metadata {

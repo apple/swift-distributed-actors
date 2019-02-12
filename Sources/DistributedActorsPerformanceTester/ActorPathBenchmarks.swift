@@ -17,12 +17,12 @@ import SwiftBenchmarkTools
 
 public let ActorPathBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
-        name: "ActorPathBenchmarks.run_createShortPath",
-        runFunction: run_createShortPath,
+        name: "ActorPathBenchmarks.bench_createShortPath",
+        runFunction: bench_createShortPath,
         tags: [])
 ]
 
-func run_createShortPath(n: Int) {
+func bench_createShortPath(n: Int) {
     let root = ActorPath._rootPath
     let user = try! root / ActorPathSegment("user")
     let master = try! user / ActorPathSegment("master")
