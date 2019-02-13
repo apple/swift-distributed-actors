@@ -76,8 +76,6 @@ public struct Serialization {
             serializer?.setSerializationContext(serializationContext) // TODO: may need to set it per serialization "lane" or similar?
             self.serializers[id] = serializer  // TODO check accidental overrides for keys?
         }
-
-        self.debugPrintSerializerTable()
     }
 
     mutating func register<T>(_ serializer: Serializer<T>, for type: T.Type, underId id: SerializerId) {

@@ -121,26 +121,28 @@ public struct Children {
     // TODO use from foreach
     @usableFromInline
     internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        pprint("    Children Traversal: in \(self)....")
         var c = context.deeper
         for cell: AbstractCell in self.container.values {
-            switch visit(c, cell.receivesSystemMessages) {
-            case .return(let t): return .result(t)
-            case .abort(let err): return .failed(err)
+            // result of traversing / descending deeper into the tree
+            let descendResult: TraversalResult<T> = cell._traverse(context: context.deeper, visit)
 
-            case .continue:
-                continue
-            case .accumulateSingle(let t):
+            // interpreting descent result
+            switch descendResult {
+            case .result(let t):
                 c.accumulated.append(t)
-                return .results(c.accumulated)
-            case .accumulateMany(let ts):
+                continue
+            case .results(let ts):
                 c.accumulated.append(contentsOf: ts)
-                return .results(c.accumulated)
+                continue
+            case .completed:
+                continue
+            case .failed:
+                return descendResult // early return, failures abort traversal
             }
+
         }
 
         // if we had no children or similar, we simply complete the traversal here; we are a "leaf"
-        pprint("Completed in \(self)")
         return .completed
     }
 
