@@ -58,8 +58,10 @@ class TraversalTests: XCTestCase {
         }, name: "other")
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
-        let messages = try! probe.expectMessages(count: 6)
-        probe.stop() // still async
+        _ = try! probe.expectMessages(count: 6)
+        probe.stop() // stopping a probe however is still asynchronous...
+        // thus we make use of the fact we know probe internals and that the expectNoMessage still will work in this situation
+        try! probe.expectNoMessage(for: .milliseconds(300))
     }
 
     override func tearDown() {
