@@ -25,7 +25,7 @@ import Foundation // for Codable
 /// Serialization engine, holding all key-ed serializers.
 public struct Serialization {
 
-    typealias SerializerId = Int
+    public typealias SerializerId = Int
     typealias MetaTypeKey = AnyHashable
 
     // TODO we may be forced to code-gen these?
@@ -277,11 +277,12 @@ public struct SerializationSettings {
     // FIXME should not be here!
     private let allocator = ByteBufferAllocator()
 
-    mutating func register<T>(_ makeSerializer: (ByteBufferAllocator) -> Serializer<T>, for type: T.Type, underId id: Serialization.SerializerId) {
+    public mutating func register<T>(_ makeSerializer: (ByteBufferAllocator) -> Serializer<T>, for type: T.Type, underId id: Serialization.SerializerId) {
         self.userSerializerIds[MetaType(type).asHashable()] = id
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(allocator))
     }
-    mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
+    // TODO: Pretty sure this is not the final form of it yet...
+    public mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
         let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
             return CodableSerializer<T>(allocator: allocator)
         }
