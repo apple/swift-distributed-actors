@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
+
 import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
@@ -48,17 +49,29 @@ class SerializationTests: XCTestCase {
         buf.shouldEqual(out)
     }
 
-    // TODO optimize Codable representation of paths
-//    func test_serialize_actorPath() throws {
-//        let path = try ActorPath(root: "user") / ActorPathSegment("hello")
-//        let encoded = try JSONEncoder().encode(path)
-//        pprint("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
-//
-//        let pathAgain = try JSONDecoder().decode(ActorPath.self, from: encoded)
-//        pprint("Deserialized again: \(String(reflecting: pathAgain))")
-//
-//        pathAgain.shouldEqual(path)
-//    }
+    // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
+
+    func test_serialize_actorPath() throws {
+        let path = try ActorPath(root: "user") / ActorPathSegment("hello")
+        let encoded = try JSONEncoder().encode(path)
+        pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
+
+        let pathAgain = try JSONDecoder().decode(ActorPath.self, from: encoded)
+        pinfo("Deserialized again: \(String(reflecting: pathAgain))")
+
+        pathAgain.shouldEqual(path)
+    }
+
+    func test_serialize_uniqueActorPath() throws {
+        let path: UniqueActorPath = (try ActorPath(root: "user") / ActorPathSegment("hello")).makeUnique(uid: .random())
+        let encoded = try JSONEncoder().encode(path)
+        pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
+
+        let pathAgain = try JSONDecoder().decode(UniqueActorPath.self, from: encoded)
+        pinfo("Deserialized again: \(String(reflecting: pathAgain))")
+
+        pathAgain.shouldEqual(path)
+    }
 
     // MARK: Actor ref serialization and resolve
 
@@ -81,8 +94,28 @@ class SerializationTests: XCTestCase {
         back.shouldEqual(hasRef)
     }
 
+    // FIXME: Implement deserializing into deadLetters: https://github.com/apple/swift-distributed-actors/issues/321
+//    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters() throws {
+//        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
+//        let hasRef = HasStringRef(containedRef: stoppedRef)
+//
+//        pinfo("Before serialize: \(hasRef)")
+//
+//        let bytes = try shouldNotThrow {
+//            return try system.serialization.serialize(message: hasRef)
+//        }
+//        pinfo("serialized ref: \(bytes.stringDebugDescription())")
+//
+//        let back: HasStringRef = try shouldNotThrow {
+//            return try system.serialization.deserialize(to: HasStringRef.self, bytes: bytes)
+//        }
+//        pinfo("Deserialized again: \(back)")
+//
+//        back.containedRef.tell("Hello") // SHOULD be a dead letter
+//    }
+
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
-        let err = try shouldThrow {
+        let err = shouldThrow {
             return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
         }
 
@@ -137,13 +170,15 @@ class Mid: Top, Hashable {
 struct HasStringRef: Codable, Equatable {
     let containedRef: ActorRef<String>
 }
-struct HasIntRef: Codable, Equatable  {
+
+struct HasIntRef: Codable, Equatable {
     let containedRef: ActorRef<Int>
 }
 
 struct NotCodableHasInt: Equatable {
     let containedInt: Int
 }
+
 struct NotCodableHasIntRef: Equatable {
     let containedRef: ActorRef<Int>
 }

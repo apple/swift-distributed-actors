@@ -35,24 +35,20 @@ public struct Serialization {
 
     private let allocator = ByteBufferAllocator()
 
-    let userProvider: ActorRefProvider
-    let systemProvider: ActorRefProvider
-
     // MARK: Built-in serializers
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
     // @usableFromInline internal let codableSerializer: CodableSerializer
     @usableFromInline internal let actorRefSerializer: ActorRefSerializer
 
-    // TODO accept config and all serializers that this app will be using
-    internal init(settings: SerializationSettings, userProvider: ActorRefProvider, systemProvider: ActorRefProvider) { // TODO should take the top level actors
+    internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: ActorTreeTraversable) { // TODO should take the top level actors
+        // FIXME: should also handle system provider
+        let serializationContext = ActorSerializationContext(deadLetters: deadLetters, traversableSystem: traversable)
+
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
         // self.codableSerializer = CodableSerializer(allocator)
         self.actorRefSerializer = ActorRefSerializer(allocator)
-
-        self.userProvider = userProvider
-        self.systemProvider = systemProvider
 
         // FIXME self.stringSerializer = CodableSerializer <> (allocator) // find some example
         var sid = 0
@@ -64,9 +60,6 @@ public struct Serialization {
         // register all
         self.register(systemMessageSerializer, for: SystemMessage.self, underId: nextSid())
         self.register(stringSerializer, for: String.self, underId: nextSid())
-
-        // FIXME: should also handle system provider
-        let serializationContext = ActorSerializationContext(provider: userProvider)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -169,40 +162,45 @@ public extension CodingUserInfoKey {
     public static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sactActorLookupContext")!
 }
 
-///
+/// A context object provided to any C
 public struct ActorSerializationContext {
-    internal let provider: ActorRefProvider
 
-    // FIXME: should also handle system provider
-    internal init(provider: ActorRefProvider) {
-        self.provider = provider
+    let deadLetters: ActorRef<DeadLetter>
+    let traversable: ActorTreeTraversable
+
+    internal init(deadLetters: ActorRef<DeadLetter>, traversableSystem: ActorTreeTraversable) {
+        self.deadLetters = deadLetters
+        self.traversable = traversableSystem
     }
-    
-    func resolve(path: UniqueActorPath) -> AnyAddressableActorRef? {
-        var context = TraversalContext<AnyAddressableActorRef>()
+
+    func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
+        var context = ResolveContext()
         context.selectorSegments = path.segments[...]
-        pprint("RESOLVE: \(context.selectorSegments)")
-        let res: TraversalResult<AnyAddressableActorRef> = self.provider._traverse(context: context) { context, ref in
-            if ref.path.uid == path.uid {
-                return .accumulateSingle(ref)
-            } else {
-                return .continue
-            }
-        }
 
-        switch res {
-        // expected cases:
-        case .result(let ref):
-            return ref
-        case .completed:
-            return nil
+//        let res: TraversalResult<AnyAddressableActorRef> = self.traversable._traverse(context: context) { context, ref in
+//            if ref.path.uid == path.uid {
+//                return .return(ref)
+//            } else {
+//                return .continue
+//            }
+//        }
+//
+//        switch res {
+//        // expected cases:
+//        case .result(let ref):
+//            return ref
+//        case .completed:
+//            return nil
+//
+//        // should never happen cases:
+//        case .results(let refs):
+//             fatalError("Found more than one while resolving [\(path)] this is a bug! Found: \(refs)")
+//        case .failed(let err):
+//             fatalError("Failed with [\(err)] while resolving [\(path)]")
+//        }
 
-        // should never happen cases:
-        case .results(let refs):
-             fatalError("Found more than one while resolving [\(path)] this is a bug! Found: \(refs)")
-        case .failed(let err):
-             fatalError("Failed with [\(err)] while resolving [\(path)]")
-        }
+        let resolved = self.traversable._resolve(context: context, uid: path.uid)
+        return resolved
     }
 }
 

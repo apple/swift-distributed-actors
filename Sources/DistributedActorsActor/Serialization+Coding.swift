@@ -22,6 +22,7 @@ extension Decoder {
         return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
+
 extension Encoder {
     public var actorSerializationContext: ActorSerializationContext? {
         return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
@@ -36,25 +37,24 @@ enum Swift Distributed ActorsCodingError: Error {
 extension ActorRefWithCell {
 
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder) === \(self)")
         var container = encoder.singleValueContainer()
         try container.encode(self.path)
     }
 
     public convenience init(from decoder: Decoder) throws {
-//        let container = try decoder.singleValueContainer()
-//        let path = container.decode(UniqueActorPath.self)
-//
-//        guard let serializationContext = decoder.actorSerializationContext else {
-//            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
-//        }
-//
-//        switch serializationContext.resolve(path: path) {
-//        case .some(let resolver):
-//        case .none:
-//            throw
-//        }
-    fatalError("Not implemented. For remote cases ")
+        //        let container = try decoder.singleValueContainer()
+        //        let path = container.decode(UniqueActorPath.self)
+        //
+        //        guard let serializationContext = decoder.actorSerializationContext else {
+        //            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+        //        }
+        //
+        //        switch serializationContext.resolve(path: path) {
+        //        case .some(let resolver):
+        //        case .none:
+        //            throw
+        //        }
+        fatalError("Not implemented. For remote cases this is not possible, it should resolve to a proxy basically, that is to hit remoting.")
     }
 }
 
@@ -62,28 +62,24 @@ extension ActorRefWithCell {
 extension AddressableActorRef {
 
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder)")
         var container = encoder.singleValueContainer()
         try container.encode(self.path) // unique path
     }
 
     public init(from decoder: Decoder) throws {
-        pprint("decoding AddressableActorRef = \(decoder)")
-        var container = try decoder.singleValueContainer()
+        var container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
 
-        guard let serializationContext: ActorSerializationContext = decoder.actorSerializationContext else {
+        guard let serializationContext = decoder.actorSerializationContext else {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        switch serializationContext.resolve(path: path) {
+        switch serializationContext.resolveActorRef(path: path) {
         case .some(let resolved):
-            pprint("RESOLVED === \(resolved)")
-            self = resolved as! Self // FIXME wrong
+            self = resolved as! Self // this is safe, we know Self IS-A AddressableActorRef since any ActorRef is
         case .none:
-            fatalError("NOT FOUND ACTOR: \(path)")
-            // TODO: set self to dead letters
-            // self = serializationContext.deadLetters
+            // FIXME: should be one that points to dead letters.
+            fatalError("Attempted to resolve actor which is not alive. TODO: This should resolve as DeadLetters.") // FIXME: fallback resolution to deadLetters
         }
     }
 
@@ -93,10 +89,10 @@ enum ActorPathKeys: CodingKey {
     case path
     case uid
 }
+
 // Customize coding to avoid nesting as {"value": "..."}
 extension UniqueActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder)")
         var container = encoder.container(keyedBy: ActorPathKeys.self)
         try container.encode(self.segments, forKey: ActorPathKeys.path)
         try container.encode(self.uid, forKey: ActorPathKeys.uid)
@@ -104,15 +100,12 @@ extension UniqueActorPath: Codable {
 
     public init(from decoder: Decoder) throws {
         do {
-            pprint("decoding ActorPath = \(decoder)")
             let container = try decoder.container(keyedBy: ActorPathKeys.self)
             let segments = try container.decode([ActorPathSegment].self, forKey: ActorPathKeys.path)
             let uid = try container.decode(Int.self, forKey: ActorPathKeys.uid)
-            pprint("value = \(decoder)")
 
             try self.init(path: ActorPath(segments), uid: ActorUID(uid))
         } catch {
-            pprint("ERROR: \(error)")
             throw error
         }
     }
@@ -121,21 +114,16 @@ extension UniqueActorPath: Codable {
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder)")
         var container = encoder.container(keyedBy: ActorPathKeys.self)
         try container.encode(self.segments, forKey: ActorPathKeys.path)
     }
 
     public init(from decoder: Decoder) throws {
         do {
-            pprint("decoding ActorPath = \(decoder)")
             let container = try decoder.container(keyedBy: ActorPathKeys.self)
             let segments = try container.decode([ActorPathSegment].self, forKey: ActorPathKeys.path)
-            pprint("value = \(decoder)")
-
             try self.init(segments)
         } catch {
-            pprint("ERROR: \(error)")
             throw error
         }
     }
@@ -144,20 +132,17 @@ extension ActorPath: Codable {
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorPathSegment: Codable {
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder)")
         var container = encoder.singleValueContainer()
         try container.encode(self.value)
     }
 
     public init(from decoder: Decoder) throws {
         do {
-            pprint("decoding ActorPathSegment = \(decoder)")
-            var container = try decoder.singleValueContainer()
+            let container = try decoder.singleValueContainer()
             let value = try container.decodeNonEmpty(String.self, hint: "ActorPathSegment")
 
             try self.init(value)
         } catch {
-            pprint("ERROR: \(error)")
             throw error
         }
     }
@@ -166,20 +151,17 @@ extension ActorPathSegment: Codable {
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorUID: Codable {
     public func encode(to encoder: Encoder) throws {
-        pprint("encoding \(type(of: self))= \(encoder)")
         var container = encoder.singleValueContainer()
         try container.encode(self.value)
     }
 
     public init(from decoder: Decoder) throws {
         do {
-            pprint("decoding ActorUID = \(decoder)")
             let container = try decoder.singleValueContainer()
             let value = try container.decode(Int.self)
 
             self.init(value)
         } catch {
-            pprint("ERROR: \(error)")
             throw error
         }
     }

@@ -118,7 +118,21 @@ public struct Children {
         try self.container.values.forEach { try body($0.receivesSystemMessages) }
     }
 
-    // TODO use from foreach
+    @usableFromInline
+    internal var isEmpty: Bool {
+        return self.container.isEmpty && self.stopping.isEmpty
+    }
+
+    @usableFromInline
+    internal var nonEmpty: Bool {
+        return !self.isEmpty
+    }
+
+}
+
+// MARK: Traversal
+
+extension Children: ActorTreeTraversable {
     @usableFromInline
     internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
@@ -148,13 +162,19 @@ public struct Children {
     }
 
     @usableFromInline
-    internal var isEmpty: Bool {
-        return self.container.isEmpty && self.stopping.isEmpty
-    }
+    internal func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
 
-    @usableFromInline
-    internal var nonEmpty: Bool {
-        return !self.isEmpty
+        guard let selector = context.selectorSegments.first else {
+            // no selector, we should not be in this place!
+            fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
+        }
+
+        if let selectedChild = self.container[selector.value] {
+            return selectedChild._resolve(context: context.deeper, uid: uid)
+        } else {
+            // no child going by this name in this container, meaning the resolve is to terminate here with a not-found
+            return nil
+        }
     }
 }
 
