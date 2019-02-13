@@ -14,7 +14,7 @@
 
 import DistributedActorsConcurrencyHelpers
 
-internal protocol ActorRefProvider {
+internal protocol ActorRefProvider: ActorTreeTraversable {
 
     /// Path of the root guardian actor for this part of the actor tree.
     var rootPath: UniqueActorPath { get }
@@ -27,8 +27,6 @@ internal protocol ActorRefProvider {
         behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message>
-
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
 
     /// Stops all actors created by this `ActorRefProvider` and blocks until
     /// they have all stopped.
@@ -73,43 +71,95 @@ internal struct LocalActorRefProvider: ActorRefProvider {
         }
     }
 
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        switch context.selectorSegments {
-        case .none:
-            return self.root._traverse(context: context.deeper, visit)
-        case .some(let selectors) where self.root.path.segments.last == selectors.first:
-            // so "/user" was selected by "/user/something/deeper"
-            return self.root._traverse(context: context.deeper, visit)
-        case .some:
-            // selector did not match, we return
-            return context.result
-        }
-    }
-
     internal func stopAll() {
         root.stopAllAwait()
+    }
+}
+
+extension LocalActorRefProvider {
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        return self.root._traverse(context: context.deeper, visit)
+    }
+
+    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+        return self.root._resolve(context: context, uid: uid)
+    }
+}
+
+
+internal protocol ActorTreeTraversable {
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
+    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef?
+}
+
+// TODO: Would be nice to not need this type at all; though initialization dance prohibiting self access makes this a bit hard
+/// Traverses first one tree then the other.
+// Mostly needed since we need to expose the traversal to serialization, but we can't expose self of the actor system just yet there.
+internal struct CompositeActorTreeTraversable: ActorTreeTraversable {
+    let systemTree: ActorTreeTraversable
+    let userTree: ActorTreeTraversable
+
+    init(systemTree: ActorTreeTraversable, userTree: ActorTreeTraversable) {
+        self.systemTree = systemTree
+        self.userTree = userTree
+    }
+
+    // TODO duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
+    // TODO: we may be able to pull this off by implementing the "root" as traversable and then we expose it to the Serialization() impl
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        let systemTraversed = self.systemTree._traverse(context: context, visit)
+
+        switch systemTraversed {
+        case .completed:
+            return self.userTree._traverse(context: context, visit)
+
+        case .result(let t):
+            var c = context
+            c.accumulated.append(t)
+            return self.userTree._traverse(context: c, visit)
+        case .results(let ts):
+            var c = context
+            c.accumulated.append(contentsOf: ts)
+            return self.userTree._traverse(context: c, visit)
+
+        case .failed(let err):
+            return .failed(err) // short circuit
+        }
+
+    }
+
+    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+        pprint("resolve composite: \(context)")
+        guard let selector = context.selectorSegments.first else {
+            return nil
+        }
+        switch selector.value {
+        case "system": return self.systemTree._resolve(context: context, uid: uid)
+        case "user": return self.userTree._resolve(context: context, uid: uid)
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        }
     }
 }
 
 internal struct TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
-    var selectorSegments: ArraySlice<ActorPathSegment>? // "remaining path" that we try to locate, if `nil` we select all actors
+    var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
 
-    init(depth: Int, accumulated: [T], selectorSegments: [ActorPathSegment]?) {
+    init(depth: Int, accumulated: [T], selectorSegments: [ActorPathSegment]) {
         self.depth = depth
         self.accumulated = accumulated
-        self.selectorSegments = selectorSegments?[...]
+        self.selectorSegments = selectorSegments[...]
     }
 
-    internal init(depth: Int, accumulated: [T], remainingSelectorSegments: ArraySlice<ActorPathSegment>?) {
+    internal init(depth: Int, accumulated: [T], remainingSelectorSegments: ArraySlice<ActorPathSegment>) {
         self.depth = depth
         self.accumulated = accumulated
         self.selectorSegments = remainingSelectorSegments
     }
 
     init() {
-        self.init(depth: -1, accumulated: [], selectorSegments: nil)
+        self.init(depth: -1, accumulated: [], selectorSegments: [])
     }
 
     var result: TraversalResult<T> {
@@ -126,12 +176,40 @@ internal struct TraversalContext<T> {
     /// Returns copy of traversal context yet "one level deeper"
     func deeper(by n: Int) ->  TraversalContext<T> {
         var deeperSelector = self.selectorSegments
-        deeperSelector = deeperSelector?.dropFirst()
+        deeperSelector = deeperSelector.dropFirst()
         let c = TraversalContext(
             depth: self.depth + n,
             accumulated: self.accumulated,
-            remainingSelectorSegments: self.selectorSegments?.dropFirst() // TODO: avoid new array creation
+            remainingSelectorSegments: self.selectorSegments.dropFirst()
         )
+        return c
+    }
+}
+
+internal struct ResolveContext {
+    var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
+
+    init(selectorSegments: [ActorPathSegment]) {
+        self.selectorSegments = selectorSegments[...]
+    }
+
+    internal init(remainingSelectorSegments: ArraySlice<ActorPathSegment>) {
+        self.selectorSegments = remainingSelectorSegments
+    }
+
+    init() {
+        self.init(selectorSegments: [])
+    }
+
+
+    var deeper: ResolveContext {
+        return self.deeper(by: 1)
+    }
+    /// Returns copy of traversal context yet "one level deeper"
+    func deeper(by n: Int) ->  ResolveContext {
+        var deeperSelector = self.selectorSegments
+        deeperSelector = deeperSelector.dropFirst()
+        let c = ResolveContext(remainingSelectorSegments: self.selectorSegments.dropFirst())
         return c
     }
 }
@@ -139,6 +217,7 @@ internal struct TraversalContext<T> {
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
 internal enum TraversalDirective<T> {
     case `continue`
+    // case `return`(T) // immediately return this value
     case accumulateSingle(T)
     case accumulateMany([T])
     case abort(Error)

@@ -113,7 +113,7 @@ class TraversalTests: XCTestCase {
     }
 
     func test_traverse_shouldHaveRightDepthInContext() {
-        let found: TraversalResult<String> = self.system._traverseAll { context, ref in
+        let _: TraversalResult<String> = self.system._traverseAll { context, ref in
             if ref.path.name == "hello" {
                 context.depth.shouldEqual(1)
                 return .continue

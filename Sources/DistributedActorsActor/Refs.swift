@@ -199,10 +199,9 @@ internal class Guardian: ReceivesSystemMessages {
     // any access to children has to be protected by `lock`
     private var _children: Children
     private let _childrenLock: Mutex = Mutex()
-    private var childrenCopy: Children {
+    private var children: Children {
         return self._childrenLock.synchronized { () in
-            let copied = _children
-            return copied
+            return _children
         }
     }
 
@@ -272,24 +271,6 @@ internal class Guardian: ReceivesSystemMessages {
         }
     }
 
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        let children: Children = self.childrenCopy
-
-        var c = context.deeper
-        switch visit(context, self) {
-        case .continue:
-            return children._traverse(context: c, visit)
-        case .accumulateSingle(let t):
-            c.accumulated.append(t)
-            return children._traverse(context: c, visit)
-        case .accumulateMany(let ts):
-            c.accumulated.append(contentsOf: ts)
-            return children._traverse(context: c, visit)
-        case .abort(let err):
-            return .failed(err)
-        }
-    }
-
     /// Stops all children and waits for them to signal termination
     func stopAllAwait() {
         _childrenLock.synchronized {
@@ -312,6 +293,40 @@ internal class Guardian: ReceivesSystemMessages {
             self.allChildrenRemoved.wait(_childrenLock)
         }
     }
+}
+
+extension Guardian: ActorTreeTraversable {
+
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        let children: Children = self.children
+
+        var c = context.deeper
+        switch visit(context, self) {
+        case .continue:
+            return children._traverse(context: c, visit)
+        case .accumulateSingle(let t):
+            c.accumulated.append(t)
+            return children._traverse(context: c, visit)
+        case .accumulateMany(let ts):
+            c.accumulated.append(contentsOf: ts)
+            return children._traverse(context: c, visit)
+        case .abort(let err):
+            return .failed(err)
+        }
+    }
+
+    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+        guard let selector = context.selectorSegments.first else {
+            fatalError("Expected selector in guardian._resolve()!")
+        }
+
+        if self.path.name == selector.value {
+            return self.children._resolve(context: context.deeper, uid: uid)
+        } else {
+            return nil
+        }
+    }
+
 }
 
 extension Guardian: CustomStringConvertible {

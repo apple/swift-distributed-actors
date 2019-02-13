@@ -64,23 +64,19 @@ public final class ActorSystem {
     // FIXME should link to the logging infra rather than be ad hoc (init will be tricky, chicken-and-egg ;-))
     // TODO: lazy var is unsafe here
     public lazy var log: Logger = ActorLogger.make(system: self)
-    // the tricky stuff is due to
-    // /Users/ktoso/code/sact/Sources/Swift Distributed ActorsActor/ActorSystem.swift:55:16: error: 'self' used before all stored properties are initialized
-    // self.log = ActorLogger(self)
 
     #if SACT_TESTS_LEAKS
     let cellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
     #endif
 
     /// Creates a named ActorSystem; The name is useful for debugging cross system communication
-    // TODO: /// - throws: when configuration requirements can not be fulfilled (e.g. use of OS specific dispatchers is requested on not-matching OS)
     public init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         self.name = name
 
         var settings = ActorSystemSettings()
         configureSettings(&settings)
 
-
+        // TODO would we be able to without mutating theOne make it traversable? This way we could use it as traversable for Serialization()
         self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
         let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
         let userGuardian = Guardian(parent: theOne, name: "user")
@@ -91,8 +87,6 @@ public final class ActorSystem {
         let systemProvider = LocalActorRefProvider(root: systemGuardian)
         self.systemProvider = systemProvider
 
-        self.serialization = Serialization(settings: settings.serialization, userProvider: userProvider, systemProvider: systemProvider)
-
         // dead letters init
         // TODO actually attach dead letters to a parent?
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
@@ -100,6 +94,9 @@ public final class ActorSystem {
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize) // TODO: better guesstimate on start and also make it tuneable
+
+        let traversable = CompositeActorTreeTraversable(systemTree: systemProvider, userTree: userProvider)
+        self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
 
         do {
             try FaultHandling.installCrashHandling()
@@ -200,7 +197,9 @@ extension ActorSystem: ActorRefFactory {
     }
 }
 
-internal extension ActorSystem {
+// MARK: Internal actor tree traversal utilities
+
+extension ActorSystem: ActorTreeTraversable {
 
     /// Prints Actor hierarchy as a "tree".
     ///
@@ -213,8 +212,7 @@ internal extension ActorSystem {
         }
     }
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-        let context = TraversalContext<T>()
+    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let systemTraversed: TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -235,9 +233,27 @@ internal extension ActorSystem {
         }
     }
 
+
+    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        let context = TraversalContext<T>()
+        return self._traverse(context: context, visit)
+    }
+
     @discardableResult
     internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AnyAddressableActorRef) -> TraversalDirective<Void>) -> TraversalResult<Void> {
         return self._traverseAll(visit)
+    }
+
+
+    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+        guard let selector = context.selectorSegments.first else {
+            return nil
+        }
+        switch selector.value {
+        case "system": return self.systemProvider._resolve(context: context.deeper, uid: uid)
+        case "user": return self.userProvider._resolve(context: context.deeper, uid: uid)
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        }
     }
 
 }
