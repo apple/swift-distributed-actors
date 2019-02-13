@@ -35,7 +35,6 @@ import XCTest
          testCase(ActorRefAdapterTests.allTests),
          testCase(ActorSystemTests.allTests),
          testCase(ActorTestProbeTests.allTests),
-         testCase(ActorTreeTests.allTests),
          testCase(AnonymousNamesGeneratorTests.allTests),
          testCase(BehaviorCanonicalizeTests.allTests),
          testCase(BehaviorTests.allTests),
@@ -54,5 +53,6 @@ import XCTest
          testCase(TimeAmountTests.allTests),
          testCase(TimeSpecTests.allTests),
          testCase(TimersTests.allTests),
+         testCase(TraversalTests.allTests),
     ])
 #endif

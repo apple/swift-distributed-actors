@@ -201,25 +201,43 @@ extension ActorSystem: ActorRefFactory {
 }
 
 internal extension ActorSystem {
-    internal func _printTree() {
-        let context = TraversalContext<()>()
 
-        let _: TraversalResult<()> = self.userProvider._traverse(context: context) { context, ref in
-            print("\(String(repeating: "  ", count: context.depth)) - \(ref)")
-            return .continue
-        }
-        let _: TraversalResult<()> = self.systemProvider._traverse(context: context) { context, ref in
-            print("\(String(repeating: "  ", count: context.depth)) - \(ref)")
+    /// Prints Actor hierarchy as a "tree".
+    ///
+    /// Note that the printout is NOT a "snapshot" of a systems state, and therefore may print actors which by the time
+    /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
+    internal func _printTree() {
+        self._traverseAllVoid { context, ref in
+            print("\(String(repeating: "  ", count: context.depth)) - /\(ref.path.name) - \(ref)")
             return .continue
         }
     }
 
-//    internal func _traverse<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
-//        self.userProvider._traverse { context, ref in
-//            return visit(context, ref)
-//        }
-//        self.systemProvider._traverse { context, ref in
-//            return visit(context, ref)
-//        }
-//    }
+    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        let context = TraversalContext<T>()
+        let systemTraversed: TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
+
+        switch systemTraversed {
+        case .completed:
+            return self.userProvider._traverse(context: context, visit)
+
+        case .result(let t):
+            var c = context
+            c.accumulated.append(t)
+            return self.userProvider._traverse(context: c, visit)
+        case .results(let ts):
+            var c = context
+            c.accumulated.append(contentsOf: ts)
+            return self.userProvider._traverse(context: c, visit)
+
+        case .failed(let err):
+            return .failed(err) // short circuit
+        }
+    }
+
+    @discardableResult
+    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AnyAddressableActorRef) -> TraversalDirective<Void>) -> TraversalResult<Void> {
+        return self._traverseAll(visit)
+    }
+
 }

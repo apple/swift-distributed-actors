@@ -556,9 +556,10 @@ extension AbstractCell {
     @inlinable
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         switch visit(context, self._myselfReceivesSystemMessages) {
-        case .return(let ret): return .result(ret)
-        case .abort(let err): return .failed(err)
-
+        case .return(let ret):
+            return .result(ret)
+        case .abort(let err):
+            return .failed(err)
         case .continue:
             let res = self._children._traverse(context: context.deeper, visit)
             return res

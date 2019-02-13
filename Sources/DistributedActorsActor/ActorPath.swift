@@ -46,7 +46,10 @@ public struct UniqueActorPath: Equatable, Hashable {
 
 extension UniqueActorPath: CustomStringConvertible {
     public var description: String {
-        return "\(path.description)#\(uid.value)"
+        switch self.uid.value {
+        case 0: return "\(path.description)"
+        default: return "\(path.description)#\(self.uid.value)"
+        }
     }
 }
 

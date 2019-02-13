@@ -81,29 +81,13 @@ class SerializationTests: XCTestCase {
         back.shouldEqual(hasRef)
     }
 
-    func test_serialize_actorRef() throws {
-        let ref: ActorRef<String> = try system.spawn(.stopped, name: "hello")
-
-        let bytes = try shouldNotThrow {
-            return try system.serialization.serialize(message: ref)
-        }
-        pinfo("serialized ref: \(bytes.stringDebugDescription())")
-
-        let back: ActorRef<String> = try shouldNotThrow {
-            return try system.serialization.deserialize(to: ActorRef<String>.self, bytes: bytes)
+    func test_serialize_shouldNotSerializeNotRegisteredType() throws {
+        let err = try shouldThrow {
+            return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
         }
 
-        back.shouldEqual(ref)
+        pinfo("err = \(err)")
     }
-
-//    func test_serialize_top() throws {
-//        let original = Mid()
-//
-//        let data = try! jsonEncoder.encode(original)
-//        let back = try! jsonDecoder.decode(Mid.self, from: data)
-//
-//        original.shouldEqual(back)
-//    }
 
     // MARK: Serialized messages in actor communication, locally
 
@@ -154,8 +138,12 @@ struct HasStringRef: Codable, Equatable {
     let containedRef: ActorRef<String>
 }
 struct HasIntRef: Codable, Equatable  {
-    let containedRef: ActorRef<String>
+    let containedRef: ActorRef<Int>
+}
+
+struct NotCodableHasInt: Equatable {
+    let containedInt: Int
 }
 struct NotCodableHasIntRef: Equatable {
-    let containedRef: ActorRef<String>
+    let containedRef: ActorRef<Int>
 }
