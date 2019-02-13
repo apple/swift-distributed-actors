@@ -106,6 +106,7 @@ The guide is composed of the following modules:
 
 include::actors.adoc[]
 include::failure_handling.adoc[]
+include::serialization.adoc[]
 include::clustering.adoc[]
 include::observability.adoc[]
 include::examples.adoc[]
