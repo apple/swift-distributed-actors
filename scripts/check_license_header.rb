@@ -19,7 +19,8 @@ violations = []
 excludes = [
     "Sources/ConcurrencyHelpers",
     "Sources/CAtomics",
-    "Tests/ConcurrencyHelpersTests"
+    "Tests/ConcurrencyHelpersTests",
+    "Sources/Swift Distributed ActorsActor/sact.pb.swift"
 ]
 
 new_files.each do |file|
