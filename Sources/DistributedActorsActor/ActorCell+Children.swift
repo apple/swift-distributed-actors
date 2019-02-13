@@ -122,9 +122,10 @@ public struct Children {
     @usableFromInline
     internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
+
         for cell: AbstractCell in self.container.values {
             // result of traversing / descending deeper into the tree
-            let descendResult: TraversalResult<T> = cell._traverse(context: context.deeper, visit)
+            let descendResult: TraversalResult<T> = cell._traverse(context: context, visit)
 
             // interpreting descent result
             switch descendResult {
@@ -143,7 +144,7 @@ public struct Children {
         }
 
         // if we had no children or similar, we simply complete the traversal here; we are a "leaf"
-        return .completed
+        return c.result
     }
 
     @usableFromInline

@@ -79,7 +79,6 @@ internal struct LocalActorRefProvider: ActorRefProvider {
             return self.root._traverse(context: context.deeper, visit)
         case .some(let selectors) where self.root.path.segments.last == selectors.first:
             // so "/user" was selected by "/user/something/deeper"
-            pprint("Traversal: @provider selected \(self.root.path.name)")
             return self.root._traverse(context: context.deeper, visit)
         case .some:
             // selector did not match, we return
@@ -140,7 +139,6 @@ internal struct TraversalContext<T> {
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
 internal enum TraversalDirective<T> {
     case `continue`
-    case `return`(T)
     case accumulateSingle(T)
     case accumulateMany([T])
     case abort(Error)

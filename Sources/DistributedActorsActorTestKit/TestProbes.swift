@@ -109,6 +109,7 @@ final public class ActorTestProbe<Message> {
 
     enum ExpectationError: Error {
         case noMessagesInQueue
+        case notEnoughMessagesInQueue(actualCount: Int, expectedCount: Int)
         case withinDeadlineExceeded(timeout: TimeAmount)
         case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
     }
@@ -135,6 +136,41 @@ extension ActorTestProbe {
             }
         } catch {
             let message = "Did not receive message of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.failure(message: message)
+        }
+    }
+
+}
+
+extension ActorTestProbe {
+    /// Expects multiple messages to arrive at the TestProbe and returns it for further assertions.
+    /// See also the `expectMessagesInAnyOrder([Message])` overload which provides automatic equality checking.
+    ///
+    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+    public func expectMessages(count: Int, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
+
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = expectationTimeout
+        do {
+            return try within(timeout) {
+                let actualCount: Int = self.messagesQueue.size()
+                guard actualCount >= count else {
+                    throw ExpectationError.notEnoughMessagesInQueue(actualCount: actualCount, expectedCount: count)
+                }
+
+                var gotMessages: [Message] = []
+                gotMessages.reserveCapacity(count)
+
+                for _ in 0..<count {
+                    let message: Message = self.messagesQueue.dequeue()
+                    gotMessages.append(message)
+                    self.lastMessageObserved = message
+                }
+
+                return gotMessages
+            }
+        } catch {
+            let message = "Did not receive expected messages (count: \(count)) of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.failure(message: message)
         }
     }
@@ -232,7 +268,6 @@ extension ActorTestProbe {
     private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
         // FIXME implement by scheduling checks rather than spinning
         let deadline = Deadline.fromNow(timeout)
-
         var lastObservedError: Error? = nil
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
@@ -426,7 +461,7 @@ extension ActorTestProbe {
 
     // MARK: Stopping test probes
 
-    func stop() {
+    public func stop() {
         // we send the stop command as normal message in order to not "overtake" other commands that were sent to it
         // not strictly required, but can yield more predictable results when used from tests after all
         self.internalRef.tell(.stopCommand)
