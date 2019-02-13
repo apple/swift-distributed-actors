@@ -119,7 +119,12 @@ class SerializationTests: XCTestCase {
             return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
         }
 
-        pinfo("err = \(err)")
+        switch err {
+        case SerializationError<NotCodableHasInt>.noSerializerRegisteredFor:
+            () // good
+        default:
+            fatalError("Not expected error type! Was: \(err):\(type(of: err))")
+        }
     }
 
     // MARK: Serialized messages in actor communication, locally
