@@ -23,7 +23,6 @@ import SwiftDistributedActorsActorTestKit
 class SerializationTests: XCTestCase {
 
     let system = ActorSystem("SerializationTests") { settings in
-        // TODO maybe string Ids? "ARS" would be nicer...
         settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
         settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
     }
