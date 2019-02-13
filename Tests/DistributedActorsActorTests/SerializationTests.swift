@@ -75,7 +75,12 @@ class SerializationTests: XCTestCase {
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
-        let ref: ActorRef<String> = try system.spawn(.ignore, name: "hello")
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let ref: ActorRef<String> = try system.spawn(.receiveMessage { message in
+            p.tell("got:\(message)")
+            return .same
+        }, name: "hello")
         let hasRef = HasStringRef(containedRef: ref)
 
         pinfo("Before serialize: \(hasRef)")
@@ -91,6 +96,9 @@ class SerializationTests: XCTestCase {
         pinfo("Deserialized again: \(back)")
 
         back.shouldEqual(hasRef)
+
+        back.containedRef.tell("hello")
+        try p.expectMessage("got:hello")
     }
 
     // FIXME: Implement deserializing into deadLetters: https://github.com/apple/swift-distributed-actors/issues/321
