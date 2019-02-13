@@ -208,7 +208,7 @@ internal extension ActorSystem {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth)) - /\(ref.path.name) - \(ref)")
+            print("\(String(repeating: "  ", count: context.depth))- /\(ref.path.name) - \(ref)")
             return .continue
         }
     }

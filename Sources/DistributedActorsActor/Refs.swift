@@ -274,19 +274,15 @@ internal class Guardian: ReceivesSystemMessages {
 
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let children: Children = self.childrenCopy
-        pprint("children = \(children) @ \(self.path)")
 
+        var c = context.deeper
         switch visit(context, self) {
         case .continue:
-            return children._traverse(context: context.deeper, visit)
-        case .return(let res):
-            return .result(res)
+            return children._traverse(context: c, visit)
         case .accumulateSingle(let t):
-            var c = context.deeper
             c.accumulated.append(t)
             return children._traverse(context: c, visit)
         case .accumulateMany(let ts):
-            var c = context.deeper
             c.accumulated.append(contentsOf: ts)
             return children._traverse(context: c, visit)
         case .abort(let err):
