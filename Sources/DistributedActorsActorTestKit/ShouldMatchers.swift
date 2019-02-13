@@ -79,11 +79,27 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "\(it.dropFirst(partialMatch.underestimatedCount))] "
             m += "to start with prefix: "
             if isTty { m += "\n                " } // align with "[error] Expected "
+            m += "["
             if isTty { m += "[\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
             if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
+
+    /// Asserts that `it` contains the `el` element.
+    public func toContain(_ el: T.Element) {
+        if !it.contains(el) {
+            // fancy printout:
+            var m = "Expected [\(it)] to contain: ["
+            if isTty { m += "\(ANSIColors.bold.rawValue)" }
+            m += "\(el)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "]"
 
             let msg = self.callSite.detailedMessage(m)
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
@@ -152,6 +168,10 @@ extension Collection where Element: Equatable {
         where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
+    }
+    public func shouldContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toContain(el)
     }
 }
 

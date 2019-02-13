@@ -26,7 +26,7 @@ extension SerializationTests {
       return [
                 ("test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer", test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer),
                 ("test_serialize_actorRef_inMessage", test_serialize_actorRef_inMessage),
-                ("test_serialize_actorRef", test_serialize_actorRef),
+                ("test_serialize_shouldNotSerializeNotRegisteredType", test_serialize_shouldNotSerializeNotRegisteredType),
                 ("test_serializeMessages_plainStringMessages", test_serializeMessages_plainStringMessages),
            ]
    }

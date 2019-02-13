@@ -28,6 +28,10 @@ extension Encoder {
     }
 }
 
+enum Swift Distributed ActorsCodingError: Error {
+
+}
+
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorRefWithCell {
 
@@ -38,14 +42,19 @@ extension ActorRefWithCell {
     }
 
     public convenience init(from decoder: Decoder) throws {
-        do {
-            pprint("decoding ActorRefWithCell = \(decoder)")
-            var container = try decoder.singleValueContainer()
-            fatalError()
-        } catch {
-            pprint("ERROR: \(error)")
-            throw error
-        }
+//        let container = try decoder.singleValueContainer()
+//        let path = container.decode(UniqueActorPath.self)
+//
+//        guard let serializationContext = decoder.actorSerializationContext else {
+//            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+//        }
+//
+//        switch serializationContext.resolve(path: path) {
+//        case .some(let resolver):
+//        case .none:
+//            throw
+//        }
+    fatalError("Not implemented. For remote cases ")
     }
 }
 
@@ -62,7 +71,6 @@ extension AddressableActorRef {
         pprint("decoding AddressableActorRef = \(decoder)")
         var container = try decoder.singleValueContainer()
         let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
-        pprint("path = \(decoder)")
 
         guard let serializationContext: ActorSerializationContext = decoder.actorSerializationContext else {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
