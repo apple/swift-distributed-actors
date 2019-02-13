@@ -29,9 +29,9 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     end
 
     link = if (api_module = attrs['module'])
-      %(api/0.0.0/#{api_module}/#{tpe}/#{type_name}.html)
+      %(api/0.0.1/#{api_module}/#{tpe}/#{type_name}.html)
     else
-      %(api/0.0.0/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
+      %(api/0.0.1/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
     end
 
     expected_at = File.join(File.dirname(__FILE__), '../../', link)
