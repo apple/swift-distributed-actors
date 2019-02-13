@@ -184,7 +184,7 @@ public struct ActorSerializationContext {
         pprint("RESOLVE: \(context.selectorSegments)")
         let res: TraversalResult<AnyAddressableActorRef> = self.provider._traverse(context: context) { context, ref in
             if ref.path.uid == path.uid {
-                return .return(ref)
+                return .accumulateSingle(ref)
             } else {
                 return .continue
             }

@@ -125,8 +125,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
     // MARK: ActorCellSpawning protocol requirements
 
-    internal var _children: Children = Children()
     private let _childrenLock: Mutex = Mutex()
+    // All access must be protected with `_childrenLock`, or via `children` helper
+    internal var _children: Children = Children()
     override public var children: Children {
         set {
             self._childrenLock.lock()
@@ -540,7 +541,7 @@ internal protocol AbstractCell {
     // MARK: Cell contract
 
     var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
-    var _children: Children { get }
+    var children: Children { get set } // lock-protected
 
     // MARK: Internal generic capabilities
 
@@ -555,24 +556,19 @@ extension AbstractCell {
 
     @inlinable
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        var c = context.deeper
         switch visit(context, self._myselfReceivesSystemMessages) {
-        case .return(let ret):
-            return .result(ret)
+        case .continue:
+            let res = self.children._traverse(context: c, visit)
+            return res
+        case .accumulateSingle(let t):
+            c.accumulated.append(t)
+            return self.children._traverse(context: c, visit)
+        case .accumulateMany(let ts):
+            c.accumulated.append(contentsOf: ts)
+            return self.children._traverse(context: c, visit)
         case .abort(let err):
             return .failed(err)
-        case .continue:
-            let res = self._children._traverse(context: context.deeper, visit)
-            return res
-        case .accumulateSingle(let t): // TODO is it worth doing this optimization to avoid the array alloc?
-            var c = context.deeper
-            c.accumulated.append(t)
-            let res = self._children._traverse(context: c, visit)
-            return res
-        case .accumulateMany(let ts):
-            var c = context.deeper
-            c.accumulated.append(contentsOf: ts)
-            let res = self._children._traverse(context: c, visit)
-            return res
         }
     }
 }
