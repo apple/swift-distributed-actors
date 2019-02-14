@@ -136,19 +136,47 @@ class SerializationTests: XCTestCase {
 
     // MARK: Serialized messages in actor communication, locally
 
-    func test_serializeMessages_plainStringMessages() throws {
-        let system = ActorSystem("SerializeMessages") { settings in
+    func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
+        let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
         }
 
-        let p = testKit.spawnTestProbe(name: "p1", expecting: String.self)
-        let echo: ActorRef<String> = try system.spawn(.receiveMessage { msg in
-            p.ref.tell("echo:\(msg)")
-            return .same
-        }, name: "echo")
+        do {
+            let p = testKit.spawnTestProbe(name: "p1", expecting: String.self)
+            let echo: ActorRef<String> = try s2.spawn(.receiveMessage { msg in
+                p.ref.tell("echo:\(msg)")
+                return .same
+            }, name: "echo")
 
-        echo.tell("hi!")
-        try p.expectMessage("echo:hi!")
+            echo.tell("hi!") // is a built-in serializable message
+            try p.expectMessage("echo:hi!")
+        } catch {
+            s2.terminate()
+            throw error
+        }
+        s2.terminate()
+    }
+
+    func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
+        let s2 = ActorSystem("SerializeMessages") { settings in
+            settings.serialization.allMessages = true
+        }
+
+        let testKit2 = ActorTestKit(s2)
+        let p = testKit2.spawnTestProbe(expecting: NotSerializable.self)
+
+        let recipient: ActorRef<NotSerializable> = try s2.spawn(.ignore, name: "recipient")
+
+        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { context in
+            recipient.tell(NotSerializable())
+            return .same
+        }, name: "expected-to-fault-due-to-serialization-check")
+
+        p.watch(senderOfNotSerializableMessage)
+        senderOfNotSerializableMessage.tell("send it now!")
+
+        try p.expectTerminated(senderOfNotSerializableMessage)
+        s2.terminate()
     }
 
 }
@@ -194,3 +222,5 @@ struct NotCodableHasInt: Equatable {
 struct NotCodableHasIntRef: Equatable {
     let containedRef: ActorRef<Int>
 }
+
+struct NotSerializable {}

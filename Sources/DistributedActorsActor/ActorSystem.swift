@@ -51,7 +51,6 @@ public final class ActorSystem {
 
     /// Allows inspecting settings that were used to configure this actor system.
     /// Settings are immutable and may not be changed once the system is running.
-    // TODO: We currently do not allow configuring it at all, which is fine for now.
     public let settings: ActorSystemSettings
 
     public let serialization: Serialization

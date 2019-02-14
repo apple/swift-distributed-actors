@@ -24,6 +24,7 @@ internal enum ActorTestProbeCommand<M> {
 
     case realMessage(message: M)
 }
+extension ActorTestProbeCommand: NoSerializationVerification {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
