@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension ProtoVersion {
+extension ProtoProtocolVersion {
     var reserved: UInt8 {
         return UInt8(self.value >> 24)
     }
@@ -29,8 +29,8 @@ extension ProtoVersion {
         return UInt8(self.value & 0b11111111)
     }
 
-    static func make(reserved: UInt8, major: UInt8, minor: UInt8, patch: UInt8) -> ProtoVersion {
-        var version = ProtoVersion()
+    static func make(reserved: UInt8, major: UInt8, minor: UInt8, patch: UInt8) -> ProtoProtocolVersion {
+        var version = ProtoProtocolVersion()
         version.value =
             (UInt32(reserved) << 24)    |
             (UInt32(major) << 16)       |

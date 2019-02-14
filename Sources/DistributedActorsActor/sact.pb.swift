@@ -25,33 +25,13 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-/// The version is represented as 4 bytes:
-/// - reserved: Can be used in the future for additional flags
-/// - major
-/// - minor
-/// - patch
-/// Because protobuf does not support values with less than 4 bytes, we
-/// encode all values in a single uint32 and provide an extension to
-/// retrieve the specific values.
-struct ProtoVersion {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  var value: UInt32 = 0
-
-  var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  init() {}
-}
-
 struct ProtoHandshake {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var version: ProtoVersion {
-    get {return _storage._version ?? ProtoVersion()}
+  var version: ProtoProtocolVersion {
+    get {return _storage._version ?? ProtoProtocolVersion()}
     set {_uniqueStorage()._version = newValue}
   }
   /// Returns true if `version` has been explicitly set.
@@ -59,28 +39,28 @@ struct ProtoHandshake {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var sender: ProtoUniqueAddress {
-    get {return _storage._sender ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._sender = newValue}
+  var from: ProtoUniqueAddress {
+    get {return _storage._from ?? ProtoUniqueAddress()}
+    set {_uniqueStorage()._from = newValue}
   }
-  /// Returns true if `sender` has been explicitly set.
-  var hasSender: Bool {return _storage._sender != nil}
-  /// Clears the value of `sender`. Subsequent reads from it will return its default value.
-  mutating func clearSender() {_uniqueStorage()._sender = nil}
+  /// Returns true if `from` has been explicitly set.
+  var hasFrom: Bool {return _storage._from != nil}
+  /// Clears the value of `from`. Subsequent reads from it will return its default value.
+  mutating func clearFrom() {_uniqueStorage()._from = nil}
 
   /// In the future we may want to add additional information
   /// about certain capabilities here. E.g. when a node supports
   /// faster transport like InfiniBand and the likes, so we can
   /// upgrade the connection in case both nodes support the fast
   /// transport.
-  var receiver: ProtoUniqueAddress {
-    get {return _storage._receiver ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._receiver = newValue}
+  var to: ProtoUniqueAddress {
+    get {return _storage._to ?? ProtoUniqueAddress()}
+    set {_uniqueStorage()._to = newValue}
   }
-  /// Returns true if `receiver` has been explicitly set.
-  var hasReceiver: Bool {return _storage._receiver != nil}
-  /// Clears the value of `receiver`. Subsequent reads from it will return its default value.
-  mutating func clearReceiver() {_uniqueStorage()._receiver = nil}
+  /// Returns true if `to` has been explicitly set.
+  var hasTo: Bool {return _storage._to != nil}
+  /// Clears the value of `to`. Subsequent reads from it will return its default value.
+  mutating func clearTo() {_uniqueStorage()._to = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -96,9 +76,9 @@ struct ProtoEnvelope {
 
   var serializer: UInt32 = 0
 
-  var payload: Data = SwiftProtobuf.Internal.emptyData
+  var recipient: String = String()
 
-  var receiver: String = String()
+  var payload: Data = SwiftProtobuf.Internal.emptyData
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -117,24 +97,24 @@ struct ProtoSystemEnvelope {
     set {_uniqueStorage()._serializer = newValue}
   }
 
-  var payload: Data {
-    get {return _storage._payload}
-    set {_uniqueStorage()._payload = newValue}
-  }
-
   var sequenceNr: UInt64 {
     get {return _storage._sequenceNr}
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var sender: ProtoUniqueAddress {
-    get {return _storage._sender ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._sender = newValue}
+  var from: ProtoUniqueAddress {
+    get {return _storage._from ?? ProtoUniqueAddress()}
+    set {_uniqueStorage()._from = newValue}
   }
-  /// Returns true if `sender` has been explicitly set.
-  var hasSender: Bool {return _storage._sender != nil}
-  /// Clears the value of `sender`. Subsequent reads from it will return its default value.
-  mutating func clearSender() {_uniqueStorage()._sender = nil}
+  /// Returns true if `from` has been explicitly set.
+  var hasFrom: Bool {return _storage._from != nil}
+  /// Clears the value of `from`. Subsequent reads from it will return its default value.
+  mutating func clearFrom() {_uniqueStorage()._from = nil}
+
+  var payload: Data {
+    get {return _storage._payload}
+    set {_uniqueStorage()._payload = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -153,14 +133,14 @@ struct ProtoSystemAck {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var sender: ProtoUniqueAddress {
-    get {return _storage._sender ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._sender = newValue}
+  var from: ProtoUniqueAddress {
+    get {return _storage._from ?? ProtoUniqueAddress()}
+    set {_uniqueStorage()._from = newValue}
   }
-  /// Returns true if `sender` has been explicitly set.
-  var hasSender: Bool {return _storage._sender != nil}
-  /// Clears the value of `sender`. Subsequent reads from it will return its default value.
-  mutating func clearSender() {_uniqueStorage()._sender = nil}
+  /// Returns true if `from` has been explicitly set.
+  var hasFrom: Bool {return _storage._from != nil}
+  /// Clears the value of `from`. Subsequent reads from it will return its default value.
+  mutating func clearFrom() {_uniqueStorage()._from = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -213,49 +193,40 @@ struct ProtoUniqueAddress {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-// MARK: - Code below here is support for the SwiftProtobuf runtime.
+/// The version is represented as 4 bytes:
+/// - reserved: Can be used in the future for additional flags
+/// - major
+/// - minor
+/// - patch
+/// Because protobuf does not support values with less than 4 bytes, we
+/// encode all values in a single uint32 and provide an extension to
+/// retrieve the specific values.
+struct ProtoProtocolVersion {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
 
-extension ProtoVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "Version"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "value"),
-  ]
+  var value: UInt32 = 0
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeSingularUInt32Field(value: &self.value)
-      default: break
-      }
-    }
-  }
+  var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.value != 0 {
-      try visitor.visitSingularUInt32Field(value: self.value, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  static func ==(lhs: ProtoVersion, rhs: ProtoVersion) -> Bool {
-    if lhs.value != rhs.value {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
+  init() {}
 }
+
+// MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "Handshake"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "sender"),
-    3: .same(proto: "receiver"),
+    2: .same(proto: "from"),
+    3: .same(proto: "to"),
   ]
 
   fileprivate class _StorageClass {
-    var _version: ProtoVersion? = nil
-    var _sender: ProtoUniqueAddress? = nil
-    var _receiver: ProtoUniqueAddress? = nil
+    var _version: ProtoProtocolVersion? = nil
+    var _from: ProtoUniqueAddress? = nil
+    var _to: ProtoUniqueAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -263,8 +234,8 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _sender = source._sender
-      _receiver = source._receiver
+      _from = source._from
+      _to = source._to
     }
   }
 
@@ -281,8 +252,8 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._sender)
-        case 3: try decoder.decodeSingularMessageField(value: &_storage._receiver)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._to)
         default: break
         }
       }
@@ -294,10 +265,10 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._sender {
+      if let v = _storage._from {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
-      if let v = _storage._receiver {
+      if let v = _storage._to {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       }
     }
@@ -310,8 +281,8 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._sender != rhs_storage._sender {return false}
-        if _storage._receiver != rhs_storage._receiver {return false}
+        if _storage._from != rhs_storage._from {return false}
+        if _storage._to != rhs_storage._to {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -325,16 +296,16 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   static let protoMessageName: String = "Envelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "serializer"),
-    2: .same(proto: "payload"),
-    3: .same(proto: "receiver"),
+    2: .same(proto: "recipient"),
+    3: .same(proto: "payload"),
   ]
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       switch fieldNumber {
       case 1: try decoder.decodeSingularUInt32Field(value: &self.serializer)
-      case 2: try decoder.decodeSingularBytesField(value: &self.payload)
-      case 3: try decoder.decodeSingularStringField(value: &self.receiver)
+      case 2: try decoder.decodeSingularStringField(value: &self.recipient)
+      case 3: try decoder.decodeSingularBytesField(value: &self.payload)
       default: break
       }
     }
@@ -344,19 +315,19 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     if self.serializer != 0 {
       try visitor.visitSingularUInt32Field(value: self.serializer, fieldNumber: 1)
     }
-    if !self.payload.isEmpty {
-      try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 2)
+    if !self.recipient.isEmpty {
+      try visitor.visitSingularStringField(value: self.recipient, fieldNumber: 2)
     }
-    if !self.receiver.isEmpty {
-      try visitor.visitSingularStringField(value: self.receiver, fieldNumber: 3)
+    if !self.payload.isEmpty {
+      try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: ProtoEnvelope, rhs: ProtoEnvelope) -> Bool {
     if lhs.serializer != rhs.serializer {return false}
+    if lhs.recipient != rhs.recipient {return false}
     if lhs.payload != rhs.payload {return false}
-    if lhs.receiver != rhs.receiver {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -366,16 +337,16 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   static let protoMessageName: String = "SystemEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "serializer"),
-    2: .same(proto: "payload"),
-    3: .same(proto: "sequenceNr"),
-    4: .same(proto: "sender"),
+    2: .same(proto: "sequenceNr"),
+    3: .same(proto: "from"),
+    4: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
     var _serializer: UInt32 = 0
-    var _payload: Data = SwiftProtobuf.Internal.emptyData
     var _sequenceNr: UInt64 = 0
-    var _sender: ProtoUniqueAddress? = nil
+    var _from: ProtoUniqueAddress? = nil
+    var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
 
@@ -383,9 +354,9 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
     init(copying source: _StorageClass) {
       _serializer = source._serializer
-      _payload = source._payload
       _sequenceNr = source._sequenceNr
-      _sender = source._sender
+      _from = source._from
+      _payload = source._payload
     }
   }
 
@@ -402,9 +373,9 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularUInt32Field(value: &_storage._serializer)
-        case 2: try decoder.decodeSingularBytesField(value: &_storage._payload)
-        case 3: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
-        case 4: try decoder.decodeSingularMessageField(value: &_storage._sender)
+        case 2: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
+        case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
+        case 4: try decoder.decodeSingularBytesField(value: &_storage._payload)
         default: break
         }
       }
@@ -416,14 +387,14 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._serializer != 0 {
         try visitor.visitSingularUInt32Field(value: _storage._serializer, fieldNumber: 1)
       }
-      if !_storage._payload.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 2)
-      }
       if _storage._sequenceNr != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 3)
+        try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 2)
       }
-      if let v = _storage._sender {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      if let v = _storage._from {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      }
+      if !_storage._payload.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 4)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -435,9 +406,9 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._serializer != rhs_storage._serializer {return false}
-        if _storage._payload != rhs_storage._payload {return false}
         if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
-        if _storage._sender != rhs_storage._sender {return false}
+        if _storage._from != rhs_storage._from {return false}
+        if _storage._payload != rhs_storage._payload {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -451,12 +422,12 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   static let protoMessageName: String = "SystemAck"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "sequenceNr"),
-    2: .same(proto: "sender"),
+    2: .same(proto: "from"),
   ]
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
-    var _sender: ProtoUniqueAddress? = nil
+    var _from: ProtoUniqueAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -464,7 +435,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
     init(copying source: _StorageClass) {
       _sequenceNr = source._sequenceNr
-      _sender = source._sender
+      _from = source._from
     }
   }
 
@@ -481,7 +452,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._sender)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._from)
         default: break
         }
       }
@@ -493,7 +464,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
       if _storage._sequenceNr != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 1)
       }
-      if let v = _storage._sender {
+      if let v = _storage._from {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
     }
@@ -506,7 +477,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
-        if _storage._sender != rhs_storage._sender {return false}
+        if _storage._from != rhs_storage._from {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -627,6 +598,35 @@ extension ProtoUniqueAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "ProtocolVersion"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "value"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try decoder.decodeSingularUInt32Field(value: &self.value)
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.value != 0 {
+      try visitor.visitSingularUInt32Field(value: self.value, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoProtocolVersion, rhs: ProtoProtocolVersion) -> Bool {
+    if lhs.value != rhs.value {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
