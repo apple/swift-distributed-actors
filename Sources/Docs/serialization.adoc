@@ -32,9 +32,9 @@ For the sake of the following examples, let's assume we have the following messa
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_codable_messages]
 ----
 
-The message protocol is not very complicated: it consists of two types, a `CarId` struct and an `ParkingSpotMessages` enum
-which is the message protocol an actor is speaking. Note that we already made the types conform to swift:Codable[], and
-since the types are simple (and composed only of other `Codable`) types, the serialization code is generated automatically.
+The message protocol is not very complicated: it consists of a single `ParkingSpotMessages` enum
+which is the message protocol the `driver` actor is speaking. Note that we already made the type conform to swift:Codable[],
+and since the type is a simple enum without associated values the serialization code for it is generated automatically.
 
 ==== Step 2: Register Codable types for serialization
 
@@ -51,7 +51,7 @@ using the optional trailing settings configuration closure:
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_codable]
 ----
 
-The `settings` argument passed to the configuration closure is a api:ActorSystemSettings[struct], which can be used to
+The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
 configure various parts of the actor system. In this section, the focus is entirely on the serializer registration,
 which has a simplified form for Codable types.
 
@@ -64,7 +64,7 @@ NOTE: While it would be nice to avoid this registration step, it does not seem p
 
 NOTE: Serialization identifiers until 1000 are reserved for Swift Distributed Actors's internal use. #TODO sadly we have to register for every specific type... This is the correct thing to do for protocol evolution, but makes getting started harder. We can't register for "any codable" (or I can't figure out how), due to how Swift's MetaTypes work.#
 
-==== Step^?^ 3: Send messages as usual
+==== Step 3: Send messages as usual
 
 
 And finally, we use our messages in an actor interaction. The following function snippet is meant to reply to a query about a specific parking spot.
@@ -84,7 +84,7 @@ and/or network call concerns into the middle of our business logic.
 
 
 WARNING: Due to this permissive style of sending messages, it technically is possible to accidentally send a message
-         intended only for local messaging to a remote actor, in which case such send would fail and an serialization
+         intended only for local messaging to a remote actor, in which case such send would fail and a serialization
          error would be logged. +
          +
          It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. #TODO implement this option# +
@@ -95,8 +95,8 @@ WARNING: Due to this permissive style of sending messages, it technically is pos
 
 === Alternative serialization strategies
 
-While `Codable` is a fine way to serialize data, sometimes you it may be necessary to use a serializer which does not
-operate using the its infrastructure. Swift Distributed Actors allows, transparently, swapping in alternative serialization mechanisms
+While `Codable` is a fine way to serialize data, sometimes it may be necessary to use a serializer which does not
+operate on `Codable` types. Swift Distributed Actors allows transparently swapping in alternative serialization mechanisms
 using its api:Serialization[struct] layer.
 
 The following sections will show how to use alternative serialization engines to serialize messages sent between Swift Distributed Actors actors.
