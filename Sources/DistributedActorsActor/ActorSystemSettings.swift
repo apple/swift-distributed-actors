@@ -19,6 +19,7 @@ public struct ActorSystemSettings {
     public var serialization = SerializationSettings()
 
     // FIXME should have more proper config section
+    // TODO: better guesstimate for default thread pool size? take into account core count?
     public let threadPoolSize: Int = 4
 }
 

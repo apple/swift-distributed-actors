@@ -163,10 +163,13 @@ internal struct TraversalContext<T> {
     }
 
     var result: TraversalResult<T> {
-        switch self.accumulated.count {
-        case 0: return .completed
-        case 1: return .result(self.accumulated.first!)
-        default: return .results(self.accumulated)
+        if self.accumulated.count > 1 {
+            return .results(self.accumulated)
+        } else {
+            switch self.accumulated.first {
+            case .some(let t): return .result(t)
+            case .none: return .completed
+            }
         }
     }
     
