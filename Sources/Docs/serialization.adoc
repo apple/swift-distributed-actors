@@ -87,7 +87,7 @@ WARNING: Due to this permissive style of sending messages, it technically is pos
          intended only for local messaging to a remote actor, in which case such send would fail and a serialization
          error would be logged. +
          +
-         It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. #TODO implement this option# +
+         It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. <<verify-serialization>>
          +
          #TODO: Alternatively we could explore a mode where "all messages must be Codable" but I think this MUST be opt-in, since it makes a) getting started harder and b) not really true for internal things and c) not good if people wanted to use something else than Codable#
 
@@ -102,6 +102,32 @@ using its api:Serialization[struct] layer.
 The following sections will show how to use alternative serialization engines to serialize messages sent between Swift Distributed Actors actors.
 
 NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `Codable` types.
+
+[[verify-serialization]]
+=== Message serialization verification
+
+Since messages may be serialized using various different techniques, the check if a message can be serialized has to be performed at runtime.
+
+In order to avoid situations where one forgets to register a serializer for a given with the system it is possible to run
+the actor system with the `settings.serialization.allMessages` option enabled. This causes all messages sent between actors
+to be serialized (even if they are not remote). This allows for catching mistakes of forgetting to enable a serializer
+for a specific type early.
+
+TIP: This option is only intended for testing, as there is performance penalty associated with it.
+
+In order to configure this mode, the settings configuration callback on the system can be used:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=configure_serialize_all]
+----
+
+This will cause the _sending_ actor (or process, in case of sending messages from outside of an actor) to crash with a fault, similar to the following:
+
+     Fatal error: Serialization check failed for message [NotSerializable()]:NotSerializable.
+     Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`.
+     This check was performed since `settings.serialization.allMessages` was enabled.: file Mailbox.swift, line 260
+
 
 ==== Protocol Buffers
 

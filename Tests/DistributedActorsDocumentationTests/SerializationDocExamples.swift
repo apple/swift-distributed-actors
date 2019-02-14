@@ -47,4 +47,13 @@ class SerializationDocExamples {
         // end::sending_serialized_messages[]
     }
 
+    func configure_serialize_all() {
+        // tag::configure_serialize_all[]
+        let system = ActorSystem("SerializeAll") { settings in 
+            settings.serialization.allMessages = true
+        }
+        // end::configure_serialize_all[]
+        _ = system
+    }
+
 }

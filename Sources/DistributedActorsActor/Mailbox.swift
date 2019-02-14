@@ -20,6 +20,7 @@ enum WrappedMessage<Message> {
     case userMessage(Message)
     case closure(() throws -> Void)
 }
+extension WrappedMessage: NoSerializationVerification {}
 
 /// INTERNAL API
 struct Envelope<Message> {
@@ -63,11 +64,20 @@ final class Mailbox<Message> {
     // we store a reference to its Supervisor handler, that we invoke
     private let invokeSupervision: InvokeSupervisionCallback
 
+    /// If `true`, all messages should be attempted to be serialized before sending
+    private let serializeAllMessages: Bool
+
     init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
         self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
         self.cell = cell
         self.path = cell.path
         self.deadLetters = cell.system.deadLetters
+
+        // TODO not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
+        let serialization: SerializationSettings? = self.cell?.system.settings.serialization
+        pprint("SERIALIZATION ===== \(serialization)")
+        self.serializeAllMessages = serialization?.allMessages ?? false
+        pprint("SERIALIZATION self.serializeAllMessages ===== \(self.serializeAllMessages)")
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -238,6 +248,20 @@ final class Mailbox<Message> {
 
     @inlinable
     func sendMessage(envelope: Envelope<Message>) {
+        if self.serializeAllMessages {
+            var messageDescription = "[\(envelope.payload)]"
+            do {
+                if case .userMessage(let message) = envelope.payload {
+                    messageDescription = "[\(message)]:\(type(of: message))"
+                    try cell?.system.serialization.verifySerializable(message: message)
+                }
+            } catch {
+                fatalError("Serialization check failed for message \(messageDescription). " + 
+                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`. " + 
+                    "This check was performed since `settings.serialization.allMessages` was enabled.")
+            }
+        }
+
         // while terminating (closing) the mailbox, we immediately dead-letter new user messages
         guard !cmailbox_is_closed(mailbox) else { // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
             traceLog_Mailbox("Mailbox(\(self.path)) is closing, dropping message \(envelope)")

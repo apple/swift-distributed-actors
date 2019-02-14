@@ -135,11 +135,21 @@ public struct Serialization {
         }
     }
 
-    //// Validates serialization round-trip is possible for given message
-    func validateSerialization<M>(message: M) throws {
-        let bytes = try self.serialize(message: message)
-        let back = try self.deserialize(to: M.self, bytes: bytes)
-        // TODO hard to check if back == message hm...
+    /// Validates serialization round-trip is possible for given message.
+    ///
+    /// Messages marked with `SkipSerializationVerification` are except from this verification.
+    func verifySerializable<M>(message: M) throws {
+        switch message {
+        case is NoSerializationVerification:
+            pprint("SKIPPING serialization check, type: [\(type(of: message))]")
+            return // skip
+        default:
+            let bytes = try self.serialize(message: message)
+            let _: M = try self.deserialize(to: M.self, bytes: bytes)
+            pprint("PASSED serialization check, type: [\(type(of: message))]")
+            // checking if the deserialized is equal to the passed in is a bit tricky,
+            // so we only check if the round trip invocation was possible at all or not.
+        }
     }
 
     // MARK: Internal workings
@@ -167,6 +177,8 @@ public struct Serialization {
         print(p)
     }
 }
+
+public protocol NoSerializationVerification {}
 
 public extension CodingUserInfoKey {
     public static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sactActorLookupContext")!
