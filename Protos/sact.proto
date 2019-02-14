@@ -14,12 +14,13 @@
 
 syntax = "proto3";
 
+option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
 message Handshake {
-    Version version = 1;
-    UniqueAddress sender = 2;
-    UniqueAddress receiver = 3;
+    ProtocolVersion version = 1;
+    UniqueAddress from = 2;
+    UniqueAddress to = 3;
     // In the future we may want to add additional information
     // about certain capabilities here. E.g. when a node supports
     // faster transport like InfiniBand and the likes, so we can
@@ -29,22 +30,22 @@ message Handshake {
 
 message Envelope {
     uint32 serializer = 1;
-    bytes payload = 2;
-    string receiver = 3;
+    string recipient = 2;
+    bytes payload = 3;
 }
 
 // System messages have to be reliable, therefore they need to be acknowledged
 // by the receiving node.
 message SystemEnvelope {
     uint32 serializer = 1;
-    bytes payload = 2;
-    uint64 sequenceNr = 3;
-    UniqueAddress sender = 4;
+    uint64 sequenceNr = 2;
+    UniqueAddress from = 3;
+    bytes payload = 4;
 }
 
 message SystemAck {
     uint64 sequenceNr = 1;
-    UniqueAddress sender = 2;
+    UniqueAddress from = 2;
 }
 
 message Address {
@@ -67,6 +68,6 @@ message UniqueAddress {
 // Because protobuf does not support values with less than 4 bytes, we
 // encode all values in a single uint32 and provide an extension to
 // retrieve the specific values.
-message Version {
+message ProtocolVersion {
     uint32 value = 1;
 }
