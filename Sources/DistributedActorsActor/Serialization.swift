@@ -25,6 +25,8 @@ import Foundation // for Codable
 /// Serialization engine, holding all key-ed serializers.
 public struct Serialization {
 
+    public static let ReservedSerializerIds = 0...1000 // arbitrary range, we definitely need more than just 100 though, since we have to register every single type
+
     public typealias SerializerId = Int
     typealias MetaTypeKey = AnyHashable
 
@@ -38,42 +40,55 @@ public struct Serialization {
     // MARK: Built-in serializers
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
-    // @usableFromInline internal let codableSerializer: CodableSerializer
-    @usableFromInline internal let actorRefSerializer: ActorRefSerializer
 
     internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: ActorTreeTraversable) { // TODO should take the top level actors
-        // FIXME: should also handle system provider
         let serializationContext = ActorSerializationContext(deadLetters: deadLetters, traversableSystem: traversable)
 
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
-        // self.codableSerializer = CodableSerializer(allocator)
-        self.actorRefSerializer = ActorRefSerializer(allocator)
-
-        // FIXME self.stringSerializer = CodableSerializer <> (allocator) // find some example
-        var sid = 0
-        func nextSid() -> Int {
-            defer { sid += 1 }
-            return sid
-        }
 
         // register all
-        self.register(systemMessageSerializer, for: SystemMessage.self, underId: nextSid())
-        self.register(stringSerializer, for: String.self, underId: nextSid())
+        self.registerSystemSerializer(systemMessageSerializer, for: SystemMessage.self, underId: 1)
+        self.registerSystemSerializer(stringSerializer, for: String.self, underId: 2)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
-            // TODO: This is copy pasting registering...
-            self.serializerIds[metaKey] = id // TODO check accidental overrides for keys?
-            let serializer = settings.userSerializers[id]
-            serializer?.setSerializationContext(serializationContext) // TODO: may need to set it per serialization "lane" or similar?
-            self.serializers[id] = serializer  // TODO check accidental overrides for keys?
+            guard let serializer = settings.userSerializers[id] else {
+                fatalError("No Serializer present in settings.userSerializers for expected id [\(id)]! This should not be possible by construction, possible Swift Distributed Actors bug?")
+            }
+
+            serializer.setSerializationContext(serializationContext) // TODO: may need to set it per serialization "lane" or similar?
+            self.registerUserSerializer(serializer, key: metaKey, underId: id)
         }
     }
 
-    mutating func register<T>(_ serializer: Serializer<T>, for type: T.Type, underId id: SerializerId) {
+    /// For use only by Swift Distributed Actors itself and serializers for its own messages.
+    private mutating func registerSystemSerializer<T>(_ serializer: Serializer<T>, for type: T.Type, underId id: SerializerId) {
+        assert(Serialization.ReservedSerializerIds.contains(id), "System serializers should be defined within their dedicated range. Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!")
         self.serializerIds[MetaType(type).asHashable()] = id
         self.serializers[id] = BoxedAnySerializer(serializer)
+    }
+    /// Register serializer under specified identifier.
+    /// The `id` identifier MUST be outside of `Serialization.ReservedSerializerIds`, i.e. greater than `1000`.
+    private mutating func registerUserSerializer(_ serializer: AnySerializer, key: MetaTypeKey, underId id: SerializerId) {
+        precondition(id.isOutside(of: Serialization.ReservedSerializerIds),
+            "User provided serializer identifier MUST NOT " +
+                "be within the system reserved serializer ids range (\(Serialization.ReservedSerializerIds)), was: [\(id)]")
+
+
+        switch self.serializerIds[key] {
+        case .none:
+            self.serializerIds[key] = id
+        case .some(let alreadyBoundId):
+            fatalError("Attempted to register serializer for already bound meta type [\(key)]! Meta type already bound to id [\(alreadyBoundId)]")
+        }
+
+        switch self.serializers[id] {
+        case .none:
+            self.serializers[id] = serializer
+        case .some(let alreadyBoundSerializer):
+            fatalError("Attempted to re-use serializerId [\(id)] (registering \(key))! Already bound to [\(alreadyBoundSerializer)]")
+        }
     }
 
     // MARK: Public API
@@ -83,9 +98,6 @@ public struct Serialization {
         let bytes: ByteBuffer
 
         switch message {
-        case let ref as ActorRef<String>:
-            bytes = try serializeActorRef(ref: ref, message: message)
-
         case let enc as Encodable:
             bytes = try serializeEncodableMessage(enc: enc, message: message)
 
@@ -104,10 +116,7 @@ public struct Serialization {
     public func deserialize<M>(to type: M.Type, bytes: ByteBuffer) throws -> M {
         if type is SystemMessage.Type {
             let systemMessage = try deserializeSystemMessage(bytes: bytes)
-            return systemMessage as! M // where M == SystemMessage
-        } else if type is AnyAddressableActorRef {
-            let ref = try deserializeActorRef(bytes: bytes, messageType: String.self)
-            return ref as! M // which we _know_ is the actor ref
+            return systemMessage as! M // guaranteed that M is SystemMessage
         } else {
             guard let serializerId = self.serializerIdFor(type: type) else {
                 pprint("FAILING; Available serializers: \(self.serializers)")
@@ -152,7 +161,7 @@ public struct Serialization {
     internal func debugPrintSerializerTable() {
         var p = ""
         for (key, id) in self.serializerIds {
-            p += "  Serializer (id:\(id)) key:\(key) = \(self.serializers[id])\n"
+            p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
         }
         print(p)
     }
@@ -176,29 +185,6 @@ public struct ActorSerializationContext {
     func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
         var context = ResolveContext()
         context.selectorSegments = path.segments[...]
-
-//        let res: TraversalResult<AnyAddressableActorRef> = self.traversable._traverse(context: context) { context, ref in
-//            if ref.path.uid == path.uid {
-//                return .return(ref)
-//            } else {
-//                return .continue
-//            }
-//        }
-//
-//        switch res {
-//        // expected cases:
-//        case .result(let ref):
-//            return ref
-//        case .completed:
-//            return nil
-//
-//        // should never happen cases:
-//        case .results(let refs):
-//             fatalError("Found more than one while resolving [\(path)] this is a bug! Found: \(refs)")
-//        case .failed(let err):
-//             fatalError("Failed with [\(err)] while resolving [\(path)]")
-//        }
-
         let resolved = self.traversable._resolve(context: context, uid: path.uid)
         return resolved
     }
@@ -231,12 +217,6 @@ extension Serialization {
         return try ser.serialize(message: message)
     }
 
-    private func serializeActorRef<M>(ref: AnyAddressableActorRef, message: M) throws -> ByteBuffer {
-        pprint("Serialize ref: \(ref)")
-
-        return try self.actorRefSerializer.serialize(message: ref)
-    }
-
 }
 
 // MARK: Deserialize specializations 
@@ -249,16 +229,6 @@ extension Serialization {
         return message
     }
 
-    func deserializeActorRef<M>(bytes: ByteBuffer, messageType: M.Type) throws -> ActorRef<M> {
-//        let message = try serializer.deserialize(type: SystemMessage.self, bytes: bytes)
-//        return message
-    fatalError("CANT DO actor ref yet")
-    }
-    func deserializeAddressable(bytes: ByteBuffer) throws -> AnyAddressableActorRef {
-        let ref: AnyAddressableActorRef = try self.actorRefSerializer.deserialize(bytes: bytes)
-        pprint("Deserialized as \(ref)")
-        return ref
-    }
 }
 
 
@@ -271,7 +241,6 @@ public struct SerializationSettings {
     public var allMessages: Bool = false
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
-    // internal var userSerializers: [Serialization.SerializerId: (ByteBufferAllocator) -> AnySerializer] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
 
     // FIXME should not be here!
@@ -284,7 +253,7 @@ public struct SerializationSettings {
     // TODO: Pretty sure this is not the final form of it yet...
     public mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
         let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
-            return CodableSerializer<T>(allocator: allocator)
+            return JSONCodableSerializer<T>(allocator: allocator)
         }
         self.userSerializerIds[MetaType(type).asHashable()] = id
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(allocator))
@@ -316,8 +285,7 @@ extension Serializer: AnySerializer {
     }
 }
 
-// TODO could accept any?
-final class CodableSerializer<T: Codable>: Serializer<T> {
+final class JSONCodableSerializer<T: Codable>: Serializer<T> {
 
     private let allocate: ByteBufferAllocator
     internal var encoder: JSONEncoder = JSONEncoder()
@@ -529,27 +497,10 @@ internal class StringSerializer: Serializer<String> {
     }
 }
 
-internal class ActorRefSerializer: Serializer<AnyAddressableActorRef> {
+// MARK: Small utility functions
 
-    let encoder = JSONEncoder()
-    private let allocate: ByteBufferAllocator
-
-    init(_ allocator: ByteBufferAllocator) {
-        self.allocate = allocator
-    }
-
-    override func serialize(message: AnyAddressableActorRef) throws -> ByteBuffer {
-        let data: Data = try encoder.encode(message.path)
-
-        return data.withUnsafeBytes { bytes in
-            var out: ByteBuffer = allocate.buffer(capacity: data.count)
-            out.write(bytes: bytes)
-            return out
-        }
-    }
-
-    override func deserialize(bytes: ByteBuffer) throws -> AnyAddressableActorRef {
-        return try super.deserialize(bytes: bytes)
+fileprivate extension Int {
+    func isOutside(of range: ClosedRange<Serialization.SerializerId>) -> Bool {
+        return !range.contains(self)
     }
 }
-

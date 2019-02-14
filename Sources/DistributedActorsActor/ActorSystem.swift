@@ -93,7 +93,7 @@ public final class ActorSystem {
         let deadLog = Logging.make(deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
-        self.dispatcher = try! FixedThreadPool(settings.threadPoolSize) // TODO: better guesstimate on start and also make it tuneable
+        self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         let traversable = CompositeActorTreeTraversable(systemTree: systemProvider, userTree: userProvider)
         self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
