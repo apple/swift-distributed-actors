@@ -125,17 +125,17 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
     // MARK: ActorCellSpawning protocol requirements
 
-    private let _childrenLock: Mutex = Mutex()
+    private let _childrenLock = ReadWriteLock()
     // All access must be protected with `_childrenLock`, or via `children` helper
     internal var _children: Children = Children()
     override public var children: Children {
         set {
-            self._childrenLock.lock()
+            self._childrenLock.lockWrite()
             defer { self._childrenLock.unlock() }
             self._children = newValue
         }
         get {
-            self._childrenLock.lock()
+            self._childrenLock.lockRead()
             defer { self._childrenLock.unlock() }
             return self._children
         }
