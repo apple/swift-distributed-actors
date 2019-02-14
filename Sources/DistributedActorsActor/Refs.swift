@@ -281,7 +281,7 @@ internal class Guardian: ReceivesSystemMessages {
             } else if self.stopping {
                 // stopping has already been initiated, so we only have to wait
                 // for all children to be removed
-                self.allChildrenRemoved.wait(_childrenLock)
+                self.allChildrenRemoved.wait(_childrenLock) // reason for not using our ReadWriteLock
                 return
             }
 
