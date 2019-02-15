@@ -15,8 +15,9 @@
 // TODO none of these are currently configurable
 public struct ActorSystemSettings {
 
-    public var actor = ActorSettings()
-    public var serialization = SerializationSettings()
+    public var actor: ActorSettings = .default
+    public var serialization: SerializationSettings = .default
+    public var network: NetworkSettings = .default
 
     public var logLevel: Logging.Level = .info
 
@@ -26,6 +27,11 @@ public struct ActorSystemSettings {
 }
 
 public struct ActorSettings {
+
+    public static var `default`: ActorSettings {
+        return .init()
+    }
+
     // TODO: arbitrary depth limit, could be configurable
     public let maxBehaviorNestingDepth: Int = 128 // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
 }

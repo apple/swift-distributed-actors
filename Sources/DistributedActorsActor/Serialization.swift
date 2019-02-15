@@ -240,9 +240,14 @@ extension Serialization {
 }
 
 
-// MARK: Settings
+// MARK: Serialization Settings
 
 public struct SerializationSettings {
+
+    public static var `default`: SerializationSettings {
+        return .init()
+    }
+
     /// Serialize all messages, also when passed only locally between actors.
     ///
     /// Use this option to test that all messages you expected to
