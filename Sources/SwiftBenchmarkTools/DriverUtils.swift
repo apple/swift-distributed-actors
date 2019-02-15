@@ -217,7 +217,7 @@ struct TestConfig {
                             SampleTime: \(sampleTime)
                             NumIters: \(numIters ?? 0)
                             Quantile: \(quantile ?? 0)
-                            TimeUnit: \(timeUnit ?? TimeUnit.nanoseconds)
+                            TimeUnit: \(timeUnit)
                             Delimiter: \(String(reflecting: delim))
                             Tests Filter: \(c.tests ?? [])
                             Tests to run: \(testList)
