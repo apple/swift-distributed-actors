@@ -20,8 +20,6 @@ public protocol MessageDispatcher {
 
     // TODO: we should make it dedicated to dispatch() rather than raw executing perhaps? This way it can take care of fairness things
 
-    // func attach(cell: AnyActorCell)
-
     var name: String { get }
 
     /// - Returns: `true` iff the mailbox status indicated that the mailbox should be run (still contains pending messages)
