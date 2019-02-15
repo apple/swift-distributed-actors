@@ -35,7 +35,7 @@ public struct UniqueActorPath: Equatable, Hashable {
     }
 
     /// Only to be used by the "/" root "actor"
-    internal static let _rootPath: UniqueActorPath = ActorPath._rootPath.makeUnique(uid: .opaque)
+    public static let _rootPath: UniqueActorPath = ActorPath._rootPath.makeUnique(uid: .opaque)
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
@@ -92,7 +92,7 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
         self.segments = []
     }
 
-    internal static let _rootPath: ActorPath = .init()
+    public static let _rootPath: ActorPath = .init()
 
     /// Appends a segment to this actor path
     mutating func append(segment: ActorPathSegment) {
@@ -129,7 +129,7 @@ protocol PathRelationships {
 extension PathRelationships {
 
     /// Combines the base path with a child segment returning the concatenated path.
-    static func /(base: Self, child: ActorPathSegment) -> ActorPath {
+    public static func /(base: Self, child: ActorPathSegment) -> ActorPath {
         var segments = base.segments
         segments.append(child)
 

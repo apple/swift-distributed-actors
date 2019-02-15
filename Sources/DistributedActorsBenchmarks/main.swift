@@ -13,14 +13,21 @@
 //===----------------------------------------------------------------------===//
 
 
+import Swift Distributed ActorsActor
 import SwiftBenchmarkTools
 
 assert({
-    print("==========================================================")
-    print("= YOU ARE RUNNING Swift Distributed ActorsPerformanceTester IN DEBUG MODE =")
-    print("==========================================================")
+    print("=================================================================")
+    print("=   !!  YOU ARE RUNNING Swift Distributed ActorsBenchmarks IN DEBUG MODE  !!     =")
+    print("= When running on the command line, use: `swift run -c release` =")
+    print("=================================================================")
     return true
 }())
+
+var _system: ActorSystem? = nil
+var system: ActorSystem {
+    return _system!
+}
 
 @inline(__always)
 private func registerBenchmark(_ bench: BenchmarkInfo) {
@@ -35,7 +42,7 @@ private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> ()
     registerBenchmark(BenchmarkInfo(name: name, runFunction: function, tags: tags))
 }
 
-registerBenchmark(ActorPathBenchmarks)
 registerBenchmark(ActorTreeTraversalBenchmarks)
+registerBenchmark(SerializationCodableBenchmarks)
 
 main()
