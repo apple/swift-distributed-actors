@@ -19,9 +19,6 @@ import Foundation // for Codable
 
 // MARK: Serialization sub-system
 
-// TODO: Discuss, serialization API, is it abstract enough to make all kinds of ways possible
-// the fastest way to do serialization, is of course to not have to do serialization at all
-// would it be possible to make this happen for us
 /// Serialization engine, holding all key-ed serializers.
 public struct Serialization {
 
@@ -184,7 +181,7 @@ public extension CodingUserInfoKey {
     public static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sactActorLookupContext")!
 }
 
-/// A context object provided to any C
+/// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
 public struct ActorSerializationContext {
 
     let deadLetters: ActorRef<DeadLetter>
@@ -362,6 +359,7 @@ enum SerializationError<T>: Error {
 }
 
 // MARK: MetaTypes so we can store Type -> Serializer mappings
+
 // Implementation notes:
 // We need this since we will receive data from the wire and need to pick "the right" deserializer
 // See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
