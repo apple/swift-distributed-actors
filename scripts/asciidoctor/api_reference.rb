@@ -10,6 +10,13 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
   def process parent, target, attrs
     text = type_name = target
 
+    short_version = %x{ git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0" }.strip()
+    lib_version = if short_version == %x{ git describe --tags 2> /dev/null || echo "0.0.0" }.strip()
+      short_version
+    else
+      %(#{short_version}-dev)
+    end
+
     # we trim <T> from links, since they don't feature in the URLs
     type_name.gsub!(/<.*>/, "")
     type_name.gsub!(/&lt;.*&gt;/, "")
@@ -29,9 +36,9 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     end
 
     link = if (api_module = attrs['module'])
-      %(api/0.0.1/#{api_module}/#{tpe}/#{type_name}.html)
+      %(api/#{lib_version}/#{api_module}/#{tpe}/#{type_name}.html)
     else
-      %(api/0.0.1/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
+      %(api/#{lib_version}/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
     end
 
     expected_at = File.join(File.dirname(__FILE__), '../../', link)

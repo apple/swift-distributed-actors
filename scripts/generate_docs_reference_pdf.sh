@@ -18,7 +18,15 @@ set -e
 
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
-declare -r version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
+
+short_version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
+long_version=$(git describe            --tags 2> /dev/null || echo "0.0.0")
+if [[ "$short_version" == "$long_version" ]]; then
+  version="${short_version}"
+else
+  version="${short_version}-dev"
+fi
+echo "Project version: ${version}"
 
 # run asciidoctor
 if ! command -v asciidoctor-pdf > /dev/null; then

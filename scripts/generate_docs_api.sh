@@ -17,7 +17,16 @@ set -e
 
 my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 root_path="$my_path/.."
-version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
+
+short_version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
+long_version=$(git describe            --tags 2> /dev/null || echo "0.0.0")
+if [[ "$short_version" == "$long_version" ]]; then
+  version="${short_version}"
+else
+  version="${short_version}-dev"
+fi
+echo "Project version: ${version}"
+
 modules=(Swift Distributed ActorsActor)
 
 if [[ "$(uname -s)" == "Linux" ]]; then
