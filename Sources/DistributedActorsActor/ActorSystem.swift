@@ -52,7 +52,7 @@ public final class ActorSystem {
     /// Allows inspecting settings that were used to configure this actor system.
     /// Settings are immutable and may not be changed once the system is running.
     // TODO: We currently do not allow configuring it at all, which is fine for now.
-    public let settings: ActorSystemSettings = ActorSystemSettings()
+    public let settings: ActorSystemSettings
 
     public let serialization: Serialization
 
@@ -61,9 +61,11 @@ public final class ActorSystem {
 //  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
 //  private let provider =
 
-    // FIXME should link to the logging infra rather than be ad hoc (init will be tricky, chicken-and-egg ;-))
-    // TODO: lazy var is unsafe here
-    public lazy var log: Logger = ActorLogger.make(system: self)
+    public var log: Logger {
+        var l = ActorLogger.make(system: self)
+        l.logLevel = settings.logLevel
+        return l
+    }
 
     #if SACT_TESTS_LEAKS
     let cellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
@@ -75,6 +77,7 @@ public final class ActorSystem {
 
         var settings = ActorSystemSettings()
         configureSettings(&settings)
+        self.settings = settings
 
         // TODO would we be able to without mutating theOne make it traversable? This way we could use it as traversable for Serialization()
         self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
@@ -118,7 +121,7 @@ public final class ActorSystem {
     /// - Warning: Blocks current thread until the system has terminated.
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
-        self.log.log(level: .warning, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self.log.log(level: .debug, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()

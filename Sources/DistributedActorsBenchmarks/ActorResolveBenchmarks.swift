@@ -12,31 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Swift Distributed ActorsActor
+import Swift Distributed ActorsActor
 import SwiftBenchmarkTools
-
-var _system: ActorSystem? = nil
-var system: ActorSystem {
-    return _system!
-}
 
 public let ActorTreeTraversalBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
-        name: "ActorResolveBenchmarks.bench_resolveShallowRef",
+        name: "ActorResolve.bench_resolveShallowRef",
         runFunction: bench_visitSingleRef,
         tags: [],
         setUpFunction: { setUp(and: setUp_visitSingleRef) },
         tearDownFunction: tearDown
     ),
-//    BenchmarkInfo(
-//        name: "ActorResolveBenchmarks.bench_visit_depth_10_total_10",
-//        runFunction: bench_visit,
-//        tags: [],
-//        setUpFunction: { setUp(and: setUp_visit_depth_10_total_10) },
-//        tearDownFunction: tearDown
-//    ),
     BenchmarkInfo(
-        name: "ActorResolveBenchmarks.bench_visit_depth_1000_total_1000",
+        name: "ActorResolve.bench_visit_depth_1000_total_1000",
         runFunction: bench_visit,
         tags: [],
         setUpFunction: { setUp(and: setUp_visit_depth_1000_total_1000) },

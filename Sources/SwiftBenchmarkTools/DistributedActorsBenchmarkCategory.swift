@@ -12,20 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Swift Distributed ActorsActor
-import SwiftBenchmarkTools
+public enum BenchmarkCategory : String {
+    // Serialization benchmarks
+    case serialization
 
-public let ActorPathBenchmarks: [BenchmarkInfo] = [
-    BenchmarkInfo(
-        name: "ActorPathBenchmarks.bench_createShortPath",
-        runFunction: bench_createShortPath,
-        tags: [])
-]
+    // Most benchmarks are assumed to be "stable" and will be regularly tracked at
+    // each commit. A handful may be marked unstable if continually tracking them is
+    // counterproductive.
+    case unstable
 
-func bench_createShortPath(n: Int) {
-    let root = ActorPath._rootPath
-    let user = try! root / ActorPathSegment("user")
-    let master = try! user / ActorPathSegment("master")
-    let worker = try! master / ActorPathSegment("worker")
-    let _ = worker
+    // Explicit skip marker
+    case skip
 }
