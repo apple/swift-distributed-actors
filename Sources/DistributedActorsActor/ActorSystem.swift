@@ -166,9 +166,14 @@ extension ActorSystem: ActorRefFactory {
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
-        case .default: dispatcher = self.dispatcher
-        case .callingThread: dispatcher = CallingThreadDispatcher()
-        default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
+        case .default:
+            dispatcher = self.dispatcher
+        case .callingThread:
+            dispatcher = CallingThreadDispatcher()
+        case .nio(let group):
+            dispatcher = NIOEventLoopGroupDispatcher(group)
+        default:
+            fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
         let refWithCell: ActorRef<Message> = try userProvider.spawn(

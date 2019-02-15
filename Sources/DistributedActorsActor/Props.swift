@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Dispatch // TODO: This is here for potential future "run on dispatch" dispatcher
+import NIO
 
 /// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///
@@ -63,6 +63,9 @@ public extension Props {
     }
 }
 
+/// Configuring dispatchers should only be associated with actual research if the change is indeed beneficial.
+/// In the vast majority of cases the default thread pool backed implementation should perform the best for typical workloads.
+// TODO Eventually: probably also best as not enum but a bunch of factories?
 public enum DispatcherProps {
 
     /// Lets runtime determine the default dispatcher
@@ -76,12 +79,20 @@ public enum DispatcherProps {
     // I'd rather implement such style, as it actually is build "for" actors, and not accidentally running them well...
     // case OurOwnFancyActorSpecificDispatcher
 
-    /// Use with Caution!
+    /// WARNING: Use with Caution!
     ///
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
     case pinnedThread // TODO implement pinned thread dispatcher
 
+    /// WARNING: Use with Caution!
+    ///
+    /// Allows binding an actor to an `EventLoopGroup` or a specific `EventLoop` itself.
+    /// For most actors this should not matter, however it may show some benefit if interacting with many Futures
+    /// fired on a specific `EventLoop`, for reasons of "locality" to where the events are fired (when on the same exact event loop).
+    // TODO not extensively tested but should just-work™ since we treat NIO as plain thread pool basically here.
+    // TODO not sure if we'd need this or not in reality, we'll see... executing futures safely would be more interesting perhaps
+    case nio(NIO.EventLoopGroup)
 
     // TODO or hide it completely somehow; too dangerous
     /// WARNING: Use with Caution!

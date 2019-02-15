@@ -227,6 +227,7 @@ extension ActorCell: ChildActorRefFactory {
         switch props.dispatcher {
         case .default: dispatcher = self.dispatcher // TODO this is dispatcher inheritance, not sure about it
         case .callingThread: dispatcher = CallingThreadDispatcher()
+        case .nio(let group): dispatcher = NIOEventLoopGroupDispatcher(group)
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 

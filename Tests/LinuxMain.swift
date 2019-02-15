@@ -43,6 +43,7 @@ import XCTest
          testCase(ConcurrencyHelpersTests.allTests),
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
+         testCase(DispatcherTests.allTests),
          testCase(InterceptorTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(NIOExtensionTests.allTests),

@@ -51,3 +51,44 @@ extension FixedThreadPool: InternalMessageDispatcher {
         self.submit(task)
     }
 }
+
+// MARK: Calling Thread Dispatcher
+
+/// Use with great caution!! Hijacks the calling thread to execute the actor.
+///
+/// Can cause severe and bad interactions with supervision.
+internal struct CallingThreadDispatcher: MessageDispatcher {
+    public var name: String {
+        return "callingThread:\(_hackyPThreadThreadId())"
+    }
+
+    @inlinable
+    public func execute(_ f: @escaping () -> Void) {
+        f()
+    }
+}
+
+// MARK: NIO Dispatcher only for internal use
+
+internal struct NIOEventLoopGroupDispatcher: MessageDispatcher {
+    let group: NIO.EventLoopGroup
+
+    init(_ group: EventLoopGroup) {
+        self.group = group
+    }
+
+    public var name: String {
+        return "nio:\(_hackyPThreadThreadId())"
+    }
+
+    func execute(_ f: @escaping () -> Void) {
+        pprint("Execute on \(self)")
+        group.next().execute(f)
+    }
+}
+
+extension NIOEventLoopGroupDispatcher: InternalMessageDispatcher {
+    func shutdown() {
+        self.group.shutdownGracefully(queue: DispatchQueue.global(), { err in () })
+    }
+}
