@@ -185,6 +185,11 @@ public struct ActorPathSegment: Equatable, Hashable {
         self.value = name
     }
 
+    // FIXME: optimize so we don't alloc into the String() here
+    public init(_ name: Substring) throws {
+        try self.init(String(name))
+    }
+
     static func validatePathSegment(_ name: String) throws {
         if name.isEmpty {
             throw ActorPathError.illegalActorPathElement(name: name, illegal: "", index: 0)

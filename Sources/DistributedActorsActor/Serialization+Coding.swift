@@ -67,7 +67,7 @@ extension AddressableActorRef {
     }
 
     public init(from decoder: Decoder) throws {
-        var container: SingleValueDecodingContainer = try decoder.singleValueContainer()
+        let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
 
         guard let serializationContext = decoder.actorSerializationContext else {
