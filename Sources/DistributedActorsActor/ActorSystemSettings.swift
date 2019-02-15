@@ -18,6 +18,8 @@ public struct ActorSystemSettings {
     public var actor = ActorSettings()
     public var serialization = SerializationSettings()
 
+    public var logLevel: Logging.Level = .info
+
     // FIXME should have more proper config section
     // TODO: better guesstimate for default thread pool size? take into account core count?
     public let threadPoolSize: Int = 4

@@ -129,7 +129,6 @@ internal struct CompositeActorTreeTraversable: ActorTreeTraversable {
     }
 
     func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
-        pprint("resolve composite: \(context)")
         guard let selector = context.selectorSegments.first else {
             return nil
         }
