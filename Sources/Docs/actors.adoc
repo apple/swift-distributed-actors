@@ -53,6 +53,9 @@ In other words: actors are focused on identity, state, and distribution thereof.
 
 === "Thinking in Actors"
 
+> _Everything_ in an Actor system happens within some actors' api:Behavior[enum].
+
+
 #TODO: Quite important section#
 
 We should avoid "omg everything as an actor!" when people start adopting this :-)
