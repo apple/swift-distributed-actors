@@ -36,9 +36,9 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :mdash: &#8212;
 
 
-:dir_sact_doc_tests: ../../Tests/Swift Distributed ActorsDocumentationTests
-:dir_sact_actor:        ../Swift Distributed ActorsActor
-:dir_sact_actor_tests:  ../../Tests/Swift Distributed ActorsActorTests
+:dir_sact_doc_tests: ../Tests/Swift Distributed ActorsDocumentationTests
+:dir_sact_actor:        ../Sources/Swift Distributed ActorsActor
+:dir_sact_actor_tests:  ../Tests/Swift Distributed ActorsActorTests
 
 
 = Swift Distributed Actors Actors Reference Guide
