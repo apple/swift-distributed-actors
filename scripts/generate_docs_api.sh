@@ -64,7 +64,7 @@ module_switcher="api/$version/README.md"
 jazzy_args=(--clean
             --readme "$module_switcher"
             --config .jazzy.json
-            --documentation=$root_path/Sources/Docs/*.md
+            --documentation=$root_path/Docs/*.md
             --theme fullwidth
            )
 cat "$my_path/docs_includes/generate_docs_api_main.md" > "$module_switcher"

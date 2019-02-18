@@ -38,7 +38,7 @@ declare -r target_dir="$root_path/reference/$version"
 
 asciidoctor-pdf \
   -D $target_dir \
-  $root_path/Sources/Docs/index.adoc
+  $root_path/Docs/index.adoc
 
 mv $target_dir/index.pdf $target_dir/swift-distributed-actors-reference.pdf
 
