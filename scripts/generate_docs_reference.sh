@@ -42,11 +42,11 @@ asciidoctor \
   -r $root_path/scripts/asciidoctor/api_reference.rb \
   -b multipage_html5 \
   -D $target_dir \
-  $root_path/Sources/Docs/index.adoc
+  $root_path/Docs/index.adoc
 
-cp -r $root_path/Sources/Docs/images $target_dir/
-cp -r $root_path/Sources/Docs/images/favicon/android-icon-48x48.png $target_dir/images/sact.png
-cp -r $root_path/Sources/Docs/images/favicon/*.ico $target_dir/
-cp -r $root_path/Sources/Docs/stylesheets $target_dir/
+cp -r $root_path/Docs/images $target_dir/
+cp -r $root_path/Docs/images/favicon/android-icon-48x48.png $target_dir/images/sact.png
+cp -r $root_path/Docs/images/favicon/*.ico $target_dir/
+cp -r $root_path/Docs/stylesheets $target_dir/
 
 echo "Docs generated: $target_dir/index.html"
