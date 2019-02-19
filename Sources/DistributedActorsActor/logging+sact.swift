@@ -62,6 +62,7 @@ public struct ActorLogger {
         // so we need to make such "proxy log handler", that does out actor specific things.
         var actorLogHandlerProxyLogHandler = ActorOriginLogHandler(context)
         actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible { [weak ctx = context] in ctx?.path.description ?? "INVALID" }
+        actorLogHandlerProxyLogHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.network.bindAddress?.description ?? "")")
 
         return Logger(actorLogHandlerProxyLogHandler)
     }
@@ -143,6 +144,13 @@ public struct ActorOriginLogHandler: LogHandler {
             actorPathPart = ""
         }
 
+        let actorSystemAddress: String
+        if let d = l.effectiveMetadata?.removeValue(forKey: "actorSystemAddress") {
+            actorSystemAddress = "[\(d)]"
+        } else {
+            actorSystemAddress = ""
+        }
+
         // mock impl until we get the real infra
         var msg = "\(formatter.string(from: l.time)) "
         msg += "\(formatLevel(l.level))"
@@ -152,6 +160,7 @@ public struct ActorOriginLogHandler: LogHandler {
             msg += "[\(meta.map {"\($0)=\($1)" }.joined(separator: " "))]" // forces any lazy metadata to be rendered
         }
 
+        msg += "\(actorSystemAddress)"
         msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
         msg += "\(dispatcherPart)"
         msg += "\(actorPathPart)"

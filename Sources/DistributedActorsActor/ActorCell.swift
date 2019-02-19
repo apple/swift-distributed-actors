@@ -329,7 +329,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             self.finishTerminating() // FIXME likely too eagerly
 
         default:
-            log.error("Actor threw error, reason: [\(error)]:\(type(of: error))") // TODO configurable logging? in props?
+            log.error("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO configurable logging? in props?
             // sact_dump_backtrace() // shows mostly mailbox info, not so useful for users
 
             self.finishTerminating() // FIXME likely too eagerly

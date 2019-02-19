@@ -21,6 +21,10 @@ extension ActorRef {
     public func adapt<From>(with converter: @escaping (From) -> Message) -> ActorRef<From> {
         return ActorRefAdapter(self, converter)
     }
+
+    public func adapt<From>(from: From.Type, with converter: @escaping (From) -> Message) -> ActorRef<From> {
+        return ActorRefAdapter(self, converter)
+    }
 }
 
 // FIXME this is NOT a final solution, has subtle problems around watching and lifecycle (which MUST match the what is being proxied)

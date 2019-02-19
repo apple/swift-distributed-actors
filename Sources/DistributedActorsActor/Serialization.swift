@@ -547,3 +547,13 @@ fileprivate extension Int {
         return !range.contains(self)
     }
 }
+
+internal extension Foundation.Data {
+    internal func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+        return self.withUnsafeBytes { bytes in
+            var out: ByteBuffer = allocator.buffer(capacity: self.count)
+            out.write(bytes: bytes)
+            return out
+        }
+    }
+}

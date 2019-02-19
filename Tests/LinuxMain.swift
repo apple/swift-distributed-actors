@@ -47,6 +47,7 @@ import XCTest
          testCase(InterceptorTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(NIOExtensionTests.allTests),
+         testCase(NetworkingBasicsTests.allTests),
          testCase(ParentChildActorTests.allTests),
          testCase(RingBufferTests.allTests),
          testCase(SerializationTests.allTests),
