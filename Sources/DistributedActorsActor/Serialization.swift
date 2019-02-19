@@ -475,6 +475,9 @@ internal class SystemMessageSerializer: Serializer<SystemMessage> {
 
         case .tombstone:
             fatalError("Not implemented yet") // FIXME: implement me
+
+        case .resume:
+            fatalError("Not implemented yet") // FIXME: implement me
         }
     }
 

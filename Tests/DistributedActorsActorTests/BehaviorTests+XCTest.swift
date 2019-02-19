@@ -37,6 +37,10 @@ extension BehaviorTests {
                 ("test_stoppedWithPostStopThrows_shouldTerminate", test_stoppedWithPostStopThrows_shouldTerminate),
                 ("test_makeAsynchronousCallback_shouldExecuteClosureInActorContext", test_makeAsynchronousCallback_shouldExecuteClosureInActorContext),
                 ("test_myself_shouldStayValidAfterActorStopped", test_myself_shouldStayValidAfterActorStopped),
+                ("test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage", test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage),
+                ("test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain", test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain),
+                ("test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage", test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage),
+                ("test_suspendedActor_shouldKeepProcessingSystemMessages", test_suspendedActor_shouldKeepProcessingSystemMessages),
            ]
    }
 }

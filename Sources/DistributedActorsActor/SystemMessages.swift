@@ -17,7 +17,8 @@
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
 /// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
-public /* but really internal... */ enum SystemMessage: Equatable { // TODO system messages should be internal, we have to make the Signal/SysMsg split
+@usableFromInline
+enum SystemMessage: Equatable { // TODO system messages should be internal, we have to make the Signal/SysMsg split
 
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
@@ -45,7 +46,14 @@ public /* but really internal... */ enum SystemMessage: Equatable { // TODO syst
 
     /// Sent by parent to child actor to stop it
     case stop
+
+    /// Sent to a suspended actor when the async operation it is waiting for completes
+    case resume(Result<Any, ExecutionError>)
     // TODO: this is incomplete
+}
+
+public struct ExecutionError: Error {
+    let underlying: Error
 }
 
 // Implementation notes:
@@ -74,7 +82,8 @@ extension SystemMessage {
              (.tombstone, _),
              (.terminated, _),
              (.childTerminated, _),
-             (.stop, _): return false
+             (.stop, _),
+             (.resume, _): return false
         }
     }
 }
