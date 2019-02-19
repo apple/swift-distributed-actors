@@ -55,12 +55,12 @@ typedef struct {
 
 /** Result of mailbox run, instructs swift part of code to perform follow up actions */
 SWIFT_CLOSED_ENUM(MailboxRunResult) {
-    MailboxRunResult_Close          = -1,
-    MailboxRunResult_Done           = 0b00,
-    MailboxRunResult_Reschedule     = 0b01,
+    MailboxRunResult_Close          = 0,
+    MailboxRunResult_Done           = 1,
+    MailboxRunResult_Reschedule     = 2,
     // failure and supervision:
-    MailboxRunResult_Failure        = 0b10,
-    MailboxRunResult_FailureRestart = 0b11,
+    MailboxRunResult_Failure        = 3,
+    MailboxRunResult_FailureRestart = 4,
 } MailboxRunResult;
 
 SWIFT_CLOSED_ENUM(MailboxEnqueueResult) {
@@ -69,6 +69,13 @@ SWIFT_CLOSED_ENUM(MailboxEnqueueResult) {
     MailboxEnqueueResult_mailboxClosed      = 2,
     MailboxEnqueueResult_mailboxFull        = 3,
 } MailboxEnqueueResult;
+
+SWIFT_CLOSED_ENUM(ActorRunResult) {
+    ActorRunResult_continueRunning  = 0,
+    ActorRunResult_shouldSuspend    = 1,
+    ActorRunResult_shouldStop       = 2,
+} ActorRunResult;
+
 
 typedef void InterpretMessageClosureContext;
 typedef void InterpretSystemMessageClosureContext;
@@ -85,7 +92,7 @@ typedef void SupervisionClosureContext;
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef bool (*InterpretMessageCallback)(DropMessageClosureContext*, void*, MailboxRunPhase);
+typedef ActorRunResult (*InterpretMessageCallback)(DropMessageClosureContext*, void*, MailboxRunPhase);
 
 /*
  * Callback for Swift interop.

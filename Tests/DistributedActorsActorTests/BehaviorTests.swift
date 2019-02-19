@@ -313,4 +313,143 @@ class BehaviorTests: XCTestCase {
             ref.shouldEqual(ref2)
         }
     }
+
+    func test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .intercept(
+            behavior: .receiveMessage { msg in
+                return .suspend { (msg: Result<Int, ExecutionError>) in
+                    p.tell("unsuspended:\(msg)")
+                    return .receiveMessage { msg in
+                        p.tell("resumed:\(msg)")
+                        return .same
+                    }
+                }
+            },
+            with: ProbeInterceptor(probe: p)
+        )
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("something") // this message causes the actor the suspend
+
+        try p.expectMessage("something")
+
+        ref.tell("something else") // actor is suspended and should not process this message
+
+        try p.expectNoMessage(for: .milliseconds(50))
+
+        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1)))
+
+        try p.expectMessage("unsuspended:success(1)")
+        try p.expectMessage("resumed:something else")
+    }
+
+    func test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .intercept(
+            behavior: .receiveMessage { msg in
+                return .suspend { (msg: Result<Int, ExecutionError>) in
+                    p.tell("suspended:\(msg)")
+                    return .suspend { (msg: Result<String, ExecutionError>) in
+                        p.tell("unsuspended:\(msg)")
+                        return .receiveMessage { msg in
+                            p.tell("resumed:\(msg)")
+                            return .same
+                        }
+                    }
+                }
+            },
+            with: ProbeInterceptor(probe: p)
+        )
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("something") // this message causes the actor the suspend
+
+        try p.expectMessage("something")
+
+        ref.tell("something else") // actor is suspended and should not process this message
+        try p.expectNoMessage(for: .milliseconds(50))
+
+        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
+        try p.expectMessage("suspended:success(1)")
+        try p.expectNoMessage(for: .milliseconds(50))
+
+        ref.tell("last") // actor is still suspended and should not process this message
+        try p.expectNoMessage(for: .milliseconds(50))
+
+        ref._downcastUnsafe.sendSystemMessage(.resume(.success("test")))
+
+        try p.expectMessage("unsuspended:success(\"test\")")
+        try p.expectMessage("resumed:something else")
+        try p.expectMessage("resumed:last")
+    }
+
+    enum Boom: Error {
+        case boom
+    }
+
+    func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .intercept(
+            behavior: .receiveMessage { msg in
+                return .suspend { (msg: Result<Int, ExecutionError>) in
+                    switch msg {
+                    case .success(let res): p.tell("unsuspended:\(res)")
+                    case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                    }
+                    return .receiveMessage { msg in
+                        p.tell("resumed:\(msg)")
+                        return .same
+                    }
+                }
+            },
+            with: ProbeInterceptor(probe: p)
+        )
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("something") // this message causes the actor the suspend
+
+        try p.expectMessage("something")
+
+        ref.tell("something else") // actor is suspended and should not process this message
+
+        try p.expectNoMessage(for: .milliseconds(50))
+
+        ref._downcastUnsafe.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom.boom))))
+
+        try p.expectMessage("unsuspended:boom")
+        try p.expectMessage("resumed:something else")
+    }
+
+    func test_suspendedActor_shouldKeepProcessingSystemMessages() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .receiveMessage { msg in
+            return .suspend { (msg: Result<Int, ExecutionError>) in
+                switch msg {
+                case .success(let res): p.tell("unsuspended:\(res)")
+                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                }
+                return .receiveMessage { msg in
+                    p.tell("resumed:\(msg)")
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("something") // this message causes the actor the suspend
+
+        ref._downcastUnsafe.sendSystemMessage(.stop)
+
+        try p.expectTerminated(ref)
+    }
 }

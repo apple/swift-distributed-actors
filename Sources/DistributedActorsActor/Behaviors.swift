@@ -36,6 +36,8 @@ internal enum _Behavior<Message> {
     // Internal only
 
     case failed(error: Error)
+    case suspend(handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
+    indirect case suspended(previousBehavior: Behavior<Message>, handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
 }
 
 /// A `Behavior` is what executes then an `Actor` handles messages.
@@ -163,6 +165,22 @@ extension Behavior {
     internal static func signalHandling(handleMessage: Behavior<Message>, handleSignal: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .signalHandling(handleMessage: handleMessage, handleSignal: handleSignal))
     }
+
+    /// Causes an actor to go into suspended state
+    @usableFromInline
+    internal static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) -> Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .suspend(handler: { handler($0.map { $0 as! T }) })) // cast here is okay, as user APIs are typed, so we should always get a T
+    }
+
+    /// Marks an actor as being suspended
+    ///
+    /// A suspended actor will only react to system message, until it is resumed.
+    /// This usually happens when an async operation that caused the suspension
+    /// is completed.
+    @usableFromInline
+    internal static func suspended(previousBehavior: Behavior<Message>, handler: @escaping (Result<Any, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .suspended(previousBehavior: previousBehavior, handler: handler))
+    }
 }
 
 // MARK: Signal receiving behaviors
@@ -260,7 +278,7 @@ extension Interceptor {
 
         if case let .stopped(.some(postStop)) = started.underlying {
             return .stopped(postStop: deduplicate0(postStop))
-        } else if started.isUnhandled || started.isSame || started.isTerminal {
+        } else if started.isUnhandled || started.isSame || started.isTerminal || started.isSuspend {
             return started
         } else {
             return deduplicate0(started)
@@ -292,8 +310,10 @@ public extension Behavior {
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
         case .same:                     return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
         case .setup:                    return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.", file: file, line: line)
-        case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
+        case .suspend:                  return FIXME("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
+        case .failed(let error):        return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
         case .stopped:                  return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.", file: file, line: line)
+        case .suspended:                return FIXME("No message should ever be delivered to a .suspended behavior! This is a mailbox bug.", file: file, line: line)
         }
     }
 
@@ -396,6 +416,22 @@ internal extension Behavior {
     }
 
     @inlinable
+    var isSuspend: Bool {
+        switch self.underlying {
+        case .suspend:      return true
+        default:            return false
+        }
+    }
+
+    @inlinable
+    var isSuspended: Bool {
+        switch self.underlying {
+        case .suspended:    return true
+        default:            return false
+        }
+    }
+
+    @inlinable
     var isSame: Bool {
         switch self.underlying {
         case .same: return true
@@ -415,12 +451,13 @@ internal extension Behavior {
         var canonical = next
         while true {
             switch canonical.underlying {
-            case .same:             return self
-            case .ignore:           return self
-            case .unhandled:        return self
-            case .custom:           return self
-            case .stopped(.none):   return .stopped(postStop: self)
-            case .stopped(.some):   return canonical
+            case .same:                 return self
+            case .ignore:               return self
+            case .unhandled:            return self
+            case .custom:               return self
+            case .stopped(.none):       return .stopped(postStop: self)
+            case .stopped(.some):       return canonical
+            case .suspend(let handler): return .suspended(previousBehavior: self, handler: handler)
 
             case .setup(let onStart):
                 canonical = try onStart(context)

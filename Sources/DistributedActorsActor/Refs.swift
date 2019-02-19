@@ -88,7 +88,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 
 /// INTERNAL API: Only for use by the actor system itself
 // TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
-public protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
+protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
 
     /// INTERNAL API: Only for use by the actor system itself
     ///

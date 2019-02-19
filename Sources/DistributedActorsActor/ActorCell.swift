@@ -193,7 +193,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     /// Warning: Mutates the cell's behavior.
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
     @inlinable
-    func interpretMessage(message: Message) throws -> Bool {
+    func interpretMessage(message: Message) throws -> ActorRunResult {
         #if SACT_TRACE_CELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
@@ -211,7 +211,18 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             children.forEach { $0.sendSystemMessage(.stop) }
         }
 
-        return self.continueRunning
+        return self.runState
+    }
+
+    @usableFromInline
+    var runState: ActorRunResult {
+        if self.continueRunning {
+            return .continueRunning
+        } else if self.isSuspended {
+            return .shouldSuspend
+        } else {
+            return .shouldStop
+        }
     }
 
     // MARK: Handling system messages
@@ -224,7 +235,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     /// Fails:
     ///   - can potentially fail, which is handled by [FaultHandling] and terminates an actor run immediately.
-    func interpretSystemMessage(message: SystemMessage) throws -> Bool {
+    func interpretSystemMessage(message: SystemMessage) throws -> ActorRunResult {
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
@@ -251,17 +262,26 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
             traceLog_Cell("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
             self.finishTerminating()
-            return false
+            return .shouldStop
 
         case .stop:
             children.forEach { $0.sendSystemMessage(.stop) }
             try self.becomeNext(behavior: .stopped)
+
+        case .resume(let result):
+            switch self.behavior.underlying {
+            case let .suspended(previousBehavior, handler):
+                let nextBehavior = try handler(result)
+                try self.becomeNext(behavior: previousBehavior.canonicalize(self.context, next: nextBehavior))
+            default:
+                self.log.error("Received .resume message while being in non-suspended state")
+            }
         }
 
-        return self.continueRunning
+        return self.runState
     }
 
-    func interpretClosure(_ closure: () throws -> Void) throws -> Bool {
+    func interpretClosure(_ closure: () throws -> Void) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
         #if SACT_TRACE_CELL
@@ -274,12 +294,17 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             children.forEach { $0.sendSystemMessage(.stop) }
         }
 
-        return self.continueRunning
+        return self.runState
     }
 
     @usableFromInline
     internal var continueRunning: Bool {
-        return self.behavior.isStillAlive || self.children.nonEmpty
+        return (self.behavior.isStillAlive || self.children.nonEmpty) && !self.isSuspended
+    }
+
+    @usableFromInline
+    internal var isSuspended: Bool {
+        return self.behavior.isSuspended
     }
 
     /// Fails the actor using the passed in error.
