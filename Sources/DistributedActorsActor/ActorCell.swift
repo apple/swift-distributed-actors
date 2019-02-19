@@ -478,7 +478,7 @@ extension ActorCell {
 
         let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
 
-        switch next {
+        switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
                 message: "Death Pact error: [\(context.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
@@ -509,7 +509,7 @@ extension ActorCell {
 
 
             let next: Behavior<Message>
-            if case .signalHandling = self.behavior {
+            if case .signalHandling = self.behavior.underlying {
                 // TODO we always want to call "through" the supervisor, make it more obvious that that should be the case internal API wise?
                 next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
             } else {
