@@ -126,7 +126,8 @@ extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDe
 // MARK: Type erasure for ReceivesSignals
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
-public protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
+@usableFromInline
+internal protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     /* internal */ func sendSystemMessage(_ message: SystemMessage)
 
     var path: UniqueActorPath { get }

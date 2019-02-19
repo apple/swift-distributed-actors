@@ -83,16 +83,18 @@ final class Mailbox<Message> {
 
         self.interpretMessage = { ctxPtr, msgPtr, runPhase in
             defer { msgPtr?.deallocate() }
-            let ctx = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self)
+            guard let ctx = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self) else {
+                return .shouldStop
+            }
 
-            var shouldContinue: Bool
+            var shouldContinue: ActorRunResult
             do {
-                shouldContinue = try ctx?.pointee.exec(with: msgPtr!, runPhase: runPhase) ?? false
+                shouldContinue = try ctx.pointee.exec(with: msgPtr!, runPhase: runPhase)
             } catch {
                 traceLog_Mailbox("Error while processing message! Was: \(error) TODO supervision decisions...")
 
                 // TODO: supervision can decide to stop... we now stop always though
-                shouldContinue = ctx?.pointee.fail(error: error) ?? false // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
+                shouldContinue = ctx.pointee.fail(error: error) // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
             }
 
             return shouldContinue
@@ -142,7 +144,7 @@ final class Mailbox<Message> {
         self.messageClosureContext = InterpretMessageClosureContext(exec: { [weak _cell = cell] envelopePtr, runPhase in
             assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
             guard let cell = _cell else {
-                return false
+                return .shouldStop
             }
 
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
@@ -166,7 +168,7 @@ final class Mailbox<Message> {
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { [weak _cell = cell] sysMsgPtr, runPhase in
             assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
             guard let cell = _cell else {
-                return false
+                return .shouldStop
             }
 
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
@@ -450,24 +452,24 @@ extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringCo
 
 /// Wraps context for use in closures passed to C
 private struct InterpretMessageClosureContext {
-    private let _exec: (UnsafeMutableRawPointer, MailboxRunPhase) throws -> Bool
+    private let _exec: (UnsafeMutableRawPointer, MailboxRunPhase) throws -> ActorRunResult
     private let _fail: (Error) -> ()
 
-    init(exec: @escaping (UnsafeMutableRawPointer, MailboxRunPhase) throws -> Bool,
+    init(exec: @escaping (UnsafeMutableRawPointer, MailboxRunPhase) throws -> ActorRunResult,
          fail: @escaping (Error) -> ()) {
         self._exec = exec
         self._fail = fail
     }
 
     @inlinable
-    func exec(with ptr: UnsafeMutableRawPointer, runPhase: MailboxRunPhase) throws -> Bool {
+    func exec(with ptr: UnsafeMutableRawPointer, runPhase: MailboxRunPhase) throws -> ActorRunResult {
         return try self._exec(ptr, runPhase)
     }
 
     @inlinable
-    func fail(error: Error) -> Bool {
+    func fail(error: Error) -> ActorRunResult {
         _fail(error) // mutates ActorCell to become failed
-        return false // TODO: cell to decide if to continue later on (supervision); cleanup how we use this return value
+        return .shouldStop // TODO: cell to decide if to continue later on (supervision); cleanup how we use this return value
     }
 }
 /// Wraps context for use in closures passed to C
