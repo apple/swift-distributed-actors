@@ -137,3 +137,32 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticSt
     pprint("SACT_TRACE_SERIALIZATION: \(message())", file: file, line: line)
     #endif
 }
+
+// MARK: reusable "take(right)" etc. functions
+
+@inlinable
+internal func _identity<T>(_ param: T) -> T {
+    return param
+}
+@inlinable
+internal func _right<L, R>(left: L, right: R) -> R {
+    return right
+}
+@inlinable
+internal func _left<L, R>(left: L, right: R) -> L {
+    return left
+}
+
+// MARK: Minor printing/formatting helpers
+
+internal extension BinaryInteger {
+    internal var hexString: String {
+        return "0x\(String(self, radix: 16).uppercased())"
+    }
+}
+
+internal extension Array where Array.Element == UInt8 {
+    internal var hexString: String {
+        return "0x\(self.map({$0.hexString}).joined(separator: ""))"
+    }
+}

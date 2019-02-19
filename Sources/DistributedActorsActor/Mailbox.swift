@@ -75,9 +75,7 @@ final class Mailbox<Message> {
 
         // TODO not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         let serialization: SerializationSettings? = self.cell?.system.settings.serialization
-        pprint("SERIALIZATION ===== \(serialization)")
         self.serializeAllMessages = serialization?.allMessages ?? false
-        pprint("SERIALIZATION self.serializeAllMessages ===== \(self.serializeAllMessages)")
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -211,7 +209,10 @@ final class Mailbox<Message> {
                 let supervisionResultingBehavior: Behavior<Message>
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
-                cell.log.warning("Supervision: Actor has FAULTED [\(String(describing: supervisionFailure))]:\(type(of: supervisionFailure)) while interpreting \(runPhase), handling with \(cell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
+                cell.log.warning("Supervision: " +
+                    "Actor has FAULTED [\(String(describing: supervisionFailure))]:\(type(of: supervisionFailure)) " +
+                    "while interpreting \(runPhase), handling with \(cell.supervisor); " +
+                    "Failure details: \(String(reflecting: supervisionFailure))")
 
                 switch runPhase {
                 case .processingSystemMessages:

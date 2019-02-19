@@ -14,20 +14,45 @@
 
 import NIO
 import NIOFoundationCompat
+import struct Foundation.Data // would want to not have to use Data in our infra as it forces us to copy
 import SwiftProtobuf
 
-private final class PrintHandler<Message>: ChannelInboundHandler {
-    typealias InboundIn = Message
+private final class PrintHandler: ChannelInboundHandler {
+    typealias InboundIn = Network.Envelope
+
+    var log = Logging.make("network") // TODO logger should be initially passed in
 
     func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
         let event = self.unwrapInboundIn(data)
-        pprint("Received: \(event)")
+        log.info("Received: \(event)")
     }
 
     func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        fputs("Caught error: \(error)\n", stderr)
+        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
+        log.error("Caught error: \(error)") 
+        ctx.fireErrorCaught(error)
     }
 }
+
+//private final class PipeInboundToKernelHandler: ChannelInboundHandler {
+//    typealias InboundIn = Network.Envelope
+//
+//    private let kernel: NetworkKernel.Ref
+//    init(kernel: NetworkKernel.Ref) {
+//        self.kernel = kernel
+//    }
+//
+//    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+//        let event = self.unwrapInboundIn(data)
+//        kernel.tell(.)
+//    }
+//
+//    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+//        fputs("Caught error: \(error)\n", stderr)
+//        // TODO: send to kernel
+//    }
+//}
 
 private final class EnvelopeParser: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
@@ -37,8 +62,8 @@ private final class EnvelopeParser: ChannelInboundHandler {
         var bytes = self.unwrapInboundIn(data)
 
         do {
-            let envelope = try readEnvelope(&bytes)
-            _ = ctx.fireChannelRead(self.wrapInboundOut(envelope))
+            let envelope = try readEnvelope(&bytes, allocator: ctx.channel.allocator)
+            ctx.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
             ctx.fireErrorCaught(error)
             ctx.close(promise: nil) // FIXME really?
@@ -64,27 +89,87 @@ private final class EnvelopeParser: ChannelInboundHandler {
 
 }
 
-// MARK: Protobuf read... implementations 
+private final class HandshakeHandler: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+
+    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+        var bytes = self.unwrapInboundIn(data)
+        pprint("[handshake] INCOMING: \(bytes)")
+
+        do {
+            try readAssertMagicHandshakeBytes(bytes: &bytes)
+            let handshakeRequest = try readHandshakeRequest(bytes: &bytes)
+        } catch {
+            // TODO let network kernel know
+            ctx.fireErrorCaught(error)
+        }
+    }
+
+    func channelReadComplete(ctx: ChannelHandlerContext) {
+        ctx.flush()
+    }
+}
+
+// MARK: Protobuf read... implementations
+
+extension HandshakeHandler {
+
+    func readAssertMagicHandshakeBytes(bytes: inout ByteBuffer) throws {
+        guard let leadingBytes = bytes.readInteger(as: UInt32.self) else  {
+            fatalError("not enough bytes to see if magic bytes handshake prefix is present.")
+        }
+
+        if leadingBytes != NetworkHandshakeMagicBytes {
+            throw Swift Distributed ActorsConnectionError.illegalHandshakeMagic(was: leadingBytes, expected: NetworkHandshakeMagicBytes)
+        }
+    }
+
+    func readHandshakeRequest(bytes: inout ByteBuffer) throws -> Network.HandshakeOffer {
+        guard let data = bytes.readData(length: bytes.readableBytes) else { // foundation inter-op
+            fatalError() // FIXME
+        }
+        
+        // TODO: Leading magic bytes
+        
+        var proto = ProtoHandshake()
+        try proto.merge(serializedData: data)
+        guard proto.hasFrom else { throw HandshakeError.missingField("from") }
+        guard proto.hasTo else { throw HandshakeError.missingField("to") }
+        guard proto.hasVersion else { throw HandshakeError.missingField("version") }
+        // TODO all those require calls where we insist on those fields being present :P
+        
+        return Network.HandshakeOffer(
+            from: Network.UniqueAddress(proto.from),
+            to: Network.Address(proto.to)
+        ) // TODO: version too, since we negotiate about it
+    }
+}
+enum HandshakeError: Error {
+    case missingField(String)
+}
 
 extension EnvelopeParser {
-    func readEnvelope(_ bytes: inout ByteBuffer) throws -> Network.Envelope {
+    func readEnvelope(_ bytes: inout ByteBuffer, allocator: ByteBufferAllocator) throws -> Network.Envelope {
         guard let data = bytes.readData(length: bytes.readableBytes) else { // foundation inter-op
             fatalError() // FIXME
         }
 
         var proto = ProtoEnvelope()
         try proto.merge(serializedData: data)
+
+        let payloadBytes = proto.payload._copyToByteBuffer(allocator: allocator)
         
         // proto.recipient // TODO
         let recipientPath = (try ActorPath._rootPath / ActorPathSegment("system") / ActorPathSegment("deadLetters")).makeUnique(uid: .init(0))
 
-        
         // since we don't want to leak the Protobuf types too much
-        var envelope = Network.Envelope(
+        let envelope = Network.Envelope(
             recipient: recipientPath, 
             serializerId: Int(proto.serializerID), // TODO sanity check values
-            payload: proto.payload.byt        // TODO: really really don't want Data in our core types like Envelope...!
+            payload: payloadBytes
         ) // TODO think more about envelope
+
+        return envelope
     }
 }
 
@@ -95,7 +180,7 @@ extension NetworkKernel {
 
     // TODO: abstract into `Transport`
 
-    func bootstrapServer(settings: NetworkSettings) -> EventLoopFuture<Channel> {
+    func bootstrapServer(bindAddress: Network.Address, settings: NetworkSettings) -> EventLoopFuture<Channel> {
         let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let bootstrap = ServerBootstrap(group: group)
             // Specify backlog and enable SO_REUSEADDR for the server itself
@@ -105,11 +190,20 @@ extension NetworkKernel {
             // Set the handlers that are applied to the accepted Channels
             .childChannelInitializer { channel in
                 // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
-                channel.pipeline.add(handler: BackPressureHandler()).then { _ in
-                    channel.pipeline.add(handler: EnvelopeParser()).then { _ in
-                        channel.pipeline.add(handler: PrintHandler())
-                    }
-                }
+                channel.pipeline.addHandlers([
+                    // BackPressureHandler(),
+                    HandshakeHandler(),
+                    EnvelopeParser(),
+                    PrintHandler()
+                ], first: true)
+                
+                // channel.pipeline.add(handler: BackPressureHandler()).then { _ in
+                //     channel.pipeline.add(handler: HandshakeHandler()).then { _ in
+                //         channel.pipeline.add(handler: EnvelopeParser()).then { _ in
+                //             channel.pipeline.add(handler: PrintHandler())
+                //         }
+                //     }
+                // }
             }
 
             // Enable TCP_NODELAY and SO_REUSEADDR for the accepted Channels
@@ -118,8 +212,7 @@ extension NetworkKernel {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        let channel: EventLoopFuture<Channel> = bootstrap.bind(host: "localhost", port: 8080)
-        return channel
+        return bootstrap.bind(host: bindAddress.host, port: Int(bindAddress.port))
     }
 }
 
@@ -139,5 +232,7 @@ extension UniqueActorPath {
         }
 
         // TODO take the UID as well
+
+        return path.makeUnique(uid: .random()) // FIXME
     }
 }
