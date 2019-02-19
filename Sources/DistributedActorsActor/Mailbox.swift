@@ -183,14 +183,17 @@ final class Mailbox<Message> {
         self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] envelopePtr in
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
-            let msg = envelope.payload
-            traceLog_Mailbox("DEAD LETTER USER MESSAGE [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
-            deadLetters.tell(DeadLetter(msg))
+            let wrapped = envelope.payload
+            switch wrapped {
+            case .userMessage(let userMessage):
+                deadLetters.tell(DeadLetter(userMessage))
+            case .closure(let f):
+                deadLetters.tell(DeadLetter("[\(f)]:closure"))
+            }
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
-            traceLog_Mailbox("DEAD SYSTEM LETTERING [\(msg)]:\(type(of: msg))") // TODO this is dead letters, not dropping
             deadLetters.tell(DeadLetter(msg))
         })
 
