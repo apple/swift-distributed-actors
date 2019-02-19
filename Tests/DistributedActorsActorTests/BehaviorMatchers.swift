@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import XCTest
-import Swift Distributed ActorsActor
+@testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
 
@@ -26,12 +26,16 @@ internal extension Behavior {
     /// TODO: not all cases are covered, only enough to implement specific tests currently is.
     func nestingDepth(context: ActorContext<Message>) throws -> Int {
         func nestingDepth0(_ b: Behavior<Message>) throws -> Int {
-            switch b {
+            switch b.underlying {
             case .setup(let onStart):
                 return try 1 + nestingDepth0(onStart(context))
-            case .intercept(let inner, let interceptor):
+            case .intercept(let inner, _):
                 return try 1 + nestingDepth0(inner)
-            case .receive, .receiveMessage, .stopped, .unhandled, .ignore, .custom:
+            case .signalHandling(let onMessage, _):
+                return try 1 + nestingDepth0(onMessage)
+            case .orElse(let first, let other):
+                return 1 + max(try nestingDepth0(first), try nestingDepth0(other))
+            case .same, .receive, .receiveMessage, .stopped, .unhandled, .ignore, .custom, .failed:
                 return 1
             }
         }
@@ -51,7 +55,7 @@ internal extension Behavior {
         func prettyFormat0(_ b: Behavior<Message>, depth: Int) throws -> String {
             let pad = String(repeating: padding, count: depth)
 
-            switch b {
+            switch b.underlying {
             case .setup(let onStart):
                 return "\(pad)setup(\n" +
                     (try prettyFormat0(onStart(context), depth: depth + 1)) +
@@ -61,8 +65,17 @@ internal extension Behavior {
                 return "\(pad)intercept(interceptor:\(interceptor)\n" +
                     (try prettyFormat0(inner, depth: depth + 1)) +
                     "\(pad))\n"
+            case .signalHandling(let handleMessage, let handleSignal):
+                return "\(pad)signalHandling(handleSignal:\(handleSignal)\n" +
+                    (try prettyFormat0(handleMessage, depth: depth + 1)) +
+                    "\(pad))\n"
+            case .orElse(let first, let second):
+                return "\(pad)orElse(\n" +
+                    (try prettyFormat0(first, depth: depth + 1)) +
+                    (try prettyFormat0(second, depth: depth + 1)) +
+                "\(pad))\n"
 
-            case .receive, .receiveMessage, .stopped, .unhandled, .ignore, .custom:
+            case .same, .receive, .receiveMessage, .stopped, .unhandled, .ignore, .custom, .failed:
                 return "\(pad)\(b)\n"
             }
         }
