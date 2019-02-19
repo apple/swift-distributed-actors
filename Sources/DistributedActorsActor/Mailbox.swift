@@ -219,17 +219,17 @@ final class Mailbox<Message> {
                 }
 
                 // TODO: this handling MUST be aligned with the throws handling.
-                switch supervisionResultingBehavior {
+                switch supervisionResultingBehavior.underlying {
                 case .stopped:
                     // decision is to stop which is terminal, thus: Let it Crash!
                     return .failure
-                case .failed(let error): // TODO: Carry this error to supervision?
+                case .failed: // TODO: Carry this error to supervision?
                     // decision is to fail, Let it Crash!
                     return .failure
-                case let restartWithBehavior:
+                case _:
                     // received new behavior, attempting restart:
                     do {
-                        try cell.restart(behavior: restartWithBehavior)
+                        try cell.restart(behavior: supervisionResultingBehavior)
                     } catch {
                         cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
                         fatalError("Double fault while restarting actor \(cell.path). Terminating.")
