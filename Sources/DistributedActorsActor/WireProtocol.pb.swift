@@ -53,8 +53,8 @@ struct ProtoHandshake {
   /// faster transport like InfiniBand and the likes, so we can
   /// upgrade the connection in case both nodes support the fast
   /// transport.
-  var to: ProtoUniqueAddress {
-    get {return _storage._to ?? ProtoUniqueAddress()}
+  var to: ProtoAddress {
+    get {return _storage._to ?? ProtoAddress()}
     set {_uniqueStorage()._to = newValue}
   }
   /// Returns true if `to` has been explicitly set.
@@ -149,24 +149,6 @@ struct ProtoSystemAck {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoAddress {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  var `protocol`: String = String()
-
-  var system: String = String()
-
-  var hostname: String = String()
-
-  var port: UInt32 = 0
-
-  var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  init() {}
-}
-
 struct ProtoUniqueAddress {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -191,6 +173,24 @@ struct ProtoUniqueAddress {
   init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+struct ProtoAddress {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var `protocol`: String = String()
+
+  var system: String = String()
+
+  var hostname: String = String()
+
+  var port: UInt32 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
 }
 
 /// The version is represented as 4 bytes:
@@ -226,7 +226,7 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
     var _from: ProtoUniqueAddress? = nil
-    var _to: ProtoUniqueAddress? = nil
+    var _to: ProtoAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -487,53 +487,6 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
-extension ProtoAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "Address"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "protocol"),
-    2: .same(proto: "system"),
-    3: .same(proto: "hostname"),
-    4: .same(proto: "port"),
-  ]
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeSingularStringField(value: &self.`protocol`)
-      case 2: try decoder.decodeSingularStringField(value: &self.system)
-      case 3: try decoder.decodeSingularStringField(value: &self.hostname)
-      case 4: try decoder.decodeSingularUInt32Field(value: &self.port)
-      default: break
-      }
-    }
-  }
-
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.`protocol`.isEmpty {
-      try visitor.visitSingularStringField(value: self.`protocol`, fieldNumber: 1)
-    }
-    if !self.system.isEmpty {
-      try visitor.visitSingularStringField(value: self.system, fieldNumber: 2)
-    }
-    if !self.hostname.isEmpty {
-      try visitor.visitSingularStringField(value: self.hostname, fieldNumber: 3)
-    }
-    if self.port != 0 {
-      try visitor.visitSingularUInt32Field(value: self.port, fieldNumber: 4)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  static func ==(lhs: ProtoAddress, rhs: ProtoAddress) -> Bool {
-    if lhs.`protocol` != rhs.`protocol` {return false}
-    if lhs.system != rhs.system {return false}
-    if lhs.hostname != rhs.hostname {return false}
-    if lhs.port != rhs.port {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension ProtoUniqueAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "UniqueAddress"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
@@ -598,6 +551,53 @@ extension ProtoUniqueAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "Address"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "protocol"),
+    2: .same(proto: "system"),
+    3: .same(proto: "hostname"),
+    4: .same(proto: "port"),
+  ]
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try decoder.decodeSingularStringField(value: &self.`protocol`)
+      case 2: try decoder.decodeSingularStringField(value: &self.system)
+      case 3: try decoder.decodeSingularStringField(value: &self.hostname)
+      case 4: try decoder.decodeSingularUInt32Field(value: &self.port)
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.`protocol`.isEmpty {
+      try visitor.visitSingularStringField(value: self.`protocol`, fieldNumber: 1)
+    }
+    if !self.system.isEmpty {
+      try visitor.visitSingularStringField(value: self.system, fieldNumber: 2)
+    }
+    if !self.hostname.isEmpty {
+      try visitor.visitSingularStringField(value: self.hostname, fieldNumber: 3)
+    }
+    if self.port != 0 {
+      try visitor.visitSingularUInt32Field(value: self.port, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoAddress, rhs: ProtoAddress) -> Bool {
+    if lhs.`protocol` != rhs.`protocol` {return false}
+    if lhs.system != rhs.system {return false}
+    if lhs.hostname != rhs.hostname {return false}
+    if lhs.port != rhs.port {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

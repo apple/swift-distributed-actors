@@ -41,9 +41,10 @@ public final class ActorSystem {
 
     private let dispatcher: InternalMessageDispatcher
 
+    // TODO: converge into one tree?
     // Note: This differs from Akka, we do full separate trees here
-    private let systemProvider: ActorRefProvider // TODO maybe we don't need this?
-    private let userProvider: ActorRefProvider // TODO maybe we don't need this?
+    private let systemProvider: ActorRefProvider
+    private let userProvider: ActorRefProvider
 
     private let _theOneWhoWalksTheBubblesOfSpaceTime: ReceivesSystemMessages
 
@@ -55,10 +56,11 @@ public final class ActorSystem {
 
     public let serialization: Serialization
 
-//  // TODO: provider is what abstracts being able to fabricate remote or local actor refs
-//  // Implementation note:
-//  // We MAY be able to get rid of this (!), I think in Akka it causes some indirections which we may not really need... we'll see
-//  private let provider =
+    // MARK: Networking
+
+    internal var networkKernel: NetworkKernel.Ref? // TODO concurrent access to it? :-(
+
+    // MARK: Logging
 
     public var log: Logger {
         var l = ActorLogger.make(system: self)
@@ -106,6 +108,12 @@ public final class ActorSystem {
             CSwift Distributed ActorsMailbox.sact_dump_backtrace()
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
         }
+
+        // Start system actors and networking subsystem
+
+        // Networking MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
+        self.networkKernel = nil
+        self.networkKernel = NetworkKernel.start(system: self, settings: settings.network)
     }
 
     public convenience init() {
@@ -121,6 +129,7 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
         self.log.log(level: .debug, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self.networkKernel?.tell(.unbind) // TODO await until it does
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
@@ -153,15 +162,39 @@ extension ActorSystem: ActorRefFactory {
             throw ActorPathError.illegalLeadingSpecialCharacter(name: name, illegal: "$")
         }
 
-        return try self.spawnInternal(behavior, name: name, props: props)
+        return try self._spawnUserActor(behavior, name: name, props: props)
+    }
+
+    public func spawn<Message>(_ behavior: ActorBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+        return try spawn(.custom(behavior: behavior), name: name, props: props)
+    }
+
+    // Implementation note:
+    // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
+    // and developers should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
+    // This is why there should not be default parameter values for actor names
+    public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnUserActor(behavior, name: self.anonymousNames.nextName(), props: props)
+    }
+
+    public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self.spawnAnonymous(.custom(behavior: behavior), props: props)
+    }
+
+    internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.userProvider, behavior, name: name, designatedUid: nil, props: props)
+    }
+
+    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, designatedUid: ActorUID, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.systemProvider, behavior, name: name, designatedUid: designatedUid, props: props)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    private func spawnInternal<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    internal func _spawnActor<Message>(using provider: ActorRefProvider, _ behavior: Behavior<Message>, name: String, designatedUid: ActorUID?, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
-        let path = try self.userProvider.rootPath.makeChildPath(name: name, uid: .random())
+        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: designatedUid ?? ActorUID.random())
         // TODO: reserve the name, atomically
 
         let dispatcher: MessageDispatcher
@@ -176,31 +209,13 @@ extension ActorSystem: ActorRefFactory {
             fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let refWithCell: ActorRef<Message> = try userProvider.spawn(
+        let refWithCell: ActorRef<Message> = try provider.spawn(
             system: self,
             behavior: behavior, path: path,
             dispatcher: dispatcher, props: props
         )
 
         return refWithCell
-    }
-
-    // TODO _systemSpawn: for spawning under the system one
-
-    public func spawn<Message>(_ behavior: ActorBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawn(.custom(behavior: behavior), name: name, props: props)
-    }
-
-    // Implementation note:
-    // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
-    // and developers should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
-    // This is why there should not be default parameter values for actor names
-    public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawnInternal(behavior, name: self.anonymousNames.nextName(), props: props)
-    }
-
-    public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawnAnonymous(.custom(behavior: behavior), props: props)
     }
 }
 

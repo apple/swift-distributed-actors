@@ -15,6 +15,7 @@
 import NIO
 import NIOFoundationCompat
 import Foundation
+@testable import Swift Distributed ActorsActor
 
 // FIXME this is obviously not a good idea
 private let testOnlyAllocator = ByteBufferAllocator()
@@ -23,11 +24,7 @@ extension Data {
 
     /// For easier testing, as we want all our assertions etc on ByteBuffers
     public func copyToNewByteBuffer() -> ByteBuffer {
-        return self.withUnsafeBytes { bytes in
-            var out: ByteBuffer = testOnlyAllocator.buffer(capacity: self.count)
-            out.write(bytes: bytes)
-            return out
-        }
+        return self._copyToByteBuffer(allocator: testOnlyAllocator)
     }
 
 }

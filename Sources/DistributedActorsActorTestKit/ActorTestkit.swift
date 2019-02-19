@@ -109,6 +109,33 @@ public struct EventuallyError: Error {
     }
 }
 
+// MARK: Internal "power" assertions, should not be used lightly as they are quite heavy and potentially racy
+
+extension ActorTestKit {
+    
+    // TODO how to better hide such more nasty assertions?
+    // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
+    public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
+        
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let res: TraversalResult<AnyAddressableActorRef> = self.system._traverseAll { context, ref in
+            if ref.path.path.description == path { 
+                return .accumulateSingle(ref) // TODO: could use the .return(...)
+            } else {
+                return .continue
+            }
+        }
+
+        switch res {
+        case .result: return // good
+        case .results(let refs): throw callSiteInfo.failure(message: "Found more than a single ref for assertion! Got \(refs).")
+        case .completed: throw callSiteInfo.failure(message: "Failed to find actor occupying [\(path)]!")
+        case .failed(let err): throw callSiteInfo.failure(message: "Path \(path) was not occupied by any actor! Error: \(err)")
+        }
+    }
+}
+
 // MARK: Fake and mock contexts
 
 public extension ActorTestKit {
