@@ -74,7 +74,7 @@ struct ProtoEnvelope {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var serializer: UInt32 = 0
+  var serializerID: UInt32 = 0
 
   var recipient: String = String()
 
@@ -92,9 +92,9 @@ struct ProtoSystemEnvelope {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var serializer: UInt32 {
-    get {return _storage._serializer}
-    set {_uniqueStorage()._serializer = newValue}
+  var serializerID: UInt32 {
+    get {return _storage._serializerID}
+    set {_uniqueStorage()._serializerID = newValue}
   }
 
   var sequenceNr: UInt64 {
@@ -295,7 +295,7 @@ extension ProtoHandshake: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "Envelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "serializer"),
+    1: .same(proto: "serializerId"),
     2: .same(proto: "recipient"),
     3: .same(proto: "payload"),
   ]
@@ -303,7 +303,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       switch fieldNumber {
-      case 1: try decoder.decodeSingularUInt32Field(value: &self.serializer)
+      case 1: try decoder.decodeSingularUInt32Field(value: &self.serializerID)
       case 2: try decoder.decodeSingularStringField(value: &self.recipient)
       case 3: try decoder.decodeSingularBytesField(value: &self.payload)
       default: break
@@ -312,8 +312,8 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.serializer != 0 {
-      try visitor.visitSingularUInt32Field(value: self.serializer, fieldNumber: 1)
+    if self.serializerID != 0 {
+      try visitor.visitSingularUInt32Field(value: self.serializerID, fieldNumber: 1)
     }
     if !self.recipient.isEmpty {
       try visitor.visitSingularStringField(value: self.recipient, fieldNumber: 2)
@@ -325,7 +325,7 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   }
 
   static func ==(lhs: ProtoEnvelope, rhs: ProtoEnvelope) -> Bool {
-    if lhs.serializer != rhs.serializer {return false}
+    if lhs.serializerID != rhs.serializerID {return false}
     if lhs.recipient != rhs.recipient {return false}
     if lhs.payload != rhs.payload {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -336,14 +336,14 @@ extension ProtoEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "SystemEnvelope"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "serializer"),
+    1: .same(proto: "serializerId"),
     2: .same(proto: "sequenceNr"),
     3: .same(proto: "from"),
     4: .same(proto: "payload"),
   ]
 
   fileprivate class _StorageClass {
-    var _serializer: UInt32 = 0
+    var _serializerID: UInt32 = 0
     var _sequenceNr: UInt64 = 0
     var _from: ProtoUniqueAddress? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
@@ -353,7 +353,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     private init() {}
 
     init(copying source: _StorageClass) {
-      _serializer = source._serializer
+      _serializerID = source._serializerID
       _sequenceNr = source._sequenceNr
       _from = source._from
       _payload = source._payload
@@ -372,7 +372,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
-        case 1: try decoder.decodeSingularUInt32Field(value: &_storage._serializer)
+        case 1: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
         case 2: try decoder.decodeSingularUInt64Field(value: &_storage._sequenceNr)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
         case 4: try decoder.decodeSingularBytesField(value: &_storage._payload)
@@ -384,8 +384,8 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if _storage._serializer != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._serializer, fieldNumber: 1)
+      if _storage._serializerID != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 1)
       }
       if _storage._sequenceNr != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._sequenceNr, fieldNumber: 2)
@@ -405,7 +405,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._serializer != rhs_storage._serializer {return false}
+        if _storage._serializerID != rhs_storage._serializerID {return false}
         if _storage._sequenceNr != rhs_storage._sequenceNr {return false}
         if _storage._from != rhs_storage._from {return false}
         if _storage._payload != rhs_storage._payload {return false}
