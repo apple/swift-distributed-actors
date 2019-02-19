@@ -29,18 +29,19 @@ message Handshake {
 }
 
 message Envelope {
-    uint32 serializer = 1;
-    string recipient = 2;
-    bytes payload = 3;
+    uint32 serializerId = 1;
+    string recipient    = 2;
+    bytes payload       = 3;
 }
 
 // System messages have to be reliable, therefore they need to be acknowledged
 // by the receiving node.
 message SystemEnvelope {
-    uint32 serializer = 1;
-    uint64 sequenceNr = 2;
-    UniqueAddress from = 3;
-    bytes payload = 4;
+    uint32 serializerId = 1;
+    uint64 sequenceNr   = 2;
+    UniqueAddress from  = 3;
+
+    bytes payload       = 4;
 }
 
 message SystemAck {
