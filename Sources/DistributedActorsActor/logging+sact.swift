@@ -67,7 +67,7 @@ public struct ActorLogger {
         return Logger(actorLogHandlerProxyLogHandler)
     }
 
-    static func make(system: ActorSystem) -> Logger {
+    static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
         let actorLogHandlerProxyLogHandler = ActorOriginLogHandler(system)
@@ -100,9 +100,9 @@ public struct ActorOriginLogHandler: LogHandler {
         ))
     }
 
-    public init(_ system: ActorSystem) {
+    public init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(LoggingContext(
-            identifier: system.name,
+            identifier: identifier ?? system.name,
             dispatcher: { () in _hackyPThreadThreadId() }
         ))
     }

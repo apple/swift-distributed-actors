@@ -31,7 +31,6 @@ extension ActorCell: EventLoop {
 
     public func scheduleTask<T>(in: NIO.TimeAmount, _ task: @escaping () throws -> T) -> Scheduled<T> {
         // TODO: implement EventLoops scheduling API in terms of Timers?
-        // TODO: though I'm worried that via this we'd have exposed "run arbitrary closure" again to actors here hm :-\
         fatalError("\"I'm sorry Dave, I'm afraid I can't do that.\" `EventLoop.scheduleTask` is not implemented on ActorContext.")
     }
 

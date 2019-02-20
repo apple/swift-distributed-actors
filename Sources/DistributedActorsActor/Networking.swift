@@ -114,10 +114,8 @@ extension NetworkKernel {
             // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(networkSettings.uniqueBindAddress!)]")
 
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(bindAddress: uniqueBindAddress, settings: networkSettings)
-//            chanElf.map { channel in
-//                return self.bound(channel)
-//            }
+            let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(log: chanLogger, bindAddress: uniqueBindAddress, settings: networkSettings)
 
             // FIXME: no blocking in actors ;-)
             let chan = try chanElf.wait() // FIXME: OH NO! terrible, awaiting the suspend/resume features to become Future<Behavior>
@@ -155,20 +153,21 @@ extension NetworkKernel {
             state.log.info("Associating with \(address)...")
 
             var s = state // TODO so `inout state` I guess
-            let handshakeOffer = s.prepareAssociation(with: address)
 
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(targetAddress: address, settings: state.networkSettings)
-            let channel = try! chanElf.wait() // FIXME super bad blocking inside actor
-            state.log.info("outgoing channel \(channel)")
+            let clientChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(targetAddress: address, settings: state.networkSettings)
+            let clientChan = try! clientChanElf.wait() // FIXME super bad! blocking inside actor, oh no!
 
-            var b = state.allocator.buffer(capacity: "HELLO".utf8.count)
-            b.write(string: "HELLO")
-            try! channel.writeAndFlush(b).wait()
-
+            let association = s.prepareAssociation(with: address, over: clientChan)
 
             // TODO separate the "do network stuff" from high level "write a handshake and expect a Ack/Nack back"
-            // TODO: control.sendHandshakeOffer()
-//            let res = s.control.writeHandshake(handshakeOffer, allocator: state.allocator)
+
+
+            // Implementation note: The general idea with control structures is that only those allow to send messages or similar.
+            // If in a `...State` which does not offer us a `control` then we can't and must not attempt to send data.
+            // We may want to fine tune which states offer what control structures.
+            let offer = Network.HandshakeOffer(from: s.selfAddress, to: address)
+            // let res = association.control.writeHandshake(offer: offer, allocator: state.allocator) // FIXME
+            let res = association.control.writeHandshake(offer, allocator: state.allocator) // FIXME
 
             return ready(state: s)
         }
@@ -185,7 +184,7 @@ extension NetworkKernel {
 // MARK: Data types
 
 /// Connection errors should result in Disassociating with the offending system.
-internal enum Swift Distributed ActorsConnectionError: Error {
+enum Swift Distributed ActorsConnectionError: Error {
     /// The first handshake bytes did not match the expected "magic bytes";
     /// It is very likely the other side attempting to connect to our port is NOT a Swift Distributed Actors system,
     /// thus we should reject it immediately. This can happen due to misconfiguration, e.g. mixing
@@ -208,7 +207,7 @@ internal protocol NetworkInbound {}
 internal protocol NetworkOutbound {}
 
 /// Magic 4 byte value for use as initial bytes in connections (before handshake).
-/// Reads as: `3AC7 == SACT == Swift Distributed ActorsActors`
+/// Reads as: `3AC7 == SACT == S Act == Swift Distributed Actors Act == Swift Distributed Actors Actors` (S can also stand for Swift)
 internal let NetworkHandshakeMagicBytes: UInt32 = 0x3AC7
 
 // TODO: Or "WireProtocol" or "Networking"
@@ -218,7 +217,7 @@ public enum Network {
         public var log: Logger
 
         /// Unique address of the current node.
-        public let address: UniqueAddress
+        public let selfAddress: UniqueAddress
         public let networkSettings: Swift Distributed ActorsActor.NetworkSettings
 
         public let channel: Channel
@@ -227,7 +226,7 @@ public enum Network {
         public let allocator = NIO.ByteBufferAllocator() // FIXME take from config
 
         var handshakesInProgress: [HandshakeOffer] = []
-        var associations: [Association] = []
+        var associations: [Address: Association] = [:] // TODO currently also the in progress ones... once we get Unique Address of remote they are "done" hm hm
 
         init(networkSettings: Swift Distributed ActorsActor.NetworkSettings, channel: Channel, log: Logger) {
             self.networkSettings = networkSettings
@@ -236,7 +235,7 @@ public enum Network {
                 fatalError("Value of networkSettings.uniqueBindAddress was nil, yet attempted to use network kernel. " + 
                     "This may be a Swift Distributed Actors bug, please report this on the issue tracker.")
             }
-            self.address = selfAddress
+            self.selfAddress = selfAddress
 
             self.channel = channel
             self.log = log
@@ -244,16 +243,37 @@ public enum Network {
             self.control = Control(log: log, channel: channel)
         }
 
-        mutating func prepareAssociation(with address: Address) -> HandshakeOffer {
-            // TODO more checks here, so we don't reconnect many times etc
-            // Every association begins with us extending a handshake to the other node.
-            let handshakeOffer = HandshakeOffer(from: self.address, to: address)
+        // TODO: allow writing s.control[address]?.writeStuff etc?
+        //        subscript(associationWith: Address) -> AssociationControl? {
+        //            // return self.associations[]
+        //            fatalError()
+        //        }
 
+        /// Prepares and stores (to be completed) association within current state.
+        ///
+        /// An association starts in the `.shakingHands` state until the associated with node
+        /// accepts the handshake. Only when may
+        mutating func prepareAssociation(with address: Address, over clientChan: Channel) -> Association {
+//            // TODO more checks here, so we don't reconnect many times etc
+
+            // Every association begins with us extending a handshake to the other node.
+            let handshakeOffer = HandshakeOffer(from: self.selfAddress, to: address)
             self.handshakesInProgress.append(handshakeOffer)
-            return handshakeOffer
+            // TODO fix that we create it in two spots...
+
+
+            // TODO pass it `self` as well, so it can create values based on state
+            let association = Association(log: Logging.make("association-to-\(address)"), state: .shakingHands, with: address, over: clientChan)
+            self.associations[address] = association
+//            return handshakeOffer
+            return association
         }
-        mutating func completeAssociation() {}
-        mutating func removeAssociation() {}
+        mutating func completeAssociation() {
+            return undefined()
+        }
+        mutating func removeAssociation() {
+            return undefined()
+        }
 
         func association(with: Address) -> Association? {
             return nil // FIXME
@@ -274,9 +294,9 @@ public enum Network {
         // FIXME do we really need control over it here?
         private let channel: Channel
 
-        // Association ID to control for it
-        private let outbound: [Int: AssociationControl] = [:]
-
+        // TODO now kept in state...
+//        // Association ID to control for it
+//        private let outbound: [Int: AssociationControl] = [:]
 
         init(log: Logger, channel: Channel) {
             self.log = log
@@ -293,13 +313,19 @@ public enum Network {
             self.outboundChannel = outboundChannel
         }
 
+        // TODO since we are based on `state` we could create the appropriate offer here, no need to pass it in
         func writeHandshake(_ offer: HandshakeOffer, allocator: ByteBufferAllocator) -> EventLoopFuture<Void> {
             log.warning("Offering handshake [\(offer)]")
             let proto = ProtoHandshake(offer)
             log.warning("Offering handshake [\(proto)]")
-            let bytes = try! proto.serializedByteBuffer(allocator: allocator) // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
 
-            let res = self.outboundChannel.writeAndFlush(bytes) // TODO centralize them more?
+            // TODO allow allocating into existing buffer
+            var bytes = try! proto.serializedByteBuffer(allocator: allocator) // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
+            var b = allocator.buffer(capacity: 4 + bytes.readableBytes)
+            b.write(integer: NetworkHandshakeMagicBytes) // handshake must be prefixed with magic
+            b.write(buffer: &bytes)
+
+            let res = self.outboundChannel.writeAndFlush(b)
 
             try! pprint("res = \(res.wait())")
 
@@ -307,7 +333,7 @@ public enum Network {
                 pprint("Write[\(#function)] failed: \(err)")
             }
             res.whenSuccess { r in
-                pprint("Write[\(#function)] failed: \(r)")
+                pprint("Write[\(#function)] success")
             }
 
             return res
@@ -375,23 +401,48 @@ public enum Network {
     }
 
     struct Association {
-        let address: Network.Address
-        let uid: Int64
+        enum State {
+            case shakingHands // TODO: decide if we need "i extended the offer, or I am anticipating on it etc.."
+            case complete
+            case closed // TODO some tombstone... I want to avoid "quarantine" since the word is soooo misleading (quarantine can go away; such "ban that node" may never go away)
+        }
+
+        let log: Logger
+        var state: Association.State
+
+        let address: Address
+        let control: AssociationControl
+        // let channel: Channel // TODO make mutable since we may attempt to reconnect
+
+        // TODO would want Association to always have UniqueAddress... so we need to model the "shaking hands" with something before that (see that list for in progress handshakes)
+        var uniqueAddress: Network.UniqueAddress? // TODO consider this modeling agian... Once we have Unique the association is useful
+        let uid: Int64 = 0 // TODO maybe it is more efficient to key associations directly, and use this as key in the map? TODO
+
+        init(log: Logger, state: Network.Association.State, with address: Network.Address, over chan: Channel) {
+            self.log = log
+            self.state = state
+            self.address = address
+            self.uniqueAddress = nil
+            // let.channel = chan
+
+            // TODO: make the log in there more specific (name)
+            self.control = AssociationControl(log: self.log, outboundChannel: chan)
+        }
     }
 
-    public struct Address {
+    public struct Address: Hashable {
         let `protocol`: String = "sact" // TODO open up
         var systemName: String
         var host: String
         var port: UInt
     }
 
-    public struct UniqueAddress {
+    public struct UniqueAddress: Hashable {
         let address: Address
         let uid: NodeUID // TODO ponder exact value here here
     }
 
-    public struct NodeUID {
+    public struct NodeUID: Hashable {
         let value: UInt32 // TODO redesign / reconsider exact size
 
         public init(_ value: UInt32) {

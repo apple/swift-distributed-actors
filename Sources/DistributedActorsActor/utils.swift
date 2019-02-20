@@ -157,7 +157,7 @@ internal func _left<L, R>(left: L, right: R) -> L {
 
 internal extension BinaryInteger {
     internal var hexString: String {
-        return "0x\(String(self, radix: 16).uppercased())"
+        return "0x\(String(self, radix: 16, uppercase: true))"
     }
 }
 
