@@ -91,6 +91,7 @@ private final class EnvelopeParser: ChannelInboundHandler {
 
 private final class HandshakeHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
+    typealias InboundOut = ByteBuffer
 
     func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
@@ -108,6 +109,11 @@ private final class HandshakeHandler: ChannelInboundHandler {
     func channelReadComplete(ctx: ChannelHandlerContext) {
         ctx.flush()
     }
+}
+
+private final class WriteHandler: ChannelInboundHandler {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = ByteBuffer
 }
 
 // MARK: Protobuf read... implementations
@@ -180,8 +186,9 @@ extension NetworkKernel {
 
     // TODO: abstract into `Transport`
 
-    func bootstrapServer(bindAddress: Network.Address, settings: NetworkSettings) -> EventLoopFuture<Channel> {
-        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    func bootstrapServerSide(bindAddress: Network.UniqueAddress, settings: NetworkSettings) -> EventLoopFuture<Channel> {
+        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO share pool with others
+
         let bootstrap = ServerBootstrap(group: group)
             // Specify backlog and enable SO_REUSEADDR for the server itself
             .serverChannelOption(ChannelOptions.backlog, value: 256)
@@ -212,7 +219,24 @@ extension NetworkKernel {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        return bootstrap.bind(host: bindAddress.host, port: Int(bindAddress.port))
+        return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
+    }
+
+    func bootstrapClientSide(targetAddress: Network.Address, settings: NetworkSettings) -> EventLoopFuture<Channel> {
+        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO share pool with others
+
+        let bootstrap = ClientBootstrap(group: group)
+            .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+            .channelInitializer { channel in
+                channel.pipeline.addHandlers([
+//                    HandshakeHandler(), // TODO mark it as client side, it should expect and Accept/Reject
+//                    EnvelopeParser(),
+//                    PrintHandler()
+                    WriteHandler()
+                ], first: true)
+            }
+
+        return bootstrap.connect(host: targetAddress.host, port: Int(targetAddress.port)) // TODO separate setup from using it
     }
 }
 
