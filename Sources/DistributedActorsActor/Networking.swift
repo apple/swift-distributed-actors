@@ -55,13 +55,18 @@ public struct NetworkSettings {
 // MARK: Internal Network Kernel, which owns and administers all connections of this system
 
 extension NetworkKernel {
+
+    /// Starts the `NetworkKernel` actor, if and only if a `bindAddress` is configured in `settings`.
     static func start(system: ActorSystem, settings: Swift Distributed ActorsActor.NetworkSettings) -> NetworkKernel.Ref? {
         guard let bindAddress = settings.uniqueBindAddress else {
             // no address to bind to
             return nil
         }
 
-        let kernel = NetworkKernel(bindAddress: bindAddress)
+
+        // TODO prepare state already here?
+
+        let kernel = NetworkKernel()
 
         return try! system._spawnSystemActor(
             kernel.behavior,
@@ -87,15 +92,8 @@ internal class NetworkKernel {
         case unbind // TODO some promise to complete once we unbound
     }
 
-    // TODO shorter names?
-    let uniqueBindAddress: Network.UniqueAddress // TODO move into KernelState?
-
-    init(bindAddress: Network.UniqueAddress) {
-        self.uniqueBindAddress = bindAddress
-    }
-
     internal var behavior: Behavior<Messages> {
-        return self.initializing()
+        return self.bind() // todo message self to bind?
     }
 
     internal var props: Props {
@@ -108,12 +106,15 @@ internal class NetworkKernel {
 
 extension NetworkKernel {
 
-    internal func initializing() -> Behavior<Messages> {
+    internal func bind() -> Behavior<Messages> {
         return .setup { context in
             let networkSettings = context.system.settings.network
-            context.log.info("Binding to: [\(self.uniqueBindAddress)]")
+            let uniqueBindAddress = networkSettings.uniqueBindAddress!
 
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServer(bindAddress: self.uniqueBindAddress.address, settings: networkSettings)
+            // FIXME: all the ordering dance with creating of state and the address...
+            context.log.info("Binding to: [\(networkSettings.uniqueBindAddress!)]")
+
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(bindAddress: uniqueBindAddress, settings: networkSettings)
 //            chanElf.map { channel in
 //                return self.bound(channel)
 //            }
@@ -122,23 +123,22 @@ extension NetworkKernel {
             let chan = try chanElf.wait() // FIXME: OH NO! terrible, awaiting the suspend/resume features to become Future<Behavior>
             context.log.info("Bound to \(chan.localAddress.map({ $0.description }) ?? "<no-local-address>")")
 
-            return self.ready(state: .init(channel: chan, selfAddress: self.uniqueBindAddress, log: context.log))
+            let state = Network.KernelState(networkSettings: networkSettings, channel: chan, log: context.log)
+
+            return self.ready(state: state)
         }
     }
-}
-
-// MARK: Kernel state: Bound
-
-extension NetworkKernel {
 
     // TODO: abstract into `Transport`
     internal func ready(state: Network.KernelState) -> Behavior<Messages> {
         return .receiveMessage { message in
             switch message {
             case .associate(let address):
-                return self.join(state: state, address: address)
+                return self.associate(state: state, address: address)
+
             case .inbound(let inbound): // TODO cleanup state machine, in ready perhaps we'd not want handshakes to complete, but only in "offered handshake"
                 fatalError("SOME INBOUND DATA: \(inbound)")
+
             case .unbind:
                 return self.unbind(state: state)
             }
@@ -148,19 +148,30 @@ extension NetworkKernel {
     /// Initiate an outgoing handshake to the `address`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func join(state: Network.KernelState, address: Network.Address) -> Behavior<Messages> {
-        state.log.info("JOIN received...")
-        // TODO: model handshake state machine here
-        let offer = Network.HandshakeOffer(from: state.selfAddress, to: address)
+    internal func associate(state: Network.KernelState, address: Network.Address) -> Behavior<Messages> {
+        if let existingAssociation = state.association(with: address) {
+            fatalError("We have on already... what now? Got \(existingAssociation) for \(address)")
+        } else {
+            state.log.info("Associating with \(address)...")
 
-        // TODO separate the "do network stuff" from high level "write a handshake and expect a Ack/Nack back"
-        // TODO: control.sendHandshakeOffer()
-        let res = state.control.writeHandshake(offer, allocator: state.allocator)
+            var s = state // TODO so `inout state` I guess
+            let handshakeOffer = s.prepareAssociation(with: address)
 
-        // TODO should become handshaking... or similar etc
-        var s = state // TODO make nicer to use, maybe inout
-        s.handshakeInProgress = offer
-        return ready(state: s)
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(targetAddress: address, settings: state.networkSettings)
+            let channel = try! chanElf.wait() // FIXME super bad blocking inside actor
+            state.log.info("outgoing channel \(channel)")
+
+            var b = state.allocator.buffer(capacity: "HELLO".utf8.count)
+            b.write(string: "HELLO")
+            try! channel.writeAndFlush(b).wait()
+
+
+            // TODO separate the "do network stuff" from high level "write a handshake and expect a Ack/Nack back"
+            // TODO: control.sendHandshakeOffer()
+//            let res = s.control.writeHandshake(handshakeOffer, allocator: state.allocator)
+
+            return ready(state: s)
+        }
     }
 
     internal func unbind(state: Network.KernelState) -> Behavior<Messages> {
@@ -206,21 +217,46 @@ public enum Network {
     struct KernelState {
         public var log: Logger
 
-        public let selfAddress: UniqueAddress
+        /// Unique address of the current node.
+        public let address: UniqueAddress
+        public let networkSettings: Swift Distributed ActorsActor.NetworkSettings
+
         public let channel: Channel
 
         public var control: Control
         public let allocator = NIO.ByteBufferAllocator() // FIXME take from config
 
-        var handshakeInProgress: HandshakeOffer? = nil
-        var associations: [RemoteAssociation] = []
+        var handshakesInProgress: [HandshakeOffer] = []
+        var associations: [Association] = []
 
-        init(channel: Channel, selfAddress: UniqueAddress, log: Logger) {
+        init(networkSettings: Swift Distributed ActorsActor.NetworkSettings, channel: Channel, log: Logger) {
+            self.networkSettings = networkSettings
+            guard let selfAddress = networkSettings.uniqueBindAddress else {
+                // should never happen, since we ONLY start the network kernel once when the bind address is set
+                fatalError("Value of networkSettings.uniqueBindAddress was nil, yet attempted to use network kernel. " + 
+                    "This may be a Swift Distributed Actors bug, please report this on the issue tracker.")
+            }
+            self.address = selfAddress
+
             self.channel = channel
-            self.selfAddress = selfAddress
             self.log = log
 
             self.control = Control(log: log, channel: channel)
+        }
+
+        mutating func prepareAssociation(with address: Address) -> HandshakeOffer {
+            // TODO more checks here, so we don't reconnect many times etc
+            // Every association begins with us extending a handshake to the other node.
+            let handshakeOffer = HandshakeOffer(from: self.address, to: address)
+
+            self.handshakesInProgress.append(handshakeOffer)
+            return handshakeOffer
+        }
+        mutating func completeAssociation() {}
+        mutating func removeAssociation() {}
+
+        func association(with: Address) -> Association? {
+            return nil // FIXME
         }
     }
 
@@ -263,7 +299,7 @@ public enum Network {
             log.warning("Offering handshake [\(proto)]")
             let bytes = try! proto.serializedByteBuffer(allocator: allocator) // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
 
-            let res = self.channel.writeAndFlush(bytes) // TODO centralize them more?
+            let res = self.outboundChannel.writeAndFlush(bytes) // TODO centralize them more?
 
             try! pprint("res = \(res.wait())")
 
@@ -338,7 +374,7 @@ public enum Network {
         }
     }
 
-    struct RemoteAssociation {
+    struct Association {
         let address: Network.Address
         let uid: Int64
     }

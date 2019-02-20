@@ -47,7 +47,7 @@ class NetworkingBasicsTests: XCTestCase {
 
         system.network.tell(.associate(Network.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559))) // TODO nicer API
 
-        sleep(100)
+        sleep(1000)
     }
 
 }
