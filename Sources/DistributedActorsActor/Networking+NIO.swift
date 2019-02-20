@@ -19,40 +19,32 @@ import SwiftProtobuf
 
 private final class PrintHandler: ChannelInboundHandler {
     typealias InboundIn = Network.Envelope
+    
+    var log: Logger
 
-    var log = Logging.make("network") // TODO logger should be initially passed in
+    init(log: Logger) {
+        self.log = log
+    }
 
     func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
+        self.setLoggerMetadata(ctx)
+        
         let event = self.unwrapInboundIn(data)
         log.info("Received: \(event)")
     }
 
     func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
-        log.error("Caught error: \(error)") 
+        self.setLoggerMetadata(ctx)
+        
+        log.error("Caught error: [\(error)]:\(type(of: error))") 
         ctx.fireErrorCaught(error)
     }
+    
+    private func setLoggerMetadata(_ ctx: ChannelHandlerContext) {
+        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
+        if let localAddress = ctx.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
+    }
 }
-
-//private final class PipeInboundToKernelHandler: ChannelInboundHandler {
-//    typealias InboundIn = Network.Envelope
-//
-//    private let kernel: NetworkKernel.Ref
-//    init(kernel: NetworkKernel.Ref) {
-//        self.kernel = kernel
-//    }
-//
-//    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-//        let event = self.unwrapInboundIn(data)
-//        kernel.tell(.)
-//    }
-//
-//    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-//        fputs("Caught error: \(error)\n", stderr)
-//        // TODO: send to kernel
-//    }
-//}
 
 private final class EnvelopeParser: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
@@ -74,19 +66,6 @@ private final class EnvelopeParser: ChannelInboundHandler {
         ctx.flush()
     }
 
-    private func readVersion(_ buffer: inout ByteBuffer) throws -> Network.Version {
-//        if buffer.readableBytes < 4 {
-//            return false
-//        }
-        let versionBytes = buffer.readBytes(length: 4)!
-        return Network.Version(
-            reserved: versionBytes[0],
-            major: versionBytes[1],
-            minor: versionBytes[2],
-            patch: versionBytes[3]
-        )
-    }
-
 }
 
 private final class HandshakeHandler: ChannelInboundHandler {
@@ -95,7 +74,7 @@ private final class HandshakeHandler: ChannelInboundHandler {
 
     func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
-        pprint("[handshake] INCOMING: \(bytes)")
+        pprint("[handshake] INCOMING: \(bytes.formatHexDump())")
 
         do {
             try readAssertMagicHandshakeBytes(bytes: &bytes)
@@ -141,7 +120,7 @@ extension HandshakeHandler {
         try proto.merge(serializedData: data)
         guard proto.hasFrom else { throw HandshakeError.missingField("from") }
         guard proto.hasTo else { throw HandshakeError.missingField("to") }
-        guard proto.hasVersion else { throw HandshakeError.missingField("version") }
+        guard proto.hasVersion else { throw HandshakeError.missingField("version") } // TODO put into extension on Proto and do validate()
         // TODO all those require calls where we insist on those fields being present :P
         
         return Network.HandshakeOffer(
@@ -150,6 +129,8 @@ extension HandshakeHandler {
         ) // TODO: version too, since we negotiate about it
     }
 }
+
+// TODO: Todo maybe "wire format error"
 enum HandshakeError: Error {
     case missingField(String)
 }
@@ -186,7 +167,7 @@ extension NetworkKernel {
 
     // TODO: abstract into `Transport`
 
-    func bootstrapServerSide(bindAddress: Network.UniqueAddress, settings: NetworkSettings) -> EventLoopFuture<Channel> {
+    func bootstrapServerSide(log: Logger, bindAddress: Network.UniqueAddress, settings: NetworkSettings) -> EventLoopFuture<Channel> {
         let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO share pool with others
 
         let bootstrap = ServerBootstrap(group: group)
@@ -201,16 +182,8 @@ extension NetworkKernel {
                     // BackPressureHandler(),
                     HandshakeHandler(),
                     EnvelopeParser(),
-                    PrintHandler()
+                    PrintHandler(log: log)
                 ], first: true)
-                
-                // channel.pipeline.add(handler: BackPressureHandler()).then { _ in
-                //     channel.pipeline.add(handler: HandshakeHandler()).then { _ in
-                //         channel.pipeline.add(handler: EnvelopeParser()).then { _ in
-                //             channel.pipeline.add(handler: PrintHandler())
-                //         }
-                //     }
-                // }
             }
 
             // Enable TCP_NODELAY and SO_REUSEADDR for the accepted Channels
