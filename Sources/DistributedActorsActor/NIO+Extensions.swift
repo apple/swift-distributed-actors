@@ -20,7 +20,7 @@ internal extension ByteBuffer {
     internal func formatHexDump(maxBytes: Int = 80, perLine: Int = 16) -> String {
         let padding = String(repeating: " ", count: 4)
         func asHex(_ byte: UInt8) -> String {
-            let s = String(byte, radix: 16, uppercase: true) 
+            let s = String(byte, radix: 16, uppercase: true)
             if byte < 16 {
                 return "0\(s)" // poor-man's leftPad
             } else {
