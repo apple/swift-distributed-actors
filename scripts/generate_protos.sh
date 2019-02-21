@@ -22,6 +22,12 @@ proto_path="$root_path/Protos"
 
 pushd $proto_path >> /dev/null
 
-protoc --swift_out=../Sources/Swift Distributed ActorsActor sact.proto
+for p in $(find . -name *.proto); do
+  command="protoc --swift_out=../Sources/Swift Distributed ActorsActor $p"
+  echo $command
+  `$command`
+done
 
 popd >> /dev/null
+
+echo "Done."
