@@ -186,7 +186,7 @@ public struct ActorPathSegment: Equatable, Hashable {
     }
 
     // FIXME: optimize so we don't alloc into the String() here
-    public init(_ name: Substring) throws {
+    internal init(_ name: Substring) throws {
         try self.init(String(name))
     }
 

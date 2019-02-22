@@ -21,7 +21,7 @@ class NetworkingBasicsTests: XCTestCase {
 
     func test_bindOnStartup_shouldStartNetworkActorUnderSystemProvider() throws {
         let system = ActorSystem("NetworkingBasicsTests") { settings in
-            settings.network.bindAddress = Network.Address(systemName: "NetworkingBasicsTests", host: "127.0.0.1", port: 8338)
+            settings.network.bindAddress = Remote.Address(systemName: "NetworkingBasicsTests", host: "127.0.0.1", port: 8338)
         }
         defer {
             system.terminate()
@@ -35,17 +35,17 @@ class NetworkingBasicsTests: XCTestCase {
 
     func test_boundServer_shouldAcceptAssociate() throws {
         let system = ActorSystem("2NetworkingBasicsTests") { settings in
-            settings.network.bindAddress = Network.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 8448)
+            settings.network.bindAddress = Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 8448)
         }
         defer {
             system.terminate()
         }
 
         let remote = ActorSystem("2NetworkingBasicsTests") { settings in 
-            settings.network.bindAddress = Network.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559)
+            settings.network.bindAddress = Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559)
         }
 
-        system.network.tell(.associate(Network.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559))) // TODO nicer API
+        system.remoting.tell(.associate(Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559))) // TODO nicer API
 
         sleep(1) // TODO make this test actually test associations :)
     }
