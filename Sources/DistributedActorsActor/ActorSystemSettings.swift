@@ -17,7 +17,7 @@ public struct ActorSystemSettings {
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
-    public var network: NetworkSettings = .default
+    public var network: RemotingSettings = .default
 
     public var logLevel: Logging.Level = .info
 
