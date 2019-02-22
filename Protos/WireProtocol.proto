@@ -12,12 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+
 syntax = "proto3";
 
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-message Handshake {
+// === Handshake --------------------------------------------------------------
+
+message HandshakeOffer {
     ProtocolVersion version = 1;
     UniqueAddress from      = 2;
     Address to              = 3;
@@ -27,6 +30,21 @@ message Handshake {
     // upgrade the connection in case both nodes support the fast
     // transport.
 }
+
+message HandshakeAccept {
+    ProtocolVersion version  = 1;
+    UniqueAddress originator = 2;
+    UniqueAddress from       = 3;
+}
+
+message HandshakeReject {
+    ProtocolVersion version  = 1;
+    UniqueAddress originator = 2;
+    Address from             = 3;
+    string reason            = 4;
+}
+
+// === Envelope --------------------------------------------------------------
 
 message Envelope {
     uint32 serializerId = 1;
@@ -45,20 +63,22 @@ message SystemEnvelope {
 }
 
 message SystemAck {
-    uint64 sequenceNr = 1;
+    uint64 sequenceNr  = 1;
     UniqueAddress from = 2;
 }
 
+
+
 message UniqueAddress {
     Address address = 1;
-    uint32 uid = 2;
+    uint32 uid      = 2;
 }
 
 message Address {
     string protocol = 1;
-    string system = 2;
+    string system   = 2;
     string hostname = 3;
-    uint32 port = 4;
+    uint32 port     = 4;
 }
 
 // The version is represented as 4 bytes:

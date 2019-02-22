@@ -58,7 +58,7 @@ public final class ActorSystem {
 
     // MARK: Networking
 
-    internal var networkKernel: NetworkKernel.Ref? // TODO concurrent access to it? :-(
+    internal var _remoting: RemotingKernel.Ref? // TODO concurrent access to it? :-(
 
     // MARK: Logging
 
@@ -112,8 +112,8 @@ public final class ActorSystem {
         // Start system actors and networking subsystem
 
         // Networking MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
-        self.networkKernel = nil
-        self.networkKernel = NetworkKernel.start(system: self, settings: settings.network)
+        self._remoting = nil
+        self._remoting = RemotingKernel.start(system: self, settings: settings.network)
     }
 
     public convenience init() {
@@ -129,7 +129,7 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
         self.log.log(level: .debug, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        self.networkKernel?.tell(.unbind) // TODO await until it does
+        self._remoting?.tell(.unbind) // TODO await until it does
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
