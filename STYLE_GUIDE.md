@@ -65,6 +65,10 @@ This is not fleshed out, we should chat about it.
   - Make sure that a logger carries useful information such as the actor path that it relates to
   - Use a common prefix or tag to easily group log statements of a specific feature ("supervision", "deathwatch") 
 
+## Compiler directives
+
+- For `#if THING` blocks and similar use the end the `#endif` with `#endif // THING`
+
 ## Logging messages
 
 - put messages into `[]` so it is easier to spot where message type starts and where it ends
