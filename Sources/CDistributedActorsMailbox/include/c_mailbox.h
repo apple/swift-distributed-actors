@@ -63,6 +63,13 @@ SWIFT_CLOSED_ENUM(MailboxRunResult) {
     MailboxRunResult_FailureRestart = 0b11,
 } MailboxRunResult;
 
+SWIFT_CLOSED_ENUM(MailboxEnqueueResult) {
+    MailboxEnqueueResult_needsScheduling    = 0,
+    MailboxEnqueueResult_alreadyScheduled   = 1,
+    MailboxEnqueueResult_mailboxClosed      = 2,
+    MailboxEnqueueResult_mailboxFull        = 3,
+} MailboxEnqueueResult;
+
 typedef void InterpretMessageClosureContext;
 typedef void InterpretSystemMessageClosureContext;
 typedef void DropMessageClosureContext;
@@ -104,19 +111,14 @@ CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
 void cmailbox_destroy(CMailbox* mailbox);
 
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
-bool cmailbox_send_message(CMailbox* mailbox, void* envelope);
+MailboxEnqueueResult cmailbox_send_message(CMailbox* mailbox, void* envelope);
 
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
  *
- * Return code meaning:
- *   - res < 0 message rejected since status terminating or terminated, special handle the system message
- *   - res == 0  good, enqueued and need to schedule
- *   - res >  0  good, enqueued and no need to schedule, someone else will do so or has already
- *     FIXME: This dance is only needed since we have this c/swift dance... otherwise we would be able to know from the 1 atomic read if we're good or not and immediately act on it
  * The requirement for this stems from the fact that we must never drop system messages, e.g. watch, and always have to handle it.
  */
-int cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
+MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
 
 /*
  * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.

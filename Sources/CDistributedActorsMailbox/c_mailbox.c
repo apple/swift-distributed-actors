@@ -127,35 +127,41 @@ void cmailbox_destroy(CMailbox* mailbox) {
     free(mailbox);
 }
 
-bool cmailbox_send_message(CMailbox* mailbox, void* envelope) {
+MailboxEnqueueResult cmailbox_send_message(CMailbox* mailbox, void* envelope) {
     int64_t old_status = increment_status_activations(mailbox);
     int64_t old_activations = activations(old_status);
     CMPSCLinkedQueue* queue = mailbox->messages;
     // printf("[SACT_TRACE_MAILBOX][c] enter send_message; messages in queue: %lu\n", (message_count(old_status)));
 
-    if ((message_count(old_status) >= mailbox->capacity) || is_terminating(old_status)) {
+    if ((message_count(old_status) >= mailbox->capacity)) {
         // If we passed the maximum capacity of the user queue, we can't enqueue more
         // items and have to decrement the activations count again. This is not racy,
         // because we only process messages if the queue actually contains them (does
         // not return NULL), so even if messages get processed concurrently, it's safe
         // to decrement here.
         decrement_status_activations(mailbox, SINGLE_USER_MESSAGE_MASK);
-        print_debug_status(mailbox, "cmailbox_send_message dropping... ");
-        // TODO: emit the message as ".dropped(msg)"
-        free(envelope);
-        return false;
+        print_debug_status(mailbox, "cmailbox_send_message mailbox full...");
+        return MailboxEnqueueResult_mailboxFull;
+    } else if (is_terminating(old_status)) {
+        decrement_status_activations(mailbox, SINGLE_USER_MESSAGE_MASK);
+        print_debug_status(mailbox, "cmailbox_send_message mailbox closed...");
+        return MailboxEnqueueResult_mailboxClosed;
     } else {
         // If the mailbox is not full, we insert it into the queue and return,
         // whether this was the first activation, to signal the need to enqueue
         // this mailbox.
         cmpsc_linked_queue_enqueue(queue, envelope);
-        print_debug_status(mailbox, "cmailbox_send_message enqueued ");
+        print_debug_status(mailbox, "cmailbox_send_message enqueued");
 
-        return old_activations == 0;
+        if (old_activations == 0) {
+            return MailboxEnqueueResult_needsScheduling;
+        } else {
+            return MailboxEnqueueResult_alreadyScheduled;
+        }
     }
 }
 
-int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
+MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
     CMPSCLinkedQueue* queue = mailbox->system_messages;
     cmpsc_linked_queue_enqueue(queue, envelope);
 
@@ -169,10 +175,14 @@ int cmailbox_send_system_message(CMailbox* mailbox, void* envelope) {
         // since we are terminated, we are already dropping all messages, including this one!
         // TODO: emit the message as ".dropped(msg)" here (nowadays we handle this in the outside, via the -1 return code here)
         print_debug_status(mailbox, "cmailbox_send_system_message mailbox closed ");
-        return -1;
+        return MailboxEnqueueResult_mailboxClosed;
     } else {
         print_debug_status(mailbox, "cmailbox_send_system_message enqueued ");
-        return old_activations;
+        if (old_activations == 0) {
+            return MailboxEnqueueResult_needsScheduling;
+        } else {
+            return MailboxEnqueueResult_alreadyScheduled;
+        }
     }
 }
 
