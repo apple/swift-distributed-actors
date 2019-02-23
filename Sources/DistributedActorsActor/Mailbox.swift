@@ -265,12 +265,6 @@ final class Mailbox<Message> {
             }
         }
 
-        // while terminating (closing) the mailbox, we immediately dead-letter new user messages
-        guard !cmailbox_is_closed(mailbox) else { // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
-            traceLog_Mailbox("Mailbox(\(self.path)) is closing, dropping message \(envelope)")
-            return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
-        }
-
         guard let cell = self.cell else {
             traceLog_Mailbox("Actor(\(self.path)) has already stopped, dropping message \(envelope)")
             return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
@@ -279,9 +273,19 @@ final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
-        let shouldSchedule = cmailbox_send_message(mailbox, ptr)
-        if shouldSchedule { // TODO: if we were the same as the cmailbox, a single status read would tell us if we can exec or not (see above guard)
-            cell.dispatcher.execute(self.run)
+        switch cmailbox_send_message(mailbox, ptr) {
+        case .needsScheduling: cell.dispatcher.execute(self.run)
+        case .alreadyScheduled:
+            traceLog_Mailbox("Mailbox(\(self.path)) Enqueued system message \(envelope), someone scheduled already")
+        case .mailboxFull:
+            traceLog_Mailbox("Mailbox(\(self.path)) is full, dropping message \(envelope)")
+            _ = ptr.move()
+            ptr.deallocate()
+        case .mailboxClosed:
+            traceLog_Mailbox("Mailbox(\(self.path)) is closing, dropping message \(envelope)")
+            _ = ptr.move()
+            ptr.deallocate()
+            // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
         }
     }
 
@@ -301,12 +305,14 @@ final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
-        let schedulingDecision = cmailbox_send_system_message(mailbox, ptr)
-        if schedulingDecision == 0 {
-            // enqueued, we have to schedule
+        switch cmailbox_send_system_message(mailbox, ptr) {
+        case .needsScheduling:
             traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), we trigger scheduling")
             cell.dispatcher.execute(self.run)
-        } else if schedulingDecision < 0 {
+        case .alreadyScheduled:
+            // this means we enqueued, and the mailbox already will be scheduled by someone else
+            traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), someone scheduled already")
+        case .mailboxClosed:
             // not enqueued, mailbox is closed, actor is terminating/terminated
             //
             // it is crucial for correctness of death watch that we drain messages to dead letters,
@@ -314,9 +320,8 @@ final class Mailbox<Message> {
             // knowing that the watch() was sent to a terminating or dead actor.
             traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
             self.deadLetters.tell(DeadLetter(systemMessage))
-        } else { // schedulingDecision > 0 {
-            // this means we enqueued, and the mailbox already will be scheduled by someone else
-            traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), someone scheduled already")
+        case .mailboxFull:
+            return FIXME("Dropped system message because mailbox is full. This should never happen and is a mailbox bug.")
         }
     }
 

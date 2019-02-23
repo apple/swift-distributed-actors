@@ -16,6 +16,7 @@ import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
+import DistributedActorsConcurrencyHelpers
 
 class ActorLeakingTests: XCTestCase {
 
@@ -129,4 +130,36 @@ class ActorLeakingTests: XCTestCase {
         #endif
     }
 
+    class LeakTestMessage {
+        let deallocated: Atomic<Bool>?
+
+        init(_ deallocated: Atomic<Bool>?) {
+            self.deallocated = deallocated
+        }
+
+        deinit {
+            deallocated?.store(true)
+        }
+    }
+
+    func test_droppedMessages_shouldNotLeak() throws {
+        #if SACT_TESTS_LEAKS
+        let lock = Mutex()
+        lock.lock()
+        let behavior: Behavior<LeakTestMessage> = .receiveMessage { _ in
+            lock.lock()
+            return .stopped
+        }
+        let ref = try system.spawnAnonymous(behavior, props: Props().withMailbox(MailboxProps.default(capacity: 1)))
+
+        // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
+        ref.tell(LeakTestMessage(nil))
+
+        let deallocated: Atomic<Bool> = Atomic(value: false)
+        ref.tell(LeakTestMessage(deallocated))
+
+        deallocated.load().shouldBeTrue()
+        lock.unlock()
+        #endif // SACT_TESTS_LEAKS
+    }
 }

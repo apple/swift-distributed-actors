@@ -26,6 +26,7 @@ extension ActorLeakingTests {
       return [
                 ("test_spawn_stop_shouldNotLeakActors", test_spawn_stop_shouldNotLeakActors),
                 ("test_parentWithChildrenStopping_shouldNotLeakActors", test_parentWithChildrenStopping_shouldNotLeakActors),
+                ("test_droppedMessages_shouldNotLeak", test_droppedMessages_shouldNotLeak),
            ]
    }
 }
