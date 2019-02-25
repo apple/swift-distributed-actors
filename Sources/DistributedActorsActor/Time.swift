@@ -14,6 +14,7 @@
 
 import struct Foundation.Date
 import struct Dispatch.DispatchTime
+import struct NIO.TimeAmount
 
 // TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
 
@@ -205,6 +206,14 @@ extension TimeAmount {
 
     public static func +(a: TimeAmount, b: TimeAmount) -> TimeAmount {
         return .nanoseconds(a.nanoseconds + b.nanoseconds)
+    }
+
+    public var toNIO: NIO.TimeAmount {
+        #if arch(arm) || arch(i386)
+        return NIO.TimeAmount.nanoseconds(self.nanoseconds)
+        #else
+        return NIO.TimeAmount.nanoseconds(Int(self.nanoseconds))
+        #endif
     }
 }
 
