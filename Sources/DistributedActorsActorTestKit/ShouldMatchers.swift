@@ -290,7 +290,7 @@ extension CallSiteInfo {
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
     public func failure(message: String) -> Error {
         let details = detailedMessage(message)
-        XCTAssert(false, details, file: self.file, line: self.line)
+        XCTFail(details, file: self.file, line: self.line)
 
         return CallSiteError.CallSiteError(message: details)
     }

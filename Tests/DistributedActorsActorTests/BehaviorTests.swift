@@ -16,14 +16,17 @@ import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
+import NIO
 
 class BehaviorTests: XCTestCase {
 
     let system = ActorSystem("ActorSystemTests")
+    let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
         system.terminate()
+        try! eventLoopGroup.syncShutdownGracefully()
     }
 
     public struct TestMessage {
@@ -427,6 +430,204 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("resumed:something else")
     }
 
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: Swift Distributed ActorsActor.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ExecutionError>>? = nil) -> Behavior<String> {
+        return .receive { context, message in
+            switch message {
+            case "suspend":
+                return context.awaitResult(of: future, timeout: timeout) {
+                    suspendProbe?.tell($0)
+                    return .same
+                }
+            default:
+                probe?.tell(message)
+                return .same
+            }
+        }
+    }
+
+    private func awaitResultThrowingBehavior(future: EventLoopFuture<Int>, timeout: Swift Distributed ActorsActor.TimeAmount, probe: ActorTestProbe<String>, suspendProbe: ActorTestProbe<Int>) -> Behavior<String> {
+        return .receive { context, message in
+            switch message {
+            case "suspend":
+                return context.awaitResultThrowing(of: future, timeout: timeout) {
+                    suspendProbe.tell($0)
+                    return .same
+                }
+            default:
+                probe.tell(message)
+                return .same
+            }
+        }
+    }
+
+    func test_awaitResult_shouldResumActorWithSuccessResultWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("test")
+        try p.expectMessage("test")
+
+        ref.tell("suspend")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        ref.tell("another test")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        promise.succeed(result: 1)
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .success(1): ()
+        default: XCTFail("Expected success(1), got \(suspendResult)")
+        }
+
+        try p.expectMessage("another test")
+    }
+
+    func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureFails() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("suspend")
+        ref.tell("another test")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        promise.fail(error: Boom.boom)
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .failure(let error):
+            guard case Boom.boom = error.underlying else {
+                throw p.error("Expected failure(ExecutionException(underlying: Boom.boom)), got \(suspendResult)")
+            }
+        default: throw p.error("Expected failure(ExecutionException(underlying: Boom.boom)), got \(suspendResult)")
+        }
+
+        try p.expectMessage("another test")
+    }
+
+    func test_awaitResultThrowing_shouldResumeActorSuccessResultWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("test")
+        try p.expectMessage("test")
+
+        ref.tell("suspend")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        ref.tell("another test")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        promise.succeed(result: 1)
+        try suspendProbe.expectMessage(1)
+        try p.expectMessage("another test")
+    }
+
+    func test_awaitResultThrowing_shouldCrashActorWhenFutureFails() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultThrowingBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectMessage("test")
+
+        ref.tell("suspend")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        ref.tell("another test")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        promise.fail(error: Boom.boom)
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+        try p.expectTerminated(ref)
+    }
+
+    func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("suspend")
+
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .failure(let error):
+            guard error.underlying is TimeoutError else {
+                throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+            }
+        default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+        }
+
+        ref.tell("test")
+        try p.expectMessage("test")
+    }
+
+    func test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = awaitResultThrowingBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectMessage("test")
+
+        ref.tell("suspend")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        ref.tell("another test")
+        try p.expectNoMessage(for: .milliseconds(10))
+        try suspendProbe.expectNoMessage(for: .milliseconds(10))
+
+        try p.expectTerminated(ref)
+    }
+
     func test_suspendedActor_shouldKeepProcessingSystemMessages() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
@@ -449,6 +650,71 @@ class BehaviorTests: XCTestCase {
         ref.tell("something") // this message causes the actor the suspend
 
         ref._downcastUnsafe.sendSystemMessage(.stop)
+
+        try p.expectTerminated(ref)
+    }
+
+    func test_suspendedActor_shouldKeepProcessingSignals() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior = Behavior<String>.receive { context, msg in
+            p.tell("suspended")
+            _ = try context.spawnWatched(Behavior<String>.stopped, name: "child")
+            return .suspend { (msg: Result<Int, ExecutionError>) in
+                switch msg {
+                case .success(let res): p.tell("unsuspended:\(res)")
+                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                }
+                return .same
+            }
+        }.receiveSignal { context, signal in
+            guard let s = signal as? Signals.Terminated else {
+                return .same
+            }
+            p.tell("signal:\(s.path.name)")
+
+            // returning this behavior should not unsuspend the actor
+            return Behavior<String>.receiveMessage { msg in
+                p.tell("changedBySignal:\(msg)")
+                return .same
+            }
+        }
+
+        let ref = try system.spawn(behavior, name: "parent")
+
+        ref.tell("something") // this message causes the actor the suspend
+        try p.expectMessage("suspended")
+
+        ref.tell("something else") // this message should not get processed until we resume, even though the behavior is changed by the signal
+        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1)))
+
+        try p.expectMessage("signal:child")
+        try p.expectMessage("unsuspended:1")
+        try p.expectMessage("changedBySignal:something else")
+    }
+
+    func test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior = Behavior<String>.receive { context, msg in
+            p.tell("suspended")
+            _ = try context.spawnWatched(Behavior<String>.stopped, name: "child")
+            return .suspend { (msg: Result<Int, ExecutionError>) in
+                switch msg {
+                case .success(let res): p.tell("unsuspended:\(res)")
+                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                }
+                return .same
+            }
+        }.receiveSignal { context, signal in
+            return .stopped
+        }
+
+        let ref = try system.spawn(behavior, name: "parent")
+        p.watch(ref)
+
+        ref.tell("something") // this message causes the actor the suspend
+        try p.expectMessage("suspended")
 
         try p.expectTerminated(ref)
     }

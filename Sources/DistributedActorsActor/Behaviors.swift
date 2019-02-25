@@ -168,8 +168,8 @@ extension Behavior {
 
     /// Causes an actor to go into suspended state
     @usableFromInline
-    internal static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) -> Behavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .suspend(handler: { handler($0.map { $0 as! T }) })) // cast here is okay, as user APIs are typed, so we should always get a T
+    internal static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .suspend(handler: { try handler($0.map { $0 as! T }) })) // cast here is okay, as user APIs are typed, so we should always get a T
     }
 
     /// Marks an actor as being suspended
@@ -328,6 +328,13 @@ public extension Behavior {
             return try handleSignal(context, signal)
         case let .intercept(behavior, interceptor):
             return try interceptor.interceptSignal(target: behavior, context: context, signal: signal) // TODO do we need to try?
+        case let .suspended(previous, handler):
+            let nextBehavior = try previous.interpretSignal(context: context, signal: signal)
+            if nextBehavior.isTerminal {
+                return nextBehavior
+            } else {
+                return try .suspended(previousBehavior: previous.canonicalize(context, next: nextBehavior), handler: handler)
+            }
         default:
             // no signal handling installed is semantically equivalent to unhandled
             return .unhandled

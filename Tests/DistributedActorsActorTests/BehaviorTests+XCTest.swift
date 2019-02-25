@@ -40,7 +40,15 @@ extension BehaviorTests {
                 ("test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage", test_suspendedActor_shouldBeUnsuspendedOnResumeSystemMessage),
                 ("test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain", test_suspendedActor_shouldStaySuspendedWhenResumeHandlerSuspendsAgain),
                 ("test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage", test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage),
+                ("test_awaitResult_shouldResumActorWithSuccessResultWhenFutureSucceeds", test_awaitResult_shouldResumActorWithSuccessResultWhenFutureSucceeds),
+                ("test_awaitResult_shouldResumeActorWithFailureResultWhenFutureFails", test_awaitResult_shouldResumeActorWithFailureResultWhenFutureFails),
+                ("test_awaitResultThrowing_shouldResumeActorSuccessResultWhenFutureSucceeds", test_awaitResultThrowing_shouldResumeActorSuccessResultWhenFutureSucceeds),
+                ("test_awaitResultThrowing_shouldCrashActorWhenFutureFails", test_awaitResultThrowing_shouldCrashActorWhenFutureFails),
+                ("test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut", test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut),
+                ("test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut", test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut),
                 ("test_suspendedActor_shouldKeepProcessingSystemMessages", test_suspendedActor_shouldKeepProcessingSystemMessages),
+                ("test_suspendedActor_shouldKeepProcessingSignals", test_suspendedActor_shouldKeepProcessingSignals),
+                ("test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped", test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped),
            ]
    }
 }
