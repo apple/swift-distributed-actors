@@ -17,11 +17,11 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class NetworkingBasicsTests: XCTestCase {
+class RemotingBasicsTests: XCTestCase {
 
     func test_bindOnStartup_shouldStartNetworkActorUnderSystemProvider() throws {
-        let system = ActorSystem("NetworkingBasicsTests") { settings in
-            settings.network.bindAddress = Remote.Address(systemName: "NetworkingBasicsTests", host: "127.0.0.1", port: 8338)
+        let system = ActorSystem("RemotingBasicsTests") { settings in
+            settings.network.bindAddress = Remote.Address(systemName: "RemotingBasicsTests", host: "127.0.0.1", port: 8338)
         }
         defer {
             system.terminate()
@@ -29,23 +29,23 @@ class NetworkingBasicsTests: XCTestCase {
 
         let testKit = ActorTestKit(system)
         try testKit.eventually(within: .seconds(1)) {
-            try testKit._assertActorPathOccupied("/system/network")
+            try testKit._assertActorPathOccupied("/system/remoting")
         }
     }
 
     func test_boundServer_shouldAcceptAssociate() throws {
-        let system = ActorSystem("2NetworkingBasicsTests") { settings in
-            settings.network.bindAddress = Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 8448)
+        let system = ActorSystem("2RemotingBasicsTests") { settings in
+            settings.network.bindAddress = Remote.Address(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8448)
         }
         defer {
             system.terminate()
         }
 
-        let remote = ActorSystem("2NetworkingBasicsTests") { settings in 
-            settings.network.bindAddress = Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559)
+        let remote = ActorSystem("2RemotingBasicsTests") { settings in
+            settings.network.bindAddress = Remote.Address(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559)
         }
 
-        system.remoting.tell(.associate(Remote.Address(systemName: "2NetworkingBasicsTests", host: "127.0.0.1", port: 9559))) // TODO nicer API
+        system.remoting.tell(.associate(Remote.Address(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559))) // TODO nicer API
 
         sleep(1) // TODO make this test actually test associations :)
     }

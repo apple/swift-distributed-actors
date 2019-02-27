@@ -182,19 +182,19 @@ extension ActorSystem: ActorRefFactory {
     }
 
     internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.userProvider, behavior, name: name, designatedUid: nil, props: props)
+        return try self._spawnActor(using: self.userProvider, behavior, name: name, props: props)
     }
 
-    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, designatedUid: ActorUID, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.systemProvider, behavior, name: name, designatedUid: designatedUid, props: props)
+    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    internal func _spawnActor<Message>(using provider: ActorRefProvider, _ behavior: Behavior<Message>, name: String, designatedUid: ActorUID?, props: Props = Props()) throws -> ActorRef<Message> {
+    internal func _spawnActor<Message>(using provider: ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
-        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: designatedUid ?? ActorUID.random())
+        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: .random())
         // TODO: reserve the name, atomically
 
         let dispatcher: MessageDispatcher

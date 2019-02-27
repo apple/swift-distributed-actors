@@ -24,17 +24,14 @@ public struct RemotingSettings {
         return RemotingSettings(bindAddress: nil)
     }
 
-    /// If not `nil` the system will attempt to bind to the provided address on startup.
+    /// If set to a non-`nil` value, the system will attempt to bind to the provided address on startup.
     /// Once bound, the system is able to accept incoming connections.
+    ///
+    /// Changing the address preserves the systems `Remote.NodeUID`.
     public var bindAddress: Remote.Address? {
         didSet {
-            switch bindAddress {
-            case .some(let addr):
-                // TODO: had an idea to keep the UID stable once assigned...
-                self._uniqueAddress = Remote.UniqueAddress(address: addr, uid: .random())
-            case .none:
-                self._uniqueAddress = nil
-            }
+            let uid = self._uniqueAddress.map { $0.uid } ?? Remote.NodeUID.random()
+            self._uniqueAddress = bindAddress.map { Remote.UniqueAddress(address: $0, uid: uid) }
         }
     }
 
@@ -42,7 +39,7 @@ public struct RemotingSettings {
     // The UID remains the same throughout updates of the `bindAddress` field.
     private var _uniqueAddress: Remote.UniqueAddress?
     public var uniqueBindAddress: Remote.UniqueAddress? {
-        return self._uniqueAddress
+        return _uniqueAddress
     }
 
     public init(bindAddress: Remote.Address?) {
@@ -67,10 +64,13 @@ extension RemotingKernel {
 
         let kernel = RemotingKernel()
 
+        // try! considered safe here; only 2 cases exist when it could fail:
+        //   a) when the path is illegal (and we know "remoting" is valid)
+        //   b) when the kernel is attempted to start a second time, in which case this is very-bad™ and we want a backtrace.
+        //      This would be a Swift Distributed Actors bug; since the system starts remoting and shall never do so multiple times.
         return try! system._spawnSystemActor(
             kernel.behavior,
-            name: "network",
-            designatedUid: .opaque,
+            name: "remoting",
             props: kernel.props
         )
     }
@@ -105,6 +105,12 @@ internal class RemotingKernel {
 
 }
 
+enum RemotingInitializationError: Error {
+    /// This should never happen, as the `RemotingKernel` should only ever be spawned
+    /// when a binding address is set. If this is thrown consider it a Swift Distributed Actors bug and open an issue.
+    case initializedWithoutBindAddress
+}
+
 // MARK: Kernel state: Bootstrap / Binding
 
 extension RemotingKernel {
@@ -112,17 +118,19 @@ extension RemotingKernel {
     internal func bind() -> Behavior<Messages> {
         return .setup { context in
             let remotingSettings = context.system.settings.network
-            let uniqueBindAddress = remotingSettings.uniqueBindAddress!
+            guard let uniqueBindAddress = remotingSettings.uniqueBindAddress else {
+                throw RemotingInitializationError.initializedWithoutBindAddress
+            }
 
             // FIXME: all the ordering dance with creating of state and the address...
-            context.log.info("Binding to: [\(remotingSettings.uniqueBindAddress!)]")
+            context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
             let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: remotingSettings)
 
             // FIXME: no blocking in actors ;-)
             let chan = try chanElf.wait() // FIXME: OH NO! terrible, awaiting the suspend/resume features to become Future<Behavior>
-            context.log.info("Bound to \(chan.localAddress.map({ $0.description }) ?? "<no-local-address>")")
+            context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
             let state = KernelState(remotingSettings: remotingSettings, channel: chan, log: context.log)
 
@@ -176,7 +184,7 @@ extension RemotingKernel {
             // Implementation note: The general idea with control structures is that only those allow to send messages or similar.
             // If in a `...State` which does not offer us a `control` then we can't and must not attempt to send data.
             // We may want to fine tune which states offer what control structures.
-            let offer = Wire.HandshakeOffer(version: state.protocolVersion, from: s.selfAddress, to: address)
+            let offer = Wire.HandshakeOffer(version: DistributedActorsProtocolVersion, from: s.selfAddress, to: address)
             // let res = association.control.writeHandshake(offer: offer, allocator: state.allocator) // FIXME
             let res = association.control.writeHandshake(offer, allocator: state.allocator) // FIXME
 
@@ -197,23 +205,7 @@ extension RemotingKernel {
 
 /// Connection errors should result in Disassociating with the offending system.
 enum Swift Distributed ActorsConnectionError: Error {
-    /// The first handshake bytes did not match the expected "magic bytes";
-    /// It is very likely the other side attempting to connect to our port is NOT a Swift Distributed Actors system,
-    /// thus we should reject it immediately. This can happen due to misconfiguration, e.g. mixing
-    /// up ports and attempting to send HTTP or other data to a Swift Distributed Actors networking port.
-    case illegalHandshakeMagic(was: UInt16, expected: UInt16) // TODO: Or [UInt8]...
-    case illegalHandshake
-}
-
-extension Swift Distributed ActorsConnectionError: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .illegalHandshakeMagic(let was, let expected):
-            return ".illegalHandshakeMagic(was: \(was.hexString), expected: \(expected.hexString))"
-        case .illegalHandshake:
-            return ".illegalHandshake"
-        }
-    }
+    case illegalHandshake(reason: Error?)
 }
 
 internal protocol NetworkInbound {
@@ -223,14 +215,12 @@ internal protocol NetworkOutbound {
 }
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
-/// Reads as: `3AC7 == SACT == S Act == Swift Distributed Actors Act == Swift Distributed Actors Actors` (S can also stand for Swift)
-internal let HandshakeMagicBytes: UInt16 = 0x3AC7
+/// Reads as: `5AC7 == SACT == S Act == Swift/Swift Distributed Actors Act == Swift/Swift Distributed Actors Actors`
+internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
 /// State of the `RemotingKernel` state machine
 fileprivate struct KernelState {
     public var log: Logger
-
-    let protocolVersion = Wire.Version(reserved: 0, major: 0, minor: 0, patch: 1)
 
     /// Unique address of the current node.
     public let selfAddress: Remote.UniqueAddress
@@ -279,7 +269,7 @@ fileprivate struct KernelState {
 //            // TODO more checks here, so we don't reconnect many times etc
 
         // Every association begins with us extending a handshake to the other node.
-        let handshakeOffer = Wire.HandshakeOffer(version: self.protocolVersion, from: self.selfAddress, to: address)
+        let handshakeOffer = Wire.HandshakeOffer(version: DistributedActorsProtocolVersion, from: self.selfAddress, to: address)
         self.handshakesInProgress.append(handshakeOffer)
         // TODO fix that we create it in two spots...
 
@@ -421,6 +411,9 @@ public enum Remote {
     }
 }
 
+/// Wire Protocol version of this Swift Distributed Actors build.
+public let DistributedActorsProtocolVersion: Wire.Version = Wire.Version(reserved: 0, major: 0, minor: 0, patch: 1)
+
 /// The wire protocol data types are namespaced using this enum.
 ///
 /// When written onto they wire they are serialized to their transport specific formats (e.g. using protobuf or hand-rolled serializers).
@@ -443,33 +436,26 @@ public enum Wire {
     /// Version of wire protocol used by the given node.
     ///
     /// TODO: Exact semantics remain to be defined.
-    internal struct Version {
-        var value: UInt32
-
-        init(_ value: UInt32) {
-            self.value = value
-        }
+    public struct Version: Equatable {
+        public var reserved: UInt8
+        public var major: UInt8
+        public var minor: UInt8
+        public var patch: UInt8
 
         init(reserved: UInt8, major: UInt8, minor: UInt8, patch: UInt8) {
-            var v: UInt32 = 0
-            v += UInt32(reserved)
-            v += UInt32(major) << 8
-            v += UInt32(minor) << 16
-            v += UInt32(patch) << 24
-            self.value = v
+            self.reserved = reserved
+            self.major = major
+            self.minor = minor
+            self.patch = patch
         }
 
-        var reserved: UInt8 {
-            return UInt8(self.value >> 24)
-        }
-        var major: UInt8 {
-            return UInt8((self.value >> 16) & 0b11111111)
-        }
-        var minor: UInt8 {
-            return UInt8((self.value >> 8) & 0b11111111)
-        }
-        var patch: UInt8 {
-            return UInt8(self.value & 0b11111111)
+        public var encodedAsUInt32: UInt32 {
+            var v: UInt32 = 0
+            v += (UInt32(reserved) << 24)
+            v += (UInt32(major) << 16)
+            v += (UInt32(minor) << 8)
+            v += (UInt32(patch))
+            return v
         }
     }
 

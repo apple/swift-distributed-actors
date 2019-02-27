@@ -90,5 +90,12 @@ message Address {
 // encode all values in a single uint32 and provide an extension to
 // retrieve the specific values.
 message ProtocolVersion {
-    uint32 value = 1;
+    // TODO: nicer representation though needs endiannees dance since this is then encoded in little endian; revisit how and where to represent once we have a solid handshake -- ktoso
+    // uint32 value = 1;
+
+    // TODO: wasteful representation, keeping for now to iterate on handshake -- ktoso
+    uint32 reserved = 1;
+    uint32 major    = 2;
+    uint32 minor    = 3;
+    uint32 patch    = 4;
 }
