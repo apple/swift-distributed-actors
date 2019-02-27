@@ -289,7 +289,14 @@ struct ProtoProtocolVersion {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var value: UInt32 = 0
+  /// TODO: wasteful representation, keeping for now to iterate on handshake -- ktoso
+  var reserved: UInt32 = 0
+
+  var major: UInt32 = 0
+
+  var minor: UInt32 = 0
+
+  var patch: UInt32 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -851,27 +858,45 @@ extension ProtoAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
 extension ProtoProtocolVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = "ProtocolVersion"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "value"),
+    1: .same(proto: "reserved"),
+    2: .same(proto: "major"),
+    3: .same(proto: "minor"),
+    4: .same(proto: "patch"),
   ]
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       switch fieldNumber {
-      case 1: try decoder.decodeSingularUInt32Field(value: &self.value)
+      case 1: try decoder.decodeSingularUInt32Field(value: &self.reserved)
+      case 2: try decoder.decodeSingularUInt32Field(value: &self.major)
+      case 3: try decoder.decodeSingularUInt32Field(value: &self.minor)
+      case 4: try decoder.decodeSingularUInt32Field(value: &self.patch)
       default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.value != 0 {
-      try visitor.visitSingularUInt32Field(value: self.value, fieldNumber: 1)
+    if self.reserved != 0 {
+      try visitor.visitSingularUInt32Field(value: self.reserved, fieldNumber: 1)
+    }
+    if self.major != 0 {
+      try visitor.visitSingularUInt32Field(value: self.major, fieldNumber: 2)
+    }
+    if self.minor != 0 {
+      try visitor.visitSingularUInt32Field(value: self.minor, fieldNumber: 3)
+    }
+    if self.patch != 0 {
+      try visitor.visitSingularUInt32Field(value: self.patch, fieldNumber: 4)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: ProtoProtocolVersion, rhs: ProtoProtocolVersion) -> Bool {
-    if lhs.value != rhs.value {return false}
+    if lhs.reserved != rhs.reserved {return false}
+    if lhs.major != rhs.major {return false}
+    if lhs.minor != rhs.minor {return false}
+    if lhs.patch != rhs.patch {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

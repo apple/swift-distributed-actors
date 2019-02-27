@@ -120,7 +120,7 @@ extension ActorTestKit {
         
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let res: TraversalResult<AnyAddressableActorRef> = self.system._traverseAll { context, ref in
-            if ref.path.path.description == path { 
+            if ref.path.path.description == path {
                 return .accumulateSingle(ref) // TODO: could use the .return(...)
             } else {
                 return .continue
