@@ -282,6 +282,102 @@ catch one could log a warning about the "harmless" error having occurred.
 
 #TODO: explain that by looking at path you know: is it remote? is it someone's child? what's the unique id?#
 
+
+=== Interop with non-actor code
+
+In any reasonably complex system, different libraries will be used and we need to find ways to make them interact with each other.
+Actors are no exception to this. In this chapter we will look at ways to integrate actors nicely with non-actor code, so that
+we can use existing APIs from actors and also receive and process responses from actors outside of actor code.
+
+==== Receiving responses from actors in non-actor code
+
+#TODO: Add paragraph about receiving future responses from actors, i.e. ask pattern, once available#
+
+==== Sending results of asynchronous operations to actors
+
+Our code often has to interact with external systems like databases or other services. Those calls are usually being executed
+asynchronously and the result is being made available either as an asynchronous result type, like a future, or as parameter
+to a callback that needs to be passed in when calling an asynchronous API. Once we have the result, we can send it to an actor,
+alternatively converting it to a message that the actor understands beforehand.
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_dispatch]
+----
+<1> An actor that expects to receive the result of some asynchronous computation
+<2> Computation is being sent to a DispatchQueue
+<3> Execute computation
+<4> Wrap result in a message and send it to the actor
+
+Another example is calling an asynchronous API from within an actor. We can't modify the internal actor state from within
+asynchronous callbacks, because that would create a race condition and also violate the actor model concept of communicating
+only through message passing, so instead we have to send a message to the actor from the callback.
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_insideActor]
+----
+<1> Execute asynchronous call with callback
+<2> Wrap result in a message and send it to the actor
+<3> Handle the result in inside the actor
+
+While this is quite convenient, it also means that the response has to be included in the `Message` type the actor understands,
+so anyone who holds a reference to that actor can send this message to it.
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_insideActor_external_api]
+----
+
+==== Awaiting asynchronous results in actors
+
+#TODO: Add better description of what problem are we facing and then how to solve it#
+
+In order to avoid having to add internal messages to the public message type, actors offer functionality to process asynchronous results
+as a continuation withing the actor itself, so it will be executed withing the same context and in sequence with all the
+other messages.
+
+#TODO: Add explanation and example for non-suspending awaitResult, once available#
+
+Some actors need to fetch initial state before they can start processing other messages or need to wait for an asynchronous
+result before resuming to process user messages. This can be achieved with the `awaitResult` and `awaitResultThrowing` calls
+on `api:ActorContext[class]`. They create a behavior that suspends processing of user messages until the asynchronous result has been
+received, or the timeout has expired.
+
+Imagine an actor that understands following message protocol, that allows a user to request adding a prefix to a string:
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResult_enum_Messages]
+----
+
+Now if we have that prefix stored in a database, we need to fetch it before we can prefix any strings, but we don't want users to be able to change
+the prefix, so we can't add it to the message protocol, but we also can't block inside the actor. Using `awaitResult`, we can fetch the data
+asynchronously and after receiving the result, start processing the user requests.
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResult]
+----
+<1> Call operation that returns a `NIO.EventLoopFuture`
+<2> Awaiting the result causes the actor to suspend user message processing, but it keeps processing system messages. So e.g. stopping a suspended actor is still possible.
+<3> After successfully retrieving the prefix from the database we can start processing the requests
+<4> In case the asynchronous operation fails, we can throw the produced error which will be treated like any error that occurs in the actor.
+
+Most of the time when facing situations where the actor needs the result of an async operation to proceed, failure of the async operation should also crash the actor.
+The `awaitResultThrowing` convenience function does just that, and allows us to express the same actor behavior in with slightly less boilerplate:
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_awaitResultThrowing]
+----
+
+CAUTION: `awaitResult` and `awaitResultThrowing` cause the actor to suspend, meaning it won't process any user messages until it is resumed.
+This will lead to growth of the mailbox and can cause significant delays in message processing. Therefore these functions should be
+used with caution and only when absolutely necessary and with reasonably small timeouts to avoid problems caused by unresponsive
+services.
+
+
 === Where to go from here?
 
 > One Actor, is No Actor. They come in Systems.
