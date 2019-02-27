@@ -19,35 +19,6 @@ import class NIOExtras.LengthFieldBasedFrameDecoder
 import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
 import SwiftProtobuf
 
-private final class PrintHandler: ChannelInboundHandler {
-    typealias InboundIn = Wire.Envelope
-    
-    var log: Logger
-
-    init(log: Logger) {
-        self.log = log
-    }
-
-    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        self.setLoggerMetadata(ctx)
-        
-        let event = self.unwrapInboundIn(data)
-        log.info("Received: \(event)")
-    }
-
-    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        self.setLoggerMetadata(ctx)
-        
-        log.error("Caught error: [\(error)]:\(type(of: error))") 
-        ctx.fireErrorCaught(error)
-    }
-    
-    private func setLoggerMetadata(_ ctx: ChannelHandlerContext) {
-        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
-        if let localAddress = ctx.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
-    }
-}
-
 typealias Framing = NIOExtras.LengthFieldBasedFrameDecoder
 
 private final class EnvelopeParser: ChannelInboundHandler {
@@ -58,11 +29,12 @@ private final class EnvelopeParser: ChannelInboundHandler {
         var bytes = self.unwrapInboundIn(data)
 
         do {
-            let envelope = try readEnvelope(&bytes, allocator: ctx.channel.allocator)
+            let envelope = try self.readEnvelope(&bytes, allocator: ctx.channel.allocator)
             ctx.fireChannelRead(self.wrapInboundOut(envelope))
         } catch {
+            // TODO notify the kernel?
             ctx.fireErrorCaught(error)
-            ctx.close(promise: nil) // FIXME really?
+            ctx.close(promise: nil)
         }
     }
 
@@ -89,10 +61,10 @@ private final class HandshakeHandler: ChannelInboundHandler {
         do {
             // TODO formalize wire format...
             let offer = try self.readHandshakeOffer(bytes: &bytes)
-            kernel.tell(.handshakeOffer(offer))
+            self.kernel.tell(.handshakeOffer(offer))
             bytes.discardReadBytes()
         } catch {
-            kernel.tell(.handshakeFailed(with: ctx.remoteAddress, error))
+            self.kernel.tell(.handshakeFailed(with: ctx.remoteAddress, error))
             ctx.fireErrorCaught(error)
         }
     }
@@ -113,32 +85,28 @@ extension HandshakeHandler {
 
     func readAssertMagicHandshakeBytes(bytes: inout ByteBuffer) throws {
         guard let leadingBytes = bytes.readInteger(as: UInt16.self) else  {
-            fatalError("not enough bytes to see if magic bytes handshake prefix is present.")
+            throw SwiftDistributedActorsProtocolError.notEnoughBytes(expectedAtLeastBytes: 16 / 8, hint: "handshake magic bytes")
         }
 
         if leadingBytes != HandshakeMagicBytes {
-            throw Swift Distributed ActorsConnectionError.illegalHandshakeMagic(was: leadingBytes, expected: HandshakeMagicBytes)
+            throw Swift Distributed ActorsConnectionError.illegalHandshake(reason: HandshakeError.illegalHandshakeMagic(was: leadingBytes, expected: HandshakeMagicBytes))
         }
     }
 
     /// Read length prefixed data
     func readHandshakeOffer(bytes: inout ByteBuffer) throws -> Wire.HandshakeOffer {
         try self.readAssertMagicHandshakeBytes(bytes: &bytes)
-        
-        //        guard let handshakeLen = bytes.readInteger(as: UInt16.self) else {
-        //            fatalError("NOPE >>>> no handshake length")
-        //        }
-        //        pprint("handshake has length: \(handshakeLen)")
 
-        guard let data = bytes.readData(length: bytes.readableBytes) else { 
-            fatalError("Unable to read data. Maybe not enough bytes yet") // FIXME
+        let bytesToReadAsData = bytes.readableBytes
+        guard let data = bytes.readData(length: bytesToReadAsData) else {
+            throw SwiftDistributedActorsProtocolError.notEnoughBytes(expectedAtLeastBytes: bytesToReadAsData, hint: "handshake offer")
         }
         
         var proto = try ProtoHandshakeOffer(serializedData: data)
         // TODO all those require calls where we insist on those fields being present :P
         
         return Wire.HandshakeOffer(
-            version: Wire.Version(proto.version.value),
+            version: Wire.Version(reserved: UInt8(proto.version.reserved), major: UInt8(proto.version.major), minor: UInt8(proto.version.minor), patch: UInt8(proto.version.patch)),
             from: Remote.UniqueAddress(proto.from),
             to: Remote.Address(proto.to)
         ) // TODO: version too, since we negotiate about it
@@ -147,7 +115,26 @@ extension HandshakeHandler {
 
 // TODO: Todo maybe "wire format error"
 enum HandshakeError: Error {
+    /// The first handshake bytes did not match the expected "magic bytes";
+    /// It is very likely the other side attempting to connect to our port is NOT a Swift Distributed Actors system,
+    /// thus we should reject it immediately. This can happen due to misconfiguration, e.g. mixing
+    /// up ports and attempting to send HTTP or other data to a Swift Distributed Actors networking port.
+    case illegalHandshakeMagic(was: UInt16, expected: UInt16) // TODO: Or [UInt8]...
     case missingField(String)
+}
+extension HandshakeError: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .illegalHandshakeMagic(let was, let expected):
+            return ".illegalHandshakeMagic(was: \(was.hexString), expected: \(expected.hexString))"
+        case .missingField(let field):
+            return ".missingField(\(field))"
+        }
+    }
+}
+
+enum SwiftDistributedActorsProtocolError: Error {
+    case notEnoughBytes(expectedAtLeastBytes: Int?, hint: String?)
 }
 
 enum DeserializationError: Error {
@@ -178,6 +165,34 @@ extension EnvelopeParser {
     }
 }
 
+private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
+    typealias InboundIn = Wire.Envelope
+
+    var log: Logger
+
+    init(log: Logger) {
+        self.log = log
+    }
+
+    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+        self.setLoggerMetadata(ctx)
+
+        let event = self.unwrapInboundIn(data)
+        log.info("Received: \(event)")
+    }
+
+    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+        self.setLoggerMetadata(ctx)
+
+        log.error("Caught error: [\(error)]:\(type(of: error))")
+        ctx.fireErrorCaught(error)
+    }
+
+    private func setLoggerMetadata(_ ctx: ChannelHandlerContext) {
+        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
+        if let localAddress = ctx.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
+    }
+}
 
 // MARK: "Server side" / accepting connections
 
@@ -201,7 +216,7 @@ extension RemotingKernel {
                     HandshakeHandler(kernel: kernel),
                     Framing(lengthFieldLength: .four, lengthFieldEndianness: .big), // currently just a length encoded one, we alias to the one from NIOExtras
                     EnvelopeParser(),
-                    PrintHandler(log: log)
+                    DumpRawBytesDebugHandler(log: log) // FIXME only include for debug -DSACT_TRACE_NIO things?
                 ], first: true)
             }
 
@@ -223,7 +238,7 @@ extension RemotingKernel {
                 channel.pipeline.addHandlers([
 //                    HandshakeHandler(), // TODO mark it as client side, it should expect and Accept/Reject
 //                    EnvelopeParser(),
-//                    PrintHandler()
+//                    DumpRawBytesDebugHandler()
                     WriteHandler()
                 ], first: true)
             }

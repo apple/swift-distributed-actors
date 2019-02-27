@@ -42,36 +42,6 @@ extension SwiftProtobuf.Message {
     }
 }
 
-// MARK: Usability extensions on Proto types
-
-extension ProtoProtocolVersion {
-    var reserved: UInt8 {
-        return UInt8(value >> 24)
-    }
-
-    var major: UInt8 {
-        return UInt8((value >> 16) & 0b11111111)
-    }
-
-    var minor: UInt8 {
-        return UInt8((value >> 8) & 0b11111111)
-    }
-
-    var patch: UInt8 {
-        return UInt8(value & 0b11111111)
-    }
-
-    static func make(reserved: UInt8, major: UInt8, minor: UInt8, patch: UInt8) -> ProtoProtocolVersion {
-        var version = ProtoProtocolVersion()
-        version.value =
-            (UInt32(reserved) << 24)    |
-            (UInt32(major) << 16)       |
-            (UInt32(minor) << 8)        |
-                UInt32(patch)
-        return version
-    }
-}
-
 // MARK: Conversions
 
 extension ProtoEnvelope {
@@ -89,12 +59,10 @@ extension ProtoEnvelope {
 extension ProtoProtocolVersion {
     init(_ value: Wire.Version) {
         var proto = ProtoProtocolVersion()
-        proto.value = value.value
-        self = proto
-    }
-    init(_ value: UInt32) {
-        var proto = ProtoProtocolVersion()
-        proto.value = value
+        proto.reserved = UInt32(value.reserved)
+        proto.major = UInt32(value.major)
+        proto.minor = UInt32(value.minor)
+        proto.patch = UInt32(value.patch)
         self = proto
     }
 }
@@ -136,7 +104,7 @@ extension ProtoHandshakeOffer {
         var proto = ProtoHandshakeOffer()
         proto.from = ProtoUniqueAddress(offer.from)
         proto.to = ProtoAddress(offer.to)
-        proto.version = ProtoProtocolVersion(offer.version.value)
+        proto.version = ProtoProtocolVersion(offer.version)
         self = proto
     }
 
@@ -159,6 +127,6 @@ extension Wire.HandshakeOffer {
         
         self.from = Remote.UniqueAddress(proto.from)
         self.to = Remote.Address(proto.to)
-        self.version = Wire.Version(proto.version.value)
+        self.version = Wire.Version(reserved: UInt8(proto.version.reserved), major: UInt8(proto.version.major), minor: UInt8(proto.version.minor), patch: UInt8(proto.version.patch))
     }
 }
