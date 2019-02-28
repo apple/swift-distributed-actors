@@ -211,6 +211,8 @@ public enum IllegalBehaviorError<M>: Error {
     /// currently opts to eagerly fail for those situations. If you have a legitimate need for such deeply nested deferred behaviors,
     /// please do not hesitate to open a ticket.
     case tooDeeplyNestedBehavior(reached: Behavior<M>, depth: Int)
+
+    case illegalTransition(from: Behavior<M>, to: Behavior<M>)
 }
 
 
@@ -446,6 +448,14 @@ internal extension Behavior {
         }
     }
 
+    @inlinable
+    var isSetup: Bool {
+        switch self.underlying {
+        case .setup:    return true
+        default:        return false
+        }
+    }
+
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
     /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
     ///
@@ -458,7 +468,13 @@ internal extension Behavior {
         var canonical = next
         while true {
             switch canonical.underlying {
-            case .same:                 return self
+            case .same:
+                if self.isSetup {
+                    throw IllegalBehaviorError.illegalTransition(from: self, to: next)
+                } else {
+                    return self
+                }
+
             case .ignore:               return self
             case .unhandled:            return self
             case .custom:               return self
