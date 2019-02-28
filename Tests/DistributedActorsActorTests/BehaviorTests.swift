@@ -635,6 +635,8 @@ class BehaviorTests: XCTestCase {
             throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
 
+        try p.expectMessage("while-suspended")
+
         ref.tell("test")
         try p.expectMessage("test")
     }

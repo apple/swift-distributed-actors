@@ -307,6 +307,9 @@ MailboxRunResult cmailbox_run(
             // need to reset the SUSPENDED bit in the status to continue processing
             // user messages
             reset_status_suspended(mailbox);
+        } else if (!is_suspended(status) && run_result == ActorRunResult_shouldSuspend) {
+            set_status_suspended(mailbox);
+            print_debug_status(mailbox, "MARKED SUSPENDED");
         }
 
         // run user messages ------
