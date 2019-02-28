@@ -40,13 +40,13 @@ class TraversalTests: XCTestCase {
 
         let tellProbeWhenReady: Behavior<Void> = .setup { context in
             probe.tell(ActorReady(context.name))
-            return .same
+            return .receiveMessage { _ in .same }
         }
 
         let _: ActorRef<String> = try! self.system.spawn(.setup { context in
             probe.tell(ActorReady(context.name))
             let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "world")
-            return .same
+            return .receiveMessage { _ in .same }
         }, name: "hello")
 
         let _: ActorRef<String> = try! self.system.spawn(.setup { context in
@@ -54,7 +54,7 @@ class TraversalTests: XCTestCase {
             let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-1")
             let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-2")
             let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-3")
-            return .same
+            return .receiveMessage { _ in .same }
         }, name: "other")
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
