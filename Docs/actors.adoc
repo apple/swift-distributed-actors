@@ -53,7 +53,7 @@ In other words: actors are focused on identity, state, and distribution thereof.
 
 === "Thinking in Actors"
 
-> _Everything_ in an Actor system happens within some actors' api:Behavior[enum].
+> _Everything_ in an Actor system happens within some actors' api:Behavior[struct].
 
 
 #TODO: Quite important section#
@@ -96,7 +96,7 @@ You might be surprised to find out that there is no "Actor" class to extend from
 This is because conceptually and Actor is the sum of three parts:
 
 1. A `Mailbox` containing all the pending messages that the actor should process
-2. A api:Behavior[enum]  that should be run for each subsequent message.
+2. A api:Behavior[struct]  that should be run for each subsequent message.
 3. A api:MessageDispatcher[protocol] which "runs the Actor".
 
 Those three elements together form one functioning actor. In other words, an actor is a behavior that is able to be run
@@ -107,7 +107,7 @@ Another reason is, that semantically, it is not possible to "combine actors" as 
 and always have to guarantee isolation from any 3rd parties. However, it is possible and tremendously useful to combine
 actor `Behaviors`.
 
-TIP: All actors are defined in terms of their api:Behavior[enum].
+TIP: All actors are defined in terms of their api:Behavior[struct].
 
 For getting started, we'll focus on the most important behavior group, the `receive` functions, as they allow an
 actor to react to messages. The `receive` behavior comes in a few different flavors. Firstly, the `receiveMessage`
@@ -194,7 +194,7 @@ Parent-child relationships add a few more guarantees:
 
 While an actor is running there exist only two ways in which it may decide end up _stopping itself_, either by:
 
-- stopping: returning a api:Behavior[enum]`.stopped` as the next behavior
+- stopping: returning a api:Behavior[struct]`.stopped` as the next behavior
 - crashing: by throwing an `Error` or causing a fault.
 ** in which case <<supervision>> will handle the failure and determine what to do about it; by default stopping the actor.
 
@@ -205,7 +205,7 @@ To see this in a more realistic example let's have a look at the following snipp
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
 ----
 <1> We invoke some business logic that does not have to be aware of the actor details at all
-<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[enum]`.stopped`
+<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct]`.stopped`
 
 This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
 As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in its lifecycle.
