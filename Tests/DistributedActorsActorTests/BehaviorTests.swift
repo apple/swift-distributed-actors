@@ -460,7 +460,7 @@ class BehaviorTests: XCTestCase {
         }
     }
 
-    func test_awaitResult_shouldResumActorWithSuccessResultWhenFutureSucceeds() throws {
+    func test_awaitResult_shouldResumeActorWithSuccessResultWhenFutureSucceeds() throws {
         let eventLoop = eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.newPromise()
         let future = promise.futureResult
@@ -596,6 +596,43 @@ class BehaviorTests: XCTestCase {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+        }
+
+        ref.tell("test")
+        try p.expectMessage("test")
+    }
+
+    func test_awaitResult_shouldWorkWhenReturnedInsideInitialSetup() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in 
+            p.tell("initializing")
+            return context.awaitResult(of: future, timeout: .milliseconds(100)) { result in
+                suspendProbe.tell(result)
+                return .receiveMessage { message in
+                    p.tell(message)
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        try p.expectMessage("initializing")
+        ref.tell("while-suspended") // hits the actor while it's still suspended
+
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .failure(let error):
+            guard error.underlying is TimeoutError else {
+                throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+            }
+        default: 
+            throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
 
         ref.tell("test")
