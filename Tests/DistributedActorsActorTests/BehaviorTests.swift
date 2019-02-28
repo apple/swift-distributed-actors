@@ -641,6 +641,39 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("test")
     }
 
+    func test_awaitResult_shouldCrashWhenReturnedInsideInitialSetup_andReturnSameOnResume() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let future = promise.futureResult
+        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            p.tell("initializing")
+            return context.awaitResult(of: future, timeout: .milliseconds(10)) { result in
+                suspendProbe.tell(result)
+                return .same
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        try p.expectMessage("initializing")
+
+        let suspendResult = try suspendProbe.expectMessage()
+        switch suspendResult {
+        case .failure(let error):
+            guard error.underlying is TimeoutError else {
+                throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+            }
+        default:
+            throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
+        }
+
+        try p.expectTerminated(ref)
+    }
+
     func test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut() throws {
         let eventLoop = eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.newPromise()

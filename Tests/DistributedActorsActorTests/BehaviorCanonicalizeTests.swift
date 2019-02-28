@@ -146,7 +146,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         try p.expectTerminated(ref)
     }
 
-    func test_stopWithPostStop_shouldUseItFOrPostStopSignalHandling() throws {
+    func test_stopWithPostStop_shouldUseItForPostStopSignalHandling() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
@@ -161,6 +161,20 @@ class BehaviorCanonicalizeTests: XCTestCase {
         ref.tell("test")
 
         try p.expectMessage("postStop")
+        try p.expectTerminated(ref)
+    }
+
+    func test_setup_returningSameShouldThrow() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { _ in
+            return .same
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        p.watch(ref)
+
         try p.expectTerminated(ref)
     }
 }
