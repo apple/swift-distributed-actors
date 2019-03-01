@@ -212,6 +212,11 @@ public enum IllegalBehaviorError<M>: Error {
     /// please do not hesitate to open a ticket.
     case tooDeeplyNestedBehavior(reached: Behavior<M>, depth: Int)
 
+    /// Not all behavior transitions are legal and can't be prevented statically.
+    /// Example: 
+    /// Returning a `.same` directly from within a `.setup` like so: `.setup { _ in return .same }`is treated as illegal,
+    /// as it has a high potential for resulting in an eagerly infinitely looping during behavior canonicalization.
+    /// If such behavior is indeed what you want, you can return the behavior containing the setup rather than the `.same` marker.
     case illegalTransition(from: Behavior<M>, to: Behavior<M>)
 }
 
