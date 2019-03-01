@@ -206,11 +206,11 @@ So not only did the supervision indeed keep the process alive, dump a backtrace 
 properly decide that the actor shall be restarted. From a functional perspective this did not differ much from handling
 an error using supervision. Section <<backtraces>> dives deeper into analysing backtraces.
 
-At the same time however, **faults should be taken lightly as they most likely indicate a bug
+At the same time however, **faults should not be taken lightly as they most likely indicate a bug
 in the program**. Supervision enables easier location, debugging and potentially replicating scenarios (messages)
 which cause the fault condition, such that it is easier to fix the application and deploy a fixed version as soon as possible.
 
-TIP: Supervision is not a replacement to not fixing faults. Faults should be taken seriously, as they usually indicate a
+TIP: Supervision is not a replacement for fixing faults. Faults should be taken seriously, as they usually indicate a
      programming error. +
      +
      Supervision does however help locate the fault by helping to narrow it down:
