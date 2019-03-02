@@ -90,7 +90,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func signal() -> Void {
+    public func signal() {
         let error = pthread_cond_signal(&condition)
 
         switch error {

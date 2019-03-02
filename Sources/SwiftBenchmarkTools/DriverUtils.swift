@@ -294,17 +294,17 @@ func stopTrackingObjects(_: UnsafePointer<CChar>) -> Int
 
 #endif
 
-final class Timer {
+final public class Timer {
     #if os(Linux)
-    typealias TimeT = timespec
+    public typealias TimeT = timespec
 
-    func getTime() -> TimeT {
+    public func getTime() -> TimeT {
         var ts = timespec(tv_sec: 0, tv_nsec: 0)
         clock_gettime(CLOCK_REALTIME, &ts)
         return ts
     }
 
-    func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {
+    public func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {
         let oneSecond = 1_000_000_000 // ns
         var elapsed = timespec(tv_sec: 0, tv_nsec: 0)
         if end.tv_nsec - start.tv_nsec < 0 {
@@ -317,18 +317,18 @@ final class Timer {
         return UInt64(elapsed.tv_sec) * UInt64(oneSecond) + UInt64(elapsed.tv_nsec)
     }
     #else
-    typealias TimeT = UInt64
+    public typealias TimeT = UInt64
     var info = mach_timebase_info_data_t(numer: 0, denom: 0)
 
-    init() {
+    public init() {
         mach_timebase_info(&info)
     }
 
-    func getTime() -> TimeT {
+    public func getTime() -> TimeT {
         return mach_absolute_time()
     }
 
-    func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {
+    public func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {
         let elapsed = end - start
         return elapsed * UInt64(info.numer) / UInt64(info.denom)
     }
@@ -336,9 +336,9 @@ final class Timer {
 }
 
 extension UInt64 {
-    var nanoseconds: Int { return Int(self) }
-    var microseconds: Int { return Int(self / 1000) }
-    var milliseconds: Int { return Int(self / 1000 / 1000) }
+    public var nanoseconds: Int { return Int(self) }
+    public var microseconds: Int { return Int(self / 1000) }
+    public var milliseconds: Int { return Int(self / 1000 / 1000) }
 }
 
 enum TimeUnit: String {
