@@ -39,7 +39,7 @@ public struct UniqueActorPath: Equatable, Hashable {
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
-    var name: String {
+    public var name: String {
         return path.name
     }
 }
