@@ -61,7 +61,7 @@ func setUp_visit_depth_10_total_10() {
         } else {
             return Behavior<Never>.setup { context in
                 try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
-                return .same
+                return .receiveMessage { _ in .same }
             }
         }
     }
@@ -75,12 +75,12 @@ func setUp_visit_depth_1000_total_1000() {
     func spawnDeeper(stillMore n: Int) -> Behavior<Never> {
         if n == 0 {
             return .setup { context in
-                return .same
+                return .receiveMessage { _ in .same }
             }
         } else {
             return Behavior<Never>.setup { context in
                 try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
-                return .same
+                return .receiveMessage { _ in .same }
             }
         }
     }
