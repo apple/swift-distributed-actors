@@ -298,10 +298,16 @@ final public class Timer {
     #if os(Linux)
     public typealias TimeT = timespec
 
+    public init() {
+    }
+
     public func getTime() -> TimeT {
         var ts = timespec(tv_sec: 0, tv_nsec: 0)
         clock_gettime(CLOCK_REALTIME, &ts)
         return ts
+    }
+    public func getTimeAsInt() -> UInt64 {
+        return UInt64(getTime().tv_nsec)
     }
 
     public func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {
@@ -326,6 +332,10 @@ final public class Timer {
 
     public func getTime() -> TimeT {
         return mach_absolute_time()
+    }
+    
+    public func getTimeAsInt() -> UInt64 {
+        return UInt64(getTime())
     }
 
     public func diffTimeInNanoSeconds(from start: TimeT, to end: TimeT) -> UInt64 {

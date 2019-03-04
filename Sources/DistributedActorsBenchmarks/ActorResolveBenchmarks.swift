@@ -65,7 +65,7 @@ func setUp_visit_depth_10_total_10() {
             }
         }
     }
-    try! system.spawn(spawnDeeper(stillMore: 10), name: "top")
+    _ = try! system.spawn(spawnDeeper(stillMore: 10), name: "top")
 }
 func bench_visit(n: Int) {
 //    system._traverse { ref in () }
@@ -84,5 +84,5 @@ func setUp_visit_depth_1000_total_1000() {
             }
         }
     }
-    try! system.spawn(spawnDeeper(stillMore: 1000), name: "top")
+    _ = try! system.spawn(spawnDeeper(stillMore: 1000), name: "top")
 }
