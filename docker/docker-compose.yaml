@@ -39,6 +39,10 @@ services:
     <<: *common
     command: /bin/bash -cl "swift test && ./scripts/integration_tests.sh"
 
+  bench:
+    <<: *common
+    command: /bin/bash -cl "swift run Swift Distributed ActorsBenchmarks"
+
   echo:
     <<: *common
     tty: true
