@@ -436,8 +436,6 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell(.stop)
 
-        try p.expectTerminated(grandchildRef)
-        try p.expectTerminated(childRef)
-        try p.expectTerminated(parent)
+        try p.expectTerminatedInAnyOrder([parent, childRef, grandchildRef])
     }
 }
