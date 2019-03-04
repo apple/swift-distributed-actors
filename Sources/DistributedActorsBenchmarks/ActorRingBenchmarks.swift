@@ -60,11 +60,11 @@ private func tearDown() {
 
 let q = LinkedBlockingQueue<Int>()
 
-let spawnStart = Atomic<SwiftBenchmarkTools.Timer.TimeT>(value: 0)
-let spawnStop = Atomic<SwiftBenchmarkTools.Timer.TimeT>(value: 0)
+let spawnStart = Atomic<UInt64>(value: 0)
+let spawnStop = Atomic<UInt64>(value: 0)
 
-let ringStart = Atomic<SwiftBenchmarkTools.Timer.TimeT>(value: 0)
-let ringStop = Atomic<SwiftBenchmarkTools.Timer.TimeT>(value: 0)
+let ringStart = Atomic<UInt64>(value: 0)
+let ringStop = Atomic<UInt64>(value: 0)
 
 // === -----------------------------------------------------------------------------------------------------------------
 
@@ -82,7 +82,7 @@ func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
     return .receive { context, msg in
         switch msg.payload {
         case 1:
-            ringStop.store(SwiftBenchmarkTools.Timer().getTime())
+            ringStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
             q.enqueue(0) // done
             // pprint("DONE RING SEND. \(time(nil))")
             return .stopped
@@ -99,8 +99,8 @@ var loopEntryPoint: ActorRef<Token>! = nil
 private func initLoop(m messages: Int, n actors: Int) {
     loopEntryPoint = try! system.spawn(.setup { context in
         // TIME spawning
-        // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
-        spawnStart.store(SwiftBenchmarkTools.Timer().getTime())
+        // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")
+        spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
         var loopRef = context.myself
         for i in (1...actors).reversed() {
@@ -108,7 +108,7 @@ private func initLoop(m messages: Int, n actors: Int) {
             // context.log.info("SPAWNed \(loopRef.path.name)...")
         }
         // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
-        spawnStop.store(SwiftBenchmarkTools.Timer().getTime())
+        spawnStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
         return .receiveMessage { m in
             // pprint("START RING SEND... \(SwiftBenchmarkTools.Timer().getTime())")
@@ -126,7 +126,7 @@ private func initLoop(m messages: Int, n actors: Int) {
 // === -----------------------------------------------------------------------------------------------------------------
 
 func bench_ring_m100_000_n10_000(n: Int) {
-    ringStart.store(SwiftBenchmarkTools.Timer().getTime())
+    ringStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     loopEntryPoint.tell(Token(100_000))
 
     q.poll(.seconds(20))
