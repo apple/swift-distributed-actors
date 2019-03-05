@@ -24,6 +24,13 @@ public let SerializationCodableBenchmarks: [BenchmarkInfo] = [
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
+            name: "SerializationCodable.bench_codable_roundTrip_message_medium",
+            runFunction: bench_codable_roundTrip_message_medium,
+            tags: [.serialization],
+            setUpFunction: { setUp() },
+            tearDownFunction: tearDown
+    ),
+    BenchmarkInfo(
         name: "SerializationCodable.bench_codable_roundTrip_message_withRef",
         runFunction: bench_codable_roundTrip_message_withRef,
         tags: [.serialization],
@@ -36,6 +43,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("SerializationCodableBenchmarks") { settings in 
         settings.serialization.registerCodable(for: SmallMessage.self, underId: 1001)
         settings.serialization.registerCodable(for: MessageWithRef.self, underId: 1002)
+        settings.serialization.registerCodable(for: MediumMessage.self, underId: 1003)
         settings.logLevel = .error
     }
     postSetUp()
@@ -75,4 +83,60 @@ private func setUpActorRef() {
 func bench_codable_roundTrip_message_withRef(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_withRef!)
     let _ = try! system.serialization.deserialize(to: MessageWithRef.self, bytes: bytes)
+}
+
+// -------
+
+struct MediumMessage: Codable {
+    struct NestedMessage: Codable {
+        let field1: String
+        let field2: Int32
+        let field3: Int32
+    }
+
+    let field01: String
+    let field02: String
+    let field03: Int32
+    let field04: NestedMessage
+    let field05: Bool
+    let field06: Int32
+    let field07: Int64
+    let field08: Int64
+    let field09: Int64
+    let field10: Int64
+    let field11: Bool
+    let field12: String
+    let field13: Bool
+    let field14: String
+    let field15: String
+    let field16: Int64
+    let field17: Int64
+}
+
+let message_medium = MediumMessage(
+    field01: "something-test",
+    field02: "something-else-test",
+    field03: 42,
+    field04: MediumMessage.NestedMessage (
+        field1: "something-nested-test",
+        field2: 43,
+        field3: 44),
+    field05: false,
+    field06: 45,
+    field07: 46,
+    field08: 47,
+    field09: 48,
+    field10: 49,
+    field11: true,
+    field12: "foo",
+    field13: false,
+    field14: "bar",
+    field15: "baz",
+    field16: 50,
+    field17: 51
+)
+
+func bench_codable_roundTrip_message_medium(n: Int) {
+    let bytes = try! system.serialization.serialize(message: message_medium)
+    let _ = try! system.serialization.deserialize(to: MediumMessage.self, bytes: bytes)
 }

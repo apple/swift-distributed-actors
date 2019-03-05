@@ -30,4 +30,16 @@ done
 
 popd >> /dev/null
 
+benchmark_proto_path="$root_path/Sources/Swift Distributed ActorsBenchmarks/BenchmarkProtos"
+
+pushd $benchmark_proto_path >> /dev/null
+
+for p in $(find . -name *.proto); do
+    command="protoc --swift_out=../ $p"
+    echo $command
+    `$command`
+done
+
+popd >> /dev/null
+
 echo "Done."

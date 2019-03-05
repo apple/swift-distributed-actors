@@ -103,8 +103,15 @@ public struct Serialization {
             bytes = try serializeSystemMessage(sys: sys, message: message)
 
         default:
-            self.debugPrintSerializerTable()
-            throw SerializationError.noSerializerRegisteredFor(type: M.self)
+            guard let serializerId = self.serializerIdFor(type: M.self) else {
+                pprint("FAILING; Available serializers: \(self.serializers)")
+                throw SerializationError.noSerializerRegisteredFor(type: M.self)
+            }
+            guard let serializer = self.serializers[serializerId] else {
+                pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
+                throw SerializationError.noSerializerRegisteredFor(type: M.self)
+            }
+            bytes = try serializer.unsafeUnwrapAs(M.self).serialize(message: message)
         }
 
         // TODO serialization metrics here
@@ -281,16 +288,18 @@ public struct SerializationSettings {
 /// Kind of like coder / encoder, we'll provide bridges for it
 // TODO: Document since users need to implement these
 open class Serializer<T> {
+    public init () {
+    }
 
-    public func serialize(message: T) throws -> ByteBuffer {
+    open func serialize(message: T) throws -> ByteBuffer {
         return undefined()
     }
 
-    public func deserialize(bytes: ByteBuffer) throws -> T {
+    open func deserialize(bytes: ByteBuffer) throws -> T {
         return undefined()
     }
 
-    func setSerializationContext(_ context: ActorSerializationContext) {
+    open func setSerializationContext(_ context: ActorSerializationContext) {
         return undefined()
     }
 }
