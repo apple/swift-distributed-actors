@@ -67,8 +67,8 @@ final class Mailbox<Message> {
     /// If `true`, all messages should be attempted to be serialized before sending
     private let serializeAllMessages: Bool
 
-    init(cell: ActorCell<Message>, capacity: Int, maxRunLength: Int = 100) {
-        self.mailbox = cmailbox_create(Int64(capacity), Int64(maxRunLength));
+    init(cell: ActorCell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+        self.mailbox = cmailbox_create(capacity, maxRunLength);
         self.cell = cell
         self.path = cell.path
         self.deadLetters = cell.system.deadLetters
