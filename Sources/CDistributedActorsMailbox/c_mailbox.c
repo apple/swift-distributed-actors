@@ -37,7 +37,9 @@
 // State should be operated on bitwise; where the specific bits signify states like the following:
 //      0 - has system messages
 //      1 - currently processing system messages
-//   2-60 - user message count
+//   2-33 - user message count
+//     34 - message count overflow (important because we increment the counter first and then check if the mailbox was already full)
+//  35-60 - reserved
 //     61 - mailbox is suspended and will not process any user messages
 //     62 - terminating (or closed)
 //     63 - closed, terminated (for sure)
@@ -51,7 +53,7 @@
 // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
 // - if we need to schedule it or not since it was scheduled already etc.
 
-#define ACTIVATIONS                 0b0001111111111111111111111111111111111111111111111111111111111111
+#define ACTIVATIONS                 0b0000000000000000000000000000011111111111111111111111111111111111
 
 // Implementation notes about Termination:
 // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
@@ -93,7 +95,8 @@ int64_t try_activate(CMailbox* mailbox);
 
 int64_t activations(int64_t status);
 
-int64_t message_count(int64_t status);
+// even though the message count is just 32 bit, we need to capture the overflow bit as well, so we return it as a 64 bit value
+uint64_t message_count(int64_t status);
 
 int64_t set_status_terminating(CMailbox* mailbox);
 
@@ -122,9 +125,9 @@ bool is_closed(int64_t status);
 
 bool internal_send_message(CMailbox* mailbox, void* envelope, bool is_system_message);
 
-int64_t max(int64_t a, int64_t b);
+uint32_t max(uint32_t a, uint32_t b);
 
-CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length) {
+CMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length) {
     CMailbox* mailbox = calloc(sizeof(CMailbox), 1);
     mailbox->capacity = capacity;
     mailbox->max_run_length = max_run_length;
@@ -225,7 +228,7 @@ MailboxRunResult cmailbox_run(
     int64_t processed_activations[1];
     *processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
-    int64_t run_length = max(message_count(status), mailbox->max_run_length);
+    uint32_t run_length = max(message_count(status), mailbox->max_run_length);
 
     // printf("[SACT_TRACE_MAILBOX][c] run_length = %lu\n", run_length);
 
@@ -395,8 +398,16 @@ MailboxRunResult cmailbox_run(
     }
 }
 
-int64_t cmailbox_message_count(CMailbox* mailbox) {
-    return message_count(get_status(mailbox));
+// We only return 32 bit here, because the mailbox from a user perspective can't
+// grow larger than that. For the internal function message_count, we need the
+// 64 bit because of the overflow in case we try to enqueue a message to an
+// already full mailbox. For correctness we need to return `mailbox->capacity`
+// instead of `message_count(status)`, if the stored count is larger than the
+// capacity. Otherwise users could see a count larger than the configured capacity,
+// or 0 in case of an uncapped mailbox.
+uint32_t cmailbox_message_count(CMailbox* mailbox) {
+    int64_t count = message_count(get_status(mailbox));
+    return count > mailbox->capacity ? mailbox->capacity : count;
 }
 
 void print_debug_status(CMailbox* mailbox, char* msg) {
@@ -492,9 +503,9 @@ int64_t activations(int64_t status) {
     return status & ACTIVATIONS;
 }
 
-int64_t message_count(int64_t status) {
-    int64_t count = activations(status) >> 2;
-    return count > 0 ? count : 0;
+uint64_t message_count(int64_t status) {
+    uint64_t count = activations(status) >> 2;
+    return count;
 }
 
 bool cmailbox_is_closed(CMailbox* mailbox) {
@@ -530,6 +541,6 @@ bool is_processing_or_has_system_messages(int64_t status) {
     return (status & (PROCESSING_SYSTEM_MESSAGES | HAS_SYSTEM_MESSAGES));
 }
 
-int64_t max(int64_t a, int64_t b) {
+uint32_t max(uint32_t a, uint32_t b) {
     return a > b ? b : a;
 }

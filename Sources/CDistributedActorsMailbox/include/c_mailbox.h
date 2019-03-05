@@ -46,8 +46,8 @@ SWIFT_CLOSED_ENUM(MailboxRunPhase) {
 } MailboxRunPhase;
 
 typedef struct {
-            int64_t   capacity;
-            int64_t   max_run_length;
+            uint32_t  capacity;
+            uint32_t  max_run_length;
     _Atomic int64_t   status;
     CMPSCLinkedQueue* system_messages;
     CMPSCLinkedQueue* messages;
@@ -110,7 +110,7 @@ typedef void (*DropMessageCallback)(DropMessageClosureContext*, void*); // TODO 
  */
 typedef MailboxRunResult (*InvokeSupervisionCallback)(SupervisionClosureContext*, MailboxRunPhase, void*);
 
-CMailbox* cmailbox_create(int64_t capacity, int64_t max_run_length);
+CMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length);
 
 /*
  * Destroy and deallocate passed in mailbox.
@@ -143,8 +143,7 @@ MailboxRunResult cmailbox_run(
     MailboxRunPhase* run_phase
     );
 
-int64_t cmailbox_message_count(CMailbox* mailbox);
-
+uint32_t cmailbox_message_count(CMailbox* mailbox);
 
 /*
  * Returns `true` if the mailbox is terminating or terminated, messages should not be enqueued to it.
