@@ -105,7 +105,28 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
     }
-  
+}
+
+public extension TestMatchers where T: Collection {
+    /// Asserts that `it` is empty
+    public func toBeEmpty() {
+        if !it.isEmpty{
+            let m = "Expected [\(it)] to be empty"
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
+
+    /// Asserts that `it` is not empty
+    public func toBeNotEmpty() {
+        if it.isEmpty{
+            let m = "Expected [\(it)] to to be non-empty"
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
 }
 
 private extension Collection where Element: Equatable {
@@ -151,15 +172,29 @@ extension Equatable {
     }
 }
 
+extension Array { // TODO on more general type
+    public func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
+    }
+    public func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
+    }
+}
+
 extension Bool {
-    public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+    public func shouldBe(_ expected: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: csInfo).toEqual(false)
+        return TestMatchers(it: self, callSite: csInfo).toEqual(expected)
+    }
+
+    public func shouldBeFalse(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        return self.shouldBe(false, file: file, line: line, column: column)
     }
 
     public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: csInfo).toEqual(true)
+        return self.shouldBe(true, file: file, line: line, column: column)
     }
 }
 

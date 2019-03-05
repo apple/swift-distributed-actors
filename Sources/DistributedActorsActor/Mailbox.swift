@@ -263,7 +263,7 @@ final class Mailbox<Message> {
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription). " + 
-                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`. " + 
+                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " + 
                     "This check was performed since `settings.serialization.allMessages` was enabled.")
             }
         }
