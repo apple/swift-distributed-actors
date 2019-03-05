@@ -120,13 +120,13 @@ extension Props {
 
 public enum MailboxProps {
     /// Default mailbox.
-    case `default`(capacity: Int, onOverflow: MailboxOverflowStrategy)
+    case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
-    static func `default`(capacity: Int = Int.max) -> MailboxProps {
+    static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
         return .default(capacity: capacity, onOverflow: .crash)
     }
     
-    var capacity: Int {
+    var capacity: UInt32 {
         switch self {
         case let .default(cap, _): return cap
         }
