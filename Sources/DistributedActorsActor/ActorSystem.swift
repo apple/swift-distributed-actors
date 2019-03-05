@@ -58,7 +58,7 @@ public final class ActorSystem {
 
     // MARK: Remoting
 
-    internal var _remoting: RemotingKernel.Ref? // TODO concurrent access to it? :-(
+    internal var _remoting: RemotingKernel.Ref?
 
     // MARK: Logging
 

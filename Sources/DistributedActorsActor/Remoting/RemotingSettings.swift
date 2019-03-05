@@ -27,7 +27,7 @@ public struct RemotingSettings {
 
     /// If `true` the ActorSystem start the remoting subsystem upon startup.
     /// The remoting address bound to will be `bindAddress`.
-    public var enabled: Bool = true
+    public var enabled: Bool = false
 
     /// If set to a non-`nil` value, the system will attempt to bind to the provided address on startup.
     /// Once bound, the system is able to accept incoming connections.
