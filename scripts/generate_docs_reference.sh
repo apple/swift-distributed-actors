@@ -31,6 +31,7 @@ echo "Project version: ${version}"
 # run asciidoctor
 if ! command -v asciidoctor > /dev/null; then
   gem install asciidoctor --no-ri --no-rdoc
+  gem install asciidoctor-diagram
 fi
 
 declare -r target_dir="$root_path/reference/$version"
@@ -40,6 +41,7 @@ asciidoctor \
   -r $root_path/scripts/asciidoctor/multipage_html5_converter.rb \
   -r $root_path/scripts/asciidoctor/swift_api_reference.rb \
   -r $root_path/scripts/asciidoctor/api_reference.rb \
+  -r asciidoctor-diagram \
   -b multipage_html5 \
   -D $target_dir \
   $root_path/Docs/index.adoc

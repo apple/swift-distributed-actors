@@ -22,7 +22,7 @@ option swift_prefix = "Proto";
 
 message HandshakeOffer {
     ProtocolVersion version = 1;
-    UniqueAddress from      = 2;
+    UniqueNodeAddress from  = 2;
     Address to              = 3;
     // In the future we may want to add additional information
     // about certain capabilities here. E.g. when a node supports
@@ -33,13 +33,13 @@ message HandshakeOffer {
 
 message HandshakeAccept {
     ProtocolVersion version  = 1;
-    UniqueAddress originator = 2;
-    UniqueAddress from       = 3;
+    UniqueNodeAddress origin = 2;
+    UniqueNodeAddress from   = 3;
 }
 
 message HandshakeReject {
     ProtocolVersion version  = 1;
-    UniqueAddress originator = 2;
+    UniqueNodeAddress origin = 2;
     Address from             = 3;
     string reason            = 4;
 }
@@ -55,21 +55,21 @@ message Envelope {
 // System messages have to be reliable, therefore they need to be acknowledged
 // by the receiving node.
 message SystemEnvelope {
-    uint32 serializerId = 1;
-    uint64 sequenceNr   = 2;
-    UniqueAddress from  = 3;
+    uint32 serializerId     = 1;
+    uint64 sequenceNr       = 2;
+    UniqueNodeAddress from  = 3;
 
-    bytes payload       = 4;
+    bytes payload           = 4;
 }
 
 message SystemAck {
-    uint64 sequenceNr  = 1;
-    UniqueAddress from = 2;
+    uint64 sequenceNr      = 1;
+    UniqueNodeAddress from = 2;
 }
 
 
 
-message UniqueAddress {
+message UniqueNodeAddress {
     Address address = 1;
     uint32 uid      = 2;
 }

@@ -49,6 +49,7 @@ import XCTest
          testCase(NIOExtensionTests.allTests),
          testCase(ParentChildActorTests.allTests),
          testCase(RemotingBasicsTests.allTests),
+         testCase(RemotingHandshakeTests.allTests),
          testCase(RingBufferTests.allTests),
          testCase(SerializationTests.allTests),
          testCase(StashBufferTests.allTests),
