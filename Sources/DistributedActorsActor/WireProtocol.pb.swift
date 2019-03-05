@@ -39,8 +39,8 @@ struct ProtoHandshakeOffer {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var from: ProtoUniqueAddress {
-    get {return _storage._from ?? ProtoUniqueAddress()}
+  var from: ProtoUniqueNodeAddress {
+    get {return _storage._from ?? ProtoUniqueNodeAddress()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -83,17 +83,17 @@ struct ProtoHandshakeAccept {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var originator: ProtoUniqueAddress {
-    get {return _storage._originator ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._originator = newValue}
+  var origin: ProtoUniqueNodeAddress {
+    get {return _storage._origin ?? ProtoUniqueNodeAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `originator` has been explicitly set.
-  var hasOriginator: Bool {return _storage._originator != nil}
-  /// Clears the value of `originator`. Subsequent reads from it will return its default value.
-  mutating func clearOriginator() {_uniqueStorage()._originator = nil}
+  /// Returns true if `origin` has been explicitly set.
+  var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
-  var from: ProtoUniqueAddress {
-    get {return _storage._from ?? ProtoUniqueAddress()}
+  var from: ProtoUniqueNodeAddress {
+    get {return _storage._from ?? ProtoUniqueNodeAddress()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -122,14 +122,14 @@ struct ProtoHandshakeReject {
   /// Clears the value of `version`. Subsequent reads from it will return its default value.
   mutating func clearVersion() {_uniqueStorage()._version = nil}
 
-  var originator: ProtoUniqueAddress {
-    get {return _storage._originator ?? ProtoUniqueAddress()}
-    set {_uniqueStorage()._originator = newValue}
+  var origin: ProtoUniqueNodeAddress {
+    get {return _storage._origin ?? ProtoUniqueNodeAddress()}
+    set {_uniqueStorage()._origin = newValue}
   }
-  /// Returns true if `originator` has been explicitly set.
-  var hasOriginator: Bool {return _storage._originator != nil}
-  /// Clears the value of `originator`. Subsequent reads from it will return its default value.
-  mutating func clearOriginator() {_uniqueStorage()._originator = nil}
+  /// Returns true if `origin` has been explicitly set.
+  var hasOrigin: Bool {return _storage._origin != nil}
+  /// Clears the value of `origin`. Subsequent reads from it will return its default value.
+  mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
   var from: ProtoAddress {
     get {return _storage._from ?? ProtoAddress()}
@@ -185,8 +185,8 @@ struct ProtoSystemEnvelope {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var from: ProtoUniqueAddress {
-    get {return _storage._from ?? ProtoUniqueAddress()}
+  var from: ProtoUniqueNodeAddress {
+    get {return _storage._from ?? ProtoUniqueNodeAddress()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -216,8 +216,8 @@ struct ProtoSystemAck {
     set {_uniqueStorage()._sequenceNr = newValue}
   }
 
-  var from: ProtoUniqueAddress {
-    get {return _storage._from ?? ProtoUniqueAddress()}
+  var from: ProtoUniqueNodeAddress {
+    get {return _storage._from ?? ProtoUniqueNodeAddress()}
     set {_uniqueStorage()._from = newValue}
   }
   /// Returns true if `from` has been explicitly set.
@@ -232,7 +232,7 @@ struct ProtoSystemAck {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-struct ProtoUniqueAddress {
+struct ProtoUniqueNodeAddress {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -315,7 +315,7 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _from: ProtoUniqueAddress? = nil
+    var _from: ProtoUniqueNodeAddress? = nil
     var _to: ProtoAddress? = nil
 
     static let defaultInstance = _StorageClass()
@@ -386,14 +386,14 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   static let protoMessageName: String = "HandshakeAccept"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "originator"),
+    2: .same(proto: "origin"),
     3: .same(proto: "from"),
   ]
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _originator: ProtoUniqueAddress? = nil
-    var _from: ProtoUniqueAddress? = nil
+    var _origin: ProtoUniqueNodeAddress? = nil
+    var _from: ProtoUniqueNodeAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -401,7 +401,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _originator = source._originator
+      _origin = source._origin
       _from = source._from
     }
   }
@@ -419,7 +419,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._originator)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
         default: break
         }
@@ -432,7 +432,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._originator {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._from {
@@ -448,7 +448,7 @@ extension ProtoHandshakeAccept: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._originator != rhs_storage._originator {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._from != rhs_storage._from {return false}
         return true
       }
@@ -463,14 +463,14 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   static let protoMessageName: String = "HandshakeReject"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "version"),
-    2: .same(proto: "originator"),
+    2: .same(proto: "origin"),
     3: .same(proto: "from"),
     4: .same(proto: "reason"),
   ]
 
   fileprivate class _StorageClass {
     var _version: ProtoProtocolVersion? = nil
-    var _originator: ProtoUniqueAddress? = nil
+    var _origin: ProtoUniqueNodeAddress? = nil
     var _from: ProtoAddress? = nil
     var _reason: String = String()
 
@@ -480,7 +480,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _version = source._version
-      _originator = source._originator
+      _origin = source._origin
       _from = source._from
       _reason = source._reason
     }
@@ -499,7 +499,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._version)
-        case 2: try decoder.decodeSingularMessageField(value: &_storage._originator)
+        case 2: try decoder.decodeSingularMessageField(value: &_storage._origin)
         case 3: try decoder.decodeSingularMessageField(value: &_storage._from)
         case 4: try decoder.decodeSingularStringField(value: &_storage._reason)
         default: break
@@ -513,7 +513,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if let v = _storage._version {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if let v = _storage._originator {
+      if let v = _storage._origin {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
       }
       if let v = _storage._from {
@@ -532,7 +532,7 @@ extension ProtoHandshakeReject: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._version != rhs_storage._version {return false}
-        if _storage._originator != rhs_storage._originator {return false}
+        if _storage._origin != rhs_storage._origin {return false}
         if _storage._from != rhs_storage._from {return false}
         if _storage._reason != rhs_storage._reason {return false}
         return true
@@ -597,7 +597,7 @@ extension ProtoSystemEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   fileprivate class _StorageClass {
     var _serializerID: UInt32 = 0
     var _sequenceNr: UInt64 = 0
-    var _from: ProtoUniqueAddress? = nil
+    var _from: ProtoUniqueNodeAddress? = nil
     var _payload: Data = SwiftProtobuf.Internal.emptyData
 
     static let defaultInstance = _StorageClass()
@@ -679,7 +679,7 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 
   fileprivate class _StorageClass {
     var _sequenceNr: UInt64 = 0
-    var _from: ProtoUniqueAddress? = nil
+    var _from: ProtoUniqueNodeAddress? = nil
 
     static let defaultInstance = _StorageClass()
 
@@ -739,8 +739,8 @@ extension ProtoSystemAck: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
-extension ProtoUniqueAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = "UniqueAddress"
+extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "UniqueNodeAddress"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "address"),
     2: .same(proto: "uid"),
@@ -792,7 +792,7 @@ extension ProtoUniqueAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: ProtoUniqueAddress, rhs: ProtoUniqueAddress) -> Bool {
+  static func ==(lhs: ProtoUniqueNodeAddress, rhs: ProtoUniqueNodeAddress) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0

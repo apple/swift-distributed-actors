@@ -20,7 +20,7 @@
 /// an `ActorRef` for this unique path may yield with not being able to find it,
 /// even if previously at some point in time it existed.
 // TODO: we could reconsider naming here; historical naming is that "address is the entire thing" by Hewitt...
-// TODO: sadly "address" is super overloaded and ActorAddress sounds a bit weird... We also will have "Address" for the node, so "NodeAddress"?
+// TODO: sadly "address" is super overloaded and ActorAddress sounds a bit weird... We also will have "NodeAddress" for the node, so "NodeAddress"?
 public struct UniqueActorPath: Equatable, Hashable {
 
     /// Underlying path representation, not attached to a specific Actor instance.
@@ -257,6 +257,49 @@ public extension ActorUID {
     static func random() -> ActorUID {
         return ActorUID(Int.random(in: 1 ... .max))
     }
+}
+
+// MARK: Addresses
+
+// TODO reconsider calling paths addresses and this being authority etc...
+// TODO: "ActorAddress" could be the core concept... what would be the node addresses? 
+public struct NodeAddress: Hashable {
+    let `protocol`: String = "sact" // TODO open up
+    var systemName: String
+    var host: String
+    var port: UInt
+}
+extension NodeAddress: CustomStringConvertible {
+    public var description: String {
+        return "\(self.`protocol`)://\(self.systemName)@\(self.host):\(self.port)"
+    }
+}
+
+public struct UniqueNodeAddress: Hashable {
+    let address: NodeAddress
+    let uid: NodeUID // TODO ponder exact value here here
+}
+extension UniqueNodeAddress: CustomStringConvertible {
+    public var description: String {
+        return "\(self.address)#\(self.uid.value)"
+    }
+}
+
+public struct NodeUID: Hashable {
+    let value: UInt32 // TODO redesign / reconsider exact size
+
+    public init(_ value: UInt32) {
+        self.value = value
+    }
+}
+
+public extension NodeUID {
+    static func random() -> NodeUID {
+        return NodeUID(UInt32.random(in: 1 ... .max))
+    }
+}
+
+extension NodeUID: Equatable {
 }
 
 // MARK: Path errors

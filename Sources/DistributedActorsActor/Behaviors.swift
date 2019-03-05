@@ -318,9 +318,11 @@ public extension Behavior {
         case .same:                     return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
         case .setup:                    return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.", file: file, line: line)
         case .suspend:                  return FIXME("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
-        case .failed(let error):        return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
+        case .failed(let error): return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
         case .stopped:                  return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.", file: file, line: line)
-        case .suspended:                return FIXME("No message should ever be delivered to a .suspended behavior! This is a mailbox bug.", file: file, line: line)
+        case .suspended:
+            context.log.error("No message should ever be delivered to a .suspended behavior! This is a mailbox bug. \(message)")
+            return FIXME("No message should ever be delivered to a .suspended behavior! This is a mailbox bug.", file: file, line: line)
         }
     }
 

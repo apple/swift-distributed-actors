@@ -1,0 +1,156 @@
+
+== Internals ✗
+
+=== Actors ✗
+
+==== Mailbox
+
+==== Supervision
+
+
+==== Suspension / future plans
+
+
+=== Wire Protocol
+
+#These are simplified WIP things while we work things out and then propose a proper protocol format.#
+
+
+==== Handshake
+
+Swift Distributed Actors is P2P, and other than connection establishment "server" or "client" does not really matter.
+For purpose of establishing a handshake however we will use the terms "client-side" and "server-side",
+even though after the nodes have an association in place, they are equally able to perform all actions
+and the connection is used in full-duplex mode.
+
+Handshake, initiated by "client-side"
+
+"Client-side"
+- allocate WIP association (not ready yet)
+- store handshake in progress
+- send `HandshakeOffer`
+  - contains this nodes `UniqueNodeAddress`,
+  - and `Address` of target
+
+"Server-side"
+- accept connection and receive `HandshakeOffer`
+- validate and allocate `Association`, the association is complete on this end already
+  - an Association is "ready" when it has both `UniqueNodeAddresses`
+    - TODO: Assign an UID to an association as well to easier identify it, when we send data in envelopes
+- send back `HandshakeAccept` with
+  - own `UniqueNodeAddress`
+
+
+Data formats:
+
+We currently do:
+
+```
+  0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |    Handshake Magic (0x5AC7)   |       Payload length          |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ | SLAP THEM PROTOBUFFS HERE                                     |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+ Contains:
+   - unique address of origin
+   - address of destination
+```
+
+#TODO: we may want to have handshake be inside envelope? not sure yet#
+
+#I would like to be able for the initial message to already contain data. It would also allow us
+to perform "quick sends" where we just send Handshake with data, and mark that this is already last message;
+This would work well and nice on QUIC, tho on TCP we don't care. It would enable connectionless "just send this one thing" more nicely.#
+
+```
+  0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |    Handshake Magic (0x5AC7)   |           Version             |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ | Flags         |          Total Payload Length                 |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ | Capability requirements                                       |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ | Payload (SysMsg, Msg; OR just Msg)                            |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   - Flags:
+     - S - System Message present
+     - M - Metadata present
+
+ Contains:
+   - unique address of origin
+   - address of destination
+```
+
+Reply with
+
+```
+ Contains:
+   - unique address of original origin
+   - unique address of self
+```
+
+Thanks to replying with unique address origin can now create an association.
+
+
+[plantuml]
+....
+title Successful association
+hide footbox
+participant "Local" as L
+participant "Remote" as R
+
+
+L -[#blue]>  R: HandshakeOffer(version,selfUniqueAddress,opts)
+R -[#blue]-> L: HandshakeAccept(uniqueAddress, selfUniqueAddress, selfVersion, acceptedOpts)
+activate L
+deactivate L
+....
+
+[plantuml]
+....
+title Rejected association
+hide footbox
+participant "Local" as L
+participant "Remote" as R
+
+L -[#blue]> R: HandshakeOffer(version,selfUniqueAddress,opts)
+R -[#red]-x L: HandshakeReject
+....
+
+==== Envelope
+
+```
+  0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |S| Flags       | Lane ID                                       |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ ( [IF S == 1] Sequence number of system message                 )
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |         SerializerId          |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+
+=== In memory core concepts
+
+==== Association
+
+Established between two nodes.
+
+Only "associated nodes" may talk to one another.
+
+Rules:
+
+  - don't talk to strangers
+    * nodes MUST handshake before exchanging any messages
+
+=== [Kernel|Association]State.Control
+
+Control objects allow performing actual actions onto the network layer.

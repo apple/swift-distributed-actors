@@ -25,6 +25,8 @@ public protocol AsyncResult {
     /// `AsyncResult`, or a `TimeoutError` when it is not completed within
     /// the specified timeout.
     func withTimeout(after timeout: TimeAmount) -> Self
+
+    // TODO func withAlreadyHasTimeout(really: .yes.really) j/k syntax but feature would be good
 }
 
 extension EventLoopFuture: AsyncResult {

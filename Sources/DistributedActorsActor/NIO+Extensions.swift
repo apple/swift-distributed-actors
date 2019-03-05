@@ -14,10 +14,17 @@
 
 import NIO
 
+// MARK: ByteBuffer extensions
+
 internal extension ByteBuffer {
 
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
-    internal func formatHexDump(maxBytes: Int = 80, perLine: Int = 16) -> String {
+    internal var formatHexDump: String {
+        return self.formatHexDump()
+    }
+    
+    /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
+    internal func formatHexDump(maxBytes: Int = 80, bytesPerLine: Int = 16) -> String {
         let padding = String(repeating: " ", count: 4)
         func asHex(_ byte: UInt8) -> String {
             let s = String(byte, radix: 16, uppercase: true)
@@ -47,8 +54,8 @@ internal extension ByteBuffer {
                 }
                 return "\(asHex(b))\(space)"
             }.joined(separator: "")
-            hex += String(repeating: " ", count: 48)
-            hex = String(hex.prefix(48))
+            hex += String(repeating: " ", count: bytesPerLine * 3)
+            hex = String(hex.prefix(bytesPerLine * 3))
 
             let ascii =  bs.map { asASCII($0) }.joined(separator: "")
             return "\(padding)\(hex)  | \(ascii)"
@@ -58,8 +65,8 @@ internal extension ByteBuffer {
 
             var bs = bytes[...]
             while !bs.isEmpty {
-                let group = bs.prefix(perLine)
-                bs = bs.dropFirst(perLine)
+                let group = bs.prefix(bytesPerLine)
+                bs = bs.dropFirst(bytesPerLine)
 
                 res.append(formatLine(group))
             }
@@ -78,5 +85,22 @@ internal extension ByteBuffer {
 
         return "ByteBuffer(readableBytes: \(self.readableBytes)\(limitMessage)), formatHexDump:\n" +
             "\(formatBytes(bytes: buf.readBytes(length: buf.readableBytes)!))" + suffix
+    }
+}
+
+// MARK: ELF extensions
+
+extension EventLoopFuture {
+    /// Useful for "println debugging" ¯\_(ツ)_/¯
+    @discardableResult
+    internal func pprintResults(hint: String, file: StaticString = #file, line: UInt = #line, function: StaticString = #function) -> Self {
+        self.whenFailure { err in
+            pprint("[\(hint)] ELF @ \(function) failed: \(err)", file: file, line: line)
+        }
+        self.whenSuccess { r in
+            pprint("[\(hint)] ELF @ \(function) success: \(r)", file: file, line: line)
+        }
+        
+        return self
     }
 }

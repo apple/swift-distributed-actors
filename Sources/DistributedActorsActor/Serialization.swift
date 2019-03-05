@@ -175,6 +175,8 @@ public struct Serialization {
     }
 }
 
+/// Marker protocol used to avoid serialization checks as configured by the `serializeAllMessages` setting.
+/// // TODO more clarity about the setting and add docs about it
 public protocol NoSerializationVerification {}
 
 public extension CodingUserInfoKey {
