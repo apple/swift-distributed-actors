@@ -462,7 +462,7 @@ extension KernelState {
 
 extension ActorSystem {
 
-    var remoting: ActorRef<RemotingKernel.Messages> { // TODO only the "external ones"
+    var remoting: ActorRef<RemotingKernel.Messages> {
         // return self.RemotingKernel?.adapt(with: <#T##@escaping (From) -> Messages##@escaping (From) -> RemotingKernel.Messages#>) // TODO the adapting for external only protocol etc
         return self._remoting ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self, with: { m in DeadLetter(m) })
     }
