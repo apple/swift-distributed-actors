@@ -62,7 +62,7 @@ public enum Signals {
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
-        let cause: Error?
+        public let cause: Error?
 
         public init(path: UniqueActorPath, error: Error?) {
             self.cause = error

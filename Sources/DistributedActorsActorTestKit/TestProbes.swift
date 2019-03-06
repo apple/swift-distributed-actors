@@ -75,7 +75,9 @@ final public class ActorTestProbe<Message> {
                                  signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
                                  terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { (context, message) in
-            let cell = context.myself._downcastUnsafe.cell
+            guard let cell = context.myself._downcastUnsafe.cell else {
+                return .failed(error: TestProbeInitializationError.failedToObtainUnderlyingCell)
+            }
 
             switch message {
             case let .realMessage(msg):
@@ -86,11 +88,11 @@ final public class ActorTestProbe<Message> {
 
                 // probe commands:
             case let .watchCommand(who):
-                cell?.deathWatch.watch(watchee: who._exposeBox(), myself: context.myself)
+                cell.deathWatch.watch(watchee: who._exposeBox(), myself: context.myself, parent: cell._parent)
                 return .same
 
             case let .unwatchCommand(who):
-                cell?.deathWatch.unwatch(watchee: who._exposeBox(), myself: context.myself)
+                cell.deathWatch.unwatch(watchee: who._exposeBox(), myself: context.myself)
                 return .same
 
             case .stopCommand:
@@ -108,6 +110,9 @@ final public class ActorTestProbe<Message> {
         }
     }
 
+    enum TestProbeInitializationError: Error {
+        case failedToObtainUnderlyingCell
+    }
     enum ExpectationError: Error {
         case noMessagesInQueue
         case notEnoughMessagesInQueue(actualCount: Int, expectedCount: Int)

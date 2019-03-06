@@ -115,10 +115,9 @@ class ParentChildActorTests: XCTestCase {
 
     func childBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ChildProtocol> {
         return .setup { context in
-            context.log.info("Hello...")
+            context.log.debug("Hello...")
 
             return .receiveMessage { message in
-                context.log.info("got: \(message)")
                 switch message {
                 case let .howAreYou(replyTo):
                     replyTo.tell("Pretty good, I'm \(context.path)")
@@ -357,6 +356,59 @@ class ParentChildActorTests: XCTestCase {
 
         secondChild.path.path.shouldEqual(child.path.path)
         secondChild.path.uid.shouldNotEqual(child.path.uid)
+    }
+
+    func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
+        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let pChild: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let childBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
+
+        let parentBehavior = Behavior<String>.receive { (context, msg) in
+            switch msg {
+            case "spawn":
+                let childRef = try context.spawnWatched(childBehavior, name: "child")
+                p.tell(.spawned(child: childRef))
+                return .same
+            default:
+                return .ignore
+            }
+        }.receiveSignal { context, signal in
+            switch signal {
+            case let terminated as Signals.ChildTerminated:
+                // only this should match
+                p.tell(.childStopped(name: "child-term:\(terminated.path.name)"))
+            case let terminated as Signals.Terminated:
+                // no second "generic" terminated should be sent (though one could match for just Terminated)
+                p.tell(.childStopped(name: "term:\(terminated.path.name)"))
+            default:
+                return .ignore
+            }
+            return .same
+        }
+
+        let parent: ActorRef<String> = try system.spawn(parentBehavior, name: "watchingParent")
+
+        p.watch(parent)
+        parent.tell("spawn")
+
+        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        p.watch(child)
+
+        child.tell(.howAreYou(replyTo: pChild.ref))
+        try pChild.expectMessage() // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
+
+        child.tell(.throwWhoops)
+
+        // since the parent watched the child, it will also terminate
+        try p.expectTerminated(child)
+        switch try p.expectMessage() {
+        case .childStopped(let name):
+            name.shouldEqual("child-term:child")
+        default:
+            throw p.error()
+        }
+        try p.expectNoMessage(for: .milliseconds(100)) // no second terminated should happen
     }
 
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
