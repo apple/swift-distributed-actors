@@ -32,6 +32,7 @@ extension ParentChildActorTests {
                 ("test_contextStop_shouldThrowIfRefIsMyself", test_contextStop_shouldThrowIfRefIsMyself),
                 ("test_spawnStopSpawn_shouldWorkWithSameChildName", test_spawnStopSpawn_shouldWorkWithSameChildName),
                 ("test_throwOfSpawnedChild_shouldNotCauseParentToTerminate", test_throwOfSpawnedChild_shouldNotCauseParentToTerminate),
+                ("test_watchedChild_shouldProduceInSingleTerminatedSignal", test_watchedChild_shouldProduceInSingleTerminatedSignal),
                 ("test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate", test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate),
                 ("test_spawnWatched_shouldSpawnAWatchedActor", test_spawnWatched_shouldSpawnAWatchedActor),
                 ("test_stopParent_shouldWaitForChildrenToStop", test_stopParent_shouldWaitForChildrenToStop),

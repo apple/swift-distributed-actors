@@ -407,9 +407,15 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
         self.timers.cancelAll()
 
-        // TODO avoid notifying parent two times (!)
-        self.notifyWatchersWeDied()
+        // notifying parent and other watchers has no ordering guarantees with regards to reception,
+        // however let's first notify the parent and then all other watchers (even if parent did watch this child
+        // we do not need to send it another terminated message, the terminatedChild is enough).
+        //
+        // note that even though the parent can (and often does) `watch(child)`, we filter it out from
+        // our `watchedBy` set, since otherwise we would have to filter it out when sending the terminated back.
+        // correctness is ensured though, since the parent always receives the `ChildTerminated`.
         self.notifyParentWeDied()
+        self.notifyWatchersWeDied()
         // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
 
         do {
@@ -463,7 +469,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     // MARK: Death Watch
 
     override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
+        self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself, parent: self._parent)
         return watchee
     }
 
@@ -501,7 +507,7 @@ extension ActorCell {
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warning("Actor not known yet [\(terminated)] received for it. Ignoring.")
+            log.warning("Actor not known, but [\(terminated)] received for it. Ignoring.")
             return
         }
 
