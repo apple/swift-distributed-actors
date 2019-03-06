@@ -22,7 +22,7 @@ import Dispatch
 //
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
-@usableFromInline internal struct DeathWatch<Message> { // TODO: make a protocol
+@usableFromInline internal struct DeathWatch<Message> { // TODO: likely to change protocol
 
     private var watching = Set<BoxedHashableAnyReceivesSystemMessages>()
     private var watchedBy = Set<BoxedHashableAnyReceivesSystemMessages>()
@@ -30,15 +30,24 @@ import Dispatch
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>) {
+    public mutating func watch(watchee: BoxedHashableAnyReceivesSystemMessages, myself watcher: ActorRef<Message>, parent: AnyReceivesSystemMessages) {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
         guard watchee.path != watcher.path else {
-            return ()
+            return
+        }
+
+        guard watchee.path != parent.path else {
+            // No need to store the parent in watchedBy, since we ALWAYS let the parent know about termination
+            // and do so by sending an ChildTerminated, which is a sub class of Terminated.
+            //
+            // What matters more is that the parent stores the child in its own `watching` -- since thanks to that
+            // it knows if it has to execute an DeathPact when the child terminates.
+            return
         }
 
         if self.isWatching(path: watchee.path) {
-            return ()
+            return
         }
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: watcher._boxAnyReceivesSystemMessages()))
@@ -113,8 +122,9 @@ import Dispatch
     // MARK: termination tasks
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
-        traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(watchedBy)...")
-        for watcher in watchedBy {
+        traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
+
+        for watcher in self.watchedBy {
             traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died...")
             watcher.sendSystemMessage(.terminated(ref: BoxedHashableAnyAddressableActorRef(myself), existenceConfirmed: true))
         }

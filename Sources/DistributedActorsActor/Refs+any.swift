@@ -128,7 +128,7 @@ extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDe
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
 @usableFromInline
 internal protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
-    /* internal */ func sendSystemMessage(_ message: SystemMessage)
+    func sendSystemMessage(_ message: SystemMessage)
 
     var path: UniqueActorPath { get }
     func asHashable() -> AnyHashable
