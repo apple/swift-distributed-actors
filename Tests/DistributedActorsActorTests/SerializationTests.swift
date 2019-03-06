@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 //
-
 import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
@@ -49,7 +48,6 @@ class SerializationTests: XCTestCase {
     }
 
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
-
     func test_serialize_actorPath() throws {
         let path = try ActorPath(root: "user") / ActorPathSegment("hello")
         let encoded = try JSONEncoder().encode(path)
@@ -73,7 +71,6 @@ class SerializationTests: XCTestCase {
     }
 
     // MARK: Actor ref serialization and resolve
-
     func test_serialize_actorRef_inMessage() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
@@ -120,7 +117,6 @@ class SerializationTests: XCTestCase {
 //
 //        back.containedRef.tell("Hello") // SHOULD be a dead letter
 //    }
-
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         let err = shouldThrow {
             return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
@@ -135,7 +131,6 @@ class SerializationTests: XCTestCase {
     }
 
     // MARK: Serialized messages in actor communication, locally
-
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
@@ -158,31 +153,35 @@ class SerializationTests: XCTestCase {
     }
 
     func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
         }
 
         let testKit2 = ActorTestKit(s2)
-        let p = testKit2.spawnTestProbe(expecting: NotSerializable.self)
+        let p = testKit2.spawnTestProbe(expecting: String.self)
 
         let recipient: ActorRef<NotSerializable> = try s2.spawn(.ignore, name: "recipient")
 
-        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { context in
+        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { message in
+            p.tell("ok")
             recipient.tell(NotSerializable())
             return .same
         }, name: "expected-to-fault-due-to-serialization-check")
 
+        // the problem seems to be we didnt process watch yet but we FAULT
+        // so the watch remains not processed?
         p.watch(senderOfNotSerializableMessage)
-        senderOfNotSerializableMessage.tell("send it now!")
+        senderOfNotSerializableMessage.tell("send not serializable message now!")
+        try p.expectMessage("ok")
 
         try p.expectTerminated(senderOfNotSerializableMessage)
         s2.terminate()
+        #endif
     }
-
 }
 
 // MARK: Example types for serialization tests
-
 protocol Top: Hashable, Codable {
     var path: ActorPath { get }
 }
