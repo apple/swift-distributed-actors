@@ -30,6 +30,7 @@ extension SerializationPipelineTests {
                 ("test_serializationPipeline_shouldDeserializeMessagesInDefaultGroupOnCallingThread", test_serializationPipeline_shouldDeserializeMessagesInDefaultGroupOnCallingThread),
                 ("test_serializationPipeline_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPipeline_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence),
                 ("test_serializationPipeline_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPipeline_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel),
+                ("test_serializationPipeline_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools", test_serializationPipeline_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools),
            ]
    }
 }
