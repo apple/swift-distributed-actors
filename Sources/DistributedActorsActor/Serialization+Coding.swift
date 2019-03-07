@@ -18,12 +18,22 @@ import NIOFoundationCompat
 import Foundation // for Codable
 
 extension Decoder {
+
+    /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
+    /// such as resolving an actor ref from its serialized form.
+    ///
+    /// This context is only available when the decoder is invoked from the context of `Swift Distributed ActorsActor.Serialization`.
     public var actorSerializationContext: ActorSerializationContext? {
         return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
 }
 
 extension Encoder {
+
+    /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
+    /// such as accessing additional system information which may be used while serializing actor references etc.
+    ///
+    /// This context is only available when the decoder is invoked from the context of `Swift Distributed ActorsActor.Serialization`.
     public var actorSerializationContext: ActorSerializationContext? {
         return self.userInfo[.actorSerializationContext] as? ActorSerializationContext
     }
@@ -31,6 +41,7 @@ extension Encoder {
 
 enum Swift Distributed ActorsCodingError: Error {
 
+    case failedToLocateWellTypedDeadLettersFor(AnyMetaType) // TODO: , available: [String])
 }
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -74,12 +85,10 @@ extension AddressableActorRef {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        switch serializationContext.resolveActorRef(path: path) {
-        case .some(let resolved):
+        if let resolved = serializationContext.resolveActorRef(path: path) {
             self = resolved as! Self // this is safe, we know Self IS-A AddressableActorRef since any ActorRef is
-        case .none:
-            // FIXME: should be one that points to dead letters.
-            fatalError("Attempted to resolve actor which is not alive. TODO: This should resolve as DeadLetters.") // FIXME: fallback resolution to deadLetters
+        } else {
+            self = try serializationContext.typedDeadLettersRef(forType: Self.self)
         }
     }
 

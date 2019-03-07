@@ -28,6 +28,7 @@ extension SerializationTests {
                 ("test_serialize_actorPath", test_serialize_actorPath),
                 ("test_serialize_uniqueActorPath", test_serialize_uniqueActorPath),
                 ("test_serialize_actorRef_inMessage", test_serialize_actorRef_inMessage),
+                ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters),
                 ("test_serialize_shouldNotSerializeNotRegisteredType", test_serialize_shouldNotSerializeNotRegisteredType),
                 ("test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string", test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string),
                 ("test_verifySerializable_shouldFault_forNotSerializableMessage", test_verifySerializable_shouldFault_forNotSerializableMessage),
