@@ -45,7 +45,7 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
             let handled = specialHandle(systemMessage)
             if !handled {
                 // TODO maybe dont log them...?
-                log.warning("[deadLetters] Dead letter encountered. System message [\(deadLetter.message):\(type(of: deadLetter.message))] was not delivered.")
+                log.warning("[deadLetters] Dead letter encountered. System message [\(deadLetter.message)]:\(type(of: deadLetter.message)) was not delivered.")
             }
         } else {
             // TODO more metadata (from Envelope)
@@ -56,7 +56,8 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
     private func specialHandle(_ message: SystemMessage) -> Bool {
         switch message {
         case .tombstone:
-            traceLog_Mailbox("Tombstone arrived in dead letters. TODO: make sure these dont happen")
+            // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
+            traceLog_Mailbox(self._path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
             return true // TODO would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case let .watch(watchee, watcher):
             // if a watch message arrived here it either:

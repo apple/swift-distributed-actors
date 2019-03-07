@@ -20,7 +20,7 @@ import NIO
 
 class BehaviorTests: XCTestCase {
 
-    let system = ActorSystem("ActorSystemTests")
+    let system = ActorSystem("BehaviorTests")
     let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     lazy var testKit = ActorTestKit(system)
 
@@ -305,10 +305,10 @@ class BehaviorTests: XCTestCase {
             return .stopped
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: "myselfStillValidAfterStopped")
         p.watch(ref)
 
-        ref.tell("test")
+        ref.tell("test") // this does nothing
         try p.expectTerminated(ref)
         switch try p.expectMessage() {
         case .context(let closure):
@@ -368,7 +368,7 @@ class BehaviorTests: XCTestCase {
             with: ProbeInterceptor(probe: p)
         )
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: "suspender")
 
         ref.tell("something") // this message causes the actor the suspend
 
