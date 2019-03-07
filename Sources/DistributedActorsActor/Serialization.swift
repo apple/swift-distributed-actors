@@ -104,10 +104,11 @@ public struct Serialization {
 
         default:
             guard let serializerId = self.serializerIdFor(type: M.self) else {
-                pprint("FAILING; Available serializers: \(self.serializers)")
+                self.debugPrintSerializerTable()
                 throw SerializationError.noSerializerRegisteredFor(type: M.self)
             }
             guard let serializer = self.serializers[serializerId] else {
+                self.debugPrintSerializerTable()
                 pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerRegisteredFor(type: M.self)
             }
