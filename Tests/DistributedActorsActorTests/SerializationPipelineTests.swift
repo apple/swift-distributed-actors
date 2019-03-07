@@ -305,4 +305,41 @@ class SerializationPipelineTests: XCTestCase {
         Test1.deserializerLock.unlock()
         try p.expectMessage("p1")
     }
+
+    func test_serializationPipeline_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
+        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1]]), serialization: system.serialization)
+        defer { pipeline.shutdown() }
+
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        // We are locking here to validate that the objects are being serialized
+        // on different, separate threads, than the objects being deserialized
+        let test1 = Test1()
+        test1.lock.lock()
+        let promise1: EventLoopPromise<ByteBuffer> = el.newPromise()
+        promise1.futureResult.whenSuccess { _ in
+            p.tell("p1")
+        }
+        Test1.deserializerLock.lock()
+        let json = "{}"
+
+        var buffer = allocator.buffer(capacity: json.count)
+        buffer.write(string: json)
+        let promise2: EventLoopPromise<Test1> = el.newPromise()
+        promise2.futureResult.whenSuccess { _ in
+            p.tell("p2")
+        }
+        promise1.futureResult.whenFailure { print("\($0)") }
+
+        pipeline.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        pipeline.deserialize(as: Test1.self, bytes: buffer, recepientPath: actorPath1, promise: promise2)
+
+        try p.expectNoMessage(for: .milliseconds(20))
+
+        Test1.deserializerLock.unlock()
+        try p.expectMessage("p2")
+
+        test1.lock.unlock()
+        try p.expectMessage("p1")
+    }
 }
