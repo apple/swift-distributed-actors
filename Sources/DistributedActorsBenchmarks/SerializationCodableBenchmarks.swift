@@ -63,7 +63,7 @@ let message_small = SmallMessage(number: 1337, name: "kappa")
 
 func bench_codable_roundTrip_message_small(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_small)
-    let _ = try! system.serialization.deserialize(to: SmallMessage.self, bytes: bytes)
+    let _ = try! system.serialization.deserialize(as: SmallMessage.self, bytes: bytes)
 }
 
 // -------
@@ -82,7 +82,7 @@ private func setUpActorRef() {
 
 func bench_codable_roundTrip_message_withRef(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_withRef!)
-    let _ = try! system.serialization.deserialize(to: MessageWithRef.self, bytes: bytes)
+    let _ = try! system.serialization.deserialize(as: MessageWithRef.self, bytes: bytes)
 }
 
 // -------
@@ -138,5 +138,5 @@ let message_medium = MediumMessage(
 
 func bench_codable_roundTrip_message_medium(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_medium)
-    let _ = try! system.serialization.deserialize(to: MediumMessage.self, bytes: bytes)
+    let _ = try! system.serialization.deserialize(as: MediumMessage.self, bytes: bytes)
 }

@@ -119,7 +119,7 @@ public struct Serialization {
         return bytes
     }
 
-    public func deserialize<M>(to type: M.Type, bytes: ByteBuffer) throws -> M {
+    public func deserialize<M>(as type: M.Type, bytes: ByteBuffer) throws -> M {
         if type is SystemMessage.Type {
             let systemMessage = try deserializeSystemMessage(bytes: bytes)
             return systemMessage as! M // guaranteed that M is SystemMessage
@@ -150,7 +150,7 @@ public struct Serialization {
             return // skip
         default:
             let bytes = try self.serialize(message: message)
-            let _: M = try self.deserialize(to: M.self, bytes: bytes)
+            let _: M = try self.deserialize(as: M.self, bytes: bytes)
             pprint("PASSED serialization check, type: [\(type(of: message))]")
             // checking if the deserialized is equal to the passed in is a bit tricky,
             // so we only check if the round trip invocation was possible at all or not.
