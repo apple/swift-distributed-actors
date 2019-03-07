@@ -68,7 +68,7 @@ final class Mailbox<Message> {
     private let serializeAllMessages: Bool
 
     init(cell: ActorCell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
-        self.mailbox = cmailbox_create(capacity, maxRunLength);
+        self.mailbox = cmailbox_create(capacity, maxRunLength)
         self.cell = cell
         self.path = cell.path
         self.deadLetters = cell.system.deadLetters

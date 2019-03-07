@@ -29,6 +29,14 @@ public extension AddressableActorRef {
     }
 }
 
+internal extension AnyAddressableActorRef {
+
+    /// INTERNAL UNSAFE API: unwraps the box, must only be called on AnyAddressableActorRef where it is KNOWN guaranteed that it is a box
+    func _exposeBox() -> BoxedHashableAnyAddressableActorRef {
+        return self as! BoxedHashableAnyAddressableActorRef
+    }
+}
+
 extension ActorRef: AnyAddressableActorRef {
     public func asHashable() -> AnyHashable {
         return AnyHashable(self)
@@ -74,6 +82,11 @@ internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableAct
     @usableFromInline
     func asHashable() -> AnyHashable {
         return self.anyRef.asHashable()
+    }
+    
+    @usableFromInline
+    func _exposeUnderlying() -> AnyAddressableActorRef {
+        return anyRef
     }
 }
 
@@ -211,15 +224,17 @@ internal extension ActorRef {
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
     @usableFromInline
     func _boxAnyAddressableActorRef() -> AnyAddressableActorRef {
-        return BoxedHashableAnyAddressableActorRef(ref: self._downcastUnsafe)
+        return BoxedHashableAnyAddressableActorRef(ref: self)
     }
 
     /// INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
     var _downcastUnsafe: ActorRefWithCell<Message> {
         switch self {
-        case let withCell as ActorRefWithCell<Message>: return withCell
-        default: fatalError("Illegal downcast attempt from \(self) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+        case let withCell as ActorRefWithCell<Message>:
+            return withCell
+        default:
+            fatalError("Illegal downcast attempt from \(self) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
         }
     }
 }
