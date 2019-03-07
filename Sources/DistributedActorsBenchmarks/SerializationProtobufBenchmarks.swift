@@ -113,7 +113,7 @@ var protoSmallMessage = ProtoSmallMessage()
 
 func bench_protobuf_roundTrip_message_small(n: Int) {
     let bytes = try! system.serialization.serialize(message: protoSmallMessage)
-    _ = try! system.serialization.deserialize(to: ProtoSmallMessage.self, bytes: bytes)
+    _ = try! system.serialization.deserialize(as: ProtoSmallMessage.self, bytes: bytes)
 }
 
 // -------
@@ -122,5 +122,5 @@ var protoMediumMessage = ProtoMediumMessage()
 
 func bench_protobuf_roundTrip_message_medium(n: Int) {
     let bytes = try! system.serialization.serialize(message: protoMediumMessage)
-    _ = try! system.serialization.deserialize(to: ProtoMediumMessage.self, bytes: bytes)
+    _ = try! system.serialization.deserialize(as: ProtoMediumMessage.self, bytes: bytes)
 }

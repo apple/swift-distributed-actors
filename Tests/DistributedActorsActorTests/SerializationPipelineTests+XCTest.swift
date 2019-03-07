@@ -24,10 +24,12 @@ extension SerializationPipelineTests {
 
    static var allTests : [(String, (SerializationPipelineTests) -> () throws -> Void)] {
       return [
-                ("test_serializationPipeline_shouldSerializeMessagesForSameRecepientInSequence", test_serializationPipeline_shouldSerializeMessagesForSameRecepientInSequence),
-                ("test_serializationPipeline_shouldSerializeMessagesForDifferentRecepientInParallel", test_serializationPipeline_shouldSerializeMessagesForDifferentRecepientInParallel),
-                ("test_serializationPipeline_shouldDeserializeMessagesForSameRecepientInSequence", test_serializationPipeline_shouldDeserializeMessagesForSameRecepientInSequence),
-                ("test_serializationPipeline_shoulDeserializeMessagesForDifferentRecepientInParallel", test_serializationPipeline_shoulDeserializeMessagesForDifferentRecepientInParallel),
+                ("test_serializationPipeline_shouldSerializeMessagesInDefaultGroupOnCallingThread", test_serializationPipeline_shouldSerializeMessagesInDefaultGroupOnCallingThread),
+                ("test_serializationPipeline_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPipeline_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence),
+                ("test_serializationPipeline_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPipeline_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel),
+                ("test_serializationPipeline_shouldDeserializeMessagesInDefaultGroupOnCallingThread", test_serializationPipeline_shouldDeserializeMessagesInDefaultGroupOnCallingThread),
+                ("test_serializationPipeline_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPipeline_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence),
+                ("test_serializationPipeline_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPipeline_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel),
            ]
    }
 }
