@@ -98,25 +98,25 @@ class SerializationTests: XCTestCase {
         try p.expectMessage("got:hello")
     }
 
-    // FIXME: Implement deserializing into deadLetters: https://github.com/apple/swift-distributed-actors/issues/321
-//    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters() throws {
-//        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
-//        let hasRef = HasStringRef(containedRef: stoppedRef)
-//
-//        pinfo("Before serialize: \(hasRef)")
-//
-//        let bytes = try shouldNotThrow {
-//            return try system.serialization.serialize(message: hasRef)
-//        }
-//        pinfo("serialized ref: \(bytes.stringDebugDescription())")
-//
-//        let back: HasStringRef = try shouldNotThrow {
-//            return try system.serialization.deserialize(to: HasStringRef.self, bytes: bytes)
-//        }
-//        pinfo("Deserialized again: \(back)")
-//
-//        back.containedRef.tell("Hello") // SHOULD be a dead letter
-//    }
+    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters() throws {
+        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
+        let hasRef = HasStringRef(containedRef: stoppedRef)
+
+        pinfo("Before serialize: \(hasRef)")
+
+        let bytes = try shouldNotThrow {
+            return try system.serialization.serialize(message: hasRef)
+        }
+        pinfo("serialized ref: \(bytes.stringDebugDescription())")
+
+        let back: HasStringRef = try shouldNotThrow {
+            return try system.serialization.deserialize(to: HasStringRef.self, bytes: bytes)
+        }
+        pinfo("Deserialized again: \(back)")
+
+        back.containedRef.tell("Hello") // SHOULD be a dead letter
+    }
+
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         let err = shouldThrow {
             return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))

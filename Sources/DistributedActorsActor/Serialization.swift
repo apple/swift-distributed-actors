@@ -25,12 +25,22 @@ public struct Serialization {
     public static let ReservedSerializerIds = 0...1000 // arbitrary range, we definitely need more than just 100 though, since we have to register every single type
 
     public typealias SerializerId = Int
-    typealias MetaTypeKey = AnyHashable
+    internal typealias MetaTypeKey = AnyHashable
 
     // TODO we may be forced to code-gen these?
     // TODO avoid 2 hops, we can do it in one, and enforce a serializer has an Id
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
+
+    /// Since deserializing a "dead" actor reference must yield a `deadLetters` reference, and be well-typed at the same time
+    /// to which type of `ActorRef<T>` was being expected to be deserialized...
+    /// We must be able to look up well-typed dead letter references by their `ActorRef<T>` object identifier.
+    /// The problem is that we need to provide this early?????????
+    ///
+    /// ASSUMPTION: If you cannot deserialize the `T` of `ActorRef<T>` (i.e. no serializer is registered),
+    /// you will also not be able to deserialize `ActorRef<T>` itself -- since we have no dead letters for it.
+    private var typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef] = [:]
+    private let deadLetters: ActorRef<DeadLetter>
 
     private let allocator = ByteBufferAllocator()
 
@@ -39,14 +49,17 @@ public struct Serialization {
     @usableFromInline internal let stringSerializer: StringSerializer
 
     internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: ActorTreeTraversable) { // TODO should take the top level actors
-        let serializationContext = ActorSerializationContext(deadLetters: deadLetters, traversableSystem: traversable)
 
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
 
         // register all
+        self.deadLetters = deadLetters
         self.registerSystemSerializer(systemMessageSerializer, for: SystemMessage.self, underId: 1)
         self.registerSystemSerializer(stringSerializer, for: String.self, underId: 2)
+
+        // FIXME DAMN but we also need to take into account the ones for user registered types
+        let serializationContext = ActorSerializationContext(typedDeadLetterRefs: typedDeadLetterRefs, traversableSystem: traversable)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -64,6 +77,9 @@ public struct Serialization {
         assert(Serialization.ReservedSerializerIds.contains(id), "System serializers should be defined within their dedicated range. Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!")
         self.serializerIds[MetaType(type).asHashable()] = id
         self.serializers[id] = BoxedAnySerializer(serializer)
+        let typedDeadLetterRef: ActorRef<T> = self.deadLetters.adapt(from: type, with: { DeadLetter($0) })
+        pprint("typedDeadLetterRef = \(typedDeadLetterRef)")
+        self.typedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = typedDeadLetterRef._boxAnyAddressableActorRef()
     }
 
     /// Register serializer under specified identifier.
@@ -193,20 +209,55 @@ public extension CodingUserInfoKey {
 
 /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
 public struct ActorSerializationContext {
+    typealias MetaTypeKey = Serialization.MetaTypeKey
 
-    let deadLetters: ActorRef<DeadLetter>
-    let traversable: ActorTreeTraversable
+    private let typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef]
+    private let traversable: ActorTreeTraversable
 
-    internal init(deadLetters: ActorRef<DeadLetter>, traversableSystem: ActorTreeTraversable) {
-        self.deadLetters = deadLetters
+    internal init(typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef], traversableSystem: ActorTreeTraversable) {
+        self.typedDeadLetterRefs = typedDeadLetterRefs
         self.traversable = traversableSystem
     }
 
+    /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
+    /// The located actor is the _exact_ one as identified by the unique path (i.e. matching `path` and `uid`).
+    ///
+    /// If a "new" actor was started on the same `path`, its `uid` would be different, and thus it would not resolve using this method.
+    /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
+    ///
+    /// - Returns: the erased `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
     func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
         var context = ResolveContext()
         context.selectorSegments = path.segments[...]
         let resolved = self.traversable._resolve(context: context, uid: path.uid)
         return resolved
+    }
+
+    /// Fetches from registered typed dead letter references the appropriate `deadLetter` adapter ref,
+    /// which converts passed in `ActorRef<T>`'s `T` messages into `DeadLetter(T)`, allowing the returned value
+    /// to be safely cas to `ActorRef<T>` and used to pipe messages to the current systems' dead letters.
+    ///
+    /// Note that the returned actor's path will be the same any other dead letters reference: `/system/deadLetters`.
+    ///
+    /// - Returns: an `ActorRef` (adapter) of the type `ActorRef<T>` (same as passed in type), directing all messages
+    ///            to the systems' `deadLetters`.
+    /// - Faults: when passed in type is NOT an `ActorRef`, sadly this can not be verified statically in an useful way,
+    ///           since the entire intent of this API is to be used within `Codable` or similar infrastructure, where the
+    ///           type would most often be `Self` thus inspecting it by the user manually does not help much. // TODO is this really true? hm hm hm
+    /// - Throws: It is not possible to statically
+    func typedDeadLettersRef<ActorRefType>(forType type: ActorRefType.Type) throws -> ActorRefType {
+        assert("\(type)".starts(with: "ActorRef<"), "Only ActorRef types may be used with this method; Passed in type was: [\(type)]")
+
+        let metaType = MetaType(ActorRefType.self)
+        if let boxedAnyAddressable = self.typedDeadLetterRefs[metaType.asHashable()] {
+            // What we have in our hands now is a boxed actor ref _adapter_ pointing to dead letters
+            // in order for to obtain the value that we can cast to an ActorRef, we must expose the boxed underlying value:
+            let unboxed = boxedAnyAddressable._exposeBox()
+            return unboxed._exposeUnderlying() as! ActorRefType // this value is guaranteed to be an `ActorRef<T>`, for the passed in `type`
+        } else {
+            // TODO carry available ones as well?
+            throw Swift Distributed ActorsCodingError.failedToLocateWellTypedDeadLettersFor(metaType)
+        }
     }
 }
 
