@@ -89,7 +89,7 @@ final class Mailbox<Message> {
             do {
                 shouldContinue = try ctx.pointee.exec(with: msgPtr!, runPhase: runPhase)
             } catch {
-                traceLog_Mailbox("Error while processing message! Was: \(error) TODO supervision decisions...")
+                traceLog_Mailbox(nil, "Error while processing message! Error was: [\(error)]:\(type(of: error))")
 
                 // TODO: supervision can decide to stop... we now stop always though
                 shouldContinue = ctx.pointee.fail(error: error) // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
@@ -103,15 +103,15 @@ final class Mailbox<Message> {
             do {
                 try ctx?.pointee.drop(with: msgPtr!)
             } catch {
-                traceLog_Mailbox("Error while dropping message! Was: \(error) TODO supervision decisions...")
+                traceLog_Mailbox(nil, "Error while dropping message! Was: \(error) TODO supervision decisions...")
             }
         }
         self.invokeSupervision = { ctxPtr, runPhase, failedMessagePtr in
-            traceLog_Mailbox("Actor has faulted, supervisor to decide course of action.")
+            traceLog_Mailbox(nil, "Actor has faulted, supervisor to decide course of action.")
 
             if let crashDetails = FaultHandling.getCrashDetails() {
                 if let ctx: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
-                    traceLog_Mailbox("Run failed in phase \(runPhase)")
+                    traceLog_Mailbox(nil, "Run failed in phase \(runPhase)")
 
                     let messageDescription = ctx.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!)
                     let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
@@ -126,13 +126,13 @@ final class Mailbox<Message> {
 
                     traceLog_Supervision("No crash details...")
                     // no crash details, so we can't invoke supervision; Let it Crash!
-                    return .failure
+                    return .failureTerminate
                 }
             } else {
 
                 traceLog_Supervision("No crash details...")
                 // no crash details, so we can't invoke supervision; Let it Crash!
-                return .failure
+                return .failureTerminate
             }
         }
 
@@ -152,15 +152,19 @@ final class Mailbox<Message> {
             let oldMetadata = Mailbox.populateLoggerMetadata(cell, from: envelope)
             defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
 
-            traceLog_Mailbox("INVOKE MSG: \(msg)")
             switch msg {
-            case .userMessage(let message): return try cell.interpretMessage(message: message)
-            case .closure(let f):           return try cell.interpretClosure(f)
+            case .userMessage(let message): 
+                traceLog_Mailbox(self.path, "INVOKE MSG: \(message)")
+                return try cell.interpretMessage(message: message)
+            case .closure(let f):
+                traceLog_Mailbox(self.path, "INVOKE CLOSURE: \(f)")
+                return try cell.interpretClosure(f)
             }
         }, fail: { [weak _cell = cell, path = self.path] error in
+            traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
             switch _cell {
             case .some(let cell): cell.fail(error: error)
-            case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
+            case .none:           pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { [weak _cell = cell] sysMsgPtr, runPhase in
@@ -171,9 +175,10 @@ final class Mailbox<Message> {
 
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
-            traceLog_Mailbox("INVOKE SYSTEM MSG: \(msg)")
+            traceLog_Mailbox(self.path, "INVOKE SYSTEM MSG: \(msg)")
             return try cell.interpretSystemMessage(message: msg)
         }, fail: { [weak _cell = cell, path = self.path] error in
+            traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
             switch _cell {
             case .some(let cell): cell.fail(error: error)
             case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
@@ -201,17 +206,17 @@ final class Mailbox<Message> {
             logger: cell.log,
             handleMessageFailure: { [weak _cell = cell] supervisionFailure, runPhase in
                 guard let cell = _cell else {
+                    /// if we cannot unwrap the cell it means it was closed and deallocated
                     return .close
                 }
 
-                traceLog_Supervision("INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
+                traceLog_Mailbox(self.path, "INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
                 let supervisionResultingBehavior: Behavior<Message>
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
                 cell.log.warning("Supervision: " +
-                    "Actor has FAULTED [\(String(describing: supervisionFailure))]:\(type(of: supervisionFailure)) " +
-                    "while interpreting \(runPhase), handling with \(cell.supervisor); " +
+                    "Actor has FAULTED while interpreting \(runPhase), handling with \(cell.supervisor); " +
                     "Failure details: \(String(reflecting: supervisionFailure))")
 
                 switch runPhase {
@@ -225,11 +230,11 @@ final class Mailbox<Message> {
                 switch supervisionResultingBehavior.underlying {
                 case .stopped:
                     // decision is to stop which is terminal, thus: Let it Crash!
-                    return .failure
+                    return .failureTerminate
                 case .failed: // TODO: Carry this error to supervision?
                     // decision is to fail, Let it Crash!
-                    return .failure
-                case _:
+                    return .failureTerminate
+                default:
                     // received new behavior, attempting restart:
                     do {
                         try cell.restart(behavior: supervisionResultingBehavior)
@@ -249,6 +254,10 @@ final class Mailbox<Message> {
     deinit {
         // TODO: maybe we can free the queues themselfes earlier, and only keep the status marker somehow?
         // TODO: if Closed we know we'll never allow an enqueue ever again after all // FIXME: hard to pull off with the CMailbox...
+        
+        // TODO: assert that no system messages in queue
+        
+        traceLog_Mailbox(self.path, "Mailbox deinit")
         cmailbox_destroy(mailbox)
     }
 
@@ -269,63 +278,104 @@ final class Mailbox<Message> {
         }
 
         guard let cell = self.cell else {
-            traceLog_Mailbox("Actor(\(self.path)) has already stopped, dropping message \(envelope)")
+            traceLog_Mailbox(self.path, "has already stopped, dropping message \(envelope)")
             return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
         }
 
         let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
+        func sendAndDropAsDeadLetter() {
+            self.deadLetters.tell(DeadLetter(envelope.payload))
+            _ = ptr.move()
+            ptr.deallocate()
+        }
+
         switch cmailbox_send_message(mailbox, ptr) {
-        case .needsScheduling: cell.dispatcher.execute(self.run)
+        case .needsScheduling:
+            traceLog_Mailbox(self.path, "Enqueued message \(envelope.payload), scheduling for execution")
+            cell.dispatcher.execute(self.run)
         case .alreadyScheduled:
-            traceLog_Mailbox("Mailbox(\(self.path)) Enqueued system message \(envelope), someone scheduled already")
-        case .mailboxFull:
-            traceLog_Mailbox("Mailbox(\(self.path)) is full, dropping message \(envelope)")
-            _ = ptr.move()
-            ptr.deallocate()
+            traceLog_Mailbox(self.path, "Enqueued message \(envelope.payload), someone scheduled already")
+
+        case .mailboxTerminating:
+            // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
+            //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed 
+            //       and we can immediately send things to dead letters then. 
+            sendAndDropAsDeadLetter()
         case .mailboxClosed:
-            traceLog_Mailbox("Mailbox(\(self.path)) is closing, dropping message \(envelope)")
-            _ = ptr.move()
-            ptr.deallocate()
-            // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
+            traceLog_Mailbox(self.path, "is CLOSED, dropping message \(envelope)")
+            sendAndDropAsDeadLetter()
+        case .mailboxFull:
+            traceLog_Mailbox(self.path, "is full, dropping message \(envelope)")
+            sendAndDropAsDeadLetter() // TODO "Drop" rather than DeadLetter
         }
     }
 
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage) {
-        // TODO: additional atomic read... would not be needed if we "are" the (c)mailbox, since first thing it does is to read status
-        // performing an additional read is incorrect, since we have to make all decisions based on the same read value
-        // we could pull this off if we had a swift mailbox here, OR we pass in the read status into the send_message...
-        // though that splits the logic between swift and C even more making it more confusing I think
-
         guard let cell = self.cell else {
             self.deadLetters.tell(DeadLetter(systemMessage))
-            traceLog_Mailbox("Actor(\(self.path)) has already stopped, dropping system message \(systemMessage)")
-            return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
+            traceLog_Mailbox(self.path, "has already released the actor cell, dropping system message \(systemMessage)")
+            return
         }
 
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
+        func sendAndDropAsDeadLetter() {
+            self.deadLetters.tell(DeadLetter(systemMessage))
+            // we can not deallocate yet...
+            // _ = ptr.move()
+            // ptr.deallocate()
+        }
+
         switch cmailbox_send_system_message(mailbox, ptr) {
         case .needsScheduling:
-            traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), we trigger scheduling")
+            traceLog_Mailbox(self.path, "Enqueued system message \(systemMessage), scheduling for execution")
             cell.dispatcher.execute(self.run)
         case .alreadyScheduled:
-            // this means we enqueued, and the mailbox already will be scheduled by someone else
-            traceLog_Mailbox("\(self.path) Enqueued system message \(systemMessage), someone scheduled already")
+            traceLog_Mailbox(self.path, "Enqueued system message \(systemMessage), someone scheduled already")
+            
+        case .mailboxTerminating:
+            traceLog_Mailbox(self.path, "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)")
+            sendAndDropAsDeadLetter()
         case .mailboxClosed:
-            // not enqueued, mailbox is closed, actor is terminating/terminated
+            // not enqueued, mailbox is closed; it cannot and will not interact with any more messages.
             //
             // it is crucial for correctness of death watch that we drain messages to dead letters,
             // which in turn is able to handle watch() automatically for us there;
             // knowing that the watch() was sent to a terminating or dead actor.
-            traceLog_Mailbox("Dead letter: \(systemMessage), since mailbox is closed")
-            self.deadLetters.tell(DeadLetter(systemMessage))
+            traceLog_Mailbox(self.path, "Dead letter: \(systemMessage), since mailbox is CLOSED")
+            sendAndDropAsDeadLetter()
         case .mailboxFull:
-            return FIXME("Dropped system message because mailbox is full. This should never happen and is a mailbox bug.")
+            fatalError("Dropped system message because mailbox is full. This should never happen and is a mailbox bug, please report an issue.")
         }
+    }
+
+    /// DANGER: Must ONLY be invoked synchronously from an aborted or closed run state.
+    /// No other messages may be enqueued concurrently; in other words the mailbox MUST be in terminating stare to enqueue the tombstone.
+    private func sendSystemTombstone() {
+        traceLog_Mailbox(self.path, "SEND SYSTEM TOMBSTONE")
+
+        let systemMessage: SystemMessage = .tombstone
+
+        guard let cell = self.cell else {
+            traceLog_Mailbox(self.path, "has already released the actor cell, dropping system tombstone \(systemMessage)")
+            return
+        }
+
+        let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
+        ptr.initialize(to: systemMessage)
+
+        switch cmailbox_send_system_tombstone(mailbox, ptr) {
+        case .mailboxTerminating:
+            // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
+            cell.dispatcher.execute(self.run)
+        case let otherState:
+            fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.path). THIS IS A BUG.")
+        }
+
     }
 
     @inlinable
@@ -336,7 +386,7 @@ final class Mailbox<Message> {
         defer { FaultHandling.disableFaultHandling() }
 
         guard let cell = self.cell else {
-            traceLog_Mailbox("Actor(\(self.path)) has already stopped, ignoring run")
+            traceLog_Mailbox(self.path, "has already stopped, ignoring run")
             return
         }
 
@@ -366,57 +416,80 @@ final class Mailbox<Message> {
             // pending messages, and we are the one who should should reschedule
             cell.dispatcher.execute(self.run)
         case .done:
-            // no more messages to run, we are done here
+            // No more messages to run, we are done here
             return
+
+        case .failureRestart:
+            // FIXME: !!! we must know if we should schedule or not after a restart...
+            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
+            cell.dispatcher.execute(self.run)
+        case .failureTerminate:
+            // We are now terminating. The run has been aborted and other threads were not yet allowed to activate this
+            // actor (since it was in the middle of processing). We MUST therefore activate right now, and at the same time
+            // force the enqueue of the tombstone system message, as the actor now will NOT accept any more messages
+            // and will dead letter them. We need to process all existing system messages though all the way to the tombstone,
+            // before we become CLOSED.
+
+            // Meaning supervision was either applied and decided to fail, or not applied and we should fail anyway.
+            // We have to guarantee the processing of any outstanding system messages, and use a tombstone marker to notice this.
+            let failedRunPhase = runPhase
+            self.reportCrashFailCellWithBestPossibleError(cell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
+
+            // since we may have faulted while processing user messages, while system messages were being enqueued,
+            // we have to perform one last run to potentially drain any remaining system messages to dead letters for
+            // death watch correctness.
+            traceLog_Mailbox(self.path, "interpret failureTerminate")
+            pprint("interpret failureTerminate    \(self.path)")
+            self.sendSystemTombstone() // Rest in Peace
         case .close:
             // termination has been set as mailbox status and we should send ourselves the .tombstone
             // which serves as final system message after which termination will completely finish.
             // We do this since while the mailbox was running, more messages could have been enqueued,
             // and now we need to handle those that made it in, before the terminating status was set.
-            self.sendSystemMessage(.tombstone) // Rest in Peace
-        case .failure:
-            let failedRunPhase = runPhase
-            self.crashFailCellWithBestPossibleError(cell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
-        case .failureRestart:
-            // FIXME: !!! we must know if we should schedule or not after a restart...
-            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
-            cell.dispatcher.execute(self.run)
+            traceLog_Mailbox(self.path, "interpret CLOSE")
+            self.sendSystemTombstone() // Rest in Peace
+        case .closed:
+            traceLog_Mailbox(self.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
         }
     }
 
     /// May only be invoked by the cell and puts the mailbox into TERMINATING state.
     func setFailed() {
-        traceLog_Mailbox("<<< SET_FAILED \(self.path) >>>")
         cmailbox_set_terminating(self.mailbox)
+        traceLog_Mailbox(self.path, "<<< SET_FAILED >>>")
     }
 
     /// May only be invoked when crossing TERMINATING->CLOSED states, only by the ActorCell.
     func setClosed() {
-        traceLog_Mailbox("<<< SET_CLOSED \(self.path) >>>")
         cmailbox_set_closed(self.mailbox)
+        traceLog_Mailbox(self.path, "<<< SET_CLOSED >>>")
     }
 }
 
 // MARK: Crash handling functions for Mailbox
 
 extension Mailbox {
-    private func crashFailCellWithBestPossibleError(cell: ActorCell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
+    
+    // TODO rename to "log crash error"?
+    private func reportCrashFailCellWithBestPossibleError(cell: ActorCell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
+        
+        let failure: MessageProcessingFailure
+        
         if let crashDetails = FaultHandling.getCrashDetails() {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }
 
                 // appropriately render the message (recovering generic information thanks to the passed in type)
                 let messageDescription = renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessageRaw, userMessageType: Message.self)
-                let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
-                cell.crashFail(error: failure)
+                failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
             } else {
-                let failure = MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace)
-                cell.crashFail(error: failure)
+                failure = MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace)
             }
         } else {
-            let failure: MessageProcessingFailure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
-            cell.crashFail(error: failure)
+            failure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
         }
+
+        cell.reportCrashFail(error: failure)
     }
 }
 
@@ -572,14 +645,32 @@ extension MailboxRunResult: CustomStringConvertible {
         switch self {
         case .close:
             return "MailboxRunResult.close"
+        case .closed:
+            return "MailboxRunResult.closed"
         case .done:
             return "MailboxRunResult.done"
         case .reschedule:
             return "MailboxRunResult.reschedule"
-        case .failure:
-            return "MailboxRunResult.failure"
+        case .failureTerminate:
+            return "MailboxRunResult.failureTerminate"
         case .failureRestart:
             return "MailboxRunResult.failureRestart"
+        }
+    }
+}
+
+/// Helper for rendering the C defined `MailboxRunResult` enum in human readable format
+extension ActorRunResult: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .continueRunning:
+            return "ActorRunResult.continueRunning"
+        case .shouldSuspend:
+            return "ActorRunResult.shouldSuspend"
+        case .shouldStop:
+            return "ActorRunResult.shouldStop"
+        case .closed:
+            return "ActorRunResult.closed"
         }
     }
 }

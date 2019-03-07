@@ -67,7 +67,18 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     // MARK: Death watch infrastructure
 
     // Implementation of DeathWatch
-    @usableFromInline internal var deathWatch: DeathWatch<Message>!
+    @usableFromInline internal var _deathWatch: DeathWatch<Message>?
+    @usableFromInline internal var deathWatch: DeathWatch<Message> {
+        get {
+            guard let d = self._deathWatch else {
+                fatalError("BUG! Tried to access deathWatch on \(self.path) and it was nil!!!! Maybe a message was handled after tombstone?")
+            }
+            return d
+        }
+        set {
+            self._deathWatch = newValue
+        }
+    }
 
     private let _dispatcher: MessageDispatcher
 
@@ -98,7 +109,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        self.deathWatch = DeathWatch()
+        self._deathWatch = DeathWatch()
 
         #if SACT_TESTS_LEAKS
         _ = system.cellInitCounter.add(1)
@@ -257,12 +268,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
 
         case .tombstone:
-            // the reason we only "really terminate" once we got the .terminated that during a run we set terminating
-            // mailbox status, but obtaining the mailbox status and getting the
-            // TODO: reconsider this again and again ;-) let's do this style first though, it is the "safe bet"
-            traceLog_Cell("\(self.myself) Received tombstone. Remaining messages will be drained to deadLetters.")
-            self.finishTerminating()
-            return .shouldStop
+            return self.finishTerminating()
 
         case .stop:
             children.forEach { $0.sendSystemMessage(.stop) }
@@ -284,9 +290,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     func interpretClosure(_ closure: () throws -> Void) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
-        #if SACT_TRACE_CELL
-        log.info("Applied closure, becoming: \(next)")
-        #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+        traceLog_Cell("Applied closure, becoming: \(next)")
 
         try self.becomeNext(behavior: next)
 
@@ -326,28 +330,23 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         switch error {
         case let DeathPactError.unhandledDeathPact(_, _, message):
             log.error("\(message)") // TODO configurable logging? in props?
-            self.finishTerminating() // FIXME likely too eagerly
+            // self.finishTerminating() // FIXME likely too eagerly, think again intensely here we need to assure we are all clear.
 
         default:
             log.error("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO configurable logging? in props?
-            // sact_dump_backtrace() // shows mostly mailbox info, not so useful for users
 
-            self.finishTerminating() // FIXME likely too eagerly
+            // self.finishTerminating() // FIXME likely too eagerly, think again intensely here we need to assure we are all clear.
         }
     }
 
     /// Similar to `fail` however assumes that the current mailbox run will never complete, which can happen when we crashed,
     /// and invoke this function from a signal handler.
-    // Implementation notes: Similar to `fail()` but trying to keep them separate as fail() can be called during a run
-    // where we catch an exception thrown by user code and then the run continues and then we send the tombstone.
-    public func crashFail(error: Error) {
+    public func reportCrashFail(error: Error) {
 
         // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
         let crashHandlingExplanation = "Terminating actor, process and thread remain alive."
 
         log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
-
-        self.finishTerminating() // FIXME likely too eagerly
     }
 
     /// Used by supervision, from failure recovery.
@@ -386,7 +385,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
     // TODO: this is also part of lifecycle / supervision... maybe should be in an extension for those
 
-    /// This is the final method a Cell ever runs.
+    /// This is the final method an ActorCell ever runs.
+    ///
     /// It notifies any remaining watchers about its termination, releases any remaining resources,
     /// and clears its behavior, allowing state kept inside it to be released as well.
     ///
@@ -394,9 +394,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     /// This is coordinated with its mailbox, which by then becomes closed, and shall no more accept any messages, not even system ones.
     ///
     /// Any remaining system messages are to be drained to deadLetters by the mailbox in its current run.
-    ///
-    // ./' It all comes, tumbling down, tumbling down, tumbling down... ./'
-    internal func finishTerminating() {
+    private func finishTerminating() -> ActorRunResult {
         self._myselfInACell.mailbox.setClosed()
 
         let myPath: UniqueActorPath? = self._myselfInACell.path
@@ -416,20 +414,22 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         // correctness is ensured though, since the parent always receives the `ChildTerminated`.
         self.notifyParentWeDied()
         self.notifyWatchersWeDied()
-        // TODO: we could notify parent that we died... though I'm not sure we need to in the supervision style we'll do...
 
         do {
             _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PostStop())
         } catch {
-            // TODO: should probably .escalate instead
-            self.context.log.error("Exception in postStop", error: error)
+            // TODO: should probably .escalate instead;
+            self.context.log.error("Exception in postStop. Supervision will NOT be applied.", error: error)
         }
 
         // TODO validate all the nulling out; can we null out the cell itself?
-        self.deathWatch = nil
+        self._deathWatch = nil
         self.behavior = .stopped // TODO or failed...
 
-        traceLog_Cell("CLOSED DEAD: \(String(describing: myPath))")
+        traceLog_Cell("CLOSED DEAD: \(String(describing: myPath)) has completely terminated, and will never act again.")
+
+        // It shall act, ah, nevermore!
+        return .closed
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed
@@ -439,8 +439,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
     func notifyParentWeDied() {
-        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD self: \(self.path)")
         let parent: AnyReceivesSystemMessages = self._parent
+        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.path)], parent [\(parent.path)]")
         parent.sendSystemMessage(.childTerminated(ref: myself._boxAnyAddressableActorRef()))
     }
 
@@ -567,7 +567,7 @@ extension ActorCell: CustomStringConvertible {
 
 internal protocol FailableActorCell {
     /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
-    func crashFail(error: Error)
+    func reportCrashFail(error: Error)
 }
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children

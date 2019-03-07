@@ -55,25 +55,29 @@ typedef struct {
 
 /** Result of mailbox run, instructs swift part of code to perform follow up actions */
 SWIFT_CLOSED_ENUM(MailboxRunResult) {
-    MailboxRunResult_Close          = 0,
-    MailboxRunResult_Done           = 1,
-    MailboxRunResult_Reschedule     = 2,
+    MailboxRunResult_Close            = 0,
+    MailboxRunResult_Done             = 1,
+    MailboxRunResult_Reschedule       = 2,
     // failure and supervision:
-    MailboxRunResult_Failure        = 3,
-    MailboxRunResult_FailureRestart = 4,
+    MailboxRunResult_FailureTerminate = 3,
+    MailboxRunResult_FailureRestart   = 4,
+    // closed status reached, never run again.
+    MailboxRunResult_Closed           = 5,
 } MailboxRunResult;
 
 SWIFT_CLOSED_ENUM(MailboxEnqueueResult) {
     MailboxEnqueueResult_needsScheduling    = 0,
     MailboxEnqueueResult_alreadyScheduled   = 1,
-    MailboxEnqueueResult_mailboxClosed      = 2,
-    MailboxEnqueueResult_mailboxFull        = 3,
+    MailboxEnqueueResult_mailboxTerminating = 2,
+    MailboxEnqueueResult_mailboxClosed      = 3,
+    MailboxEnqueueResult_mailboxFull        = 4,
 } MailboxEnqueueResult;
 
 SWIFT_CLOSED_ENUM(ActorRunResult) {
-    ActorRunResult_continueRunning  = 0,
-    ActorRunResult_shouldSuspend    = 1,
-    ActorRunResult_shouldStop       = 2,
+    ActorRunResult_continueRunning = 0,
+    ActorRunResult_shouldSuspend   = 1,
+    ActorRunResult_shouldStop      = 2,
+    ActorRunResult_closed          = 3,
 } ActorRunResult;
 
 
@@ -123,9 +127,24 @@ MailboxEnqueueResult cmailbox_send_message(CMailbox* mailbox, void* envelope);
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
  *
- * The requirement for this stems from the fact that we must never drop system messages, e.g. watch, and always have to handle it.
+ * System messages MUST NEVER be "dropped" yet they may be piped to dead letters (though with great care).
+ *
+ * The system queue will ONLY reject enqueueing if the enclosing mailbox is CLOSED.
+ * Even a Terminating mailbox will still accept enqueues to its system queue -- this is in order to support,
+ * enqueueing the `tombstone` system message, which is used as terminal marker that all system messages are either
+ * properly processed OR piped directly to dead letters.
  */
-MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* envelope);
+MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* sys_msg);
+
+/*
+ * Invoke only from a synchronously aborted or completed run.
+ * The actor MUST only call this method once it can guarantee that no other messages are being enqueued to it,
+ * since the tombstone MUST be the last system message an actor ever processes. This is guaranteed by first
+ * entering the Terminating mailbox state.
+ *
+ * This call MUST be followed by scheduling this actor for execution.
+ */
+MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tombstone);
 
 /*
  * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.
@@ -144,14 +163,6 @@ MailboxRunResult cmailbox_run(
     );
 
 uint32_t cmailbox_message_count(CMailbox* mailbox);
-
-/*
- * Returns `true` if the mailbox is terminating or terminated, messages should not be enqueued to it.
- * Messages can be drained to dead letters immediately, and watch messages should immediately be replied to with `.terminated`
- */
-// TODO: this is a workaround... normally we do not need this additional read since send_message does this right away
-// TODO: in a pure swift mailbox we'd do the 1 status read, and from that already know if we are closed or not (=> drop the messages)
-bool cmailbox_is_closed(CMailbox* mailbox);
 
 /* Sets the final CLOSED state. Should only be invoked just before finishing termination, and only while TERMINATING */
 void cmailbox_set_closed(CMailbox* mailbox);

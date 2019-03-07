@@ -18,15 +18,11 @@
 ///
 /// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
 @usableFromInline
-enum SystemMessage: Equatable { // TODO system messages should be internal, we have to make the Signal/SysMsg split
+internal enum SystemMessage: Equatable { 
 
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
     case start
-
-    /// Usually the actor sends this message to itself once it has processed other things.
-    case tombstone // also known as "terminate"
-    // TODO: do we need poison pill?
 
     /// Notifies an actor that it is being watched by the `from` actor
     case watch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
@@ -49,7 +45,20 @@ enum SystemMessage: Equatable { // TODO system messages should be internal, we h
 
     /// Sent to a suspended actor when the async operation it is waiting for completes
     case resume(Result<Any, ExecutionError>)
-    // TODO: this is incomplete
+
+    /// WARNING: Sending a tombstone has very special meaning and should never be attempted outside of situations where
+    /// the actor is semantically "done", i.e. it is currently terminating and is going to be released soon.
+    ///
+    /// The tombstone serves as "absolutely last system message the actor will handle from its system mailbox",
+    /// and is used to trigger and "guard" the end of such execution. Once a tombstone has been processed the actor
+    /// MUST close the mailbox and release its resources.
+    ///
+    /// The moment in which the tombstone is sent is also crucially important, as:
+    ///   - it MUST be guaranteed that when this message is sent, no other message at all will be accepted by the actor,
+    ///     thus establishing the guarantee that the tombstone will be the last message. This is achieved by first marking the
+    ///     mailbox as terminating, and then sending the tombstone. Any system messages which were sent before the status change are fine,
+    ///     and any which are sent after will be immediately be sent to the dead letters actor, where they will be logged.
+    case tombstone 
 }
 
 public struct ExecutionError: Error {

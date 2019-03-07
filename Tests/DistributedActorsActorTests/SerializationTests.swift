@@ -153,32 +153,27 @@ class SerializationTests: XCTestCase {
     }
 
     func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
         }
 
         let testKit2 = ActorTestKit(s2)
-        let p = testKit2.spawnTestProbe(expecting: String.self)
+        let p = testKit2.spawnTestProbe(expecting: NotSerializable.self)
 
         let recipient: ActorRef<NotSerializable> = try s2.spawn(.ignore, name: "recipient")
 
-        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { message in
-            p.tell("ok")
+        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { context in
             recipient.tell(NotSerializable())
             return .same
         }, name: "expected-to-fault-due-to-serialization-check")
 
-        // the problem seems to be we didnt process watch yet but we FAULT
-        // so the watch remains not processed?
         p.watch(senderOfNotSerializableMessage)
-        senderOfNotSerializableMessage.tell("send not serializable message now!")
-        try p.expectMessage("ok")
+        senderOfNotSerializableMessage.tell("send it now!")
 
         try p.expectTerminated(senderOfNotSerializableMessage)
         s2.terminate()
-        #endif
     }
+
 }
 
 // MARK: Example types for serialization tests

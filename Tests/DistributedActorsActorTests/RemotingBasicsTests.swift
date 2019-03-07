@@ -52,16 +52,19 @@ class RemotingBasicsTests: XCTestCase {
 
         sleep(2) // TODO make this test actually test associations :)
 
-        let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
+        let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
-            system.remoting.tell(.query(.associatedNodes(probe.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
-            let associatedNodes = try probe.expectMessage()
+            system.remoting.tell(.query(.associatedNodes(pSystem.ref)))
+            remote.remoting.tell(.query(.associatedNodes(pSystem.ref)))
+            let associatedNodes = try pSystem.expectMessage()
             associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
         }
-        let remoteProbe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
+
+        let pRemote = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
-            remote.remoting.tell(.query(.associatedNodes(remoteProbe.ref)))
-            let associatedNodes = try remoteProbe.expectMessage()
+            system.remoting.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
+            remote.remoting.tell(.query(.associatedNodes(pRemote.ref)))
+            let associatedNodes = try pRemote.expectMessage()
             associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
         }
     }

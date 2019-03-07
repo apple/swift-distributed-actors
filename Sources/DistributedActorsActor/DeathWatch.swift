@@ -81,7 +81,7 @@ import Dispatch
             return
         }
 
-        // traceLog_DeathWatch("Become watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Become watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher._exposeBox()
         self.watchedBy.insert(boxedWatcher)
     }
