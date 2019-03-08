@@ -14,30 +14,27 @@
 
 import NIO
 
-// TODO: We may eventually factor out the threadpool logic and turn it into a
-// standalone threadpool that supports assigning work to a specific thread with
-// configurable work stealing capabilities. For more info see #408
-internal final class SerializationPipeline {
+internal final class SerializationPool {
     @usableFromInline
     internal let serialization: Serialization
     @usableFromInline
-    internal let pipelineMapping: [ActorPath: Int]
+    internal let workerMapping: [ActorPath: Int]
     @usableFromInline
     internal let serializationWorkerPool: AffinityThreadPool
     @usableFromInline
     internal let deserializationWorkerPool: AffinityThreadPool
 
-    internal init(props: SerializationPipelineProps, serialization: Serialization) throws {
+    internal init(props: SerializationPoolProps, serialization: Serialization) throws {
         self.serialization = serialization
-        var pipelineMapping: [ActorPath: Int] = [:]
+        var workerMapping: [ActorPath: Int] = [:]
         for (index, group) in props.serializationGroups.enumerated() {
             for path in group {
                 // mapping from each actor path to the corresponding group index,
                 // which maps 1:1 to the serialization worker number
-                pipelineMapping[path] = index
+                workerMapping[path] = index
             }
         }
-        self.pipelineMapping = pipelineMapping
+        self.workerMapping = workerMapping
         self.serializationWorkerPool = try AffinityThreadPool(workerCount: props.serializationGroups.count)
         self.deserializationWorkerPool = try AffinityThreadPool(workerCount: props.serializationGroups.count)
     }
@@ -68,7 +65,7 @@ internal final class SerializationPipeline {
         do {
             // check if messages for this particular actor should be handled
             // on a separate thread and submit to the worker pool
-            if let workerNumber = self.pipelineMapping[recepientPath] {
+            if let workerNumber = self.workerMapping[recepientPath] {
                 try workerPool.execute(on: workerNumber) {
                     do {
                         let result = try task()
@@ -86,10 +83,10 @@ internal final class SerializationPipeline {
     }
 }
 
-public struct SerializationPipelineProps {
+public struct SerializationPoolProps {
     public let serializationGroups: [[ActorPath]]
 
-    internal static var `default`: SerializationPipelineProps {
-        return SerializationPipelineProps(serializationGroups: [])
+    internal static var `default`: SerializationPoolProps {
+        return SerializationPoolProps(serializationGroups: [])
     }
 }
