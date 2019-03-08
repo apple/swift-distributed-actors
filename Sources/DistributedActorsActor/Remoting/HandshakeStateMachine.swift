@@ -36,29 +36,40 @@ internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 // MARK: Handshake State Machine
 // "All Handshakes want to become Associations when they grow up." -- unknown
 
-struct HandshakeStateMachine {
+internal struct HandshakeStateMachine {
 
-    static func make(kernelState: ReadOnlyKernelState, remoteAddress: NodeAddress) -> State {
-        return .initiated(InitiatedState(kernelState: kernelState, remoteAddress: remoteAddress))
+    // MARK: Client entry point
+
+    internal static func initialClientState(kernelState: ReadOnlyKernelState, connectTo: NodeAddress) -> InitiatedState {
+        return InitiatedState(kernelState: kernelState, connectTo: connectTo)
     }
 
-    enum StateWithDirective {
-        case associate(CompletedState, Directive)
+    // MARK: Server entry point
+
+    internal static func initialServerState(kernelState: ReadOnlyKernelState, offer: Wire.HandshakeOffer) -> HandshakeReceivedState {
+        return HandshakeReceivedState(kernelState: kernelState, offer: offer)
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Directives
+
+    // enum StateWithDirective {
+    //     case associate(CompletedState, Directive)
+    // }
 
     /// Directives are what instructs the state machine driver about what should be performed next.
-    enum Directive {
-        // case scheduleRetryHandshake // TODO
-
+    internal enum Directive {
         /// The handshake has completed successfully, and shall be "upgraded" to an association.
         /// The handshake has fulfilled its purpose and may be dropped.
         case acceptAndAssociate(CompletedState)
 
+        // case scheduleRetryHandshake // TODO
+
         /// The handshake has failed for some reason and the connection should be immediately closed.
-        case rejectHandshake
+        case rejectHandshake(HandshakeError)
         /// The handshake is somehow "wrong". This condition can happen if somehow a handshake ends up on the "wrong" node,
         /// of if some configuration setting regarding addresses was wrong for example.
-        case rogueHandshakeGoAway(Error)
+        case goAwayRogueHandshake(Error)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -67,14 +78,19 @@ struct HandshakeStateMachine {
     internal struct InitiatedState: CanMakeHandshakeOffer {
         private let kernelState: ReadOnlyKernelState
 
-        let remoteAddress: NodeAddress
-        var selfAddress: UniqueNodeAddress {
-            return self.kernelState.selfAddress
+        internal var protocolVersion: Swift Distributed ActorsActor.Version {
+            return self.kernelState.settings.protocolVersion
+        }
+
+        internal let remoteAddress: NodeAddress
+        internal var boundAddress: UniqueNodeAddress {
+            return self.kernelState.boundAddress
         }
 
         // TODO counter for how many times to retry associating (timeouts)
 
-        init(kernelState: ReadOnlyKernelState, remoteAddress: NodeAddress) {
+        init(kernelState: ReadOnlyKernelState, connectTo remoteAddress: NodeAddress) {
+            precondition(kernelState.boundAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.kernelState = kernelState
             self.remoteAddress = remoteAddress
         }
@@ -88,25 +104,32 @@ struct HandshakeStateMachine {
         private let kernelState: ReadOnlyKernelState
 
         public let offer: Wire.HandshakeOffer
-        var selfAddress: UniqueNodeAddress {
-            return self.kernelState.selfAddress
+        internal var boundAddress: UniqueNodeAddress {
+            return self.kernelState.boundAddress
+        }
+        internal var protocolVersion: Swift Distributed ActorsActor.Version {
+            return kernelState.settings.protocolVersion
         }
 
-        func makeCompletedState() -> HandshakeStateMachine.CompletedState {
-            return .init(fromReceived: self, remoteAddress: offer.from)
+        // do not call directly, rather obtain the completed state via negotiate()
+        internal func _makeCompletedState() -> CompletedState {
+            return CompletedState(fromReceived: self, remoteAddress: offer.from)
         }
 
-        init(kernelState: ReadOnlyKernelState, offer: Wire.HandshakeOffer) {
+        internal init(kernelState: ReadOnlyKernelState, offer: Wire.HandshakeOffer) {
             self.kernelState = kernelState
             self.offer = offer
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Handshake Completed
+
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.
     /// This state is used to unlock creating an Association.
     internal struct CompletedState: CanAcceptHandshake {
-        var remoteAddress: UniqueNodeAddress
-        var selfAddress: UniqueNodeAddress
+        internal var remoteAddress: UniqueNodeAddress
+        internal var boundAddress: UniqueNodeAddress
         // let unique association ID?
 
         // State Transition used by Client Side of initial Handshake.
@@ -114,20 +137,20 @@ struct HandshakeStateMachine {
         // Since the client is the one who initiates the handshake, once it receives an Accept containing the remote unique address
         // it may immediately transition to the completed state.
         init(fromInitiated state: InitiatedState, remoteAddress: UniqueNodeAddress) {
-            precondition(state.selfAddress != remoteAddress, "Node [\(state.selfAddress)] attempted to create association with itself.")
+            precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
             self.remoteAddress = remoteAddress
-            self.selfAddress = state.selfAddress
+            self.boundAddress = state.boundAddress
         }
 
         // State Transition used by Client Side of initial Handshake.
         init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress) {
-            precondition(state.selfAddress != remoteAddress, "Node [\(state.selfAddress)] attempted to create association with itself.")
+            precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
             self.remoteAddress = remoteAddress
-            self.selfAddress = state.selfAddress
+            self.boundAddress = state.boundAddress
         }
     }
 
-    enum State {
+    internal enum State {
         case initiated(InitiatedState)
         case wasOfferedHandshake(HandshakeReceivedState)
         case completed(CompletedState)
@@ -142,7 +165,8 @@ struct HandshakeStateMachine {
 protocol CanMakeHandshakeOffer {
     // State requirements --------
 
-    var selfAddress: UniqueNodeAddress { get }
+    var protocolVersion: Swift Distributed ActorsActor.Version { get }
+    var boundAddress: UniqueNodeAddress { get }
     var remoteAddress: NodeAddress { get }
 
     // State capabilities --------
@@ -157,7 +181,7 @@ extension CanMakeHandshakeOffer {
     /// Invoked when the driver attempts to send an offer.
     func makeOffer() -> Wire.HandshakeOffer {
         // TODO maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-        return Wire.HandshakeOffer(version: DistributedActorsProtocolVersion, from: self.selfAddress, to: self.remoteAddress)
+        return Wire.HandshakeOffer(version: self.protocolVersion, from: self.boundAddress, to: self.remoteAddress)
     }
 
     // TODO timeouts for handshakes
@@ -172,14 +196,15 @@ extension CanMakeHandshakeOffer {
 /// in which case it may still reject the connection -- if the server accepted it but the client does not want to. // TODO not implemented yet
 protocol CanNegotiateHandshake {
     // State requirements --------
-    var selfAddress: UniqueNodeAddress { get }
+    var protocolVersion: Swift Distributed ActorsActor.Version { get }
+    var boundAddress: UniqueNodeAddress { get }
 
     /// The handshake offer that we received
     var offer: Wire.HandshakeOffer { get }
 
     /// Since we may reach completed state on either server or client side by different ways
     /// we abstract away this "become completed"
-    func makeCompletedState() -> HandshakeStateMachine.CompletedState // TODO can also reach this on other side I think...?
+    func _makeCompletedState() -> HandshakeStateMachine.CompletedState // TODO can also reach this on other side I think...?
 
     // State capabilities --------
 
@@ -188,32 +213,53 @@ protocol CanNegotiateHandshake {
 }
 extension CanNegotiateHandshake {
     func negotiate() -> HandshakeStateMachine.Directive {
-        guard self.selfAddress.address == self.offer.to else {
-            return .rogueHandshakeGoAway(HandshakeError.targetHandshakeAddressMismatch(self.offer, selfAddress: self.selfAddress))
+        guard self.boundAddress.address == self.offer.to else {
+            return .goAwayRogueHandshake(HandshakeError.targetHandshakeAddressMismatch(self.offer, selfAddress: self.boundAddress))
         }
 
-        // TODO negotiate version; i.e. "I'm 1.0.4, you are 0.9... reject; please upgrade to 1.0 series" etc -- ktoso
-        pprint("TODO negotiation here: Local version: \(DistributedActorsProtocolVersion), remote version \(offer.version)")
+        // negotiate version
+        if let rejectionBecauseOfVersion = self.negotiateVersion(local: self.protocolVersion, remote: self.offer.version) {
+            return rejectionBecauseOfVersion
+        }
 
-        // TODO negotiate capabilities; i.e. accept with "accept, but we can't do priority lanes" (bad example, you get the idea tho) -- ktoso
 
-        return .acceptAndAssociate(self.makeCompletedState())
+        // negotiate capabilities
+        // self.negotiateCapabilities(...) // TODO: We may want to negotiate other options
+
+        return .acceptAndAssociate(self._makeCompletedState())
+    }
+
+    // TODO determine the actual logic we'd want here, for now we accept anything except major changes; use semver?
+    /// - Returns `rejectHandshake` or `nil`
+    func negotiateVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version) -> HandshakeStateMachine.Directive? {
+        let accept: HandshakeStateMachine.Directive? = nil
+
+        pprint("local.major == \(local)")
+        pprint("remote.major == \(remote)")
+
+        guard local.major == remote.major else {
+            return .rejectHandshake(.incompatibleProtocolVersion(
+                local: self.protocolVersion, remote: self.offer.version,
+                reason: "Major version mismatch!"))
+        }
+
+        return accept
     }
 }
 
 protocol CanAcceptHandshake {
     // State requirements --------
-    var selfAddress: UniqueNodeAddress { get }
+    var boundAddress: UniqueNodeAddress { get }
     var remoteAddress: UniqueNodeAddress { get }
 }
 extension CanAcceptHandshake {
     func makeAccept() -> Wire.HandshakeAccept {
-        return .init(from: self.selfAddress, origin: self.remoteAddress)
+        return .init(from: self.boundAddress, origin: self.remoteAddress)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: send... implementations for
+// MARK: Handshake error types
 
 enum HandshakeError: Error {
     /// The first handshake bytes did not match the expected "magic bytes";
@@ -232,4 +278,8 @@ enum HandshakeError: Error {
     ///
     /// The UID part of the `NodeAddress` does not matter for this check, but is included here for debugging purposes.
     case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfAddress: UniqueNodeAddress)
+
+    /// Returned when an incoming handshake protocol version does not match what this node can understand.
+    case incompatibleProtocolVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version, reason: String?)
+
 }
