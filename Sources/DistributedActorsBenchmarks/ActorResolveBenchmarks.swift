@@ -60,7 +60,7 @@ func setUp_visit_depth_10_total_10() {
             }
         } else {
             return Behavior<Never>.setup { context in
-                try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
+                _ = try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
                 return .receiveMessage { _ in .same }
             }
         }
@@ -79,7 +79,7 @@ func setUp_visit_depth_1000_total_1000() {
             }
         } else {
             return Behavior<Never>.setup { context in
-                try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
+                _ = try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
                 return .receiveMessage { _ in .same }
             }
         }

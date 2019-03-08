@@ -1,0 +1,20 @@
+
+== FAQ
+
+=== Why does `context` not contain the `parent` ref?
+
+Since it would not be possible (without significant boilerplate) to statically enforce the
+type of the parents `ActorRef<Message>` if offered in such way.
+
+Suggestion: If a child actor is intending to communicate often to the parent, pass the parents
+ref during creation as plain-old parameter. Alternatively if the child has to "reply" at some
+point to a message, that message should use the `replyTo: ActorRef<ReplyType>` pattern (even if
+the replied to actor is the parent -- the child should not care too much about this).
+
+=== Should I always name my actors?
+
+Yes. Unless you have really really good reasons not to.
+
+Try to avoid using the `spawnAnonymous` version of spawning,
+your future self will thank you, since once things break you will know exactly which actor
+had the fault, rather than an anonymous one like "$abc".
