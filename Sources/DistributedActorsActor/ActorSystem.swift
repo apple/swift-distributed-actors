@@ -72,7 +72,10 @@ public final class ActorSystem {
     let cellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
     #endif
 
-    /// Creates a named ActorSystem; The name is useful for debugging cross system communication
+    /// Creates a named ActorSystem
+    /// The name is useful for debugging cross system communication
+    ///
+    /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         self.name = name
 

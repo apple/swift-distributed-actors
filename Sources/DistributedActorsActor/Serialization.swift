@@ -14,6 +14,7 @@
 
 import NIO
 import NIOFoundationCompat
+import CSwiftDistributedActorsMailbox
 
 import Foundation // for Codable
 
@@ -49,7 +50,6 @@ public struct Serialization {
     @usableFromInline internal let stringSerializer: StringSerializer
 
     internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: ActorTreeTraversable) { // TODO should take the top level actors
-
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
 
@@ -58,8 +58,13 @@ public struct Serialization {
         self.registerSystemSerializer(systemMessageSerializer, for: SystemMessage.self, underId: 1)
         self.registerSystemSerializer(stringSerializer, for: String.self, underId: 2)
 
-        // FIXME DAMN but we also need to take into account the ones for user registered types
-        let serializationContext = ActorSerializationContext(typedDeadLetterRefs: typedDeadLetterRefs, traversableSystem: traversable)
+        // MUST register all typed dead letter refs before we create `serializationContext`
+        // registering system serializers does this already for system serializer handled types,
+        // and we have to do the same now for user types, before we register the serializers
+        // (as we offer them the context, via setSerializationContext which is an immutable copy)
+        self.registerUserPreparedWellTypedDeadLettersRef(settings._preparedTypedDeadLetterRefs)
+
+        let serializationContext = ActorSerializationContext(typedDeadLetterRefs: self.typedDeadLetterRefs, traversableSystem: traversable)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -70,6 +75,8 @@ public struct Serialization {
             serializer.setSerializationContext(serializationContext) // TODO: may need to set it per serialization "lane" or similar?
             self.registerUserSerializer(serializer, key: metaKey, underId: id)
         }
+
+         // self.debugPrintSerializerTable() // for debugging
     }
 
     /// For use only by Swift Distributed Actors itself and serializers for its own messages.
@@ -77,9 +84,7 @@ public struct Serialization {
         assert(Serialization.ReservedSerializerIds.contains(id), "System serializers should be defined within their dedicated range. Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!")
         self.serializerIds[MetaType(type).asHashable()] = id
         self.serializers[id] = BoxedAnySerializer(serializer)
-        let typedDeadLetterRef: ActorRef<T> = self.deadLetters.adapt(from: type, with: { DeadLetter($0) })
-        pprint("typedDeadLetterRef = \(typedDeadLetterRef)")
-        self.typedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = typedDeadLetterRef._boxAnyAddressableActorRef()
+        self.registerWellTypedDeadLettersRef(type: type)
     }
 
     /// Register serializer under specified identifier.
@@ -105,9 +110,58 @@ public struct Serialization {
         }
     }
 
-    // MARK: Public API
-
+    /// Prepares and stores an `ActorRef<T>` directing all messages wrapped as `DeadLetter` to the systems `deadLetters`.
+    /// This ref may be used when deserializing dead actor references.
     ///
+    /// Invoked by serializer registration.
+    private mutating func registerWellTypedDeadLettersRef<T>(type: T.Type) {
+        let typedDeadLetterRef: ActorRef<T> = self.deadLetters.adapt(from: type, with: { DeadLetter($0) })
+        self.typedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = typedDeadLetterRef._boxAnyAddressableActorRef()
+    }
+    /// - Faults: when prepared ref is `nil`; this is on purpose, as it means something was seriously wrong with the settings
+    private mutating func registerUserPreparedWellTypedDeadLettersRef/*<T>*/(
+        _ preparedDeadLettersRefs: [Serialization.MetaTypeKey: SerializationSettings.MakeTypedDeadLetterRef]
+    ) {
+        for (key, makeTypedRef) in preparedDeadLettersRefs {
+            let typedDeadLettersRef = makeTypedRef(self.deadLetters)
+            self.typedDeadLetterRefs[key] = typedDeadLettersRef
+        }
+    }
+
+    // MARK: Internal workings
+    // TODO technically M is known to be Codable... causes some type dance issues tho
+    internal func serializerIdFor<M>(message: M) throws -> SerializerId {
+        let meta: MetaType<M> = MetaType(M.self)
+        // let metaMeta = BoxedHashableAnyMetaType(meta) // TODO we will want to optimize this... no boxings, no wrappings...
+        // TODO letting user to implement the Type -> Ser -> apply functions could be a way out
+        guard let sid = self.serializerIds[meta.asHashable()] else {
+            CSwift Distributed ActorsMailbox.sact_dump_backtrace()
+            throw SerializationError.noSerializerKeyAvailableFor(type: M.self)
+        }
+        return sid
+    }
+
+    internal func serializerIdFor<M>(type: M.Type) -> SerializerId? {
+        let meta: MetaType<M> = MetaType(M.self)
+        return self.serializerIds[meta.asHashable()]
+    }
+
+    internal func debugPrintSerializerTable() {
+        var p = ""
+        for (key, id) in self.serializerIds {
+            p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
+        }
+        for (key, ref) in self.typedDeadLetterRefs {
+            p += "  Dead letter key:\(key) = \(ref)\n"
+        }
+        print(p)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization Public API
+
+extension Serialization {
     public func serialize<M>(message: M) throws -> ByteBuffer {
         let bytes: ByteBuffer
 
@@ -172,31 +226,6 @@ public struct Serialization {
             // so we only check if the round trip invocation was possible at all or not.
         }
     }
-
-    // MARK: Internal workings
-    // TODO technically M is known to be Codable... causes some type dance issues tho
-    internal func serializerIdFor<M>(message: M) throws -> SerializerId {
-        let meta: MetaType<M> = MetaType(M.self)
-        // let metaMeta = BoxedHashableAnyMetaType(meta) // TODO we will want to optimize this... no boxings, no wrappings...
-        // TODO letting user to implement the Type -> Ser -> apply functions could be a way out
-        guard let sid = self.serializerIds[meta.asHashable()] else {
-            throw SerializationError.noSerializerKeyAvailableFor(type: M.self)
-        }
-        return sid
-    }
-
-    internal func serializerIdFor<M>(type: M.Type) -> SerializerId? {
-        let meta: MetaType<M> = MetaType(M.self)
-        return self.serializerIds[meta.asHashable()]
-    }
-
-    internal func debugPrintSerializerTable() {
-        var p = ""
-        for (key, id) in self.serializerIds {
-            p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
-        }
-        print(p)
-    }
 }
 
 /// Marker protocol used to avoid serialization checks as configured by the `serializeAllMessages` setting.
@@ -247,7 +276,6 @@ public struct ActorSerializationContext {
     /// - Throws: It is not possible to statically
     func typedDeadLettersRef<ActorRefType>(forType type: ActorRefType.Type) throws -> ActorRefType {
         assert("\(type)".starts(with: "ActorRef<"), "Only ActorRef types may be used with this method; Passed in type was: [\(type)]")
-
         let metaType = MetaType(ActorRefType.self)
         if let boxedAnyAddressable = self.typedDeadLetterRefs[metaType.asHashable()] {
             // What we have in our hands now is a boxed actor ref _adapter_ pointing to dead letters
@@ -300,7 +328,7 @@ extension Serialization {
 
 }
 
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization Settings
 
 public struct SerializationSettings {
@@ -317,6 +345,17 @@ public struct SerializationSettings {
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
 
+    /// Unfortunately we have to prepare these right here, as we need to create a well-typed `T -> DeadLetter(T)` adapter,
+    /// and we can't do this "later" as we would have lost the exact `T` and remain only with the `MetaTypeKey` in hand.
+    ///
+    /// This is an internal implementation detail of how deserialization ensures it is able to deserialize "dead" actors,
+    /// into dead letter references, while upholding the correct type information for them.
+    ///
+    /// The creation of the actual refs has to be delayed, since a settings object MAY be used with multiple actor systems,
+    /// and each time should yield the right "local" dead letters actor ref.
+    internal var _preparedTypedDeadLetterRefs: [Serialization.MetaTypeKey: MakeTypedDeadLetterRef] = [:]
+    internal typealias MakeTypedDeadLetterRef = (ActorRef<DeadLetter>) -> AnyAddressableActorRef
+
     // FIXME should not be here!
     private let allocator = ByteBufferAllocator()
 
@@ -325,13 +364,34 @@ public struct SerializationSettings {
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(allocator))
     }
 
+    /// - Faults: when serializer `id` is reused
     // TODO: Pretty sure this is not the final form of it yet...
     public mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
+        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
+
+        if let alreadyRegisteredId = self.userSerializerIds[metaTypeKey] {
+            let err = SerializationError.alreadyDefined(type: type, serializerId: alreadyRegisteredId, serializer: nil)
+            fatalError("Fatal serialization configuration error: \(err)")
+        }
+        if let alreadyRegisteredSerializer = self.userSerializers[id] {
+            let err = SerializationError.alreadyDefined(type: type, serializerId: id, serializer: alreadyRegisteredSerializer)
+            fatalError("Fatal serialization configuration error: \(err)")
+        }
+
         let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
             return JSONCodableSerializer<T>(allocator: allocator)
         }
-        self.userSerializerIds[MetaType(type).asHashable()] = id
+        self.userSerializerIds[metaTypeKey] = id
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(allocator))
+        self.prepareWellTypedDeadLettersRef(messageType: type, metaTypeKey: metaTypeKey)
+    }
+
+    private mutating func prepareWellTypedDeadLettersRef<T>(messageType: T.Type, metaTypeKey: Serialization.MetaTypeKey) {
+        let makeTypedDeadLettersRef: (ActorRef<DeadLetter>) -> AnyAddressableActorRef = { deadLetters in
+            let typedDeadLetterRef: ActorRef<T> = deadLetters.adapt(from: messageType, with: { DeadLetter($0) })
+            return typedDeadLetterRef._boxAnyAddressableActorRef()
+        }
+        _preparedTypedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = makeTypedDeadLettersRef
     }
 }
 
@@ -421,6 +481,9 @@ internal struct BoxedAnySerializer: AnySerializer {
 }
 
 enum SerializationError<T>: Error {
+    // --- registration errors ---
+    case alreadyDefined(type: T.Type, serializerId: Serialization.SerializerId, serializer: AnySerializer?)
+    // --- lookup errors ---
     case noSerializerKeyAvailableFor(type: T.Type)
     case noSerializerRegisteredFor(type: T.Type)
     case notAbleToDeserialize(type: T.Type)
@@ -449,7 +512,7 @@ struct MetaType<T>: Hashable {
 
 extension MetaType: CustomStringConvertible {
     public var description: String {
-        return "MetaType<\(T.self)>"
+        return "MetaType<\(T.self)@\(ObjectIdentifier(self.base))>"
     }
 }
 
