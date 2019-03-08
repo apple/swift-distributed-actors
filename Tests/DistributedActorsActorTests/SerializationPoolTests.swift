@@ -19,10 +19,10 @@ import NIO
 import NIOFoundationCompat
 import SwiftDistributedActorsActorTestKit
 
-class SerializationPipelineTests: XCTestCase {
+class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {
         // These locks are used to validate the different ordering guarantees
-        // we give in the serialization pipeline. The locks are used to block
+        // we give in the serialization pool. The locks are used to block
         // the serializer until we want it to complete serialization.
         static let deserializerLock = Mutex()
         let lock = Mutex()
@@ -90,9 +90,9 @@ class SerializationPipelineTests: XCTestCase {
         self.actorPath2 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("baz")])
     }
 
-    func test_serializationPipeline_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
-        let pipeline = try SerializationPipeline(props: .default, serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
+        let serializationPool = try SerializationPool(props: .default, serialization: system.serialization)
+        defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         // We are locking here to validate that the object is being serialized
@@ -115,15 +115,15 @@ class SerializationPipelineTests: XCTestCase {
             p.tell("p2")
         }
 
-        pipeline.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        pipeline.serialize(message: test2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recepientPath: actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
-    func test_serializationPipeline_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence() throws {
+        let serializationPool = try SerializationPool(props: SerializationPoolProps(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
+        defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
@@ -145,8 +145,8 @@ class SerializationPipelineTests: XCTestCase {
             p.tell("p2")
         }
 
-        pipeline.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        pipeline.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectNoMessage(for: .milliseconds(20))
@@ -156,9 +156,9 @@ class SerializationPipelineTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
-    func test_serializationPipeline_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
+        let serializationPool = try SerializationPool(props: SerializationPoolProps(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
+        defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
@@ -180,8 +180,8 @@ class SerializationPipelineTests: XCTestCase {
             p.tell("p2")
         }
 
-        pipeline.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        pipeline.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectMessage("p2")
@@ -190,9 +190,9 @@ class SerializationPipelineTests: XCTestCase {
         try p.expectMessage("p1")
     }
 
-    func test_serializationPipeline_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
-        let pipeline = try SerializationPipeline(props: .default, serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
+        let serializationPool = try SerializationPool(props: .default, serialization: system.serialization)
+        defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let json = "{}"
 
@@ -221,15 +221,15 @@ class SerializationPipelineTests: XCTestCase {
             p.tell("p2")
         }
 
-        pipeline.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        pipeline.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
-    func test_serializationPipeline_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
-        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
+        let serializationPool = try SerializationPool(props: SerializationPoolProps(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
+        defer { serializationPool.shutdown() }
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let json = "{}"
 
@@ -256,8 +256,8 @@ class SerializationPipelineTests: XCTestCase {
             p.tell("p2")
         }
 
-        pipeline.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
-        pipeline.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath1, promise: promise2)
 
         Test2.deserializerLock.unlock()
 
@@ -268,9 +268,9 @@ class SerializationPipelineTests: XCTestCase {
         try p.expectMessage("p2")
     }
 
-    func test_serializationPipeline_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
-        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel() throws {
+        let serializationPool = try SerializationPool(props: SerializationPoolProps(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
+        defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
@@ -296,8 +296,8 @@ class SerializationPipelineTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        pipeline.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
-        pipeline.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.deserialize(as: Test1.self, bytes: buffer1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test2.self, bytes: buffer2, recepientPath: actorPath2, promise: promise2)
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -306,9 +306,9 @@ class SerializationPipelineTests: XCTestCase {
         try p.expectMessage("p1")
     }
 
-    func test_serializationPipeline_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
-        let pipeline = try SerializationPipeline(props: SerializationPipelineProps(serializationGroups: [[self.actorPath1]]), serialization: system.serialization)
-        defer { pipeline.shutdown() }
+    func test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools() throws {
+        let serializationPool = try SerializationPool(props: SerializationPoolProps(serializationGroups: [[self.actorPath1]]), serialization: system.serialization)
+        defer { serializationPool.shutdown() }
 
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
@@ -331,8 +331,8 @@ class SerializationPipelineTests: XCTestCase {
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
-        pipeline.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        pipeline.deserialize(as: Test1.self, bytes: buffer, recepientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(as: Test1.self, bytes: buffer, recepientPath: actorPath1, promise: promise2)
 
         try p.expectNoMessage(for: .milliseconds(20))
 
