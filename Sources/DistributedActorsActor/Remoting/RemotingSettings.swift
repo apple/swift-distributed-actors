@@ -38,6 +38,13 @@ public struct RemotingSettings {
     /// `NodeUID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
     public var uid: NodeUID
 
+    /// `ProtocolVersion` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
+    public var protocolVersion: Swift Distributed ActorsActor.Version {
+        return self._protocolVersion
+    }
+    // exposed for testing handshake negotiation while joining nodes of different versions
+    internal var _protocolVersion: Swift Distributed ActorsActor.Version = DistributedActorsProtocolVersion
+
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
     public var uniqueBindAddress: UniqueNodeAddress {

@@ -128,10 +128,10 @@ extension ActorTestKit {
         }
 
         switch res {
-        case .result: return // good
-        case .results(let refs): throw callSiteInfo.failure(message: "Found more than a single ref for assertion! Got \(refs).")
-        case .completed: throw callSiteInfo.failure(message: "Failed to find actor occupying [\(path)]!")
-        case .failed(let err): throw callSiteInfo.failure(message: "Path \(path) was not occupied by any actor! Error: \(err)")
+        case .result:            return // good
+        case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
+        case .completed:         throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
+        case .failed(let err):   throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
         }
     }
 }
