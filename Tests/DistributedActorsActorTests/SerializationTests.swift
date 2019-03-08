@@ -88,7 +88,7 @@ class SerializationTests: XCTestCase {
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            return try system.serialization.deserialize(as: HasStringRef.self, bytes: bytes)
+            return try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
