@@ -24,6 +24,9 @@ class SerializationTests: XCTestCase {
     let system = ActorSystem("SerializationTests") { settings in
         settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
         settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
+
+        settings.serialization.registerCodable(for: InterestingMessage.self, underId: 1003)
+        settings.serialization.registerCodable(for: HasInterestingMessageRef.self, underId: 1004)
     }
     lazy var testKit = ActorTestKit(system)
 
@@ -98,7 +101,7 @@ class SerializationTests: XCTestCase {
         try p.expectMessage("got:hello")
     }
 
-    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters() throws {
+    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
         let hasRef = HasStringRef(containedRef: stoppedRef)
 
@@ -114,7 +117,27 @@ class SerializationTests: XCTestCase {
         }
         pinfo("Deserialized again: \(back)")
 
-        back.containedRef.tell("Hello") // SHOULD be a dead letter
+        back.containedRef.tell("Should become a dead letter")
+        "\(back.containedRef.path)".shouldEqual("/system/deadLetters")
+    }
+    func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
+        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
+        let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
+
+        pinfo("Before serialize: \(hasRef)")
+
+        let bytes = try shouldNotThrow {
+            return try system.serialization.serialize(message: hasRef)
+        }
+        pinfo("serialized ref: \(bytes.stringDebugDescription())")
+
+        let back: HasInterestingMessageRef = try shouldNotThrow {
+            return try system.serialization.deserialize(to: HasInterestingMessageRef.self, bytes: bytes)
+        }
+        pinfo("Deserialized again: \(back)")
+
+        back.containedInterestingRef.tell(InterestingMessage())
+        "\(back.containedInterestingRef.path)".shouldEqual("/system/deadLetters")
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
@@ -207,6 +230,11 @@ struct HasStringRef: Codable, Equatable {
 
 struct HasIntRef: Codable, Equatable {
     let containedRef: ActorRef<Int>
+}
+
+struct InterestingMessage: Codable, Equatable {}
+struct HasInterestingMessageRef: Codable, Equatable {
+    let containedInterestingRef: ActorRef<InterestingMessage>
 }
 
 struct NotCodableHasInt: Equatable {
