@@ -267,6 +267,12 @@ public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, co
     }
 }
 
+public func shouldNotHappen(_ message: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+    let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
+    return callSiteInfo.error("Should not happen! [\(message)]")
+}
+
 // MARK: Errors and metadata
 
 public enum ShouldMatcherError: Error {
@@ -280,7 +286,7 @@ struct CallSiteInfo {
     let column: UInt
     let appliedAssertionName: String
 
-    init(file: StaticString, line: UInt, column: UInt, function: String) {
+    init(file: StaticString = #file, line: UInt = #line, column: UInt = #column, function: String = #function) {
         self.file = file
         self.line = line
         self.column = column
@@ -323,7 +329,7 @@ extension CallSiteInfo {
 
     /// Returns an Error that should be thrown by the called.
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
-    public func failure(message: String) -> Error {
+    public func error(_ message: String) -> Error {
         let details = detailedMessage(message)
         XCTFail(details, file: self.file, line: self.line)
 

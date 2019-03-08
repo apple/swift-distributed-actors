@@ -19,17 +19,13 @@ import NIO
 extension RemotingKernel {
 
     /// Starts the `RemotingKernel` actor if enabled, otherwise returns `nil` rather than the kernel ref.
-    static func start(system: ActorSystem, settings: RemotingSettings) -> RemotingKernel.Ref? {
+    internal static func start(system: ActorSystem, settings: RemotingSettings) -> RemotingKernel.Ref? {
         guard settings.enabled else {
             return nil
         }
 
         let kernel = RemotingKernel()
 
-        // try! safe: considered safe here; only 2 cases exist when it could fail:
-        //   a) when the path is illegal (and we know "remoting" is valid)
-        //   b) when the kernel is attempted to start a second time, in which case this is very-bad™ and we want a backtrace.
-        //      This would be a Swift Distributed Actors bug; since the system starts remoting and shall never do so multiple times.
         do {
             return try system._spawnSystemActor(
                 kernel.behavior,
@@ -37,6 +33,10 @@ extension RemotingKernel {
                 props: kernel.props
             )
         } catch {
+            // This can only ever fail when:
+            //   a) when the path is illegal (and we know "remoting" is valid)
+            //   b) when the kernel is attempted to start a second time, in which case this is very-bad™ and we want a backtrace.
+            //      This would be a Swift Distributed Actors bug; since the system starts remoting and shall never do so multiple times.
             fatalError("Starting remoting kernel (/system/remoting) failed. This is potentially a bug, please open a ticket. Error was: \(error)")
         }
     }
@@ -72,7 +72,6 @@ internal class RemotingKernel {
         case handshakeAccepted(Wire.HandshakeAccept, replyTo: EventLoopPromise<ByteBuffer>)
         case handshakeRejected(Wire.HandshakeReject, replyTo: EventLoopPromise<ByteBuffer>)
         case handshakeFailed(NodeAddress?, Error) // TODO remove?
-//        case inbound(NetworkInbound)
     }
 
     internal var behavior: Behavior<Messages> {
@@ -80,7 +79,7 @@ internal class RemotingKernel {
     }
 
     internal var props: Props {
-        return Props().addSupervision(strategy: .stop) // TODO "when this dies everything dies"
+        return Props().addSupervision(strategy: .stop) // always fail completely (may revisit this)
     }
 
 }
@@ -122,13 +121,6 @@ extension RemotingKernel {
         func receiveKernelCommand(context: ActorContext<Messages>, command: CommandMessage) -> Behavior<Messages> {
             switch command {
             case .handshakeWith(let remoteAddress):
-                // TODO extract into single method
-                //                context.log.info("Bootstrapping client side NIO.....")
-                //                let chanElf = self.bootstrapClientSide(targetAddress: remoteAddress, settings: state.settings)
-                //                context.log.info("Channel elf waiting.....")
-                //                return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { chan in
-                //                    self.initiateHandshake(context, state, with: remoteAddress)
-                //                }
                 return self.initiateHandshake(context, state, with: remoteAddress)
             case .unbind:
                 return self.unbind(state: state)
@@ -271,12 +263,12 @@ extension RemotingKernel {
                 _ = self.sendHandshakeAccept(newState, completedHandshake.makeAccept(), replyInto: promise)
                 return self.ready(state: newState) // TODO change the state
 
-            case .rejectHandshake:
-                log.info("Rejecting handshake from \(offer.from)!")
+            case .rejectHandshake(let error):
+                log.info("Rejecting handshake from \(offer.from)!", error: error)
                 return self.ready(state: newState) // TODO change the state
 
-            case .rogueHandshakeGoAway:
-                log.warning("Rogue handshake! Reject, reject! From \(offer.from)!")
+            case .goAwayRogueHandshake(let error):
+                log.warning("Rogue handshake! Reject, reject! From \(offer.from)!", error: error)
                 return self.ready(state: newState) // TODO change the state
             }
         } else {
@@ -339,7 +331,7 @@ internal protocol ReadOnlyKernelState {
     var eventLoopGroup: EventLoopGroup { get } // TODO or expose the MultiThreaded one...?
 
     /// Unique address of the current node.
-    var selfAddress: UniqueNodeAddress { get }
+    var boundAddress: UniqueNodeAddress { get }
     var settings: RemotingSettings { get }
 }
 
@@ -351,7 +343,7 @@ internal struct KernelState: ReadOnlyKernelState {
     public var log: Logger
     public let settings: RemotingSettings
 
-    public let selfAddress: UniqueNodeAddress
+    public let boundAddress: UniqueNodeAddress
 
     public let channel: Channel
     public let eventLoopGroup: EventLoopGroup
@@ -367,7 +359,7 @@ internal struct KernelState: ReadOnlyKernelState {
 
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
-        self.selfAddress = settings.uniqueBindAddress
+        self.boundAddress = settings.uniqueBindAddress
 
         self.channel = channel
         self.log = log
@@ -397,7 +389,7 @@ extension KernelState {
     mutating func initiateHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
         // TODO more checks here, so we don't reconnect many times etc
 
-        let handshakeFsm = HandshakeStateMachine.InitiatedState(kernelState: self, remoteAddress: address)
+        let handshakeFsm = HandshakeStateMachine.initialClientState(kernelState: self, connectTo: address)
         let handshakeState = HandshakeStateMachine.State.initiated(handshakeFsm)
         self._handshakes[address] = handshakeState
         return handshakeFsm
@@ -462,7 +454,7 @@ extension KernelState {
 
 extension ActorSystem {
 
-    var remoting: ActorRef<RemotingKernel.Messages> {
+    internal var remoting: ActorRef<RemotingKernel.Messages> {
         // return self.RemotingKernel?.adapt(with: <#T##@escaping (From) -> Messages##@escaping (From) -> RemotingKernel.Messages#>) // TODO the adapting for external only protocol etc
         return self._remoting ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self, with: { m in DeadLetter(m) })
     }

@@ -47,7 +47,7 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
         init(fromCompleted handshake: HandshakeStateMachine.CompletedState, log: Logger, over channel: Channel) {
             self.log = log
             self.remoteAddress = handshake.remoteAddress
-            self.selfAddress = handshake.selfAddress
+            self.selfAddress = handshake.boundAddress
             self.channel = channel
         }
     }

@@ -49,7 +49,7 @@ import XCTest
          testCase(NIOExtensionTests.allTests),
          testCase(ParentChildActorTests.allTests),
          testCase(RemotingBasicsTests.allTests),
-         testCase(RemotingHandshakeTests.allTests),
+         testCase(RemotingHandshakeStateMachineTests.allTests),
          testCase(RingBufferTests.allTests),
          testCase(SerializationPoolTests.allTests),
          testCase(SerializationTests.allTests),

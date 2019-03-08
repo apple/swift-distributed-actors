@@ -142,7 +142,7 @@ extension ActorTestProbe {
             }
         } catch {
             let message = "Did not receive message of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 
@@ -177,7 +177,7 @@ extension ActorTestProbe {
             }
         } catch {
             let message = "Did not receive expected messages (count: \(count)) of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 }
@@ -212,7 +212,7 @@ extension ActorTestProbe where Message: Equatable {
             }
         } catch {
             let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 
@@ -316,7 +316,7 @@ extension ActorTestProbe {
             fullMessage += " No message was observed before this failure."
         }
 
-        return callSite.failure(message: fullMessage)
+        return callSite.error(fullMessage)
     }
 
     // MARK: Expecting messages with matching/extracting callbacks
@@ -337,13 +337,13 @@ extension ActorTestProbe {
                 guard let extracted = try matchExtract(got) else {
                     let message = "Received \(Message.self) message, however it did not pass the matching check, " + 
                     "and did not produce the requested \(T.self)."
-                    throw callSite.failure(message: message)
+                    throw callSite.error(message)
                 }
                 return extracted
             }
         } catch {
             let message = "Did not receive matching [\(Message.self)] message within [\(timeout.prettyDescription)], error: \(error)"
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 
@@ -358,7 +358,7 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let message = self.messagesQueue.poll(timeout) {
             let message = "Received unexpected message [\(message)]:\(type(of: message)). Did not expect to receive any messages for [\(timeout.prettyDescription)]."
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 
@@ -369,7 +369,7 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         if let termination = self.terminationsQueue.poll(timeout) {
             let message = "Received unexpected termination [\(termination)]. Did not expect to receive any termination for [\(timeout.prettyDescription)]."
-            throw callSite.failure(message: message)
+            throw callSite.error(message)
         }
     }
 
@@ -382,7 +382,7 @@ extension ActorTestProbe {
 
         let maybeGot: SystemMessage? = self.signalQueue.poll(expectationTimeout)
         guard let got = maybeGot else {
-            throw callSite.failure(message: "Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
+            throw callSite.error("Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
         }
         return got
     }
@@ -435,10 +435,10 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
         guard let terminated = self.terminationsQueue.poll(expectationTimeout) else {
-            throw callSite.failure(message: "Expected [\(ref.path)] to terminate within \(self.expectationTimeout.prettyDescription)")
+            throw callSite.error("Expected [\(ref.path)] to terminate within \(self.expectationTimeout.prettyDescription)")
         }
         guard terminated.path == ref.path else {
-            throw callSite.failure(message: "Expected [\(ref.path)] to terminate, but received [\(terminated.path)] terminated signal first instead. " +
+            throw callSite.error("Expected [\(ref.path)] to terminate, but received [\(terminated.path)] terminated signal first instead. " +
                 "This could be an ordering issue, inspect your signal order assumptions.")
         }
 
@@ -455,11 +455,11 @@ extension ActorTestProbe {
 
         while !pathSet.isEmpty {
             guard let terminated = self.terminationsQueue.poll(expectationTimeout) else {
-                throw callSite.failure(message: "Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
+                throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
 
             guard pathSet.remove(terminated.path) != nil else {
-                throw callSite.failure(message: "Expected any of \(pathSet) to terminate, but received [\(terminated.path)] terminated signal first instead. " +
+                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.path)] terminated signal first instead. " +
                     "This could be an ordering issue, inspect your signal order assumptions.")
             }
         }
