@@ -56,6 +56,7 @@ internal final class SerializationPool {
 
     @inlinable
     internal func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer, recepientPath: ActorPath, promise: EventLoopPromise<M>) {
+        // TODO bytes to become inout?
         self.enqueue(recepientPath: recepientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
             try self.serialization.deserialize(type, from: bytes)
         }

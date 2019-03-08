@@ -26,7 +26,7 @@ import CSwiftDistributedActorsMailbox
 /// Useful for keeping an actor reference as key of some kind, e.g. in scenarios where an actor is
 /// "responsible for" other actors whose message types may be completely different, so keeping their references
 /// in a same-typed [ActorRef<M>] collection would not be possible.
-public protocol AddressableActorRef: Hashable, Codable {
+public protocol AddressableActorRef: Hashable {
 
     /// The [ActorPath] under which the actor is located.
     var path: UniqueActorPath { get }
@@ -42,7 +42,7 @@ extension AddressableActorRef {
     }
 }
 
-public protocol ReceivesMessages: AddressableActorRef {
+public protocol ReceivesMessages: AddressableActorRef, Codable {
     associatedtype Message
     /// Send message to actor referred to by this `ActorRef`.
     ///

@@ -50,7 +50,9 @@ class SerializationTests: XCTestCase {
         buf.shouldEqual(out)
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
+
     func test_serialize_actorPath() throws {
         let path = try ActorPath(root: "user") / ActorPathSegment("hello")
         let encoded = try JSONEncoder().encode(path)
@@ -73,7 +75,9 @@ class SerializationTests: XCTestCase {
         pathAgain.shouldEqual(path)
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor ref serialization and resolve
+
     func test_serialize_actorRef_inMessage() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
@@ -113,7 +117,7 @@ class SerializationTests: XCTestCase {
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            return try system.serialization.deserialize(to: HasStringRef.self, bytes: bytes)
+            return try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -132,7 +136,7 @@ class SerializationTests: XCTestCase {
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasInterestingMessageRef = try shouldNotThrow {
-            return try system.serialization.deserialize(to: HasInterestingMessageRef.self, bytes: bytes)
+            return try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -153,7 +157,9 @@ class SerializationTests: XCTestCase {
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialized messages in actor communication, locally
+
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
@@ -200,11 +206,11 @@ class SerializationTests: XCTestCase {
 }
 
 // MARK: Example types for serialization tests
-protocol Top: Hashable, Codable {
+private protocol Top: Hashable, Codable {
     var path: ActorPath { get }
 }
 
-class Mid: Top, Hashable {
+private class Mid: Top, Hashable {
     let _path: ActorPath
 
     init() {
@@ -224,25 +230,29 @@ class Mid: Top, Hashable {
     }
 }
 
-struct HasStringRef: Codable, Equatable {
+private struct HasStringRef: Codable, Equatable {
     let containedRef: ActorRef<String>
 }
 
-struct HasIntRef: Codable, Equatable {
+private struct HasIntRef: Codable, Equatable {
     let containedRef: ActorRef<Int>
 }
 
-struct InterestingMessage: Codable, Equatable {}
-struct HasInterestingMessageRef: Codable, Equatable {
+private struct InterestingMessage: Codable, Equatable {}
+private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>
 }
 
-struct NotCodableHasInt: Equatable {
+//private struct HasArrayOfReceivesSystemMsgs: Codable, Equatable {
+//    let refs: [ReceivesSystemMessages]
+//}
+
+private struct NotCodableHasInt: Equatable {
     let containedInt: Int
 }
 
-struct NotCodableHasIntRef: Equatable {
+private struct NotCodableHasIntRef: Equatable {
     let containedRef: ActorRef<Int>
 }
 
-struct NotSerializable {}
+private struct NotSerializable {}
