@@ -22,9 +22,11 @@ The swift:Codable[] protocol can be used for automatic (although customizable) d
 Refer to its reference documentation in https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types[Encoding and Decoding Custom Types]
 to learn more about how to use the protocol and its extension points, as this guide will assume prior knowledge of how `Codable` works.
 
-==== Step 1: Define Codable messages
+==== Step 1: Conform messages to `Codable`
 
-For the sake of the following examples, let's assume we have the following messages defined:
+Swift Distributed Actors does not enforce all messages to be serializable, since maybe some messages are known to never leave the local system,
+and thus it would be too restrictive to require all messages conform to `Codable`. For messages that are intended to cross
+node boundaries however, we can conform them to `Codable`:
 
 .Example messages
 [source]
@@ -32,9 +34,11 @@ For the sake of the following examples, let's assume we have the following messa
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_codable_messages]
 ----
 
-The message protocol is not very complicated: it consists of a single `ParkingSpotMessages` enum
-which is the message protocol the `driver` actor is speaking. Note that we already made the type conform to swift:Codable[],
-and since the type is a simple enum without associated values the serialization code for it is generated automatically.
+The message protocol in the example above is not very complicated: it consists of a single `ParkingSpotStatus` enum
+which is the message protocol the `driver` actor is speaking.
+
+Note that we immediately conformed it to swift:Codable[], and since the type is a simple enum without associated values
+the serialization code for it is generated automatically.
 
 ==== Step 2: Register Codable types for serialization
 
@@ -128,7 +132,70 @@ This will cause the _sending_ actor (or process, in case of sending messages fro
      Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`.
      This check was performed since `settings.serialization.allMessages` was enabled.: file Mailbox.swift, line 260
 
-
-==== Protocol Buffers
+=== Using Protocol Buffers
 
 #TODO: Show example how to use protobuf for messages.#
+
+=== Using Custom Serialization
+
+If, for some reason, `Codable` is not the serialization mechanism you want to employ to serialize your messages,
+it is possible to use any custom serialization mechanism by plugging it into the systems serialization
+
+NOTE: When using `Codable` messages, you don't need to do anything special. As long as the message containing your
+`ActorRef<Message>` and the `Message` type itself are registered as Codable serializable, the serialization engine
+will "just work", and (de)serializing refs will work transparently. This section only matters for use cases where you
+implement your own serializers.
+
+The following example will serialize a simple `enum` into a simple custom format, without using `Codable` only for purposes
+of showcasing how you could serialize things without going through `Codable` support.
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_custom_messages]
+----
+
+Next, rather than using the `registerCodable` function to register types using the built-in codable support,
+we use the plain `register(:for:underId:)` function where the first parameter is a api:Serializer[class] factory which
+will be passed a system's configured nio:ByteBufferAllocator[struct].
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_custom]
+----
+
+And finally, this is how the `CustomlyEncodedSerializer` can be implemented:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_serializer]
+----
+<1> Since the domain object can be represented by simple tokens, we preallocate the tokens and store them in the serializer
+<2> `serialize` will be invoked whenever a message is about to be sent to
+<3> `deserialize` is called whenever an incoming message needs to be converted from bytes to the an object.
+
+The serializer which will be invoked to serialize a message is selected by the system based on the bindings performed during system startup.
+When a message is sent over the wire, the id of the serializer that was used to serialize the message will be carried with it,
+such that the receiving end can invoke the right serializer to deserialize the payload.
+
+NOTE: Great care should be taken so that the serializer ids are not changed without care when intending to perform rolling
+      upgrades of nodes -- as otherwise an incorrect serializer might be selected to deserialize a message.
+
+==== (De)Serializing `ActorRef`
+
+Serializing and deserializing actor references is somewhat special since an actor ref has to refer to an actual "live"
+entity, rather than simply be deserialized into a plain data structure.
+
+In order to hook into the api:ActorSystem[class] that invokes the serializer, a special `ActorSerializationContext`
+is injected into serializers when they are bound to a system. If your serializer needs to handle `ActorRef`s or similar
+actor specific types, you can accept this context like this:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_actorRef_serializer]
+----
+<1> Implement `setSerializationContext` and store the context in a property
+<2> Use the `context` to attempt resolving a reference to an _alive_ actor
+<3> Here we have to cast the erased `resolved` actor ref, however this is guaranteed to be safe, as otherwise the resolve would not have returned it
+<4> If no actor is resolved, you may want to offer a `deadLetters` ref instead #TODO: maybe we should always do this for users... it is the semantically right thing to do -- ktoso#
+
+#TODO: I think we don't constructor inject this because Codable things AFAIR... but we may want to double check if we could constructor inject anyway somehow?#

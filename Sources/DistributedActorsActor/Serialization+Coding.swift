@@ -70,7 +70,7 @@ extension ActorRefWithCell {
 }
 
 // Implements Codable protocol
-extension AddressableActorRef {
+extension ReceivesMessages {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
@@ -88,10 +88,9 @@ extension AddressableActorRef {
         if let resolved = serializationContext.resolveActorRef(path: path) {
             self = resolved as! Self // this is safe, we know Self IS-A AddressableActorRef since any ActorRef is
         } else {
-            self = try serializationContext.typedDeadLettersRef(forType: Self.self)
+            self = serializationContext.deadLetters(from: Self.Message.self) as! Self
         }
     }
-
 }
 
 enum ActorPathKeys: CodingKey {

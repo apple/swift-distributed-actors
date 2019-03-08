@@ -64,7 +64,11 @@ public struct Serialization {
         // (as we offer them the context, via setSerializationContext which is an immutable copy)
         self.registerUserPreparedWellTypedDeadLettersRef(settings._preparedTypedDeadLetterRefs)
 
-        let serializationContext = ActorSerializationContext(typedDeadLetterRefs: self.typedDeadLetterRefs, traversableSystem: traversable)
+        let serializationContext = ActorSerializationContext(
+            deadLetters: deadLetters,
+            typedDeadLetterRefs: self.typedDeadLetterRefs,
+            traversableSystem: traversable
+        )
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -203,7 +207,8 @@ extension Serialization {
                 throw SerializationError.noSerializerKeyAvailableFor(type: type)
             }
 
-            let deserialized = try serializer.unsafeUnwrapAs(type).deserialize(bytes: bytes)
+            // TODO make sure the users can't mess up more bytes than we offered them (read limit?)
+            let deserialized: M = try serializer.unsafeUnwrapAs(type).deserialize(bytes: bytes)
             traceLog_Serialization("Deserialize to:[\(type)], bytes:\(bytes), key: \(serializerId)")
             return deserialized
 
@@ -240,10 +245,15 @@ public extension CodingUserInfoKey {
 public struct ActorSerializationContext {
     typealias MetaTypeKey = Serialization.MetaTypeKey
 
+    public let deadLetters: ActorRef<DeadLetter>
+
     private let typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef]
     private let traversable: ActorTreeTraversable
 
-    internal init(typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef], traversableSystem: ActorTreeTraversable) {
+    internal init(deadLetters: ActorRef<DeadLetter>,
+                  typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef],
+                  traversableSystem: ActorTreeTraversable) {
+        self.deadLetters = deadLetters
         self.typedDeadLetterRefs = typedDeadLetterRefs
         self.traversable = traversableSystem
     }
@@ -255,11 +265,11 @@ public struct ActorSerializationContext {
     /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
     ///
     /// - Returns: the erased `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
+    public func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
         var context = ResolveContext()
         context.selectorSegments = path.segments[...]
         let resolved = self.traversable._resolve(context: context, uid: path.uid)
-        return resolved
+        return resolved // TODO maybe automatically do ?? typedDeadLettersRef here?
     }
 
     /// Fetches from registered typed dead letter references the appropriate `deadLetter` adapter ref,
@@ -274,7 +284,8 @@ public struct ActorSerializationContext {
     ///           since the entire intent of this API is to be used within `Codable` or similar infrastructure, where the
     ///           type would most often be `Self` thus inspecting it by the user manually does not help much. // TODO is this really true? hm hm hm
     /// - Throws: It is not possible to statically
-    func typedDeadLettersRef<ActorRefType>(forType type: ActorRefType.Type) throws -> ActorRefType {
+    // TODO could we make it internal and make resolve always return a ref, defaulting to dead letters?
+    public func typedDeadLettersRef<ActorRefType>(forRefType type: ActorRefType.Type) throws -> ActorRefType {
         assert("\(type)".starts(with: "ActorRef<"), "Only ActorRef types may be used with this method; Passed in type was: [\(type)]")
         let metaType = MetaType(ActorRefType.self)
         if let boxedAnyAddressable = self.typedDeadLetterRefs[metaType.asHashable()] {
@@ -286,6 +297,11 @@ public struct ActorSerializationContext {
             // TODO carry available ones as well?
             throw Swift Distributed ActorsCodingError.failedToLocateWellTypedDeadLettersFor(metaType)
         }
+    }
+
+    /// Creates an `adapter` to `deadLetters` from the passed in message type
+    public func deadLetters<Message>(from type: Message.Type) -> ActorRef<Message> {
+        return self.deadLetters.adapt(from: type) { DeadLetter($0) }
     }
 }
 
@@ -411,8 +427,11 @@ open class Serializer<T> {
         return undefined()
     }
 
+    /// Invoked _once_ by `Serialization` during system startup, providing additional context bound to
+    /// the given `ActorSystem` that enables certain system specific serialization operations, such as
+    /// looking up actors.
     open func setSerializationContext(_ context: ActorSerializationContext) {
-        return undefined()
+        // nothing by default, implementations may choose to not care
     }
 }
 
