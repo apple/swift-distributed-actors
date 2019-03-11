@@ -156,7 +156,7 @@ class SerializationDocExamples {
             if let resolved = context.resolveActorRef(path: path) { // <2>
                 return ContainsActorRef(ref: resolved as! ActorRef<String>) // <3>
             } else {
-                let ref: ActorRef<String> = try context.typedDeadLettersRef(forRefType: ActorRef<String>.self) // <4>
+                let ref: ActorRef<String> = context.deadLetters(from: String.self)
                 return ContainsActorRef(ref: ref)
             }
         }
