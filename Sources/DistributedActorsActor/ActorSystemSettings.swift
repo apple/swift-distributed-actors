@@ -15,11 +15,19 @@
 // TODO none of these are currently configurable
 public struct ActorSystemSettings {
 
+    public var logLevel: Logging.Level = .info
+
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
-    public var remoting: RemotingSettings = .default
-
-    public var logLevel: Logging.Level = .info
+    public var remoting: RemotingSettings = .default {
+        didSet {
+            if self.remoting.enabled {
+                self.serialization.serializationAddress = self.remoting.bindAddress // TODO later on this would be `address` vs `bindAddress`
+            } else {
+                self.serialization.serializationAddress = nil
+            }
+        }
+    }
 
     // FIXME should have more proper config section
     // TODO: better guesstimate for default thread pool size? take into account core count?
@@ -33,5 +41,6 @@ public struct ActorSettings {
     }
 
     // TODO: arbitrary depth limit, could be configurable
-    public let maxBehaviorNestingDepth: Int = 128 // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+    // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+    public let maxBehaviorNestingDepth: Int = 128
 }

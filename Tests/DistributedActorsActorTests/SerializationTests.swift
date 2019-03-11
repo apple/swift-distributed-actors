@@ -105,6 +105,46 @@ class SerializationTests: XCTestCase {
         try p.expectMessage("got:hello")
     }
 
+    func test_serialize_actorRef_inMessage_forRemoting() throws {
+        let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings  in
+            settings.remoting.enabled = true
+
+            settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
+        }
+        let testKit = ActorTestKit(remoteCapableSystem)
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let ref: ActorRef<String> = try remoteCapableSystem.spawn(.receiveMessage { message in
+            p.tell("got:\(message)")
+            return .same
+        }, name: "hello")
+
+        let hasRef = HasStringRef(containedRef: ref)
+
+        pinfo("Before serialize: \(hasRef)")
+
+        let bytes = try shouldNotThrow {
+            return try remoteCapableSystem.serialization.serialize(message: hasRef)
+        }
+        let serializedFormat: String = bytes.stringDebugDescription()
+        pinfo("serialized ref: \(serializedFormat)")
+        serializedFormat.contains("sact").shouldBeTrue()
+        serializedFormat.contains("\(RemotingSettings.Default.systemName)").shouldBeTrue()
+        serializedFormat.contains("\(RemotingSettings.Default.host)").shouldBeTrue()
+        serializedFormat.contains("\(RemotingSettings.Default.port)").shouldBeTrue()
+
+        let back: HasStringRef = try shouldNotThrow {
+            return try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)
+        }
+        pinfo("Deserialized again: \(back)")
+
+        back.shouldEqual(hasRef)
+
+        back.containedRef.tell("hello")
+        try p.expectMessage("got:hello")
+    }
+
+
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
         let hasRef = HasStringRef(containedRef: stoppedRef)

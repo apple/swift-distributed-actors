@@ -24,7 +24,7 @@
 public struct UniqueActorPath: Equatable, Hashable {
 
     /// Underlying path representation, not attached to a specific Actor instance.
-    let path: ActorPath
+    var path: ActorPath
 
     /// Unique identified associated with a specific actor "incarnation" under this path.
     let uid: ActorUID
@@ -70,9 +70,14 @@ extension UniqueActorPath: PathRelationships {
 /// - Example: `/user/master/worker`
 public struct ActorPath: PathRelationships, Equatable, Hashable {
 
+    /// If set, the address of node to which this actor path belongs.
+    /// Or `nil`, meaning this actors residing under this path shall be assumed local.
+    internal var address: NodeAddress?
+    
     internal var segments: [ActorPathSegment]
 
-    init(_ segments: [ActorPathSegment]) throws {
+    init(_ segments: [ActorPathSegment], address: NodeAddress? = nil) throws {
+        self.address = address
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
         }
@@ -112,7 +117,6 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
     }
 }
 
-// TODO
 extension ActorPath: CustomStringConvertible {
     public var description: String {
         let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
@@ -263,11 +267,19 @@ public extension ActorUID {
 
 // TODO reconsider calling paths addresses and this being authority etc...
 // TODO: "ActorAddress" could be the core concept... what would be the node addresses? 
-public struct NodeAddress: Hashable {
-    let `protocol`: String = "sact" // TODO open up
+public struct NodeAddress: Hashable, Codable {
+    let `protocol`: String 
     var systemName: String
     var host: String
-    var port: UInt
+    var port: Int
+
+    public init(systemName: String, host: String, port: Int) {
+        precondition(port > 0, "port MUST be > 0")
+        self.protocol = "sact" // TODO open up
+        self.systemName = systemName
+        self.host = host
+        self.port = port
+    }
 }
 extension NodeAddress: CustomStringConvertible {
     public var description: String {
