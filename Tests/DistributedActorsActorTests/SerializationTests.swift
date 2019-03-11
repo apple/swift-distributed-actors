@@ -243,6 +243,7 @@ private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>
 }
 
+// TODO: implement being able to send ReceivesSystemMessages https://github.com/apple/swift-distributed-actors/issues/418
 //private struct HasArrayOfReceivesSystemMsgs: Codable, Equatable {
 //    let refs: [ReceivesSystemMessages]
 //}

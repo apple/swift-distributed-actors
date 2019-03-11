@@ -33,14 +33,6 @@ public struct Serialization {
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
 
-    /// Since deserializing a "dead" actor reference must yield a `deadLetters` reference, and be well-typed at the same time
-    /// to which type of `ActorRef<T>` was being expected to be deserialized...
-    /// We must be able to look up well-typed dead letter references by their `ActorRef<T>` object identifier.
-    /// The problem is that we need to provide this early?????????
-    ///
-    /// ASSUMPTION: If you cannot deserialize the `T` of `ActorRef<T>` (i.e. no serializer is registered),
-    /// you will also not be able to deserialize `ActorRef<T>` itself -- since we have no dead letters for it.
-    private var typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef] = [:]
     private let deadLetters: ActorRef<DeadLetter>
 
     private let allocator = ByteBufferAllocator()
@@ -58,15 +50,8 @@ public struct Serialization {
         self.registerSystemSerializer(systemMessageSerializer, for: SystemMessage.self, underId: 1)
         self.registerSystemSerializer(stringSerializer, for: String.self, underId: 2)
 
-        // MUST register all typed dead letter refs before we create `serializationContext`
-        // registering system serializers does this already for system serializer handled types,
-        // and we have to do the same now for user types, before we register the serializers
-        // (as we offer them the context, via setSerializationContext which is an immutable copy)
-        self.registerUserPreparedWellTypedDeadLettersRef(settings._preparedTypedDeadLetterRefs)
-
         let serializationContext = ActorSerializationContext(
             deadLetters: deadLetters,
-            typedDeadLetterRefs: self.typedDeadLetterRefs,
             traversableSystem: traversable
         )
 
@@ -88,7 +73,6 @@ public struct Serialization {
         assert(Serialization.ReservedSerializerIds.contains(id), "System serializers should be defined within their dedicated range. Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!")
         self.serializerIds[MetaType(type).asHashable()] = id
         self.serializers[id] = BoxedAnySerializer(serializer)
-        self.registerWellTypedDeadLettersRef(type: type)
     }
 
     /// Register serializer under specified identifier.
@@ -114,24 +98,6 @@ public struct Serialization {
         }
     }
 
-    /// Prepares and stores an `ActorRef<T>` directing all messages wrapped as `DeadLetter` to the systems `deadLetters`.
-    /// This ref may be used when deserializing dead actor references.
-    ///
-    /// Invoked by serializer registration.
-    private mutating func registerWellTypedDeadLettersRef<T>(type: T.Type) {
-        let typedDeadLetterRef: ActorRef<T> = self.deadLetters.adapt(from: type, with: { DeadLetter($0) })
-        self.typedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = typedDeadLetterRef._boxAnyAddressableActorRef()
-    }
-    /// - Faults: when prepared ref is `nil`; this is on purpose, as it means something was seriously wrong with the settings
-    private mutating func registerUserPreparedWellTypedDeadLettersRef/*<T>*/(
-        _ preparedDeadLettersRefs: [Serialization.MetaTypeKey: SerializationSettings.MakeTypedDeadLetterRef]
-    ) {
-        for (key, makeTypedRef) in preparedDeadLettersRefs {
-            let typedDeadLettersRef = makeTypedRef(self.deadLetters)
-            self.typedDeadLetterRefs[key] = typedDeadLettersRef
-        }
-    }
-
     // MARK: Internal workings
     // TODO technically M is known to be Codable... causes some type dance issues tho
     internal func serializerIdFor<M>(message: M) throws -> SerializerId {
@@ -154,9 +120,6 @@ public struct Serialization {
         var p = ""
         for (key, id) in self.serializerIds {
             p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
-        }
-        for (key, ref) in self.typedDeadLetterRefs {
-            p += "  Dead letter key:\(key) = \(ref)\n"
         }
         print(p)
     }
@@ -246,15 +209,11 @@ public struct ActorSerializationContext {
     typealias MetaTypeKey = Serialization.MetaTypeKey
 
     public let deadLetters: ActorRef<DeadLetter>
-
-    private let typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef]
     private let traversable: ActorTreeTraversable
 
     internal init(deadLetters: ActorRef<DeadLetter>,
-                  typedDeadLetterRefs: [MetaTypeKey: AnyAddressableActorRef],
                   traversableSystem: ActorTreeTraversable) {
         self.deadLetters = deadLetters
-        self.typedDeadLetterRefs = typedDeadLetterRefs
         self.traversable = traversableSystem
     }
 
@@ -270,33 +229,6 @@ public struct ActorSerializationContext {
         context.selectorSegments = path.segments[...]
         let resolved = self.traversable._resolve(context: context, uid: path.uid)
         return resolved // TODO maybe automatically do ?? typedDeadLettersRef here?
-    }
-
-    /// Fetches from registered typed dead letter references the appropriate `deadLetter` adapter ref,
-    /// which converts passed in `ActorRef<T>`'s `T` messages into `DeadLetter(T)`, allowing the returned value
-    /// to be safely cas to `ActorRef<T>` and used to pipe messages to the current systems' dead letters.
-    ///
-    /// Note that the returned actor's path will be the same any other dead letters reference: `/system/deadLetters`.
-    ///
-    /// - Returns: an `ActorRef` (adapter) of the type `ActorRef<T>` (same as passed in type), directing all messages
-    ///            to the systems' `deadLetters`.
-    /// - Faults: when passed in type is NOT an `ActorRef`, sadly this can not be verified statically in an useful way,
-    ///           since the entire intent of this API is to be used within `Codable` or similar infrastructure, where the
-    ///           type would most often be `Self` thus inspecting it by the user manually does not help much. // TODO is this really true? hm hm hm
-    /// - Throws: It is not possible to statically
-    // TODO could we make it internal and make resolve always return a ref, defaulting to dead letters?
-    public func typedDeadLettersRef<ActorRefType>(forRefType type: ActorRefType.Type) throws -> ActorRefType {
-        assert("\(type)".starts(with: "ActorRef<"), "Only ActorRef types may be used with this method; Passed in type was: [\(type)]")
-        let metaType = MetaType(ActorRefType.self)
-        if let boxedAnyAddressable = self.typedDeadLetterRefs[metaType.asHashable()] {
-            // What we have in our hands now is a boxed actor ref _adapter_ pointing to dead letters
-            // in order for to obtain the value that we can cast to an ActorRef, we must expose the boxed underlying value:
-            let unboxed = boxedAnyAddressable._exposeBox()
-            return unboxed._exposeUnderlying() as! ActorRefType // this value is guaranteed to be an `ActorRef<T>`, for the passed in `type`
-        } else {
-            // TODO carry available ones as well?
-            throw Swift Distributed ActorsCodingError.failedToLocateWellTypedDeadLettersFor(metaType)
-        }
     }
 
     /// Creates an `adapter` to `deadLetters` from the passed in message type
@@ -361,17 +293,6 @@ public struct SerializationSettings {
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
 
-    /// Unfortunately we have to prepare these right here, as we need to create a well-typed `T -> DeadLetter(T)` adapter,
-    /// and we can't do this "later" as we would have lost the exact `T` and remain only with the `MetaTypeKey` in hand.
-    ///
-    /// This is an internal implementation detail of how deserialization ensures it is able to deserialize "dead" actors,
-    /// into dead letter references, while upholding the correct type information for them.
-    ///
-    /// The creation of the actual refs has to be delayed, since a settings object MAY be used with multiple actor systems,
-    /// and each time should yield the right "local" dead letters actor ref.
-    internal var _preparedTypedDeadLetterRefs: [Serialization.MetaTypeKey: MakeTypedDeadLetterRef] = [:]
-    internal typealias MakeTypedDeadLetterRef = (ActorRef<DeadLetter>) -> AnyAddressableActorRef
-
     // FIXME should not be here!
     private let allocator = ByteBufferAllocator()
 
@@ -407,7 +328,6 @@ public struct SerializationSettings {
             let typedDeadLetterRef: ActorRef<T> = deadLetters.adapt(from: messageType, with: { DeadLetter($0) })
             return typedDeadLetterRef._boxAnyAddressableActorRef()
         }
-        _preparedTypedDeadLetterRefs[MetaType(ActorRef<T>.self).asHashable()] = makeTypedDeadLettersRef
     }
 }
 
