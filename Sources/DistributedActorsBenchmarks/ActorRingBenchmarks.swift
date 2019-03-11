@@ -129,7 +129,7 @@ func bench_ring_m100_000_n10_000(n: Int) {
     ringStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     loopEntryPoint.tell(Token(100_000))
 
-    q.poll(.seconds(20))
+    _ = q.poll(.seconds(20))
     pprint("    Spawning           : \((spawnStop.load() - spawnStart.load()).milliseconds) ms")
     pprint("    Sending around Ring: \((ringStop.load() - ringStart.load()).milliseconds) ms")
 }
