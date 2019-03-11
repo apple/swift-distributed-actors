@@ -140,17 +140,19 @@ extension ProtoUniqueNodeAddress {
 
 extension NodeAddress {
     init(_ proto: ProtoAddress) {
+        self.protocol = proto.protocol
         self.systemName = proto.system
         self.host = proto.hostname
-        self.port = UInt(proto.port) // FIXME
+        self.port = Int(proto.port)
     }
 }
 
 extension ProtoAddress {
     init(_ address: NodeAddress) {
+        self.protocol = address.protocol
         self.system = address.systemName
         self.hostname = address.host
-        self.port = UInt32(address.port) // FIXME
+        self.port = UInt32(address.port)
     }
 }
 

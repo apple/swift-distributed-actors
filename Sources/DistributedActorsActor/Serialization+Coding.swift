@@ -17,6 +17,9 @@ import NIOFoundationCompat
 
 import Foundation // for Codable
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorSerializationContext for Encoder & Decoder
+
 extension Decoder {
 
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
@@ -39,42 +42,32 @@ extension Encoder {
     }
 }
 
-enum Swift Distributed ActorsCodingError: Error {
-
-    case failedToLocateWellTypedDeadLettersFor(AnyMetaType) // TODO: , available: [String])
+/// Swift Distributed Actors codable support specific errors
+public enum CodingError: Error {
+    
+    /// Thrown when an operation needs to obtain an `ActorSerializationContext` however none was present in coder.
+    /// 
+    /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
+    /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
+    case missingActorSerializationContext(Any.Type, details: String)
+    
+    // TODO maybe remove this?
+    case failedToLocateWellTypedDeadLettersFor(Any.Type) // TODO: , available: [String])
 }
 
-// Customize coding to avoid nesting as {"value": "..."}
-extension ActorRefWithCell {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ReceivesMessages
 
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.path)
-    }
-
-    public convenience init(from decoder: Decoder) throws {
-        //        let container = try decoder.singleValueContainer()
-        //        let path = container.decode(UniqueActorPath.self)
-        //
-        //        guard let serializationContext = decoder.actorSerializationContext else {
-        //            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
-        //        }
-        //
-        //        switch serializationContext.resolve(path: path) {
-        //        case .some(let resolver):
-        //        case .none:
-        //            throw
-        //        }
-        fatalError("Not implemented. For remote cases this is not possible, it should resolve to a proxy basically, that is to hit remoting.")
-    }
-}
-
-// Implements Codable protocol
 extension ReceivesMessages {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(self.path) // unique path
+        guard let serializationContext = encoder.actorSerializationContext else {
+            throw CodingError.missingActorSerializationContext(Self.self, details: "While encoding [\(self)], using [\(encoder)]")
+        }
+
+        traceLog_Serialization("encode \(self.path) WITH address")
+        try container.encodeWithAddress(self.path, using: serializationContext)
     }
 
     public init(from decoder: Decoder) throws {
@@ -93,49 +86,66 @@ extension ReceivesMessages {
     }
 }
 
-enum ActorPathKeys: CodingKey {
-    case path
-    case uid
-}
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable UniqueActorPath
 
 // Customize coding to avoid nesting as {"value": "..."}
 extension UniqueActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: ActorPathKeys.self)
-        try container.encode(self.segments, forKey: ActorPathKeys.path)
-        try container.encode(self.uid, forKey: ActorPathKeys.uid)
+        var container = encoder.container(keyedBy: SharedActorPathKeys.self)
+        if let address = self.path.address {
+            try container.encode(address, forKey: SharedActorPathKeys.address)
+        }
+        try container.encode(self.segments, forKey: SharedActorPathKeys.path)
+        try container.encode(self.uid, forKey: SharedActorPathKeys.uid)
     }
 
     public init(from decoder: Decoder) throws {
         do {
-            let container = try decoder.container(keyedBy: ActorPathKeys.self)
-            let segments = try container.decode([ActorPathSegment].self, forKey: ActorPathKeys.path)
-            let uid = try container.decode(Int.self, forKey: ActorPathKeys.uid)
+            let container = try decoder.container(keyedBy: SharedActorPathKeys.self)
+            let address = try container.decodeIfPresent(NodeAddress.self, forKey: SharedActorPathKeys.address)
+            let segments = try container.decode([ActorPathSegment].self, forKey: SharedActorPathKeys.path)
+            let uid = try container.decode(Int.self, forKey: SharedActorPathKeys.uid)
 
-            try self.init(path: ActorPath(segments), uid: ActorUID(uid))
+            try self.init(path: ActorPath(segments, address: address), uid: ActorUID(uid))
         } catch {
             throw error
         }
     }
 }
+
+enum SharedActorPathKeys: CodingKey {
+    case address
+    case path
+    case uid
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorPath
 
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: ActorPathKeys.self)
-        try container.encode(self.segments, forKey: ActorPathKeys.path)
+        var container = encoder.container(keyedBy: SharedActorPathKeys.self)
+        if let address = self.address {
+            try container.encode(address, forKey: SharedActorPathKeys.address)
+        }
+        try container.encode(self.segments, forKey: SharedActorPathKeys.path)
     }
 
     public init(from decoder: Decoder) throws {
-        do {
-            let container = try decoder.container(keyedBy: ActorPathKeys.self)
-            let segments = try container.decode([ActorPathSegment].self, forKey: ActorPathKeys.path)
-            try self.init(segments)
-        } catch {
-            throw error
-        }
+        let container = try decoder.container(keyedBy: SharedActorPathKeys.self)
+        let maybeNodeAddress = try container.decodeIfPresent(NodeAddress.self, forKey: SharedActorPathKeys.address)
+        let segments = try container.decode([ActorPathSegment].self, forKey: SharedActorPathKeys.path)
+
+        var decoded = try ActorPath(segments)
+        decoded.address = maybeNodeAddress
+        self = decoded
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorPath elements
 
 // Customize coding to avoid nesting as {"value": "..."}
 extension ActorPathSegment: Codable {
@@ -175,6 +185,58 @@ extension ActorUID: Codable {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable Node Address
+
+extension NodeAddress {
+    // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        try container.encode(self.protocol)
+        // ://
+        try container.encode(self.systemName)
+        // @
+        try container.encode(self.host)
+        // : 
+        try container.encode(self.port)
+    }
+    public init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        self.protocol = try container.decode(String.self)
+        self.systemName = try container.decode(String.self)
+        self.host = try container.decode(String.self)
+        self.port = try container.decode(Int.self)
+    }
+}
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable Cell
+
+// Customize coding to avoid nesting as {"value": "..."}
+extension ActorRefWithCell {
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(self.path)
+    }
+
+    public convenience init(from decoder: Decoder) throws {
+        //        let container = try decoder.singleValueContainer()
+        //        let path = container.decode(UniqueActorPath.self)
+        //
+        //        guard let serializationContext = decoder.actorSerializationContext else {
+        //            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+        //        }
+        //
+        //        switch serializationContext.resolve(path: path) {
+        //        case .some(let resolver):
+        //        case .none:
+        //            throw
+        //        }
+        fatalError("Not implemented. For remote cases this is not possible, it should resolve to a proxy basically, that is to hit remoting.")
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Decoding convenience extensions
 
 internal extension SingleValueDecodingContainer {
@@ -185,6 +247,20 @@ internal extension SingleValueDecodingContainer {
                 debugDescription: "Cannot initialize [\(hint)] from an empty string!")
         }
         return value
+    }
+}
+
+public extension SingleValueEncodingContainer {
+    mutating func encodeWithAddress(_ path: UniqueActorPath, using context: ActorSerializationContext) throws {
+        if let pathAddress = path.path.address {
+            precondition(pathAddress == context.serializationAddress)
+            try self.encode(path) // we assume the already present path is correct
+        } else {
+            // path has no address, so we assume it is a local one and set it from as local system's address
+            var copy = path // copy to amend with address
+            copy.path.address = context.serializationAddress
+            try self.encode(copy)
+        }
     }
 }
 

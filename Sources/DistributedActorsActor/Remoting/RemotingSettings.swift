@@ -20,8 +20,14 @@ import NIO
 
 public struct RemotingSettings {
 
+    public enum Default {
+        public static let systemName: String = "ActorSystem"
+        public static let host: String = "127.0.0.1"
+        public static let port: Int = 7337
+    }
+
     public static var `default`: RemotingSettings {
-        let defaultBindAddress: NodeAddress = .init(systemName: "ActorSystem", host: "127.0.0.1", port: 7337)
+        let defaultBindAddress: NodeAddress = .init(systemName: Default.systemName, host: Default.host, port: Default.port)
         return RemotingSettings(bindAddress: defaultBindAddress)
     }
 
