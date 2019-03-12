@@ -220,7 +220,7 @@ extension RemotingKernel {
         } catch {
             // TODO change since serialization which can throw should be shipped of to a future
             // ---- since now we blocked the actor basically with the serialization
-            return state.eventLoopGroup.next().newFailedFuture(error: error)
+            return state.eventLoopGroup.next().makeFailedFuture(error)
         }
     }
 
@@ -236,9 +236,9 @@ extension RemotingKernel {
             // TODO should be send through pipeline where we do the serialization thingies
             let bytes = try proto.serializedByteBuffer(allocator: allocator)
 
-            replyInto.succeed(result: bytes)
+            replyInto.succeed(bytes)
         } catch {
-            replyInto.fail(error: error)
+            replyInto.fail(error)
         }
     }
 }

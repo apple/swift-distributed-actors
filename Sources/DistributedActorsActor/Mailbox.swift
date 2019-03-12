@@ -81,27 +81,27 @@ final class Mailbox<Message> {
 
         self.interpretMessage = { ctxPtr, msgPtr, runPhase in
             defer { msgPtr?.deallocate() }
-            guard let ctx = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self) else {
+            guard let context = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self) else {
                 return .shouldStop
             }
 
             var shouldContinue: ActorRunResult
             do {
-                shouldContinue = try ctx.pointee.exec(with: msgPtr!, runPhase: runPhase)
+                shouldContinue = try context.pointee.exec(with: msgPtr!, runPhase: runPhase)
             } catch {
                 traceLog_Mailbox(nil, "Error while processing message! Error was: [\(error)]:\(type(of: error))")
 
                 // TODO: supervision can decide to stop... we now stop always though
-                shouldContinue = ctx.pointee.fail(error: error) // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
+                shouldContinue = context.pointee.fail(error: error) // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
             }
 
             return shouldContinue
         }
         self.dropMessage = { (ctxPtr, msgPtr) in
             defer { msgPtr?.deallocate() }
-            let ctx = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
+            let context = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
             do {
-                try ctx?.pointee.drop(with: msgPtr!)
+                try context?.pointee.drop(with: msgPtr!)
             } catch {
                 traceLog_Mailbox(nil, "Error while dropping message! Was: \(error) TODO supervision decisions...")
             }
@@ -110,14 +110,14 @@ final class Mailbox<Message> {
             traceLog_Mailbox(nil, "Actor has faulted, supervisor to decide course of action.")
 
             if let crashDetails = FaultHandling.getCrashDetails() {
-                if let ctx: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
+                if let context: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
                     traceLog_Mailbox(nil, "Run failed in phase \(runPhase)")
 
-                    let messageDescription = ctx.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!)
+                    let messageDescription = context.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!)
                     let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
 
                     do {
-                        return try ctx.handleMessageFailure(.fault(failure), whileProcessing: runPhase)
+                        return try context.handleMessageFailure(.fault(failure), whileProcessing: runPhase)
                     } catch {
                         traceLog_Supervision("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
                         exit(-1)
@@ -157,13 +157,13 @@ final class Mailbox<Message> {
                 traceLog_Mailbox(self.path, "INVOKE MSG: \(message)")
                 return try cell.interpretMessage(message: message)
             case .closure(let f):
-                traceLog_Mailbox(self.path, "INVOKE CLOSURE: \(f)")
+                traceLog_Mailbox(self.path, "INVOKE CLOSURE: \(String(describing: f))")
                 return try cell.interpretClosure(f)
             }
         }, fail: { [weak _cell = cell, path = self.path] error in
             traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
             switch _cell {
-            case .some(let cell): cell.fail(error: error)
+            case .some(let cell): cell.fail(error)
             case .none:           pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
@@ -180,7 +180,7 @@ final class Mailbox<Message> {
         }, fail: { [weak _cell = cell, path = self.path] error in
             traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
             switch _cell {
-            case .some(let cell): cell.fail(error: error)
+            case .some(let cell): cell.fail(error)
             case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })

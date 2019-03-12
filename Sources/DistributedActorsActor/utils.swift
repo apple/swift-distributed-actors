@@ -92,7 +92,7 @@ internal func _hackyPThreadThreadId() -> String {
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
     pprint("SACT_TRACE_DEATHWATCH: \(message())", file: file, line: line)
     #endif
@@ -100,7 +100,7 @@ func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticStrin
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_Mailbox(_ path: UniqueActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_Mailbox(_ path: UniqueActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
     pprint("SACT_TRACE_MAILBOX(\(path.map({ "\($0)" }) ?? "<unknown>")): \(message())", file: file, line: line)
     #endif
@@ -108,7 +108,7 @@ func traceLog_Mailbox(_ path: UniqueActorPath?, _ message: @autoclosure () -> St
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_CELL
     pprint("SACT_TRACE_CELL: \(message())", file: file, line: line)
     #endif
@@ -116,7 +116,7 @@ func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #f
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
     pprint("SACT_TRACE_PROBE: \(message())", file: file, line: line)
     #endif
@@ -124,7 +124,7 @@ func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
     pprint("SACT_TRACE_SUPERVISION: \(message())", file: file, line: line)
     #endif
@@ -164,13 +164,13 @@ internal func _left<L, R>(left: L, right: R) -> L {
 // MARK: Minor printing/formatting helpers
 
 internal extension BinaryInteger {
-    internal var hexString: String {
+    var hexString: String {
         return "0x\(String(self, radix: 16, uppercase: true))"
     }
 }
 
 internal extension Array where Array.Element == UInt8 {
-    internal var hexString: String {
+    var hexString: String {
         return "0x\(self.map({$0.hexString}).joined(separator: ""))"
     }
 }

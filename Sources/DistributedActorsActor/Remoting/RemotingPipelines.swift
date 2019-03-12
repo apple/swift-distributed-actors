@@ -32,26 +32,26 @@ public struct LeftOverBytesError: Error {
 //    typealias InboundIn = ByteBuffer
 //    public typealias InboundOut = Wire.Envelope
 //
-////    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+////    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
 ////        var bytes = self.unwrapInboundIn(data)
 ////
 ////        do {
-////            let envelope = try self.readEnvelope(&bytes, allocator: ctx.channel.allocator)
-////            ctx.fireChannelRead(self.wrapInboundOut(envelope))
+////            let envelope = try self.readEnvelope(&bytes, allocator: context.channel.allocator)
+////            context.fireChannelRead(self.wrapInboundOut(envelope))
 ////        } catch {
 ////            // TODO notify the kernel?
-////            ctx.fireErrorCaught(error)
-////            ctx.close(promise: nil)
+////            context.fireErrorCaught(error)
+////            context.close(promise: nil)
 ////        }
 ////    }
 //
-////    func channelReadComplete(ctx: ChannelHandlerContext) {
-////        ctx.flush()
+////    func channelReadComplete(context: ChannelHandlerContext) {
+////        context.flush()
 ////    }
 //
 //    public var cumulationBuffer: ByteBuffer?
 //
-//    func decode(ctx: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
+//    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
 //        fatalError("BOOOOOOM 1")
 //        let readBytes: Int? = buffer.withUnsafeReadableBytes { bytes in
 //            fatalError("BOOOOOOM 2")
@@ -80,7 +80,7 @@ private final class HandshakeHandler: ChannelInboundHandler {
         self.role = role
     }
 
-    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
         traceLog_Remote("[handshake-\(self.role)] INCOMING: \(bytes.formatHexDump())")
 
@@ -95,7 +95,7 @@ private final class HandshakeHandler: ChannelInboundHandler {
                 // TODO formalize wire format...
                 let offer = try self.readHandshakeOffer(bytes: &bytes)
 
-                let promise = ctx.eventLoop.newPromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
+                let promise = context.eventLoop.makePromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
                 self.kernel.tell(.inbound(.handshakeOffer(offer, replyTo: promise)))
 
                 // TODO once we write the response here, we can remove the handshake handler from the pipeline
@@ -103,16 +103,16 @@ private final class HandshakeHandler: ChannelInboundHandler {
                 promise.futureResult.onComplete { res in
                     switch res {
                     case .failure(let err):
-                        ctx.fireErrorCaught(err)
+                        context.fireErrorCaught(err)
                     case .success(let bytes): // TODO this will be a domain object, since we'll serialize in the next handler
-                        ctx.writeAndFlush(NIOAny(bytes), promise: nil)
+                        context.writeAndFlush(NIOAny(bytes), promise: nil)
                     }
                 }
 
             case .client:
                 let accept = try self.readHandshakeAccept(bytes: &bytes) // TODO must check reply types
 
-                let promise = ctx.eventLoop.newPromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
+                let promise = context.eventLoop.makePromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
                 self.kernel.tell(.inbound(.handshakeAccepted(accept, replyTo: promise)))
 
                 // TODO once we write the response here, we can remove the handshake handler from the pipeline
@@ -120,9 +120,9 @@ private final class HandshakeHandler: ChannelInboundHandler {
                 promise.futureResult.onComplete { res in
                     switch res {
                     case .failure(let err):
-                        ctx.fireErrorCaught(err)
+                        context.fireErrorCaught(err)
                     case .success(let bytes): // TODO this will be a domain object, since we'll serialize in the next handler
-                        ctx.writeAndFlush(NIOAny(bytes), promise: nil)
+                        context.writeAndFlush(NIOAny(bytes), promise: nil)
                     }
                 }
             }
@@ -130,7 +130,7 @@ private final class HandshakeHandler: ChannelInboundHandler {
 
         } catch {
             self.kernel.tell(.inbound(.handshakeFailed(nil, error))) // FIXME this is to let the state machine know it should clear this handshake
-            ctx.fireErrorCaught(error)
+            context.fireErrorCaught(error)
         }
     }
 }
@@ -152,25 +152,25 @@ private final class WriteHandler: ChannelOutboundHandler {
         self.role = role
     }
 
-    func write(ctx: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let bytes = self.unwrapOutboundIn(data)
 
         if self.role == .client && !self.magicSent { // FIXME LAZY HACK
-            var b = ctx.channel.allocator.buffer(capacity: 4)
-            b.write(integer: HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
-            _ = ctx.write(NIOAny(b))
+            var b = context.channel.allocator.buffer(capacity: 4)
+            b.writeInteger(HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
+            _ = context.write(NIOAny(b))
             traceLog_Remote("[WRITE-\(self.role)] WRITE MAGIC")
             self.magicSent = true
         }
 
         // TODO this is the simple prefix length for which we have Framing on the other end; we'll want this to be envelope
-        var lenBuf = ctx.channel.allocator.buffer(capacity: 4)
+        var lenBuf = context.channel.allocator.buffer(capacity: 4)
         traceLog_Remote("[WRITE-\(self.role)] WRITE LENGTH: \(bytes.readableBytes)")
-        lenBuf.write(integer: UInt32(bytes.readableBytes), endianness: .big)
-        _ = ctx.write(NIOAny(lenBuf))
+        lenBuf.writeInteger(UInt32(bytes.readableBytes), endianness: .big)
+        _ = context.write(NIOAny(lenBuf))
 
         traceLog_Remote("[WRITE-\(self.role)] WRITE BYTES: \(bytes.formatHexDump())")
-        ctx.writeAndFlush(data, promise: promise)
+        context.writeAndFlush(data, promise: promise)
     }
 
 }
@@ -257,23 +257,23 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
         self.log = log
     }
 
-    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
-        self.setLoggerMetadata(ctx)
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        self.setLoggerMetadata(context)
 
         let event = self.unwrapInboundIn(data)
         log.info("[dump-\(self.role)] Received: \(event.formatHexDump)")
     }
 
-    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
-        self.setLoggerMetadata(ctx)
+    func errorCaught(context: ChannelHandlerContext, error: Error) {
+        self.setLoggerMetadata(context)
 
         log.error("Caught error: [\(error)]:\(type(of: error))")
-        ctx.fireErrorCaught(error)
+        context.fireErrorCaught(error)
     }
 
-    private func setLoggerMetadata(_ ctx: ChannelHandlerContext) {
-        if let remoteAddress = ctx.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
-        if let localAddress = ctx.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
+    private func setLoggerMetadata(_ context: ChannelHandlerContext) {
+        if let remoteAddress = context.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
+        if let localAddress = context.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
     }
 }
 
@@ -297,22 +297,22 @@ extension RemotingKernel {
             .childChannelInitializer { channel in
                 // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
                 channel.pipeline
-                        .add(name: "server-write", handler: WriteHandler(role: .server))
+                        .addHandler(WriteHandler(role: .server))
                     // Handshake MUST be the first thing in the pipeline
-                    .then { _ in  channel.pipeline
-                        .add(name: "handshake", handler: HandshakeHandler(kernel: kernel, role: .server)) 
+                    .flatMap { _ in  channel.pipeline
+                        .addHandler(HandshakeHandler(kernel: kernel, role: .server)) 
                     }
-                    // .then { channel.pipeline.add(BackPressureHandler()) }
-//                    .then { _ in
+                    // .flatMap { channel.pipeline.addHandler(BackPressureHandler()) }
+//                    .flatMap { _ in channel.pipeline
 //                        // currently just a length encoded one, we alias to the one from NIOExtras
-//                        channel.pipeline.add(name: "framing", handler: Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
+//                        .addHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
 //                    }
-//                    .then { _ in // TODO Do the envelope parser instead of the simple framing
-//                        channel.pipeline.add(name: "envelope-parser", handler: EnvelopeParser())
+//                    .flatMap { _ in channel.pipeline // TODO Do the envelope parser instead of the simple framing
+//                        .addHandler(EnvelopeParser())
 //                    }
-                    .then { _ in
+                    .flatMap { _ in channel.pipeline
                         // FIXME only include for debug -DSACT_TRACE_NIO things?
-                        channel.pipeline.add(name: "dump-raw-bytes-debug", handler: DumpRawBytesDebugHandler(role: .server, log: log))
+                        .addHandler(DumpRawBytesDebugHandler(role: .server, log: log))
                     }
             }
 
@@ -334,17 +334,17 @@ extension RemotingKernel {
             .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .channelInitializer { channel in
                 channel.pipeline
-                    .add(name: "client-write", handler: WriteHandler(role: .client))
-                    .then { _ in channel.pipeline
-                        .add(name: "handshake", handler: HandshakeHandler(kernel: kernel, role: .client))
+                    .addHandler(WriteHandler(role: .client))
+                    .flatMap { _ in channel.pipeline
+                        .addHandler(HandshakeHandler(kernel: kernel, role: .client))
                     }
-//                    .then { _ in
+//                    .flatMap { _ in
 //                        // currently just a length encoded one, we alias to the one from NIOExtras
-//                        channel.pipeline.add(name: "framing", handler: Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
+//                        channel.pipeline.addHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
 //                    }
-                    .then { _ in
+                    .flatMap { _ in
                         // FIXME only include for debug -DSACT_TRACE_NIO things?
-                        channel.pipeline.add(name: "dump-raw-bytes-debug", handler: DumpRawBytesDebugHandler(role: .client, log: log))
+                        channel.pipeline.addHandler(DumpRawBytesDebugHandler(role: .client, log: log))
                     }
             }
 

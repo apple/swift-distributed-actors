@@ -404,7 +404,7 @@ final class JSONCodableSerializer<T: Codable>: Serializer<T> {
 
         // FIXME can be better?
         var buffer = allocate.buffer(capacity: data.count)
-        buffer.write(bytes: data)
+        buffer.writeBytes(data)
 
         return buffer
     }
@@ -528,6 +528,7 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
 // MARK: System message serializer
 // TODO needs to include origin address
 // TODO can we pull it off as structs?
+@usableFromInline
 internal class SystemMessageSerializer: Serializer<SystemMessage> {
     enum SysMsgTypeId: Int, Codable {
         case unknownRepr = 0
@@ -553,7 +554,7 @@ internal class SystemMessageSerializer: Serializer<SystemMessage> {
         case .start:
             var buffer = allocate.buffer(capacity: 8)
             let msgTypeId = SysMsgTypeId.startRepr.rawValue
-            buffer.write(integer: msgTypeId)
+            buffer.writeInteger(msgTypeId)
             return buffer
 
         case .watch:
@@ -590,6 +591,7 @@ internal class SystemMessageSerializer: Serializer<SystemMessage> {
     }
 }
 
+@usableFromInline
 internal class StringSerializer: Serializer<String> {
 
     private let allocate: ByteBufferAllocator
@@ -601,7 +603,7 @@ internal class StringSerializer: Serializer<String> {
     override func serialize(message: String) throws -> ByteBuffer {
         let len = message.lengthOfBytes(using: .utf8) // TODO optimize for ascii?
         var buffer = allocate.buffer(capacity: len)
-        buffer.write(string: message)
+        buffer.writeString( message)
         return buffer
     }
 
@@ -627,7 +629,7 @@ internal class StringSerializer: Serializer<String> {
 //
 //        return data.withUnsafeBytes { bytes in
 //            var out: ByteBuffer = allocate.buffer(capacity: data.count)
-//            out.write(bytes: bytes)
+//            out.writeBytes(bytes)
 //            return out
 //        }
 //    }
@@ -649,7 +651,7 @@ internal extension Foundation.Data {
     internal func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
         return self.withUnsafeBytes { bytes in
             var out: ByteBuffer = allocator.buffer(capacity: self.count)
-            out.write(bytes: bytes)
+            out.writeBytes(bytes)
             return out
         }
     }

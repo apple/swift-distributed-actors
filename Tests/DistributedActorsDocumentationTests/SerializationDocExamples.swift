@@ -90,11 +90,11 @@ class SerializationDocExamples {
             self.allocator = allocator
 
             var availableRepr: ByteBuffer = allocator.buffer(capacity: 1) // <1>
-            availableRepr.write(staticString: "A")
+            availableRepr.writeStaticString("A")
             self.availableRepr = availableRepr
 
             var takenRepr: ByteBuffer = allocator.buffer(capacity: 1)
-            takenRepr.write(staticString: "T")
+            takenRepr.writeStaticString("T")
             self.takenRepr = takenRepr
         }
 

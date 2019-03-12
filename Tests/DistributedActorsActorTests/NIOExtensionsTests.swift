@@ -22,7 +22,7 @@ class NIOExtensionTests: XCTestCase {
     func test_ByteBuf_formatHexDump_shouldPrettyPrintAsExpected() {
         let allocator = ByteBufferAllocator()
         var b = allocator.buffer(capacity: 512)
-        b.write(string: "Lorem Ipsum is simply dummy text of the printing and typesetting industry.")
+        b.writeString("Lorem Ipsum is simply dummy text of the printing and typesetting industry.")
 
         let expected = """
                        ByteBuffer(readableBytes: 74), formatHexDump:
@@ -38,7 +38,7 @@ class NIOExtensionTests: XCTestCase {
     func test_ByteBuf_formatHexDump_truncating_shouldPrettyPrintAsExpected() {
         let allocator = ByteBufferAllocator()
         var b = allocator.buffer(capacity: 512)
-        b.write(string: "Lorem Ipsum is simply dummy text of the printing and typesetting industry.")
+        b.writeString("Lorem Ipsum is simply dummy text of the printing and typesetting industry.")
 
         let expected = """
                        ByteBuffer(readableBytes: 74, shown: 20), formatHexDump:

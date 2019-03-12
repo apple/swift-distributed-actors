@@ -70,16 +70,16 @@ internal final class SerializationPool {
                 try workerPool.execute(on: workerNumber) {
                     do {
                         let result = try task()
-                        promise.succeed(result: result)
+                        promise.succeed(result)
                     } catch {
-                        promise.fail(error: error)
+                        promise.fail(error)
                     }
                 }
             } else { // otherwise handle on the calling thread
-                promise.succeed(result: try task())
+                promise.succeed(try task())
             }
         } catch {
-            promise.fail(error: error)
+            promise.fail(error)
         }
     }
 }

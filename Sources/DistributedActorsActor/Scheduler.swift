@@ -22,9 +22,7 @@ protocol Cancelable {
     func cancel()
 
     /// Returns true if the cancellable has already been cancelled, false otherwise.
-    var isCanceled: Bool {
-        get
-    }
+    var isCanceled: Bool { get }
 }
 
 internal protocol Scheduler {
@@ -44,12 +42,14 @@ class FlagCancelable: Cancelable {
         _ = flag.compareAndExchange(expected: false, desired: true)
     }
 
+    @usableFromInline
     var isCanceled: Bool {
         return flag.load()
     }
 }
 
 extension DispatchWorkItem: Cancelable {
+    @usableFromInline
     var isCanceled: Bool {
         return self.isCancelled
     }

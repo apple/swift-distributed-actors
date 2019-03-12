@@ -462,7 +462,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResult_shouldResumeActorWithSuccessResultWhenFutureSucceeds() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -482,7 +482,7 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.succeed(result: 1)
+        promise.succeed(1)
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .success(1): ()
@@ -494,7 +494,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureFails() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -508,7 +508,7 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(error: Boom.boom)
+        promise.fail(Boom.boom)
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
@@ -523,7 +523,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResultThrowing_shouldResumeActorSuccessResultWhenFutureSucceeds() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -543,14 +543,14 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.succeed(result: 1)
+        promise.succeed(1)
         try suspendProbe.expectMessage(1)
         try p.expectMessage("another test")
     }
 
     func test_awaitResultThrowing_shouldCrashActorWhenFutureFails() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -571,14 +571,14 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(error: Boom.boom)
+        promise.fail(Boom.boom)
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
         try p.expectTerminated(ref)
     }
 
     func test_awaitResult_shouldResumeActorWithFailureResultWhenFutureTimesOut() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -604,7 +604,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResult_shouldWorkWhenReturnedInsideInitialSetup() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -643,7 +643,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResult_shouldCrashWhenReturnedInsideInitialSetup_andReturnSameOnResume() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
@@ -676,7 +676,7 @@ class BehaviorTests: XCTestCase {
 
     func test_awaitResultThrowing_shouldCrashActorWhenFutureTimesOut() throws {
         let eventLoop = eventLoopGroup.next()
-        let promise: EventLoopPromise<Int> = eventLoop.newPromise()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let suspendProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
