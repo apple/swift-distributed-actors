@@ -26,7 +26,7 @@ public typealias TimeSpec = timespec
 
 // utilities to convert between TimeAmount and C timespec
 public extension TimeSpec {
-    public static func from(timeAmount amount: TimeAmount) -> timespec {
+    static func from(timeAmount amount: TimeAmount) -> timespec {
         let seconds = Int(amount.nanoseconds) / NANOS
         let nanos = Int(amount.nanoseconds) % NANOS
         var time = timespec()
@@ -35,7 +35,7 @@ public extension TimeSpec {
         return time
     }
 
-    public static func +(a: timespec, b: timespec) -> timespec {
+    static func +(a: timespec, b: timespec) -> timespec {
         let totalNanos = a.toNanos() + b.toNanos()
         let seconds = totalNanos / NANOS
         var result = timespec()
@@ -44,7 +44,7 @@ public extension TimeSpec {
         return result
     }
 
-    public func toNanos() -> Int {
+    func toNanos() -> Int {
         return self.tv_nsec + (self.tv_sec * NANOS)
     }
 }

@@ -321,7 +321,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     /// We only FORCE the sending of a tombstone if we know we have parked the thread because an actual failure happened,
     /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
-    internal func fail(error: Error) {
+    internal func fail(_ error: Error) {
         self._myselfInACell.mailbox.setFailed()
         // TODO: we could handle here "wait for children to terminate"
 

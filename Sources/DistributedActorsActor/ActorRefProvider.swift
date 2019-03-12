@@ -140,6 +140,7 @@ internal struct CompositeActorTreeTraversable: ActorTreeTraversable {
     }
 }
 
+@usableFromInline
 internal struct TraversalContext<T> {
     var depth: Int
     var accumulated: [T]
@@ -188,6 +189,7 @@ internal struct TraversalContext<T> {
     }
 }
 
+@usableFromInline
 internal struct ResolveContext {
     var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
 
@@ -217,6 +219,7 @@ internal struct ResolveContext {
 }
 
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
+@usableFromInline
 internal enum TraversalDirective<T> {
     case `continue`
     // case `return`(T) // immediately return this value
@@ -224,6 +227,7 @@ internal enum TraversalDirective<T> {
     case accumulateMany([T])
     case abort(Error)
 }
+@usableFromInline
 internal enum TraversalResult<T> {
     case result(T)
     case results([T])

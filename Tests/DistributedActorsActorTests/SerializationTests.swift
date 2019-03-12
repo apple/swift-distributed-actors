@@ -37,13 +37,13 @@ class SerializationTests: XCTestCase {
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
         let allocator = ByteBufferAllocator()
         var buf = allocator.buffer(capacity: 5)
-        buf.write(string: "hello")
+        buf.writeString("hello")
 
         let data: Data = buf.getData(at: 0, length: buf.readableBytes)!
 
         let out: ByteBuffer = data.withUnsafeBytes { bytes in
             var out = allocator.buffer(capacity: data.count)
-            out.write(bytes: bytes)
+            out.writeBytes(bytes)
             return out
         }
 

@@ -37,7 +37,7 @@ extension SwiftProtobuf.Message {
          // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
 
         var buffer = allocate.buffer(capacity: data.count)
-        buffer.write(bytes: data)
+        buffer.writeBytes(data)
 
         return buffer
     }

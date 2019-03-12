@@ -19,12 +19,12 @@ import NIO
 internal extension ByteBuffer {
 
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
-    internal var formatHexDump: String {
+    var formatHexDump: String {
         return self.formatHexDump()
     }
     
     /// Intended for ad-hoc debugging purposes of network data or serialized payloads.
-    internal func formatHexDump(maxBytes: Int = 80, bytesPerLine: Int = 16) -> String {
+    func formatHexDump(maxBytes: Int = 80, bytesPerLine: Int = 16) -> String {
         let padding = String(repeating: " ", count: 4)
         func asHex(_ byte: UInt8) -> String {
             let s = String(byte, radix: 16, uppercase: true)
@@ -90,10 +90,10 @@ internal extension ByteBuffer {
 
 // MARK: ELF extensions
 
-extension EventLoopFuture {
+internal extension EventLoopFuture {
     /// Useful for "println debugging" ¯\_(ツ)_/¯
     @discardableResult
-    internal func pprintResults(hint: String, file: StaticString = #file, line: UInt = #line, function: StaticString = #function) -> Self {
+    func pprintResults(hint: String, file: StaticString = #file, line: UInt = #line, function: StaticString = #function) -> Self {
         self.whenFailure { err in
             pprint("[\(hint)] ELF @ \(function) failed: \(err)", file: file, line: line)
         }

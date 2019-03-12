@@ -209,11 +209,7 @@ extension TimeAmount {
     }
 
     public var toNIO: NIO.TimeAmount {
-        #if arch(arm) || arch(i386)
-        return NIO.TimeAmount.nanoseconds(self.nanoseconds)
-        #else
-        return NIO.TimeAmount.nanoseconds(Int(self.nanoseconds))
-        #endif
+        return NIO.TimeAmount.nanoseconds(Int64(self.nanoseconds))
     }
 }
 
@@ -332,23 +328,23 @@ extension Deadline {
 
 public extension Deadline {
 
-    public static func fromNow(_ amount: TimeAmount) -> Deadline {
+    static func fromNow(_ amount: TimeAmount) -> Deadline {
         return .now() + amount
     }
 
     /// - Returns: true if the deadline is still pending with respect to the passed in `now` time instant
-    public func hasTimeLeft() -> Bool {
+    func hasTimeLeft() -> Bool {
         return self.hasTimeLeft(until: .now())
     }
-    public func hasTimeLeft(until: Deadline) -> Bool {
+    func hasTimeLeft(until: Deadline) -> Bool {
         return !self.isBefore(until)
     }
 
     /// - Returns: true if the deadline is overdue with respect to the passed in `now` time instant
-    public func isOverdue() -> Bool {
+    func isOverdue() -> Bool {
         return self.isBefore(.now())
     }
-    public func isBefore(_ until: Deadline) -> Bool {
+    func isBefore(_ until: Deadline) -> Bool {
         return self.uptimeNanoseconds < until.uptimeNanoseconds
     }
 
