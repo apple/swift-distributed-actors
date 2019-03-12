@@ -47,7 +47,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    public static func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    static func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
         props.supervision = props.supervision.adding(strategy: strategy, forErrorType: errorType)
         return props
@@ -58,7 +58,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    public static func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+    static func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         return addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
@@ -67,7 +67,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    public func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
         props.supervision.add(strategy: strategy, forErrorType: errorType)
         return props
@@ -77,7 +77,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    public func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+    func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         return self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 }

@@ -56,7 +56,7 @@ final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
     override func serialize(message: M) throws -> ByteBuffer {
         let data = try message.serializedData()
         var buffer = allocator.buffer(capacity: data.count)
-        buffer.write(bytes: data)
+        buffer.writeBytes(data)
         return buffer
     }
 

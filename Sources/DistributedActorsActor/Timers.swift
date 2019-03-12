@@ -121,8 +121,8 @@ public class Timers<Message> {
     }
 
     lazy var timerCallback: AsynchronousCallback<TimerEvent> =
-        self.context.makeAsynchronousCallback { [weak ctx = self.context] timerEvent in
-            if let context = ctx {
+        self.context.makeAsynchronousCallback { [weak context = self.context] timerEvent in
+            if let context = context {
                 if timerEvent.owner.path != context.path {
                     context.log.warning("Received timer signal with key [\(timerEvent.key)] for different actor with path [\(context.path)]. Will ignore and continue.")
                     return

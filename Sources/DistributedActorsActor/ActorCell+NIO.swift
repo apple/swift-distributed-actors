@@ -29,11 +29,14 @@ extension ActorCell: EventLoop {
         self._myselfInACell.sendClosure(task)
     }
 
-    public func scheduleTask<T>(in: NIO.TimeAmount, _ task: @escaping () throws -> T) -> Scheduled<T> {
+    public func scheduleTask<T>(deadline: NIO.NIODeadline, _ task: @escaping () throws -> T) -> NIO.Scheduled<T> {
         // TODO: implement EventLoops scheduling API in terms of Timers?
         fatalError("\"I'm sorry Dave, I'm afraid I can't do that.\" `EventLoop.scheduleTask` is not implemented on ActorContext.")
     }
-
+    public func scheduleTask<T>(in: NIO.TimeAmount, _ task: @escaping () throws -> T) -> NIO.Scheduled<T> {
+        // TODO: implement EventLoops scheduling API in terms of Timers?
+        fatalError("\"I'm sorry Dave, I'm afraid I can't do that.\" `EventLoop.scheduleTask` is not implemented on ActorContext.")
+    }
     public func shutdownGracefully(queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
         // TODO: a bit scary, do we want to support this? Would have to kill the dispatcher hm...
         fatalError("\"I'm sorry Dave, I'm afraid I can't do that.\" `EventLoop.shutdownGracefully` is not implemented on ActorContext.")

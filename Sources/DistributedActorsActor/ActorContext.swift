@@ -201,7 +201,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     public func awaitResult<AR: AsyncResult>(
         of task: AR,
         timeout: TimeAmount,
-        _ continuation: @escaping (Result<AR.T, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+        _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
             task.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._downcastUnsafe] result in
                 selfRef?.sendSystemMessage(.resume(result.map { $0 }))
             }
@@ -224,7 +224,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     public func awaitResultThrowing<AR: AsyncResult>(
         of task: AR,
         timeout: TimeAmount,
-        _ continuation: @escaping (AR.T) throws -> Behavior<Message>) -> Behavior<Message> {
+        _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) -> Behavior<Message> {
             return self.awaitResult(of: task, timeout: timeout) { result in
                 switch result {
                 case .success(let res): return try continuation(res)

@@ -33,14 +33,14 @@ class SerializationPoolTests: XCTestCase {
 
         func encode(to encoder: Encoder) throws {
             self.lock.lock()
+            defer { self.lock.unlock() }
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(true, forKey: .test)
-            defer { self.lock.unlock() }
         }
 
         init(from decoder: Decoder) throws {
             Test1.deserializerLock.lock()
-            defer { Test1.deserializerLock.unlock() }
+            Test1.deserializerLock.unlock()
         }
 
         init() {}
@@ -56,9 +56,9 @@ class SerializationPoolTests: XCTestCase {
 
         func encode(to encoder: Encoder) throws {
             self.lock.lock()
+            defer { self.lock.unlock() }
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(true, forKey: .test)
-            defer { self.lock.unlock() }
         }
 
         init(from decoder: Decoder) throws {
@@ -102,7 +102,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -110,7 +110,7 @@ class SerializationPoolTests: XCTestCase {
         let test2 = Test1()
         test2.lock.lock()
         defer { test2.lock.unlock() }
-        let promise2: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -133,14 +133,14 @@ class SerializationPoolTests: XCTestCase {
         // wait on the `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -168,14 +168,14 @@ class SerializationPoolTests: XCTestCase {
         // when unlocking `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -204,8 +204,8 @@ class SerializationPoolTests: XCTestCase {
         defer { Test1.deserializerLock.unlock() }
 
         var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.write(string: json)
-        let promise1: EventLoopPromise<Test1> = el.newPromise()
+        buffer1.writeString( json)
+        let promise1: EventLoopPromise<Test1> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -215,8 +215,8 @@ class SerializationPoolTests: XCTestCase {
         defer { Test2.deserializerLock.unlock() }
 
         var buffer2 = allocator.buffer(capacity: json.count)
-        buffer2.write(string: json)
-        let promise2: EventLoopPromise<Test2> = el.newPromise()
+        buffer2.writeString(json)
+        let promise2: EventLoopPromise<Test2> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -240,8 +240,8 @@ class SerializationPoolTests: XCTestCase {
         Test1.deserializerLock.lock()
 
         var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.write(string: json)
-        let promise1: EventLoopPromise<Test1> = el.newPromise()
+        buffer1.writeString( json)
+        let promise1: EventLoopPromise<Test1> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -250,8 +250,8 @@ class SerializationPoolTests: XCTestCase {
         Test2.deserializerLock.lock()
 
         var buffer2 = allocator.buffer(capacity: json.count)
-        buffer2.write(string: json)
-        let promise2: EventLoopPromise<Test2> = el.newPromise()
+        buffer2.writeString(json)
+        let promise2: EventLoopPromise<Test2> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -282,8 +282,8 @@ class SerializationPoolTests: XCTestCase {
         let json = "{}"
 
         var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.write(string: json)
-        let promise1: EventLoopPromise<Test1> = el.newPromise()
+        buffer1.writeString( json)
+        let promise1: EventLoopPromise<Test1> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -291,8 +291,8 @@ class SerializationPoolTests: XCTestCase {
 
         Test2.deserializerLock.lock()
         var buffer2 = allocator.buffer(capacity: json.count)
-        buffer2.write(string: json)
-        let promise2: EventLoopPromise<Test2> = el.newPromise()
+        buffer2.writeString(json)
+        let promise2: EventLoopPromise<Test2> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
@@ -316,7 +316,7 @@ class SerializationPoolTests: XCTestCase {
         // on different, separate threads, than the objects being deserialized
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.newPromise()
+        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -324,8 +324,8 @@ class SerializationPoolTests: XCTestCase {
         let json = "{}"
 
         var buffer = allocator.buffer(capacity: json.count)
-        buffer.write(string: json)
-        let promise2: EventLoopPromise<Test1> = el.newPromise()
+        buffer.writeString(json)
+        let promise2: EventLoopPromise<Test1> = el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }

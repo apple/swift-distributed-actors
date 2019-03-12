@@ -105,7 +105,7 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.newSucceededFuture(result: "success")
+            return eventLoop.makeSucceededFuture("success")
         }
 
         // tag::asyncOp_awaitResult[]
@@ -143,7 +143,7 @@ class InteropDocExamples: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
-            return eventLoop.newSucceededFuture(result: "success")
+            return eventLoop.makeSucceededFuture("success")
         }
 
         func prefixer(prefix: String) -> Behavior<Messages> {

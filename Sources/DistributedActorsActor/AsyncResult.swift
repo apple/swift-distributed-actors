@@ -16,10 +16,10 @@ import NIO
 
 /// The result of an asynchronous operation, e.g. a `Future`.
 public protocol AsyncResult {
-    associatedtype T
+    associatedtype Value
 
     /// Registers a callback that is executed when the `AsyncResult` is available.
-    func onComplete(_ callback: @escaping (Result<T, ExecutionError>) -> Void)
+    func onComplete(_ callback: @escaping (Result<Value, ExecutionError>) -> Void)
 
     /// Returns a new `AsyncResult` that is completed with the value of this
     /// `AsyncResult`, or a `TimeoutError` when it is not completed within
@@ -30,24 +30,24 @@ public protocol AsyncResult {
 }
 
 extension EventLoopFuture: AsyncResult {
-    public func onComplete(_ callback: @escaping (Result<T, ExecutionError>) -> Void) {
-        self.map { Result<T, ExecutionError>.success($0) }
-            .mapIfError { Result<T, ExecutionError>.failure(ExecutionError(underlying: $0)) }
+    public func onComplete(_ callback: @escaping (Result<Value, ExecutionError>) -> Void) {
+        self.map { Result<Value, ExecutionError>.success($0) }
+            .recover { Result<Value, ExecutionError>.failure(ExecutionError(underlying: $0)) }
             .whenSuccess(callback)
     }
 
-    public func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<T> {
-        let promise: EventLoopPromise<T> = self.eventLoop.newPromise()
+    public func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
+        let promise: EventLoopPromise<Value> = self.eventLoop.makePromise()
         let timeoutTask = self.eventLoop.scheduleTask(in: timeout.toNIO) {
-            promise.fail(error: TimeoutError(message: "Future timed out after \(timeout.prettyDescription)"))
+            promise.fail(TimeoutError(message: "Future timed out after \(timeout.prettyDescription)"))
         }
         self.whenFailure {
             timeoutTask.cancel()
-            promise.fail(error: $0)
+            promise.fail($0)
         }
         self.whenSuccess {
             timeoutTask.cancel()
-            promise.succeed(result: $0)
+            promise.succeed($0)
         }
 
         return promise.futureResult

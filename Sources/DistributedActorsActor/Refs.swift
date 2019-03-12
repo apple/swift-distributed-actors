@@ -88,7 +88,8 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 
 /// INTERNAL API: Only for use by the actor system itself
 // TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
-protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
+@usableFromInline
+internal protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
 
     /// INTERNAL API: Only for use by the actor system itself
     ///
@@ -97,7 +98,6 @@ protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
     func sendSystemMessage(_ message: SystemMessage)
 }
 
-// TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
 /// INTERNAL API
 @usableFromInline
 final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages {
