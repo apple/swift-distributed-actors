@@ -426,7 +426,7 @@ class ParentChildActorTests: XCTestCase {
         p.watch(child)
 
         child.tell(.howAreYou(replyTo: pChild.ref))
-        try pChild.expectMessage() // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
+        _ = try pChild.expectMessage() // only expecting the ping pong to give parent time enough to watch the child "properly" and not its dead cell
 
         child.tell(.throwWhoops)
 

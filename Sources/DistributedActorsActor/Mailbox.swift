@@ -372,7 +372,7 @@ final class Mailbox<Message> {
         case .mailboxTerminating:
             // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
             cell.dispatcher.execute(self.run)
-        case let otherState:
+        default:
             fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.path). THIS IS A BUG.")
         }
 

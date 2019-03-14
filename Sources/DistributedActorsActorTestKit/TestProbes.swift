@@ -260,7 +260,7 @@ public extension ActorTestProbe {
 
     // TODO would be nice to be able to also intercept system messages hm...
 
-    public func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
+    func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
         let interceptor: Interceptor<Message> = ProbeInterceptor(probe: self)
         return .intercept(behavior: behavior, with: interceptor)
     }
