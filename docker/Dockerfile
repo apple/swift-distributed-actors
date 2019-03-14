@@ -59,8 +59,12 @@ RUN [ -z "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby 
 RUN apt-get update && apt-get install -y libsqlite3-dev
 RUN gem install jazzy --no-ri --no-rdoc
 
+# install java as generating diagrams for reference docs needs java
+RUN apt install default-jre
+
 # asciidoctor for reference documentation
 RUN gem install asciidoctor --no-ri --no-rdoc
+RUN gem install pygments.rb -v 0.6.3
 RUN gem install asciidoctor-diagram
 
 # swift
