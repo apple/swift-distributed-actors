@@ -259,7 +259,7 @@ extension RemotingKernel {
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 log.info("Accept association with \(offer.from)!")
-                let association = newState.associate(completedHandshake)
+                _ = newState.associate(completedHandshake)
                 _ = self.sendHandshakeAccept(newState, completedHandshake.makeAccept(), replyInto: promise)
                 return self.ready(state: newState) // TODO change the state
 
@@ -293,7 +293,7 @@ extension RemotingKernel {
             }
         }
 
-        let association = state.associate(completed)
+        _ = state.associate(completed)
 
         state.log.debug("[Remoting] Associated with: \(completed.remoteAddress).")
         return self.ready(state: state)
@@ -398,7 +398,7 @@ extension KernelState {
     /// This is the entry point for a server receiving a handshake with a remote node.
     /// Inspects and possibly allocates a `HandshakeStateMachine` in the `HandshakeReceivedState` state.
     mutating func incomingHandshake(offer: Wire.HandshakeOffer) -> HandshakeStateMachine.HandshakeReceivedState? { // TODO return directives to act on
-        if let inProgressHandshake = self._handshakes[offer.from.address] {
+        if self._handshakes[offer.from.address] != nil {
             return FIXME("we should respond that already have this handshake in progress?") // FIXME: add test for incoming handshake while one in progress already
         } else {
             let fsm = HandshakeStateMachine.HandshakeReceivedState(kernelState: self, offer: offer)
@@ -423,14 +423,13 @@ extension KernelState {
             }
         } else {
             fatalError("ACCEPT incoming for handshake which was not in progress!") // TODO model differently
-            return nil
         }
     }
 
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
     /// Stores an `Association` for the newly established association;
     mutating func associate(_ handshake: HandshakeStateMachine.CompletedState) -> AssociationStateMachine.State {
-        guard let removedHandshake = self._handshakes.removeValue(forKey: handshake.remoteAddress.address) else {
+        guard self._handshakes.removeValue(forKey: handshake.remoteAddress.address) != nil else {
             fatalError("BOOM: Can't complete a handshake which was not in progress!") // throw HandshakeError.acceptAttemptForNotInProgressHandshake(handshake)
             // TODO perhaps we instead just warn and ignore this; since it should be harmless
         }

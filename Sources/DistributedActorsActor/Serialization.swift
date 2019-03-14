@@ -215,7 +215,7 @@ extension Serialization {
 public protocol NoSerializationVerification {}
 
 public extension CodingUserInfoKey {
-    public static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sactActorLookupContext")!
+    static let actorSerializationContext: CodingUserInfoKey = CodingUserInfoKey(rawValue: "sactActorLookupContext")!
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -471,8 +471,8 @@ struct MetaType<T>: Hashable {
         self.base = base
     }
 
-    var hashValue: Int {
-        return ObjectIdentifier(base).hashValue
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(base))
     }
 }
 
@@ -648,7 +648,7 @@ fileprivate extension Int {
 }
 
 internal extension Foundation.Data {
-    internal func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
+    func _copyToByteBuffer(allocator: ByteBufferAllocator) -> ByteBuffer {
         return self.withUnsafeBytes { bytes in
             var out: ByteBuffer = allocator.buffer(capacity: self.count)
             out.writeBytes(bytes)
