@@ -263,7 +263,7 @@ section of the guide), or its `dispatcher`.
 Sometimes when implementing behaviors which may be spawned by other users, it may be useful to centralize the props creation
 along with its default "suggested" settings. The _Suggested Props_ pattern explains a common style in which this can be solved.
 
-The pattern involves exposing, along with a behavior that users may spawn also an api:Props[struct] instance with
+The pattern involves exposing, along with a behavior that users may spawn also an api:Props[class] instance with
 pre-configured dispatcher, supervision or other settings.
 
 [source]

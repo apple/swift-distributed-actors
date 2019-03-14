@@ -4,6 +4,7 @@
 *.orig
 
 /.build
+/.SourceKitten
 /Packages
 .xcode
 Swift Distributed Actors.xcworkspace
