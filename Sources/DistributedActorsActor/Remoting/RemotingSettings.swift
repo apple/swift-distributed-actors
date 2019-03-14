@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import NIOSSL
 
 // Actors engage in 'Networking' - the process of interacting with others to exchange information and develop contacts.
 
@@ -44,6 +45,11 @@ public struct RemotingSettings {
     /// `NodeUID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
     public var uid: NodeUID
 
+    /// If set, all communication with other nodes will be secured using TLS
+    public var tls: TLSConfiguration?
+
+    public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
+
     /// `ProtocolVersion` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
     public var protocolVersion: Swift Distributed ActorsActor.Version {
         return self._protocolVersion
@@ -70,8 +76,9 @@ public struct RemotingSettings {
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
 
-    public init(bindAddress: NodeAddress) {
+    public init(bindAddress: NodeAddress, tls: TLSConfiguration? = nil) {
         self.bindAddress = bindAddress
         self.uid = NodeUID.random()
+        self.tls = tls
     }
 }

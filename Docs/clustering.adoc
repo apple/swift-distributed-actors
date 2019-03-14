@@ -3,3 +3,30 @@
 
 === Replicated State Machines ✗
 
+=== Configuration
+
+#TODO: Add more configuration documentation#
+
+==== TLS
+
+Communication between nodes can be secured with TLS by adding the necessary configuration.
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls]
+----
+<1> TLSConfiguration is contained in the NIOSSL module
+<2> We need to provide a path the a certificate chain
+<3> And private key
+<4> Certificate verification is optional and can be set to `.none` for no verification
+<5> When using self signed certificates, set the trust to a certificate chain containing the certificates of all nodes that this node will be communicating with
+
+NOTE: The server side connection will use `.noHostnameVerification`, even when `.fullVerification` is configured, as we don't know which nodes we'll be communicating with.
+
+If the private key is protected with a passphrase, a passphrase callback has to be configured. The callback has a single parameter, that is the setter for the passphrase,
+which has to be called with the passphrase encoded as `[UInt8]`.
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusteringDocExamples.swift[tag=config_tls_passphrase]
+----
