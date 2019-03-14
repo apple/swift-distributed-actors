@@ -26,6 +26,10 @@ extension RemotingBasicsTests {
       return [
                 ("test_bindOnStartup_shouldStartNetworkActorUnderSystemProvider", test_bindOnStartup_shouldStartNetworkActorUnderSystemProvider),
                 ("test_boundServer_shouldAcceptAssociate", test_boundServer_shouldAcceptAssociate),
+                ("test_boundServer_shouldAcceptAssociateWithSSLEnabled", test_boundServer_shouldAcceptAssociateWithSSLEnabled),
+                ("test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP", test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP),
+                ("test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP", test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP),
+                ("test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase", test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase),
            ]
    }
 }

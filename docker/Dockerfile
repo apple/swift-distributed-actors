@@ -1,8 +1,18 @@
 #@IgnoreInspection BashAddShebang
+
 ARG ubuntu_version=16.04
 FROM ubuntu:$ubuntu_version
 # needed to do again after FROM due to docker limitation
 ARG ubuntu_version
+
+### SETUP VERSIONS ###
+ENV export ubuntu_version="18.04"
+ENV swift_version="5.0"
+ENV swift_flavour="DEVELOPMENT-SNAPSHOT-2019-02-26-a"
+ENV swift_builds_suffix="branch"
+ENV skip_ruby_from_ppa="true"
+### END OF SETUP VERSIONS ###
+### Rest of file equal to Dockerfile ###
 
 ARG DEBIAN_FRONTEND=noninteractive
 # do not start services during installation as this will fail and log a warning / error.
@@ -69,3 +79,8 @@ RUN mkdir -p $HOME/.scripts
 RUN wget -q https://raw.githubusercontent.com/apple/swift/master/utils/symbolicate-linux-fatal -O $HOME/.scripts/symbolicate-linux-fatal
 RUN chmod 755 $HOME/.scripts/symbolicate-linux-fatal
 RUN echo 'export PATH="$HOME/.scripts:$PATH"' >> $HOME/.profile
+
+# Additionally expose to everyone, since we will build using `builder` user
+RUN cp -R $HOME/.swift/usr/* /usr
+RUN cp -R $HOME/.scripts/* /usr/bin/
+
