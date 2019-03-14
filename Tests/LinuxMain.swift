@@ -50,6 +50,7 @@ import XCTest
          testCase(ParentChildActorTests.allTests),
          testCase(RemotingBasicsTests.allTests),
          testCase(RemotingHandshakeStateMachineTests.allTests),
+         testCase(RemotingTLSTests.allTests),
          testCase(RingBufferTests.allTests),
          testCase(SerializationPoolTests.allTests),
          testCase(SerializationTests.allTests),
