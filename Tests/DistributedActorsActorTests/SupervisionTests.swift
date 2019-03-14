@@ -89,25 +89,25 @@ class SupervisionTests: XCTestCase {
             _ = try self.system.spawn(behavior, name: "example")
             _ = try self.system.spawn(behavior, name: "example", props: Props())
             _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.pinnedThread))
-            _ = try self.system.spawn(behavior, name: "example", props: Props().withDispatcher(.pinnedThread).addSupervision(strategy: .stop))
-            // nope: _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.PinnedThread).addSupervision(strategy: .stop))
+            _ = try self.system.spawn(behavior, name: "example", props: Props().withDispatcher(.pinnedThread).addingSupervision(strategy: .stop))
+            // nope: _ = try self.system.spawn(behavior, name: "example", props: .withDispatcher(.PinnedThread).addingSupervision(strategy: .stop))
             // /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTests/SupervisionTests.swift:120:15: error: expression type '()' is ambiguous without more context
-            _ = try self.system.spawn(behavior, name: "example", props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
-            _ = try self.system.spawn(behavior, name: "example", props: .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)))
+            _ = try self.system.spawn(behavior, name: "example", props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
+            _ = try self.system.spawn(behavior, name: "example", props: .addingSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)))
 
             // chaining
             _ = try self.system.spawn(behavior, name: "example",
                 props: Props()
-                    .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
+                    .addingSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
                     .withDispatcher(.pinnedThread)
                     .withMailbox(.default(capacity: 122, onOverflow: .crash))
             )
 
             _ = try self.system.spawn(behavior, name: "example",
                 props: Props()
-                    .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
-                    .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                    .addSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
+                    .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
+                    .addingSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
+                    .addingSupervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
             )
         }
     }
@@ -123,7 +123,7 @@ class SupervisionTests: XCTestCase {
             let strategy: SupervisionStrategy = .stop
             let behavior = self.faulty(probe: p.ref)
             let _: ActorRef<FaultyMessages> = try context.spawn(behavior, name: "\(runName)-erroring-1", 
-                props: .addSupervision(strategy: strategy))
+                props: .addingSupervision(strategy: strategy))
             return .same
         }
         let interceptedParent = pp.interceptAllMessages(sentTo: parentBehavior) // TODO intercept not needed
@@ -152,7 +152,7 @@ class SupervisionTests: XCTestCase {
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-2", 
-                props: Props().addSupervision(strategy: .restart(atMost: 2, within: .seconds(1))))
+                props: Props().addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))))
 
             return .same
         }
@@ -196,7 +196,7 @@ class SupervisionTests: XCTestCase {
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-within-2",
-                props: .addSupervision(strategy: .restart(atMost: 2, within: failurePeriod)))
+                props: .addingSupervision(strategy: .restart(atMost: 2, within: failurePeriod)))
             return .same
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
@@ -311,8 +311,8 @@ class SupervisionTests: XCTestCase {
 
         let faultyWorker = try system.spawn(self.faulty(probe: probe.ref), name: "compositeFailures-1", 
             props: Props()
-                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
-                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self))
+                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
+                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self))
 
         probe.watch(faultyWorker)
 
@@ -329,9 +329,9 @@ class SupervisionTests: XCTestCase {
 
         let faultyWorker = try system.spawn(self.faulty(probe: probe.ref), name: "compositeFailures-1", 
             props: Props()
-                .addSupervision(strategy: .restart(atMost: 2, within: nil), forAll: .faults)
-                .addSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self) // should not the limit that .faults has
-                .addSupervision(strategy: .restart(atMost: 1, within: nil), forAll: .failures) // matters, but first in chain is .faults with the 3 limit
+                .addingSupervision(strategy: .restart(atMost: 2, within: nil), forAll: .faults)
+                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self) // should not the limit that .faults has
+                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forAll: .failures) // matters, but first in chain is .faults with the 3 limit
             )
 
         probe.watch(faultyWorker)
@@ -377,7 +377,7 @@ class SupervisionTests: XCTestCase {
             }
 
         let parentRef: ActorRef<String> = try system.spawn(parentBehavior, name: "parent",
-            props: .addSupervision(strategy: .restart(atMost: 2, within: nil)))
+            props: .addingSupervision(strategy: .restart(atMost: 2, within: nil)))
         parentProbe.watch(parentRef)
 
         parentRef.tell("spawn")
@@ -437,7 +437,7 @@ class SupervisionTests: XCTestCase {
 
         let parentBehavior: Behavior<Never> = .setup { context in
             let _: ActorRef<FaultyMessages> = try context.spawn(stackOverflowFaulty, name: "bad-decision-erroring-2",
-                props: .addSupervision(strategy: .restart(atMost: 3, within: .seconds(5))))
+                props: .addingSupervision(strategy: .restart(atMost: 3, within: .seconds(5))))
             return .same
         }
         let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
@@ -485,7 +485,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "thrower-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forErrorType: EasilyCatchable.self))
+            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forErrorType: EasilyCatchable.self))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -506,7 +506,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "thrower-2",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors))
+            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .errors))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -528,7 +528,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "mr-fawlty-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .faults))
+            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .faults))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -550,7 +550,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "any-failure-1",
-            props: .addSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .failures))
+            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .failures))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())
@@ -582,7 +582,7 @@ class SupervisionTests: XCTestCase {
             return .same
         }
 
-        let ref = try system.spawnAnonymous(behavior, props: .addSupervision(strategy: .restart(atMost: 1, within: .seconds(5))))
+        let ref = try system.spawnAnonymous(behavior, props: .addingSupervision(strategy: .restart(atMost: 1, within: .seconds(5))))
         p.watch(ref)
 
         ref.tell("test")
@@ -614,7 +614,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawnAnonymous(behavior, props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
+        let ref = try system.spawnAnonymous(behavior, props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
         p.watch(ref)
 
         ref.tell("test")
@@ -648,7 +648,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawnAnonymous(behavior, props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
+        let ref = try system.spawnAnonymous(behavior, props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
         p.watch(ref)
 
         try p.expectMessage("setup")
@@ -697,7 +697,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawnAnonymous(behavior, props: Props.addSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
+        let ref = try system.spawnAnonymous(behavior, props: Props.addingSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
 
         try p.expectMessage("starting")
         ref.tell("suspend")
@@ -737,7 +737,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawnAnonymous(behavior, props: Props.addSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
+        let ref = try system.spawnAnonymous(behavior, props: Props.addingSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
 
         try p.expectMessage("starting")
         ref.tell("suspend")

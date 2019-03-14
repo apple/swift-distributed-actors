@@ -137,7 +137,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_props() throws {
         // tag::props_example[]
-        var props = Props()
+        let props = Props()
         // end::props_example[]
     }
     func example_props_inline() throws {

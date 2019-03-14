@@ -122,7 +122,7 @@ internal class RemotingKernel {
 
     private var props: Props =
         Props()
-            .addSupervision(strategy: .stop) // always fail completely (may revisit this)
+            .addingSupervision(strategy: .stop) // always fail completely (may revisit this)
 
 }
 

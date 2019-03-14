@@ -27,8 +27,8 @@ class SupervisionDocExamples {
         let context: ActorContext<String> = undefined()
 
         // tag::supervise_props[]
-        var props = Props() // <1>
-        props.addSupervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
+        let props = Props() // <1>
+            .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
         let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
@@ -42,7 +42,7 @@ class SupervisionDocExamples {
 
         // tag::supervise_inline[]
         let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
-            props: .addSupervision(strategy: .restart(atMost: 2, within: .seconds(1)))) // <1>
+            props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1)))) // <1>
         // end::supervise_inline[]
     }
 
@@ -69,7 +69,7 @@ class SupervisionDocExamples {
         let friends = ["Alice", "Bob", "Caplin"]
 
         let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior(friends: friends), name: "greeter",
-            props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
+            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!
@@ -104,7 +104,7 @@ class SupervisionDocExamples {
         ]
 
         let greeterRef = try system.spawn(favouriteFruitBehavior(whoLikesWhat), name: "favFruit",
-            props: .addSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
+            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!
@@ -134,7 +134,7 @@ class SupervisionDocExamples {
 
         let thrower = try system.spawn(throwerBehavior, name: "thrower",
             props: Props()
-                .addSupervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self) // <2>
+                .addingSupervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self) // <2>
                 // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
         )
         // Starting...
