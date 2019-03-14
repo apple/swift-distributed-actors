@@ -47,9 +47,9 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    static func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    static func addingSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
-        props.supervision = props.supervision.adding(strategy: strategy, forErrorType: errorType)
+        props.addSupervision(strategy: strategy, forErrorType: errorType)
         return props
     }
     /// Creates a new `Props` appending an supervisor for the selected failure type.
@@ -58,8 +58,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    static func addingSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
@@ -67,9 +67,9 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    func addingSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
-        props.supervision.add(strategy: strategy, forErrorType: errorType)
+        props.addSupervision(strategy: strategy, forErrorType: errorType)
         return props
     }
     /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
@@ -77,8 +77,15 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    func addingSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return self.addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    }
+
+    mutating func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
+        self.supervision.add(strategy: strategy, forErrorType: errorType)
+    }
+    mutating func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) {
+        self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 }
 
