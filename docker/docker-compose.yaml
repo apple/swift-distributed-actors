@@ -39,6 +39,10 @@ services:
     <<: *common
     command: /bin/bash -cl "swift test && ./scripts/integration_tests.sh"
 
+  validate-docs:
+    <<: *common
+    command: /bin/bash -cl "./scripts/validate_docs.sh"
+
   bench:
     <<: *common
     command: /bin/bash -cl "swift run Swift Distributed ActorsBenchmarks"
