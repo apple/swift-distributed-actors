@@ -268,14 +268,14 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2) // give some time so the "have not associated" checks run when once they had a chance to handshake
 
         let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
             system.remoting.tell(.query(.associatedNodes(pSystem.ref)))
             remote.remoting.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
-            associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
+            associatedNodes.shouldBeNotEmpty() // means we have NOT associated
         }
 
         let pRemote = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
@@ -283,7 +283,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             system.remoting.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.remoting.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
-            associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
+            associatedNodes.shouldBeNotEmpty() // means we have NOT associated
         }
     }
 
@@ -319,14 +319,14 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2) // give some breathing room for handshake // TODO implement test without the sleep
 
         do {
             let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
             system.remoting.tell(.query(.associatedNodes(pSystem.ref)))
             remote.remoting.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
-            associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
+            associatedNodes.shouldBeEmpty() // means we have NOT associated
         }
 
         do {
@@ -334,7 +334,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             system.remoting.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.remoting.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
-            associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
+            associatedNodes.shouldBeEmpty() // means we have NOT associated
         }
     }
 
@@ -370,7 +370,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2) // give some breathing room for handshake // TODO implement test without the sleep
 
         let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
