@@ -46,6 +46,9 @@ extension SupervisionTests {
                 ("test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop", test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop),
                 ("test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure", test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure),
                 ("test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure", test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure),
+                ("test_supervisor_awaitResult_shouldInvokeSupervisionOnThrow", test_supervisor_awaitResult_shouldInvokeSupervisionOnThrow),
+                ("test_supervisor_awaitResult_shouldInvokeSupervisionOnFault", test_supervisor_awaitResult_shouldInvokeSupervisionOnFault),
+                ("test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure", test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure),
            ]
    }
 }
