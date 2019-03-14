@@ -493,7 +493,7 @@ extension RestartingSupervisor: CustomStringConvertible {
 }
 
 fileprivate extension Supervision.Failure {
-    fileprivate func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
+    func shouldBeHandled(bySupervisorHandling handledType: Error.Type) -> Bool {
         let supervisorHandlesEverything = handledType == Supervise.AllFailures.self
 
         func matchErrorTypes0() -> Bool {

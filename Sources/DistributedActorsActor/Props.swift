@@ -50,13 +50,13 @@ public struct Props {
 
 public extension Props {
     /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
-    public static func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+    static func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
         var props = Props()
         props.dispatcher = dispatcher
         return props
     }
     /// Creates copy of this `Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    public func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+    func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
         var props = self
         props.dispatcher = dispatcher
         return props

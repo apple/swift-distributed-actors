@@ -43,7 +43,7 @@ final public class ActorTestKit {
 public extension ActorTestKit {
 
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
-    public func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
+    func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer {
             self.spawnProbesLock.unlock()
@@ -73,7 +73,7 @@ public extension ActorTestKit {
     /// TODO does not handle blocking longer than `within` well
     /// TODO: should use default `within` from TestKit
     @discardableResult
-    public func eventually<T>(within: TimeAmount,
+    func eventually<T>(within: TimeAmount,
                               file: StaticString = #file, line: UInt = #line, column: UInt = #column,
                               _ block: () throws -> T) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -142,13 +142,13 @@ public extension ActorTestKit {
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
+    func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
         return MockActorContext()
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
-    public func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
+    func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
         return self.makeFakeContext(forType: M.self)
     }
 

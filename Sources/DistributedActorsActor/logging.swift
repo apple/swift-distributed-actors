@@ -132,16 +132,16 @@ public enum Logging {
 }
 
 public extension Logging {
-    public typealias Metadata = [String: MetadataValue]
+    typealias Metadata = [String: MetadataValue]
 
-    public enum MetadataValue {
+    enum MetadataValue {
         case string(String)
         case stringConvertible(CustomStringConvertible)
         case dictionary(Metadata)
         case array([Metadata.Value])
     }
 
-    public enum Level: Int {
+    enum Level: Int {
         case trace
         case debug
         case info

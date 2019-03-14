@@ -64,7 +64,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     ///
     /// If `it` does not completely start with the passed in `prefix`, the error message will also include the a matching
     /// sub-prefix (if any), so one can easier spot at which position the sequences differ.
-    public func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Collection, T.Element == PossiblePrefix.Element {
+    func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Collection, T.Element == PossiblePrefix.Element {
         if !it.starts(with: prefix) {
             let partialMatch = it.commonPrefix(with: prefix)
 
@@ -92,7 +92,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     }
 
     /// Asserts that `it` contains the `el` element.
-    public func toContain(_ el: T.Element) {
+    func toContain(_ el: T.Element) {
         if !it.contains(el) {
             // fancy printout:
             var m = "Expected [\(it)] to contain: ["
@@ -109,7 +109,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
 
 public extension TestMatchers where T: Collection {
     /// Asserts that `it` is empty
-    public func toBeEmpty() {
+    func toBeEmpty() {
         if !it.isEmpty{
             let m = "Expected [\(it)] to be empty"
 
@@ -119,7 +119,7 @@ public extension TestMatchers where T: Collection {
     }
 
     /// Asserts that `it` is not empty
-    public func toBeNotEmpty() {
+    func toBeNotEmpty() {
         if it.isEmpty{
             let m = "Expected [\(it)] to to be non-empty"
 
