@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import NIOSSL
 import NIOFoundationCompat
 import class NIOExtras.LengthFieldBasedFrameDecoder
 
@@ -295,21 +296,41 @@ extension RemotingKernel {
 
             // Set the handlers that are applied to the accepted Channels
             .childChannelInitializer { channel in
+
+                // If SSL is enabled, we need to add the SSLServerHandler to the connection
+                let channelPipelineFuture: EventLoopFuture<Void>
+                if var tlsConfig = settings.tls {
+                    // We don't know who will try to talk to us, so we can't verify the hostname here
+                    if tlsConfig.certificateVerification == .fullVerification {
+                        tlsConfig.certificateVerification = .noHostnameVerification
+                    }
+                    do {
+                        let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
+                        let sslHandler = try NIOSSLServerHandler(context: sslContext)
+                        channelPipelineFuture = channel.pipeline.addHandler(sslHandler, name: "ssl")
+                    } catch {
+                        channelPipelineFuture = channel.eventLoop.makeFailedFuture(error)
+                    }
+                } else {
+                    channelPipelineFuture = channel.eventLoop.makeSucceededFuture(())
+                }
+
                 // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
-                channel.pipeline
+                return channelPipelineFuture.flatMap { _ in channel.pipeline
                         .addHandler(WriteHandler(role: .server))
+                    }
                     // Handshake MUST be the first thing in the pipeline
-                    .flatMap { _ in  channel.pipeline
+                    .flatMap { _ in channel.pipeline
                         .addHandler(HandshakeHandler(kernel: kernel, role: .server)) 
                     }
                     // .flatMap { channel.pipeline.addHandler(BackPressureHandler()) }
 //                    .flatMap { _ in channel.pipeline
-//                        // currently just a length encoded one, we alias to the one from NIOExtras
+    //                        // currently just a length encoded one, we alias to the one from NIOExtras
 //                        .addHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
-//                    }
+    //                    }
 //                    .flatMap { _ in channel.pipeline // TODO Do the envelope parser instead of the simple framing
 //                        .addHandler(EnvelopeParser())
-//                    }
+    //                    }
                     .flatMap { _ in channel.pipeline
                         // FIXME only include for debug -DSACT_TRACE_NIO things?
                         .addHandler(DumpRawBytesDebugHandler(role: .server, log: log))
@@ -333,10 +354,32 @@ extension RemotingKernel {
         let bootstrap = ClientBootstrap(group: group)
             .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .channelInitializer { channel in
-                channel.pipeline
-                    .addHandler(WriteHandler(role: .client))
-                    .flatMap { _ in channel.pipeline
-                        .addHandler(HandshakeHandler(kernel: kernel, role: .client))
+                let channelPipelineFuture: EventLoopFuture<Void>
+                if let tlsConfig = settings.tls {
+                    do {
+                        let targetHost: String?
+                        if tlsConfig.certificateVerification == .fullVerification {
+                            targetHost = targetAddress.host
+                        } else {
+                            targetHost = nil
+                        }
+
+                        let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
+                        let sslHandler = try NIOSSLClientHandler.init(context: sslContext, serverHostname: targetHost)
+                        channelPipelineFuture = channel.pipeline.addHandler(sslHandler, name: "ssl")
+                    } catch {
+                        channelPipelineFuture = channel.eventLoop.makeFailedFuture(error)
+                    }
+                } else {
+                    channelPipelineFuture = channel.eventLoop.makeSucceededFuture(())
+                }
+
+                return channelPipelineFuture
+                    .flatMap { _ in
+                        channel.pipeline.addHandler(WriteHandler(role: .client), name: "client-write")
+                    }
+                    .flatMap { _ in
+                        channel.pipeline.addHandler(HandshakeHandler(kernel: kernel, role: .client), name: "handshake")
                     }
 //                    .flatMap { _ in
 //                        // currently just a length encoded one, we alias to the one from NIOExtras
@@ -350,6 +393,15 @@ extension RemotingKernel {
 
 
         return bootstrap.connect(host: targetAddress.host, port: Int(targetAddress.port)) // TODO separate setup from using it
+    }
+
+    private func makeSSLContext(fromConfig tlsConfig: TLSConfiguration, passphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?) throws -> NIOSSLContext {
+        if let tlsPassphraseCallback = passphraseCallback {
+            return try NIOSSLContext(configuration: tlsConfig, passphraseCallback: tlsPassphraseCallback)
+        } else {
+            return try NIOSSLContext(configuration: tlsConfig)
+        }
+
     }
 }
 
