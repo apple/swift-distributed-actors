@@ -60,7 +60,7 @@ RUN apt-get update && apt-get install -y libsqlite3-dev
 RUN gem install jazzy --no-ri --no-rdoc
 
 # install java as generating diagrams for reference docs needs java
-RUN apt install default-jre
+RUN apt install -y default-jre
 
 # asciidoctor for reference documentation
 RUN gem install asciidoctor --no-ri --no-rdoc
