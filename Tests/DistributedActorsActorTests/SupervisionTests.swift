@@ -14,6 +14,7 @@
 
 import Foundation
 import XCTest
+import NIO
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
@@ -191,10 +192,10 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let failurePeriod: TimeAmount = .seconds(1) // .milliseconds(300)
+        let failurePeriod: Swift Distributed ActorsActor.TimeAmount = .seconds(1) // .milliseconds(300)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-within-2", 
+            let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-within-2",
                 props: .addSupervision(strategy: .restart(atMost: 2, within: failurePeriod)))
             return .same
         }
@@ -669,6 +670,79 @@ class SupervisionTests: XCTestCase {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy: .faulting)
         #endif
+    }
+
+    func sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy failureMode: FailureMode) throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let el = elg.next()
+        let promise = el.makePromise(of: Int.self)
+        let future = promise.futureResult
+
+        let behavior: Behavior<String> = .setup { context in
+            p.tell("starting")
+            return .receiveMessage { message in
+                switch message {
+                case "suspend":
+                    return context.awaitResult(of: future, timeout: .milliseconds(100)) { _ in
+                        switch failureMode {
+                        case .throwing: throw FaultyError.boom(message: "boom")
+                        case .faulting: fatalError("test")
+                        }
+                    }
+                default:
+                    p.tell(message)
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior, props: Props.addSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
+
+        try p.expectMessage("starting")
+        ref.tell("suspend")
+        promise.succeed(1)
+        try p.expectMessage("starting")
+    }
+
+    func test_supervisor_awaitResult_shouldInvokeSupervisionOnThrow() throws {
+        try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .throwing)
+    }
+
+    func test_supervisor_awaitResult_shouldInvokeSupervisionOnFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .faulting)
+        #endif
+    }
+
+    func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let el = elg.next()
+        let promise = el.makePromise(of: Int.self)
+        let future = promise.futureResult
+
+        let behavior: Behavior<String> = .setup { context in
+            p.tell("starting")
+            return .receiveMessage { message in
+                switch message {
+                case "suspend":
+                    return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { _ in
+                        return .same
+                    }
+                default:
+                    p.tell(message)
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior, props: Props.addSupervision(strategy: .restart(atMost: 1, within: .seconds(1))))
+
+        try p.expectMessage("starting")
+        ref.tell("suspend")
+        promise.fail(FaultyError.boom(message: "boom"))
+        try p.expectMessage("starting")
     }
 
     private struct PleaseReply: Error, Equatable {}

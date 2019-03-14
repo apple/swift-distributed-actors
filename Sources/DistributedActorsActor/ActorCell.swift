@@ -277,7 +277,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         case .resume(let result):
             switch self.behavior.underlying {
             case let .suspended(previousBehavior, handler):
-                let nextBehavior = try handler(result)
+                let nextBehavior = try self.supervisor.interpretSupervised(target: previousBehavior, context: self) {
+                    return try handler(result)
+                }
                 try self.becomeNext(behavior: previousBehavior.canonicalize(self.context, next: nextBehavior))
             default:
                 self.log.error("Received .resume message while being in non-suspended state")
