@@ -252,6 +252,7 @@ internal enum ProcessingType {
     case message
     case signal
     case closure
+    case continuation
 }
 
 /// Handles failures that may occur during message (or signal) handling within an actor.
@@ -282,6 +283,14 @@ internal class Supervisor<Message> {
         return try self.interpretSupervised0(target: target, context: context, processingType: .closure) {
             try closure()
             return .same
+        }
+    }
+
+    @inlinable
+    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, continuation: () throws -> Behavior<Message>) throws -> Behavior<Message> {
+        traceLog_Supervision("CALLING CLOSURE")
+        return try self.interpretSupervised0(target: target, context: context, processingType: .continuation) {
+            return try continuation()
         }
     }
 

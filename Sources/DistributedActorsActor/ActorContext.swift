@@ -227,8 +227,8 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) -> Behavior<Message> {
             return self.awaitResult(of: task, timeout: timeout) { result in
                 switch result {
-                case .success(let res): return try continuation(res)
-                case .failure(let error): return .failed(error: error.underlying)
+                case .success(let res):     return try continuation(res)
+                case .failure(let error):   throw error.underlying
                 }
             }
     }
