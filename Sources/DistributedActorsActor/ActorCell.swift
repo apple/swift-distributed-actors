@@ -514,6 +514,7 @@ extension ActorCell {
             return
         }
 
+        pprint("INTERPRET WITH \(self.behavior)")
         let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
 
         switch next.underlying {
