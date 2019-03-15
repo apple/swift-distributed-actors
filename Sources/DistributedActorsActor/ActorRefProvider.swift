@@ -14,7 +14,11 @@
 
 import DistributedActorsConcurrencyHelpers
 
-internal protocol ActorRefProvider: ActorTreeTraversable {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: _ActorRefProvider
+
+/// `ActorRefProvider`s are those which both create and resolve actor references.
+internal protocol _ActorRefProvider: _ActorTreeTraversable {
 
     /// Path of the root guardian actor for this part of the actor tree.
     var rootPath: UniqueActorPath { get }
@@ -28,12 +32,81 @@ internal protocol ActorRefProvider: ActorTreeTraversable {
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message>
 
-    /// Stops all actors created by this `ActorRefProvider` and blocks until
-    /// they have all stopped.
+    /// Stops all actors created by this `ActorRefProvider` and blocks until they have all stopped.
     func stopAll()
 }
 
-internal struct LocalActorRefProvider: ActorRefProvider {
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: RemoteActorRefProvider
+
+
+// TODO consider if we need abstraction / does it cost us?
+internal struct RemoteActorRefProvider: _ActorRefProvider {
+    private let localAddress: UniqueNodeAddress
+    private let localProvider: LocalActorRefProvider
+
+    let kernel: RemotingKernel
+    // TODO should cache perhaps also associations to inject them eagerly to actor refs?
+
+    // TODO restructure it somehow, perhaps we dont need the full abstraction like this
+    init(settings: ActorSystemSettings,
+         kernel: RemotingKernel,
+         localProvider: LocalActorRefProvider) {
+        precondition(settings.remoting.enabled, "Remote actor provider should only be used when remoting is enabled")
+
+        self.localAddress = settings.remoting.uniqueBindAddress
+        self.kernel = kernel
+        self.localProvider = localProvider
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: RemoteActorRefProvider delegates most tasks to underlying LocalARP
+
+extension RemoteActorRefProvider {
+    var rootPath: UniqueActorPath {
+        return self.localProvider.rootPath
+    }
+
+    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, path: UniqueActorPath, dispatcher: MessageDispatcher, props: Props) throws -> ActorRef<Message> {
+        // spawn is always local, thus we delegate to the underlying provider
+        return try self.localProvider.spawn(system: system, behavior: behavior, path: path, dispatcher: dispatcher, props: props)
+    }
+
+    func stopAll() {
+        return self.localProvider.stopAll()
+    }
+
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        return self.localProvider._traverse(context: context, visit)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
+
+extension RemoteActorRefProvider {
+
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        guard let path = context.path else {
+            preconditionFailure("Path MUST be set when resolving using remote resolver")
+        }
+
+        if self.localAddress == path.address {
+            return self.localProvider._resolve(context: context)
+        } else {
+            return self.makeRemoteRef(context, remotePath: path)
+        }
+    }
+
+    internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> ActorRef<Message> {
+        let remoteRef = RemoteActorRef<Message>(remoting: self.kernel, path: path)
+        return remoteRef
+    }
+}
+
+internal struct LocalActorRefProvider: _ActorRefProvider {
     private let root: Guardian
 
     var rootPath: UniqueActorPath {
@@ -81,25 +154,31 @@ extension LocalActorRefProvider {
         return self.root._traverse(context: context.deeper, visit)
     }
 
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
-        return self.root._resolve(context: context, uid: uid)
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        pprint("resolve at local == \(context)")
+        return self.root._resolve(context: context)
     }
 }
 
 
-internal protocol ActorTreeTraversable {
+internal protocol _ActorTreeTraversable {
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef?
+    /// Resolves the given actor path against the underlying actor tree.
+    ///
+    /// Depending on the underlying implementation, the returned ref MAY be a remote one.
+    ///
+    /// - Returns: `nil` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
 }
 
 // TODO: Would be nice to not need this type at all; though initialization dance prohibiting self access makes this a bit hard
 /// Traverses first one tree then the other.
 // Mostly needed since we need to expose the traversal to serialization, but we can't expose self of the actor system just yet there.
-internal struct CompositeActorTreeTraversable: ActorTreeTraversable {
-    let systemTree: ActorTreeTraversable
-    let userTree: ActorTreeTraversable
+internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
+    let systemTree: _ActorTreeTraversable
+    let userTree: _ActorTreeTraversable
 
-    init(systemTree: ActorTreeTraversable, userTree: ActorTreeTraversable) {
+    init(systemTree: _ActorTreeTraversable, userTree: _ActorTreeTraversable) {
         self.systemTree = systemTree
         self.userTree = userTree
     }
@@ -128,14 +207,14 @@ internal struct CompositeActorTreeTraversable: ActorTreeTraversable {
 
     }
 
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
-            return nil
+            return context.deadRef // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
-        case "system": return self.systemTree._resolve(context: context, uid: uid)
-        case "user": return self.userTree._resolve(context: context, uid: uid)
-        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "system": return self.systemTree._resolve(context: context) // TODO this is a bit hacky... 
+        case "user":   return self.userTree._resolve(context: context) // TODO this is a bit hacky... 
+        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 }
@@ -190,31 +269,55 @@ internal struct TraversalContext<T> {
 }
 
 @usableFromInline
-internal struct ResolveContext {
-    var selectorSegments: ArraySlice<ActorPathSegment> // "remaining path" that we try to locate, if `nil` we select all actors
+internal struct ResolveContext<Message> {
+    /// The "remaining path" of the resolve being performed
+    var selectorSegments: ArraySlice<ActorPathSegment>
+    /// The unique ID of an actor which we are trying to resolve
+    var selectorUID: ActorUID
 
-    init(selectorSegments: [ActorPathSegment]) {
-        self.selectorSegments = selectorSegments[...]
-    }
+    /// Used only on "outer layer" of a resolve, where an `ActorRefProvider` may decide to fabricate a ref for given path.
+    var path: UniqueActorPath? = nil
 
-    internal init(remainingSelectorSegments: ArraySlice<ActorPathSegment>) {
+    let deadLetters: ActorRef<DeadLetter>
+
+    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorUID: ActorUID, deadLetters: ActorRef<DeadLetter>) {
         self.selectorSegments = remainingSelectorSegments
+        self.selectorUID = actorUID
+        self.path = nil
+        self.deadLetters = deadLetters
     }
 
-    init() {
-        self.init(selectorSegments: [])
+    init(path: UniqueActorPath, deadLetters: ActorRef<DeadLetter>) {
+        self.path = path
+        self.selectorSegments = path.segments[...]
+        self.selectorUID = path.uid
+        self.deadLetters = deadLetters
     }
 
-
-    var deeper: ResolveContext {
-        return self.deeper(by: 1)
-    }
     /// Returns copy of traversal context yet "one level deeper"
-    func deeper(by n: Int) ->  ResolveContext {
+    /// Note that this also drops the `path` if it was present, but retains the `UID` as we may want to resolve a _specific_ ref after all
+    var deeper: ResolveContext {
+        return self.deeper(keepPath: false)
+    }
+
+    func deeper(keepPath: Bool) -> ResolveContext {
         var deeperSelector = self.selectorSegments
         deeperSelector = deeperSelector.dropFirst()
-        let c = ResolveContext(remainingSelectorSegments: self.selectorSegments.dropFirst())
+        var c = ResolveContext(
+            remainingSelectorSegments: self.selectorSegments.dropFirst(),
+            actorUID: self.selectorUID,
+            deadLetters: self.deadLetters)
+        if keepPath {
+            c.path = self.path
+        }
         return c
+    }
+
+    /// A "dead ref" is a ref that is well typed for `Message` however actually points to `deadLetters.
+    /// It should be used when a resolve has failed to locate the actor.
+    var deadRef: ActorRef<Message> {
+        // TODO if we never drop the `path` then we could make it /dead/that/path for example
+        return self.deadLetters.adapt(from: Message.self)
     }
 }
 

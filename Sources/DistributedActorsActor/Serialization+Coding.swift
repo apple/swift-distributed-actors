@@ -74,14 +74,14 @@ extension ReceivesMessages {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
 
-        guard let serializationContext = decoder.actorSerializationContext else {
+        guard let context = decoder.actorSerializationContext else {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        if let resolved = serializationContext.resolveActorRef(path: path) {
-            self = resolved as! Self // this is safe, we know Self IS-A AddressableActorRef since any ActorRef is
+        if let resolved: ActorRef<Self.Message> = context.resolveActorRef(path: path) {
+            self = resolved as! Self // this is safe, we know Self IS-A ActorRef
         } else {
-            self = serializationContext.deadLetters(from: Self.Message.self) as! Self
+            self = context.deadLetters.adapt(from: Self.Message.self) as! Self // as! safe, we know Self IS-A ActorRef
         }
     }
 }
@@ -93,7 +93,7 @@ extension ReceivesMessages {
 extension UniqueActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: SharedActorPathKeys.self)
-        if let address = self.path.address {
+        if let address = self.address {
             try container.encode(address, forKey: SharedActorPathKeys.address)
         }
         try container.encode(self.segments, forKey: SharedActorPathKeys.path)
@@ -103,7 +103,7 @@ extension UniqueActorPath: Codable {
     public init(from decoder: Decoder) throws {
         do {
             let container = try decoder.container(keyedBy: SharedActorPathKeys.self)
-            let address = try container.decodeIfPresent(NodeAddress.self, forKey: SharedActorPathKeys.address)
+            let address = try container.decodeIfPresent(UniqueNodeAddress.self, forKey: SharedActorPathKeys.address)
             let segments = try container.decode([ActorPathSegment].self, forKey: SharedActorPathKeys.path)
             let uid = try container.decode(Int.self, forKey: SharedActorPathKeys.uid)
 
@@ -127,6 +127,8 @@ enum SharedActorPathKeys: CodingKey {
 extension ActorPath: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: SharedActorPathKeys.self)
+
+        traceLog_Serialization("SELF == \(self)")
         if let address = self.address {
             try container.encode(address, forKey: SharedActorPathKeys.address)
         }
@@ -135,7 +137,7 @@ extension ActorPath: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: SharedActorPathKeys.self)
-        let maybeNodeAddress = try container.decodeIfPresent(NodeAddress.self, forKey: SharedActorPathKeys.address)
+        let maybeNodeAddress = try container.decodeIfPresent(UniqueNodeAddress.self, forKey: SharedActorPathKeys.address)
         let segments = try container.decode([ActorPathSegment].self, forKey: SharedActorPathKeys.path)
 
         var decoded = try ActorPath(segments)
@@ -188,7 +190,7 @@ extension ActorUID: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable Node Address
 
-extension NodeAddress {
+extension NodeAddress: Codable {
     // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
@@ -206,6 +208,30 @@ extension NodeAddress {
         self.systemName = try container.decode(String.self)
         self.host = try container.decode(String.self)
         self.port = try container.decode(Int.self)
+    }
+}
+extension UniqueNodeAddress: Codable {
+    // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        try container.encode(self.address.protocol)
+        // ://
+        try container.encode(self.address.systemName)
+        // @
+        try container.encode(self.address.host)
+        // :
+        try container.encode(self.address.port)
+        // #
+        try container.encode(self.uid.value)
+    }
+    public init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        let `protocol` = try container.decode(String.self)
+        let systemName = try container.decode(String.self)
+        let host = try container.decode(String.self)
+        let port = try container.decode(Int.self)
+        self.address = NodeAddress(systemName: systemName, host: host, port: port)
+        self.uid = try NodeUID(container.decode(UInt32.self))
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------

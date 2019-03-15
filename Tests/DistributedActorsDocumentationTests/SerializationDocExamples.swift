@@ -153,12 +153,8 @@ class SerializationDocExamples {
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            if let resolved = context.resolveActorRef(path: path) { // <2>
-                return ContainsActorRef(ref: resolved as! ActorRef<String>) // <3>
-            } else {
-                let ref: ActorRef<String> = context.deadLetters(from: String.self)
-                return ContainsActorRef(ref: ref)
-            }
+            let resolved: ActorRef<String> = context.resolveActorRef(path: path) // <2>
+            return ContainsActorRef(ref: resolved)
         }
 
         enum CustomCodingError: Error {

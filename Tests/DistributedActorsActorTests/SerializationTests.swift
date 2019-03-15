@@ -129,7 +129,8 @@ class SerializationTests: XCTestCase {
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(RemotingSettings.Default.systemName)").shouldBeTrue()
+        serializedFormat.contains("\(remoteCapableSystem.settings.remoting.uniqueBindAddress.uid)").shouldBeTrue()
+        serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
         serializedFormat.contains("\(RemotingSettings.Default.host)").shouldBeTrue()
         serializedFormat.contains("\(RemotingSettings.Default.port)").shouldBeTrue()
 

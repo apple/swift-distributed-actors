@@ -42,14 +42,35 @@ public struct UniqueActorPath: Equatable, Hashable {
     public var name: String {
         return path.name
     }
+
+    /// If set, the address of node to which this actor path belongs.
+    /// Or `nil`, meaning this actors residing under this path shall be assumed local.
+    public var address: UniqueNodeAddress? {
+        get {
+            return self.path.address
+        }
+        set {
+            self.path.address = newValue
+        }
+    }
 }
 
 extension UniqueActorPath: CustomStringConvertible {
     public var description: String {
-        switch self.uid.value {
-        case 0: return "\(path.description)"
-        default: return "\(path.description)#\(self.uid.value)"
+        var res = ""
+        res.reserveCapacity(256) // TODO estimate length somehow?
+
+        if let addr = self.address {
+            res += "\(addr)"
         }
+
+        res += "\(self.path)"
+
+        if self.uid.value != 0 {
+            res += "#\(self.uid.value)"
+        }
+
+        return res
     }
 }
 
@@ -72,11 +93,11 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
 
     /// If set, the address of node to which this actor path belongs.
     /// Or `nil`, meaning this actors residing under this path shall be assumed local.
-    internal var address: NodeAddress?
+    internal var address: UniqueNodeAddress?
     
     internal var segments: [ActorPathSegment]
 
-    init(_ segments: [ActorPathSegment], address: NodeAddress? = nil) throws {
+    init(_ segments: [ActorPathSegment], address: UniqueNodeAddress? = nil) throws {
         self.address = address
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
@@ -267,18 +288,21 @@ public extension ActorUID {
 
 // TODO reconsider calling paths addresses and this being authority etc...
 // TODO: "ActorAddress" could be the core concept... what would be the node addresses? 
-public struct NodeAddress: Hashable, Codable {
+public struct NodeAddress: Hashable {
     let `protocol`: String 
     var systemName: String
     var host: String
     var port: Int
 
-    public init(systemName: String, host: String, port: Int) {
+    public init(`protocol`: String, systemName: String, host: String, port: Int) {
         precondition(port > 0, "port MUST be > 0")
-        self.protocol = "sact" // TODO open up
+        self.protocol = `protocol`
         self.systemName = systemName
         self.host = host
         self.port = port
+    }
+    public init(systemName: String, host: String, port: Int) {
+        self.init(protocol: "sact", systemName: systemName, host: host, port: port)
     }
 }
 extension NodeAddress: CustomStringConvertible {
@@ -290,10 +314,28 @@ extension NodeAddress: CustomStringConvertible {
 public struct UniqueNodeAddress: Hashable {
     let address: NodeAddress
     let uid: NodeUID // TODO ponder exact value here here
+
+    public init(address: NodeAddress, uid: NodeUID) {
+        precondition(address.port > 0, "port MUST be > 0")
+        self.address = address
+        self.uid = uid
+    }
+    public init(`protocol`: String, systemName: String, host: String, port: Int, uid: NodeUID) {
+        self.init(address: NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port), uid: uid)
+    }
+    public init(systemName: String, host: String, port: Int, uid: NodeUID) {
+        self.init(protocol: "sact", systemName: systemName, host: host, port: port, uid: uid)
+    }
+
 }
-extension UniqueNodeAddress: CustomStringConvertible {
+extension UniqueNodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.address)#\(self.uid.value)"
+        return "\(self.address)"
+    }
+    public var debugDescription: String {
+        // TODO this somewhat abuses userinfo's password to carry the system UID... double check how we want to render
+        let a = self.address
+        return "\(a.protocol)://\(a.systemName):\(self.uid)@\(a.host):\(a.port)" 
     }
 }
 
@@ -305,6 +347,11 @@ public struct NodeUID: Hashable {
     }
 }
 
+extension NodeUID: CustomStringConvertible {
+    public var description: String {
+        return "\(value)"
+    }
+}
 public extension NodeUID {
     static func random() -> NodeUID {
         return NodeUID(UInt32.random(in: 1 ... .max))

@@ -13,40 +13,81 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import Logging 
+import DistributedActorsConcurrencyHelpers
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal Network Kernel, which owns and administers all connections of this system
-
-extension RemotingKernel {
-
-    /// Starts the `RemotingKernel` actor if enabled, otherwise returns `nil` rather than the kernel ref.
-    internal static func start(system: ActorSystem, settings: RemotingSettings) -> RemotingKernel.Ref? {
-        guard settings.enabled else {
-            return nil
-        }
-
-        let kernel = RemotingKernel()
-
-        do {
-            return try system._spawnSystemActor(
-                kernel.behavior,
-                name: "remoting",
-                props: kernel.props
-            )
-        } catch {
-            // This can only ever fail when:
-            //   a) when the path is illegal (and we know "remoting" is valid)
-            //   b) when the kernel is attempted to start a second time, in which case this is very-bad™ and we want a backtrace.
-            //      This would be a Swift Distributed Actors bug; since the system starts remoting and shall never do so multiple times.
-            fatalError("Starting remoting kernel (/system/remoting) failed. This is potentially a bug, please open a ticket. Error was: \(error)")
-        }
-    }
-
-}
 
 /// The remoting kernel "drives" all internal state machines of the remoting subsystem. 
 internal class RemotingKernel {
     public typealias Ref = ActorRef<RemotingKernel.Messages>
+
+    // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state !!!
+    // We do this to avoid "looping" any initial access of an actor ref through the kernels mailbox
+    // which would cause more latency to obtaining the association. refs cache the remote control once they have obtained it.
+
+    private let _associationsLock: Lock
+
+    /// Used by remote actor refs to obtain associations
+    /// - Protected by: `_associationsLock`
+    private var _associationsRegistry: [NodeUID: AssociationRemoteControl]
+    
+    internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
+        return self._associationsLock.withLock {
+            return self._associationsRegistry[uid]
+        }
+    }
+
+    /// To be invoked by kernel actor whenever an association is made;
+    /// The cache is used by remote actor refs to obtain means of sending messages into the pipeline,
+    /// without having to queue through the remoting kernels mailbox.
+    private func cacheAssociationRemoteControl(_ association: AssociationStateMachine.State) {
+        switch association {
+        case .associated(let assoc):
+            self._associationsLock.withLockVoid {
+                // TODO or association ID rather than the remote id?
+                self._associationsRegistry[assoc.remoteAddress.uid] = assoc.makeRemoteControl()
+            }
+        // TODO: other cases could be if it is terminated , then we want to store the tombstone right away?
+        }
+    }
+    
+    // TODO `dead` associations could be moved on to a smaller map, like an optimized Int Set or something, to keep less space
+    // END OF HERE BE DRAGONS, shared concurrently modified concurrent state !!!
+
+    private var _ref: RemotingKernel.Ref?
+    var ref: RemotingKernel.Ref {
+        // since this is initiated during system startup, nil should never happen
+        // TODO slap locks around it...
+        guard let it = self._ref else {
+            fatalError("Accessing RemotingKernel.ref failed, was nil!")
+        }
+        return it
+    }
+
+    // init(system: ActorSystem) throws {
+    init() {
+        self._associationsLock = Lock()
+        self._associationsRegistry = [:]
+
+        // not enjoying this dance, but this way we can share the RemotingKernel as the kernel AND the container for the ref.
+        // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
+        // remote refs need to obtain those
+        //
+        // TODO see if we can restructure this to avoid these nil/then-set dance
+        self._ref = nil
+    }
+
+    /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
+    internal func start(system: ActorSystem) throws -> RemotingKernel.Ref {
+        // TODO concurrency... lock the ref as others may read it?
+        self._ref = try system._spawnSystemActor(
+            self.bind(),
+            name: "remoting",
+            props: self.props)
+        
+        return self.ref
+    }
 
     // Due to lack of Union Types, we have to emulate them
     enum Messages: NoSerializationVerification {
@@ -75,13 +116,13 @@ internal class RemotingKernel {
         case handshakeFailed(NodeAddress?, Error) // TODO remove?
     }
 
-    internal var behavior: Behavior<Messages> {
+    private var behavior: Behavior<Messages> {
         return self.bind() // todo message self to bind?
     }
 
-    internal var props: Props {
-        return Props().addSupervision(strategy: .stop) // always fail completely (may revisit this)
-    }
+    private var props: Props =
+        Props()
+            .addSupervision(strategy: .stop) // always fail completely (may revisit this)
 
 }
 
@@ -92,7 +133,7 @@ extension RemotingKernel {
     /// Binds on setup to the configured address (as configured in `system.settings.remoting`).
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
-    internal func bind() -> Behavior<Messages> {
+    private func bind() -> Behavior<Messages> {
         return .setup { context in
             let remotingSettings = context.system.settings.remoting
             let uniqueBindAddress = remotingSettings.uniqueBindAddress
@@ -105,6 +146,7 @@ extension RemotingKernel {
 
             // TODO: configurable bind timeout?
 
+            //  TODO crash everything, entire system, when bind fails
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
                 
@@ -118,7 +160,7 @@ extension RemotingKernel {
     /// Ready and interpreting commands and incoming messages.
     ///
     /// Serves as main "driver" for handshake and association state machines.
-    fileprivate func ready(state: KernelState) -> Behavior<Messages> {
+    private func ready(state: KernelState) -> Behavior<Messages> {
         func receiveKernelCommand(context: ActorContext<Messages>, command: CommandMessage) -> Behavior<Messages> {
             switch command {
             case .handshakeWith(let remoteAddress):
@@ -166,7 +208,7 @@ extension RemotingKernel {
     /// Initiate an outgoing handshake to the `address`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    func initiateHandshake(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress) -> Behavior<Messages> {
+    private func initiateHandshake(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress) -> Behavior<Messages> {
         if let existingAssociation = state.association(with: remoteAddress) {
             // TODO in reality should attempt and may need to drop the other "old" one?
             state.log.warning("Attempted associating with already associated node: [\(remoteAddress)], existing association: [\(existingAssociation)]")
@@ -178,22 +220,15 @@ extension RemotingKernel {
 
         // TODO: This is rather costly... we should not have to stop processing other messages until the connect completes; change this so we can connect to many hosts in parallel
         let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(kernel: context.myself, log: context.log, targetAddress: remoteAddress, settings: state.settings)
-        return context.awaitResult(of: outboundChanElf, timeout: .milliseconds(100)) { outboundChanRes in
-            switch outboundChanRes {
-            case .failure(let err):
-                state.log.error("Failed to connect to \(remoteAddress), error was: \(err)")
-                throw err
-
-            case .success(let outboundChan):
-                // Initialize and store a new Handshake FSM for this dance
-                let handshakeFsm = nextState.initiateHandshake(with: remoteAddress)
-                // And ask it to create a handshake offer
-                let offer = handshakeFsm.makeOffer()
-                
-                _ = self.sendHandshakeOffer(state, offer, over: outboundChan) // TODO move to Promise style, rather than passing channel
-                
-                return self.ready(state: nextState)
-            }
+        return context.awaitResultThrowing(of: outboundChanElf, timeout: .milliseconds(100)) { outboundChan in
+            // Initialize and store a new Handshake FSM for this dance
+            let handshakeFsm = nextState.initiateHandshake(with: remoteAddress)
+            // And ask it to create a handshake offer
+            let offer = handshakeFsm.makeOffer()
+            
+            _ = self.sendHandshakeOffer(state, offer, over: outboundChan) // TODO move to Promise style, rather than passing channel
+            
+            return self.ready(state: nextState)
         }
     }
 }
@@ -204,7 +239,7 @@ extension RemotingKernel {
 extension RemotingKernel {
     
     // TODO: Move this to instead use the replyInto pattern (and then we eventually move those to domain objects as we do the serialization pipeline)
-    func sendHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, over channel: Channel) -> EventLoopFuture<Void> {
+    private func sendHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, over channel: Channel) -> EventLoopFuture<Void> {
         let proto = ProtoHandshakeOffer(offer)
         traceLog_Remote("Offering handshake [\(proto)]")
 
@@ -226,7 +261,7 @@ extension RemotingKernel {
     }
 
     // TODO: pass around a more limited state -- just what is needed for the sending of stuff
-    func sendHandshakeAccept(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto: EventLoopPromise<ByteBuffer>) {
+    private func sendHandshakeAccept(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto: EventLoopPromise<ByteBuffer>) {
         let allocator = state.allocator
         
         let proto = ProtoHandshakeAccept(accept)
@@ -248,11 +283,9 @@ extension RemotingKernel {
 extension RemotingKernel {
     
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
-    func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
         var newState = state
         let log = state.log 
-
-        // TODO implement as directives from the state machine
 
         if let hsm = newState.incomingHandshake(offer: offer) {
             // handshake is allowed to proceed; TODO: semantics; what if we already have one in progress; we could return this rather than this if/else
@@ -260,7 +293,8 @@ extension RemotingKernel {
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 log.info("Accept association with \(offer.from)!")
-                _ = newState.associate(completedHandshake)
+                let association = newState.associate(completedHandshake)
+                self.cacheAssociationRemoteControl(association)
                 _ = self.sendHandshakeAccept(newState, completedHandshake.makeAccept(), replyInto: promise)
                 return self.ready(state: newState) // TODO change the state
 
@@ -281,7 +315,7 @@ extension RemotingKernel {
 
 // Implements: Incoming Handshake Replies
 extension RemotingKernel {
-    func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
@@ -294,13 +328,14 @@ extension RemotingKernel {
             }
         }
 
-        _ = state.associate(completed)
+        let association = state.associate(completed)
 
         state.log.debug("[Remoting] Associated with: \(completed.remoteAddress).")
+        self.cacheAssociationRemoteControl(association)
         return self.ready(state: state)
     }
 
-    func onHandshakeRejected(_ state: KernelState, _ reject: Wire.HandshakeReject, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeRejected(_ state: KernelState, _ reject: Wire.HandshakeReject, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
         return TODO("onHandshakeRejected")
     }
 }
@@ -332,7 +367,7 @@ internal protocol ReadOnlyKernelState {
     var eventLoopGroup: EventLoopGroup { get } // TODO or expose the MultiThreaded one...?
 
     /// Unique address of the current node.
-    var boundAddress: UniqueNodeAddress { get }
+    var localAddress: UniqueNodeAddress { get }
     var settings: RemotingSettings { get }
 }
 
@@ -344,7 +379,7 @@ internal struct KernelState: ReadOnlyKernelState {
     public var log: Logger
     public let settings: RemotingSettings
 
-    public let boundAddress: UniqueNodeAddress
+    public let localAddress: UniqueNodeAddress
 
     public let channel: Channel
     public let eventLoopGroup: EventLoopGroup
@@ -360,7 +395,7 @@ internal struct KernelState: ReadOnlyKernelState {
 
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
-        self.boundAddress = settings.uniqueBindAddress
+        self.localAddress = settings.uniqueBindAddress
 
         self.channel = channel
         self.log = log
@@ -455,8 +490,7 @@ extension KernelState {
 extension ActorSystem {
 
     internal var remoting: ActorRef<RemotingKernel.Messages> {
-        // return self.RemotingKernel?.adapt(with: <#T##@escaping (From) -> Messages##@escaping (From) -> RemotingKernel.Messages#>) // TODO the adapting for external only protocol etc
-        return self._remoting ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self, with: { m in DeadLetter(m) })
+        return self._remoting?.ref ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self)
     }
 
     // TODO MAYBE 

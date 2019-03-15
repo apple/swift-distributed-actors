@@ -14,11 +14,7 @@
 
 import CSwiftDistributedActorsMailbox
 
-// MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
-
-// TODO: designing the cell and ref is so far the most tricky thing I've seen... We want to hide away the ActorRef
-//      people should deal with ActorRef<T>; so we can't go protocol for the ActorRef, and we can't go
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
 
 /// The most basic of types representing an [ActorRef] - without the ability to send messages to it.
@@ -41,6 +37,9 @@ extension AddressableActorRef {
         self.path.hash(into: &hasher)
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: AddressableActorRef, Codable {
     associatedtype Message
@@ -86,7 +85,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 
 // MARK: Internal implementation classes
 
-/// INTERNAL API: Only for use by the actor system itself
+/// Only for use by the actor system itself
 // TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
 @usableFromInline
 internal protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
@@ -98,9 +97,12 @@ internal protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
     func sendSystemMessage(_ message: SystemMessage)
 }
 
-/// INTERNAL API
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Internal "real" ActorRefs
+
+/// The "real" actor ref.
 @usableFromInline
-final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages {
+internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages {
 
     /// Actors need names. We might want to discuss if we can optimize the names keeping somehow...
     /// The runtime does not care about the names really, and "lookup by name at runtime" has shown to be an anti-pattern in Akka over the years (will explain in depth elsewhere)
@@ -119,7 +121,6 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
 
     let mailbox: Mailbox<Message> // TODO: we need to be able to swap it for DeadLetters or find some other way
 
-    // MARK: Internal details; HERE BE DRAGONS
     internal weak var cell: ActorCell<Message>?
 
     public init(path: UniqueActorPath, cell: ActorCell<Message>, mailbox: Mailbox<Message>) {
@@ -151,6 +152,17 @@ final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSystemMessages
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Convenience extensions for dead letters
+
+extension ActorRef where Message == DeadLetter {
+    /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
+    func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
+        return self.adapt(from: IncomingMessage.self) { m in DeadLetter(m) }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Special" internal actors, "the Top Level Guardians"
 
 /// Represents an actor that has to exist, but does not exist in reality.
@@ -249,7 +261,7 @@ internal class Guardian: ReceivesSystemMessages {
             }
 
             if self._children.contains(name: path.name) {
-                throw ActorContextError.duplicateActorPath(path: try ActorPath(path.segments))
+                throw ActorContextError.duplicateActorPath(path: path.path)
             }
 
             let cell = try spawn()
@@ -295,7 +307,7 @@ internal class Guardian: ReceivesSystemMessages {
     }
 }
 
-extension Guardian: ActorTreeTraversable {
+extension Guardian: _ActorTreeTraversable {
 
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let children: Children = self.children
@@ -315,15 +327,15 @@ extension Guardian: ActorTreeTraversable {
         }
     }
 
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
 
         if self.path.name == selector.value {
-            return self.children._resolve(context: context.deeper, uid: uid)
+            return self.children._resolve(context: context.deeper)
         } else {
-            return nil
+            return context.deadRef
         }
     }
 

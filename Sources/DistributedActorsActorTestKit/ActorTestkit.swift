@@ -44,6 +44,7 @@ final public class ActorTestKit {
 public extension ActorTestKit {
 
     /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
+    // TODO rename expecting to "receiving"? -- ktoso
     func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer {

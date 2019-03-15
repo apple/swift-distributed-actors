@@ -41,7 +41,7 @@ public struct Serialization {
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
 
-    internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: ActorTreeTraversable) { // TODO should take the top level actors
+    internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
 
@@ -49,7 +49,7 @@ public struct Serialization {
         let context = ActorSerializationContext(
             serializationAddress: settings.serializationAddress,
             deadLetters: deadLetters,
-            traversableSystem: traversable
+            traversable: traversable
         )
 
         // register all
@@ -228,18 +228,18 @@ public struct ActorSerializationContext {
     typealias MetaTypeKey = Serialization.MetaTypeKey
 
     public let deadLetters: ActorRef<DeadLetter>
-    private let traversable: ActorTreeTraversable
+    private let traversable: _ActorTreeTraversable
 
     /// Address to be included in serialized actor refs if they contain no address yet
     /// `nil` if remoting is not enabled, thus there is no need to serialize with address.
-    public let serializationAddress: NodeAddress?
+    public let serializationAddress: UniqueNodeAddress?
 
-    internal init(serializationAddress: NodeAddress?,
+    internal init(serializationAddress: UniqueNodeAddress?,
                   deadLetters: ActorRef<DeadLetter>,
-                  traversableSystem: ActorTreeTraversable) {
+                  traversable: _ActorTreeTraversable) {
         self.serializationAddress = serializationAddress
         self.deadLetters = deadLetters
-        self.traversable = traversableSystem
+        self.traversable = traversable
     }
 
     /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
@@ -249,17 +249,12 @@ public struct ActorSerializationContext {
     /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
     ///
     /// - Returns: the erased `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    public func resolveActorRef(path: UniqueActorPath) -> AnyAddressableActorRef? {
-        var context = ResolveContext()
-        context.selectorSegments = path.segments[...]
-        let resolved = self.traversable._resolve(context: context, uid: path.uid)
-        return resolved // TODO maybe automatically do ?? typedDeadLettersRef here?
+    public func resolveActorRef<Message>(path: UniqueActorPath) -> ActorRef<Message> {
+        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
+        let resolved = self.traversable._resolve(context: context)
+        return resolved
     }
 
-    /// Creates an `adapter` to `deadLetters` from the passed in message type
-    public func deadLetters<Message>(from type: Message.Type) -> ActorRef<Message> {
-        return self.deadLetters.adapt(from: type) { DeadLetter($0) }
-    }
 }
 
 // MARK: Serialize specializations 
@@ -321,7 +316,7 @@ public struct SerializationSettings {
     /// 
     /// If remoting is not configured on this node, this value SHOULD be `nil`,
     /// as it is not useful to render any address for actors which shall never be reached remotely.
-    public var serializationAddress: NodeAddress? = nil // TODO or unique one? I think we take care of the UIDs on the level of the envelopes already after all
+    public var serializationAddress: UniqueNodeAddress? = nil // TODO or unique one? I think we take care of the UIDs on the level of the envelopes already after all
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
@@ -614,30 +609,6 @@ internal class StringSerializer: Serializer<String> {
         return s
     }
 }
-
-//internal class ActorRefSerializer: Serializer<AnyAddressableActorRef> {
-//
-//    let encoder = JSONEncoder()
-//    private let allocate: ByteBufferAllocator
-//
-//    init(_ allocator: ByteBufferAllocator) {
-//        self.allocate = allocator
-//    }
-//
-//    override func serialize(message: AnyAddressableActorRef) throws -> ByteBuffer {
-//        let data: Data = try encoder.encode(message.path)
-//
-//        return data.withUnsafeBytes { bytes in
-//            var out: ByteBuffer = allocate.buffer(capacity: data.count)
-//            out.writeBytes(bytes)
-//            return out
-//        }
-//    }
-//
-//    override func deserialize(bytes: ByteBuffer) throws -> AnyAddressableActorRef {
-//        return try super.deserialize(bytes: bytes)
-//    }
-//}
 
 // MARK: Small utility functions
 
