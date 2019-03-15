@@ -132,7 +132,7 @@ public struct Children {
 
 // MARK: Traversal
 
-extension Children: ActorTreeTraversable {
+extension Children: _ActorTreeTraversable {
     @usableFromInline
     internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
@@ -162,7 +162,7 @@ extension Children: ActorTreeTraversable {
     }
 
     @usableFromInline
-    internal func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
 
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
@@ -170,10 +170,10 @@ extension Children: ActorTreeTraversable {
         }
 
         if let selectedChild = self.container[selector.value] {
-            return selectedChild._resolve(context: context.deeper, uid: uid)
+            return selectedChild._resolve(context: context.deeper)
         } else {
             // no child going by this name in this container, meaning the resolve is to terminate here with a not-found
-            return nil
+            return context.deadRef
         }
     }
 }

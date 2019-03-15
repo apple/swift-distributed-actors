@@ -42,10 +42,10 @@ public final class ActorSystem {
 
     private let dispatcher: InternalMessageDispatcher
 
-    // TODO: converge into one tree?
+    // TODO: converge into one tree? // YEAH
     // Note: This differs from Akka, we do full separate trees here
-    private let systemProvider: ActorRefProvider
-    private let userProvider: ActorRefProvider
+    private let systemProvider: _ActorRefProvider
+    private let userProvider: _ActorRefProvider
 
     private let _theOneWhoWalksTheBubblesOfSpaceTime: ReceivesSystemMessages
 
@@ -59,7 +59,7 @@ public final class ActorSystem {
 
     // MARK: Remoting
 
-    internal var _remoting: RemotingKernel.Ref?
+    internal let _remoting: RemotingKernel?
 
     // MARK: Logging
 
@@ -81,19 +81,15 @@ public final class ActorSystem {
         self.name = name
 
         var settings = ActorSystemSettings()
+        settings.remoting.bindAddress.systemName = name
         configureSettings(&settings)
+        if settings.remoting.enabled {
+            precondition(settings.remoting.bindAddress.systemName == name,
+                "Configured name [\(name)] did not match name configured for remoting \(settings.remoting.bindAddress)! " + 
+                "Both names MUST match in order to avoid confusion.")
+        }
+
         self.settings = settings
-
-        // TODO would we be able to without mutating theOne make it traversable? This way we could use it as traversable for Serialization()
-        self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
-        let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
-        let userGuardian = Guardian(parent: theOne, name: "user")
-        let systemGuardian = Guardian(parent: theOne, name: "system")
-
-        let userProvider = LocalActorRefProvider(root: userGuardian)
-        self.userProvider = userProvider
-        let systemProvider = LocalActorRefProvider(root: systemGuardian)
-        self.systemProvider = systemProvider
 
         // dead letters init
         // TODO actually attach dead letters to a parent?
@@ -103,9 +99,6 @@ public final class ActorSystem {
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
-        let traversable = CompositeActorTreeTraversable(systemTree: systemProvider, userTree: userProvider)
-        self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
-
         do {
             try FaultHandling.installCrashHandling()
         } catch {
@@ -113,11 +106,42 @@ public final class ActorSystem {
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
         }
 
-        // Start system actors and networking subsystem
+        // initialize top level guardians
+        self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
+        let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
+        let userGuardian = Guardian(parent: theOne, name: "user")
+        let systemGuardian = Guardian(parent: theOne, name: "system")
 
-        // Networking MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
-        self._remoting = nil
-        self._remoting = RemotingKernel.start(system: self, settings: settings.remoting)
+        // actor providers
+        let localUserProvider = LocalActorRefProvider(root: userGuardian)
+        let localSystemProvider = LocalActorRefProvider(root: systemGuardian) // TODO want to reconciliate those into one, and allow /dead as well
+
+        var effectiveUserProvider: _ActorRefProvider = localUserProvider
+        var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
+
+        if settings.remoting.enabled {
+            let remoting = RemotingKernel()
+            self._remoting = remoting
+            effectiveUserProvider = RemoteActorRefProvider(settings: settings, kernel: remoting, localProvider: localUserProvider)
+            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, kernel: remoting, localProvider: localSystemProvider)
+        } else {
+            self._remoting = nil
+        }
+
+        pprint("effectiveUserProvider = \(effectiveUserProvider)")
+        self.systemProvider = effectiveSystemProvider
+        self.userProvider = effectiveUserProvider
+
+        // serialization
+        let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
+        self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
+
+        // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
+        do {
+            try self._remoting?.start(system: self) // only spawns when remoting is initialized
+        } catch {
+            fatalError("Failed while starting remoting subsystem! Error: \(error)")
+        }
     }
 
     public convenience init() {
@@ -132,13 +156,16 @@ public final class ActorSystem {
     /// - Warning: Blocks current thread until the system has terminated.
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
-        self.log.log(level: .debug, "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        self._remoting?.tell(.command(.unbind)) // TODO await until it does
+        self.log.log(level: .debug, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self._remoting?.ref.tell(.command(.unbind)) // TODO await until it does
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorRefFactory
 
 /// Public but not intended for user-extension.
 ///
@@ -146,12 +173,13 @@ public final class ActorSystem {
 /// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
 public protocol ActorRefFactory {
 
-    /// Spawn an actor with the given behavior name and props.
+    /// Spawn an actor with the given behavior, name and props.
     ///
-    /// Returns: `ActorRef` for the spawned actor.
+    /// - Returns: `ActorRef` for the spawned actor.
     func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor creation
 
 extension ActorSystem: ActorRefFactory {
@@ -195,7 +223,7 @@ extension ActorSystem: ActorRefFactory {
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    internal func _spawnActor<Message>(using provider: ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
         let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: .random())
@@ -223,9 +251,10 @@ extension ActorSystem: ActorRefFactory {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal actor tree traversal utilities
 
-extension ActorSystem: ActorTreeTraversable {
+extension ActorSystem: _ActorTreeTraversable {
 
     /// Prints Actor hierarchy as a "tree".
     ///
@@ -271,14 +300,14 @@ extension ActorSystem: ActorTreeTraversable {
     }
 
 
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
-            return nil
+            return context.deadRef
         }
         switch selector.value {
-        case "system": return self.systemProvider._resolve(context: context.deeper, uid: uid)
-        case "user": return self.userProvider._resolve(context: context.deeper, uid: uid)
-        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "system": return self.systemProvider._resolve(context: context)
+        case "user":   return self.userProvider._resolve(context: context) // TODO not in love with the keep path, maybe always keep it
+        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 

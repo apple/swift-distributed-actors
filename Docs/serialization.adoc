@@ -194,8 +194,6 @@ actor specific types, you can accept this context like this:
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_actorRef_serializer]
 ----
 <1> Implement `setSerializationContext` and store the context in a property
-<2> Use the `context` to attempt resolving a reference to an _alive_ actor
-<3> Here we have to cast the erased `resolved` actor ref, however this is guaranteed to be safe, as otherwise the resolve would not have returned it
-<4> If no actor is resolved, you may want to offer a `deadLetters` ref instead #TODO: maybe we should always do this for users... it is the semantically right thing to do -- ktoso#
+<2> Use the `context` to resolve the actor path to a ref, if the path does not point to an _alive_ actor, the reference will automatically point to `/system/deadLetters`
 
 #TODO: I think we don't constructor inject this because Codable things AFAIR... but we may want to double check if we could constructor inject anyway somehow?#

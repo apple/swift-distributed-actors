@@ -24,7 +24,7 @@ public struct ActorSystemSettings {
     public var remoting: RemotingSettings = .default {
         didSet {
             if self.remoting.enabled {
-                self.serialization.serializationAddress = self.remoting.bindAddress // TODO later on this would be `address` vs `bindAddress`
+                self.serialization.serializationAddress = self.remoting.uniqueBindAddress // TODO later on this would be `address` vs `bindAddress`
             } else {
                 self.serialization.serializationAddress = nil
             }
@@ -46,3 +46,16 @@ public struct ActorSettings {
     // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
     public let maxBehaviorNestingDepth: Int = 128
 }
+
+public enum EnableDisableOption {
+    case enable 
+    case disable
+
+    var boolValue: Bool {
+        switch self {
+        case .enable: return true
+        case .disable: return false
+        }
+    }
+}
+

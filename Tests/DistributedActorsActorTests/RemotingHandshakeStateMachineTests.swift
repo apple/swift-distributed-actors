@@ -45,7 +45,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
 
     func test_handshake_happyPath() throws {
         let serverKernel = self.makeMockKernelState(side: .server)
-        let serverAddress = serverKernel.boundAddress
+        let serverAddress = serverKernel.localAddress
 
         let clientKernel = self.makeMockKernelState(side: .client) { settings  in
             settings.bindAddress.port = 2222
@@ -76,11 +76,11 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
 
         // then
 
-        serverCompleted.boundAddress.shouldEqual(serverKernel.boundAddress)
-        serverCompleted.remoteAddress.shouldEqual(clientKernel.boundAddress)
+        serverCompleted.localAddress.shouldEqual(serverKernel.localAddress)
+        serverCompleted.remoteAddress.shouldEqual(clientKernel.localAddress)
 
-        clientCompleted.remoteAddress.shouldEqual(serverKernel.boundAddress)
-        clientCompleted.boundAddress.shouldEqual(clientKernel.boundAddress)
+        clientCompleted.remoteAddress.shouldEqual(serverKernel.localAddress)
+        clientCompleted.localAddress.shouldEqual(clientKernel.localAddress)
     }
 
 
@@ -89,7 +89,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
 
     func test_negotiate_server_shouldAcceptClient_newerPatch() throws {
         let serverKernel = self.makeMockKernelState(side: .server)
-        let serverAddress = serverKernel.boundAddress
+        let serverAddress = serverKernel.localAddress
 
         let clientKernel = self.makeMockKernelState(side: .client) { settings in
             settings.bindAddress.port = 2222
@@ -120,7 +120,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
 
     func test_negotiate_server_shouldRejectClient_newerMajor() throws {
         let serverKernel = self.makeMockKernelState(side: .server)
-        let serverAddress = serverKernel.boundAddress
+        let serverAddress = serverKernel.localAddress
 
         let clientKernel = self.makeMockKernelState(side: .client) { settings in
             settings.bindAddress.port = 2222

@@ -53,9 +53,8 @@ internal struct HandshakeStateMachine {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Directives
 
-    // enum StateWithDirective {
-    //     case associate(CompletedState, Directive)
-    // }
+     enum StateWithDirective {
+     }
 
     /// Directives are what instructs the state machine driver about what should be performed next.
     internal enum Directive {
@@ -83,14 +82,14 @@ internal struct HandshakeStateMachine {
         }
 
         internal let remoteAddress: NodeAddress
-        internal var boundAddress: UniqueNodeAddress {
-            return self.kernelState.boundAddress
+        internal var localAddress: UniqueNodeAddress {
+            return self.kernelState.localAddress
         }
 
         // TODO counter for how many times to retry associating (timeouts)
 
         init(kernelState: ReadOnlyKernelState, connectTo remoteAddress: NodeAddress) {
-            precondition(kernelState.boundAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
+            precondition(kernelState.localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.kernelState = kernelState
             self.remoteAddress = remoteAddress
         }
@@ -105,7 +104,7 @@ internal struct HandshakeStateMachine {
 
         public let offer: Wire.HandshakeOffer
         internal var boundAddress: UniqueNodeAddress {
-            return self.kernelState.boundAddress
+            return self.kernelState.localAddress
         }
         internal var protocolVersion: Swift Distributed ActorsActor.Version {
             return kernelState.settings.protocolVersion
@@ -129,7 +128,7 @@ internal struct HandshakeStateMachine {
     /// This state is used to unlock creating an Association.
     internal struct CompletedState: CanAcceptHandshake {
         internal var remoteAddress: UniqueNodeAddress
-        internal var boundAddress: UniqueNodeAddress
+        internal var localAddress: UniqueNodeAddress
         // let unique association ID?
 
         // State Transition used by Client Side of initial Handshake.
@@ -137,16 +136,16 @@ internal struct HandshakeStateMachine {
         // Since the client is the one who initiates the handshake, once it receives an Accept containing the remote unique address
         // it may immediately transition to the completed state.
         init(fromInitiated state: InitiatedState, remoteAddress: UniqueNodeAddress) {
-            precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
+            precondition(state.localAddress != remoteAddress, "Node [\(state.localAddress)] attempted to create association with itself.")
             self.remoteAddress = remoteAddress
-            self.boundAddress = state.boundAddress
+            self.localAddress = state.localAddress
         }
 
         // State Transition used by Client Side of initial Handshake.
         init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress) {
             precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
             self.remoteAddress = remoteAddress
-            self.boundAddress = state.boundAddress
+            self.localAddress = state.boundAddress
         }
     }
 
@@ -166,7 +165,7 @@ protocol CanMakeHandshakeOffer {
     // State requirements --------
 
     var protocolVersion: Swift Distributed ActorsActor.Version { get }
-    var boundAddress: UniqueNodeAddress { get }
+    var localAddress: UniqueNodeAddress { get }
     var remoteAddress: NodeAddress { get }
 
     // State capabilities --------
@@ -181,7 +180,7 @@ extension CanMakeHandshakeOffer {
     /// Invoked when the driver attempts to send an offer.
     func makeOffer() -> Wire.HandshakeOffer {
         // TODO maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-        return Wire.HandshakeOffer(version: self.protocolVersion, from: self.boundAddress, to: self.remoteAddress)
+        return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localAddress, to: self.remoteAddress)
     }
 
     // TODO timeouts for handshakes
@@ -249,12 +248,12 @@ extension CanNegotiateHandshake {
 
 protocol CanAcceptHandshake {
     // State requirements --------
-    var boundAddress: UniqueNodeAddress { get }
+    var localAddress: UniqueNodeAddress { get }
     var remoteAddress: UniqueNodeAddress { get }
 }
 extension CanAcceptHandshake {
     func makeAccept() -> Wire.HandshakeAccept {
-        return .init(from: self.boundAddress, origin: self.remoteAddress)
+        return .init(from: self.localAddress, origin: self.remoteAddress)
     }
 }
 

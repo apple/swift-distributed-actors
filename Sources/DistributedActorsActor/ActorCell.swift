@@ -575,7 +575,7 @@ internal protocol FailableActorCell {
 }
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
-internal protocol AbstractCell: ActorTreeTraversable  {
+internal protocol AbstractCell: _ActorTreeTraversable  {
 
     // MARK: Cell contract
 
@@ -607,22 +607,28 @@ extension AbstractCell {
         }
     }
 
-    func _resolve(context: ResolveContext, uid: ActorUID) -> AnyAddressableActorRef? {
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
+
         guard let selector = context.selectorSegments.first else {
             // no remaining selectors == we are the "selected" ref, apply uid check
-            if myself.path.uid == uid {
-                return myself
+            if myself.path.uid == context.selectorUID {
+                switch myself {
+                case let myself as ActorRef<Message>:
+                    return myself
+                default:
+                    return context.deadRef
+                }
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return nil
+                return context.deadRef
             }
         }
 
         if myself.path.name == selector.value {
-            return self.children._resolve(context: context.deeper, uid: uid)
+            return self.children._resolve(context: context.deeper)
         } else {
-            return nil
+            return context.deadRef
         }
     }
 }
