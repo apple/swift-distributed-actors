@@ -14,6 +14,7 @@
 
 import NIO
 import Dispatch
+import Logging
 import CSwiftDistributedActorsMailbox
 
 // MARK: Actor internals; The so-called "cell" contains the actual "actor"
@@ -421,7 +422,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
             _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PostStop())
         } catch {
             // TODO: should probably .escalate instead;
-            self.context.log.error("Exception in postStop. Supervision will NOT be applied.", error: error)
+            self.context.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
         }
 
         // TODO validate all the nulling out; can we null out the cell itself?

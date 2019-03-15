@@ -15,6 +15,7 @@
 
 import DistributedActorsConcurrencyHelpers
 @testable import Swift Distributed ActorsActor
+import Logging
 
 import XCTest
 
@@ -175,7 +176,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override var myself: ActorRef<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
-    private lazy var _log: Logger = Logging.make("\(type(of: self))")
+    private lazy var _log: Logger = Logger(label: "\(type(of: self))")
     override var log: Logger {
         get {
             return self._log
