@@ -335,6 +335,13 @@ public extension Behavior {
             return try .stopped(postStop: postStop.interpretSignal(context: context, signal: signal))
         case .signalHandling(_, let handleSignal):
             return try handleSignal(context, signal)
+        case .orElse(let first, let second):
+            let maybeHandled = try first.interpretSignal(context: context, signal: signal)
+            if maybeHandled.isUnhandled {
+                return try second.interpretSignal(context: context, signal: signal)
+            } else {
+                return maybeHandled
+            }
         case let .intercept(behavior, interceptor):
             return try interceptor.interceptSignal(target: behavior, context: context, signal: signal) // TODO do we need to try?
         case let .suspended(previous, handler):
@@ -344,7 +351,7 @@ public extension Behavior {
             } else {
                 return try .suspended(previousBehavior: previous.canonicalize(context, next: nextBehavior), handler: handler)
             }
-        default:
+        default: // TODO default is EVIL </3
             // no signal handling installed is semantically equivalent to unhandled
             return .unhandled
         }
@@ -508,7 +515,8 @@ internal extension Behavior {
     /// - Throws: `IllegalBehaviorError.tooDeeplyNestedBehavior` when a too deeply nested behavior is found,
     ///           in order to avoid attempting to start an possibly infinitely deferred behavior.
     // TODO make not recursive perhaps since could blow up on large chain?
-    @inlinable func start(context: ActorContext<Message>) throws -> Behavior<Message> {
+    @inlinable
+    func start(context: ActorContext<Message>) throws -> Behavior<Message> {
         let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
 
         func start0(_ behavior: Behavior<Message>, depth: Int) throws -> Behavior<Message> {
@@ -527,6 +535,10 @@ internal extension Behavior {
 
             case .signalHandling(let onMessageBehavior, let onSignal):
                 return .signalHandling(handleMessage: try start0(onMessageBehavior, depth: depth + 1), handleSignal: onSignal)
+
+            case .orElse(let main, let fallback):
+                return try start0(main, depth: depth + 1)
+                    .orElse(start0(fallback, depth: depth + 1))
 
             default:
                 return behavior

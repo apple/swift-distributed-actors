@@ -33,6 +33,7 @@ extension BehaviorTests {
                 ("test_orElse_shouldExecuteSecondBehavior", test_orElse_shouldExecuteSecondBehavior),
                 ("test_orElse_shouldNotExecuteSecondBehaviorOnIgnore", test_orElse_shouldNotExecuteSecondBehaviorOnIgnore),
                 ("test_orElse_shouldProperlyHandleDeeplyNestedBehaviors", test_orElse_shouldProperlyHandleDeeplyNestedBehaviors),
+                ("test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError", test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError),
                 ("test_stoppedWithPostStop_shouldTriggerPostStopCallback", test_stoppedWithPostStop_shouldTriggerPostStopCallback),
                 ("test_stoppedWithPostStopThrows_shouldTerminate", test_stoppedWithPostStopThrows_shouldTerminate),
                 ("test_makeAsynchronousCallback_shouldExecuteClosureInActorContext", test_makeAsynchronousCallback_shouldExecuteClosureInActorContext),
