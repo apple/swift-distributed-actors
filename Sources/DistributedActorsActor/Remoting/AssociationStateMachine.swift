@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import Logging
 
 
 /// An `Association` represents a bi-directional agreement between two nodes that they are able to communicate with each other.

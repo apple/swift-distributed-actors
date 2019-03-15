@@ -17,6 +17,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 import NIO
+import Logging
 
 class RemotingHandshakeStateMachineTests: XCTestCase {
 
@@ -33,7 +34,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
     func makeMockKernelState(side: HandshakeSide, configureSettings: (inout RemotingSettings) -> () = { _ in () }) -> KernelState {
         var settings = RemotingSettings(bindAddress: NodeAddress(systemName: systemName, host: "127.0.0.1", port: 7337))
         configureSettings(&settings)
-        let log = Logging.make("handshake-\(side)") // TODO could be a mock logger we can assert on?
+        let log = Logger(label: "handshake-\(side)") // TODO could be a mock logger we can assert on?
 
         return KernelState(settings: settings, channel: EmbeddedChannel(), log: log)
     }

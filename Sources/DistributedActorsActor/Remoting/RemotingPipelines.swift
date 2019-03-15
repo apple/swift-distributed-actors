@@ -19,6 +19,7 @@ import class NIOExtras.LengthFieldBasedFrameDecoder
 
 import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
 import SwiftProtobuf
+import Logging
 
 // TODO: Implement our own EnvelopeParser, basically similar to the NIOExtras.LengthFieldBasedFrameDecoder
 typealias Framing = LengthFieldBasedFrameDecoder

@@ -15,6 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 import CSwiftDistributedActorsMailbox
 import Dispatch
+import Logging
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
@@ -97,7 +98,7 @@ public final class ActorSystem {
         // dead letters init
         // TODO actually attach dead letters to a parent?
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
-        let deadLog = Logging.make(deadLettersPath.description)
+        let deadLog = Logger(label: deadLettersPath.description)
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
@@ -131,7 +132,7 @@ public final class ActorSystem {
     /// - Warning: Blocks current thread until the system has terminated.
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func terminate() {
-        self.log.log(level: .debug, message: "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+        self.log.log(level: .debug, "TERMINATING ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
         self._remoting?.tell(.command(.unbind)) // TODO await until it does
         self.userProvider.stopAll()
         self.systemProvider.stopAll()

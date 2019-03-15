@@ -12,10 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 // TODO none of these are currently configurable
 public struct ActorSystemSettings {
 
-    public var logLevel: Logging.Level = .info
+    public var logLevel: Logger.Level = .info
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
