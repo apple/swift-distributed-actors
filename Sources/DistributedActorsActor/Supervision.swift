@@ -262,7 +262,7 @@ internal enum ProcessingType {
 internal class Supervisor<Message> {
 
     @inlinable
-    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         traceLog_Supervision("CALL WITH SUPERVISION: \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingType: .message) {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
@@ -270,7 +270,7 @@ internal class Supervisor<Message> {
     }
 
     @inlinable
-    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
         traceLog_Supervision("INTERCEPT SIGNAL APPLY: \(target) @@@@ \(signal)")
         return try self.interpretSupervised0(target: target, context: context, processingType: .signal) {
             return try target.interpretSignal(context: context, signal: signal)
@@ -278,7 +278,7 @@ internal class Supervisor<Message> {
     }
 
     @inlinable
-    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: () throws -> Void) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: () throws -> Void) throws -> Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE")
         return try self.interpretSupervised0(target: target, context: context, processingType: .closure) {
             try closure()

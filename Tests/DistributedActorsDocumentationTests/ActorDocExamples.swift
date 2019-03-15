@@ -94,6 +94,7 @@ class ActorDocExamples: XCTestCase {
             }
         }
         // end::stop_myself_1[]
+        _ = lineHandling // silence not used warning
     }
 
     class X {

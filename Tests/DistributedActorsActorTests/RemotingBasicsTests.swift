@@ -18,59 +18,79 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 import NIOSSL
 
+
 class RemotingBasicsTests: XCTestCase {
 
-    func test_bindOnStartup_shouldStartNetworkActorUnderSystemProvider() throws {
-        let system = ActorSystem("RemotingBasicsTests") { settings in
+    var local: ActorSystem! = nil
+
+    var remote: ActorSystem! = nil
+
+    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
+    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
+
+    override func setUp() {
+        self.local = ActorSystem("2RemotingBasicsTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingBasicsTests", host: "127.0.0.1", port: 8338)
+            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8448)
         }
-        defer { system.terminate() }
+        self.remote = ActorSystem("2RemotingBasicsTests") { settings in
+            settings.remoting.enabled = true
+            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559)
+        }
+    }
 
+    override func tearDown() {
+        self.local.terminate()
+        self.remote.terminate()
+    }
+
+    private func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
         let testKit = ActorTestKit(system)
-
-        try testKit.eventually(within: .seconds(1)) {
-            try testKit._assertActorPathOccupied("/system/remoting")
+        let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
+        try testKit.eventually(within: .milliseconds(500)) {
+            system.remoting.tell(.query(.associatedNodes(probe.ref)))
+            let associatedNodes = try probe.expectMessage()
+            pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
+            pprint("      Associated nodes: \(associatedNodes)")
+            pprint("         Expected node: \(String(reflecting: address))")
+            associatedNodes.contains(address).shouldBeTrue() // TODO THIS SOMETIMES FAILS!!!!
         }
     }
 
     func test_boundServer_shouldAcceptAssociate() throws {
-        let system = ActorSystem("2RemotingBasicsTests") { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8448)
-        }
-        defer { system.terminate() }
-        let testKit = ActorTestKit(system)
+        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
+        try assertAssociated(system: local, expectAssociatedAddress: remoteUniqueAddress)
+        try assertAssociated(system: remote, expectAssociatedAddress: localUniqueAddress)
+    }
 
-        let remote = ActorSystem("2RemotingBasicsTests") { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559)
-        }
-        let remoteNodeAddress: NodeAddress = remote.settings.remoting.bindAddress
-        defer { remote.terminate() }
+    func test_association_shouldAllowSendingToRemoteReference() throws {
+        let remoteTestKit = ActorTestKit(remote)
+        let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
+        let refOnRemoteSystem: ActorRef<String> = try remote.spawn(.receiveMessage { message in
+            probeOnRemote.tell("forwarded:\(message)")
+            return .same
+        }, name: "remoteAcquaintance")
 
-        system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
+        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
-        sleep(2) // TODO make this test actually test associations :)
-
-        let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-        try testKit.eventually(within: .milliseconds(500)) {
-            system.remoting.tell(.query(.associatedNodes(pSystem.ref)))
-            remote.remoting.tell(.query(.associatedNodes(pSystem.ref)))
-            let associatedNodes = try pSystem.expectMessage()
-            associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
-        }
-
-        let pRemote = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-        try testKit.eventually(within: .milliseconds(500)) {
-            system.remoting.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
-            remote.remoting.tell(.query(.associatedNodes(pRemote.ref)))
-            let associatedNodes = try pRemote.expectMessage()
-            associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
-        }
+        // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
+        // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
+        let remoteNodeAddress = remote.settings.remoting.uniqueBindAddress
+        var uniqueRemotePath: UniqueActorPath = refOnRemoteSystem.path
+        uniqueRemotePath.address = remoteNodeAddress // since refOnRemoteSystem is "local" there, it has no address; thus we set it
+        // to then obtain a remote ref ON the `system`, meaning that the address within remotePath is a remote one
+        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, deadLetters: local.deadLetters)
+        let resolvedRef = local._resolve(context: resolveContext)
+        // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
+        // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
+//        resolvedRef.tell("HELLO") // TODO: unlock with
+//
+//        try probeOnRemote.expectMessage("forwarded:HELLO") // TODO: unlock with
     }
 
     // TODO: make sure to test also for what happens for `connection refused`.
     // Fatal error: 'try!' expression unexpectedly raised an error: NIO.ChannelError.connectFailed(NIO.NIOConnectionError(host: "127.0.0.1", port: 9559, dnsAError: nil, dnsAAAAError: nil, connectionErrors: [NIO.SingleConnectionFailure(target: [IPv4]127.0.0.1/127.0.0.1:9559, error: connection reset (error set): Connection refused (errno: 61))])): file /Users/buildnode/jenkins/workspace/oss-swift-4.2-package-osx/swift/stdlib/public/core/ErrorType.swift, line 184
-
 }

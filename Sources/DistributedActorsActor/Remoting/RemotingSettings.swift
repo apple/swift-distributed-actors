@@ -42,6 +42,12 @@ public struct RemotingSettings {
     /// Changing the address preserves the systems `Remote.NodeUID`.
     public var bindAddress: NodeAddress
 
+    // Reflects the bindAddress however carries an uniquely assigned UID.
+    // The UID remains the same throughout updates of the `bindAddress` field.
+    public var uniqueBindAddress: UniqueNodeAddress {
+        return UniqueNodeAddress(address: self.bindAddress, uid: self.uid)
+    }
+
     /// `NodeUID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
     public var uid: NodeUID
 
@@ -56,12 +62,6 @@ public struct RemotingSettings {
     }
     // exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: Swift Distributed ActorsActor.Version = DistributedActorsProtocolVersion
-
-    // Reflects the bindAddress however carries an uniquely assigned UID.
-    // The UID remains the same throughout updates of the `bindAddress` field.
-    public var uniqueBindAddress: UniqueNodeAddress {
-        return UniqueNodeAddress(address: self.bindAddress, uid: self.uid)
-    }
 
     /// If set, this event loop group will be used by the remoting infrastructure.
     // TODO do we need to separate server and client sides? Sounds like a reasonable thing to do.

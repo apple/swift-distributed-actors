@@ -48,6 +48,7 @@ import XCTest
          testCase(MPSCLinkedQueueTests.allTests),
          testCase(NIOExtensionTests.allTests),
          testCase(ParentChildActorTests.allTests),
+         testCase(RemoteActorRefProviderTests.allTests),
          testCase(RemotingBasicsTests.allTests),
          testCase(RemotingHandshakeStateMachineTests.allTests),
          testCase(RemotingTLSTests.allTests),
@@ -60,5 +61,6 @@ import XCTest
          testCase(TimeSpecTests.allTests),
          testCase(TimersTests.allTests),
          testCase(TraversalTests.allTests),
+         testCase(UniqueNodeAddressTests.allTests),
     ])
 #endif
