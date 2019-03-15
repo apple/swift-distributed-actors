@@ -14,15 +14,16 @@
 
 import DistributedActorsConcurrencyHelpers
 import Foundation
+import Logging
 
 // NOT thread safe by itself
 public class LoggingContext {
     let identifier: String
 
     @usableFromInline
-    internal var _storage: Logging.Metadata = [:]
+    internal var _storage: Logger.Metadata = [:]
 
-    public var metadata: Logging.Metadata {
+    public var metadata: Logger.Metadata {
         get {
             return self._storage
         }
@@ -38,7 +39,7 @@ public class LoggingContext {
     }
 
     @inlinable
-    public subscript(metadataKey metadataKey: String) -> Logging.Metadata.Value? {
+    public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
             return self._storage[metadataKey]
         }
@@ -47,7 +48,7 @@ public class LoggingContext {
         }
     }
 
-    func effectiveMetadata(overrides: Logging.Metadata?) -> Logging.Metadata {
+    func effectiveMetadata(overrides: Logger.Metadata?) -> Logger.Metadata {
         if let overs = overrides {
             return self._storage.merging(overs, uniquingKeysWith: { (l, r) in r })
         } else {
@@ -64,7 +65,7 @@ public struct ActorLogger {
         actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
         actorLogHandlerProxyLogHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.remoting.bindAddress)")
 
-        return Logger(actorLogHandlerProxyLogHandler)
+        return Logger(label: "\(context.path)", factory: { _ in actorLogHandlerProxyLogHandler })
     }
 
     static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
@@ -72,7 +73,7 @@ public struct ActorLogger {
         // so we need to make such "proxy log handler", that does out actor specific things.
         let actorLogHandlerProxyLogHandler = ActorOriginLogHandler(system)
 
-        return Logger(actorLogHandlerProxyLogHandler)
+        return Logger(label: identifier ?? system.name, factory: { _ in actorLogHandlerProxyLogHandler })
     }
 }
 
@@ -107,7 +108,7 @@ public struct ActorOriginLogHandler: LogHandler {
         ))
     }
 
-    public func log(level: Logging.Level, message: String, metadata: Logging.Metadata?, error: Error?, file: StaticString, function: StaticString, line: UInt) {
+    public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
         let logMessage = LogMessage(identifier: self.context.identifier,
@@ -115,7 +116,6 @@ public struct ActorOriginLogHandler: LogHandler {
                 level: level,
                 message: message,
                 effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO should force lazies
-                error: error,
                 file: file,
                 function: function,
                 line: line
@@ -170,7 +170,7 @@ public struct ActorOriginLogHandler: LogHandler {
     }
 
     // TODO hope to remove this one
-    public subscript(metadataKey metadataKey: String) -> Logging.Metadata.Value? {
+    public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
             return self.context[metadataKey: metadataKey]
         }
@@ -179,10 +179,10 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    public var logLevel: Logging.Level = Logging.Level.info
+    public var logLevel: Logger.Level = Logger.Level.info
 
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
-    public var metadata: Logging.Metadata {
+    public var metadata: Logger.Metadata {
         get {
             return context.metadata
         }
@@ -191,13 +191,16 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    private func formatLevel(_ level: Logging.Level) -> String {
+    private func formatLevel(_ level: Logger.Level) -> String {
         switch level {
-        case .trace:   return "[TRACE]"
-        case .debug:   return "[DEBUG]"
-        case .info:    return " [INFO]"
-        case .warning: return " [WARN]"
-        case .error:   return "[ERROR]"
+        case .debug:     return "[DEBUG]" 
+        case .info:      return "[INFO]"
+        case .notice:    return "[NOTICE]"
+        case .warning:   return "[WARN]"
+        case .error:     return "[ERROR]"
+        case .critical:  return "[CRITICAL]"
+        case .alert:     return "[ALERT]"
+        case .emergency: return "[EMERGENCY]"
         }
     }
 
@@ -212,25 +215,23 @@ public struct LogMessage {
     let identifier: String
 
     let time: Date
-    let level: Logging.Level
-    let message: String
-    var effectiveMetadata: Logging.Metadata?
+    let level: Logger.Level
+    let message: Logger.Message
+    var effectiveMetadata: Logger.Metadata?
 
-    let error: Error?
-
-    let file: StaticString
-    let function: StaticString
+    let file: String
+    let function: String
     let line: UInt
 }
 
 // MARK: Extend logging metadata storage capabilities
 
-extension Optional where Wrapped == Logging.MetadataValue {
+extension Optional where Wrapped == Logger.MetadataValue {
     /// Delays rendering of value by boxing it in a `LazyMetadataBox`
-    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logging.MetadataValue {
+    static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
         return .stringConvertible(LazyMetadataBox({ makeValue() }))
     }
-    static func lazyString(_ makeValue: @escaping () -> String) -> Logging.MetadataValue {
+    static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
         return self.lazyStringConvertible(makeValue)
     }
 }

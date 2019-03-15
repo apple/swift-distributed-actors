@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
+import Logging 
 
 // MARK: Internal Network Kernel, which owns and administers all connections of this system
 
@@ -264,11 +265,11 @@ extension RemotingKernel {
                 return self.ready(state: newState) // TODO change the state
 
             case .rejectHandshake(let error):
-                log.info("Rejecting handshake from \(offer.from)!", error: error)
+                log.info("Rejecting handshake from \(offer.from)! Error: \(error)")
                 return self.ready(state: newState) // TODO change the state
 
             case .goAwayRogueHandshake(let error):
-                log.warning("Rogue handshake! Reject, reject! From \(offer.from)!", error: error)
+                log.warning("Rogue handshake! Reject, reject! From \(offer.from)! Error: \(error)")
                 return self.ready(state: newState) // TODO change the state
             }
         } else {

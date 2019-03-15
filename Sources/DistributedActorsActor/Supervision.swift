@@ -300,7 +300,7 @@ internal class Supervisor<Message> {
             return try block()
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)", error: error)
+            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)")
             do {
                 return try self.handleFailure(context, target: target, failure: .error(error), processingType: processingType).validatedAsInitial()
             } catch {

@@ -15,6 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 import CSwiftDistributedActorsMailbox
 import Foundation
+import Logging
 
 enum WrappedMessage<Message> {
     case userMessage(Message)
@@ -215,9 +216,7 @@ final class Mailbox<Message> {
                 let supervisionResultingBehavior: Behavior<Message>
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
-                cell.log.warning("Supervision: " +
-                    "Actor has FAULTED while interpreting \(runPhase), handling with \(cell.supervisor); " +
-                    "Failure details: \(String(reflecting: supervisionFailure))")
+                cell.log.warning("Supervision: Actor has FAULTED while interpreting \(runPhase), handling with \(cell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
 
                 switch runPhase {
                 case .processingSystemMessages:
@@ -495,14 +494,14 @@ extension Mailbox {
 
 // TODO: separate metadata things from the mailbox, perhaps rather we should do it inside the run (pain to do due to C interop a bit?)
 extension Mailbox {
-    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logging.Metadata {
+    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
         let old = cell.log.metadata
         #if SACT_DEBUG
         cell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
         #endif
         return old
     }
-    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logging.Metadata) {
+    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logger.Metadata) {
         cell.log.metadata = metadata
     }
 }
