@@ -27,6 +27,7 @@ extension RemotingHandshakeStateMachineTests {
                 ("test_handshake_happyPath", test_handshake_happyPath),
                 ("test_negotiate_server_shouldAcceptClient_newerPatch", test_negotiate_server_shouldAcceptClient_newerPatch),
                 ("test_negotiate_server_shouldRejectClient_newerMajor", test_negotiate_server_shouldRejectClient_newerMajor),
+                ("test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes", test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes),
            ]
    }
 }

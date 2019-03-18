@@ -33,12 +33,38 @@ final public class ActorTestKit {
 
     private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testProbe-")
 
-    public init(_ system: ActorSystem) {
+    public let settings: ActorTestKitSettings
+
+    public init(_ system: ActorSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
         self.system = system
+
+        var settings = ActorTestKitSettings()
+        configureSettings(&settings)
+        self.settings = settings
     }
 
 }
 
+/// Simple error type useful for failing tests / assertions
+public struct TestError: Error, Hashable {
+    public let message: String
+
+    public init(_ message: String) {
+        self.message = message
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: TestKit settings
+
+public struct ActorTestKitSettings {
+
+    /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
+    var expectationTimeout: TimeAmount = .milliseconds(300)
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test Probes
 
 public extension ActorTestKit {
@@ -47,9 +73,7 @@ public extension ActorTestKit {
     // TODO rename expecting to "receiving"? -- ktoso
     func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
-        defer {
-            self.spawnProbesLock.unlock()
-        }
+        defer { self.spawnProbesLock.unlock() }
 
         let name = maybeName ?? testProbeNames.nextName()
         return ActorTestProbe(spawn: { probeBehavior in
@@ -61,7 +85,7 @@ public extension ActorTestKit {
             #endif
 
             return try system.spawn(probeBehavior, name: name, props: testProbeProps)
-        })
+        }, settings: self.settings)
     }
 }
 
@@ -75,11 +99,11 @@ public extension ActorTestKit {
     /// TODO does not handle blocking longer than `within` well
     /// TODO: should use default `within` from TestKit
     @discardableResult
-    func eventually<T>(within: TimeAmount,
-                              file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                              _ block: () throws -> T) throws -> T {
+    func eventually<T>(within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+                       file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+                       _ block: () throws -> T) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = Deadline.now() + within
+        let deadline = self.system.deadline(fromNow: timeAmount) // TODO system time source?
 
         var lastError: Error? = nil
         var polledTimes = 0
@@ -91,11 +115,11 @@ public extension ActorTestKit {
                 return res
             } catch {
                 lastError = error
-                // TODO: some sleep interval here to avoid hammering the query
+                usleep(useconds_t(interval.microseconds))
             }
         }
 
-        let message = callSite.detailedMessage("No result within \(within.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
+        let message = callSite.detailedMessage("No result within \(timeAmount.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
         XCTFail(message, file: callSite.file, line: callSite.line)
         throw EventuallyError(message: message, lastError: lastError)
     }

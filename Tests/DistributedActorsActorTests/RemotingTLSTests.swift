@@ -190,9 +190,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource2: NIOSSLCertificateSource = .certificate(testCertificate2)
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey2.utf8CString), format: .pem))
 
-        let system = ActorSystem("2RemotingBasicsTests") { settings in
+        let system = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "localhost", port: 8558)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "localhost", port: 8558)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1,
@@ -203,9 +203,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         defer { system.terminate() }
         let testKit = ActorTestKit(system)
 
-        let remote = ActorSystem("2RemotingBasicsTests") { settings in
+        let remote = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "localhost", port: 9669)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "localhost", port: 9669)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2,
@@ -218,7 +218,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2)
 
         let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
@@ -241,9 +241,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificate = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
-        let system = ActorSystem("2RemotingBasicsTests") { settings in
+        let system = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8668)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 8668)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -254,9 +254,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         defer { system.terminate() }
         let testKit = ActorTestKit(system)
 
-        let remote = ActorSystem("2RemotingBasicsTests") { settings in
+        let remote = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9779)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 9779)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -269,7 +269,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2)
 
         do {
             let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
@@ -292,9 +292,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificate = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
-        let system = ActorSystem("2RemotingBasicsTests") { settings in
+        let system = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8778)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 8778)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -305,9 +305,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         defer { system.terminate() }
         let testKit = ActorTestKit(system)
 
-        let remote = ActorSystem("2RemotingBasicsTests") { settings in
+        let remote = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9889)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 9889)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -320,7 +320,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2)
 
         let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
@@ -350,9 +350,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificate = try NIOSSLCertificate(buffer: [Int8](passordProtectedCert.utf8CString), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
-        let system = ActorSystem("2RemotingBasicsTests") { settings in
+        let system = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8888)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 8888)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -366,9 +366,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         defer { system.terminate() }
         let testKit = ActorTestKit(system)
 
-        let remote = ActorSystem("2RemotingBasicsTests") { settings in
+        let remote = ActorSystem("RemotingTLSTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9999)
+            settings.remoting.bindAddress = NodeAddress(systemName: "RemotingTLSTests", host: "127.0.0.1", port: 9999)
             settings.remoting.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -384,7 +384,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         system.remoting.tell(.command(.handshakeWith(remoteNodeAddress))) // TODO nicer API
 
-        sleep(2) // TODO make this test actually test associations :)
+        sleep(2)
 
         let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .milliseconds(500)) {
@@ -402,10 +402,5 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             associatedNodes.shouldBeNotEmpty() // means we have associated to _someone_
         }
     }
-
-    // TODO: make sure to test also for what happens for `connection refused`.
-    // Fatal error: 'try!' expression unexpectedly raised an error: NIO.ChannelError.connectFailed(NIO.NIOConnectionError(host: "127.0.0.1", port: 9559, dnsAError: nil, dnsAAAAError: nil, connectionErrors: [NIO.SingleConnectionFailure(target: [IPv4]127.0.0.1/127.0.0.1:9559, error: connection reset (error set): Connection refused (errno: 61))])): file /Users/buildnode/jenkins/workspace/oss-swift-4.2-package-osx/swift/stdlib/public/core/ErrorType.swift, line 184
-
-
 
 }

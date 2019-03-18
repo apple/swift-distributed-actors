@@ -41,7 +41,10 @@ final public class ActorTestProbe<Message> {
         return self.exposedRef
     }
 
-    private let expectationTimeout: TimeAmount
+    private let settings: ActorTestKitSettings
+    private var expectationTimeout: TimeAmount {
+        return self.settings.expectationTimeout
+    }
 
     /// Blocking linked queue, available to run assertions on
     private let messagesQueue = LinkedBlockingQueue<Message>()
@@ -53,9 +56,8 @@ final public class ActorTestProbe<Message> {
     private var lastMessageObserved: Message? = nil
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
-    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>) {
-        // extract config here; pass in the config here
-        self.expectationTimeout = .seconds(3) // would really love "1.second" // TODO: config
+    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings) {
+        self.settings = settings
 
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
