@@ -127,10 +127,6 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.major += 1
         }
 
-        pprint("server = \(serverKernel.settings.protocolVersion)")
-        pprint("client = \(clientKernel.settings.protocolVersion)")
-
-
         // client
         let clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
         let offer: Wire.HandshakeOffer = clientInitiated.makeOffer()
@@ -150,8 +146,32 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
             error = e
         }
 
-        pinfo("ERROR: \(error)")
+        "\(error)".shouldEqual("incompatibleProtocolVersion(local: Version(0.0.1, reserved:0), remote: Version(1.0.1, reserved:0), reason: Optional(\"Major version mismatch!\"))")
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Handshake timeout causing retries
+
+
+    func test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes() throws {
+        let serverKernel = self.makeMockKernelState(side: .server)
+        let serverAddress = serverKernel.localAddress
+
+        let clientKernel = self.makeMockKernelState(side: .client) { settings in
+            settings.bindAddress.port = 8228
+        }
+
+        // client
+        var clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
+        guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
+            throw shouldNotHappen("Expected retry attempt after handshake timeout")
+        }
+        guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
+            throw shouldNotHappen("Expected retry attempt after handshake timeout")
+        }
+        guard case .scheduleRetryHandshake = clientInitiated.onHandshakeError(TestError("Boom!")) else {
+            throw shouldNotHappen("Expected retry attempt after handshake timeout")
+        }
+    }
 
 }

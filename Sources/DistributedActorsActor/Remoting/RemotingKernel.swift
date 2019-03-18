@@ -101,7 +101,7 @@ internal class RemotingKernel {
     enum CommandMessage: NoSerializationVerification {
         // this is basically our API internally for this system
 
-        // case bind(Wire.NodeAddress) since binds right away from config settings
+        // case bind(Wire.NodeAddress) since binds right away from config settings // TODO: Bind is done right away in start, should we do the bind command instead?
         case handshakeWith(NodeAddress)
         case unbind // TODO some promise to complete once we unbound
     } 
@@ -164,13 +164,13 @@ extension RemotingKernel {
         func receiveKernelCommand(context: ActorContext<Messages>, command: CommandMessage) -> Behavior<Messages> {
             switch command {
             case .handshakeWith(let remoteAddress):
-                return self.initiateHandshake(context, state, with: remoteAddress)
+                return self.beginHandshake(context, state, with: remoteAddress)
             case .unbind:
                 return self.unbind(state: state)
             }
         }
 
-        func receiveKernelQuery(context: ActorContext<Messages>, query: QueryMessage) -> Behavior<Messages> {
+        func receiveQuery(context: ActorContext<Messages>, query: QueryMessage) -> Behavior<Messages> {
             switch query {
             case .associatedNodes(let replyTo):
                 replyTo.tell(state.associatedAddresses()) // TODO: we'll want to put this into some nicer message wrapper?
@@ -196,7 +196,7 @@ extension RemotingKernel {
         return .receive { context, message in
             switch message {
             case .command(let command): return receiveKernelCommand(context: context, command: command)
-            case .query(let query):     return receiveKernelQuery(context: context, query: query)
+            case .query(let query):     return receiveQuery(context: context, query: query)
             case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
             }
         }
@@ -208,27 +208,45 @@ extension RemotingKernel {
     /// Initiate an outgoing handshake to the `address`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    private func initiateHandshake(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress) -> Behavior<Messages> {
+    private func beginHandshake(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress) -> Behavior<Messages> {
+        var state = state
+
         if let existingAssociation = state.association(with: remoteAddress) {
             // TODO in reality should attempt and may need to drop the other "old" one?
             state.log.warning("Attempted associating with already associated node: [\(remoteAddress)], existing association: [\(existingAssociation)]")
             return .same
         }
 
-        var nextState = state
-        nextState.log.info("Associating with \(remoteAddress)...")
+        state.log.info("Initiating handshake with \(remoteAddress)...")
 
-        // TODO: This is rather costly... we should not have to stop processing other messages until the connect completes; change this so we can connect to many hosts in parallel
-        let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(kernel: context.myself, log: context.log, targetAddress: remoteAddress, settings: state.settings)
-        return context.awaitResultThrowing(of: outboundChanElf, timeout: .milliseconds(100)) { outboundChan in
-            // Initialize and store a new Handshake FSM for this dance
-            let handshakeFsm = nextState.initiateHandshake(with: remoteAddress)
-            // And ask it to create a handshake offer
-            let offer = handshakeFsm.makeOffer()
-            
-            _ = self.sendHandshakeOffer(state, offer, over: outboundChan) // TODO move to Promise style, rather than passing channel
-            
-            return self.ready(state: nextState)
+        // we MUST register the intention of shaking hands with remoteAddress before obtaining the connection,
+        // in order to let the fsm handle any retry decisions in face of connection failures et al.
+        let hsm = state.makeHandshake(with: remoteAddress)
+
+        // TODO make sure we never to multiple connections to the same remote; associations must get IDs?
+        // TODO: This is rather costly... we should not have to stop processing other messages until the connect completes;
+        //       change this so we can connect to many hosts in parallel
+        let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(
+            kernel: context.myself,
+            log: context.log,
+            targetAddress: remoteAddress,
+            settings: state.settings
+        )
+
+        return context.awaitResult(of: outboundChanElf, timeout: .milliseconds(100)) {
+            switch $0 {
+            case .success(let outboundChan):
+                // Initialize and store a new Handshake FSM for this dance
+                // And ask it to create a handshake offer
+                let offer = hsm.makeOffer()
+
+                _ = self.sendHandshakeOffer(state, offer, over: outboundChan) // TODO move to Promise style, rather than passing channel
+
+                return self.ready(state: state)
+
+            case .failure(let error):
+                return self.onOutboundConnectionError(context, state, with: remoteAddress, error: error)
+            }
         }
     }
 }
@@ -310,6 +328,44 @@ extension RemotingKernel {
             log.warning("Ignoring handshake offer \(offer), no state machine available for it...")
             return .ignore
         }
+    }
+}
+
+
+// Implements: Failures to obtain connections
+extension RemotingKernel {
+
+    func onOutboundConnectionError(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress, error: Error) -> Behavior<Messages> {
+        var state = state
+        state.log.warning("Failed await for outbound channel to \(remoteAddress); Error was: \(error)")
+
+        guard var handshakeState = state.handshakeInProgress(with: remoteAddress) else {
+            state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.") // TODO meh or fail hard
+            return .ignore
+        }
+
+        switch handshakeState {
+        case .initiated(var hsm):
+            switch hsm.onHandshakeError(error) {
+            case .scheduleRetryHandshake(let offer, let delay):
+                state.log.info("Schedule retry handshake: [\(offer)], delay: [\(delay)]")
+                context.timers.startSingleTimer(
+                    key: "handshake-timer-\(remoteAddress)", 
+                    // message: .command(.retryHandshakeWith(remoteAddress)), // TODO better?
+                    message: .command(.handshakeWith(remoteAddress)),
+                    delay: delay
+                )
+            case .giveUpHandshake:
+                state.abortHandshake(with: remoteAddress)
+            }
+
+        case .wasOfferedHandshake(let state):
+            preconditionFailure("Outbound connection error should never happen on receiving end. State was: [\(state)], error was: \(error)")
+        case .completed(let state):
+            preconditionFailure("Outbound connection error on already completed state handshake. This should not happen. State was: [\(state)], error was: \(error)")
+        }
+        
+        return self.ready(state: state)
     }
 }
 
@@ -422,7 +478,7 @@ internal struct KernelState: ReadOnlyKernelState {
 extension KernelState {
 
     /// This is the entry point for a client initiating a handshake with a remote node.
-    mutating func initiateHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
+    mutating func makeHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
         // TODO more checks here, so we don't reconnect many times etc
 
         let handshakeFsm = HandshakeStateMachine.initialClientState(kernelState: self, connectTo: address)
@@ -431,6 +487,15 @@ extension KernelState {
         return handshakeFsm
     }
     
+    func handshakeInProgress(with address: NodeAddress) -> HandshakeStateMachine.State? {
+        return self._handshakes[address]
+    }
+
+    /// Abort a handshake, clearing any of its state;
+    mutating func abortHandshake(with address: NodeAddress) {
+        self._handshakes.removeValue(forKey: address)
+    }
+
     /// This is the entry point for a server receiving a handshake with a remote node.
     /// Inspects and possibly allocates a `HandshakeStateMachine` in the `HandshakeReceivedState` state.
     mutating func incomingHandshake(offer: Wire.HandshakeOffer) -> HandshakeStateMachine.HandshakeReceivedState? { // TODO return directives to act on

@@ -31,7 +31,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         system.terminate()
     }
 
-    let nodeAddress = UniqueNodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
+    let nodeAddress = UniqueNodeAddress(systemName: "2RemotingAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
     lazy var remotePath: ActorPath = try! ActorPath(["user", "henry", "hacker"].map(ActorPathSegment.init), address: nodeAddress)
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
@@ -52,7 +52,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
         // then
         pinfo("Made remote ref: \(madeUpRef)")
-        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://2RemotingBasicsTests@127.0.0.1:9559/user/henry/hacker#1337)")
+        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://2RemotingAssociationTests@127.0.0.1:9559/user/henry/hacker#1337)")
 
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
         // so this concludes the trivial test here; at least it shows that we resolve and sanity checks how we print remote refs
