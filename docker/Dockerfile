@@ -8,7 +8,7 @@ ARG ubuntu_version
 ### SETUP VERSIONS ###
 ENV export ubuntu_version="18.04"
 ENV swift_version="5.0"
-ENV swift_flavour="DEVELOPMENT-SNAPSHOT-2019-02-26-a"
+ENV swift_flavour="DEVELOPMENT-SNAPSHOT-2019-03-06-a"
 ENV swift_builds_suffix="branch"
 ENV skip_ruby_from_ppa="true"
 ### END OF SETUP VERSIONS ###
