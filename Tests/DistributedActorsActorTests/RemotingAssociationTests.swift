@@ -19,7 +19,7 @@ import SwiftDistributedActorsActorTestKit
 import NIOSSL
 
 
-class RemotingBasicsTests: XCTestCase {
+class RemotingAssociationTests: XCTestCase {
 
     var local: ActorSystem! = nil
 
@@ -28,15 +28,23 @@ class RemotingBasicsTests: XCTestCase {
     lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
     lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
 
-    override func setUp() {
-        self.local = ActorSystem("2RemotingBasicsTests") { settings in
+    func setUpLocal() {
+        self.local = ActorSystem("2RemotingAssociationTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 8448)
+            settings.remoting.bindAddress.port = 8448
         }
-        self.remote = ActorSystem("2RemotingBasicsTests") { settings in
+    }
+
+    func setUpRemote() {
+        self.remote = ActorSystem("2RemotingAssociationTests") { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress = NodeAddress(systemName: "2RemotingBasicsTests", host: "127.0.0.1", port: 9559)
+            settings.remoting.bindAddress.port = 9559
         }
+    }
+
+    func setUpBoth() {
+        self.setUpLocal()
+        self.setUpRemote()
     }
 
     override func tearDown() {
@@ -46,25 +54,32 @@ class RemotingBasicsTests: XCTestCase {
 
     private func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
         let testKit = ActorTestKit(system)
-        let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-        try testKit.eventually(within: .milliseconds(500)) {
+        try testKit.eventually(within: .seconds(1)) {
+            let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
             system.remoting.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
             pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
             pprint("      Associated nodes: \(associatedNodes)")
             pprint("         Expected node: \(String(reflecting: address))")
-            associatedNodes.contains(address).shouldBeTrue() // TODO THIS SOMETIMES FAILS!!!!
+
+            guard associatedNodes.contains(address) else {
+                throw TestError("[\(system)] did not associate the expected node: [\(address)]")
+            }
         }
     }
 
     func test_boundServer_shouldAcceptAssociate() throws {
+        self.setUpBoth()
+
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
-        try assertAssociated(system: local, expectAssociatedAddress: remoteUniqueAddress)
-        try assertAssociated(system: remote, expectAssociatedAddress: localUniqueAddress)
+
+        try assertAssociated(system: self.local, expectAssociatedAddress: self.remoteUniqueAddress)
+        try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
     }
 
     func test_association_shouldAllowSendingToRemoteReference() throws {
+        self.setUpBoth()
+
         let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let refOnRemoteSystem: ActorRef<String> = try remote.spawn(.receiveMessage { message in
@@ -73,7 +88,6 @@ class RemotingBasicsTests: XCTestCase {
         }, name: "remoteAcquaintance")
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
@@ -86,11 +100,23 @@ class RemotingBasicsTests: XCTestCase {
         let resolvedRef = local._resolve(context: resolveContext)
         // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
         // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
-//        resolvedRef.tell("HELLO") // TODO: unlock with
+//        resolvedRef.tell("HELLO") // TODO: unlock once sending remote messages implemented
 //
-//        try probeOnRemote.expectMessage("forwarded:HELLO") // TODO: unlock with
+//        try probeOnRemote.expectMessage("forwarded:HELLO") // TODO: unlock once sending remote messages implemented
     }
 
-    // TODO: make sure to test also for what happens for `connection refused`.
-    // Fatal error: 'try!' expression unexpectedly raised an error: NIO.ChannelError.connectFailed(NIO.NIOConnectionError(host: "127.0.0.1", port: 9559, dnsAError: nil, dnsAAAAError: nil, connectionErrors: [NIO.SingleConnectionFailure(target: [IPv4]127.0.0.1/127.0.0.1:9559, error: connection reset (error set): Connection refused (errno: 61))])): file /Users/buildnode/jenkins/workspace/oss-swift-4.2-package-osx/swift/stdlib/public/core/ErrorType.swift, line 184
+    func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
+        setUpLocal()
+        // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
+
+        let remoteAddress = NodeAddress(systemName: local.name, host: "127.0.0.1", port: 9559)
+        local.remoting.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
+        sleep(1) // we give it some time to keep failing to connect, se the second node is not yet started
+
+        setUpRemote()
+
+        try assertAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
+        // try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+    }
+
 }

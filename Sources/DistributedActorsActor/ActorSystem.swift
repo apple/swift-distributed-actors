@@ -251,6 +251,22 @@ extension ActorSystem: ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Beginnings of 'system time'
+
+extension ActorSystem {
+
+    /// Returns `Deadline` set `timeAmount` away from the systems current `now` time.
+    /// TODO: Programmatic timers are not yet implemented, but would be in use here to offer and set the "now"
+    func deadline(fromNow timeAmount: TimeAmount) -> Deadline {
+        let now = Deadline.now() // TODO allow programmatic timers
+        return now + timeAmount
+    }
+
+    // func progressTimeBy(_ timeAmount: TimeAmount) // TODO: Implement
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal actor tree traversal utilities
 
 extension ActorSystem: _ActorTreeTraversable {

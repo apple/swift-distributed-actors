@@ -21,7 +21,7 @@ import NIO
 public let DistributedActorsProtocolVersion: Swift Distributed ActorsActor.Version = Version(reserved: 0, major: 0, minor: 0, patch: 1)
 
 
-// FIXME: !!!! all the Wire.Version and Wire.Handsake... do not really talk about wire; just Protocol so we should move them somehow -- ktoso
+// FIXME: !!!! all the Wire.Version and Wire.Handshake... do not really talk about wire; just Protocol so we should move them somehow -- ktoso
 //        This is also important to keep the machine clean of any "network stuff", and just have "protocol stuff"
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -62,13 +62,23 @@ internal struct HandshakeStateMachine {
         /// The handshake has fulfilled its purpose and may be dropped.
         case acceptAndAssociate(CompletedState)
 
-        // case scheduleRetryHandshake // TODO
-
         /// The handshake has failed for some reason and the connection should be immediately closed.
         case rejectHandshake(HandshakeError)
+
         /// The handshake is somehow "wrong". This condition can happen if somehow a handshake ends up on the "wrong" node,
         /// of if some configuration setting regarding addresses was wrong for example.
         case goAwayRogueHandshake(Error)
+    }
+
+    /// Directives controlling attempting to schedule retries for shaking hands with remote node.
+    internal enum RetryDirective {
+        /// Retry sending the returned handshake offer after the given `delay`
+        /// Returned in reaction to timeouts or other recoverable failures during handshake negotiation.
+        case scheduleRetryHandshake(Wire.HandshakeOffer, delay: TimeAmount)
+
+        /// Give up shaking hands with the remote peer.
+        /// Any state the handshake was keeping on the initiating node should be cleared in response to this directive.
+        case giveUpHandshake
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -76,6 +86,8 @@ internal struct HandshakeStateMachine {
 
     internal struct InitiatedState: CanMakeHandshakeOffer {
         private let kernelState: ReadOnlyKernelState
+
+        internal var attemptsSoFar: Int = 0
 
         internal var protocolVersion: Swift Distributed ActorsActor.Version {
             return self.kernelState.settings.protocolVersion
@@ -168,10 +180,17 @@ protocol CanMakeHandshakeOffer {
     var localAddress: UniqueNodeAddress { get }
     var remoteAddress: NodeAddress { get }
 
+    /// Counter of how many times attempts were made to connect to the remote node.
+    var attemptsSoFar: Int { get set }
+
     // State capabilities --------
 
     /// Create new handshake offer
     func makeOffer() -> Wire.HandshakeOffer
+    /// Called upon handshake timeout, may produce another handshake offer
+    mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective
+    /// Called upon handshake error (e.g. failure to establish connection), may produce another handshake offer
+    mutating func onHandshakeError(_ error: Error) -> HandshakeStateMachine.RetryDirective
 
     // TODO may also need to say we should "please schedule a timeout for this offer" etc
 
@@ -183,10 +202,22 @@ extension CanMakeHandshakeOffer {
         return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localAddress, to: self.remoteAddress)
     }
 
-    // TODO timeouts for handshakes
-//    func onHandshakeTimeout() {
-//        // TODO decide if we should try again or give up; return the decision
-//    }
+    mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective {
+        self.attemptsSoFar += 1
+        if self.attemptsSoFar < 1000 { // TODO configurable
+            return .scheduleRetryHandshake(self.makeOffer(), delay: .milliseconds(100)) // TODO configurable
+        } else {
+            return .giveUpHandshake
+        }
+    }
+    mutating func onHandshakeError(_ error: Error) -> HandshakeStateMachine.RetryDirective {
+        self.attemptsSoFar += 1
+        guard self.attemptsSoFar < 1000 else { // TODO configurable
+            return .giveUpHandshake
+        }
+
+        return .scheduleRetryHandshake(self.makeOffer(), delay: .milliseconds(100)) // TODO configurable
+    }
 }
 
 /// Capability to negotiate version and other handshake requirements.
@@ -221,7 +252,6 @@ extension CanNegotiateHandshake {
             return rejectionBecauseOfVersion
         }
 
-
         // negotiate capabilities
         // self.negotiateCapabilities(...) // TODO: We may want to negotiate other options
 
@@ -232,9 +262,6 @@ extension CanNegotiateHandshake {
     /// - Returns `rejectHandshake` or `nil`
     func negotiateVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version) -> HandshakeStateMachine.Directive? {
         let accept: HandshakeStateMachine.Directive? = nil
-
-        pprint("local.major == \(local)")
-        pprint("remote.major == \(remote)")
 
         guard local.major == remote.major else {
             return .rejectHandshake(.incompatibleProtocolVersion(

@@ -213,23 +213,29 @@ extension TimeAmount {
     }
 }
 
-extension TimeAmount {
-    var microseconds: Int64 {
+public extension TimeAmount {
+    /// The microseconds representation of the `TimeAmount`.
+    public var microseconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
     }
-    var milliseconds: Int64 {
+    /// The milliseconds representation of the `TimeAmount`.
+    public var milliseconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
     }
-    var seconds: Int64 {
+    /// The seconds representation of the `TimeAmount`.
+    public var seconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
     }
-    var minutes: Int64 {
+    /// The minutes representation of the `TimeAmount`.
+    public var minutes: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
     }
-    var hours: Int64 {
+    /// The hours representation of the `TimeAmount`.
+    public var hours: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
     }
-    var days: Int64 {
+    /// The days representation of the `TimeAmount`.
+    public var days: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
     }
 }

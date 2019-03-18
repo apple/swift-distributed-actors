@@ -194,7 +194,7 @@ final class Mailbox<Message> {
             case .userMessage(let userMessage):
                 deadLetters.tell(DeadLetter(userMessage))
             case .closure(let f):
-                deadLetters.tell(DeadLetter("[\(f)]:closure"))
+                deadLetters.tell(DeadLetter("[\(String(describing: f))]:closure"))
             }
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] sysMsgPtr in

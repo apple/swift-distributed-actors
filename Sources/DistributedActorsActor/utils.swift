@@ -141,9 +141,9 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticSt
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 func traceLog_Remote(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
-    //    #if SACT_TRACE_REMOTE // TODO: enabled for debugging https://github.com/apple/swift-distributed-actors/issues/389
+    #if SACT_TRACE_REMOTE
     pprint("SACT_TRACE_REMOTE: \(message())", file: file, line: line)
-    //    #endif
+    #endif
 }
 
 // MARK: reusable "take(right)" etc. functions
