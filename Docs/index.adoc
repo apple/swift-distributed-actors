@@ -62,23 +62,40 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 
 #Under Development - not all core features are implemented yet.#
 
-Using Swift Distributed Actors Actors enables you to build highly scalable distributed and concurrent systems without having to worry
-about the low level concurrency, networking, failure detection and recovery aspects of building such system - as they
-are provided to you in an simplified fashion though plain actor semantics.
+++++
+<h3>Goals</h3>
+++++
+
+Actors in Swift provide a straightforward way to building highly-scalable distributed and concurrent systems,
+without having to learn or worry about the low-level details of networking or concurrency utilized to achieve this.
+
+Swift Distributed Actors embraces the actor model of communication, which offers a high-level mental-model of how actors communicate and fail,
+in both concurrent and distributed settings - without having to differentiate between the two. Allowing to start small,
+and scale out easily whenever the need arises.
+
+++++
+<h3>Actors</h3>
+++++
 
 <<actors, Actors>> are entities with identity which communicate using messages. The same semantics are used for local
 and remote actors, which unifies distributed and "local" development, allowing for fast development cycles and one shared
 mental model for how a system communicates. Swift Distributed Actors actors are type-safe and able to handle various serialization mechanisms
 transparently, so you can focus on developing business logic, without serialization boilerplate getting in the way.
 
-Build in <<observability>> capabilities, so you can easily inspect your local as well as production systems
+++++
+<h3>Clustering and Observability</h3>
+++++
+
+Actors can form <<clustering, clusters>>
+
+Built in <<observability>> capabilities, so you can easily inspect your local, as well as production systems
 using metrics, traces and ad hoc queries to the system. #TODO#
 
 Swift Distributed Actors's failure detection and handling mechanisms embrace the _"Let it crash!"_ philosophy, and provide utilities and
 mechanisms for building fault tolerant systems on top of this core observation. They also allow <<failure_isolation, isolating failures>> within
 a single actor rather than faulting the entire hosting process, as is normally the case with Swift applications.
 
-Swift Distributed Actors is heavily inspired by several real-world battle tested implementations of distributed actor systems,
+Swift Distributed Actors Actors are strongly inspired by real-world battle tested implementations of distributed actor systems,
 such as https://akka.io[Akka] and https://www.erlang.org[Erlang].
 
 Swift Distributed Actors's transport layer is implemented on top of https://github.com/apple/swift-nio[Swift NIO].
