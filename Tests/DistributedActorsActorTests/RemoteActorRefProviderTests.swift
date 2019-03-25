@@ -81,4 +81,19 @@ class RemoteActorRefProviderTests: XCTestCase {
         // Remote refs _on purpose_ do not say in their printout that they are "RemoteActorRef" since users should only think
         // about actor refs; and that it happens to have a remote address is the detail to focus on, not the underlying type.
     }
+
+    func test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef() throws {
+        let ref: ActorRef<String> = try system.deadLetters.adapt(from: String.self)
+
+
+        var path: UniqueActorPath = ref.path
+        path.address = system.settings.remoting.uniqueBindAddress
+
+        var resolveContext = ResolveContext<String>(path: path, deadLetters: system.deadLetters)
+        let resolvedRef = system._resolve(context: resolveContext)
+
+        // then
+        pinfo("Made remote ref: \(resolvedRef)")
+        "\(resolvedRef)".shouldEqual("ActorRef<String>(/system/deadLetters)")
+    }
 }

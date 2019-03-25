@@ -26,6 +26,7 @@ extension RemoteActorRefProviderTests {
       return [
                 ("test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath", test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath),
                 ("test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext", test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext),
+                ("test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef", test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef),
            ]
    }
 }
