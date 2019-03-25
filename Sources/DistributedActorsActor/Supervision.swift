@@ -41,7 +41,8 @@ public struct SupervisionProps {
 }
 
 public extension Props {
-    /// Creates a new `Props` appending an supervisor for the selected failure type.
+    /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+    ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
@@ -52,7 +53,8 @@ public extension Props {
         props.addSupervision(strategy: strategy, forErrorType: errorType)
         return props
     }
-    /// Creates a new `Props` appending an supervisor for the selected failure type.
+    /// Creates a new `Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    ///
     /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
@@ -62,7 +64,9 @@ public extension Props {
         return addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
-    /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
+    ///
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
@@ -72,7 +76,9 @@ public extension Props {
         props.addSupervision(strategy: strategy, forErrorType: errorType)
         return props
     }
-    /// Adds another supervisor to the chain of existing supervisors in this `Props`, useful for setting a few options in-line when spawning actors.
+    /// Creates a new `Props` appending an supervisor for the selected failure type, useful for setting a few options in-line when spawning actors.
+    ///
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
     ///
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
@@ -80,10 +86,23 @@ public extension Props {
     func addingSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
         return self.addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
-
+    /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `Props`.
+    ///
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
+    ///
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forErrorType: failure type selector, working as a "catch all" for the specific types of failures.
     mutating func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
+    /// Adds another supervisor for the selected failure type to the chain of existing supervisors in this `Props`.
+    ///
+    /// Note that order in which overlapping selectors/types are added to the chain matters.
+    ///
+    /// - Parameters:
+    ///   - strategy: supervision strategy to apply for the given class of failures
+    ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
     mutating func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) {
         self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
