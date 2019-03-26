@@ -128,7 +128,6 @@ public final class ActorSystem {
             self._remoting = nil
         }
 
-        pprint("effectiveUserProvider = \(effectiveUserProvider)")
         self.systemProvider = effectiveSystemProvider
         self.userProvider = effectiveUserProvider
 
@@ -138,7 +137,7 @@ public final class ActorSystem {
 
         // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
         do {
-            try self._remoting?.start(system: self) // only spawns when remoting is initialized
+            _ = try self._remoting?.start(system: self) // only spawns when remoting is initialized
         } catch {
             fatalError("Failed while starting remoting subsystem! Error: \(error)")
         }

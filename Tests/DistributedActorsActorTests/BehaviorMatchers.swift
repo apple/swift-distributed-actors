@@ -68,7 +68,7 @@ internal extension Behavior {
                     (try prettyFormat0(inner, depth: depth + 1)) +
                     "\(pad))\n"
             case .signalHandling(let handleMessage, let handleSignal):
-                return "\(pad)signalHandling(handleSignal:\(handleSignal)\n" +
+                return "\(pad)signalHandling(handleSignal:\(String(describing: handleSignal))\n" +
                     (try prettyFormat0(handleMessage, depth: depth + 1)) +
                     "\(pad))\n"
             case .orElse(let first, let second):
