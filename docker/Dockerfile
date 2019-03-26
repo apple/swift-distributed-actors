@@ -1,18 +1,17 @@
 #@IgnoreInspection BashAddShebang
 
-ARG ubuntu_version=16.04
+ARG ubuntu_version=18.04
 FROM ubuntu:$ubuntu_version
 # needed to do again after FROM due to docker limitation
 ARG ubuntu_version
 
 ### SETUP VERSIONS ###
-ENV export ubuntu_version="18.04"
+ENV ubuntu_version="18.04"
 ENV swift_version="5.0"
-ENV swift_flavour="DEVELOPMENT-SNAPSHOT-2019-03-06-a"
-ENV swift_builds_suffix="branch"
+ENV swift_flavour="RELEASE"
+ENV swift_builds_suffix="release"
 ENV skip_ruby_from_ppa="true"
 ### END OF SETUP VERSIONS ###
-### Rest of file equal to Dockerfile ###
 
 ARG DEBIAN_FRONTEND=noninteractive
 # do not start services during installation as this will fail and log a warning / error.

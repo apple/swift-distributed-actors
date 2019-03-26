@@ -47,6 +47,7 @@ class InteropDocExamples: XCTestCase {
             ref.tell(.string(result)) // <4>
         }
         // end::asyncOp_sendResult_dispatch[]
+        _ = behavior // avoid not-used warning
     }
 
 

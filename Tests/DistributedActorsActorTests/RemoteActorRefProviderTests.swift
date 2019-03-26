@@ -37,11 +37,11 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
         let theOne = TheOneWhoHasNoParentActorRef()
-        var guardian = Guardian(parent: theOne, name: "user")
-        var localProvider = LocalActorRefProvider(root: guardian)
+        let guardian = Guardian(parent: theOne, name: "user")
+        let localProvider = LocalActorRefProvider(root: guardian)
 
-        var remotingKernel = RemotingKernel() // TODO name it "Shell"
-        var provider = RemoteActorRefProvider(settings: system.settings, kernel: remotingKernel, localProvider: localProvider)
+        let remotingKernel = RemotingKernel() // TODO name it "Shell"
+        let provider = RemoteActorRefProvider(settings: system.settings, kernel: remotingKernel, localProvider: localProvider)
 
         let uniqueRemotePath = remotePath.makeUnique(uid: ActorUID(1337))
         let resolveContext = ResolveContext<String>(path: uniqueRemotePath, deadLetters: system.deadLetters)
@@ -83,13 +83,13 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef() throws {
-        let ref: ActorRef<String> = try system.deadLetters.adapt(from: String.self)
+        let ref: ActorRef<String> = system.deadLetters.adapt(from: String.self)
 
 
         var path: UniqueActorPath = ref.path
         path.address = system.settings.remoting.uniqueBindAddress
 
-        var resolveContext = ResolveContext<String>(path: path, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<String>(path: path, deadLetters: system.deadLetters)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then
