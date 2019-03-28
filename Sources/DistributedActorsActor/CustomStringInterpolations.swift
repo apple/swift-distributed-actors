@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension String.StringInterpolation {
+internal extension String.StringInterpolation {
     mutating func appendInterpolation(_ value: CustomStringConvertible, leftPadTo totalLength: Int) {
         let s = "\(value)"
         let pad = String(repeating: " ", count: max(totalLength - s.count, 0))
