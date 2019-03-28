@@ -79,7 +79,7 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
         return "ActorRef<\(Message.self)>(\(path))"
     }
     public var debugDescription: String {
-        return "ActorRef<\(Message.self)>(\(path)"
+        return "ActorRef<\(Message.self)>(\(path))"
     }
 }
 
