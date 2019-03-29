@@ -41,19 +41,51 @@ extension SwiftProtobuf.Message {
 
         return buffer
     }
+
+    /// Initializes the message from a `ByteBuffer` while trying to avoid copying its contents
+    init(bytes: inout ByteBuffer) throws {
+        self.init()
+        let bytesCount = bytes.readableBytes
+        try bytes.withUnsafeMutableReadableBytes {
+            // we are getting the pointer from a ByteBuffer, so it should be valid and force unwrap should be fine
+            try self.merge(serializedData: Data(bytesNoCopy: $0.baseAddress!, count: bytesCount, deallocator: .none))
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Wire.Envelope
 
+enum WireEnvelopeError: Error {
+    case unsetSerializerId(UInt32)
+    case emptyRecipient
+}
+
+extension Wire.Envelope {
+    init(_ proto: ProtoEnvelope, allocator: ByteBufferAllocator) throws {
+        guard proto.serializerID != 0 else {
+            throw WireEnvelopeError.unsetSerializerId(proto.serializerID)
+        }
+
+        guard !proto.recipient.isEmpty else {
+            throw WireEnvelopeError.emptyRecipient
+        }
+
+        self.recipient = try UniqueActorPath.parse(fromString: proto.recipient)
+        var payloadBuffer = allocator.buffer(capacity: proto.payload.count)
+        payloadBuffer.writeBytes(proto.payload)
+        self.payload = payloadBuffer
+        self.serializerId = proto.serializerID
+    }
+}
+
 extension ProtoEnvelope {
-    init(serializedData data: Data) throws {
-        var proto = ProtoEnvelope()
-        try proto.merge(serializedData: data)
-
-        // guard proto.hasRecipient else { throw WireFormatError.missingField("recipient") }
-
-        self = proto
+    init(fromEnvelope envelope: Wire.Envelope) {
+        self.recipient = envelope.recipient.debugDescription
+        self.serializerID = envelope.serializerId
+        // force unwrap is okay here because we read exactly the number of readable bytes
+        var payloadBuffer = envelope.payload
+        self.payload = payloadBuffer.readData(length: payloadBuffer.readableBytes)!
     }
 }
 

@@ -55,7 +55,7 @@ public protocol ReceivesMessages: AddressableActorRef, Codable {
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public class ActorRef<Message>: ReceivesMessages {
+public class ActorRef<Message>: ReceivesMessages, AnyReceivesMessages {
 
     public var path: UniqueActorPath {
         return undefined()
@@ -72,6 +72,15 @@ public class ActorRef<Message>: ReceivesMessages {
         return undefined()
     }
 
+    @usableFromInline
+    internal func _tellUnsafe(message: Any) {
+        guard let _message = message as? Message else {
+            traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self)")
+            return // TODO: "drop" the message
+        }
+
+        self.tell(_message)
+    }
 }
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
@@ -334,6 +343,18 @@ extension Guardian: _ActorTreeTraversable {
 
         if self.path.name == selector.value {
             return self.children._resolve(context: context.deeper)
+        } else {
+            return context.deadRef
+        }
+    }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        guard let selector = context.selectorSegments.first else {
+            fatalError("Expected selector in guardian._resolve()!")
+        }
+
+        if self.path.name == selector.value {
+            return self.children._resolveUntyped(context: context.deeper)
         } else {
             return context.deadRef
         }

@@ -50,6 +50,11 @@ extension AnyAddressableActorRef {
     }
 }
 
+@usableFromInline
+internal protocol AnyReceivesMessages {
+    func _tellUnsafe(message: Any)
+}
+
 /// Internal box to type-erase the type details of an `ActorRef` yet keep its other properties (e.g. hash-ability)
 @usableFromInline
 internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {

@@ -27,18 +27,15 @@ enum Wire {
 
     /// Envelope type carrying messages over the network.
     struct Envelope {
-        let version: Wire.Version
-
         // TODO recipient to contain address?
         var recipient: UniqueActorPath
 
         // TODO metadata
         // TODO "flags" incl. isSystemMessage
 
-        var serializerId: Int
+        var serializerId: UInt32
         var payload: ByteBuffer
     }
-
 
     // TODO: such messages should go over a priority lane
     internal struct HandshakeOffer {
