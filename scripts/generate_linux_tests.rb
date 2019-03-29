@@ -166,6 +166,7 @@ def parseSourceFile(fileName)
         # Add each func name the the class / func
         # structure created above.
         #
+        next if currentClass.nil? # prevents script from crashing for files that don't contain test methods
         currentClass[1] << funcName
       end
     end

@@ -94,6 +94,9 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
         return self._myselfInACell
     }
+    @usableFromInline internal var _myselfAnyReceivesMessages: AnyReceivesMessages {
+        return self._myselfInACell
+    }
 
     // MARK: ActorCell implementation
 
@@ -580,6 +583,7 @@ internal protocol AbstractCell: _ActorTreeTraversable  {
 
     var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
+    var _myselfAnyReceivesMessages: AnyReceivesMessages { get }
 }
 
 extension AbstractCell {
@@ -626,6 +630,26 @@ extension AbstractCell {
 
         if myself.path.name == selector.value {
             return self.children._resolve(context: context.deeper)
+        } else {
+            return context.deadRef
+        }
+    }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
+
+        guard let selector = context.selectorSegments.first else {
+            // no remaining selectors == we are the "selected" ref, apply uid check
+            if myself.path.uid == context.selectorUID {
+                return self._myselfAnyReceivesMessages
+            } else {
+                // the selection was indeed for this path, however we are a different incarnation (or different actor)
+                return context.deadRef
+            }
+        }
+
+        if myself.path.name == selector.value {
+            return self.children._resolveUntyped(context: context.deeper)
         } else {
             return context.deadRef
         }

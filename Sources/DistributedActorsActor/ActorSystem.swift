@@ -120,6 +120,7 @@ public final class ActorSystem {
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
         if settings.remoting.enabled {
+            // FIXME: make SerializationPoolSettings configurable
             let remoting = RemotingKernel()
             self._remoting = remoting
             effectiveUserProvider = RemoteActorRefProvider(settings: settings, kernel: remoting, localProvider: localUserProvider)
@@ -133,10 +134,16 @@ public final class ActorSystem {
 
         // serialization
         let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
+
         self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
 
-        // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
         do {
+            if settings.remoting.enabled {
+                self._remoting!.serializationPool = try SerializationPool.init(settings: .default, serialization: self.serialization)
+            }
+
+            // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
+
             _ = try self._remoting?.start(system: self) // only spawns when remoting is initialized
         } catch {
             fatalError("Failed while starting remoting subsystem! Error: \(error)")
@@ -326,4 +333,14 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        guard let selector = context.selectorSegments.first else {
+            return self.deadLetters.adapt(from: Any.self)
+        }
+        switch selector.value {
+        case "system": return self.systemProvider._resolveUntyped(context: context)
+        case "user":   return self.userProvider._resolveUntyped(context: context) // TODO not in love with the keep path, maybe always keep it
+        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        }
+    }
 }

@@ -176,6 +176,22 @@ extension Children: _ActorTreeTraversable {
             return context.deadRef
         }
     }
+
+    @usableFromInline
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+
+        guard let selector = context.selectorSegments.first else {
+            // no selector, we should not be in this place!
+            fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
+        }
+
+        if let selectedChild = self.container[selector.value] {
+            return selectedChild._resolveUntyped(context: context.deeper)
+        } else {
+            // no child going by this name in this container, meaning the resolve is to terminate here with a not-found
+            return context.deadRef
+        }
+    }
 }
 
 // MARK: Convenience methods for stopping children

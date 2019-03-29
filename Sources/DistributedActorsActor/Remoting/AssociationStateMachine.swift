@@ -85,8 +85,12 @@ internal struct AssociationRemoteControl {
     }
 
     func sendUserMessage<Message>(envelope: Envelope<Message>, recipient: UniqueActorPath) {
-        // this has to enqueue into the association or some queue that we want to send this message
-        return undefined(hint: "NOT YET IMPLEMENTED SENDING OF (USER) MESSAGES VIA ASSOCIATION REMOTE CONTROL")
+        switch envelope.payload {
+        case .userMessage(let message):
+            channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message, recipient: recipient)), promise: nil)
+        case .closure:
+            fatalError("Tried to send a closure to a remote actor. This should never happen and is a bug.")
+        }
     }
 
     func sendSystemMessage(envelope: Envelope<SystemMessage>, recipient: UniqueActorPath) {
