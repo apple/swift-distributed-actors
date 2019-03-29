@@ -31,7 +31,12 @@ internal class RemotingKernel {
     /// Used by remote actor refs to obtain associations
     /// - Protected by: `_associationsLock`
     private var _associationsRegistry: [NodeUID: AssociationRemoteControl]
-    
+
+    // The `!` here is ok because we set the pool from the outside before starting
+    // the remoting. Because of initialization order in the dependencies there is
+    // currently no other way.
+    internal var serializationPool: SerializationPool!
+
     internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
         return self._associationsLock.withLock {
             return self._associationsRegistry[uid]
@@ -110,8 +115,8 @@ internal class RemotingKernel {
         // TODO: case subscribeAssociations(ActorRef<[UniqueNodeAddress]>) // to receive events about it one by one
     }
     internal enum InboundMessage {
-        case handshakeOffer(Wire.HandshakeOffer, replyTo: EventLoopPromise<ByteBuffer>) // TODO should be a domain object here
-        case handshakeAccepted(Wire.HandshakeAccept, replyTo: EventLoopPromise<ByteBuffer>)
+        case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyTo: EventLoopPromise<ByteBuffer>) // TODO should be a domain object here
+        case handshakeAccepted(Wire.HandshakeAccept, channel: Channel, replyTo: EventLoopPromise<Void>)
         case handshakeRejected(Wire.HandshakeReject, replyTo: EventLoopPromise<ByteBuffer>)
         case handshakeFailed(NodeAddress?, Error) // TODO remove?
     }
@@ -142,7 +147,7 @@ extension RemotingKernel {
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: remotingSettings)
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: remotingSettings, serializationPool: self.serializationPool)
 
             // TODO: configurable bind timeout?
 
@@ -180,10 +185,10 @@ extension RemotingKernel {
 
         func receiveInbound(context: ActorContext<Messages>, message: InboundMessage) throws -> Behavior<Messages> {
             switch message {
-            case .handshakeOffer(let offer, let promise):
-                return self.onHandshakeOffer(state, offer, replyInto: promise)
-            case .handshakeAccepted( let accepted, let promise):
-                return self.onHandshakeAccepted(state, accepted, replyInto: promise)
+            case .handshakeOffer(let offer, let channel, let promise):
+                return self.onHandshakeOffer(state, offer, channel: channel, replyInto: promise)
+            case .handshakeAccepted( let accepted, let channel, let promise):
+                return self.onHandshakeAccepted(state, accepted, channel: channel, replyInto: promise)
             case .handshakeRejected(let rejected, let promise):
                 return self.onHandshakeRejected(state, rejected, replyInto: promise)
             case .handshakeFailed(_, let error):
@@ -227,10 +232,12 @@ extension RemotingKernel {
         // TODO: This is rather costly... we should not have to stop processing other messages until the connect completes;
         //       change this so we can connect to many hosts in parallel
         let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(
+            system: context.system,
             kernel: context.myself,
             log: context.log,
             targetAddress: remoteAddress,
-            settings: state.settings
+            settings: state.settings,
+            serializationPool: self.serializationPool
         )
 
         return context.awaitResult(of: outboundChanElf, timeout: .milliseconds(100)) {
@@ -287,7 +294,7 @@ extension RemotingKernel {
 
         do {
             // TODO this does much copying;
-            // TODO should be send through pipeline where we do the serialization thingies
+            // TODO should be sent through pipeline where we do the serialization thingies
             let bytes = try proto.serializedByteBuffer(allocator: allocator)
 
             replyInto.succeed(bytes)
@@ -301,9 +308,9 @@ extension RemotingKernel {
 extension RemotingKernel {
     
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
-    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
         var newState = state
-        let log = state.log 
+        let log = state.log
 
         if let hsm = newState.incomingHandshake(offer: offer) {
             // handshake is allowed to proceed; TODO: semantics; what if we already have one in progress; we could return this rather than this if/else
@@ -311,7 +318,7 @@ extension RemotingKernel {
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 log.info("Accept association with \(offer.from)!")
-                let association = newState.associate(completedHandshake)
+                let association = newState.associate(completedHandshake, channel: channel)
                 self.cacheAssociationRemoteControl(association)
                 _ = self.sendHandshakeAccept(newState, completedHandshake.makeAccept(), replyInto: promise)
                 return self.ready(state: newState) // TODO change the state
@@ -371,7 +378,7 @@ extension RemotingKernel {
 
 // Implements: Incoming Handshake Replies
 extension RemotingKernel {
-    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, channel: Channel, replyInto promise: EventLoopPromise<Void>) -> Behavior<Messages> {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
@@ -384,10 +391,11 @@ extension RemotingKernel {
             }
         }
 
-        let association = state.associate(completed)
+        let association = state.associate(completed, channel: channel)
 
         state.log.debug("[Remoting] Associated with: \(completed.remoteAddress).")
         self.cacheAssociationRemoteControl(association)
+        promise.succeed(())
         return self.ready(state: state)
     }
 
@@ -529,14 +537,14 @@ extension KernelState {
 
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
     /// Stores an `Association` for the newly established association;
-    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState) -> AssociationStateMachine.State {
+    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.State {
         guard self._handshakes.removeValue(forKey: handshake.remoteAddress.address) != nil else {
             fatalError("BOOM: Can't complete a handshake which was not in progress!") // throw HandshakeError.acceptAttemptForNotInProgressHandshake(handshake)
             // TODO perhaps we instead just warn and ignore this; since it should be harmless
         }
 
         // FIXME: wrong channel?
-        let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: self.channel)
+        let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
         let state: AssociationStateMachine.State = .associated(asm)
         self._associations[handshake.remoteAddress.address] = state
         return state

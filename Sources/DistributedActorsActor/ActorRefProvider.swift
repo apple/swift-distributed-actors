@@ -100,6 +100,18 @@ extension RemoteActorRefProvider {
         }
     }
 
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        guard let path = context.path else {
+            preconditionFailure("Path MUST be set when resolving using remote resolver")
+        }
+
+        if self.localAddress == path.address {
+            return self.localProvider._resolveUntyped(context: context)
+        } else {
+            return self.makeRemoteRef(context, remotePath: path)
+        }
+    }
+
     internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> ActorRef<Message> {
         let remoteRef = RemoteActorRef<Message>(remoting: self.kernel, path: path)
         return remoteRef
@@ -158,6 +170,10 @@ extension LocalActorRefProvider {
         pprint("resolve at local == \(context)")
         return self.root._resolve(context: context)
     }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        return self.root._resolveUntyped(context: context)
+    }
 }
 
 
@@ -167,8 +183,15 @@ internal protocol _ActorTreeTraversable {
     ///
     /// Depending on the underlying implementation, the returned ref MAY be a remote one.
     ///
-    /// - Returns: `nil` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
+    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message>
+
+    /// Resolves the given actor path against the underlying actor tree.
+    ///
+    /// Depending on the underlying implementation, the returned ref MAY be a remote one.
+    ///
+    /// - Returns: `deadLetters` if actor path resolves to no live actor, a valid `ActorRef` otherwise.
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages
 }
 
 // TODO: Would be nice to not need this type at all; though initialization dance prohibiting self access makes this a bit hard
@@ -214,6 +237,17 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         switch selector.value {
         case "system": return self.systemTree._resolve(context: context) // TODO this is a bit hacky... 
         case "user":   return self.userTree._resolve(context: context) // TODO this is a bit hacky... 
+        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        }
+    }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+        guard let selector = context.selectorSegments.first else {
+            return context.deadRef // i.e. we resolved a "dead reference" as it points to nothing
+        }
+        switch selector.value {
+        case "system": return self.systemTree._resolveUntyped(context: context) // TODO this is a bit hacky...
+        case "user":   return self.userTree._resolveUntyped(context: context) // TODO this is a bit hacky...
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }

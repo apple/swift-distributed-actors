@@ -24,10 +24,10 @@ internal final class SerializationPool {
     @usableFromInline
     internal let deserializationWorkerPool: AffinityThreadPool
 
-    internal init(props: SerializationPoolProps, serialization: Serialization) throws {
+    internal init(settings: SerializationPoolSettings, serialization: Serialization) throws {
         self.serialization = serialization
         var workerMapping: [ActorPath: Int] = [:]
-        for (index, group) in props.serializationGroups.enumerated() {
+        for (index, group) in settings.serializationGroups.enumerated() {
             for path in group {
                 // mapping from each actor path to the corresponding group index,
                 // which maps 1:1 to the serialization worker number
@@ -35,8 +35,8 @@ internal final class SerializationPool {
             }
         }
         self.workerMapping = workerMapping
-        self.serializationWorkerPool = try AffinityThreadPool(workerCount: props.serializationGroups.count)
-        self.deserializationWorkerPool = try AffinityThreadPool(workerCount: props.serializationGroups.count)
+        self.serializationWorkerPool = try AffinityThreadPool(workerCount: settings.serializationGroups.count)
+        self.deserializationWorkerPool = try AffinityThreadPool(workerCount: settings.serializationGroups.count)
     }
 
     deinit {
@@ -55,10 +55,25 @@ internal final class SerializationPool {
     }
 
     @inlinable
+    internal func serialize(message: Any, metaType: AnyMetaType, recepientPath: ActorPath, promise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)>) {
+        self.enqueue(recepientPath: recepientPath, promise: promise, workerPool: self.serializationWorkerPool) {
+            try self.serialization.serialize(message: message, metaType: metaType)
+        }
+    }
+
+    @inlinable
     internal func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer, recepientPath: ActorPath, promise: EventLoopPromise<M>) {
         // TODO bytes to become inout?
         self.enqueue(recepientPath: recepientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
             try self.serialization.deserialize(type, from: bytes)
+        }
+    }
+
+    @inlinable
+    internal func deserialize(serializerId: Serialization.SerializerId, from bytes: ByteBuffer, recepientPath: ActorPath, promise: EventLoopPromise<Any>) {
+        // TODO bytes to become inout?
+        self.enqueue(recepientPath: recepientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
+            try self.serialization.deserialize(serializerId: serializerId, from: bytes)
         }
     }
 
@@ -84,10 +99,28 @@ internal final class SerializationPool {
     }
 }
 
-public struct SerializationPoolProps {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SerializationSettings
+
+public struct SerializationPoolSettings {
     public let serializationGroups: [[ActorPath]]
 
-    internal static var `default`: SerializationPoolProps {
-        return SerializationPoolProps(serializationGroups: [])
+    internal static var `default`: SerializationPoolSettings {
+        return SerializationPoolSettings(serializationGroups: [])
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SerializationEnvelope
+
+struct SerializationEnvelope {
+    let message: Any
+    let recipient: UniqueActorPath
+    let metaType: AnyMetaType
+
+    init<M>(message: M, recipient: UniqueActorPath) {
+        self.message = message
+        self.recipient = recipient
+        self.metaType = MetaType(M.self)
     }
 }

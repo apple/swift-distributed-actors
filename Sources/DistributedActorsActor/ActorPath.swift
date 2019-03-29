@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
+
 // MARK: UniqueActorPath
 
 /// Uniquely identifies an actor within the actor hierarchy.
@@ -55,7 +57,7 @@ public struct UniqueActorPath: Equatable, Hashable {
     }
 }
 
-extension UniqueActorPath: CustomStringConvertible {
+extension UniqueActorPath: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         var res = ""
         res.reserveCapacity(256) // TODO estimate length somehow?
@@ -72,11 +74,50 @@ extension UniqueActorPath: CustomStringConvertible {
 
         return res
     }
+
+    public var debugDescription: String {
+        var res = ""
+
+        if let addr = self.address {
+            res += "\(addr.debugDescription)"
+        }
+
+        res += "\(self.path)"
+
+        if self.uid.value != 0 {
+            res += "#\(self.uid.value)"
+        }
+
+        return res
+    }
 }
 
 extension UniqueActorPath: PathRelationships {
     var segments: [ActorPathSegment] {
         return path.segments
+    }
+}
+
+extension UniqueActorPath {
+    static func parse(fromString pathString: String) throws -> UniqueActorPath {
+        // TODO: avoid Foundation. Maybe add proto representations of paths?
+        if let url = URL(string: pathString) {
+            let uniqueNodeAddress: UniqueNodeAddress?
+            if url.user != nil && url.host != nil && url.port != nil {
+                let nodeAddress = NodeAddress(protocol: url.scheme ?? "sact", systemName: url.user!, host: url.host!, port: url.port!)
+                uniqueNodeAddress = UniqueNodeAddress(address: nodeAddress, uid: NodeUID(url.password.flatMap { UInt32($0) } ?? 0))
+            } else {
+                uniqueNodeAddress = nil
+            }
+            let segments = try url.path.split(separator: "/").map { c in
+                try ActorPathSegment(c)
+            }
+            let path = try ActorPath(segments, address: uniqueNodeAddress)
+
+            return UniqueActorPath(path: path, uid: ActorUID(Int(url.fragment!)!))
+        }
+
+        throw ActorPathError.invalidPath(pathString)
     }
 }
 
@@ -368,4 +409,5 @@ public enum ActorPathError: Error {
     case illegalLeadingSpecialCharacter(name: String, illegal: Character)
     case illegalActorPathElement(name: String, illegal: String, index: Int)
     case rootPathSegmentRequiredToStartWithSlash(segment: ActorPathSegment)
+    case invalidPath(String)
 }

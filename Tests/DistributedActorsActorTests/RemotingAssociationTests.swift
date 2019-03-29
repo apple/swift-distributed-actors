@@ -16,56 +16,11 @@ import Foundation
 import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
-import NIOSSL
 
+class RemotingAssociationTests: RemotingTestBase {
 
-class RemotingAssociationTests: XCTestCase {
-
-    var local: ActorSystem! = nil
-
-    var remote: ActorSystem! = nil
-
-    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
-    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
-
-    func setUpLocal() {
-        self.local = ActorSystem("2RemotingAssociationTests") { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = 8448
-        }
-    }
-
-    func setUpRemote() {
-        self.remote = ActorSystem("2RemotingAssociationTests") { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = 9559
-        }
-    }
-
-    func setUpBoth() {
-        self.setUpLocal()
-        self.setUpRemote()
-    }
-
-    override func tearDown() {
-        self.local.terminate()
-        self.remote.terminate()
-    }
-
-    private func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
-        let testKit = ActorTestKit(system)
-        try testKit.eventually(within: .seconds(1)) {
-            let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-            system.remoting.tell(.query(.associatedNodes(probe.ref)))
-            let associatedNodes = try probe.expectMessage()
-            pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
-            pprint("      Associated nodes: \(associatedNodes)")
-            pprint("         Expected node: \(String(reflecting: address))")
-
-            guard associatedNodes.contains(address) else {
-                throw TestError("[\(system)] did not associate the expected node: [\(address)]")
-            }
-        }
+    override var systemName: String {
+        return "2RemotingAssociationTests"
     }
 
     func test_boundServer_shouldAcceptAssociate() throws {
@@ -88,6 +43,7 @@ class RemotingAssociationTests: XCTestCase {
         }, name: "remoteAcquaintance")
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
@@ -100,23 +56,20 @@ class RemotingAssociationTests: XCTestCase {
         let resolvedRef = local._resolve(context: resolveContext)
         // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
         // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
-//        resolvedRef.tell("HELLO") // TODO: unlock once sending remote messages implemented
-//
-//        try probeOnRemote.expectMessage("forwarded:HELLO") // TODO: unlock once sending remote messages implemented
+        resolvedRef.tell("HELLO")
+
+        try probeOnRemote.expectMessage("forwarded:HELLO")
     }
 
     func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
         setUpLocal()
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
-
         let remoteAddress = NodeAddress(systemName: local.name, host: "127.0.0.1", port: 9559)
         local.remoting.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
         sleep(1) // we give it some time to keep failing to connect, se the second node is not yet started
-
         setUpRemote()
 
         try assertAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         // try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
     }
-
 }

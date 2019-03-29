@@ -243,7 +243,6 @@ class SerializationTests: XCTestCase {
         try p.expectTerminated(senderOfNotSerializableMessage)
         s2.terminate()
     }
-
 }
 
 // MARK: Example types for serialization tests

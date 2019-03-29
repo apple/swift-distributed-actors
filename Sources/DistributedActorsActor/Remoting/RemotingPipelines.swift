@@ -16,12 +16,12 @@ import NIO
 import NIOSSL
 import NIOFoundationCompat
 import class NIOExtras.LengthFieldBasedFrameDecoder
+import class NIOExtras.LengthFieldPrepender
 
 import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
 import SwiftProtobuf
 import Logging
 
-// TODO: Implement our own EnvelopeParser, basically similar to the NIOExtras.LengthFieldBasedFrameDecoder
 typealias Framing = LengthFieldBasedFrameDecoder
 
 /// Error indicating that after an operation some unused bytes are left.
@@ -29,57 +29,20 @@ public struct LeftOverBytesError: Error {
     public let leftOverBytes: ByteBuffer
 }
 
-// TODO: actually make use of this
-//private final class EnvelopeParser: ByteToMessageDecoder, ChannelInboundHandler {
-//    typealias InboundIn = ByteBuffer
-//    public typealias InboundOut = Wire.Envelope
-//
-////    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
-////        var bytes = self.unwrapInboundIn(data)
-////
-////        do {
-////            let envelope = try self.readEnvelope(&bytes, allocator: context.channel.allocator)
-////            context.fireChannelRead(self.wrapInboundOut(envelope))
-////        } catch {
-////            // TODO notify the kernel?
-////            context.fireErrorCaught(error)
-////            context.close(promise: nil)
-////        }
-////    }
-//
-////    func channelReadComplete(context: ChannelHandlerContext) {
-////        context.flush()
-////    }
-//
-//    public var cumulationBuffer: ByteBuffer?
-//
-//    func decode(context: ChannelHandlerContext, buffer: inout ByteBuffer) throws -> DecodingState {
-//        fatalError("BOOOOOOM 1")
-//        let readBytes: Int? = buffer.withUnsafeReadableBytes { bytes in
-//            fatalError("BOOOOOOM 2")
-//        }
-//
-//        guard let _ = readBytes else {
-//            return .needMoreData
-//        }
-//
-//        fatalError("BOOOOOOM 3")
-//
-//    }
-//}
-
-private final class HandshakeHandler: ChannelInboundHandler {
+private final class HandshakeHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = ByteBuffer
 
     private let kernel: RemotingKernel.Ref
     private let role: HandlerRole
-    
-    private var magicSeen = false
+    private let serializationPool: SerializationPool
+    private let system: ActorSystem
 
-    init(kernel: RemotingKernel.Ref, role: HandlerRole) {
+    init(system: ActorSystem, kernel: RemotingKernel.Ref, role: HandlerRole, serializationPool: SerializationPool) {
         self.kernel = kernel
         self.role = role
+        self.serializationPool = serializationPool
+        self.system = system
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -89,33 +52,28 @@ private final class HandshakeHandler: ChannelInboundHandler {
         do {
             switch self.role {
             case .server:
-
-                if !self.magicSeen {
-                    try self.readAssertMagicHandshakeBytes(bytes: &bytes)
-                    self.magicSeen = true // TODO we dont want this flag
-                }
                 // TODO formalize wire format...
                 let offer = try self.readHandshakeOffer(bytes: &bytes)
 
                 let promise = context.eventLoop.makePromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
-                self.kernel.tell(.inbound(.handshakeOffer(offer, replyTo: promise)))
-
-                // TODO once we write the response here, we can remove the handshake handler from the pipeline
+                self.kernel.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
 
                 promise.futureResult.onComplete { res in
                     switch res {
                     case .failure(let err):
                         context.fireErrorCaught(err)
-                    case .success(let bytes): // TODO this will be a domain object, since we'll serialize in the next handler
+                    case .success(let bytes):
                         context.writeAndFlush(NIOAny(bytes), promise: nil)
+                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
+                        self.upgradePipeline(context: context)
                     }
                 }
 
             case .client:
                 let accept = try self.readHandshakeAccept(bytes: &bytes) // TODO must check reply types
 
-                let promise = context.eventLoop.makePromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
-                self.kernel.tell(.inbound(.handshakeAccepted(accept, replyTo: promise)))
+                let promise = context.eventLoop.makePromise(of: Void.self) // TODO trying to figure out nicest way...
+                self.kernel.tell(.inbound(.handshakeAccepted(accept, channel: context.channel, replyTo: promise)))
 
                 // TODO once we write the response here, we can remove the handshake handler from the pipeline
                 
@@ -123,8 +81,8 @@ private final class HandshakeHandler: ChannelInboundHandler {
                     switch res {
                     case .failure(let err):
                         context.fireErrorCaught(err)
-                    case .success(let bytes): // TODO this will be a domain object, since we'll serialize in the next handler
-                        context.writeAndFlush(NIOAny(bytes), promise: nil)
+                    case .success:
+                        self.upgradePipeline(context: context)
                     }
                 }
             }
@@ -135,87 +93,171 @@ private final class HandshakeHandler: ChannelInboundHandler {
             context.fireErrorCaught(error)
         }
     }
+
+    // called after handshake is successfully completed to remove the handshake handler
+    // and add the serialization related handlers
+    private func upgradePipeline(context: ChannelHandlerContext) {
+        context.pipeline.removeHandler(self, promise: nil)
+        _ = context.channel.pipeline.addHandler(EnvelopeHandler(), name: "envelope handler", position: .last)
+        _ = context.channel.pipeline.addHandler(SerializationHandler(system: self.system, serializationPool: self.serializationPool), name: "serialization handler", position: .last)
+    }
 }
 
 enum HandlerRole {
     case client
     case server
-} 
+}
 
-// TODO: This should receive Wire.Envelope and write it.
-private final class WriteHandler: ChannelOutboundHandler {
+/// Will send `HandshakeMagicBytes` as the first two bytes for a new connection
+/// and remove itself from the pipeline afterwards.
+private final class ProtocolMagicBytesPrepender: ChannelOutboundHandler, RemovableChannelHandler {
     typealias OutboundIn = ByteBuffer
     typealias OutboundOut = ByteBuffer
-    
-    let role: HandlerRole
-    private var magicSent = false
-    
-    init(role: HandlerRole) {
-        self.role = role
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        var b = context.channel.allocator.buffer(capacity: 2)
+        b.writeInteger(HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
+        context.write(self.wrapOutboundOut(b), promise: nil)
+        traceLog_Remote("WRITE MAGIC")
+
+        context.writeAndFlush(data, promise: promise)
+        context.pipeline.removeHandler(self, promise: nil)
+    }
+}
+
+/// Validates that the first two bytes for a new connection are equal to `HandshakeMagicBytes`
+/// and removes itself from the pipeline afterwards.
+private final class ProtocolMagicBytesValidator: ChannelInboundHandler, RemovableChannelHandler {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = ByteBuffer
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var bytes = self.unwrapInboundIn(data)
+        do {
+            guard let leadingBytes = bytes.readInteger(as: UInt16.self) else  {
+                throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: 16 / 8, hint: "handshake magic bytes")
+            }
+
+            if leadingBytes != HandshakeMagicBytes {
+                throw SwiftDistributedActorsProtocolError.illegalHandshake(reason: HandshakeError.illegalHandshakeMagic(was: leadingBytes, expected: HandshakeMagicBytes))
+            }
+            bytes.discardReadBytes()
+            traceLog_Remote("READ MAGIC")
+            context.fireChannelRead(self.wrapInboundOut(bytes))
+            context.pipeline.removeHandler(self, promise: nil)
+        } catch {
+            context.fireErrorCaught(error)
+        }
+    }
+}
+
+private final class EnvelopeHandler: ChannelDuplexHandler {
+    typealias OutboundIn = Wire.Envelope
+    typealias OutboundOut = ByteBuffer
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = Wire.Envelope
+
+    func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
+        let envelope = self.unwrapOutboundIn(data)
+
+        let protoEnvelope = ProtoEnvelope(fromEnvelope: envelope)
+        do {
+            let bytes = try protoEnvelope.serializedByteBuffer(allocator: context.channel.allocator)
+            context.writeAndFlush(NIOAny(bytes), promise: promise)
+        } catch {
+            context.fireErrorCaught(error)
+        }
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        var bytes = self.unwrapInboundIn(data)
+
+        do {
+            let protoEnvelope = try ProtoEnvelope(bytes: &bytes)
+            bytes.discardReadBytes()
+            let envelope = try Wire.Envelope(protoEnvelope, allocator: context.channel.allocator)
+            context.fireChannelRead(self.wrapInboundOut(envelope))
+        } catch {
+            context.fireErrorCaught(error)
+        }
+    }
+}
+
+private final class SerializationHandler: ChannelDuplexHandler {
+    typealias OutboundIn = SerializationEnvelope
+    typealias OutboundOut = Wire.Envelope
+    typealias InboundIn = Wire.Envelope
+    typealias InboundOut = Never
+
+    let serializationPool: SerializationPool
+    let system: ActorSystem
+
+    init(system: ActorSystem, serializationPool: SerializationPool) {
+        self.serializationPool = serializationPool
+        self.system = system
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
-        let bytes = self.unwrapOutboundIn(data)
-
-        if self.role == .client && !self.magicSent { // FIXME LAZY HACK
-            var b = context.channel.allocator.buffer(capacity: 4)
-            b.writeInteger(HandshakeMagicBytes, endianness: .big) // first bytes MUST be magic when initiating connection
-            _ = context.write(NIOAny(b))
-            traceLog_Remote("[WRITE-\(self.role)] WRITE MAGIC")
-            self.magicSent = true
+        let envelope = self.unwrapOutboundIn(data)
+        let serializationPromise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)> = context.eventLoop.makePromise()
+        self.serializationPool.serialize(message: envelope.message, metaType: envelope.metaType, recepientPath: envelope.recipient.path, promise: serializationPromise)
+        // TODO: make sure that the order is maintained for futures here. The concern is
+        // that if multiple futures are completed before the callbacks are run, they could
+        // be executed in arbitrary order and that would violate our message ordering guarantees
+        serializationPromise.futureResult.whenComplete {
+            switch $0 {
+            case .success((let serializerId, let bytes)):
+                // force unwrapping here is safe because we read exactly the amount of readable bytes
+                let wireEnvelope = Wire.Envelope(recipient: envelope.recipient, serializerId: serializerId, payload: bytes)
+                context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
+            case .failure(let error):
+                print("\(error)") // FIXME: Use logger
+                // TODO: drop message when it fails to be serialized?
+                promise?.fail(error)
+            }
         }
-
-        // TODO this is the simple prefix length for which we have Framing on the other end; we'll want this to be envelope
-        var lenBuf = context.channel.allocator.buffer(capacity: 4)
-        traceLog_Remote("[WRITE-\(self.role)] WRITE LENGTH: \(bytes.readableBytes)")
-        lenBuf.writeInteger(UInt32(bytes.readableBytes), endianness: .big)
-        _ = context.write(NIOAny(lenBuf))
-
-        traceLog_Remote("[WRITE-\(self.role)] WRITE BYTES: \(bytes.formatHexDump())")
-        context.writeAndFlush(data, promise: promise)
     }
 
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        let wireEnvelope = self.unwrapInboundIn(data)
+        let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
+
+        serializationPool.deserialize(serializerId: wireEnvelope.serializerId, from: wireEnvelope.payload, recepientPath: wireEnvelope.recipient.path, promise: deserializationPromise)
+
+        // TODO: ensure message ordering. See comment in `write`.
+        deserializationPromise.futureResult.whenComplete {
+            switch $0 {
+            case .success(let message):
+                // TODO: Should this be in a separate stage?
+                let envelope = SerializationEnvelope(message: message, recipient: wireEnvelope.recipient)
+                let ref = self.system._resolveUntyped(context: ResolveContext(path: envelope.recipient, deadLetters: self.system.deadLetters))
+                ref._tellUnsafe(message: envelope.message)
+            case .failure(let error):
+                print("\(error)") // FIXME: Use logger
+            }
+        }
+    }
 }
 
 // MARK: Protobuf read... implementations
 
 extension HandshakeHandler {
-
-    func readAssertMagicHandshakeBytes(bytes: inout ByteBuffer) throws {
-        guard let leadingBytes = bytes.readInteger(as: UInt16.self) else  {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: 16 / 8, hint: "handshake magic bytes")
-        }
-
-        if leadingBytes != HandshakeMagicBytes {
-            throw SwiftDistributedActorsProtocolError.illegalHandshake(reason: HandshakeError.illegalHandshakeMagic(was: leadingBytes, expected: HandshakeMagicBytes))
-        }
-    }
-
     /// Read length prefixed data
     func readHandshakeOffer(bytes: inout ByteBuffer) throws -> Wire.HandshakeOffer {
-        let data = try readLengthPrefixedData(bytes: &bytes)
-
+        guard let data = bytes.readData(length: bytes.readableBytes) else {
+            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
+        }
         let proto = try ProtoHandshakeOffer(serializedData: data)
         return try Wire.HandshakeOffer(proto) // TODO: version too, since we negotiate about it
     }
 
     // length prefixed
     func readHandshakeAccept(bytes: inout ByteBuffer) throws -> Wire.HandshakeAccept {
-        let data = try readLengthPrefixedData(bytes: &bytes)
-
+        guard let data = bytes.readData(length: bytes.readableBytes) else {
+            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
+        }
         let proto = try ProtoHandshakeAccept(serializedData: data)
         return try Wire.HandshakeAccept(proto)
-    }
-
-    private func readLengthPrefixedData(bytes: inout ByteBuffer) throws -> Data {
-        guard let bytesToReadAsData = (bytes.readInteger(endianness: .big, as: UInt32.self).map { Int($0) }) else {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: 32 / 8, hint: "length prefix")
-        }
-        guard let data = bytes.readData(length: bytesToReadAsData) else {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytesToReadAsData, hint: "handshake offer")
-        }
-        bytes.discardReadBytes()
-        return data
     }
 }
 
@@ -223,30 +265,6 @@ enum WireFormatError: Error {
     case missingField(String)
     case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
-
-//extension EnvelopeParser {
-//    func readEnvelope(_ bytes: inout ByteBuffer, allocator: ByteBufferAllocator) throws -> Wire.Envelope {
-//        guard let data = bytes.readData(length: bytes.readableBytes) else { // foundation inter-op
-//            fatalError() // FIXME
-//        }
-//
-//        let proto = try ProtoEnvelope(serializedData: data)
-//        let payloadBytes = proto.payload._copyToByteBuffer(allocator: allocator)
-//
-//        // proto.recipient // TODO recipient from envelope
-//        let recipientPath = (try ActorPath._rootPath / ActorPathSegment("system") / ActorPathSegment("deadLetters")).makeUnique(uid: .init(0))
-//
-//        // since we don't want to leak the Protobuf types too much
-//        let envelope = Wire.Envelope(
-//            version: DistributedActorsProtocolVersion,
-//            recipient: recipientPath,
-//            serializerId: Int(proto.serializerID), // TODO sanity check values
-//            payload: payloadBytes
-//        ) // TODO think more about envelope
-//
-//        return envelope
-//    }
-//}
 
 private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     typealias InboundIn = ByteBuffer
@@ -264,6 +282,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 
         let event = self.unwrapInboundIn(data)
         log.info("[dump-\(self.role)] Received: \(event.formatHexDump)")
+        context.fireChannelRead(data)
     }
 
     func errorCaught(context: ChannelHandlerContext, error: Error) {
@@ -286,7 +305,7 @@ extension RemotingKernel {
     // TODO: abstract into `Transport`
 
     // TODO do we need this ON kernel? could be pure function really hm
-    internal func bootstrapServerSide(kernel: RemotingKernel.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: RemotingSettings) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -300,7 +319,7 @@ extension RemotingKernel {
             .childChannelInitializer { channel in
 
                 // If SSL is enabled, we need to add the SSLServerHandler to the connection
-                let channelPipelineFuture: EventLoopFuture<Void>
+                var channelHandlers: [(String?, ChannelHandler)] = []
                 if var tlsConfig = settings.tls {
                     // We don't know who will try to talk to us, so we can't verify the hostname here
                     if tlsConfig.certificateVerification == .fullVerification {
@@ -309,34 +328,26 @@ extension RemotingKernel {
                     do {
                         let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
                         let sslHandler = try NIOSSLServerHandler(context: sslContext)
-                        channelPipelineFuture = channel.pipeline.addHandler(sslHandler, name: "ssl")
+                        channelHandlers.append(("ssl", sslHandler))
                     } catch {
-                        channelPipelineFuture = channel.eventLoop.makeFailedFuture(error)
+                        return channel.eventLoop.makeFailedFuture(error)
                     }
-                } else {
-                    channelPipelineFuture = channel.eventLoop.makeSucceededFuture(())
                 }
 
                 // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
-                return channelPipelineFuture.flatMap { _ in channel.pipeline
-                        .addHandler(WriteHandler(role: .server))
-                    }
-                    // Handshake MUST be the first thing in the pipeline
-                    .flatMap { _ in channel.pipeline
-                        .addHandler(HandshakeHandler(kernel: kernel, role: .server)) 
-                    }
-                    // .flatMap { channel.pipeline.addHandler(BackPressureHandler()) }
-//                    .flatMap { _ in channel.pipeline
-    //                        // currently just a length encoded one, we alias to the one from NIOExtras
-//                        .addHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
-    //                    }
-//                    .flatMap { _ in channel.pipeline // TODO Do the envelope parser instead of the simple framing
-//                        .addHandler(EnvelopeParser())
-    //                    }
-                    .flatMap { _ in channel.pipeline
-                        // FIXME only include for debug -DSACT_TRACE_NIO things?
-                        .addHandler(DumpRawBytesDebugHandler(role: .server, log: log))
-                    }
+
+                let otherHandlers: [(String?, ChannelHandler)] = [
+                    ("magic validator", ProtocolMagicBytesValidator()),
+                    ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
+                    ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
+                    ("handshake handler", HandshakeHandler(system: system, kernel: kernel, role: .server, serializationPool: serializationPool)),
+                    // FIXME only include for debug -DSACT_TRACE_NIO things?
+                    ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)),
+                ]
+
+                channelHandlers.append(contentsOf: otherHandlers)
+
+                return self.addChannelHandlers(channelHandlers, to: channel.pipeline)
             }
 
             // Enable TCP_NODELAY and SO_REUSEADDR for the accepted Channels
@@ -348,7 +359,7 @@ extension RemotingKernel {
         return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, settings: RemotingSettings) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -356,7 +367,8 @@ extension RemotingKernel {
         let bootstrap = ClientBootstrap(group: group)
             .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
             .channelInitializer { channel in
-                let channelPipelineFuture: EventLoopFuture<Void>
+                var channelHandlers: [(String?, ChannelHandler)] = []
+
                 if let tlsConfig = settings.tls {
                     do {
                         let targetHost: String?
@@ -368,33 +380,32 @@ extension RemotingKernel {
 
                         let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
                         let sslHandler = try NIOSSLClientHandler.init(context: sslContext, serverHostname: targetHost)
-                        channelPipelineFuture = channel.pipeline.addHandler(sslHandler, name: "ssl")
+                        channelHandlers.append(("ssl", sslHandler))
                     } catch {
-                        channelPipelineFuture = channel.eventLoop.makeFailedFuture(error)
+                        return channel.eventLoop.makeFailedFuture(error)
                     }
-                } else {
-                    channelPipelineFuture = channel.eventLoop.makeSucceededFuture(())
                 }
 
-                return channelPipelineFuture
-                    .flatMap { _ in
-                        channel.pipeline.addHandler(WriteHandler(role: .client), name: "client-write")
-                    }
-                    .flatMap { _ in
-                        channel.pipeline.addHandler(HandshakeHandler(kernel: kernel, role: .client), name: "handshake")
-                    }
-//                    .flatMap { _ in
-//                        // currently just a length encoded one, we alias to the one from NIOExtras
-//                        channel.pipeline.addHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))
-//                    }
-                    .flatMap { _ in
-                        // FIXME only include for debug -DSACT_TRACE_NIO things?
-                        channel.pipeline.addHandler(DumpRawBytesDebugHandler(role: .client, log: log))
-                    }
+                let otherHandlers: [(String?, ChannelHandler)] = [
+                    ("magic prepender", ProtocolMagicBytesPrepender()),
+                    ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
+                    ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
+                    ("handshake handler", HandshakeHandler(system: system, kernel: kernel, role: .client, serializationPool: serializationPool)),
+                    ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)),
+                ]
+
+                channelHandlers.append(contentsOf: otherHandlers)
+
+                return self.addChannelHandlers(channelHandlers, to: channel.pipeline)
             }
 
-
         return bootstrap.connect(host: targetAddress.host, port: Int(targetAddress.port)) // TODO separate setup from using it
+    }
+
+    private func addChannelHandlers(_ handlers: [(String?, ChannelHandler)], to pipeline: ChannelPipeline) -> EventLoopFuture<Void> {
+        return pipeline.eventLoop.traverseIgnore(over: handlers) { (name, handler) in
+            return pipeline.addHandler(handler, name: name)
+        }
     }
 
     private func makeSSLContext(fromConfig tlsConfig: TLSConfiguration, passphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?) throws -> NIOSSLContext {
@@ -425,5 +436,27 @@ extension UniqueActorPath {
         // TODO take the UID as well
 
         return path.makeUnique(uid: .random()) // FIXME
+    }
+}
+
+internal extension EventLoop {
+
+    /// Traverses over a collection and applies the given closure to all elements, while maintaining sequential execution order,
+    /// i.e. each element will only be processed once the future returned from the previous call is completed. A failed future
+    /// will cause the processing to end and the returned future will be failed.
+    func traverseIgnore<T>(over elements: [T], _ closure: @escaping (T) -> EventLoopFuture<Void>) -> EventLoopFuture<Void> {
+        guard let first = elements.first else {
+            return self.makeSucceededFuture(())
+        }
+
+        var acc = closure(first)
+
+        for element in elements.dropFirst() {
+            acc = acc.flatMap { _ in
+               closure(element)
+            }
+        }
+
+        return acc
     }
 }
