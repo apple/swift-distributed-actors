@@ -239,6 +239,7 @@ extension Supervision.Failure: CustomStringConvertible, CustomDebugStringConvert
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Phantom types for registering supervisors
 
 public enum Supervise {

@@ -381,7 +381,7 @@ extension RemotingKernel {
         var state = state
         state.log.warning("Failed await for outbound channel to \(remoteAddress); Error was: \(error)")
 
-        guard var handshakeState = state.handshakeInProgress(with: remoteAddress) else {
+        guard let handshakeState = state.handshakeInProgress(with: remoteAddress) else {
             state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.") // TODO meh or fail hard
             return .ignore
         }
