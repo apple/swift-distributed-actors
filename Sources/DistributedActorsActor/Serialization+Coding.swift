@@ -78,11 +78,8 @@ extension ReceivesMessages {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        if let resolved: ActorRef<Self.Message> = context.resolveActorRef(path: path) {
-            self = resolved as! Self // this is safe, we know Self IS-A ActorRef
-        } else {
-            self = context.deadLetters.adapt(from: Self.Message.self) as! Self // as! safe, we know Self IS-A ActorRef
-        }
+        let resolved: ActorRef<Self.Message> = context.resolveActorRef(path: path)
+        self = resolved as! Self // this is safe, we know Self IS-A ActorRef
     }
 }
 
