@@ -116,4 +116,5 @@ public final class Condition {
             fatalError("Signal failed with unspecified error: \(error)")
         }
     }
+
 }
