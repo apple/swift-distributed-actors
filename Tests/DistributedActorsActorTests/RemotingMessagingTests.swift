@@ -38,7 +38,6 @@ class RemotingMessagingTests: RemotingTestBase {
 
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
@@ -73,7 +72,6 @@ class RemotingMessagingTests: RemotingTestBase {
 
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
@@ -101,7 +99,6 @@ class RemotingMessagingTests: RemotingTestBase {
 
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
@@ -127,7 +124,6 @@ class RemotingMessagingTests: RemotingTestBase {
 
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
@@ -177,7 +173,6 @@ class RemotingMessagingTests: RemotingTestBase {
             }, name: "remoteAcquaintance")
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
