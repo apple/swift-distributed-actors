@@ -79,7 +79,7 @@ extension Membership {
     var prettyDescription: String {
         var res = "Membership: "
         for member in self.members.values {
-            res += "\n   [\(member.address)] STATUS: [\(member.status.rawValue ?? "", leftPadTo: MemberStatus.maxStrLen)]"
+            res += "\n   [\(member.address)] STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
         return res
     }
@@ -97,11 +97,11 @@ extension Membership {
         case nil:
             // means a node removal
             self.remove(change.address)
-        case .some(let .joining):
+        case .some(.joining):
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
-            self.join(change.address)
-        case .some(let .alive):
-            self.join(change.address)
+            _ = self.join(change.address)
+        case .some(.alive):
+            _ = self.join(change.address)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
             // TODO log state transitions
