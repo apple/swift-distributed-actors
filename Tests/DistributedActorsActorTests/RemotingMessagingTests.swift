@@ -18,7 +18,6 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 class RemotingMessagingTests: RemotingTestBase {
-
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
         setUpLocal()
 
@@ -26,7 +25,6 @@ class RemotingMessagingTests: RemotingTestBase {
             $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
         }
 
-        let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
@@ -62,7 +60,6 @@ class RemotingMessagingTests: RemotingTestBase {
 
         setUpRemote()
 
-        let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
@@ -92,15 +89,10 @@ class RemotingMessagingTests: RemotingTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide() throws {
-        setUpLocal {
+        setUpBoth {
             $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
         }
 
-        setUpRemote {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
-        }
-
-        let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let refOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
@@ -123,15 +115,10 @@ class RemotingMessagingTests: RemotingTestBase {
     }
 
     func test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide() throws {
-        setUpLocal {
+        setUpBoth {
             $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
         }
 
-        setUpRemote {
-            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
-        }
-
-        let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let nonCodableRefOnRemoteSystem: ActorRef<SerializationTestMessage> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
@@ -171,6 +158,34 @@ class RemotingMessagingTests: RemotingTestBase {
         localResolvedRefWithLocalAddress.tell("hello")
         try probe.expectMessage("received:hello")
     }
+
+    func test_remoteActors_echo() throws {
+        setUpBoth {
+            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        }
+
+        let probe = self.localTestKit.spawnTestProbe(name: "X", expecting: String.self)
+
+        let localRef: ActorRef<String> = try local.spawn(.receiveMessage { message in
+                probe.tell("response:\(message)")
+                return .same
+            }, name: "remoteAcquaintance")
+
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }, name: "remoteAcquaintance")
+
+        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        sleep(2) // TODO make it such that we don't need to sleep but assertions take care of it
+
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+        remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
+
+        try probe.expectMessage("response:echo:test")
+    }
 }
 
 fileprivate enum SerializationBehavior {
@@ -181,6 +196,11 @@ fileprivate enum SerializationBehavior {
 
 fileprivate struct SerializationTestMessage {
     let serializationBehavior: SerializationBehavior
+}
+
+fileprivate struct EchoTestMessage: Codable {
+    let string: String
+    let respondTo: ActorRef<String>
 }
 
 struct Boom: Error {}
