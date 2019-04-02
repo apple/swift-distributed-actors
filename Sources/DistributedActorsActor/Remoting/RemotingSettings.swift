@@ -23,7 +23,7 @@ public struct RemotingSettings {
 
     public enum Default {
         public static let systemName: String = "ActorSystem"
-        public static let host: String = "127.0.0.1"
+        public static let host: String = "localhost"
         public static let port: Int = 7337
         public static let failureDetector: FailureDetectorSettings = .manual
     }

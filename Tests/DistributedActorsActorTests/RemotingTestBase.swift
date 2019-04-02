@@ -29,11 +29,32 @@ open class RemotingTestBase: XCTestCase {
     var _remote: ActorSystem? = nil
     var remote: ActorSystem {
         guard let system = self._remote else {
-            return fatalErrorBacktrace("Attempted using `RemotingTestBase.remote` system before initializing it. Call `setUpLocal` before using the system.")
+            return fatalErrorBacktrace("Attempted using `RemotingTestBase.remote` system before initializing it. Call `setUpRemote` before using the system.")
         }
 
         return system
     }
+
+    var _localTestKit: ActorTestKit? = nil
+    var localTestKit: ActorTestKit {
+        guard let testKit = self._localTestKit else {
+            return fatalErrorBacktrace("Attempted using `RemotingTestBase.localTestKit` before initializing it. Call `setUpLocal` before using the test kit.")
+        }
+
+        return testKit
+    }
+
+    var _remoteTestKit: ActorTestKit? = nil
+    var remoteTestKit: ActorTestKit {
+        guard let testKit = self._remoteTestKit else {
+            return fatalErrorBacktrace("Attempted using `RemotingTestBase.remoteTestKit` before initializing it. Call `setUpRemote` before using the test kit.")
+        }
+
+        return testKit
+    }
+
+    open var localPort: Int { return 8448 }
+    open var remotePort: Int { return 9559 }
 
     open var systemName: String {
         return "\(type(of: self))"
@@ -45,17 +66,21 @@ open class RemotingTestBase: XCTestCase {
     func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._local = ActorSystem(systemName) { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = 8448
+            settings.remoting.bindAddress.port = self.localPort
             modifySettings?(&settings)
         }
+
+        self._localTestKit = ActorTestKit(self.local)
     }
 
     func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._remote = ActorSystem(systemName) { settings in
             settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = 9559
+            settings.remoting.bindAddress.port = self.remotePort
             modifySettings?(&settings)
         }
+
+        self._remoteTestKit = ActorTestKit(self.remote)
     }
 
     func setUpBoth(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
@@ -69,9 +94,20 @@ open class RemotingTestBase: XCTestCase {
     }
 
     func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
-        let testKit = ActorTestKit(system)
+        // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
+        // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
+        let testKit: ActorTestKit
+        if system  == self.local {
+            testKit = self.localTestKit
+        } else if system == self.remote {
+            testKit = self.remoteTestKit
+        } else {
+            testKit = ActorTestKit(system)
+        }
+
+
+        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .seconds(1)) {
-            let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
             system.remoting.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
             pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")

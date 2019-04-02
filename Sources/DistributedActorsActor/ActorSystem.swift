@@ -170,6 +170,12 @@ public final class ActorSystem {
     }
 }
 
+extension ActorSystem: Equatable {
+    public static func ==(lhs: ActorSystem, rhs: ActorSystem) -> Bool {
+        return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorRefFactory
 

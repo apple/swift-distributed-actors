@@ -19,6 +19,10 @@ import SwiftDistributedActorsActorTestKit
 
 class RemotingAssociationTests: RemotingTestBase {
 
+    override var systemName: String {
+        return "RemotingAssociationTests"
+    }
+
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 
@@ -31,7 +35,6 @@ class RemotingAssociationTests: RemotingTestBase {
     func test_association_shouldAllowSendingToRemoteReference() throws {
         self.setUpBoth()
 
-        let remoteTestKit = ActorTestKit(remote)
         let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
         let refOnRemoteSystem: ActorRef<String> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
@@ -60,12 +63,12 @@ class RemotingAssociationTests: RemotingTestBase {
     func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
         setUpLocal()
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
-        let remoteAddress = NodeAddress(systemName: local.name, host: "127.0.0.1", port: 9559)
+        let remoteAddress = NodeAddress(systemName: local.name, host: "localhost", port: self.remotePort)
         local.remoting.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
         sleep(1) // we give it some time to keep failing to connect, se the second node is not yet started
         setUpRemote()
 
         try assertAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
-        // try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+        try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
     }
 }

@@ -149,7 +149,8 @@ def parseSourceFile(fileName)
 
     next if ignore
     # Match class or func
-    match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|[\/ \t]*func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
+    match = line[/class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*XCTestCase)|class[ \t]+[a-zA-Z0-9_]*(?=[ \t]*:[ \t]*[a-zA-Z0-9_]*TestBase)|[\/ \t]*func[ \t]+test[a-zA-Z0-9_]*(?=[ \t]*\(\))/, 0]
+
     if match
 
       if match[/class/, 0] == 'class'
