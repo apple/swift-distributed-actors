@@ -32,6 +32,7 @@ extension SerializationTests {
                 ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType),
                 ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType),
                 ("test_serialize_shouldNotSerializeNotRegisteredType", test_serialize_shouldNotSerializeNotRegisteredType),
+                ("test_serialize_receivesSystemMessages_inMessage", test_serialize_receivesSystemMessages_inMessage),
                 ("test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string", test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string),
                 ("test_verifySerializable_shouldFault_forNotSerializableMessage", test_verifySerializable_shouldFault_forNotSerializableMessage),
            ]

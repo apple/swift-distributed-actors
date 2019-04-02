@@ -26,7 +26,7 @@ public struct DeadLetter {
 }
 
 // FIXME this is just a quick workaround, will need to be a bit smarter than that
-internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
+internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMessages {
     let _path: UniqueActorPath
     let log: Logger
 
@@ -51,6 +51,10 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
             // TODO more metadata (from Envelope)
             log.warning("[deadLetters] Dead letter encountered, recipient: \(deadLetter.recipient); Message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered. ")
         }
+    }
+
+    func sendSystemMessage(_ message: SystemMessage) {
+        self.tell(DeadLetter(message))
     }
 
     private func specialHandle(_ message: SystemMessage) -> Bool {
