@@ -19,10 +19,6 @@ import SwiftDistributedActorsActorTestKit
 
 class RemotingMessagingTests: RemotingTestBase {
 
-    override var systemName: String {
-        return "2RemotingMessagingTests"
-    }
-
     func test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide() throws {
         setUpLocal()
 
@@ -48,12 +44,12 @@ class RemotingMessagingTests: RemotingTestBase {
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
 
-        let codableResolvedRef = self.resolveRemoteRef(type: String.self, path: codableRefOnRemoteSystem.path)
+        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, path: codableRefOnRemoteSystem.path)
         codableResolvedRef.tell("HELLO")
 
         try probeOnRemote.expectMessage("forwarded:HELLO")
@@ -84,12 +80,12 @@ class RemotingMessagingTests: RemotingTestBase {
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
 
-        let codableResolvedRef = self.resolveRemoteRef(type: String.self, path: codableRefOnRemoteSystem.path)
+        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, path: codableRefOnRemoteSystem.path)
         codableResolvedRef.tell("HELLO")
 
         try probeOnRemote.expectMessage("forwarded:HELLO")
@@ -117,7 +113,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(type: SerializationTestMessage.self, path: refOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: refOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
@@ -148,13 +144,32 @@ class RemotingMessagingTests: RemotingTestBase {
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
 
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
         try probeOnRemote.expectMessage("forwarded:SerializationTestMessage")
+    }
+
+    func test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork() throws {
+        setUpLocal {
+            $0.serialization.registerCodable(for: SerializationTestMessage.self, underId: 1001)
+        }
+
+        let testKit = ActorTestKit(self.local)
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+        let localRef: ActorRef<String> = try local.spawn(.receiveMessage { message in
+            probe.tell("received:\(message)")
+            return .same
+        }, name: "local")
+
+        let localResolvedRefWithLocalAddress =
+            self.resolveLocalRef(on: self.local, type: String.self, path: localRef.path)
+
+        localResolvedRefWithLocalAddress.tell("hello")
+        try probe.expectMessage("received:hello")
     }
 }
 

@@ -34,6 +34,9 @@ class RemoteActorRefProviderTests: XCTestCase {
     let nodeAddress = UniqueNodeAddress(systemName: "2RemotingAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
     lazy var remotePath: ActorPath = try! ActorPath(["user", "henry", "hacker"].map(ActorPathSegment.init), address: nodeAddress)
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Properly resolve
+
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
         let theOne = TheOneWhoHasNoParentActorRef()
@@ -60,6 +63,9 @@ class RemoteActorRefProviderTests: XCTestCase {
         // Remote refs _on purpose_ do not say in their printout that they are "RemoteActorRef" since users should only think
         // about actor refs; and that it happens to have a remote address is the detail to focus on, not the underlying type.
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: resolve deadLetters
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<String> = try system.spawn(.ignore, name: "ignoresStrings")

@@ -75,4 +75,20 @@ class ActorPathTests: XCTestCase {
 
         pathA.shouldNotEqual(pathA2)
     }
+
+    func test_isKnownRemote_shouldBeCorrect() throws {
+        let localAddress = UniqueNodeAddress(address: NodeAddress(systemName: "hello", host: "localhost", port: 7337), uid: .random())
+        let remoteAddress = UniqueNodeAddress(address: NodeAddress(systemName: "hello", host: "2.2.2.2", port: 7337), uid: .random())
+
+        var path = try ActorPath(root: "test").makeChildPath(name: "foo2", uid: .random())
+        path.address = nil // "assume it is local"
+        path.isKnownRemote(localAddress: localAddress).shouldBeFalse()
+
+
+        path.address = remoteAddress
+        path.isKnownRemote(localAddress: localAddress).shouldBeTrue()
+
+        path.address = localAddress
+        path.isKnownRemote(localAddress: localAddress).shouldBeFalse()
+    }
 }

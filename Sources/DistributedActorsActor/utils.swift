@@ -14,6 +14,7 @@
 
 import Foundation
 import DistributedActorsConcurrencyHelpers
+import CSwiftDistributedActorsMailbox // for backtrace
 
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can
@@ -56,6 +57,16 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
     return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
+internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
+    sact_dump_backtrace()
+    fatalError(hint, file: file, line: line)
+}
+internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) {
+
+    assert(condition(), { () in sact_dump_backtrace(); return message() }(), file: file, line: line)
+}
+
+
 /// Short for "pretty print", useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("[pprint][\(file):\(line)][\(_hackyPThreadThreadId())]: \(message)")
@@ -86,8 +97,7 @@ internal func _hackyPThreadThreadId() -> String {
     return "thread:\(threadId)"
 }
 
-
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed

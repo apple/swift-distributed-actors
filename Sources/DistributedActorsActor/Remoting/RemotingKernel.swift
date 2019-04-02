@@ -22,7 +22,7 @@ import DistributedActorsConcurrencyHelpers
 internal class RemotingKernel {
     public typealias Ref = ActorRef<RemotingKernel.Messages>
 
-    // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state !!!
+    // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // We do this to avoid "looping" any initial access of an actor ref through the kernels mailbox
     // which would cause more latency to obtaining the association. refs cache the remote control once they have obtained it.
 
@@ -58,14 +58,33 @@ internal class RemotingKernel {
     }
     
     // TODO `dead` associations could be moved on to a smaller map, like an optimized Int Set or something, to keep less space
-    // END OF HERE BE DRAGONS, shared concurrently modified concurrent state !!!
+    // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Remoting Kernel, reference used for issuing commands to the kernel
 
     private var _ref: RemotingKernel.Ref?
     var ref: RemotingKernel.Ref {
         // since this is initiated during system startup, nil should never happen
         // TODO slap locks around it...
         guard let it = self._ref else {
-            fatalError("Accessing RemotingKernel.ref failed, was nil!")
+            return fatalErrorBacktrace("Accessing RemotingKernel.ref failed, was nil! This should never happen as access should only happen after start() was invoked.")
+        }
+        return it
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Failure Detector
+
+    // Implementation notes: The `_failureDetectorRef` has to remain internally accessible.
+    // This is in order to solve a chicken-and-egg problem that we face during spawning of
+    // the first system actor that is the *failure detector* so it cannot reach to the systems
+    // value before it started... // TODO see if we indeed shall guarantee that this is the first actor?
+    var _failureDetectorRef: FailureDetectorShell.Ref?
+    var failureDetectorRef: FailureDetectorShell.Ref {
+        pprint("access failureDetectorRef")
+        guard let it = self._failureDetectorRef else {
+            return fatalErrorBacktrace("Accessing RemotingKernel.failureDetector failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
         return it
     }
@@ -81,10 +100,18 @@ internal class RemotingKernel {
         //
         // TODO see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
+        self._failureDetectorRef = nil
     }
 
     /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
     internal func start(system: ActorSystem) throws -> RemotingKernel.Ref {
+        pprint("starting....")
+        // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
+        let failureDetector = system.settings.remoting.makeFailureDetector(system: system)
+        self._failureDetectorRef = try system._spawnSystemActor(
+            FailureDetectorShell.behavior(driving: failureDetector),
+            name: "failureDetector")
+
         // TODO concurrency... lock the ref as others may read it?
         self._ref = try system._spawnSystemActor(
             self.bind(),

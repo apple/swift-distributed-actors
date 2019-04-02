@@ -19,10 +19,6 @@ import SwiftDistributedActorsActorTestKit
 
 class RemotingAssociationTests: RemotingTestBase {
 
-    override var systemName: String {
-        return "2RemotingAssociationTests"
-    }
-
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 

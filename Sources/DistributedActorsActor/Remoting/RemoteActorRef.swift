@@ -39,7 +39,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     //   - even if we do a concurrent map, it still is more expensive
     //
     // Observations: 
-    // - we only need the association for the first send -- we can then hit the shared datastructure, and cache the association / remote control here
+    // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
     //
     // The structure of the kernel is such that the only thing that is a field in the class is this associations / remote controls map, 
@@ -52,7 +52,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     private let remoting: RemotingKernel
 
     init(remoting: RemotingKernel, path: UniqueActorPath) {
-        assert(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
+        assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
         self._path = path
         self.remoting = remoting
     }
@@ -70,7 +70,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendSystemMessage: \(message)")
-        fatalError("not done yet")
+        pprint("TODO: This would send \(message) to \(self.path) if it was implemented... :-) SOON...!") // FIXME: implement remote sends
     }
 
     // TODO: This has to obtain the association in a QUICK way, no time for actor queues...
