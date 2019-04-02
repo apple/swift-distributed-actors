@@ -163,7 +163,6 @@ extension Children: _ActorTreeTraversable {
 
     @usableFromInline
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -179,7 +178,6 @@ extension Children: _ActorTreeTraversable {
 
     @usableFromInline
     func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
-
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -190,6 +188,21 @@ extension Children: _ActorTreeTraversable {
         } else {
             // no child going by this name in this container, meaning the resolve is to terminate here with a not-found
             return context.deadRef
+        }
+    }
+
+    @usableFromInline
+    func _resolveReceivesSystemMessages(context: ResolveContext<Any>) -> AnyReceivesSystemMessages {
+        guard let selector = context.selectorSegments.first else {
+            // no selector, we should not be in this place!
+            fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
+        }
+
+        if let selectedChild = self.container[selector.value] {
+            return selectedChild._resolveReceivesSystemMessages(context: context.deeper)
+        } else {
+            // no child going by this name in this container, meaning the resolve is to terminate here with a not-found
+            return context._deadRef
         }
     }
 }

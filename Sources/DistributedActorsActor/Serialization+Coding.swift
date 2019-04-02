@@ -84,6 +84,44 @@ extension ReceivesMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ReceivesSystemMessages
+
+/// Warning: presence of this extension and `ReceivesSystemMessages` being `Codable` does not actually enable users
+/// to embed and use `ReceivesSystemMessages` inside codable messages: it would fail synthesizing the codable code for
+/// this type automatically, since users can not access the type at all.
+/// The `ReceivesSystemMessagesDecoder` however does enable this library itself to embed and use this type in Codable
+/// messages, if the need were to arise.
+extension ReceivesSystemMessages {
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        guard let serializationContext = encoder.actorSerializationContext else {
+            throw CodingError.missingActorSerializationContext(Self.self, details: "While encoding [\(self)], using [\(encoder)]")
+        }
+
+        traceLog_Serialization("encode \(self.path) WITH address")
+        try container.encodeWithAddress(self.path, using: serializationContext)
+    }
+
+    public init(from decoder: Decoder) throws {
+        self = try ReceivesSystemMessagesDecoder.decode(from: decoder) as! Self // as! safe, since we know definitely that Self IS-A ReceivesSystemMessages
+    }
+}
+
+internal struct ReceivesSystemMessagesDecoder {
+    public static func decode(from decoder: Decoder) throws -> ReceivesSystemMessages {
+        let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
+        let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
+
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+        }
+
+        return context.resolveReceivesSystemMessages(path: path) as! ReceivesSystemMessages // this is safe, we know Self IS-A ReceivesSystemMessages
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable UniqueActorPath
 
 // Customize coding to avoid nesting as {"value": "..."}
