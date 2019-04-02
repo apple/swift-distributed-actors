@@ -29,16 +29,21 @@ internal enum SystemMessage: Equatable {
     /// Notifies an actor that it is no longer being watched by the `from` actor
     case unwatch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
 
-    /// Received after [[watch]] was issued to an actor ref
+    /// Received after `watch` was issued to an actor ref
     /// - Parameters:
     ///   - ref: reference to the (now terminated) actor
     ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
     ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
-    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
+    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool, addressTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
     case childTerminated(ref: AnyAddressableActorRef)
+
+    /// Node has terminated, and all actors of this node shall be considered as terminated.
+    /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
+    /// `Signals.Terminated` messages, for every watched actor which was residing on the (now terminated) address.
+    case addressTerminated(UniqueNodeAddress) // TODO: more additional info?
 
     /// Sent by parent to child actor to stop it
     case stop
@@ -61,6 +66,21 @@ internal enum SystemMessage: Equatable {
     case tombstone 
 }
 
+internal extension SystemMessage {
+    @inlinable
+    static func terminated(ref: AnyAddressableActorRef) -> SystemMessage {
+        return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
+    }
+    @inlinable
+    static func terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) -> SystemMessage {
+        return .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
+    }
+    @inlinable
+    static func terminated(ref: AnyAddressableActorRef, addressTerminated: Bool) -> SystemMessage {
+        return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
+    }
+}
+
 public struct ExecutionError: Error {
     let underlying: Error
 }
@@ -76,10 +96,12 @@ extension SystemMessage {
             return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
         case let (.unwatch(lWatchee, lWatcher), .unwatch(rWatchee, rWatcher)):
             return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
-        case let (.terminated(lRef, lExisted), .terminated(rRef, rExisted)):
-            return lRef.path == rRef.path && lExisted == rExisted
+        case let (.terminated(lRef, lExisted, lAddrTerminated), .terminated(rRef, rExisted, rAddrTerminated)):
+            return lRef.path == rRef.path && lExisted == rExisted && lAddrTerminated == rAddrTerminated
         case let (.childTerminated(lPath), .childTerminated(rPath)):
             return lPath.path == rPath.path
+        case let (.addressTerminated(lAddress), .addressTerminated(rAddress)):
+            return lAddress == rAddress
 
         case (.tombstone, .tombstone): return true
         case (.stop, .stop): return true
@@ -92,7 +114,9 @@ extension SystemMessage {
              (.terminated, _),
              (.childTerminated, _),
              (.stop, _),
-             (.resume, _): return false
+             (.resume, _),
+             (.addressTerminated, _):
+            return false
         }
     }
 }

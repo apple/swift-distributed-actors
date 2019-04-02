@@ -65,6 +65,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     @usableFromInline internal let supervisor: Supervisor<Message>
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stopped anyway
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Death watch infrastructure
 
     // Implementation of DeathWatch
@@ -98,6 +99,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         return self._myselfInACell
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ActorCell implementation
 
     internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
@@ -113,7 +115,12 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        self._deathWatch = DeathWatch()
+        if let failureDetectorRef = system._remoting?._failureDetectorRef {
+            self._deathWatch = DeathWatch(failureDetectorRef: failureDetectorRef)
+        } else {
+            // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?
+            self._deathWatch = DeathWatch(failureDetectorRef: system.deadLetters.adapted())
+        }
 
         #if SACT_TESTS_LEAKS
         _ = system.cellInitCounter.add(1)
@@ -138,6 +145,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         return self
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ActorCellSpawning protocol requirements
 
     private let _childrenLock = ReadWriteLock()
@@ -165,7 +173,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")
         // system.deadLetters.tell(Dropped(message)) // TODO metadata
     }
-    
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Conforming to ActorContext
 
     /// Returns this actors "self" actor reference, which can be freely shared across
@@ -200,6 +209,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         return self._dispatcher
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling messages
 
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
@@ -240,6 +250,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling system messages
 
     /// Process single system message and return if processing of further shall continue.
@@ -264,12 +275,14 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         case let .unwatch(_, watcher):
             self.interpretSystemUnwatch(watcher: watcher)
 
-        case let .terminated(ref, existenceConfirmed):
+        case let .terminated(ref, existenceConfirmed, _):
             let terminated = Signals.Terminated(path: ref.path, existenceConfirmed: existenceConfirmed)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
         case let .childTerminated(ref):
             let terminated = Signals.ChildTerminated(path: ref.path, error: nil) // TODO what about the errors
             try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+        case let .addressTerminated(remoteAddress):
+            self.interpretAddressTerminated(remoteAddress)
 
         case .tombstone:
             return self.finishTerminating()
@@ -472,7 +485,8 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         return try self.internal_stop(child: ref)
     }
 
-    // MARK: Death Watch
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Death Watch API
 
     override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself, parent: self._parent)
@@ -485,6 +499,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal system message / signal handling functions
 
 extension ActorCell {
@@ -527,6 +542,19 @@ extension ActorCell {
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
         }
+    }
+
+    /// Interpret incoming .addressTerminated system message.
+    ///
+    /// Results in signaling `Terminated` for all of the locally watched actors on the (now terminated) node.
+    /// This action is performed concurrently by all actors who have watched remote actors on given node,
+    /// and no ordering guarantees are made about which actors will get the Terminated signals first.
+    @inlinable internal func interpretAddressTerminated(_ terminatedAddress: UniqueNodeAddress) {
+        #if SACT_TRACE_CELL
+        log.info("Received address terminated: \(deadRef)")
+        #endif
+
+        self.deathWatch.receiveAddressTerminated(terminatedAddress, myself: self._myselfReceivesSystemMessages)
     }
 
     @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {

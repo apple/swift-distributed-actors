@@ -14,6 +14,7 @@
 
 import Foundation
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: UniqueActorPath
 
 /// Uniquely identifies an actor within the actor hierarchy.
@@ -93,7 +94,7 @@ extension UniqueActorPath: CustomStringConvertible, CustomDebugStringConvertible
 }
 
 extension UniqueActorPath: PathRelationships {
-    var segments: [ActorPathSegment] {
+    public var segments: [ActorPathSegment] {
         return path.segments
     }
 }
@@ -121,6 +122,7 @@ extension UniqueActorPath {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorPath
 
 /// Represents the name and placement within the actor hierarchy of a given actor.
@@ -134,9 +136,9 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
 
     /// If set, the address of node to which this actor path belongs.
     /// Or `nil`, meaning this actors residing under this path shall be assumed local.
-    internal var address: UniqueNodeAddress?
+    public var address: UniqueNodeAddress?
     
-    internal var segments: [ActorPathSegment]
+    public var segments: [ActorPathSegment]
 
     init(_ segments: [ActorPathSegment], address: UniqueNodeAddress? = nil) throws {
         self.address = address
@@ -186,16 +188,48 @@ extension ActorPath: CustomStringConvertible {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Remote ActorPath utilities
+
+extension ActorPath: PossiblyRemotePath {
+
+}
+extension UniqueActorPath: PossiblyRemotePath {
+}
+
+public protocol PossiblyRemotePath {
+
+    var address: UniqueNodeAddress? { get }
+
+    /// Returns true if it is known that the ref is pointing to an actor on a remote node,
+    /// i.e. if it has an address defined, it must be other than the passed in system's one.
+    /// For refs which do not contain an address, it is known that they point to a local path.
+    ///
+    /// - Returns: `true` if this [ActorPath] is known to be pointing to a remote address direct ancestor of `maybeChildPath`, `false` otherwise
+    func isKnownRemote(localAddress: UniqueNodeAddress) -> Bool
+}
+
+extension PossiblyRemotePath {
+    public func isKnownRemote(localAddress: UniqueNodeAddress) -> Bool {
+        switch self.address {
+        case .some(let refAddress): return refAddress != localAddress
+        default:                    return false
+        }
+    }
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Path relationships
 
-protocol PathRelationships {
+public protocol PathRelationships {
     var segments: [ActorPathSegment] { get }
 }
 
 extension PathRelationships {
 
     /// Combines the base path with a child segment returning the concatenated path.
-    public static func /(base: Self, child: ActorPathSegment) -> ActorPath {
+    static func /(base: Self, child: ActorPathSegment) -> ActorPath {
         var segments = base.segments
         segments.append(child)
 

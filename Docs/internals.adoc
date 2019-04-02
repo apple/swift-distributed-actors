@@ -154,3 +154,21 @@ Rules:
 === [Kernel|Association]State.Control
 
 Control objects allow performing actual actions onto the network layer.
+
+==== Watch and clustering
+
+In case of a clustered system, the `FailureDetector` drives decisions about when a node should be marked as leaving/down etc.
+
+Any actor, when it performs a watch of a remote actor (known by the presence of an address in the actor's path),
+also registers to be notified about termination of given address.
+
+Upon determining a remote node is terminated, the local `FailureDetector` signals all local actors that have been watching
+at least one actor on given (now terminated) address, by sending an `.addressTerminated` system message to them.
+
+From there on, each actor automatically handles this system message, by triggering a `SignalsTerminated` signal,
+for each of the actors it has been watching on this address. This way the sending of terminated signal is as parallel as many there have been watchers.
+And each actor utilizes as much time to process its _own_ watched actors as it has watched, so actors which did not watch any remote actors
+are not awoken to perform any checks.
+
+
+#TODO consider and explain races of lookups; should be correct by construction (since a watch needs a message send) but do make sure#

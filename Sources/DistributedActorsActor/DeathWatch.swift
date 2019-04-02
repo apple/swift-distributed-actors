@@ -15,17 +15,28 @@
 import NIO
 import Dispatch
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Death watch implementation
 
-/// DeathWatch implementation.
-/// An [[ActorCell]] owns a death watch instance and is responsible of managing all calls to it.
+/// DeathWatch implements the user facing `watch` and `unwatch` functions.
+/// It allows actors to watch other actors for termination, and also takes into account clustering lifecycle information,
+/// e.g. if a node is declared `down` all actors on given node are assumed to have terminated, causing the appropriate `Terminated` signals.
+///
+/// An `ActorCell` owns a death watch instance and is responsible of managing all calls to it.
 //
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
-@usableFromInline internal struct DeathWatch<Message> { // TODO: likely to change protocol
+@usableFromInline
+internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
     private var watching = Set<BoxedHashableAnyReceivesSystemMessages>()
     private var watchedBy = Set<BoxedHashableAnyReceivesSystemMessages>()
+
+    private var failureDetectorRef: FailureDetectorShell.Ref
+
+    init(failureDetectorRef: FailureDetectorShell.Ref) {
+        self.failureDetectorRef = failureDetectorRef
+    }
 
     // MARK: perform watch/unwatch
 
@@ -52,7 +63,7 @@ import Dispatch
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: watcher._boxAnyReceivesSystemMessages()))
         self.watching.insert(watchee)
-        subscribeAddressTerminatedEvents()
+        subscribeAddressTerminatedEvents(myself: watcher, address: watchee.path.address)
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
@@ -87,7 +98,7 @@ import Dispatch
     }
 
     public mutating func removeWatchedBy(watcher: AnyReceivesSystemMessages, myself: ActorRef<Message>) {
-        // traceLog_DeathWatch("Remove watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Remove watched by: \(watcher.path)     inside: \(myself)")
         let boxedWatcher = watcher._exposeBox()
         self.watchedBy.remove(boxedWatcher)
     }
@@ -119,6 +130,19 @@ import Dispatch
         return wasWatchedByMyself
     }
 
+    /// Performs cleanup of any actor references that were located on the now terminated node.
+    ///
+    /// Causes `Terminated` signals to be triggered for any such watched remote actor.
+    ///
+    /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
+    /// such that the user can have a chance to handle and react to them.
+    public mutating func receiveAddressTerminated(_ terminatedAddress: UniqueNodeAddress, myself: ReceivesSystemMessages) {
+        pprint("receiveAddressTerminated ===== \(terminatedAddress)")
+        for watched in self.watching where watched.path.address == terminatedAddress {
+            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: false, addressTerminated: true))
+        }
+    }
+
     // MARK: termination tasks
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
@@ -130,14 +154,22 @@ import Dispatch
         }
     }
 
-    // MARK: helper methods and state management
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Managing
 
     // TODO: implement this once we are clustered; a termination of an entire node means termination of all actors on that node
-    private func subscribeAddressTerminatedEvents() {
+    private func subscribeAddressTerminatedEvents(myself: ActorRef<Message>, address: UniqueNodeAddress?) {
+        guard let address = address else {
+            return // watched ref is local, no address to watch
+        }
+        // TODO avoid watching when address is my address
+        self.failureDetectorRef.tell(.watchedActor(watcher: myself._boxAnyReceivesSystemMessages(), remoteAddress: address))
     }
 
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Errors
 
 public enum DeathPactError: Error {
     case unhandledDeathPact(terminated: AnyAddressableActorRef, myself: AnyAddressableActorRef, message: String)

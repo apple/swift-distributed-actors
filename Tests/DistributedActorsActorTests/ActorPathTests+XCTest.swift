@@ -32,6 +32,7 @@ extension ActorPathTests {
                 ("test_rootPath_shouldRenderAsExpected", test_rootPath_shouldRenderAsExpected),
                 ("test_equalityOf_pathsWithSameSegmentsButDifferentUID", test_equalityOf_pathsWithSameSegmentsButDifferentUID),
                 ("test_equalityOf_pathsWithDifferentSegmentsButSameUID", test_equalityOf_pathsWithDifferentSegmentsButSameUID),
+                ("test_isKnownRemote_shouldBeCorrect", test_isKnownRemote_shouldBeCorrect),
            ]
    }
 }

@@ -105,6 +105,17 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             XCTAssert(false, msg, file: callSite.file, line: callSite.line)
         }
     }
+
+    /// Asserts that `it` contains at least one element matching the predicate.
+    func toContain(where predicate: (T.Element) -> Bool) {
+        if !it.contains(where: { el in predicate(el) }) {
+            // fancy printout:
+            let m = "Expected [\(it)] to contain element matching predicate"
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
 }
 
 public extension TestMatchers where T: Collection {
@@ -204,9 +215,16 @@ extension Collection where Element: Equatable {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toStartWith(prefix: prefix)
     }
+
     public func shouldContain(_ el: Element, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toContain(el)
+    }
+
+    /// Applies the `where` predicate while trying to locate at least one element in the collection.
+    public func shouldContain(where predicate: (Element) -> Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toContain(where: { predicate($0) })
     }
 }
 

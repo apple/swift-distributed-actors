@@ -42,9 +42,7 @@ public let RingBenchmarks: [BenchmarkInfo] = [
     ),
 ]
 
-private func setUp(and postSetUp: () -> Void = { () in
-    ()
-}) {
+private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("RingBenchmarks") { settings in
 //        settings.logLevel = .error
     }

@@ -25,11 +25,13 @@ public struct RemotingSettings {
         public static let systemName: String = "ActorSystem"
         public static let host: String = "127.0.0.1"
         public static let port: Int = 7337
+        public static let failureDetector: FailureDetectorSettings = .manual
     }
 
     public static var `default`: RemotingSettings {
         let defaultBindAddress: NodeAddress = .init(systemName: Default.systemName, host: Default.host, port: Default.port)
-        return RemotingSettings(bindAddress: defaultBindAddress)
+        let failureDetector = Default.failureDetector
+        return RemotingSettings(bindAddress: defaultBindAddress, failureDetector: failureDetector)
     }
 
     /// If `true` the ActorSystem start the remoting subsystem upon startup.
@@ -67,6 +69,18 @@ public struct RemotingSettings {
     // TODO do we need to separate server and client sides? Sounds like a reasonable thing to do.
     public var eventLoopGroup: EventLoopGroup? = nil
 
+    /// Configure what failure detector to use.
+    // TODO: Since it MAY have specific requirements on other settings... we may want to allow it to run a validation after creation?
+    public var failureDetector: FailureDetectorSettings
+    internal func makeFailureDetector(system: ActorSystem) -> FailureDetector {
+        let context = FailureDetectorContext(system)
+
+        switch self.failureDetector {
+        case .manual:
+            return ManualFailureDetector(context: context)
+        }
+    }
+
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
@@ -76,9 +90,15 @@ public struct RemotingSettings {
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
 
-    public init(bindAddress: NodeAddress, tls: TLSConfiguration? = nil) {
+    public init(bindAddress: NodeAddress, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
         self.bindAddress = bindAddress
         self.uid = NodeUID.random()
+        self.failureDetector = failureDetector
         self.tls = tls
     }
+}
+
+public enum FailureDetectorSettings {
+    case manual
+    // case instance(FailureDetector) // TODO: once we decide to allow users implementing their own
 }
