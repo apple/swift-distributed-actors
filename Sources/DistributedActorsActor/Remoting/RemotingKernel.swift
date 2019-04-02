@@ -121,6 +121,14 @@ internal class RemotingKernel {
         return self.ref
     }
 
+    func shutdown(waitingAtMost timeout: TimeAmount = .seconds(3)) {
+        let receptacle = BlockingReceptacle<Void>()
+        self.ref.tell(.command(.unbind(receptacle)))
+        // TODO: actually stop all event loops?
+        // TODO: once/if in a cluster we should attempt to leave nicely; the command would be more than "unbind" I suppose
+        receptacle.wait(atMost: timeout)
+    }
+
     // Due to lack of Union Types, we have to emulate them
     enum Messages: NoSerializationVerification {
         // The external API, exposed to users of the RemotingKernel
@@ -135,7 +143,7 @@ internal class RemotingKernel {
 
         // case bind(Wire.NodeAddress) since binds right away from config settings // TODO: Bind is done right away in start, should we do the bind command instead?
         case handshakeWith(NodeAddress)
-        case unbind // TODO some promise to complete once we unbound
+        case unbind(BlockingReceptacle<Void>)
     } 
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<[UniqueNodeAddress]>) // TODO better type here
@@ -197,8 +205,8 @@ extension RemotingKernel {
             switch command {
             case .handshakeWith(let remoteAddress):
                 return self.beginHandshake(context, state, with: remoteAddress)
-            case .unbind:
-                return self.unbind(state: state)
+            case .unbind(let receptable):
+                return self.unbind(context, state: state, signalOnceUnbound: receptable)
             }
         }
 
@@ -435,10 +443,20 @@ extension RemotingKernel {
 // Implements: Unbind
 extension RemotingKernel {
 
-    fileprivate func unbind(state: KernelState) -> Behavior<Messages> {
-        let _ = state.channel.close(mode: .all)
-        // TODO: pipe back to whomever requested the termination
-        return .stopped // FIXME too eagerly
+    fileprivate func unbind(_ context: ActorContext<Messages>, state: KernelState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Messages> {
+        let addrDesc = "\(state.settings.uniqueBindAddress.address.host):\(state.settings.uniqueBindAddress.address.port)"
+        return context.awaitResult(of: state.channel.close(mode: .all), timeout: .seconds(3)) { // TODO hardcoded timeout
+            switch $0 {
+            case .success:
+                context.log.info("Unbound server socket [\(addrDesc)].")
+                signalOnceUnbound.offer(())
+                return .stopped
+            case .failure(let err):
+                context.log.warning("Failed while unbinding server socket [\(addrDesc)]. Error: \(err)")
+                signalOnceUnbound.offer(())
+                return .failed(error: err)
+            }
+        }
     }
 }
 

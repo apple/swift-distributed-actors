@@ -111,6 +111,43 @@ public final class Mutex {
 }
 
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Blocking Receptacle
+
+/// Similar to `LinkedBlockingQueue` however specialized for a single element.
+/// Used most often as "await until something happens" mechanism.
+internal final class BlockingReceptacle<Value> {
+    @usableFromInline
+    let lock = Mutex()
+    @usableFromInline
+    let notEmpty = Condition()
+
+    private var _value: Value? = nil
+
+    func offer(_ value: Value) {
+        self.lock.synchronized {
+            if self._value != nil {
+                fatalError("BlockingReceptacle can only be offered once. Already was offered [\(self._value)] before, " + 
+                    "and can not accept new offer: [\(value)]!")
+            }
+            self._value = value
+            self.notEmpty.signal()
+        }
+    }
+
+    func wait(atMost timeout: TimeAmount) -> Value? {
+        return self.lock.synchronized { () -> Value in
+            while true {
+                if let v = self._value {
+                    return v
+                }
+                self.notEmpty.wait(self.lock)
+            }
+        }
+    }
+
+}
+
 
 // ------------ "locks.swift" of the proposal
 
