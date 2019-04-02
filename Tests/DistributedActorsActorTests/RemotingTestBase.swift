@@ -17,19 +17,33 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 open class RemotingTestBase: XCTestCase {
-    var local: ActorSystem! = nil
+    var _local: ActorSystem? = nil
+    var local: ActorSystem {
+        guard let system = self._local else {
+            return fatalErrorBacktrace("Attempted using `RemotingTestBase.local` system before initializing it. Call `setUpLocal` before using the system.")
+        }
 
-    var remote: ActorSystem! = nil
+        return system
+    }
+
+    var _remote: ActorSystem? = nil
+    var remote: ActorSystem {
+        guard let system = self._remote else {
+            return fatalErrorBacktrace("Attempted using `RemotingTestBase.remote` system before initializing it. Call `setUpLocal` before using the system.")
+        }
+
+        return system
+    }
 
     open var systemName: String {
-        return "2RemotingTests"
+        return "\(type(of: self))"
     }
 
     lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
     lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
 
     func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
-        self.local = ActorSystem(systemName) { settings in
+        self._local = ActorSystem(systemName) { settings in
             settings.remoting.enabled = true
             settings.remoting.bindAddress.port = 8448
             modifySettings?(&settings)
@@ -37,7 +51,7 @@ open class RemotingTestBase: XCTestCase {
     }
 
     func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
-        self.remote = ActorSystem(systemName) { settings in
+        self._remote = ActorSystem(systemName) { settings in
             settings.remoting.enabled = true
             settings.remoting.bindAddress.port = 9559
             modifySettings?(&settings)
@@ -50,8 +64,8 @@ open class RemotingTestBase: XCTestCase {
     }
 
     override open func tearDown() {
-        self.local.terminate()
-        self.remote.terminate()
+        self._local?.terminate()
+        self._remote?.terminate()
     }
 
     func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
@@ -70,14 +84,21 @@ open class RemotingTestBase: XCTestCase {
         }
     }
 
-    func resolveRemoteRef<M>(type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
+    func resolveRemoteRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
+        return self.resolveRef(on: system, type: type, path: path, targetSystem: self.remote)
+    }
+    func resolveLocalRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
+        return self.resolveRef(on: system, type: type, path: path, targetSystem: self.local)
+    }
+
+    func resolveRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath, targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNodeAddress = remote.settings.remoting.uniqueBindAddress
+        let remoteNodeAddress = targetSystem.settings.remoting.uniqueBindAddress
 
         var uniqueRemotePath: UniqueActorPath = path
         uniqueRemotePath.address = remoteNodeAddress
-        let resolveContext = ResolveContext<M>(path: uniqueRemotePath, deadLetters: local.deadLetters)
-        return local._resolve(context: resolveContext)
+        let resolveContext = ResolveContext<M>(path: uniqueRemotePath, deadLetters: system.deadLetters)
+        return system._resolve(context: resolveContext)
     }
 }

@@ -24,7 +24,10 @@ import CSwiftDistributedActorsMailbox
 /// in a same-typed [ActorRef<M>] collection would not be possible.
 public protocol AddressableActorRef: Hashable {
 
-    /// The [ActorPath] under which the actor is located.
+    /// The `UniqueActorPath` under which the actor is located.
+    ///
+    /// It uniquely identifies this actor, even if one were to stop and spawn
+    /// another actor of the same name, child to the same parent, on the same note.
     var path: UniqueActorPath { get }
 }
 
@@ -167,6 +170,11 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSyste
 extension ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
     func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
+        return self.adapt(from: IncomingMessage.self) { m in DeadLetter(m) }
+    }
+
+    /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
+    func adapted<IncomingMessage>() -> ActorRef<IncomingMessage> {
         return self.adapt(from: IncomingMessage.self) { m in DeadLetter(m) }
     }
 }

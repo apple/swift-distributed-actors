@@ -21,7 +21,7 @@ public struct ActorSystemSettings {
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
-    public var remoting: RemotingSettings = .default {
+    public var remoting: RemotingSettings = .default { // TODO start calling it cluster
         didSet {
             if self.remoting.enabled {
                 self.serialization.serializationAddress = self.remoting.uniqueBindAddress // TODO later on this would be `address` vs `bindAddress`

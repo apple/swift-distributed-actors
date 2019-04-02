@@ -630,6 +630,9 @@ internal class SystemMessageSerializer: Serializer<SystemMessage> {
         case .childTerminated:
             fatalError("Not implemented yet") // FIXME: implement me
 
+        case .addressTerminated:
+            return fatalErrorBacktrace("not implemented yet") // and should not really be, this message must only be sent locally
+
         case .tombstone:
             fatalError("Not implemented yet") // FIXME: implement me
 

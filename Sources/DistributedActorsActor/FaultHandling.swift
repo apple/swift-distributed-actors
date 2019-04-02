@@ -48,23 +48,23 @@ internal struct FaultHandling {
     }
 
     internal static func getCrashDetails() -> CrashDetails? {
-        guard let cdetailsPtr = sact_get_crash_details() else {
+        guard let cDetailsPtr = sact_get_crash_details() else {
             return nil
         }
 
-        let cdetails = cdetailsPtr.pointee
+        let cDetails = cDetailsPtr.pointee
 
         var backtrace: [String] = []
-        backtrace.reserveCapacity(Int(cdetails.backtrace_length))
+        backtrace.reserveCapacity(Int(cDetails.backtrace_length))
 
-        for i in 0 ..< Int(cdetails.backtrace_length) {
-            let str = String(cString: cdetails.backtrace[i]!)
+        for i in 0 ..< Int(cDetails.backtrace_length) {
+            let str = String(cString: cDetails.backtrace[i]!)
             backtrace.append(str)
         }
 
         return CrashDetails(
             backtrace: backtrace,
-            runPhase: cdetails.run_phase
+            runPhase: cDetails.run_phase
         )
     }
 

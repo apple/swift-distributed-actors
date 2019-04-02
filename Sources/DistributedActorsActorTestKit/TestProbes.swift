@@ -156,9 +156,14 @@ extension ActorTestProbe {
     ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
     public func expectMessages(count: Int, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
-
+        return try self.expectMessages(count: count, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+    /// Expects multiple messages to arrive at the TestProbe and returns it for further assertions.
+    /// See also the `expectMessagesInAnyOrder([Message])` overload which provides automatic equality checking.
+    ///
+    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+    public func expectMessages(count: Int, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let timeout = expectationTimeout
         do {
             return try within(timeout) {
                 let actualCount: Int = self.messagesQueue.size()

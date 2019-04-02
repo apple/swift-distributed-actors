@@ -224,7 +224,12 @@ internal extension ActorRef {
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
     @usableFromInline
     func _boxAnyReceivesSystemMessages() -> BoxedHashableAnyReceivesSystemMessages {
-        return BoxedHashableAnyReceivesSystemMessages(ref: self._downcastUnsafe)
+        switch self {
+        case let remoteRef as RemoteActorRef<Message>:
+            return BoxedHashableAnyReceivesSystemMessages(ref: remoteRef)
+        default:
+            return BoxedHashableAnyReceivesSystemMessages(ref: self._downcastUnsafe)
+        }
     }
 
     /// INTERNAL API: Performs downcast, only use when you know what you're doing
@@ -240,7 +245,7 @@ internal extension ActorRef {
         case let withCell as ActorRefWithCell<Message>:
             return withCell
         default:
-            fatalError("Illegal downcast attempt from \(self) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
+            fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorRefWithCell. This is a Swift Distributed Actors bug, please report this on the issue tracker.")
         }
     }
 }

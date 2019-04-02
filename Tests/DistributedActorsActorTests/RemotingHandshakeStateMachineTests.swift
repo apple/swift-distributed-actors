@@ -32,7 +32,13 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
     }
 
     func makeMockKernelState(side: HandshakeSide, configureSettings: (inout RemotingSettings) -> () = { _ in () }) -> KernelState {
-        var settings = RemotingSettings(bindAddress: NodeAddress(systemName: systemName, host: "127.0.0.1", port: 7337))
+        var settings = RemotingSettings(
+            bindAddress: NodeAddress(
+                systemName: systemName,
+                host: "127.0.0.1", 
+                port: 7337),
+            failureDetector: .manual
+        )
         configureSettings(&settings)
         let log = Logger(label: "handshake-\(side)") // TODO could be a mock logger we can assert on?
 
