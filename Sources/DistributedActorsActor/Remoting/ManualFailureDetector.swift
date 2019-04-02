@@ -14,7 +14,6 @@
 
 import NIO
 import Logging
-import class ConcurrencyHelpers.Lock
 
 internal class ManualFailureDetector: FailureDetector {
 
@@ -41,8 +40,6 @@ internal class ManualFailureDetector: FailureDetector {
             watcher.sendSystemMessage(.addressTerminated(remoteAddress))
             return
         }
-
-        log.info("systemTombstones == \(systemTombstones)")
 
         if watcher.path.isKnownRemote(localAddress: context.address) {
             // a failure detector must never register non-local actors, it would not make much sense,
