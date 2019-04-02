@@ -312,9 +312,18 @@ public struct ActorSerializationContext {
         return resolved
     }
 
+    // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
+    /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
+    internal func resolveReceivesSystemMessages(path: UniqueActorPath) -> AnyReceivesSystemMessages {
+        let context = ResolveContext<Any>(path: path, deadLetters: self.deadLetters)
+        let resolved = self.traversable._resolveReceivesSystemMessages(context: context)
+        return resolved
+    }
+
 }
 
-// MARK: Serialize specializations 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialize specializations
 
 extension Serialization {
 

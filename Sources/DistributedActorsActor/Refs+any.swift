@@ -138,11 +138,8 @@ extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDe
     }
 }
 
-// MARK: Type erasure for ReceivesMessages
-
-// TODO: maybe, and drop all others?
-
-// MARK: Type erasure for ReceivesSignals
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Type erasure for ReceivesSystemMessages
 
 /// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
 @usableFromInline

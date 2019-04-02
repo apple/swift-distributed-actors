@@ -27,6 +27,8 @@ class SerializationTests: XCTestCase {
 
         settings.serialization.registerCodable(for: InterestingMessage.self, underId: 1003)
         settings.serialization.registerCodable(for: HasInterestingMessageRef.self, underId: 1004)
+
+        settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
     }
     lazy var testKit = ActorTestKit(system)
 
@@ -198,6 +200,47 @@ class SerializationTests: XCTestCase {
         }
     }
 
+    func test_serialize_receivesSystemMessages_inMessage() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let watchMe: ActorRef<String> = try system.spawn(.ignore, name: "watchMe")
+
+        let ref: ActorRef<String> = try system.spawn(.setup { context in
+            context.watch(watchMe)
+            return .receiveSignal{ _, signal in
+                switch signal {
+                case let terminated as Signals.Terminated:
+                    p.tell("terminated:\(terminated.path.name)")
+                default:
+                    ()
+                }
+                return .same
+            }
+        }, name: "shouldGetSystemMessage")
+
+        let sysRef = ref._boxAnyReceivesSystemMessages()
+
+        let hasSysRef = HasReceivesSystemMsgs(sysRef: ref._downcastUnsafe)
+
+        pinfo("Before serialize: \(hasSysRef)")
+
+        let bytes = try shouldNotThrow {
+            return try system.serialization.serialize(message: hasSysRef)
+        }
+        pinfo("serialized refs: \(bytes.stringDebugDescription())")
+
+        let back: HasReceivesSystemMsgs = try shouldNotThrow {
+            return try system.serialization.deserialize(HasReceivesSystemMsgs.self, from: bytes)
+        }
+        pinfo("Deserialized again: \(back)")
+
+        back.sysRef.path.shouldEqual(sysRef.path)
+
+        // Only to see that the deserialized ref indeed works for sending system messages to it
+        back.sysRef.sendSystemMessage(.terminated(ref: watchMe, existenceConfirmed: false))
+        try p.expectMessage("terminated:watchMe")
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialized messages in actor communication, locally
 
@@ -283,10 +326,27 @@ private struct HasInterestingMessageRef: Codable, Equatable {
     let containedInterestingRef: ActorRef<InterestingMessage>
 }
 
-// TODO: implement being able to send ReceivesSystemMessages https://github.com/apple/swift-distributed-actors/issues/418
-//private struct HasArrayOfReceivesSystemMsgs: Codable, Equatable {
-//    let refs: [ReceivesSystemMessages]
-//}
+/// This is quite an UNUSUAL case, as `ReceivesSystemMessages` is internal, and thus, no user code shall ever send it
+/// verbatim like this. We may however, need to send them for some reason internally, and it might be nice to use Codable if we do.
+///
+/// Since the type is internal, the automatic derivation does not function, and some manual work is needed, which is fine,
+/// as we do not expect this case to happen often (or at all), however if the need were to arise, the ReceivesSystemMessagesDecoder
+/// enables us to handle this rather easily.
+private struct HasReceivesSystemMsgs: Codable {
+    let sysRef: ReceivesSystemMessages
+
+    init(sysRef: ReceivesSystemMessages) {
+        self.sysRef = sysRef
+    }
+
+    init(from decoder: Decoder) throws {
+        self.sysRef = try ReceivesSystemMessagesDecoder.decode(from: decoder)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try self.sysRef.encode(to: encoder)
+    }
+}
 
 private struct NotCodableHasInt: Equatable {
     let containedInt: Int

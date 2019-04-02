@@ -102,9 +102,8 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: Internal implementation classes
 
 /// Only for use by the actor system itself
-// TODO: want to be internal though then https://github.com/apple/swift-distributed-actors/issues/69
 @usableFromInline
-internal protocol ReceivesSystemMessages: AnyReceivesSystemMessages {
+internal protocol ReceivesSystemMessages: AnyReceivesSystemMessages, Codable {
 
     /// INTERNAL API: Only for use by the actor system itself
     ///
@@ -372,6 +371,17 @@ extension Guardian: _ActorTreeTraversable {
         }
     }
 
+    func _resolveReceivesSystemMessages(context: ResolveContext<Any>) -> AnyReceivesSystemMessages {
+        guard let selector = context.selectorSegments.first else {
+            fatalError("Expected selector in guardian._resolve()!")
+        }
+
+        if self.path.name == selector.value {
+            return self.children._resolveReceivesSystemMessages(context: context.deeper)
+        } else {
+            return context._deadRef
+        }
+    }
 }
 
 extension Guardian: CustomStringConvertible {
