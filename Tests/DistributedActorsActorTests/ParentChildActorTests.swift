@@ -23,7 +23,7 @@ class ParentChildActorTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     typealias ParentRef = ActorRef<ParentProtocol>

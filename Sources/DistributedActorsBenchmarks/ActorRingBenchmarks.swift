@@ -50,7 +50,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
 }
 
 private func tearDown() {
-    system.terminate()
+    system.shutdown()
     _system = nil
 }
 

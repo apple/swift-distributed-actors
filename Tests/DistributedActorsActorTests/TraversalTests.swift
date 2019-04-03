@@ -65,7 +65,7 @@ class TraversalTests: XCTestCase {
     }
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     func test_printTree_shouldPrintActorTree() throws {
