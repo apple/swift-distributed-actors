@@ -26,7 +26,7 @@ class ActorRefAdapterTests: XCTestCase {
         system.shutdown()
     }
 
-    func test_ActorBehavior_adapt() throws {
+    func test_ClassBehavior_adapt() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
 
         let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in

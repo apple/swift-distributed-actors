@@ -112,7 +112,7 @@ class BehaviorTests: XCTestCase {
 
     // TODO: another test with 2 senders, that either of their ordering is valid at recipient
 
-    class MyActor: ActorBehavior<TestMessage> {
+    class MyActor: ClassBehavior<TestMessage> {
         override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
             message.replyTo.tell(thxFor(message.message))
             return .same
@@ -127,7 +127,7 @@ class BehaviorTests: XCTestCase {
         }
     }
 
-    func test_ActorBehavior_receivesMessages() throws {
+    func test_ClassBehavior_receivesMessages() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-5")
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")

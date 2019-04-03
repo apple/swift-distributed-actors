@@ -89,7 +89,7 @@ class ActorLifecycleTests: XCTestCase {
     func test_stopping_shouldDeinitTheBehavior() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")
         let chattyAboutLifecycle =
-            try system.spawn(LifecycleDeinitActorBehavior(p.ref), name: "deinitLifecycleActor")
+            try system.spawn(LifecycleDeinitClassBehavior(p.ref), name: "deinitLifecycleActor")
 
         chattyAboutLifecycle.tell(.stop)
 
@@ -105,7 +105,7 @@ enum LifecycleDeinitActorMessage {
     case stop
 }
 
-final class LifecycleDeinitActorBehavior: ActorBehavior<LifecycleDeinitActorMessage> {
+final class LifecycleDeinitClassBehavior: ClassBehavior<LifecycleDeinitActorMessage> {
     let probe: ActorRef<String>
 
     init(_ p: ActorRef<String>) {

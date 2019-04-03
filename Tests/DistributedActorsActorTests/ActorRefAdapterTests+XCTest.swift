@@ -24,7 +24,7 @@ extension ActorRefAdapterTests {
 
    static var allTests : [(String, (ActorRefAdapterTests) -> () throws -> Void)] {
       return [
-                ("test_ActorBehavior_adapt", test_ActorBehavior_adapt),
+                ("test_ClassBehavior_adapt", test_ClassBehavior_adapt),
                 ("test_adaptedRef_shouldBeWatchable", test_adaptedRef_shouldBeWatchable),
            ]
    }

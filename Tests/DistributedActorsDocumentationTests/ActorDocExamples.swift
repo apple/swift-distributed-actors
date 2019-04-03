@@ -53,7 +53,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_classOriented_behavior() throws {
         // tag::classOriented_behavior[]
-        final class GreetingsPrinterBehavior: ActorBehavior<Greetings> { // <1>
+        final class GreetingsPrinterBehavior: ClassBehavior<Greetings> { // <1>
 
             override func receive(context: ActorContext<Greetings>, message: Greetings) throws -> Behavior<Greetings> { // <2>
                 print("Received: \(message)") // <3>
@@ -65,7 +65,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_classOriented_behaviorWithState() throws {
         // tag::classOriented_behaviorWithState[]
-        final class GreetingsPrinterBehavior: ActorBehavior<Greetings> {
+        final class GreetingsPrinterBehavior: ClassBehavior<Greetings> {
 
             private var messageCounter = 0 // <1>
 
