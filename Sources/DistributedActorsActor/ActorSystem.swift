@@ -209,7 +209,7 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnUserActor(behavior, name: name, props: props)
     }
 
-    public func spawn<Message>(_ behavior: ActorBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    public func spawn<Message>(_ behavior: ClassBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
         return try spawn(.custom(behavior: behavior), name: name, props: props)
     }
 
@@ -221,7 +221,7 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnUserActor(behavior, name: self.anonymousNames.nextName(), props: props)
     }
 
-    public func spawnAnonymous<Message>(_ behavior: ActorBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+    public func spawnAnonymous<Message>(_ behavior: ClassBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
         return try self.spawnAnonymous(.custom(behavior: behavior), props: props)
     }
 
