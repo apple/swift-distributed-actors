@@ -63,4 +63,15 @@ class ActorTestProbeTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(100))
         p.stop()
     }
+
+    func test_probe_shouldBeWatchable() throws {
+        let watchedProbe = testKit.spawnTestProbe(expecting: Never.self)
+        let watchingProbe = testKit.spawnTestProbe(expecting: Never.self)
+
+        watchingProbe.watch(watchedProbe.ref)
+
+        watchedProbe.stop()
+
+        try watchingProbe.expectTerminated(watchedProbe.ref)
+    }
 }
