@@ -43,7 +43,7 @@ class BackoffStrategyTests: XCTestCase {
     func test_exponentialBackoff_shouldIncreaseBackoffEachTime() {
         var backoff = Backoff.exponential(initialInterval: .milliseconds(100))
         let b1: TimeAmount = backoff.next()!
-        b1.shouldBeGreaterThanOrEqual(TimeAmount.milliseconds(80))
+        b1.shouldBeGreaterThanOrEqual(TimeAmount.milliseconds(75))
         b1.shouldBeLessThanOrEqual(TimeAmount.milliseconds(130))
 
         let b2: TimeAmount = backoff.next()!
