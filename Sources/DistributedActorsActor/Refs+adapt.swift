@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 extension ActorRef {
 
     /// Widens the given
@@ -27,9 +26,7 @@ extension ActorRef {
     }
 }
 
-// FIXME this is NOT a final solution, has subtle problems around watching and lifecycle (which MUST match the what is being proxied)
-// FIXME see more details in: https://github.com/apple/swift-distributed-actors/issues/40
-internal final class ActorRefAdapter<From, To>: ActorRef<From> {
+internal final class ActorRefAdapter<From, To>: ActorRef<From>, AdaptedActorRef {
     private let ref: ActorRef<To>
     private let converter: (From) -> To
 
@@ -45,4 +42,12 @@ internal final class ActorRefAdapter<From, To>: ActorRef<From> {
     override func tell(_ message: From) {
         ref.tell(converter(message))
     }
+
+    var _receivesSystemMessages: BoxedHashableAnyReceivesSystemMessages {
+        return ref._boxAnyReceivesSystemMessages()
+    }
+}
+
+internal protocol AdaptedActorRef {
+    var _receivesSystemMessages: BoxedHashableAnyReceivesSystemMessages { get }
 }
