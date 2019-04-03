@@ -112,7 +112,7 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 ///
 /// | Attempt | multiplier | randomFact |  (base) | (randomized range) |
 /// | ------- | ---------- | ---------- | ------- | ------------------ |
-/// |       1 |        1.5 |       0.25 |   100ms |   85ms ...  125ms  |
+/// |       1 |        1.5 |       0.25 |   100ms |   75ms ...  125ms  |
 /// |       2 |        1.5 |       0.25 |   150ms | ~127ms ... ~188ms  |
 /// |       3 |        1.5 |       0.25 |   225ms | ~191ms ... ~281ms  |
 /// |       4 |        1.5 |       0.25 |  ~338ms | ~287ms ... ~422ms  |
