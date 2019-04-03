@@ -89,8 +89,8 @@ open class RemotingTestBase: XCTestCase {
     }
 
     override open func tearDown() {
-        self._local?.terminate()
-        self._remote?.terminate()
+        self._local?.shutdown()
+        self._remote?.shutdown()
     }
 
     func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {

@@ -27,7 +27,7 @@ class DispatcherTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
         group.shutdownGracefully(queue: DispatchQueue.global(), { error in
             _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
         })

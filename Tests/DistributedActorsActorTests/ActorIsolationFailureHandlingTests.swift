@@ -23,7 +23,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     private enum SimpleTestError: Error {

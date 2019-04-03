@@ -25,7 +25,7 @@ class ActorSystemTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     func test_spawn_shouldThrowOnDuplicateName() throws {
@@ -69,7 +69,7 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        system2.terminate()
+        system2.shutdown()
 
         try p.expectTerminatedInAnyOrder([ref1, ref2])
 
@@ -91,7 +91,7 @@ class ActorSystemTests: XCTestCase {
 
         p.watch(selfSender)
 
-        system2.terminate()
+        system2.shutdown()
 
         try p.expectTerminated(selfSender)
     }

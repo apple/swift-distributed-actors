@@ -24,7 +24,7 @@ class TimersTests: XCTestCase {
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     func test_startSingleTimer_shouldSendSingleMessage() throws {

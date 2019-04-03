@@ -28,7 +28,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     let nodeAddress = UniqueNodeAddress(systemName: "2RemotingAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))

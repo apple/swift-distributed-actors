@@ -37,7 +37,7 @@ private func setUp(and postSetUp: () -> Void) {
     postSetUp()
 }
 private func tearDown() {
-    system.terminate()
+    system.shutdown()
     _system = nil
 }
 

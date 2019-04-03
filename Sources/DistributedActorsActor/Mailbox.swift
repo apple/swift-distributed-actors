@@ -238,7 +238,7 @@ final class Mailbox<Message> {
                     do {
                         try cell.restart(behavior: supervisionResultingBehavior)
                     } catch {
-                        cell.system.terminate() // FIXME nicer somehow, or hard exit() here?
+                        cell.system.shutdown() // FIXME nicer somehow, or hard exit() here?
                         fatalError("Double fault while restarting actor \(cell.path). Terminating.")
                     }
                     return .failureRestart

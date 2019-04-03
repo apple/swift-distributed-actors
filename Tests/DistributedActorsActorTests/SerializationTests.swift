@@ -31,7 +31,7 @@ class SerializationTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
@@ -216,10 +216,10 @@ class SerializationTests: XCTestCase {
             echo.tell("hi!") // is a built-in serializable message
             try p.expectMessage("echo:hi!")
         } catch {
-            s2.terminate()
+            s2.shutdown()
             throw error
         }
-        s2.terminate()
+        s2.shutdown()
     }
 
     func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
@@ -241,7 +241,7 @@ class SerializationTests: XCTestCase {
         senderOfNotSerializableMessage.tell("send it now!")
 
         try p.expectTerminated(senderOfNotSerializableMessage)
-        s2.terminate()
+        s2.shutdown()
     }
 }
 

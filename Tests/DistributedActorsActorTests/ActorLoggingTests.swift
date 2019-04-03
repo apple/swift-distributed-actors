@@ -32,7 +32,7 @@ class ActorLoggingTests: XCTestCase {
     )
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
 
     override func setUp() {

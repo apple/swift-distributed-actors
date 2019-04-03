@@ -25,7 +25,7 @@ class BehaviorTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
         try! eventLoopGroup.syncShutdownGracefully()
     }
 
