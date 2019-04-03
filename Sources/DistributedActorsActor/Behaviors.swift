@@ -23,7 +23,7 @@ internal enum _Behavior<Message> {
     case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
     // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
-    case custom(behavior: ActorBehavior<Message>)
+    case custom(behavior: ClassBehavior<Message>)
     case same
     indirect case stopped(postStop: Behavior<Message>?)
     indirect case signalHandling(handleMessage: Behavior<Message>,
@@ -114,12 +114,12 @@ extension Behavior {
         return Behavior(underlying: .ignore)
     }
 
-    /// Allows defining actors by extending the [[ActorBehavior]] class.
+    /// Allows defining actors by extending the [[ClassBehavior]] class.
     ///
     /// This allows for easier storage of mutable state, since one can utilize instance variables for this,
     /// rather than closing over state like it is typical in the more function heavy (class-less) style.
     // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
-    public static func custom(behavior: ActorBehavior<Message>) -> Behavior<Message> {
+    public static func custom(behavior: ClassBehavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .custom(behavior: behavior))
     }
 
@@ -222,9 +222,9 @@ public enum IllegalBehaviorError<M>: Error {
 
 
 /// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
-open class ActorBehavior<Message> {
+open class ClassBehavior<Message> {
     open func receive(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        return undefined(hint: "MUST override receive(context:message:) when extending ActorBehavior")
+        return undefined(hint: "MUST override receive(context:message:) when extending ClassBehavior")
     }
 
     open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
