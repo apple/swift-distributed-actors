@@ -47,15 +47,4 @@ public struct ActorSettings {
     public let maxBehaviorNestingDepth: Int = 128
 }
 
-public enum EnableDisableOption {
-    case enable 
-    case disable
-
-    var boolValue: Bool {
-        switch self {
-        case .enable: return true
-        case .disable: return false
-        }
-    }
-}
 
