@@ -115,8 +115,10 @@ extension TimeAmount: Comparable {
 }
 
 /// "Pretty" time amount rendering, useful for human readable durations in tests
-extension TimeAmount {
-    // TODO build our own rather than extending the NIO one
+extension TimeAmount: CustomStringConvertible {
+    public var description: String {
+        return "TimeAmount(\(self.prettyDescription), nanoseconds: \(self.nanoseconds))"
+    }
 
     public var prettyDescription: String {
         return self.prettyDescription()
@@ -125,18 +127,23 @@ extension TimeAmount {
     public func prettyDescription(precision: Int = 2) -> String {
         assert(precision > 0, "precision MUST BE > 0")
         var res = ""
+        var remainingNanos = self.nanoseconds
 
-        var remaining = self
+        if remainingNanos < 0 {
+            res += "-"
+            remainingNanos = remainingNanos * -1
+        }
+
         var i = 0
         while i < precision {
-            let unit = chooseUnit(remaining.nanoseconds)
+            let unit = chooseUnit(remainingNanos)
 
-            let rounded = Int(remaining.nanoseconds / unit.rawValue)
+            let rounded = Int(remainingNanos / unit.rawValue)
             if rounded > 0 {
                 res += i > 0 ? " " : ""
                 res += "\(rounded)\(unit.abbreviated)"
 
-                remaining = TimeAmount.nanoseconds(remaining.nanoseconds - unit.timeAmount(rounded).nanoseconds)
+                remainingNanos = remainingNanos - unit.timeAmount(rounded).nanoseconds
                 i += 1
             } else {
                 break
@@ -251,6 +258,22 @@ extension TimeAmount {
     }
 }
 
+public extension TimeAmount {
+    static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
+        return TimeAmount(lhs.nanoseconds * Value(rhs))
+    }
+    static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
+        return TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
+    }
+    static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
+        return TimeAmount(lhs.nanoseconds / Value(rhs))
+    }
+    static func / (lhs: TimeAmount, rhs: Double) -> TimeAmount {
+        return TimeAmount(Int64(Double(lhs.nanoseconds) / rhs))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Deadline
 
 // TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso
