@@ -50,6 +50,9 @@ public struct RemotingSettings {
         return UniqueNodeAddress(address: self.bindAddress, uid: self.uid)
     }
 
+    /// Backoff to be applied when attempting a new connection and handshake with a remote system.
+    public var handshakeBackoffStrategy: BackoffStrategy = Backoff.constant(.milliseconds(100))
+
     /// `NodeUID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
     public var uid: NodeUID
 

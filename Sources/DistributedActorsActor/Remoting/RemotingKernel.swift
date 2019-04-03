@@ -349,7 +349,7 @@ extension RemotingKernel {
 
         if let hsm = newState.incomingHandshake(offer: offer) {
             // handshake is allowed to proceed; TODO: semantics; what if we already have one in progress; we could return this rather than this if/else
-            log.info("Negotiating handshake...")
+            log.debug("Negotiating handshake...")
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 log.info("Accept association with \(offer.from)!")
@@ -397,7 +397,7 @@ extension RemotingKernel {
                     message: .command(.handshakeWith(remoteAddress)),
                     delay: delay
                 )
-            case .giveUpHandshake:
+            case .giveUpOnHandshake:
                 state.abortHandshake(with: remoteAddress)
             }
 
@@ -475,6 +475,9 @@ internal protocol ReadOnlyKernelState {
     var allocator: ByteBufferAllocator { get }
     var eventLoopGroup: EventLoopGroup { get } // TODO or expose the MultiThreaded one...?
 
+    /// Base backoff strategy to use in handshake retries // TODO: move it around somewhere so only handshake cares?
+    var backoffStrategy: BackoffStrategy { get }
+
     /// Unique address of the current node.
     var localAddress: UniqueNodeAddress { get }
     var settings: RemotingSettings { get }
@@ -492,6 +495,10 @@ internal struct KernelState: ReadOnlyKernelState {
 
     public let channel: Channel
     public let eventLoopGroup: EventLoopGroup
+
+    public var backoffStrategy: BackoffStrategy {
+        return settings.handshakeBackoffStrategy
+    }
 
     public let allocator: ByteBufferAllocator
 
