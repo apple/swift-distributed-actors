@@ -364,10 +364,10 @@ public extension ActorUID {
 // TODO reconsider calling paths addresses and this being authority etc...
 // TODO: "ActorAddress" could be the core concept... what would be the node addresses? 
 public struct NodeAddress: Hashable {
-    let `protocol`: String 
-    var systemName: String
-    var host: String
-    var port: Int
+    public let `protocol`: String
+    public var systemName: String
+    public var host: String
+    public var port: Int
 
     public init(`protocol`: String, systemName: String, host: String, port: Int) {
         precondition(port > 0, "port MUST be > 0")
