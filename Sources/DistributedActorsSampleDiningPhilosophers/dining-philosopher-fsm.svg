@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="341 163 550 398" width="550" height="398">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="341 107 551 454" width="551" height="454">
   <defs>
-    <filter id="Shadow" filterUnits="userSpaceOnUse" x="341" y="163">
+    <filter id="Shadow" filterUnits="userSpaceOnUse" x="341" y="107">
       <feGaussianBlur in="SourceAlpha" result="blur" stdDeviation="1.624648"/>
       <feFlood flood-color="#2f4d6f" flood-opacity=".75" result="flood"/>
       <feComposite in="flood" in2="blur" operator="in" result="color"/>
@@ -38,7 +38,7 @@
     </font-face>
   </defs>
   <metadata> Produced by OmniGraffle 7.10.2 
-    <dc:date>2019-04-03 10:23:07 +0000</dc:date>
+    <dc:date>2019-04-03 13:48:35 +0000</dc:date>
   </metadata>
   <g id="Canvas_1" fill-opacity="1" stroke="none" fill="none" stroke-dasharray="none" stroke-opacity="1">
     <title>Canvas 1</title>
@@ -88,29 +88,29 @@
         <path d="M 629.75386 525.44904 L 446 525.44904 L 446.4133 311.45096" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Graphic_31">
-        <rect x="518.96806" y="327.06535" width="91.776" height="30" fill="white"/>
-        <text transform="translate(523.96806 332.06535)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="8242296e-19" y="15">got left fork</tspan>
+        <rect x="506.66406" y="327.06535" width="116.384" height="30" fill="white"/>
+        <text transform="translate(511.66406 332.06535)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">picked left fork</tspan>
         </text>
       </g>
       <g id="Graphic_32">
-        <rect x="713.7091" y="326.01627" width="101.856" height="30" fill="white"/>
-        <text transform="translate(718.7091 331.01627)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">got right fork</tspan>
+        <rect x="701.4051" y="326.01627" width="126.464" height="30" fill="white"/>
+        <text transform="translate(706.4051 331.01627)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">picked right fork</tspan>
         </text>
       </g>
       <g id="Graphic_34">
-        <rect x="618.0579" y="434.34375" width="106.896" height="30" fill="white"/>
-        <text transform="translate(623.0579 439.34375)" fill="black">
-          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="3126388e-19" y="15">got other fork</tspan>
+        <rect x="594.3379" y="434.34375" width="154.336" height="30" fill="white"/>
+        <text transform="translate(599.3379 439.34375)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">picked up other fork</tspan>
         </text>
       </g>
       <g id="Line_36">
-        <path d="M 820.2618 397.5 L 890.4531 397.5 L 890.4531 178.54297 L 446.16406 178.54297 L 446.16406 220.6927" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <path d="M 820.2618 397.5 L 891 397.5 L 889.6797 122.8711 L 445.3906 122.8711 L 445.3906 220.6927" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Graphic_37">
-        <rect x="546.6414" y="163.54297" width="255.936" height="30" fill="white"/>
-        <text transform="translate(551.6414 168.54297)" fill="black">
+        <rect x="530.153" y="107.8711" width="255.936" height="30" fill="white"/>
+        <text transform="translate(535.153 112.8711)" fill="black">
           <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7531753e-19" y="15">other fork was busy, try again later</tspan>
         </text>
       </g>
@@ -124,6 +124,15 @@
         <rect x="512.2151" y="251.07183" width="76.976" height="30" fill="white"/>
         <text transform="translate(517.2151 256.07183)" fill="black">
           <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">(on timer)</tspan>
+        </text>
+      </g>
+      <g id="Line_40">
+        <path d="M 714.3058 266.07183 L 854.8984 266.07183 L 854.8984 159.625 L 455.29043 157.13588" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_41">
+        <rect x="590.0308" y="143.40132" width="136.832" height="30" fill="white"/>
+        <text transform="translate(595.0308 148.40132)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">either fork is busy</tspan>
         </text>
       </g>
     </g>
