@@ -30,7 +30,7 @@ class SupervisionTests: XCTestCase {
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.terminate()
+        system.shutdown()
     }
     enum FaultyError: Error {
         case boom(message: String)

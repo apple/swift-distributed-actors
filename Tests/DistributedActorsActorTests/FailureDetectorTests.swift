@@ -42,8 +42,8 @@ class FailureDetectorTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.local.terminate()
-        self.remote.terminate()
+        self.local.shutdown()
+        self.remote.shutdown()
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
