@@ -18,6 +18,9 @@ import XCTest
 // bear with me; we need testing facilities for the async things.
 // Yeah, I know about https://github.com/Quick/Nimble
 
+/// Used to determine if "pretty printing" errors should be done or not.
+/// Pretty errors help tremendously to quickly spot exact errors and track them back to source locations,
+/// e.g. on CI or when testing in command line and developing in a separate IDE or editor.
 fileprivate let isTty = isatty(fileno(stdin)) == 0
 
 public struct TestMatchers<T> {
@@ -118,6 +121,26 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     }
 }
 
+public extension TestMatchers where T: Comparable {
+
+    func toBeLessThan(_ expected: T) {
+        let msg = self.callSite.detailedMessage("\(self.it) is not less than \(expected)")
+        XCTAssertLessThan(self.it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+    func toBeLessThanOrEqual(_ expected: T) {
+        let msg = self.callSite.detailedMessage("\(self.it) is not less than or equal \(expected)")
+        XCTAssertLessThanOrEqual(self.it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+    func toBeGreaterThan(_ expected: T) {
+        let msg = self.callSite.detailedMessage("\(self.it) is not greater than \(expected)")
+        XCTAssertGreaterThan(self.it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+    func toBeGreaterThanOrEqual(_ expected: T) {
+        let msg = self.callSite.detailedMessage("\(self.it) is not greater than or equal \(expected)")
+        XCTAssertGreaterThanOrEqual(self.it, expected, msg, file: callSite.file, line: callSite.line)
+    }
+}
+
 public extension TestMatchers where T: Collection {
     /// Asserts that `it` is empty
     func toBeEmpty() {
@@ -206,6 +229,26 @@ extension Bool {
 
     public func shouldBeTrue(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         return self.shouldBe(true, file: file, line: line, column: column)
+    }
+}
+
+extension Comparable {
+    public func shouldBeLessThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toBeLessThan(expected)
+    }
+    public func shouldBeLessThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toBeLessThanOrEqual(expected)
+    }
+
+    public func shouldBeGreaterThan(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toBeGreaterThan(expected)
+    }
+    public func shouldBeGreaterThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toBeGreaterThanOrEqual(expected)
     }
 }
 
@@ -330,14 +373,21 @@ struct CallSiteInfo {
             .first!
 
         var s = ""
-        if isTty { s += "\n" } else { s += "\(explained)\n" }
-        s += "\(failingLine)\n"
-        s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
-        if isTty { s += ANSIColors.red.rawValue }
-        s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
-        s += "error: "
-        s += explained
-        if isTty { s += ANSIColors.reset.rawValue }
+
+        if isTty {
+            s += "\n"
+            s += "\(failingLine)\n"
+            s += "\(String(repeating: " ", count: Int(self.column) - 1 - self.appliedAssertionName.count))"
+            if isTty {
+                s += ANSIColors.red.rawValue
+            }
+            s += "^\(String(repeating: "~", count: self.appliedAssertionName.count - 1))\n"
+            s += "error: "
+            s += explained
+            s += ANSIColors.reset.rawValue
+        } else {
+            s += explained
+        }
         return s
     }
 

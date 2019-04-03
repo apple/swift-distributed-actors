@@ -78,7 +78,7 @@ internal struct HandshakeStateMachine {
 
         /// Give up shaking hands with the remote peer.
         /// Any state the handshake was keeping on the initiating node should be cleared in response to this directive.
-        case giveUpHandshake
+        case giveUpOnHandshake
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ internal struct HandshakeStateMachine {
     internal struct InitiatedState: CanMakeHandshakeOffer {
         private let kernelState: ReadOnlyKernelState
 
-        internal var attemptsSoFar: Int = 0
+        internal var backoff: BackoffStrategy
 
         internal var protocolVersion: Swift Distributed ActorsActor.Version {
             return self.kernelState.settings.protocolVersion
@@ -103,6 +103,7 @@ internal struct HandshakeStateMachine {
         init(kernelState: ReadOnlyKernelState, connectTo remoteAddress: NodeAddress) {
             precondition(kernelState.localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.kernelState = kernelState
+            self.backoff = self.kernelState.backoffStrategy // copy the base backoff strategy
             self.remoteAddress = remoteAddress
         }
     }
@@ -180,8 +181,7 @@ protocol CanMakeHandshakeOffer {
     var localAddress: UniqueNodeAddress { get }
     var remoteAddress: NodeAddress { get }
 
-    /// Counter of how many times attempts were made to connect to the remote node.
-    var attemptsSoFar: Int { get set }
+    var backoff: BackoffStrategy { set get }
 
     // State capabilities --------
 
@@ -203,20 +203,19 @@ extension CanMakeHandshakeOffer {
     }
 
     mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective {
-        self.attemptsSoFar += 1
-        if self.attemptsSoFar < 1000 { // TODO configurable
-            return .scheduleRetryHandshake(self.makeOffer(), delay: .milliseconds(100)) // TODO configurable
+        if let interval = self.backoff.next() {
+            return .scheduleRetryHandshake(self.makeOffer(), delay: interval)
         } else {
-            return .giveUpHandshake
+            return .giveUpOnHandshake
         }
     }
     mutating func onHandshakeError(_ error: Error) -> HandshakeStateMachine.RetryDirective {
-        self.attemptsSoFar += 1
-        guard self.attemptsSoFar < 1000 else { // TODO configurable
-            return .giveUpHandshake
+        switch self.backoff.next() {
+        case .some(let amount):
+            return .scheduleRetryHandshake(self.makeOffer(), delay: amount)
+        case .none:
+            return .giveUpOnHandshake
         }
-
-        return .scheduleRetryHandshake(self.makeOffer(), delay: .milliseconds(100)) // TODO configurable
     }
 }
 
