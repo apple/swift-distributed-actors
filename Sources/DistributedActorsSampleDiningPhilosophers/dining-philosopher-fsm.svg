@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="341 163 550 398" width="550" height="398">
+  <defs>
+    <filter id="Shadow" filterUnits="userSpaceOnUse" x="341" y="163">
+      <feGaussianBlur in="SourceAlpha" result="blur" stdDeviation="1.624648"/>
+      <feFlood flood-color="#2f4d6f" flood-opacity=".75" result="flood"/>
+      <feComposite in="flood" in2="blur" operator="in" result="color"/>
+      <feMerge>
+        <feMergeNode in="color"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <font-face font-family="Helvetica" font-size="19" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="522.9492" cap-height="717.28516" ascent="770.0195" descent="-229.98047" font-weight="400">
+      <font-face-src>
+        <font-face-name name="Helvetica"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica" font-size="18" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="522.9492" cap-height="717.28516" ascent="770.0195" descent="-229.98047" font-weight="400">
+      <font-face-src>
+        <font-face-name name="Helvetica"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica" font-size="16" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="522.9492" cap-height="717.28516" ascent="770.0195" descent="-229.98047" font-weight="400">
+      <font-face-src>
+        <font-face-name name="Helvetica"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <metadata> Produced by OmniGraffle 7.10.2 
+    <dc:date>2019-04-03 10:23:07 +0000</dc:date>
+  </metadata>
+  <g id="Canvas_1" fill-opacity="1" stroke="none" fill="none" stroke-dasharray="none" stroke-opacity="1">
+    <title>Canvas 1</title>
+    <g id="Canvas_1: Layer 1">
+      <title>Layer 1</title>
+      <g id="Graphic_3" filter="url(#Shadow)">
+        <ellipse cx="446.43243" cy="266.07183" rx="53.4325123002963" ry="35.4791881673967" fill="white"/>
+        <ellipse cx="446.43243" cy="266.07183" rx="53.4325123002963" ry="35.4791881673967" stroke="#306174" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(408.6865 254.57183)" fill="#636363">
+          <tspan font-family="Helvetica" font-size="19" font-weight="400" fill="#636363" x="5.001557" y="19">thinking</tspan>
+        </text>
+      </g>
+      <g id="Graphic_5" filter="url(#Shadow)">
+        <ellipse cx="660.8734" cy="266.07183" rx="53.4325123002961" ry="35.4791881673967" fill="white"/>
+        <ellipse cx="660.8734" cy="266.07183" rx="53.4325123002961" ry="35.4791881673967" stroke="#306174" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(623.1274 255.07183)" fill="#636363">
+          <tspan font-family="Helvetica" font-size="18" font-weight="400" fill="#636363" x="10.227387" y="18">hungry</tspan>
+        </text>
+      </g>
+      <g id="Graphic_6" filter="url(#Shadow)">
+        <ellipse cx="671.5059" cy="397.5" rx="148.756114244025" ry="26.5000423444002" fill="white"/>
+        <ellipse cx="671.5059" cy="397.5" rx="148.756114244025" ry="26.5000423444002" stroke="#306174" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(557.5012 388)" fill="#636363">
+          <tspan font-family="Helvetica" font-size="16" font-weight="400" fill="#636363" x="26.106264" y="15">hungryAwaitingFinalFork</tspan>
+        </text>
+      </g>
+      <g id="Graphic_7" filter="url(#Shadow)">
+        <ellipse cx="671.5059" cy="525.44904" rx="41.7520667156003" ry="32.0000511328607" fill="white"/>
+        <ellipse cx="671.5059" cy="525.44904" rx="41.7520667156003" ry="32.0000511328607" stroke="#306174" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <text transform="translate(643.1043 514.44904)" fill="#636363">
+          <tspan font-family="Helvetica" font-size="18" font-weight="400" fill="#636363" x="3.8801156" y="18">eating</tspan>
+        </text>
+      </g>
+      <g id="Line_9">
+        <line x1="499.8649" y1="266.07183" x2="597.5409" y2="266.07183" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_24">
+        <line x1="607.44095" y1="278" x2="545.68757" y2="370.9027" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_25">
+        <line x1="714.3058" y1="266.07183" x2="785.2704" y2="371.73965" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_27">
+        <line x1="671.5059" y1="424" x2="671.5059" y2="483.549" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_28">
+        <path d="M 629.75386 525.44904 L 446 525.44904 L 446.4133 311.45096" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_31">
+        <rect x="518.96806" y="327.06535" width="91.776" height="30" fill="white"/>
+        <text transform="translate(523.96806 332.06535)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="8242296e-19" y="15">got left fork</tspan>
+        </text>
+      </g>
+      <g id="Graphic_32">
+        <rect x="713.7091" y="326.01627" width="101.856" height="30" fill="white"/>
+        <text transform="translate(718.7091 331.01627)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">got right fork</tspan>
+        </text>
+      </g>
+      <g id="Graphic_34">
+        <rect x="618.0579" y="434.34375" width="106.896" height="30" fill="white"/>
+        <text transform="translate(623.0579 439.34375)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="3126388e-19" y="15">got other fork</tspan>
+        </text>
+      </g>
+      <g id="Line_36">
+        <path d="M 820.2618 397.5 L 890.4531 397.5 L 890.4531 178.54297 L 446.16406 178.54297 L 446.16406 220.6927" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_37">
+        <rect x="546.6414" y="163.54297" width="255.936" height="30" fill="white"/>
+        <text transform="translate(551.6414 168.54297)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7531753e-19" y="15">other fork was busy, try again later</tspan>
+        </text>
+      </g>
+      <g id="Graphic_38">
+        <rect x="341.8992" y="510.44904" width="261.936" height="30" fill="white"/>
+        <text transform="translate(346.8992 515.44904)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="7531753e-19" y="15">once done eating, become thinking</tspan>
+        </text>
+      </g>
+      <g id="Graphic_39">
+        <rect x="512.2151" y="251.07183" width="76.976" height="30" fill="white"/>
+        <text transform="translate(517.2151 256.07183)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">(on timer)</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

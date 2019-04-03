@@ -21,7 +21,7 @@ public final class Fork {
 
     public enum Messages {
         /// A Philosopher may attempt to take a fork from the table by sending a take message to it
-        case take(by: Philosopher.Ref)
+        case take(by: ActorRef<Fork.Replies>)
         /// A
         case putBack(by: Philosopher.Ref) // yet only intended to receive the .forkReply TODO that's why we need adapters
     }
@@ -35,17 +35,14 @@ public final class Fork {
     }
 
     public static var behavior: SelfBehavior {
-        return .setup { context in
-            return available(context)
-        }
+        return available()
     }
 
-    private static func available(_ context: ActorContext<Fork.Messages>) -> SelfBehavior {
-        return .receiveMessage { msg in
+    private static func available() -> SelfBehavior {
+        return .receive { (context: ActorContext<Messages>, msg: Fork.Messages) in
             switch msg {
             case let .take(who):
-                // who.tell(.pickedUpBy(context.myself) // TODO: need adapters such that it wraps in the below automatically
-                who.tell(.forkReply(.pickedUp(fork: context.myself)))
+                 who.tell(.pickedUp(fork: context.myself))
                 return taken(by: who, context)
 
             case let .putBack(who):
@@ -54,20 +51,20 @@ public final class Fork {
         }
     }
 
-    private static func taken(by owner: Philosopher.Ref, _ context: ActorContext<Fork.Messages>) -> SelfBehavior {
+    private static func taken(by owner: ActorRef<Fork.Replies>, _ context: ActorContext<Fork.Messages>) -> SelfBehavior {
         context.log.info("Taken by \(owner)")
         return .receiveMessage { msg in
             switch msg {
-            case .putBack(owner):
-                context.log.info("\(owner) is putting back the fork \(context.myself)...")
-                return available(context)
+            case .putBack(let who) where owner.path == owner.path:
+                context.log.info("\(who) is putting back the fork \(context.myself)...")
+                return available()
 
             case let .putBack(who):
                 fatalError("\(who) attempted to put back \(context.myself), yet it is owned by \(owner)! That's wrong.")
 
             case let .take(who):
                 context.log.info("\(who) attempted to take [\(context.myself)], yet already taken by \(owner)...")
-                who.tell(.forkReply(.busy(fork: context.myself))) // TODO: need the adapters
+                who.tell(.busy(fork: context.myself))
                 return .ignore
             }
         }

@@ -15,18 +15,13 @@
 import Swift Distributed ActorsActor
 
 public class Philosopher {
+    public typealias Ref = ActorRef<Message>
 
-    // TODO: not sure on this pattern yet, makes things shorter; makes the "Philosopher.Ref" nice
-    public typealias Ref = ActorRef<Messages>
-    public typealias SelfBehavior = Behavior<Messages> // would be nice to invent a name for it
-
-    // TODO: not sure on this... binds things nicely "messages of Philosopher"
-    // TODO: however the <Messages> looks bad; so Philosopher.Messages; which is almost same as top-level PhilosopherMessages hm...
-    public enum Messages {
+    public enum Message {
         case think
         case eat
         /* --- internal protocol --- */
-        case forkReply(_ reply: Fork.Replies) // a mini "adapter"
+        case forkReply(_ reply: Fork.Replies)
     }
 
     private let left: Fork.Ref
@@ -37,12 +32,12 @@ public class Philosopher {
         self.right = right
     }
 
-    public var start: Behavior<Messages> {
+    public var start: Behavior<Message> {
         return self.thinking
     }
 
     /// Initial and public state from which a Philosopher starts its life
-    private var thinking: SelfBehavior {
+    var thinking: Behavior<Philosopher.Message> {
         return .setup { context in
             context.log.info("I'm thinking...")
             // remember to eat after some time!
@@ -52,8 +47,11 @@ public class Philosopher {
                 switch msg {
                 case .eat:
                     context.log.info("I'm becoming hungry, trying to grab forks...")
-                    self.left.tell(Fork.Messages.take(by: context.myself))
-                    self.right.tell(Fork.Messages.take(by: context.myself))
+                    let myself: ActorRef<Fork.Replies> = context.myself.adapt {
+                        Message.forkReply($0)
+                    }
+                    self.left.tell(Fork.Messages.take(by: myself))
+                    self.right.tell(Fork.Messages.take(by: myself))
                     return self.hungry
 
                 case .think:
@@ -68,19 +66,14 @@ public class Philosopher {
     }
 
     /// A hungry philosopher is waiting to obtain both forks before it can start eating
-    private var hungry: SelfBehavior {
-        return .receive { (context, msg) in
+    private var hungry: Behavior<Message> {
+        return .receive { context, msg in
             switch msg {
             case let .forkReply(.pickedUp(fork)):
                 let other: Fork.Ref = (fork == self.left) ? self.right : self.left
-
-                // context.log.info("Picked up \(fork), will now wait for the other one: \(other)")
                 return self.hungryAwaitingFinalFork(inHand: fork, pending: other)
 
             case .forkReply(.busy):
-                // let side = self.forkSideName(fork)
-                // context.log.info("The \(fork) on my [\(side)] is busy, I'll think about obtaining it...")
-
                 // we know that we were refused one fork, so regardless of the 2nd one being available or not
                 // we will not be able to become eating. In order to not accidentally keep holding the 2nd fork,
                 // in case it would reply with `pickedUp` we want to put it down (sadly), as we will try again some time later.
@@ -106,7 +99,7 @@ public class Philosopher {
         }
     }
 
-    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref) -> SelfBehavior {
+    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref) -> Behavior<Message> {
         return .receive { (context, msg) in
             switch msg {
             case .forkReply(.pickedUp(pending)):
@@ -131,7 +124,7 @@ public class Philosopher {
 
     /// A state reached by successfully obtaining two forks and becoming "eating".
     /// Once the Philosopher is done eating, it will putBack both forks and become thinking again.
-    private var eating: SelfBehavior {
+    private var eating: Behavior<Message> {
         return .setup { context in
             // here we act as if we "think and then eat"
             context.log.info("Setup eating, I have: \(self.left) and \(self.right)")
