@@ -47,4 +47,20 @@ class ActorRefAdapterTests: XCTestCase {
         }
     }
 
+    func test_adaptedRef_shouldBeWatchable() throws {
+        let probe = testKit.spawnTestProbe(expecting: Never.self)
+
+        let ref: ActorRef<Int> = try system.spawnAnonymous(.receiveMessage { _ in
+                return .stopped
+            })
+
+        let adaptedRef: ActorRef<String> = ref.adapt { _ in 0 }
+
+        probe.watch(adaptedRef)
+
+        adaptedRef.tell("test")
+
+        try probe.expectTerminated(adaptedRef)
+    }
+
 }
