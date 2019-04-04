@@ -130,7 +130,7 @@ public class Philosopher {
     private var eating: Behavior<Message> {
         return .setup { context in
             // here we act as if we "think and then eat"
-            context.log.info("Setup eating, I have: \(self.left) and \(self.right)")
+            context.log.info("Setup eating, I have: \(uniquePath: self.left) and \(uniquePath: self.right)")
 
             // simulate that eating takes time; once done, notify myself to become thinking again
             context.timers.startSingleTimer(key: "think", message: .think, delay: .milliseconds(200))
