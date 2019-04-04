@@ -337,10 +337,23 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.deadRef
         }
         switch selector.value {
-        case "system": return self.systemProvider._resolve(context: context)
-        case "user":   return self.userProvider._resolve(context: context) // TODO not in love with the keep path, maybe always keep it
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "system": 
+            let resolved = self.systemProvider._resolve(context: context)
+            return resolved
+        case "user":   
+            let resolved = self.userProvider._resolve(context: context)
+            return resolved
+        default:
+            fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
+    }
+
+    // TODO: REMOVE THIS as it is a workaround for lack of Receptionist really and used in testing / demo only
+    public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
+        var path = ref.path
+        path.address = remote.settings.remoting.uniqueBindAddress
+        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
+        return self._resolve(context: context)
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
