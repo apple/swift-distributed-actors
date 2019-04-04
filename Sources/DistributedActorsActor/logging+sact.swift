@@ -32,10 +32,11 @@ public class LoggingContext {
         }
     }
 
-    public init(identifier: String, dispatcher: @escaping () -> String) {
+    public init(identifier: String, dispatcher: (() -> String)?) {
         self.identifier = identifier
-        // if lazy was part of the proposal, we can do it with one map:
-        self._storage["dispatcher"] = .lazyString(dispatcher)
+        if let d = dispatcher {
+            self._storage["dispatcher"] = .lazyString(d)
+        }
     }
 
     @inlinable

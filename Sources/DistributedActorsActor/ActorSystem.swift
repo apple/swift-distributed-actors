@@ -94,7 +94,11 @@ public final class ActorSystem {
         // dead letters init
         // TODO actually attach dead letters to a parent?
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
-        let deadLog = Logger(label: deadLettersPath.description)
+        let deadLog = Logger(label: "/system/deadLetters", factory: {
+            let context = LoggingContext(identifier: $0, dispatcher: nil)
+            context[metadataKey: "actorSystemAddress"] = .some(Logger.MetadataValue.stringConvertible(settings.remoting.uniqueBindAddress))
+            return ActorOriginLogHandler(context)
+        })
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
