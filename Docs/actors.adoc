@@ -144,7 +144,7 @@ To define a simple behavior that will extend a `class` you can:
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=classOriented_behavior]
 ----
-<1> Extend the `ActorBehavior` base class #TODO: Maybe we call it ClassBehavior, so it's the class-oriented one? Want to avoid this being the only place with Actor in name of behavior#
+<1> Extend the `ClassBehavior` base class #TODO: Maybe we call it ClassBehavior, so it's the class-oriented one? Want to avoid this being the only place with Actor in name of behavior#
 <2> Implement the `receive` function; it will be invoked using the actors' context and arriving message for every message sent to this actor
 <3> Do something with the message, e.g. print it
 <4> Return the "next behavior" which this actor should _become_. Our actor is simple and stable in its behavior, thus it can return the special `Behavior.same`.
