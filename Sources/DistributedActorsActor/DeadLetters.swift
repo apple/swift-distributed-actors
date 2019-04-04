@@ -38,10 +38,6 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
         return _path
     }
 
-    var addressableRef: AnyAddressableActorRef {
-        return DeadLettersAnyAddressableActorRef(path: self._path)
-    }
-
     override func tell(_ deadLetter: DeadLetter) {
         if let systemMessage = deadLetter.message as? SystemMessage {
             let handled = specialHandle(systemMessage)
@@ -73,17 +69,4 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter> {
         }
     }
 
-}
-
-// TODO this is a hack, I think... would be nicer for deadLetters to be real
-internal struct DeadLettersAnyAddressableActorRef: AnyAddressableActorRef {
-    let path: UniqueActorPath
-
-    init(path: UniqueActorPath) {
-        self.path = path
-    }
-
-    func asHashable() -> AnyHashable {
-        fatalError("asHashable() has not been implemented")
-    }
 }
