@@ -250,7 +250,7 @@ class ParentChildActorTests: XCTestCase {
         parent.tell("stop")
 
         let erroredStr = try p.expectMessage()
-        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: ActorRef<String>(/user/testProbe")
+        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: ActorRef<Swift.String>(/user/testProbe")
         try p.expectTerminated(parent)
     }
 
@@ -272,7 +272,7 @@ class ParentChildActorTests: XCTestCase {
         parent.tell("stop")
 
         let erroredStr = try p.expectMessage()
-        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: ActorRef<String>(/user/parent-5")
+        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: ActorRef<Swift.String>(/user/parent-5")
         try p.expectTerminated(parent)
     }
 
