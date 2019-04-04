@@ -19,3 +19,20 @@ internal extension String.StringInterpolation {
         self.appendLiteral("\(pad)\(s)")
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Ref custom interpolations
+
+public extension String.StringInterpolation {
+    mutating func appendInterpolation<Message>(name ref: ActorRef<Message>) {
+        self.appendLiteral("[\(ref.path.name)]")
+    }
+
+    mutating func appendInterpolation<Message>(uniquePath ref: ActorRef<Message>) {
+        self.appendLiteral("[\(ref.path)]") // TODO make those address
+    }
+
+    mutating func appendInterpolation<Message>(path ref: ActorRef<Message>) {
+        self.appendLiteral("[\(ref.path.path)]")
+    }
+}

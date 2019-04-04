@@ -34,8 +34,8 @@ public class LoggingContext {
 
     public init(identifier: String, dispatcher: (() -> String)?) {
         self.identifier = identifier
-        if let d = dispatcher {
-            self._storage["dispatcher"] = .lazyString(d)
+        if let makeDispatcherName = dispatcher {
+            self._storage["dispatcher"] = .lazyString(makeDispatcherName)
         }
     }
 
