@@ -165,7 +165,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     }
 
     func sendToDeadLetters<M>(message: M) {
-        system.deadLetters.tell(DeadLetter(message)) // TODO metadata
+        self.system.deadLetters.tell(DeadLetter(message, recipient: self.myself.path)) // TODO metadata
     }
 
     func dropMessage(_ message: Message) {
