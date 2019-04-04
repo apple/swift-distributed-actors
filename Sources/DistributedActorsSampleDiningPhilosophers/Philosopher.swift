@@ -17,7 +17,7 @@ import Swift Distributed ActorsActor
 public class Philosopher {
     public typealias Ref = ActorRef<Message>
 
-    public enum Message {
+    public enum Message: Codable { // Codable only necessary for running distributed
         case think
         case eat
         /* --- internal protocol --- */
@@ -32,33 +32,36 @@ public class Philosopher {
         self.right = right
     }
 
-    public var start: Behavior<Message> {
+    public var behavior: Behavior<Message> {
         return self.thinking
     }
 
     /// Initial and public state from which a Philosopher starts its life
-    var thinking: Behavior<Philosopher.Message> {
+    private var thinking: Behavior<Philosopher.Message> {
         return .setup { context in
             context.log.info("I'm thinking...")
             // remember to eat after some time!
-            context.timers.startSingleTimer(key: "eat", message: .eat, delay: .milliseconds(500))
+            context.timers.startSingleTimer(key: "eat", message: .eat, delay: .seconds(1))
 
             return .receiveMessage { msg in
                 switch msg {
                 case .eat:
                     context.log.info("I'm becoming hungry, trying to grab forks...")
-                    let myself: ActorRef<Fork.Replies> = context.myself.adapt {
-                        Message.forkReply($0)
-                    }
-                    self.left.tell(Fork.Messages.take(by: myself))
-                    self.right.tell(Fork.Messages.take(by: myself))
+
+                    // TODO: once adapters work with remote / resolve this can be changed
+                    // let myself: ActorRef<Fork.Replies> = context.myself.adapt {
+                    //     Message.forkReply($0)
+                    // }
+                    // self.left.tell(Fork.Messages.take(by: myself))
+                    // self.right.tell(Fork.Messages.take(by: myself))
+                    self.left.tell(Fork.Messages.take(by: context.myself))
+                    self.right.tell(Fork.Messages.take(by: context.myself))
                     return self.hungry
 
                 case .think:
                     fatalError("Already thinking")
 
                 case .forkReply:
-                    // ignore
                     return .ignore
                 }
             }
@@ -130,7 +133,7 @@ public class Philosopher {
             context.log.info("Setup eating, I have: \(self.left) and \(self.right)")
 
             // simulate that eating takes time; once done, notify myself to become thinking again
-            context.timers.startSingleTimer(key: "think", message: .think, delay: .milliseconds(100))
+            context.timers.startSingleTimer(key: "think", message: .think, delay: .milliseconds(200))
 
             return .receiveMessage { // TODO: `receiveExactly` would be nice here
                 switch $0 {
