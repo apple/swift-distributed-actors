@@ -75,9 +75,6 @@ struct DistributedDiningPhilosophers {
         let onA_fork1: ActorRef<Fork.Messages> = systemA._resolveKnownRemote(fork1, onRemoteSystem: systemA)
         let onA_fork5: ActorRef<Fork.Messages> = systemA._resolveKnownRemote(fork5, onRemoteSystem: systemC)
 
-        systemA.log.info("'local'  fork5 = \(fork5)")
-        systemA.log.info("'remote' fork5 = \(onA_fork5)")
-
         let onB_fork1: ActorRef<Fork.Messages> = systemB._resolveKnownRemote(fork1, onRemoteSystem: systemA)
         let onB_fork2: ActorRef<Fork.Messages> = systemB._resolveKnownRemote(fork2, onRemoteSystem: systemB)
         //  onB_fork2 is used twice

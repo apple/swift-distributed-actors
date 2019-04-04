@@ -299,7 +299,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
         self.setLoggerMetadata(context)
 
         let event = self.unwrapInboundIn(data)
-        log.info("[dump-\(self.role)] Received: \(event.formatHexDump)")
+        self.log.debug("[dump-\(self.role)] Received: \(event.formatHexDump)")
         context.fireChannelRead(data)
     }
 
