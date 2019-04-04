@@ -96,7 +96,7 @@ public final class ActorSystem {
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
         let deadLog = Logger(label: "/system/deadLetters", factory: {
             let context = LoggingContext(identifier: $0, dispatcher: nil)
-            context[metadataKey: "actorSystemAddress"] = .some(Logger.MetadataValue.stringConvertible(settings.remoting.uniqueBindAddress))
+            context[metadataKey: "actorSystemAddress"] = .stringConvertible(settings.remoting.uniqueBindAddress)
             return ActorOriginLogHandler(context)
         })
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
@@ -139,7 +139,7 @@ public final class ActorSystem {
         // serialization
         let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
 
-        self.serialization = Serialization(settings: settings.serialization, deadLetters: deadLetters, traversable: traversable)
+        self.serialization = Serialization(settings: settings, deadLetters: deadLetters, traversable: traversable)
 
         do {
             if settings.remoting.enabled {

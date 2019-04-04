@@ -15,6 +15,7 @@
 import NIO
 import NIOFoundationCompat
 import CSwiftDistributedActorsMailbox
+import Logging
 
 import Foundation // for Codable
 
@@ -36,6 +37,8 @@ public struct Serialization {
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
 
+    private let log: Logger
+
     private let deadLetters: ActorRef<DeadLetter>
 
     private let allocator = ByteBufferAllocator()
@@ -44,12 +47,22 @@ public struct Serialization {
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
 
-    internal init(settings: SerializationSettings, deadLetters: ActorRef<DeadLetter>, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
+    internal init(settings systemSettings: ActorSystemSettings, deadLetters: ActorRef<DeadLetter>, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
+        let settings = systemSettings.serialization
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
 
+        var log = Logger(label: "serialization", factory: { id in
+            let context = LoggingContext(identifier: id, dispatcher: nil)
+            return ActorOriginLogHandler(context)
+        })
+        // TODO: Dry up setting this metadata
+        log[metadataKey: "actorSystemAddress"] = .stringConvertible(systemSettings.remoting.uniqueBindAddress)
+        self.log = log
+
         self.deadLetters = deadLetters
         let context = ActorSerializationContext(
+            log: log,
             serializationAddress: settings.serializationAddress,
             deadLetters: deadLetters,
             traversable: traversable
@@ -267,16 +280,20 @@ public extension CodingUserInfoKey {
 public struct ActorSerializationContext {
     typealias MetaTypeKey = Serialization.MetaTypeKey
 
+    public let log: Logger
     public let deadLetters: ActorRef<DeadLetter>
+
     private let traversable: _ActorTreeTraversable
 
     /// Address to be included in serialized actor refs if they contain no address yet
     /// `nil` if remoting is not enabled, thus there is no need to serialize with address.
     public let serializationAddress: UniqueNodeAddress?
 
-    internal init(serializationAddress: UniqueNodeAddress?,
+    internal init(log: Logger,
+                  serializationAddress: UniqueNodeAddress?,
                   deadLetters: ActorRef<DeadLetter>,
                   traversable: _ActorTreeTraversable) {
+        self.log = log
         self.serializationAddress = serializationAddress
         self.deadLetters = deadLetters
         self.traversable = traversable
