@@ -88,10 +88,14 @@ public class ActorRef<Message>: ReceivesMessages, AnyReceivesMessages {
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "ActorRef<\(Message.self)>(\(path))"
+        // we do this in order to print `Fork.Messages` rather than `Swift Distributed ActorsSampleDiningPhilosophers.Fork.Messages`
+        // or the `Messages` which a simple "\(Message.self)" would yield.
+        let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
+        return "ActorRef<\(prettyTypeName)>(\(self.path))"
     }
     public var debugDescription: String {
-        return "ActorRef<\(Message.self)>(\(path))"
+        let fullyQualifiedName = String(reflecting: Message.self)
+        return "ActorRef<\(fullyQualifiedName)>(\(self.path))"
     }
 }
 
