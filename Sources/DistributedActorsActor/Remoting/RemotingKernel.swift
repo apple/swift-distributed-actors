@@ -105,7 +105,6 @@ internal class RemotingKernel {
 
     /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
     internal func start(system: ActorSystem) throws -> RemotingKernel.Ref {
-        pprint("starting....")
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
         let failureDetector = system.settings.remoting.makeFailureDetector(system: system)
         self._failureDetectorRef = try system._spawnSystemActor(
