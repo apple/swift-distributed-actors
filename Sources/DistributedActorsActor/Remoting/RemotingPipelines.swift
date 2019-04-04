@@ -98,7 +98,15 @@ private final class HandshakeHandler: ChannelInboundHandler, RemovableChannelHan
     // and add the serialization related handlers
     private func upgradePipeline(context: ChannelHandlerContext) {
         context.pipeline.removeHandler(self, promise: nil)
-        _ = context.channel.pipeline.addHandler(EnvelopeHandler(), name: "envelope handler", position: .last)
+        var envelopeHandlerLog = Logger(label: "envelopeHandler", factory: {
+            let context = LoggingContext(identifier: $0, dispatcher: nil)
+            context[metadataKey: "actorSystemAddress"] = .stringConvertible(self.system.settings.remoting.uniqueBindAddress)
+            return ActorOriginLogHandler(context)
+        })
+
+        envelopeHandlerLog[metadataKey: "actorSystemAddress"] = .stringConvertible(self.system.settings.remoting.uniqueBindAddress)
+
+        _ = context.channel.pipeline.addHandler(EnvelopeHandler(log: envelopeHandlerLog), name: "envelope handler", position: .last)
         _ = context.channel.pipeline.addHandler(SerializationHandler(system: self.system, serializationPool: self.serializationPool), name: "serialization handler", position: .last)
     }
 }
@@ -157,6 +165,12 @@ private final class EnvelopeHandler: ChannelDuplexHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = Wire.Envelope
 
+    let log: Logger
+
+    init(log: Logger) {
+        self.log = log
+    }
+
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope = self.unwrapOutboundIn(data)
 
@@ -189,12 +203,15 @@ private final class SerializationHandler: ChannelDuplexHandler {
     typealias InboundIn = Wire.Envelope
     typealias InboundOut = Never
 
-    let serializationPool: SerializationPool
+    let log: Logger
+
     let system: ActorSystem
+    let serializationPool: SerializationPool
 
     init(system: ActorSystem, serializationPool: SerializationPool) {
-        self.serializationPool = serializationPool
+        self.log = ActorLogger.make(system: system, identifier: "serialization-handler")
         self.system = system
+        self.serializationPool = serializationPool
     }
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -211,7 +228,7 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 let wireEnvelope = Wire.Envelope(recipient: envelope.recipient, serializerId: serializerId, payload: bytes)
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
             case .failure(let error):
-                print("\(error)") // FIXME: Use logger
+                self.log.error("Error: \(error)")
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
             }
@@ -230,10 +247,11 @@ private final class SerializationHandler: ChannelDuplexHandler {
             case .success(let message):
                 // TODO: Should this be in a separate stage?
                 let envelope = SerializationEnvelope(message: message, recipient: wireEnvelope.recipient)
-                let ref = self.system._resolveUntyped(context: ResolveContext(path: envelope.recipient, deadLetters: self.system.deadLetters))
+                let resolveContext = ResolveContext<Any>(path: envelope.recipient, deadLetters: self.system.deadLetters)
+                let ref = self.system._resolveUntyped(context: resolveContext)
                 ref._tellUnsafe(message: envelope.message)
             case .failure(let error):
-                print("\(error)") // FIXME: Use logger
+                self.log.error("Error: \(error)")
             }
         }
     }
