@@ -617,7 +617,22 @@ extension ActorSystem {
         return self._remoting?.ref ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self)
     }
 
-    // TODO MAYBE 
+    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
+    public func join(address: NodeAddress) {
+        self.remoting.tell(.command(.handshakeWith(address)))
+    }
+
+    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
+    public func _dumpAssociations() {
+        let ref: ActorRef<[UniqueNodeAddress]> = try! self.spawnAnonymous(.receive { context, nodes in
+            let stringlyNodes = nodes.map({ $0.description }).joined(separator: "\n     ")
+            context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
+            return .stopped
+        })
+        self.remoting.tell(.query(.associatedNodes(ref)))
+    }
+
+    // TODO MAYBE
 //    func join(_ nodeAddress: Wire.NodeAddress) {
 //        guard let kernel = self.RemotingKernel else {
 //            fatalError("NOPE. no networking possible if you yourself have no address") // FIXME
