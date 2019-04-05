@@ -316,7 +316,7 @@ public struct ActorSerializationContext {
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
     internal func resolveReceivesSystemMessages(path: UniqueActorPath) -> AnyReceivesSystemMessages {
         let context = ResolveContext<Any>(path: path, deadLetters: self.deadLetters)
-        let resolved = self.traversable._resolveReceivesSystemMessages(context: context)
+        let resolved = self.traversable._resolveUntyped(context: context)
         return resolved
     }
 

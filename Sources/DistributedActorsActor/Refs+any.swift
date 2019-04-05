@@ -51,7 +51,7 @@ extension AnyAddressableActorRef {
 }
 
 @usableFromInline
-internal protocol AnyReceivesMessages {
+internal protocol AnyReceivesMessages: AnyReceivesSystemMessages {
     func _tellUnsafe(message: Any)
 }
 
