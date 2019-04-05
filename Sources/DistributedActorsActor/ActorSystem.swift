@@ -366,14 +366,4 @@ extension ActorSystem: _ActorTreeTraversable {
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
-    func _resolveReceivesSystemMessages(context: ResolveContext<Any>) -> AnyReceivesSystemMessages {
-        guard let selector = context.selectorSegments.first else {
-            return self.deadLetters as! DeadLettersActorRef
-        }
-        switch selector.value {
-        case "system": return self.systemProvider._resolveReceivesSystemMessages(context: context)
-        case "user":   return self.userProvider._resolveReceivesSystemMessages(context: context) // TODO not in love with the keep path, maybe always keep it
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
-        }
-    }
 }

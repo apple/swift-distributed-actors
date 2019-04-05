@@ -84,6 +84,11 @@ public class ActorRef<Message>: ReceivesMessages, AnyReceivesMessages {
 
         self.tell(_message)
     }
+
+    @usableFromInline
+    internal func sendSystemMessage(_ message: SystemMessage) {
+        return undefined()
+    }
 }
 
 extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
@@ -155,7 +160,7 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSyste
     }
 
     @usableFromInline
-    internal func sendSystemMessage(_ message: SystemMessage) {
+    override internal func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Mailbox(self.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message)
     }
@@ -368,18 +373,6 @@ extension Guardian: _ActorTreeTraversable {
             return self.children._resolveUntyped(context: context.deeper)
         } else {
             return context.deadRef
-        }
-    }
-
-    func _resolveReceivesSystemMessages(context: ResolveContext<Any>) -> AnyReceivesSystemMessages {
-        guard let selector = context.selectorSegments.first else {
-            fatalError("Expected selector in guardian._resolve()!")
-        }
-
-        if self.path.name == selector.value {
-            return self.children._resolveReceivesSystemMessages(context: context.deeper)
-        } else {
-            return context._deadRef
         }
     }
 }

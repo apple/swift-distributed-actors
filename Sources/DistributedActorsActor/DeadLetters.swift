@@ -53,7 +53,7 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMe
         }
     }
 
-    func sendSystemMessage(_ message: SystemMessage) {
+    override func sendSystemMessage(_ message: SystemMessage) {
         self.tell(DeadLetter(message))
     }
 

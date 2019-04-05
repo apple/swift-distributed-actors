@@ -680,24 +680,4 @@ extension AbstractCell {
             return context.deadRef
         }
     }
-
-    func _resolveReceivesSystemMessages(context: ResolveContext<Any>) -> AnyReceivesSystemMessages {
-        let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
-
-        guard let selector = context.selectorSegments.first else {
-            // no remaining selectors == we are the "selected" ref, apply uid check
-            if myself.path.uid == context.selectorUID {
-                return myself
-            } else {
-                // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return context._deadRef
-            }
-        }
-
-        if myself.path.name == selector.value {
-            return self.children._resolveReceivesSystemMessages(context: context.deeper)
-        } else {
-            return context._deadRef
-        }
-    }
 }

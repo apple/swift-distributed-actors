@@ -68,7 +68,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
+    override func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendSystemMessage: \(message)")
         pprint("TODO: This would send \(message) to \(self.path) if it was implemented... :-) SOON...!") // FIXME: implement remote sends
     }
