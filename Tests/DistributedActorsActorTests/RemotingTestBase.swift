@@ -60,13 +60,13 @@ open class RemotingTestBase: XCTestCase {
         return "\(type(of: self))"
     }
 
-    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
-    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
+    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.cluster.uniqueBindAddress
+    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.cluster.uniqueBindAddress
 
     func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._local = ActorSystem(systemName) { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = self.localPort
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.port = self.localPort
             modifySettings?(&settings)
         }
 
@@ -75,8 +75,8 @@ open class RemotingTestBase: XCTestCase {
 
     func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._remote = ActorSystem(systemName) { settings in
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = self.remotePort
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.port = self.remotePort
             modifySettings?(&settings)
         }
 
@@ -110,7 +110,7 @@ open class RemotingTestBase: XCTestCase {
         try testKit.eventually(within: .seconds(1)) {
             system.remoting.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
-            pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
+            pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
             pprint("      Associated nodes: \(associatedNodes)")
             pprint("         Expected node: \(String(reflecting: address))")
 
@@ -137,7 +137,7 @@ open class RemotingTestBase: XCTestCase {
         try testKit.assertHolds(for: .seconds(1)) {
             system.remoting.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
-            pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
+            pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
             pprint("      Associated nodes: \(associatedNodes)")
             pprint("         Expected node: \(String(reflecting: address))")
 
@@ -157,7 +157,7 @@ open class RemotingTestBase: XCTestCase {
     func resolveRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath, targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNodeAddress = targetSystem.settings.remoting.uniqueBindAddress
+        let remoteNodeAddress = targetSystem.settings.cluster.uniqueBindAddress
 
         var uniqueRemotePath: UniqueActorPath = path
         uniqueRemotePath.address = remoteNodeAddress

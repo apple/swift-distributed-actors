@@ -366,7 +366,7 @@ extension RemotingKernel {
     // TODO: abstract into `Transport`
 
     // TODO do we need this ON kernel? could be pure function really hm
-    internal func bootstrapServerSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -422,7 +422,7 @@ extension RemotingKernel {
         return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals

@@ -44,11 +44,11 @@ internal struct FailureDetectorContext { // TODO: Eventually to become public
     let address: UniqueNodeAddress
 
     init(_ system: ActorSystem) {
-        guard system.settings.remoting.enabled else {
+        guard system.settings.cluster.enabled else {
             fatalError("Illegal attempt to create FailureDetectorContext while remoting is NOT enabled! " + 
                 "Failure detectors are not necessary in local only systems, thus a failure detector should never be created.")
         }
-        self.address = system.settings.remoting.uniqueBindAddress
+        self.address = system.settings.cluster.uniqueBindAddress
         self.log = system.log // TODO better logger (named better, we can fix this when we start the actor, there swap for the actors one?)
     }
 }

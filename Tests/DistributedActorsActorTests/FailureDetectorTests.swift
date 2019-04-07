@@ -23,21 +23,21 @@ class FailureDetectorTests: XCTestCase {
 
     var remote: ActorSystem! = nil
 
-    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.remoting.uniqueBindAddress
-    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.remoting.uniqueBindAddress
+    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.cluster.uniqueBindAddress
+    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.cluster.uniqueBindAddress
 
     override func setUp() {
         self.local = ActorSystem("FailureDetectorTests") { settings in
-            settings.remoting.failureDetector = .manual
+            settings.cluster.failureDetector = .manual
 
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port =  7337
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.port =  7337
         }
         self.remote = ActorSystem("FailureDetectorTests") { settings in
-            settings.remoting.failureDetector = .manual
+            settings.cluster.failureDetector = .manual
 
-            settings.remoting.enabled = true
-            settings.remoting.bindAddress.port = 8228
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.port = 8228
         }
     }
 

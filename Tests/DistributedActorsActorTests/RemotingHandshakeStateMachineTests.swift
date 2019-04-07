@@ -31,8 +31,8 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         case server
     }
 
-    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout RemotingSettings) -> () = { _ in () }) -> KernelState {
-        var settings = RemotingSettings(
+    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> () = { _ in () }) -> KernelState {
+        var settings = ClusterSettings(
             bindAddress: NodeAddress(
                 systemName: systemName,
                 host: "127.0.0.1", 

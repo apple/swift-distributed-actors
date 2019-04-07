@@ -23,7 +23,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem("RemoteActorRefProviderTests") { settings in
-            settings.remoting.enabled = true
+            settings.cluster.enabled = true
         }
     }
 
@@ -72,7 +72,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
 
         var path: UniqueActorPath = ref.path
-        path.address = system.settings.remoting.uniqueBindAddress
+        path.address = system.settings.cluster.uniqueBindAddress
 
         var resolveContext = ResolveContext<Never>(path: path, deadLetters: system.deadLetters)
         let resolvedRef = system._resolve(context: resolveContext)
@@ -93,7 +93,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
 
         var path: UniqueActorPath = ref.path
-        path.address = system.settings.remoting.uniqueBindAddress
+        path.address = system.settings.cluster.uniqueBindAddress
 
         let resolveContext = ResolveContext<String>(path: path, deadLetters: system.deadLetters)
         let resolvedRef = system._resolve(context: resolveContext)

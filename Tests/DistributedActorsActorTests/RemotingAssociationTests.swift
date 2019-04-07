@@ -43,11 +43,11 @@ class RemotingAssociationTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNodeAddress = remote.settings.remoting.uniqueBindAddress
+        let remoteNodeAddress = remote.settings.cluster.uniqueBindAddress
         var uniqueRemotePath: UniqueActorPath = refOnRemoteSystem.path
         uniqueRemotePath.address = remoteNodeAddress // since refOnRemoteSystem is "local" there, it has no address; thus we set it
         // to then obtain a remote ref ON the `system`, meaning that the address within remotePath is a remote one
@@ -74,7 +74,7 @@ class RemotingAssociationTests: RemotingTestBase {
 
     func test_association_shouldNotAssociateWhenRejected() throws {
         setUpLocal {
-            $0.remoting._protocolVersion.major += 1 // handshake will be rejected on major version difference
+            $0.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
         }
         setUpRemote()
 

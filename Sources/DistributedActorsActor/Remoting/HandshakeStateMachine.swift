@@ -69,7 +69,7 @@ internal struct HandshakeStateMachine {
 
     internal struct InitiatedState {
         internal var backoff: BackoffStrategy
-        let settings: RemotingSettings
+        let settings: ClusterSettings
 
         internal var protocolVersion: Swift Distributed ActorsActor.Version {
             return self.settings.protocolVersion
@@ -80,7 +80,7 @@ internal struct HandshakeStateMachine {
 
         // TODO counter for how many times to retry associating (timeouts)
 
-        init(settings: RemotingSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress) {
+        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress) {
             precondition(localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy

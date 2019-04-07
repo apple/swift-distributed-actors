@@ -109,7 +109,7 @@ class SerializationTests: XCTestCase {
 
     func test_serialize_actorRef_inMessage_forRemoting() throws {
         let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings  in
-            settings.remoting.enabled = true
+            settings.cluster.enabled = true
 
             settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
         }
@@ -131,10 +131,10 @@ class SerializationTests: XCTestCase {
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(remoteCapableSystem.settings.remoting.uniqueBindAddress.uid)").shouldBeTrue()
+        serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindAddress.uid)").shouldBeTrue()
         serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
-        serializedFormat.contains("\(RemotingSettings.Default.host)").shouldBeTrue()
-        serializedFormat.contains("\(RemotingSettings.Default.port)").shouldBeTrue()
+        serializedFormat.contains("\(ClusterSettings.Default.host)").shouldBeTrue()
+        serializedFormat.contains("\(ClusterSettings.Default.port)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
             return try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)

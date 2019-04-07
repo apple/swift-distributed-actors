@@ -18,8 +18,8 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal Network Kernel, which owns and administers all connections of this system
 
-/// The remoting kernel "drives" all internal state machines of the remoting subsystem. 
-internal class RemotingKernel {
+/// The remoting kernel "drives" all internal state machines of the remoting subsystem.
+internal class RemotingKernel { // TODO perhaps rename
     public typealias Ref = ActorRef<RemotingKernel.Messages>
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -101,7 +101,7 @@ internal class RemotingKernel {
         self.serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
-        let failureDetector = system.settings.remoting.makeFailureDetector(system: system)
+        let failureDetector = system.settings.cluster.makeFailureDetector(system: system)
         self._failureDetectorRef = try system._spawnSystemActor(
             FailureDetectorShell.behavior(driving: failureDetector),
             name: "failureDetector")
@@ -164,19 +164,19 @@ internal class RemotingKernel {
 
 extension RemotingKernel {
 
-    /// Binds on setup to the configured address (as configured in `system.settings.remoting`).
+    /// Binds on setup to the configured address (as configured in `system.settings.cluster`).
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Messages> {
         return .setup { context in
-            let remotingSettings = context.system.settings.remoting
-            let uniqueBindAddress = remotingSettings.uniqueBindAddress
+            let clusterSettings = context.system.settings.cluster
+            let uniqueBindAddress = clusterSettings.uniqueBindAddress
 
             // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: remotingSettings, serializationPool: self.serializationPool)
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
 
             // TODO: configurable bind timeout?
 
@@ -184,7 +184,7 @@ extension RemotingKernel {
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
                 
-                let state = KernelState(settings: remotingSettings, channel: chan, log: context.log)
+                let state = KernelState(settings: clusterSettings, channel: chan, log: context.log)
 
                 return self.ready(state: state)
             }
@@ -425,7 +425,7 @@ internal protocol ReadOnlyKernelState {
 
     /// Unique address of the current node.
     var localAddress: UniqueNodeAddress { get }
-    var settings: RemotingSettings { get }
+    var settings: ClusterSettings { get }
 }
 
 /// State of the `RemotingKernel` state machine
@@ -434,7 +434,7 @@ internal struct KernelState: ReadOnlyKernelState {
 
     // TODO maybe move log and settings outside of state into the kernel?
     public var log: Logger
-    public let settings: RemotingSettings
+    public let settings: ClusterSettings
 
     public let localAddress: UniqueNodeAddress
     public let channel: Channel
@@ -450,7 +450,7 @@ internal struct KernelState: ReadOnlyKernelState {
     private var _handshakes: [NodeAddress: HandshakeStateMachine.State] = [:]
     private var _associations: [NodeAddress: AssociationStateMachine.State] = [:]
 
-    init(settings: RemotingSettings, channel: Channel, log: Logger) {
+    init(settings: ClusterSettings, channel: Channel, log: Logger) {
         self.settings = settings
         self.allocator = settings.allocator
 
