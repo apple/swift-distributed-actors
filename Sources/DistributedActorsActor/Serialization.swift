@@ -57,7 +57,7 @@ public struct Serialization {
             return ActorOriginLogHandler(context)
         })
         // TODO: Dry up setting this metadata
-        log[metadataKey: "actorSystemAddress"] = .stringConvertible(systemSettings.remoting.uniqueBindAddress)
+        log[metadataKey: "actorSystemAddress"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
         self.log = log
 
         self.deadLetters = deadLetters
@@ -286,7 +286,7 @@ public struct ActorSerializationContext {
     private let traversable: _ActorTreeTraversable
 
     /// Address to be included in serialized actor refs if they contain no address yet
-    /// `nil` if remoting is not enabled, thus there is no need to serialize with address.
+    /// `nil` if clustering is not enabled, thus there is no need to serialize with address.
     public let serializationAddress: UniqueNodeAddress?
 
     internal init(log: Logger,
@@ -380,7 +380,7 @@ public struct SerializationSettings {
     /// Address to be included in actor addresses when serializing them.
     /// By default this should be equal to the exposed node address of the actor system.
     /// 
-    /// If remoting is not configured on this node, this value SHOULD be `nil`,
+    /// If clustering is not configured on this node, this value SHOULD be `nil`,
     /// as it is not useful to render any address for actors which shall never be reached remotely.
     public var serializationAddress: UniqueNodeAddress? = nil // TODO or unique one? I think we take care of the UIDs on the level of the envelopes already after all
 

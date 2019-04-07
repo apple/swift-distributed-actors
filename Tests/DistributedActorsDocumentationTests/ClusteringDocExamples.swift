@@ -22,7 +22,7 @@ class ClusteringDocExamples: XCTestCase {
         // tag::config_tls[]
         let system = ActorSystem("TestSystem") { settings in
             // ...
-            settings.remoting.tls = TLSConfiguration.forServer(         // <1>
+            settings.cluster.tls = TLSConfiguration.forServer(          // <1>
                 certificateChain: [.file("/path/to/certificate.pem")],  // <2>
                 privateKey: .file("/path/to/private-key.pem"),          // <3>
                 certificateVerification: .fullVerification,             // <4>
@@ -37,7 +37,7 @@ class ClusteringDocExamples: XCTestCase {
         // tag::config_tls_passphrase[]
         let system = ActorSystem("TestSystem") { settings in
             // ...
-            settings.remoting.tlsPassphraseCallback = { setter in
+            settings.cluster.tlsPassphraseCallback = { setter in
                 setter([UInt8]("password".utf8))
             }
         }

@@ -81,11 +81,11 @@ public final class ActorSystem {
         self.name = name
 
         var settings = ActorSystemSettings()
-        settings.remoting.bindAddress.systemName = name
+        settings.cluster.bindAddress.systemName = name
         configureSettings(&settings)
-        if settings.remoting.enabled {
-            precondition(settings.remoting.bindAddress.systemName == name,
-                "Configured name [\(name)] did not match name configured for remoting \(settings.remoting.bindAddress)! " + 
+        if settings.cluster.enabled {
+            precondition(settings.cluster.bindAddress.systemName == name,
+                "Configured name [\(name)] did not match name configured for remoting \(settings.cluster.bindAddress)! " + 
                 "Both names MUST match in order to avoid confusion.")
         }
 
@@ -96,7 +96,7 @@ public final class ActorSystem {
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
         let deadLog = Logger(label: "/system/deadLetters", factory: {
             let context = LoggingContext(identifier: $0, dispatcher: nil)
-            context[metadataKey: "actorSystemAddress"] = .stringConvertible(settings.remoting.uniqueBindAddress)
+            context[metadataKey: "actorSystemAddress"] = .stringConvertible(settings.cluster.uniqueBindAddress)
             return ActorOriginLogHandler(context)
         })
         self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
@@ -123,7 +123,7 @@ public final class ActorSystem {
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
 
-        if settings.remoting.enabled {
+        if settings.cluster.enabled {
             // FIXME: make SerializationPoolSettings configurable
             let remoting = RemotingKernel()
             self._remoting = remoting
@@ -347,7 +347,7 @@ extension ActorSystem: _ActorTreeTraversable {
     // TODO: REMOVE THIS as it is a workaround for lack of Receptionist really and used in testing / demo only
     public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
         var path = ref.path
-        path.address = remote.settings.remoting.uniqueBindAddress
+        path.address = remote.settings.cluster.uniqueBindAddress
         let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
         return self._resolve(context: context)
     }

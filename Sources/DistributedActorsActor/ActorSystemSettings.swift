@@ -21,10 +21,10 @@ public struct ActorSystemSettings {
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
-    public var remoting: RemotingSettings = .default { // TODO start calling it cluster
+    public var cluster: ClusterSettings = .default {
         didSet {
-            if self.remoting.enabled {
-                self.serialization.serializationAddress = self.remoting.uniqueBindAddress // TODO later on this would be `address` vs `bindAddress`
+            if self.cluster.enabled {
+                self.serialization.serializationAddress = self.cluster.uniqueBindAddress // TODO later on this would be `address` vs `bindAddress`
             } else {
                 self.serialization.serializationAddress = nil
             }

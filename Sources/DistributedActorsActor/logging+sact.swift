@@ -64,7 +64,7 @@ public struct ActorLogger {
         // so we need to make such "proxy log handler", that does out actor specific things.
         var actorLogHandlerProxyLogHandler = ActorOriginLogHandler(context)
         actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
-        actorLogHandlerProxyLogHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.remoting.bindAddress)")
+        actorLogHandlerProxyLogHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
 
         return Logger(label: "\(context.path)", factory: { _ in actorLogHandlerProxyLogHandler })
     }

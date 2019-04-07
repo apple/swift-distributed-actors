@@ -39,7 +39,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -73,7 +73,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -100,7 +100,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: refOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
@@ -125,7 +125,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
@@ -174,7 +174,7 @@ class RemotingMessagingTests: RemotingTestBase {
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
         let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
