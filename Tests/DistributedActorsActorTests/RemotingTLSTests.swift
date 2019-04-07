@@ -193,7 +193,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey2.utf8CString), format: .pem))
 
         setUpLocal { settings in
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1,
                 certificateVerification: .fullVerification,
@@ -202,7 +202,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         setUpRemote { settings in
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2,
                 certificateVerification: .fullVerification,
@@ -212,7 +212,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }
 
     func test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
@@ -221,8 +221,8 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
 
         setUpLocal { settings in
-            settings.remoting.bindAddress.host = "127.0.0.1"
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .fullVerification,
@@ -231,8 +231,8 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         setUpRemote { settings in
-            settings.remoting.bindAddress.host = "127.0.0.1"
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .fullVerification,
@@ -268,8 +268,8 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
         setUpLocal { settings in
-            settings.remoting.bindAddress.host = "127.0.0.1"
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .noHostnameVerification,
@@ -278,8 +278,8 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         setUpRemote { settings in
-            settings.remoting.bindAddress.host = "127.0.0.1"
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .noHostnameVerification,
@@ -289,7 +289,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() throws {
@@ -304,32 +304,32 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
         setUpLocal { settings in
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .noHostnameVerification,
                 trustRoots: .certificates([testCertificate])
             )
-            settings.remoting.tlsPassphraseCallback = { setter in
+            settings.cluster.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
         }
 
         setUpRemote { settings in
-            settings.remoting.tls = TLSConfiguration.forServer(
+            settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
                 certificateVerification: .noHostnameVerification,
                 trustRoots: .certificates([testCertificate])
             )
-            settings.remoting.tlsPassphraseCallback = { setter in
+            settings.cluster.tlsPassphraseCallback = { setter in
                 setter([UInt8]("test".utf8))
             }
         }
 
         local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.remoting.uniqueBindAddress)
+        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }
 
 }

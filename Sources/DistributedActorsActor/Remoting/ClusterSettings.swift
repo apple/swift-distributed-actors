@@ -19,7 +19,7 @@ import NIOSSL
 
 // MARK: Actor System Remoting Settings
 
-public struct RemotingSettings {
+public struct ClusterSettings {
 
     public enum Default {
         public static let systemName: String = "ActorSystem"
@@ -28,14 +28,14 @@ public struct RemotingSettings {
         public static let failureDetector: FailureDetectorSettings = .manual
     }
 
-    public static var `default`: RemotingSettings {
+    public static var `default`: ClusterSettings {
         let defaultBindAddress: NodeAddress = .init(systemName: Default.systemName, host: Default.host, port: Default.port)
         let failureDetector = Default.failureDetector
-        return RemotingSettings(bindAddress: defaultBindAddress, failureDetector: failureDetector)
+        return ClusterSettings(bindAddress: defaultBindAddress, failureDetector: failureDetector)
     }
 
-    /// If `true` the ActorSystem start the remoting subsystem upon startup.
-    /// The remoting address bound to will be `bindAddress`.
+    /// If `true` the ActorSystem start the cluster subsystem upon startup.
+    /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
 
     /// If set to a non-`nil` value, the system will attempt to bind to the provided address on startup.
@@ -68,7 +68,7 @@ public struct RemotingSettings {
     // exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: Swift Distributed ActorsActor.Version = DistributedActorsProtocolVersion
 
-    /// If set, this event loop group will be used by the remoting infrastructure.
+    /// If set, this event loop group will be used by the cluster infrastructure.
     // TODO do we need to separate server and client sides? Sounds like a reasonable thing to do.
     public var eventLoopGroup: EventLoopGroup? = nil
 

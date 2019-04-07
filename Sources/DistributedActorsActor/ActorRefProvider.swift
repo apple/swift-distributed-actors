@@ -53,9 +53,9 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
     init(settings: ActorSystemSettings,
          kernel: RemotingKernel,
          localProvider: LocalActorRefProvider) {
-        precondition(settings.remoting.enabled, "Remote actor provider should only be used when remoting is enabled")
+        precondition(settings.cluster.enabled, "Remote actor provider should only be used when clustering is enabled")
 
-        self.localAddress = settings.remoting.uniqueBindAddress
+        self.localAddress = settings.cluster.uniqueBindAddress
         self.kernel = kernel
         self.localProvider = localProvider
     }

@@ -26,7 +26,7 @@ extension ActorSystem {
     func _resolve<Message>(ref: ActorRef<Message>, onSystem remoteSystem: ActorSystem) -> ActorRef<Message> {
         var remotePath = ref.path
         assertBacktrace(remotePath.path.address == nil, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
-        remotePath.address = remoteSystem.settings.remoting.uniqueBindAddress
+        remotePath.address = remoteSystem.settings.cluster.uniqueBindAddress
 
         let resolveContext = ResolveContext<Message>(path: remotePath, deadLetters: self.deadLetters)
         return self._resolve(context: resolveContext)
@@ -42,7 +42,7 @@ internal func assertAssociated(system: ActorSystem, expectAssociatedAddress addr
     try testKit.eventually(within: .milliseconds(500)) {
         system.remoting.tell(.query(.associatedNodes(probe.ref)))
         let associatedNodes = try probe.expectMessage()
-        pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
+        pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
         pprint("      Associated nodes: \(associatedNodes)")
         pprint("         Expected node: \(String(reflecting: address))")
         associatedNodes.contains(address).shouldBeTrue()
