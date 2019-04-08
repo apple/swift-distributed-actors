@@ -14,6 +14,18 @@
 
 import NIO
 
+/// A pool of serialization worker threads which perform (de)serialization of messages potentially in parallel.
+/// The main purpose of doing so rather than serializing directly inside the calling thread (e.g. the event loop)
+/// is offloading serializing potentially "heavy" messages from others which are small and quick to (de)serialize.
+///
+/// Conceptually serialization is performed on dedicated "lanes" which correspond to the recipient of the message.
+/// Dedicated lanes for recipient actors can be configured using `SerializationPoolSettings`.
+/// // TODO the scheme how we configure this may need some more re-thinking.
+///
+/// Dispatching serialization to workers comes with a latency hit, as more async-processing has to happen to perform the
+/// same amount of work, however it allows avoiding head-of-line blocking in presence of large messages, e.g. when typically
+/// a given set of actors often sends large messages, which would have otherwise stalled the sending of other high-priority
+/// (e.g. system) messages.
 internal final class SerializationPool {
     @usableFromInline
     internal let serialization: Serialization
