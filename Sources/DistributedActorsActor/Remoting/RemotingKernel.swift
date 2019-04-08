@@ -32,9 +32,7 @@ internal class RemotingKernel {
     /// - Protected by: `_associationsLock`
     private var _associationsRegistry: [NodeUID: AssociationRemoteControl]
 
-    // The `!` here is ok because we set the pool from the outside before starting
-    // the remoting. Because of initialization order in the dependencies there is
-    // currently no other way.
+    // !-safe since we only ever use it if we start() the serialization subsystem, and while doing so we also initialize the pool.
     internal var serializationPool: SerializationPool!
 
     internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
@@ -82,7 +80,6 @@ internal class RemotingKernel {
     // value before it started... // TODO see if we indeed shall guarantee that this is the first actor?
     var _failureDetectorRef: FailureDetectorShell.Ref?
     var failureDetectorRef: FailureDetectorShell.Ref {
-        pprint("access failureDetectorRef")
         guard let it = self._failureDetectorRef else {
             return fatalErrorBacktrace("Accessing RemotingKernel.failureDetector failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
@@ -105,6 +102,8 @@ internal class RemotingKernel {
 
     /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
     internal func start(system: ActorSystem) throws -> RemotingKernel.Ref {
+        self.serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
+
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
         let failureDetector = system.settings.remoting.makeFailureDetector(system: system)
         self._failureDetectorRef = try system._spawnSystemActor(
