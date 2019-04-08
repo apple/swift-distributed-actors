@@ -218,9 +218,6 @@ private final class SerializationHandler: ChannelDuplexHandler {
         let envelope = self.unwrapOutboundIn(data)
         let serializationPromise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)> = context.eventLoop.makePromise()
         self.serializationPool.serialize(message: envelope.message, metaType: envelope.metaType, recepientPath: envelope.recipient.path, promise: serializationPromise)
-        // TODO: make sure that the order is maintained for futures here. The concern is
-        // that if multiple futures are completed before the callbacks are run, they could
-        // be executed in arbitrary order and that would violate our message ordering guarantees
         serializationPromise.futureResult.whenComplete {
             switch $0 {
             case .success((let serializerId, let bytes)):

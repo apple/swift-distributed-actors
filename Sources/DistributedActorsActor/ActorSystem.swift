@@ -142,10 +142,6 @@ public final class ActorSystem {
         self.serialization = Serialization(settings: settings, deadLetters: deadLetters, traversable: traversable)
 
         do {
-            if settings.remoting.enabled {
-                self._remoting!.serializationPool = try SerializationPool.init(settings: .default, serialization: self.serialization)
-            }
-
             // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
 
             _ = try self._remoting?.start(system: self) // only spawns when remoting is initialized
