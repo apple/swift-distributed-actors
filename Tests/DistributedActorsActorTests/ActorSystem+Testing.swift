@@ -40,7 +40,7 @@ internal func assertAssociated(system: ActorSystem, expectAssociatedAddress addr
     let testKit = ActorTestKit(system)
     let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
     try testKit.eventually(within: .milliseconds(500)) {
-        system.remoting.tell(.query(.associatedNodes(probe.ref)))
+        system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
         let associatedNodes = try probe.expectMessage()
         pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
         pprint("      Associated nodes: \(associatedNodes)")

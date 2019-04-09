@@ -17,7 +17,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class RemotingAssociationTests: RemotingTestBase {
+class RemoteAssociationTests: RemotingTestBase {
 
     override var systemName: String {
         return "RemotingAssociationTests"
@@ -26,7 +26,7 @@ class RemotingAssociationTests: RemotingTestBase {
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 
-        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: self.local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
@@ -41,7 +41,7 @@ class RemotingAssociationTests: RemotingTestBase {
             return .same
         }, name: "remoteAcquaintance")
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
@@ -64,7 +64,7 @@ class RemotingAssociationTests: RemotingTestBase {
         setUpLocal()
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
         let remoteAddress = NodeAddress(systemName: local.name, host: "localhost", port: self.remotePort)
-        local.remoting.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
         sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
         setUpRemote()
 
@@ -78,7 +78,7 @@ class RemotingAssociationTests: RemotingTestBase {
         }
         setUpRemote()
 
-        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
         try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)

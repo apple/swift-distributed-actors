@@ -57,9 +57,9 @@ public final class ActorSystem {
 
     public let serialization: Serialization
 
-    // MARK: Remoting
+    // MARK: Cluster
 
-    internal let _remoting: RemotingKernel?
+    internal let _remoting: ClusterShell?
 
     // MARK: Logging
 
@@ -125,10 +125,10 @@ public final class ActorSystem {
 
         if settings.cluster.enabled {
             // FIXME: make SerializationPoolSettings configurable
-            let remoting = RemotingKernel()
+            let remoting = ClusterShell()
             self._remoting = remoting
-            effectiveUserProvider = RemoteActorRefProvider(settings: settings, kernel: remoting, localProvider: localUserProvider)
-            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, kernel: remoting, localProvider: localSystemProvider)
+            effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: remoting, localProvider: localUserProvider)
+            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: remoting, localProvider: localSystemProvider)
         } else {
             self._remoting = nil
         }
@@ -142,7 +142,7 @@ public final class ActorSystem {
         self.serialization = Serialization(settings: settings, deadLetters: deadLetters, traversable: traversable)
 
         do {
-            // Remoting MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
+            // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
 
             _ = try self._remoting?.start(system: self) // only spawns when remoting is initialized
         } catch {
@@ -333,23 +333,10 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.deadRef
         }
         switch selector.value {
-        case "system": 
-            let resolved = self.systemProvider._resolve(context: context)
-            return resolved
-        case "user":   
-            let resolved = self.userProvider._resolve(context: context)
-            return resolved
-        default:
-            fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "system": return self.systemProvider._resolve(context: context)
+        case "user":   return self.userProvider._resolve(context: context)
+        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
-    }
-
-    // TODO: REMOVE THIS as it is a workaround for lack of Receptionist really and used in testing / demo only
-    public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
-        var path = ref.path
-        path.address = remote.settings.cluster.uniqueBindAddress
-        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
-        return self._resolve(context: context)
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
@@ -362,4 +349,14 @@ extension ActorSystem: _ActorTreeTraversable {
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
+
+
+    // TODO: REMOVE THIS as it is a workaround for lack of Receptionist really and used in testing / demo only
+    public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
+        var path = ref.path
+        path.address = remote.settings.cluster.uniqueBindAddress
+        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
+        return self._resolve(context: context)
+    }
+
 }

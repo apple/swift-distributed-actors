@@ -25,7 +25,7 @@ public let DistributedActorsProtocolVersion: Swift Distributed ActorsActor.Versi
 //        This is also important to keep the machine clean of any "network stuff", and just have "protocol stuff"
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Constants for Remoting
+// MARK: Constants for Cluster
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
 /// Reads as: `5AC7 == SACT == S Act == Swift/Swift Distributed Actors Act == Swift/Swift Distributed Actors Actors`
@@ -116,14 +116,14 @@ internal struct HandshakeStateMachine {
 
     /// Initial state for server side of handshake.
     internal struct HandshakeReceivedState {
-        private let kernelState: ReadOnlyKernelState
+        private let state: ReadOnlyClusterState
 
         public let offer: Wire.HandshakeOffer
         internal var boundAddress: UniqueNodeAddress {
-            return self.kernelState.localAddress
+            return self.state.localAddress
         }
         internal var protocolVersion: Swift Distributed ActorsActor.Version {
-            return kernelState.settings.protocolVersion
+            return state.settings.protocolVersion
         }
 
         // do not call directly, rather obtain the completed state via negotiate()
@@ -131,8 +131,8 @@ internal struct HandshakeStateMachine {
             return CompletedState(fromReceived: self, remoteAddress: offer.from)
         }
 
-        internal init(kernelState: ReadOnlyKernelState, offer: Wire.HandshakeOffer) {
-            self.kernelState = kernelState
+        internal init(state: ReadOnlyClusterState, offer: Wire.HandshakeOffer) {
+            self.state = state
             self.offer = offer
         }
 
