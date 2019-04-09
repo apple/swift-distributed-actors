@@ -27,6 +27,7 @@ extension RemotingAssociationTests {
                 ("test_boundServer_shouldAcceptAssociate", test_boundServer_shouldAcceptAssociate),
                 ("test_association_shouldAllowSendingToRemoteReference", test_association_shouldAllowSendingToRemoteReference),
                 ("test_association_shouldKeepTryingUntilOtherNodeBindsPort", test_association_shouldKeepTryingUntilOtherNodeBindsPort),
+                ("test_association_shouldNotAssociateWhenRejected", test_association_shouldNotAssociateWhenRejected),
            ]
    }
 }

@@ -284,6 +284,7 @@ public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #fil
     }
 }
 
+@discardableResult
 public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     var it: T? = nil

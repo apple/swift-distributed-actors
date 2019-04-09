@@ -69,6 +69,54 @@ struct ProtoHandshakeOffer {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+struct ProtoHandshakeResponse {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var status: OneOf_Status? {
+    get {return _storage._status}
+    set {_uniqueStorage()._status = newValue}
+  }
+
+  var accept: ProtoHandshakeAccept {
+    get {
+      if case .accept(let v)? = _storage._status {return v}
+      return ProtoHandshakeAccept()
+    }
+    set {_uniqueStorage()._status = .accept(newValue)}
+  }
+
+  var reject: ProtoHandshakeReject {
+    get {
+      if case .reject(let v)? = _storage._status {return v}
+      return ProtoHandshakeReject()
+    }
+    set {_uniqueStorage()._status = .reject(newValue)}
+  }
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  enum OneOf_Status: Equatable {
+    case accept(ProtoHandshakeAccept)
+    case reject(ProtoHandshakeReject)
+
+  #if !swift(>=4.1)
+    static func ==(lhs: ProtoHandshakeResponse.OneOf_Status, rhs: ProtoHandshakeResponse.OneOf_Status) -> Bool {
+      switch (lhs, rhs) {
+      case (.accept(let l), .accept(let r)): return l == r
+      case (.reject(let l), .reject(let r)): return l == r
+      default: return false
+      }
+    }
+  #endif
+  }
+
+  init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 struct ProtoHandshakeAccept {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -131,6 +179,8 @@ struct ProtoHandshakeReject {
   /// Clears the value of `origin`. Subsequent reads from it will return its default value.
   mutating func clearOrigin() {_uniqueStorage()._origin = nil}
 
+  /// In the reject case this is an `Address` instead of a `UniqueNodeAddress`,
+  /// to explicitly prevent this from forming an association.
   var from: ProtoAddress {
     get {return _storage._from ?? ProtoAddress()}
     set {_uniqueStorage()._from = newValue}
@@ -373,6 +423,87 @@ extension ProtoHandshakeOffer: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._version != rhs_storage._version {return false}
         if _storage._from != rhs_storage._from {return false}
         if _storage._to != rhs_storage._to {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoHandshakeResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "HandshakeResponse"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "accept"),
+    2: .same(proto: "reject"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _status: ProtoHandshakeResponse.OneOf_Status?
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _status = source._status
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1:
+          var v: ProtoHandshakeAccept?
+          if let current = _storage._status {
+            try decoder.handleConflictingOneOf()
+            if case .accept(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._status = .accept(v)}
+        case 2:
+          var v: ProtoHandshakeReject?
+          if let current = _storage._status {
+            try decoder.handleConflictingOneOf()
+            if case .reject(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {_storage._status = .reject(v)}
+        default: break
+        }
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      switch _storage._status {
+      case .accept(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      case .reject(let v)?:
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      case nil: break
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoHandshakeResponse, rhs: ProtoHandshakeResponse) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._status != rhs_storage._status {return false}
         return true
       }
       if !storagesAreEqual {return false}
