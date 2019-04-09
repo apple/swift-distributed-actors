@@ -53,8 +53,8 @@ open class RemotingTestBase: XCTestCase {
         return testKit
     }
 
-    open var localPort: Int { return 8448 }
-    open var remotePort: Int { return 9559 }
+    open var localPort: Int { return 7337 }
+    open var remotePort: Int { return 8228 }
 
     open var systemName: String {
         return "\(type(of: self))"
@@ -93,7 +93,9 @@ open class RemotingTestBase: XCTestCase {
         self._remote?.shutdown()
     }
 
-    func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
+    func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress,
+                          timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+                          verbose: Bool = false) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
         let testKit: ActorTestKit
@@ -107,12 +109,16 @@ open class RemotingTestBase: XCTestCase {
 
 
         let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
-        try testKit.eventually(within: .seconds(1)) {
+        defer { probe.stop() }
+        try testKit.eventually(within: timeout ?? .seconds(1)) {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
-            let associatedNodes = try probe.expectMessage()
-            pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
-            pprint("      Associated nodes: \(associatedNodes)")
-            pprint("         Expected node: \(String(reflecting: address))")
+            let associatedNodes = try probe.expectMessage() // TODO use interval here
+
+            if verbose {
+                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
+                pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
+                pprint("         Expected node: \(String(reflecting: address))")
+            }
 
             guard associatedNodes.contains(address) else {
                 throw TestError("[\(system)] did not associate the expected node: [\(address)]")
@@ -120,7 +126,9 @@ open class RemotingTestBase: XCTestCase {
         }
     }
 
-    func assertNotAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
+    func assertNotAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress,
+                             timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+                             verbose: Bool = false) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
         let testKit: ActorTestKit
@@ -132,14 +140,16 @@ open class RemotingTestBase: XCTestCase {
             testKit = ActorTestKit(system)
         }
 
-
-        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
-        try testKit.assertHolds(for: .seconds(1)) {
+        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: [UniqueNodeAddress].self)
+        defer { probe.stop() }
+        try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
-            let associatedNodes = try probe.expectMessage()
-            pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
-            pprint("      Associated nodes: \(associatedNodes)")
-            pprint("         Expected node: \(String(reflecting: address))")
+            let associatedNodes = try probe.expectMessage() // TODO use interval here
+            if verbose {
+                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
+                pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
+                pprint("     Not expected node: \(String(reflecting: address))")
+            }
 
             if associatedNodes.contains(address) {
                 throw TestError("[\(system)] unexpectedly associated with node: [\(address)]")

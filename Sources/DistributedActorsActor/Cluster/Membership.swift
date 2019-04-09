@@ -98,9 +98,11 @@ extension Membership {
             // means a node removal
             self.remove(change.address)
         case .some(.joining):
+            pprint("NODE JOINING: \(change.address)")
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
             _ = self.join(change.address)
         case .some(.alive):
+            pprint("NODE ĄLIVE: \(change.address)")
             _ = self.join(change.address)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
@@ -109,21 +111,26 @@ extension Membership {
         }
     }
 
-    // TODO specific semantics, joining another UNA overwrites an existing node, right?
-    mutating func join(_ address: UniqueNodeAddress) -> Bool {
+    /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
+    /// be closed to that now-replaced node, since we have replaced it with a new node.
+    mutating func join(_ address: UniqueNodeAddress) -> MembershipChange {
+        let newMember = Member(address: address, status: .joining)
+
         if let member = self.member(address) {
+            // we are joining "over" an existing incarnation of a node
+
             // TODO define semantics of "new node joins 'over' existing node" (should cause a removal of old one and termination signals I think)
             if member.address == address {
-                pprint("WEIRD; same unique address joining again: \(member)") // TODO log or emit directive rather
-                return false
+                // technically we could ignore this... but to be honest, this is VERY WEIRD, so we should make sure it never happens (i.e. even if resends etc, should be filtered out)
+                return fatalErrorBacktrace("WEIRD; same unique address joining again: \(member)")
             } else {
-                pprint("REPLACE NODE; Was member: \(member), and now same address but different UID is joining: \(address); REPLACING OLD NODE.")
-                self.members[address.address] = Member(address: address, status: .joining)
-                return true
+                self.members[address.address] = newMember
+                return .init(previousAddress: member.address, address: address, fromStatus: member.status, toStatus: newMember.status)
             }
         } else {
-            self.members[address.address] = Member(address: address, status: .joining)
-            return true // FIXME: rethink semantics of "joining over an existing one"; maybe throw and ask for downing of previous one, or do it ourselves here?
+            // address is normally joining
+            self.members[address.address] = newMember
+            return .init(member: newMember, toStatus: newMember.status)
         }
     }
     func joining(_ address: UniqueNodeAddress) -> Membership {
@@ -217,20 +224,40 @@ struct MembershipDiff {
     var entries: [MembershipChange] = []
 }
 struct MembershipChange {
+    /// The address which the change concerns.
     let address: UniqueNodeAddress
+    /// Only set if the change is a "replace node", which can happen only if a node joins
+    /// from the same physical address (host + port), however its UID has changed.
+    let previousAddress: UniqueNodeAddress?
+
     let fromStatus: MemberStatus?
     let toStatus: MemberStatus?
 
-    init(member: Member, toStatus: MemberStatus?) {
+    init(member: Member, toStatus: MemberStatus? = nil) {
+        self.previousAddress = nil
         self.address = member.address
         self.fromStatus = member.status
-        self.toStatus = toStatus
+        self.toStatus = toStatus ?? member.status
     }
 
     init(address: UniqueNodeAddress, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
+        self.previousAddress = nil
         self.address = address
         self.fromStatus = fromStatus
         self.toStatus = toStatus
+    }
+    init(previousAddress: UniqueNodeAddress, address: UniqueNodeAddress, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
+        self.previousAddress = previousAddress
+        self.address = address
+        self.fromStatus = fromStatus
+        self.toStatus = toStatus
+    }
+
+    /// Is a "replace" operation, meaning a new address with different UID has replaced a previousAddress.
+    /// This can happen upon a service reboot, with stable address -- the new node then "replaces" the old one,
+    /// and the old node shall be removed from the cluster as a result of this.
+    var isReplace: Bool {
+        return self.previousAddress != nil
     }
 
     var isDownOrRemoval: Bool {

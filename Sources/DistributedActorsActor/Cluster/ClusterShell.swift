@@ -297,7 +297,8 @@ extension ClusterShell {
         let log = state.log
 
         if let hsm = newState.incomingHandshake(offer: offer) {
-            // handshake is allowed to proceed; TODO: semantics; what if we already have one in progress; we could return this rather than this if/else
+            // handshake is allowed to proceed;
+            // TODO: semantics; what if we already have one in progress; we could return this rather than this if/else
             log.debug("Negotiating handshake...")
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
@@ -459,12 +460,15 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     private var _handshakes: [NodeAddress: HandshakeStateMachine.State] = [:]
     private var _associations: [NodeAddress: AssociationStateMachine.State] = [:]
 
+    // TODO somehow protect / sync associations and membership view?
+    // TODO this may move... not sure yet who should "own" the membership; we'll see once we do membership provider or however we call it then
+    private var membership: Membership = .empty
+
+
     init(settings: ClusterSettings, channel: Channel, log: Logger) {
         self.settings = settings
         self.allocator = settings.allocator
-
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
-
         self.localAddress = settings.uniqueBindAddress
 
         self.channel = channel
@@ -479,7 +483,8 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     func associatedAddresses() -> [UniqueNodeAddress] {
         return self._associations.values.map { asm -> UniqueNodeAddress in
             switch asm {
-            case .associated(let state):    return state.remoteAddress
+            case .associated(let state):   
+                return state.remoteAddress
             }
         }
     }
@@ -493,12 +498,16 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 extension ClusterShellState {
 
     /// This is the entry point for a client initiating a handshake with a remote node.
-    mutating func registerHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
+    mutating func registerHandshake(with remoteAddress: NodeAddress) -> HandshakeStateMachine.InitiatedState {
         // TODO more checks here, so we don't reconnect many times etc
 
-        let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: address)
+        if let existingAssociation = self.association(with: remoteAddress) {
+            self.log.warning("BEGIN NEW HANDSHAKE TO \(String(reflecting: remoteAddress)) while existing assoc: \(existingAssociation)")
+        }
+
+        let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: remoteAddress)
         let handshakeState = HandshakeStateMachine.State.initiated(handshakeFsm)
-        self._handshakes[address] = handshakeState
+        self._handshakes[remoteAddress] = handshakeState
         return handshakeFsm
     }
     
@@ -552,7 +561,38 @@ extension ClusterShellState {
 
         let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
         let state: AssociationStateMachine.State = .associated(asm)
-        self._associations[handshake.remoteAddress.address] = state
+        
+        // TODO store and update membership inside here?
+        // TODO: this is not so nice, since we now have membership kind of in two places, we should make this somehow nicer...
+        // TODO: Membership should drive all decisions about "allowed to join" etc, and the replacement decisions as well.
+
+        func storeAssociation() {
+            self._associations[handshake.remoteAddress.address] = state
+        }
+
+        func replaceAssociation() {
+            let existingAssociation = self.association(with: handshake.remoteAddress.address)
+            switch existingAssociation {
+            case .some(.associated(let associated)):
+                // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
+                // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.
+                //
+                // we ignore the close-future, as it would not give us much here; could only be used to mark "we are still shutting down"
+                _ = associated.channel.close()
+
+            default:
+                self.log.warning("Membership change indicated node replacement, yet no 'old' association found, this could happen if failure detection ")
+            }
+
+            storeAssociation()
+        }
+
+        let change = self.membership.join(handshake.remoteAddress)
+        if change.isReplace {
+            replaceAssociation()
+        } else {
+            storeAssociation()
+        }
         return asm
     }
 
@@ -580,7 +620,7 @@ extension ActorSystem {
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
     public func _dumpAssociations() {
         let ref: ActorRef<[UniqueNodeAddress]> = try! self.spawnAnonymous(.receive { context, nodes in
-            let stringlyNodes = nodes.map({ $0.description }).joined(separator: "\n     ")
+            let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
             context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
             return .stopped
         })
