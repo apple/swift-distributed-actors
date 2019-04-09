@@ -181,8 +181,6 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 -----END ENCRYPTED PRIVATE KEY-----
 """
 
-    override var systemName: String { return "RemotingTLSTests" }
-
     func test_boundServer_shouldAcceptAssociateWithSSLEnabled() throws {
         let testCertificate1 = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
         let testCertificateSource1: NIOSSLCertificateSource = .certificate(testCertificate1)

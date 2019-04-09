@@ -151,9 +151,12 @@ Rules:
   - don't talk to strangers
     * nodes MUST handshake before exchanging any messages
 
-=== [Kernel|Association]State.Control
+=== *RemoteControl
 
 Control objects allow performing actual actions onto the network layer.
+
+These are exposed to actual refs and used to e.g. send messages.
+There can be many remote controls, but always one association for a pair of nodes.
 
 ==== Watch and clustering
 

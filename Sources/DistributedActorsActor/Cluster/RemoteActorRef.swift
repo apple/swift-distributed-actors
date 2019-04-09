@@ -42,7 +42,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     // - we only need the association for the first send -- we can then hit the shared data-structure, and cache the association / remote control here
     // - not all actor refs will be send to perhaps, so we can avoid hitting the shared structure at all sometimes
     //
-    // The structure of the kernel is such that the only thing that is a field in the class is this associations / remote controls map, 
+    // The structure of the shell is such that the only thing that is a field in the class is this associations / remote controls map,
     // which refs access. all other state is not accessible by anyone else since it is hidden in the actor itself.
     
     // TODO again... this may be accessed concurrently since many actors invoke send on this ref
