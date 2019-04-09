@@ -1,11 +1,48 @@
 
 == Clustering ✗
 
-=== Replicated State Machines ✗
+> One actor is no actor, they come in systems.
 
 === Configuration
 
 #TODO: Add more configuration documentation#
+
+==== Joining nodes
+
+In order for actors to be able to communicate across nodes, the nodes they reside one have to form a cluster (with exceptions,
+#TODO: ServiceRefs are the exception#).
+
+Forming a cluster is fairly simple, and consists of a few lines of configuration and joining nodes to appropriate addresses:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ClusterDocExamples.swift[tag=joining]
+----
+<1> Enable clustering (so the node binds to a local port and begins listening for connections), and optionally change which address to bind to.
+<2> Join the other node, forming a 2 node cluster. The address could be discovered using some mechanism, or known up front and configured into the app. #TODO to be replaced with discovery mechanism / seed nodes#
+
+Once the nodes have established connections, you are ready to transparently send messages across the network.
+
+#TODO serialization first though...? or we first show that we have some built in types and THEN show serialization.#
+
+#TODO proper intro and diagram of how nodes join#
+
+NOTE: In some situations it may happen that a node crashes and comes up again using the same address (system name, host and port)
+      and attempts to re-connect to an existing cluster. While the cluster would eventually detect the "previous incarnation"
+      of this node as crashed, the restarted one _may_ be faster to attempt a join than the failure detector triggering the downing
+      of the old node.
+
+      In these situations, the "new incarnation" causes the immediate downing and removal of the previous incarnation
+      and "takes its place", however from the clusters perspective, it is not any special node -- it is treated the same way as
+      any other freshly joined node (and has to go through the joining steps as any other node would).
+
+=== Receptionist ✗
+
+#TODO#
+
+=== Replicated State Machines ✗
+
+#TODO#
 
 ==== TLS
 
