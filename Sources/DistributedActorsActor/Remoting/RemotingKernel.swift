@@ -44,14 +44,10 @@ internal class RemotingKernel {
     /// To be invoked by kernel actor whenever an association is made;
     /// The cache is used by remote actor refs to obtain means of sending messages into the pipeline,
     /// without having to queue through the remoting kernels mailbox.
-    private func cacheAssociationRemoteControl(_ association: AssociationStateMachine.State) {
-        switch association {
-        case .associated(let assoc):
-            self._associationsLock.withLockVoid {
-                // TODO or association ID rather than the remote id?
-                self._associationsRegistry[assoc.remoteAddress.uid] = assoc.makeRemoteControl()
-            }
-        // TODO: other cases could be if it is terminated , then we want to store the tombstone right away?
+    private func cacheAssociationRemoteControl(_ associationState: AssociationStateMachine.AssociatedState) {
+        self._associationsLock.withLockVoid {
+            // TODO or association ID rather than the remote id?
+            self._associationsRegistry[associationState.remoteAddress.uid] = associationState.makeRemoteControl()
         }
     }
     
@@ -148,10 +144,10 @@ internal class RemotingKernel {
         // TODO: case subscribeAssociations(ActorRef<[UniqueNodeAddress]>) // to receive events about it one by one
     }
     internal enum InboundMessage {
-        case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyTo: EventLoopPromise<ByteBuffer>) // TODO should be a domain object here
-        case handshakeAccepted(Wire.HandshakeAccept, channel: Channel, replyTo: EventLoopPromise<Void>)
-        case handshakeRejected(Wire.HandshakeReject, replyTo: EventLoopPromise<ByteBuffer>)
-        case handshakeFailed(NodeAddress?, Error) // TODO remove?
+        case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyTo: EventLoopPromise<Wire.HandshakeResponse>)
+        case handshakeAccepted(Wire.HandshakeAccept, channel: Channel)
+        case handshakeRejected(Wire.HandshakeReject)
+        case handshakeFailed(NodeAddress, Error) // TODO remove?
     }
 
     private var behavior: Behavior<Messages> {
@@ -220,10 +216,10 @@ extension RemotingKernel {
             switch message {
             case .handshakeOffer(let offer, let channel, let promise):
                 return self.onHandshakeOffer(state, offer, channel: channel, replyInto: promise)
-            case .handshakeAccepted( let accepted, let channel, let promise):
-                return self.onHandshakeAccepted(state, accepted, channel: channel, replyInto: promise)
-            case .handshakeRejected(let rejected, let promise):
-                return self.onHandshakeRejected(state, rejected, replyInto: promise)
+            case .handshakeAccepted( let accepted, let channel):
+                return self.onHandshakeAccepted(state, accepted, channel: channel)
+            case .handshakeRejected(let rejected):
+                return self.onHandshakeRejected(state, rejected)
             case .handshakeFailed(_, let error):
                 // return self.onHandshakeFailed(state, rejected) // FIXME implement this basically disassociate() right away?
                 return FIXME("HANDSHAKE FAILED: [\(error)]:\(type(of: error))") // FIXME: handshake reject should be implemented
@@ -256,10 +252,9 @@ extension RemotingKernel {
         }
 
         state.log.info("Initiating handshake with \(remoteAddress)...")
-
+        let hsm = state.registerHandshake(with: remoteAddress)
         // we MUST register the intention of shaking hands with remoteAddress before obtaining the connection,
         // in order to let the fsm handle any retry decisions in face of connection failures et al.
-        let hsm = state.makeHandshake(with: remoteAddress)
 
         // TODO make sure we never to multiple connections to the same remote; associations must get IDs?
         // TODO: This is rather costly... we should not have to stop processing other messages until the connect completes;
@@ -269,19 +264,14 @@ extension RemotingKernel {
             kernel: context.myself,
             log: context.log,
             targetAddress: remoteAddress,
+            handshakeOffer: hsm.makeOffer(),
             settings: state.settings,
             serializationPool: self.serializationPool
         )
 
         return context.awaitResult(of: outboundChanElf, timeout: .milliseconds(100)) {
             switch $0 {
-            case .success(let outboundChan):
-                // Initialize and store a new Handshake FSM for this dance
-                // And ask it to create a handshake offer
-                let offer = hsm.makeOffer()
-
-                _ = self.sendHandshakeOffer(state, offer, over: outboundChan) // TODO move to Promise style, rather than passing channel
-
+            case .success:
                 return self.ready(state: state)
 
             case .failure(let error):
@@ -291,57 +281,11 @@ extension RemotingKernel {
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Sending wire protocol messages
-
-extension RemotingKernel {
-    
-    // TODO: Move this to instead use the replyInto pattern (and then we eventually move those to domain objects as we do the serialization pipeline)
-    private func sendHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, over channel: Channel) -> EventLoopFuture<Void> {
-        let proto = ProtoHandshakeOffer(offer)
-        traceLog_Remote("Offering handshake [\(proto)]")
-
-        do {
-            let allocator = state.allocator // TODO move this off onto the serialization pipeline
-
-            // TODO allow allocating into existing buffer
-            // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
-            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator: allocator)
-            // TODO should we use the serialization infra ourselves here? I guess so...
-            
-            // FIXME make the promise dance here
-            return channel.writeAndFlush(bytes)
-        } catch {
-            // TODO change since serialization which can throw should be shipped of to a future
-            // ---- since now we blocked the actor basically with the serialization
-            return state.eventLoopGroup.next().makeFailedFuture(error)
-        }
-    }
-
-    // TODO: pass around a more limited state -- just what is needed for the sending of stuff
-    private func sendHandshakeAccept(_ state: KernelState, _ accept: Wire.HandshakeAccept, replyInto: EventLoopPromise<ByteBuffer>) {
-        let allocator = state.allocator
-        
-        let proto = ProtoHandshakeAccept(accept)
-        traceLog_Remote("Accepting handshake: [\(proto)]")
-
-        do {
-            // TODO this does much copying;
-            // TODO should be sent through pipeline where we do the serialization thingies
-            let bytes = try proto.serializedByteBuffer(allocator: allocator)
-
-            replyInto.succeed(bytes)
-        } catch {
-            replyInto.fail(error)
-        }
-    }
-}
-
 // Implements: Incoming Handshake
 extension RemotingKernel {
     
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
-    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
+    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>) -> Behavior<Messages> {
         var newState = state
         let log = state.log
 
@@ -353,16 +297,15 @@ extension RemotingKernel {
                 log.info("Accept association with \(offer.from)!")
                 let association = newState.associate(completedHandshake, channel: channel)
                 self.cacheAssociationRemoteControl(association)
-                _ = self.sendHandshakeAccept(newState, completedHandshake.makeAccept(), replyInto: promise)
-                return self.ready(state: newState) // TODO change the state
+                let accept = completedHandshake.makeAccept()
+                promise.succeed(.accept(accept))
+                return self.ready(state: newState)
 
-            case .rejectHandshake(let error):
-                log.info("Rejecting handshake from \(offer.from)! Error: \(error)")
-                return self.ready(state: newState) // TODO change the state
-
-            case .goAwayRogueHandshake(let error):
-                log.warning("Rogue handshake! Reject, reject! From \(offer.from)! Error: \(error)")
-                return self.ready(state: newState) // TODO change the state
+            case .rejectHandshake(let rejectedHandshake):
+                log.info("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
+                newState.abortHandshake(with: offer.from.address)
+                promise.succeed(.reject(rejectedHandshake.makeReject()))
+                return self.ready(state: newState)
             }
         } else {
             log.warning("Ignoring handshake offer \(offer), no state machine available for it...")
@@ -387,8 +330,8 @@ extension RemotingKernel {
         switch handshakeState {
         case .initiated(var hsm):
             switch hsm.onHandshakeError(error) {
-            case .scheduleRetryHandshake(let offer, let delay):
-                state.log.info("Schedule retry handshake: [\(offer)], delay: [\(delay)]")
+            case .scheduleRetryHandshake(let delay):
+                state.log.info("Schedule retry handshake to: [\(hsm.remoteAddress)] delay: [\(delay)]")
                 context.timers.startSingleTimer(
                     key: "handshake-timer-\(remoteAddress)", 
                     // message: .command(.retryHandshakeWith(remoteAddress)), // TODO better?
@@ -411,7 +354,7 @@ extension RemotingKernel {
 
 // Implements: Incoming Handshake Replies
 extension RemotingKernel {
-    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, channel: Channel, replyInto promise: EventLoopPromise<Void>) -> Behavior<Messages> {
+    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Messages> {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
@@ -428,12 +371,16 @@ extension RemotingKernel {
 
         state.log.debug("[Remoting] Associated with: \(completed.remoteAddress).")
         self.cacheAssociationRemoteControl(association)
-        promise.succeed(())
         return self.ready(state: state)
     }
 
-    private func onHandshakeRejected(_ state: KernelState, _ reject: Wire.HandshakeReject, replyInto promise: EventLoopPromise<ByteBuffer>) -> Behavior<Messages> {
-        return TODO("onHandshakeRejected")
+    private func onHandshakeRejected(_ state: KernelState, _ reject: Wire.HandshakeReject) -> Behavior<Messages> {
+        var state = state
+
+        state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
+
+        state.abortHandshake(with: reject.from)
+        return self.ready(state: state)
     }
 }
 
@@ -490,8 +437,8 @@ internal struct KernelState: ReadOnlyKernelState {
     public let settings: RemotingSettings
 
     public let localAddress: UniqueNodeAddress
-
     public let channel: Channel
+
     public let eventLoopGroup: EventLoopGroup
 
     public var backoffStrategy: BackoffStrategy {
@@ -512,6 +459,7 @@ internal struct KernelState: ReadOnlyKernelState {
         self.localAddress = settings.uniqueBindAddress
 
         self.channel = channel
+
         self.log = log
     }
 
@@ -522,7 +470,7 @@ internal struct KernelState: ReadOnlyKernelState {
     func associatedAddresses() -> [UniqueNodeAddress] {
         return self._associations.values.map { asm -> UniqueNodeAddress in
             switch asm {
-            case .associated(let state): return state.remoteAddress
+            case .associated(let state):    return state.remoteAddress
             }
         }
     }
@@ -536,10 +484,10 @@ internal struct KernelState: ReadOnlyKernelState {
 extension KernelState {
 
     /// This is the entry point for a client initiating a handshake with a remote node.
-    mutating func makeHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
+    mutating func registerHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
         // TODO more checks here, so we don't reconnect many times etc
 
-        let handshakeFsm = HandshakeStateMachine.initialClientState(kernelState: self, connectTo: address)
+        let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: address)
         let handshakeState = HandshakeStateMachine.State.initiated(handshakeFsm)
         self._handshakes[address] = handshakeState
         return handshakeFsm
@@ -587,7 +535,7 @@ extension KernelState {
 
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
     /// Stores an `Association` for the newly established association;
-    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.State {
+    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.AssociatedState {
         guard self._handshakes.removeValue(forKey: handshake.remoteAddress.address) != nil else {
             fatalError("BOOM: Can't complete a handshake which was not in progress!") // throw HandshakeError.acceptAttemptForNotInProgressHandshake(handshake)
             // TODO perhaps we instead just warn and ignore this; since it should be harmless
@@ -597,7 +545,7 @@ extension KernelState {
         let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
         let state: AssociationStateMachine.State = .associated(asm)
         self._associations[handshake.remoteAddress.address] = state
-        return state
+        return asm
     }
 
     mutating func removeAssociation() {

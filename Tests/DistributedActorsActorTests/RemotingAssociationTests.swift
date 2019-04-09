@@ -26,7 +26,7 @@ class RemotingAssociationTests: RemotingTestBase {
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: self.local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
@@ -70,5 +70,17 @@ class RemotingAssociationTests: RemotingTestBase {
 
         try assertAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+    }
+
+    func test_association_shouldNotAssociateWhenRejected() throws {
+        setUpLocal {
+            $0.remoting._protocolVersion.major += 1 // handshake will be rejected on major version difference
+        }
+        setUpRemote()
+
+        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+
+        try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
+        try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
     }
 }

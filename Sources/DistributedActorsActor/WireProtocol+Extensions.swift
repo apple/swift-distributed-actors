@@ -137,9 +137,41 @@ extension Wire.HandshakeAccept {
 // MARK: ProtoHandshakeAccept from Wire.HandshakeAccept
 extension ProtoHandshakeAccept {
     init(_ accept: Wire.HandshakeAccept) {
-        self.from = .init(accept.from)
         self.version = .init(accept.version)
+        self.from = .init(accept.from)
         self.origin = .init(accept.origin)
+    }
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Wire.HandshakeReject from ProtoHandshakeReject
+
+extension Wire.HandshakeReject {
+    init(_ proto: ProtoHandshakeReject) throws {
+        guard proto.hasVersion else {
+            throw WireFormatError.missingField("version")
+        }
+        guard proto.hasFrom else {
+            throw WireFormatError.missingField("from")
+        }
+        guard proto.hasOrigin else {
+            throw WireFormatError.missingField("origin")
+        }
+
+        self.version = .init(proto.version)
+        self.from = .init(proto.from)
+        self.origin = try .init(proto.origin)
+        self.reason = proto.reason
+    }
+}
+
+// MARK: ProtoHandshakeAccept from Wire.HandshakeAccept
+extension ProtoHandshakeReject {
+    init(_ reject: Wire.HandshakeReject) {
+        self.version = .init(reject.version)
+        self.from = .init(reject.from)
+        self.origin = .init(reject.origin)
     }
 }
 
@@ -211,23 +243,23 @@ extension Wire.HandshakeOffer {
 
 extension ProtoHandshakeOffer {
     init(_ offer: Wire.HandshakeOffer) {
+        self.version = ProtoProtocolVersion(offer.version)
         self.from = ProtoUniqueNodeAddress(offer.from)
         self.to = ProtoAddress(offer.to)
-        self.version = ProtoProtocolVersion(offer.version)
     }
 
     init(serializedData data: Data) throws {
         var proto = ProtoHandshakeOffer()
         try proto.merge(serializedData: data)
 
+        guard proto.hasVersion else {
+            throw WireFormatError.missingField("version")
+        }
         guard proto.hasFrom else {
             throw WireFormatError.missingField("from")
         }
         guard proto.hasTo else {
             throw WireFormatError.missingField("to")
-        }
-        guard proto.hasVersion else {
-            throw WireFormatError.missingField("version")
         }
 
         self = proto
