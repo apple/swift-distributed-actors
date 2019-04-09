@@ -210,7 +210,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }
@@ -242,22 +242,22 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         let testKit = ActorTestKit(local)
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         sleep(2)
 
         do {
             let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-            local.remoting.tell(.query(.associatedNodes(pSystem.ref)))
-            remote.remoting.tell(.query(.associatedNodes(pSystem.ref)))
+            local.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
+            remote.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }
 
         do {
             let pRemote = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-            local.remoting.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
-            remote.remoting.tell(.query(.associatedNodes(pRemote.ref)))
+            local.clusterShell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
+            remote.clusterShell.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }
@@ -287,7 +287,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }
@@ -327,7 +327,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             }
         }
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
     }

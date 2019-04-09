@@ -59,7 +59,7 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 
         func makeRemoteControl() -> AssociationRemoteControl {
             return AssociationRemoteControl(channel: self.channel) // FIXME what to expose here... this is likely not so good?
-            // TODO: RemoteControl should mimic what the RemotingKernel does when it sends messages; we want to push
+            // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
         }
     }
 }
@@ -67,7 +67,7 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Control capabilities (exposed to RemoteActorRef)
 
-/// A "Remote Control" offered to actors which wish to perfom actions onto an association, e.g. send messages to the remote side.
+/// A "Remote Control" offered to actors which wish to perform actions onto an association, e.g. send messages to the remote side.
 /// Several remote controls may be offered to actor refs, however the underlying resource is only one (like many ways to control one Apple TV).
 ///
 // Implementation notes:

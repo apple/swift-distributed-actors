@@ -16,14 +16,14 @@ import NIO
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Internal Network Kernel, which owns and administers all connections of this system
+// MARK: Internal Shell responsible for all networking/remoting/clustering state
 
-/// The remoting kernel "drives" all internal state machines of the remoting subsystem.
-internal class RemotingKernel { // TODO perhaps rename
-    public typealias Ref = ActorRef<RemotingKernel.Messages>
+/// The network shell "drives" all internal state machines of the remoting subsystem.
+internal class ClusterShell { // TODO: may still change the name, we'll see how we end up splitting things
+    public typealias Ref = ActorRef<ClusterShell.Message>
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // We do this to avoid "looping" any initial access of an actor ref through the kernels mailbox
+    // We do this to avoid "looping" any initial access of an actor ref through the cluster shell's mailbox
     // which would cause more latency to obtaining the association. refs cache the remote control once they have obtained it.
 
     private let _associationsLock: Lock
@@ -32,8 +32,15 @@ internal class RemotingKernel { // TODO perhaps rename
     /// - Protected by: `_associationsLock`
     private var _associationsRegistry: [NodeUID: AssociationRemoteControl]
 
-    // !-safe since we only ever use it if we start() the serialization subsystem, and while doing so we also initialize the pool.
-    internal var serializationPool: SerializationPool!
+    // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
+    // any earlier access to the pool is a bug (in our library) and must be treated as such.
+    private var _serializationPool: SerializationPool? = nil
+    internal var serializationPool: SerializationPool {
+        guard let pool = self._serializationPool else {
+            fatalError("BUG! Tried to access serializationPool on \(self) and it was nil! Please report this on the issue tracker.")
+        }
+        return pool
+    }
 
     internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
         return self._associationsLock.withLock {
@@ -41,9 +48,9 @@ internal class RemotingKernel { // TODO perhaps rename
         }
     }
 
-    /// To be invoked by kernel actor whenever an association is made;
+    /// To be invoked by cluster shell whenever an association is made;
     /// The cache is used by remote actor refs to obtain means of sending messages into the pipeline,
-    /// without having to queue through the remoting kernels mailbox.
+    /// without having to queue through the cluster shell's mailbox.
     private func cacheAssociationRemoteControl(_ associationState: AssociationStateMachine.AssociatedState) {
         self._associationsLock.withLockVoid {
             // TODO or association ID rather than the remote id?
@@ -55,14 +62,14 @@ internal class RemotingKernel { // TODO perhaps rename
     // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Remoting Kernel, reference used for issuing commands to the kernel
+    // MARK: Cluster Shell, reference used for issuing commands to the cluster
 
-    private var _ref: RemotingKernel.Ref?
-    var ref: RemotingKernel.Ref {
+    private var _ref: ClusterShell.Ref?
+    var ref: ClusterShell.Ref {
         // since this is initiated during system startup, nil should never happen
         // TODO slap locks around it...
         guard let it = self._ref else {
-            return fatalErrorBacktrace("Accessing RemotingKernel.ref failed, was nil! This should never happen as access should only happen after start() was invoked.")
+            return fatalErrorBacktrace("Accessing ClusterShell.ref failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
         return it
     }
@@ -77,17 +84,16 @@ internal class RemotingKernel { // TODO perhaps rename
     var _failureDetectorRef: FailureDetectorShell.Ref?
     var failureDetectorRef: FailureDetectorShell.Ref {
         guard let it = self._failureDetectorRef else {
-            return fatalErrorBacktrace("Accessing RemotingKernel.failureDetector failed, was nil! This should never happen as access should only happen after start() was invoked.")
+            return fatalErrorBacktrace("Accessing ClusterShell.failureDetector failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
         return it
     }
 
-    // init(system: ActorSystem) throws {
     init() {
         self._associationsLock = Lock()
         self._associationsRegistry = [:]
 
-        // not enjoying this dance, but this way we can share the RemotingKernel as the kernel AND the container for the ref.
+        // not enjoying this dance, but this way we can share the ClusterShell as the kernel AND the container for the ref.
         // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
         // remote refs need to obtain those
         //
@@ -97,8 +103,8 @@ internal class RemotingKernel { // TODO perhaps rename
     }
 
     /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
-    internal func start(system: ActorSystem) throws -> RemotingKernel.Ref {
-        self.serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
+    internal func start(system: ActorSystem) throws -> ClusterShell.Ref {
+        self._serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
         let failureDetector = system.settings.cluster.makeFailureDetector(system: system)
@@ -124,10 +130,10 @@ internal class RemotingKernel { // TODO perhaps rename
     }
 
     // Due to lack of Union Types, we have to emulate them
-    enum Messages: NoSerializationVerification {
-        // The external API, exposed to users of the RemotingKernel
+    enum Message: NoSerializationVerification {
+        // The external API, exposed to users of the ClusterShell
         case command(CommandMessage)
-        // The external API, exposed to users of the RemotingKernel to query for state
+        // The external API, exposed to users of the ClusterShell to query for state
         case query(QueryMessage)
         /// Messages internally driving the state machines; timeouts, network inbound events etc.
         case inbound(InboundMessage)
@@ -150,7 +156,7 @@ internal class RemotingKernel { // TODO perhaps rename
         case handshakeFailed(NodeAddress, Error) // TODO remove?
     }
 
-    private var behavior: Behavior<Messages> {
+    private var behavior: Behavior<Message> {
         return self.bind() // todo message self to bind?
     }
 
@@ -162,12 +168,12 @@ internal class RemotingKernel { // TODO perhaps rename
 
 // MARK: Kernel state: Bootstrap / Binding
 
-extension RemotingKernel {
+extension ClusterShell {
 
     /// Binds on setup to the configured address (as configured in `system.settings.cluster`).
     ///
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
-    private func bind() -> Behavior<Messages> {
+    private func bind() -> Behavior<Message> {
         return .setup { context in
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindAddress
@@ -176,7 +182,7 @@ extension RemotingKernel {
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
             let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, kernel: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, shell: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
 
             // TODO: configurable bind timeout?
 
@@ -184,7 +190,7 @@ extension RemotingKernel {
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
                 
-                let state = KernelState(settings: clusterSettings, channel: chan, log: context.log)
+                let state = ClusterShellState(settings: clusterSettings, channel: chan, log: context.log)
 
                 return self.ready(state: state)
             }
@@ -194,17 +200,17 @@ extension RemotingKernel {
     /// Ready and interpreting commands and incoming messages.
     ///
     /// Serves as main "driver" for handshake and association state machines.
-    private func ready(state: KernelState) -> Behavior<Messages> {
-        func receiveKernelCommand(context: ActorContext<Messages>, command: CommandMessage) -> Behavior<Messages> {
+    private func ready(state: ClusterShellState) -> Behavior<Message> {
+        func receiveKernelCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             switch command {
             case .handshakeWith(let remoteAddress):
                 return self.beginHandshake(context, state, with: remoteAddress)
-            case .unbind(let receptable):
-                return self.unbind(context, state: state, signalOnceUnbound: receptable)
+            case .unbind(let receptacle):
+                return self.unbind(context, state: state, signalOnceUnbound: receptacle)
             }
         }
 
-        func receiveQuery(context: ActorContext<Messages>, query: QueryMessage) -> Behavior<Messages> {
+        func receiveQuery(context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
             switch query {
             case .associatedNodes(let replyTo):
                 replyTo.tell(state.associatedAddresses()) // TODO: we'll want to put this into some nicer message wrapper?
@@ -212,7 +218,7 @@ extension RemotingKernel {
             }
         }
 
-        func receiveInbound(context: ActorContext<Messages>, message: InboundMessage) throws -> Behavior<Messages> {
+        func receiveInbound(context: ActorContext<Message>, message: InboundMessage) throws -> Behavior<Message> {
             switch message {
             case .handshakeOffer(let offer, let channel, let promise):
                 return self.onHandshakeOffer(state, offer, channel: channel, replyInto: promise)
@@ -238,11 +244,11 @@ extension RemotingKernel {
 }
 
 // Implements: Handshake init
-extension RemotingKernel {
+extension ClusterShell {
     /// Initiate an outgoing handshake to the `address`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    private func beginHandshake(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress) -> Behavior<Messages> {
+    private func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress) -> Behavior<Message> {
         var state = state
 
         if let existingAssociation = state.association(with: remoteAddress) {
@@ -261,7 +267,7 @@ extension RemotingKernel {
         //       change this so we can connect to many hosts in parallel
         let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(
             system: context.system,
-            kernel: context.myself,
+            shell: context.myself,
             log: context.log,
             targetAddress: remoteAddress,
             handshakeOffer: hsm.makeOffer(),
@@ -282,10 +288,10 @@ extension RemotingKernel {
 }
 
 // Implements: Incoming Handshake
-extension RemotingKernel {
+extension ClusterShell {
     
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
-    private func onHandshakeOffer(_ state: KernelState, _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>) -> Behavior<Messages> {
+    private func onHandshakeOffer(_ state: ClusterShellState, _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>) -> Behavior<Message> {
         var newState = state
         let log = state.log
 
@@ -316,9 +322,9 @@ extension RemotingKernel {
 
 
 // Implements: Failures to obtain connections
-extension RemotingKernel {
+extension ClusterShell {
 
-    func onOutboundConnectionError(_ context: ActorContext<Messages>, _ state: KernelState, with remoteAddress: NodeAddress, error: Error) -> Behavior<Messages> {
+    func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress, error: Error) -> Behavior<Message> {
         var state = state
         state.log.warning("Failed await for outbound channel to \(remoteAddress); Error was: \(error)")
 
@@ -353,8 +359,8 @@ extension RemotingKernel {
 }
 
 // Implements: Incoming Handshake Replies
-extension RemotingKernel {
-    private func onHandshakeAccepted(_ state: KernelState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Messages> {
+extension ClusterShell {
+    private func onHandshakeAccepted(_ state: ClusterShellState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
@@ -369,12 +375,12 @@ extension RemotingKernel {
 
         let association = state.associate(completed, channel: channel)
 
-        state.log.debug("[Remoting] Associated with: \(completed.remoteAddress).")
+        state.log.debug("[Cluster] Associated with: \(completed.remoteAddress).")
         self.cacheAssociationRemoteControl(association)
         return self.ready(state: state)
     }
 
-    private func onHandshakeRejected(_ state: KernelState, _ reject: Wire.HandshakeReject) -> Behavior<Messages> {
+    private func onHandshakeRejected(_ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
         var state = state
 
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
@@ -386,9 +392,9 @@ extension RemotingKernel {
 
 
 // Implements: Unbind
-extension RemotingKernel {
+extension ClusterShell {
 
-    fileprivate func unbind(_ context: ActorContext<Messages>, state: KernelState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Messages> {
+    fileprivate func unbind(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
         let addrDesc = "\(state.settings.uniqueBindAddress.address.host):\(state.settings.uniqueBindAddress.address.port)"
         return context.awaitResult(of: state.channel.close(mode: .all), timeout: .seconds(3)) { // TODO hardcoded timeout
             switch $0 {
@@ -415,7 +421,9 @@ enum SwiftDistributedActorsProtocolError: Error {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Kernel State
 
-internal protocol ReadOnlyKernelState {
+// TODO we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
+// and then types may require those specific capabilities from the shell; e.g. scheduling things or similar.
+internal protocol ReadOnlyClusterState {
     var log: Logger { get }
     var allocator: ByteBufferAllocator { get }
     var eventLoopGroup: EventLoopGroup { get } // TODO or expose the MultiThreaded one...?
@@ -428,9 +436,9 @@ internal protocol ReadOnlyKernelState {
     var settings: ClusterSettings { get }
 }
 
-/// State of the `RemotingKernel` state machine
-internal struct KernelState: ReadOnlyKernelState {
-    typealias Messages = RemotingKernel.Messages
+/// State of the `ClusterShell` state machine.
+internal struct ClusterShellState: ReadOnlyClusterState {
+    typealias Messages = ClusterShell.Message
 
     // TODO maybe move log and settings outside of state into the kernel?
     public var log: Logger
@@ -481,7 +489,7 @@ internal struct KernelState: ReadOnlyKernelState {
     }
 }
 
-extension KernelState {
+extension ClusterShellState {
 
     /// This is the entry point for a client initiating a handshake with a remote node.
     mutating func registerHandshake(with address: NodeAddress) -> HandshakeStateMachine.InitiatedState {
@@ -508,7 +516,7 @@ extension KernelState {
         if self._handshakes[offer.from.address] != nil {
             return FIXME("we should respond that already have this handshake in progress?") // FIXME: add test for incoming handshake while one in progress already
         } else {
-            let fsm = HandshakeStateMachine.HandshakeReceivedState(kernelState: self, offer: offer)
+            let fsm = HandshakeStateMachine.HandshakeReceivedState(state: self, offer: offer)
             self._handshakes[offer.from.address] = .wasOfferedHandshake(fsm)
             return fsm
         }
@@ -541,7 +549,6 @@ extension KernelState {
             // TODO perhaps we instead just warn and ignore this; since it should be harmless
         }
 
-        // FIXME: wrong channel?
         let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
         let state: AssociationStateMachine.State = .associated(asm)
         self._associations[handshake.remoteAddress.address] = state
@@ -560,13 +567,13 @@ extension KernelState {
 
 extension ActorSystem {
 
-    internal var remoting: ActorRef<RemotingKernel.Messages> {
-        return self._remoting?.ref ?? self.deadLetters.adapt(from: RemotingKernel.Messages.self)
+    internal var clusterShell: ActorRef<ClusterShell.Message> {
+        return self._remoting?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
     public func join(address: NodeAddress) {
-        self.remoting.tell(.command(.handshakeWith(address)))
+        self.clusterShell.tell(.command(.handshakeWith(address)))
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
@@ -576,16 +583,8 @@ extension ActorSystem {
             context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
             return .stopped
         })
-        self.remoting.tell(.query(.associatedNodes(ref)))
+        self.clusterShell.tell(.query(.associatedNodes(ref)))
     }
 
-    // TODO MAYBE
-//    func join(_ nodeAddress: Wire.NodeAddress) {
-//        guard let kernel = self.RemotingKernel else {
-//            fatalError("NOPE. no networking possible if you yourself have no address") // FIXME
-//        }
-//
-//        return kernel.tell(.join(nodeAddress))
-//    }
 }
 

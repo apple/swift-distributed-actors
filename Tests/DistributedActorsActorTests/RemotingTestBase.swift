@@ -108,7 +108,7 @@ open class RemotingTestBase: XCTestCase {
 
         let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
         try testKit.eventually(within: .seconds(1)) {
-            system.remoting.tell(.query(.associatedNodes(probe.ref)))
+            system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
             pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
             pprint("      Associated nodes: \(associatedNodes)")
@@ -135,7 +135,7 @@ open class RemotingTestBase: XCTestCase {
 
         let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
         try testKit.assertHolds(for: .seconds(1)) {
-            system.remoting.tell(.query(.associatedNodes(probe.ref)))
+            system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage()
             pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
             pprint("      Associated nodes: \(associatedNodes)")

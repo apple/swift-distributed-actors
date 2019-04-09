@@ -49,12 +49,12 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     // Access only via `self.remoteControl`
     private var _cachedAssociationRemoteControl: AssociationRemoteControl?
 
-    private let remoting: RemotingKernel
+    private let clusterShell: ClusterShell
 
-    init(remoting: RemotingKernel, path: UniqueActorPath) {
+    init(shell: ClusterShell, path: UniqueActorPath) {
         assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
         self._path = path
-        self.remoting = remoting
+        self.clusterShell = shell
     }
 
     public override func tell(_ message: Message) {
@@ -83,7 +83,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
             guard let remoteAddress = self.path.address else {
                 fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
             }
-            guard let obtainedRemoteControl = self.remoting.associationRemoteControl(with: remoteAddress.uid) else {
+            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress.uid) else {
                 fatalError("Tried to obtain association remote control for address [\(remoteAddress)]. " + 
                     "This should not happen, and could mean that an remote actor ref was fabricated without this system " + 
                     "having completed a handshake with the remote node, in which case this is suspicious and should fault.")

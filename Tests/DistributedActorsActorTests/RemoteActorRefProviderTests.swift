@@ -31,7 +31,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         system.shutdown()
     }
 
-    let nodeAddress = UniqueNodeAddress(systemName: "2RemotingAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
+    let nodeAddress = UniqueNodeAddress(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
     lazy var remotePath: ActorPath = try! ActorPath(["user", "henry", "hacker"].map(ActorPathSegment.init), address: nodeAddress)
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -43,8 +43,8 @@ class RemoteActorRefProviderTests: XCTestCase {
         let guardian = Guardian(parent: theOne, name: "user")
         let localProvider = LocalActorRefProvider(root: guardian)
 
-        let remotingKernel = RemotingKernel() // TODO name it "Shell"
-        let provider = RemoteActorRefProvider(settings: system.settings, kernel: remotingKernel, localProvider: localProvider)
+        let clusterShell = ClusterShell()
+        let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
         let uniqueRemotePath = remotePath.makeUnique(uid: ActorUID(1337))
         let resolveContext = ResolveContext<String>(path: uniqueRemotePath, deadLetters: system.deadLetters)
@@ -55,7 +55,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
         // then
         pinfo("Made remote ref: \(madeUpRef)")
-        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://2RemotingAssociationTests@127.0.0.1:9559/user/henry/hacker#1337)")
+        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://RemoteAssociationTests@127.0.0.1:9559/user/henry/hacker#1337)")
 
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
         // so this concludes the trivial test here; at least it shows that we resolve and sanity checks how we print remote refs
