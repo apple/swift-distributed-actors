@@ -20,6 +20,12 @@ internal extension String.StringInterpolation {
     }
 }
 
+internal extension String.StringInterpolation {
+    mutating func appendInterpolation(reflecting subject: CustomDebugStringConvertible) {
+        self.appendLiteral("\(String(reflecting: subject))")
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref custom interpolations
 
