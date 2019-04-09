@@ -121,7 +121,7 @@ class FailureDetectorTests: XCTestCase {
 
 
     private func getLocalFailureDetector(p: ActorTestProbe<Signals.Terminated>) throws -> FailureDetectorShell.Ref {
-        guard let failureDetector = local._remoting?._failureDetectorRef else {
+        guard let failureDetector = local._cluster?._failureDetectorRef else {
             throw p.error("Failure detector MUST be available")
         }
 

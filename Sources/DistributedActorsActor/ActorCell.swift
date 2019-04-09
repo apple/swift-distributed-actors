@@ -115,7 +115,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        if let failureDetectorRef = system._remoting?._failureDetectorRef {
+        if let failureDetectorRef = system._cluster?._failureDetectorRef {
             self._deathWatch = DeathWatch(failureDetectorRef: failureDetectorRef)
         } else {
             // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?

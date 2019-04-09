@@ -59,7 +59,7 @@ public final class ActorSystem {
 
     // MARK: Cluster
 
-    internal let _remoting: ClusterShell?
+    internal let _cluster: ClusterShell?
 
     // MARK: Logging
 
@@ -85,7 +85,7 @@ public final class ActorSystem {
         configureSettings(&settings)
         if settings.cluster.enabled {
             precondition(settings.cluster.bindAddress.systemName == name,
-                "Configured name [\(name)] did not match name configured for remoting \(settings.cluster.bindAddress)! " + 
+                "Configured name [\(name)] did not match name configured for cluster \(settings.cluster.bindAddress)! " + 
                 "Both names MUST match in order to avoid confusion.")
         }
 
@@ -125,12 +125,12 @@ public final class ActorSystem {
 
         if settings.cluster.enabled {
             // FIXME: make SerializationPoolSettings configurable
-            let remoting = ClusterShell()
-            self._remoting = remoting
-            effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: remoting, localProvider: localUserProvider)
-            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: remoting, localProvider: localSystemProvider)
+            let cluster = ClusterShell()
+            self._cluster = cluster
+            effectiveUserProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localUserProvider)
+            effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
         } else {
-            self._remoting = nil
+            self._cluster = nil
         }
 
         self.systemProvider = effectiveSystemProvider
@@ -144,9 +144,9 @@ public final class ActorSystem {
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
 
-            _ = try self._remoting?.start(system: self) // only spawns when remoting is initialized
+            _ = try self._cluster?.start(system: self) // only spawns when cluster is initialized
         } catch {
-            fatalError("Failed while starting remoting subsystem! Error: \(error)")
+            fatalError("Failed while starting cluster subsystem! Error: \(error)")
         }
     }
 
@@ -163,7 +163,7 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func shutdown() {
         self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        self._remoting?.shutdown()
+        self._cluster?.shutdown()
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
