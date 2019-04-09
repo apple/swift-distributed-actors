@@ -569,7 +569,7 @@ extension ClusterShellState {
 extension ActorSystem {
 
     internal var clusterShell: ActorRef<ClusterShell.Message> {
-        return self._remoting?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
+        return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
