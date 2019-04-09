@@ -93,7 +93,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         self._associationsLock = Lock()
         self._associationsRegistry = [:]
 
-        // not enjoying this dance, but this way we can share the ClusterShell as the kernel AND the container for the ref.
+        // not enjoying this dance, but this way we can share the ClusterShell as the shell AND the container for the ref.
         // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
         // remote refs need to obtain those
         //
@@ -102,7 +102,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         self._failureDetectorRef = nil
     }
 
-    /// Actually starts the kernel actor which kicks off binding to a port, and all further remoting work
+    /// Actually starts the shell which kicks off binding to a port, and all further remoting work
     internal func start(system: ActorSystem) throws -> ClusterShell.Ref {
         self._serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
@@ -166,7 +166,8 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
 
 }
 
-// MARK: Kernel state: Bootstrap / Binding
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster Bootstrap / Binding
 
 extension ClusterShell {
 
@@ -201,7 +202,7 @@ extension ClusterShell {
     ///
     /// Serves as main "driver" for handshake and association state machines.
     private func ready(state: ClusterShellState) -> Behavior<Message> {
-        func receiveKernelCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
+        func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             switch command {
             case .handshakeWith(let remoteAddress):
                 return self.beginHandshake(context, state, with: remoteAddress)
@@ -235,7 +236,7 @@ extension ClusterShell {
         // TODO: would be nice with some form of subReceive...
         return .receive { context, message in
             switch message {
-            case .command(let command): return receiveKernelCommand(context: context, command: command)
+            case .command(let command): return receiveShellCommand(context: context, command: command)
             case .query(let query):     return receiveQuery(context: context, query: query)
             case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
             }
@@ -419,7 +420,7 @@ enum SwiftDistributedActorsProtocolError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Kernel State
+// MARK: Shell State
 
 // TODO we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
 // and then types may require those specific capabilities from the shell; e.g. scheduling things or similar.
@@ -440,7 +441,7 @@ internal protocol ReadOnlyClusterState {
 internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
-    // TODO maybe move log and settings outside of state into the kernel?
+    // TODO maybe move log and settings outside of state into the shell?
     public var log: Logger
     public let settings: ClusterSettings
 
