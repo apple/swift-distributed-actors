@@ -19,7 +19,7 @@ import SwiftDistributedActorsActorTestKit
 import NIO
 import Logging
 
-class RemotingHandshakeStateMachineTests: XCTestCase {
+class RemoteHandshakeStateMachineTests: XCTestCase {
 
     typealias HSM = HandshakeStateMachine
 
@@ -31,7 +31,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         case server
     }
 
-    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> () = { _ in () }) -> KernelState {
+    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> () = { _ in () }) -> ClusterShellState {
         var settings = ClusterSettings(
             bindAddress: NodeAddress(
                 systemName: systemName,
@@ -42,7 +42,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         configureSettings(&settings)
         let log = Logger(label: "handshake-\(side)") // TODO could be a mock logger we can assert on?
 
-        return KernelState(settings: settings, channel: EmbeddedChannel(), log: log)
+        return ClusterShellState(settings: settings, channel: EmbeddedChannel(), log: log)
     }
     
 
@@ -62,7 +62,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
         _ = received._makeCompletedState() // TODO hide this
 
         let serverCompleted: HSM.CompletedState
@@ -102,7 +102,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
 
         // then
 
@@ -127,7 +127,7 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
 
         // then
 

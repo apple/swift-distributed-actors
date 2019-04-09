@@ -36,12 +36,12 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
 
     private let log: Logger
     private let handshakeOffer: Wire.HandshakeOffer
-    private let kernel: RemotingKernel.Ref
+    private let cluster: ClusterShell.Ref
 
-    init(log: Logger, handshakeOffer: Wire.HandshakeOffer, kernel: RemotingKernel.Ref) {
+    init(log: Logger, handshakeOffer: Wire.HandshakeOffer, cluster: ClusterShell.Ref) {
         self.log = log
         self.handshakeOffer = handshakeOffer
-        self.kernel = kernel
+        self.cluster = cluster
     }
 
     func channelActive(context: ChannelHandlerContext) {
@@ -56,18 +56,18 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
             switch response {
             case .accept(let accept):
                 self.log.debug("Received handshake accept from: [\(accept.from)]")
-                self.kernel.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
+                self.cluster.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
 
                 // handshake is completed, so we remove the handler from the pipeline
                 context.pipeline.removeHandler(self, promise: nil)
 
             case .reject(let reject):
                 self.log.debug("Received handshake reject from: [\(reject.from)] reason: [\(reject.reason)]")
-                self.kernel.tell(.inbound(.handshakeRejected(reject)))
+                self.cluster.tell(.inbound(.handshakeRejected(reject)))
                 context.close(promise: nil)
             }
         } catch {
-            self.kernel.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
+            self.cluster.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
             context.fireErrorCaught(error)
         }
     }
@@ -97,12 +97,12 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
     typealias InboundOut = Never
 
     private let log: Logger
-    private let kernel: RemotingKernel.Ref
+    private let cluster: ClusterShell.Ref
     private let localAddress: UniqueNodeAddress
 
-    init(log: Logger, kernel: RemotingKernel.Ref, localAddress: UniqueNodeAddress) {
+    init(log: Logger, cluster: ClusterShell.Ref, localAddress: UniqueNodeAddress) {
         self.log = log
-        self.kernel = kernel
+        self.cluster = cluster
         self.localAddress = localAddress
     }
 
@@ -115,7 +115,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]")
 
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
-            self.kernel.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
+            self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
 
             promise.futureResult.onComplete { res in
                 switch res {
@@ -361,12 +361,11 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 
 // MARK: "Server side" / accepting connections
 
-extension RemotingKernel {
+extension ClusterShell {
 
-    // TODO: abstract into `Transport`
+    // TODO: abstract into `Transport`?
 
-    // TODO do we need this ON kernel? could be pure function really hm
-    internal func bootstrapServerSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -401,7 +400,7 @@ extension RemotingKernel {
                     ("magic validator", ProtocolMagicBytesValidator()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, kernel: kernel, localAddress: bindAddress)),
+                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localAddress: bindAddress)),
                     // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)),
                     ("envelope handler", EnvelopeHandler(log: log)),
@@ -422,7 +421,7 @@ extension RemotingKernel {
         return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -453,7 +452,7 @@ extension RemotingKernel {
                     ("magic prepender", ProtocolMagicBytesPrepender()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, kernel: kernel)),
+                    ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, cluster: shell)),
                     ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)),
                     ("envelope handler", EnvelopeHandler(log: log)),
                     ("serialization handler", SerializationHandler(system: system, serializationPool: serializationPool)),

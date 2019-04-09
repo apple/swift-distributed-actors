@@ -37,7 +37,7 @@ class RemotingMessagingTests: RemotingTestBase {
             }, name: "remoteAcquaintance2")
 
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
@@ -71,7 +71,7 @@ class RemotingMessagingTests: RemotingTestBase {
             }, name: "remoteAcquaintance2")
 
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
@@ -98,7 +98,7 @@ class RemotingMessagingTests: RemotingTestBase {
             }, name: "remoteAcquaintance")
 
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
@@ -123,7 +123,7 @@ class RemotingMessagingTests: RemotingTestBase {
             }, name: "remoteAcquaintance")
 
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 
@@ -172,7 +172,7 @@ class RemotingMessagingTests: RemotingTestBase {
                 return .same
             }, name: "remoteAcquaintance")
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
         try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
 

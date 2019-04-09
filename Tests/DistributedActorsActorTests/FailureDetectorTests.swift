@@ -50,7 +50,7 @@ class FailureDetectorTests: XCTestCase {
     // MARK: ManualFailureDetector tests
 
     func joinNodes() throws {
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
         sleep(1) // FIXME make sure assertions work well without any sleeps
         try assertAssociated(system: local, expectAssociatedAddress: remoteUniqueAddress)
         try assertAssociated(system: remote, expectAssociatedAddress: localUniqueAddress)

@@ -30,7 +30,7 @@ struct DistributedDiningPhilosophers {
     }
 
     /// Enable networking on this node, and select which port it should bind to.
-    private func configureNetworking(_ settings: inout ActorSystemSettings, port: Int) {
+    private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
         settings.cluster.enabled = true
         settings.cluster.bindAddress.port = port
     }
@@ -38,15 +38,15 @@ struct DistributedDiningPhilosophers {
     func run(`for` time: TimeAmount) throws {
         let systemA = ActorSystem("DistributedPhilosophers") { settings in 
             self.configureMessageSerializers(&settings)
-            self.configureNetworking(&settings, port: 1111)
+            self.configureClustering(&settings, port: 1111)
         }
         let systemB = ActorSystem("DistributedPhilosophers") { settings in
             self.configureMessageSerializers(&settings)
-            self.configureNetworking(&settings, port: 2222)
+            self.configureClustering(&settings, port: 2222)
         }
         let systemC = ActorSystem("DistributedPhilosophers") { settings in
             self.configureMessageSerializers(&settings)
-            self.configureNetworking(&settings, port: 3333)
+            self.configureClustering(&settings, port: 3333)
         }
 
         print("~~~~~~~ started 3 actor systems ~~~~~~~")

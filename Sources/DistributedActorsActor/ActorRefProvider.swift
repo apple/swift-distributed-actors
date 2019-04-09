@@ -46,17 +46,17 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
     private let localAddress: UniqueNodeAddress
     private let localProvider: LocalActorRefProvider
 
-    let kernel: RemotingKernel
+    let cluster: ClusterShell
     // TODO should cache perhaps also associations to inject them eagerly to actor refs?
 
     // TODO restructure it somehow, perhaps we dont need the full abstraction like this
     init(settings: ActorSystemSettings,
-         kernel: RemotingKernel,
+         cluster: ClusterShell,
          localProvider: LocalActorRefProvider) {
         precondition(settings.cluster.enabled, "Remote actor provider should only be used when clustering is enabled")
 
         self.localAddress = settings.cluster.uniqueBindAddress
-        self.kernel = kernel
+        self.cluster = cluster
         self.localProvider = localProvider
     }
 }
@@ -113,7 +113,7 @@ extension RemoteActorRefProvider {
     }
 
     internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> RemoteActorRef<Message> {
-        let remoteRef = RemoteActorRef<Message>(remoting: self.kernel, path: path)
+        let remoteRef = RemoteActorRef<Message>(shell: self.cluster, path: path)
         return remoteRef
     }
 }
