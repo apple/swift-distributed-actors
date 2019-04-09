@@ -143,7 +143,6 @@ public final class ActorSystem {
 
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
-
             _ = try self._cluster?.start(system: self) // only spawns when cluster is initialized
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
