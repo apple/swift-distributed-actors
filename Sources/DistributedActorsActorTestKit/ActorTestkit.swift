@@ -135,6 +135,38 @@ public struct EventuallyError: Error {
     }
 }
 
+// MARK: assertHolds
+
+public extension ActorTestKit {
+    /// Executes passed in block numerous times, to check the assertion holds over time.
+    /// Throws an `AssertionHoldsError` when the block fails within the specified tiem amount.
+    func assertHolds(for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+                       file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+                       _ block: () throws -> Void) throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let deadline = self.system.deadline(fromNow: timeAmount) // TODO system time source?
+
+        var polledTimes = 0
+
+        while deadline.hasTimeLeft() {
+            do {
+                polledTimes += 1
+                try block()
+                usleep(useconds_t(interval.microseconds))
+            } catch {
+                let message = callSite.detailedMessage("Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
+                XCTFail(message, file: callSite.file, line: callSite.line)
+                throw AssertionHoldsError(message: message)
+            }
+        }
+    }
+}
+
+public struct AssertionHoldsError: Error {
+    let message: String
+}
+
+
 // MARK: Internal "power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
 extension ActorTestKit {

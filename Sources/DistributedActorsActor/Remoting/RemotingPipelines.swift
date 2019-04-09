@@ -29,85 +29,129 @@ public struct LeftOverBytesError: Error {
     public let leftOverBytes: ByteBuffer
 }
 
-private final class HandshakeHandler: ChannelInboundHandler, RemovableChannelHandler {
+private final class InitiatingHandshakeHandler: ChannelInboundHandler, RemovableChannelHandler {
     typealias InboundIn = ByteBuffer
     typealias InboundOut = ByteBuffer
+    typealias OutboundOut = ByteBuffer
 
+    private let log: Logger
+    private let handshakeOffer: Wire.HandshakeOffer
     private let kernel: RemotingKernel.Ref
-    private let role: HandlerRole
-    private let serializationPool: SerializationPool
-    private let system: ActorSystem
 
-    init(system: ActorSystem, kernel: RemotingKernel.Ref, role: HandlerRole, serializationPool: SerializationPool) {
+    init(log: Logger, handshakeOffer: Wire.HandshakeOffer, kernel: RemotingKernel.Ref) {
+        self.log = log
+        self.handshakeOffer = handshakeOffer
         self.kernel = kernel
-        self.role = role
-        self.serializationPool = serializationPool
-        self.system = system
+    }
+
+    func channelActive(context: ChannelHandlerContext) {
+        self.initiateHandshake(context: context)
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
-        traceLog_Remote("[handshake-\(self.role)] INCOMING: \(bytes.formatHexDump())")
 
         do {
-            switch self.role {
-            case .server:
-                // TODO formalize wire format...
-                let offer = try self.readHandshakeOffer(bytes: &bytes)
+            let response = try self.readHandshakeResponse(bytes: &bytes)
+            switch response {
+            case .accept(let accept):
+                self.log.debug("Received handshake accept from: [\(accept.from)]")
+                self.kernel.tell(.inbound(.handshakeAccepted(accept, channel: context.channel)))
 
-                let promise = context.eventLoop.makePromise(of: ByteBuffer.self) // TODO trying to figure out nicest way...
-                self.kernel.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
+                // handshake is completed, so we remove the handler from the pipeline
+                context.pipeline.removeHandler(self, promise: nil)
 
-                promise.futureResult.onComplete { res in
-                    switch res {
-                    case .failure(let err):
-                        context.fireErrorCaught(err)
-                    case .success(let bytes):
-                        context.writeAndFlush(NIOAny(bytes), promise: nil)
-                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
-                        self.upgradePipeline(context: context)
-                    }
-                }
-
-            case .client:
-                let accept = try self.readHandshakeAccept(bytes: &bytes) // TODO must check reply types
-
-                let promise = context.eventLoop.makePromise(of: Void.self) // TODO trying to figure out nicest way...
-                self.kernel.tell(.inbound(.handshakeAccepted(accept, channel: context.channel, replyTo: promise)))
-
-                // TODO once we write the response here, we can remove the handshake handler from the pipeline
-                
-                promise.futureResult.onComplete { res in
-                    switch res {
-                    case .failure(let err):
-                        context.fireErrorCaught(err)
-                    case .success:
-                        self.upgradePipeline(context: context)
-                    }
-                }
+            case .reject(let reject):
+                self.log.debug("Received handshake reject from: [\(reject.from)] reason: [\(reject.reason)]")
+                self.kernel.tell(.inbound(.handshakeRejected(reject)))
+                context.close(promise: nil)
             }
-
-
         } catch {
-            self.kernel.tell(.inbound(.handshakeFailed(nil, error))) // FIXME this is to let the state machine know it should clear this handshake
+            self.kernel.tell(.inbound(.handshakeFailed(self.handshakeOffer.to, error)))
             context.fireErrorCaught(error)
         }
     }
 
-    // called after handshake is successfully completed to remove the handshake handler
-    // and add the serialization related handlers
-    private func upgradePipeline(context: ChannelHandlerContext) {
-        context.pipeline.removeHandler(self, promise: nil)
-        var envelopeHandlerLog = Logger(label: "envelopeHandler", factory: {
-            let context = LoggingContext(identifier: $0, dispatcher: nil)
-            context[metadataKey: "actorSystemAddress"] = .stringConvertible(self.system.settings.remoting.uniqueBindAddress)
-            return ActorOriginLogHandler(context)
-        })
+    private func initiateHandshake(context: ChannelHandlerContext) {
+        let proto = ProtoHandshakeOffer(self.handshakeOffer)
+        self.log.debug("Offering handshake [\(proto)]")
 
-        envelopeHandlerLog[metadataKey: "actorSystemAddress"] = .stringConvertible(self.system.settings.remoting.uniqueBindAddress)
+        do {
+            // TODO allow allocating into existing buffer
+            // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
+            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator:  context.channel.allocator)
+            // TODO should we use the serialization infra ourselves here? I guess so...
 
-        _ = context.channel.pipeline.addHandler(EnvelopeHandler(log: envelopeHandlerLog), name: "envelope handler", position: .last)
-        _ = context.channel.pipeline.addHandler(SerializationHandler(system: self.system, serializationPool: self.serializationPool), name: "serialization handler", position: .last)
+            // FIXME make the promise dance here
+            context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
+        } catch {
+            // TODO change since serialization which can throw should be shipped of to a future
+            // ---- since now we blocked the actor basically with the serialization
+            context.fireErrorCaught(error)
+        }
+    }
+}
+
+final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHandler {
+    typealias InboundIn = ByteBuffer
+    typealias InboundOut = Never
+
+    private let log: Logger
+    private let kernel: RemotingKernel.Ref
+    private let localAddress: UniqueNodeAddress
+
+    init(log: Logger, kernel: RemotingKernel.Ref, localAddress: UniqueNodeAddress) {
+        self.log = log
+        self.kernel = kernel
+        self.localAddress = localAddress
+    }
+
+    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+        do {
+            var bytes = self.unwrapInboundIn(data)
+            // TODO formalize wire format...
+            let offer = try self.readHandshakeOffer(bytes: &bytes)
+
+            self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]")
+
+            let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
+            self.kernel.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
+
+            promise.futureResult.onComplete { res in
+                switch res {
+                case .failure(let err):
+                    context.fireErrorCaught(err)
+                case .success(.accept(let accept)):
+                    self.log.debug("Accepting handshake offer from: [\(offer.from)]")
+                    let acceptProto = ProtoHandshakeAccept(accept)
+                    var proto = ProtoHandshakeResponse()
+                    proto.accept = acceptProto
+                    do {
+                        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+                        context.writeAndFlush(NIOAny(bytes), promise: nil)
+                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
+                        context.pipeline.removeHandler(self, promise: nil)
+                    } catch {
+                        context.fireErrorCaught(error)
+                    }
+                case .success(.reject(let reject)):
+                    self.log.debug("Rejecting handshake offer from: [\(offer.from)] reason: [\(reject.reason)]")
+                    let rejectProto = ProtoHandshakeReject(reject)
+                    var proto = ProtoHandshakeResponse()
+                    proto.reject = rejectProto
+                    do {
+                        let bytes = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+                        context.writeAndFlush(NIOAny(bytes), promise: nil)
+                        // we are done with the handshake, so we can remove it and add envelope and serialization handler to process actual messages
+                        context.pipeline.removeHandler(self, promise: nil)
+                    } catch {
+                        context.fireErrorCaught(error)
+                    }
+                }
+            }
+        } catch {
+            context.fireErrorCaught(error)
+        }
     }
 }
 
@@ -256,23 +300,25 @@ private final class SerializationHandler: ChannelDuplexHandler {
 
 // MARK: Protobuf read... implementations
 
-extension HandshakeHandler {
+extension InitiatingHandshakeHandler {
+    // length prefixed
+    func readHandshakeResponse(bytes: inout ByteBuffer) throws -> Wire.HandshakeResponse {
+        guard let data = bytes.readData(length: bytes.readableBytes) else {
+            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
+        }
+        let proto = try ProtoHandshakeResponse(serializedData: data)
+        return try Wire.HandshakeResponse(proto)
+    }
+}
+
+extension ReceivingHandshakeHandler {
     /// Read length prefixed data
     func readHandshakeOffer(bytes: inout ByteBuffer) throws -> Wire.HandshakeOffer {
         guard let data = bytes.readData(length: bytes.readableBytes) else {
             throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake offer")
         }
         let proto = try ProtoHandshakeOffer(serializedData: data)
-        return try Wire.HandshakeOffer(proto) // TODO: version too, since we negotiate about it
-    }
-
-    // length prefixed
-    func readHandshakeAccept(bytes: inout ByteBuffer) throws -> Wire.HandshakeAccept {
-        guard let data = bytes.readData(length: bytes.readableBytes) else {
-            throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: bytes.readableBytes, hint: "handshake accept")
-        }
-        let proto = try ProtoHandshakeAccept(serializedData: data)
-        return try Wire.HandshakeAccept(proto)
+        return try Wire.HandshakeOffer(proto)
     }
 }
 
@@ -355,9 +401,11 @@ extension RemotingKernel {
                     ("magic validator", ProtocolMagicBytesValidator()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("handshake handler", HandshakeHandler(system: system, kernel: kernel, role: .server, serializationPool: serializationPool)),
+                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, kernel: kernel, localAddress: bindAddress)),
                     // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)),
+                    ("envelope handler", EnvelopeHandler(log: log)),
+                    ("serialization handler", SerializationHandler(system: system, serializationPool: serializationPool)),
                 ]
 
                 channelHandlers.append(contentsOf: otherHandlers)
@@ -374,7 +422,7 @@ extension RemotingKernel {
         return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, kernel: RemotingKernel.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: RemotingSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -405,8 +453,10 @@ extension RemotingKernel {
                     ("magic prepender", ProtocolMagicBytesPrepender()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("handshake handler", HandshakeHandler(system: system, kernel: kernel, role: .client, serializationPool: serializationPool)),
+                    ("initiating handshake handler", InitiatingHandshakeHandler(log: log, handshakeOffer: handshakeOffer, kernel: kernel)),
                     ("bytes dumper", DumpRawBytesDebugHandler(role: .client, log: log)),
+                    ("envelope handler", EnvelopeHandler(log: log)),
+                    ("serialization handler", SerializationHandler(system: system, serializationPool: serializationPool)),
                 ]
 
                 channelHandlers.append(contentsOf: otherHandlers)

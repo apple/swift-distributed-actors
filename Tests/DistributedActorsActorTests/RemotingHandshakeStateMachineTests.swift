@@ -58,11 +58,11 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        let clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
-        let offer: Wire.HandshakeOffer = clientInitiated.makeOffer()
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.initialServerState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
         _ = received._makeCompletedState() // TODO hide this
 
         let serverCompleted: HSM.CompletedState
@@ -71,14 +71,10 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
             serverCompleted = completed
         case .rejectHandshake:
             throw shouldNotHappen("Must not reject the handshake")
-        case .goAwayRogueHandshake:
-            throw shouldNotHappen("Must not goaway the handshake")
         }
 
-        let serverAccepted = serverCompleted.makeAccept()
-
         // client
-        let clientCompleted = HSM.CompletedState(fromInitiated: clientInitiated, remoteAddress: serverAccepted.from)
+        let clientCompleted = HSM.CompletedState(fromInitiated: clientInitiated, remoteAddress: serverAddress)
 
         // then
 
@@ -102,26 +98,20 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.patch += 1
         }
 
-        // client
-        let clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
-        let offer: Wire.HandshakeOffer = clientInitiated.makeOffer()
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.initialServerState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
 
         // then
 
-        let serverCompleted: HSM.CompletedState
         switch received.negotiate() {
-        case .acceptAndAssociate(let completed):
-            serverCompleted = completed
+        case .acceptAndAssociate:
+            ()
         case .rejectHandshake:
             throw shouldNotHappen("Must not reject the handshake")
-        case .goAwayRogueHandshake:
-            throw shouldNotHappen("Must not goaway the handshake")
         }
-
-        _ = serverCompleted.makeAccept()
     }
 
     func test_negotiate_server_shouldRejectClient_newerMajor() throws {
@@ -133,12 +123,11 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.major += 1
         }
 
-        // client
-        let clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
-        let offer: Wire.HandshakeOffer = clientInitiated.makeOffer()
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.initialServerState(kernelState: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(kernelState: serverKernel, offer: offer)
 
         // then
 
@@ -146,10 +135,8 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         switch received.negotiate() {
         case .acceptAndAssociate(let completed):
             throw shouldNotHappen("Must not accept handshake from such much more new-er node; \(completed)")
-        case .goAwayRogueHandshake:
-            throw shouldNotHappen("Must not goaway the handshake")
-        case .rejectHandshake(let e):
-            error = e
+        case .rejectHandshake(let rejected):
+            error = rejected.error
         }
 
         "\(error)".shouldEqual("incompatibleProtocolVersion(local: Version(0.0.1, reserved:0), remote: Version(1.0.1, reserved:0), reason: Optional(\"Major version mismatch!\"))")
@@ -168,7 +155,8 @@ class RemotingHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        var clientInitiated = HSM.initialClientState(kernelState: clientKernel, connectTo: serverAddress.address)
+        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")
         }

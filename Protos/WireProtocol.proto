@@ -31,6 +31,13 @@ message HandshakeOffer {
     // transport.
 }
 
+message HandshakeResponse {
+    oneof status {
+        HandshakeAccept accept = 1;
+        HandshakeReject reject = 2;
+    }
+}
+
 message HandshakeAccept {
     ProtocolVersion version  = 1;
     UniqueNodeAddress origin = 2;
@@ -40,6 +47,8 @@ message HandshakeAccept {
 message HandshakeReject {
     ProtocolVersion version  = 1;
     UniqueNodeAddress origin = 2;
+    // In the reject case this is an `Address` instead of a `UniqueNodeAddress`,
+    // to explicitly prevent this from forming an association.
     Address from             = 3;
     string reason            = 4;
 }

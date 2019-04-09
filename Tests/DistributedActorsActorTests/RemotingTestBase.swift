@@ -120,6 +120,33 @@ open class RemotingTestBase: XCTestCase {
         }
     }
 
+    func assertNotAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
+        // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
+        // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
+        let testKit: ActorTestKit
+        if system  == self.local {
+            testKit = self.localTestKit
+        } else if system == self.remote {
+            testKit = self.remoteTestKit
+        } else {
+            testKit = ActorTestKit(system)
+        }
+
+
+        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
+        try testKit.assertHolds(for: .seconds(1)) {
+            system.remoting.tell(.query(.associatedNodes(probe.ref)))
+            let associatedNodes = try probe.expectMessage()
+            pprint("                  Self: \(String(reflecting: system.settings.remoting.uniqueBindAddress))")
+            pprint("      Associated nodes: \(associatedNodes)")
+            pprint("         Expected node: \(String(reflecting: address))")
+
+            if associatedNodes.contains(address) {
+                throw TestError("[\(system)] unexpectedly associated with node: [\(address)]")
+            }
+        }
+    }
+
     func resolveRemoteRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
         return self.resolveRef(on: system, type: type, path: path, targetSystem: self.remote)
     }

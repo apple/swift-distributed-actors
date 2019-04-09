@@ -39,10 +39,23 @@ enum Wire {
 
     // TODO: such messages should go over a priority lane
     internal struct HandshakeOffer {
-        internal var version: Version = Version.init(reserved: 0, major: 0, minor: 0, patch: 1) // TODO: get it for real
+        internal var version: Version
 
         internal var from: UniqueNodeAddress
         internal var to: NodeAddress
+    }
+
+    internal enum HandshakeResponse {
+        case accept(HandshakeAccept)
+        case reject(HandshakeReject)
+
+        init(_ proto: ProtoHandshakeResponse) throws {
+            switch proto.status {
+            case .none: fatalError("Invalid handshake response. Contained neither accept, nor reject.")
+            case .some(.accept(let accept)): self = .accept(try HandshakeAccept(accept))
+            case .some(.reject(let reject)): self = .reject(try HandshakeReject(reject))
+            }
+        }
     }
 
     internal struct HandshakeAccept {
@@ -56,8 +69,8 @@ enum Wire {
         /// intended for it, and not a previous incarnation of a system on the same network address.
         internal let origin: UniqueNodeAddress
 
-        init(from: UniqueNodeAddress, origin: UniqueNodeAddress) {
-            self.version = Version.init(reserved: 0, major: 0, minor: 0, patch: 1) // TODO: get it for real
+        init(version: Version, from: UniqueNodeAddress, origin: UniqueNodeAddress) {
+            self.version = version
             self.from = from
             self.origin = origin
         }
@@ -65,14 +78,17 @@ enum Wire {
 
     /// Negative. We can not establish an association with this node.
     internal struct HandshakeReject { // TODO: Naming bikeshed
-        internal let version: Version = Version.init(reserved: 0, major: 0, minor: 0, patch: 1) // TODO: get it for real
-        internal let reason: String?
+        internal let version: Version
+        internal let reason: String
 
         /// not an UniqueNodeAddress, so we can't proceed into establishing an association - even by accident
         internal let from: NodeAddress
+        internal let origin: UniqueNodeAddress
 
-        init(from: NodeAddress, reason: String?) {
+        init(version: Wire.Version, from: NodeAddress, origin: UniqueNodeAddress, reason: String) {
+            self.version = version
             self.from = from
+            self.origin = origin
             self.reason = reason
         }
     }
