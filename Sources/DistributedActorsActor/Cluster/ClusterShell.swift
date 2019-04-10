@@ -146,7 +146,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         case unbind(BlockingReceptacle<Void>)
     } 
     enum QueryMessage: NoSerializationVerification {
-        case associatedNodes(ActorRef<[UniqueNodeAddress]>) // TODO better type here
+        case associatedNodes(ActorRef<Set<UniqueNodeAddress>>) // TODO better type here
         // TODO: case subscribeAssociations(ActorRef<[UniqueNodeAddress]>) // to receive events about it one by one
     }
     internal enum InboundMessage {
@@ -480,13 +480,16 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         return self._associations[address]
     }
 
-    func associatedAddresses() -> [UniqueNodeAddress] {
-        return self._associations.values.map { asm -> UniqueNodeAddress in
+    func associatedAddresses() -> Set<UniqueNodeAddress> {
+        var set: Set<UniqueNodeAddress> = .init(minimumCapacity: self._associations.count)
+
+        for asm in self._associations.values {
             switch asm {
-            case .associated(let state):   
-                return state.remoteAddress
+            case .associated(let state): set.insert(state.remoteAddress)
             }
         }
+
+        return set
     }
     func handshakes() -> [HandshakeStateMachine.State] {
         return self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
@@ -502,7 +505,7 @@ extension ClusterShellState {
         // TODO more checks here, so we don't reconnect many times etc
 
         if let existingAssociation = self.association(with: remoteAddress) {
-            self.log.warning("BEGIN NEW HANDSHAKE TO \(String(reflecting: remoteAddress)) while existing assoc: \(existingAssociation)")
+            self.log.warning("Beginning new handshake to [\(reflecting: remoteAddress)], with already existing association: \(existingAssociation). Could this be a bug?")
         }
 
         let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: remoteAddress)
@@ -570,9 +573,9 @@ extension ClusterShellState {
             self._associations[handshake.remoteAddress.address] = state
         }
 
-        func replaceAssociation() {
-            let existingAssociation = self.association(with: handshake.remoteAddress.address)
-            switch existingAssociation {
+        let change = self.membership.join(handshake.remoteAddress)
+        if change.isReplace {
+            switch self.association(with: handshake.remoteAddress.address) {
             case .some(.associated(let associated)):
                 // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
                 // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.
@@ -583,23 +586,15 @@ extension ClusterShellState {
             default:
                 self.log.warning("Membership change indicated node replacement, yet no 'old' association found, this could happen if failure detection ")
             }
-
-            storeAssociation()
         }
+        storeAssociation()
 
-        let change = self.membership.join(handshake.remoteAddress)
-        if change.isReplace {
-            replaceAssociation()
-        } else {
-            storeAssociation()
-        }
         return asm
     }
 
     mutating func removeAssociation() {
         return undefined()
     }
-
 
 }
 
@@ -619,7 +614,7 @@ extension ActorSystem {
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
     public func _dumpAssociations() {
-        let ref: ActorRef<[UniqueNodeAddress]> = try! self.spawnAnonymous(.receive { context, nodes in
+        let ref: ActorRef<Set<UniqueNodeAddress>> = try! self.spawnAnonymous(.receive { context, nodes in
             let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
             context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
             return .stopped

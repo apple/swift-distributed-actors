@@ -380,9 +380,12 @@ public struct NodeAddress: Hashable {
         self.init(protocol: "sact", systemName: systemName, host: host, port: port)
     }
 }
-extension NodeAddress: CustomStringConvertible {
+extension NodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         return "\(self.`protocol`)://\(self.systemName)@\(self.host):\(self.port)"
+    }
+    public var debugDescription: String {
+        return self.description
     }
 }
 
