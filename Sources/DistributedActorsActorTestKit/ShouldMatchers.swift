@@ -206,7 +206,7 @@ extension Equatable {
     }
 }
 
-extension Array { // TODO on more general type
+extension Collection {
     public func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc

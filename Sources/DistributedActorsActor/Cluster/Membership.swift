@@ -98,11 +98,9 @@ extension Membership {
             // means a node removal
             self.remove(change.address)
         case .some(.joining):
-            pprint("NODE JOINING: \(change.address)")
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
             _ = self.join(change.address)
         case .some(.alive):
-            pprint("NODE ĄLIVE: \(change.address)")
             _ = self.join(change.address)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):

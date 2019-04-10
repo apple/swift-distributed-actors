@@ -17,46 +17,13 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class FailureDetectorTests: XCTestCase {
-
-    var local: ActorSystem! = nil
-
-    var remote: ActorSystem! = nil
-
-    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.cluster.uniqueBindAddress
-    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.cluster.uniqueBindAddress
-
-    override func setUp() {
-        self.local = ActorSystem("FailureDetectorTests") { settings in
-            settings.cluster.failureDetector = .manual
-
-            settings.cluster.enabled = true
-            settings.cluster.bindAddress.port =  7337
-        }
-        self.remote = ActorSystem("FailureDetectorTests") { settings in
-            settings.cluster.failureDetector = .manual
-
-            settings.cluster.enabled = true
-            settings.cluster.bindAddress.port = 8228
-        }
-    }
-
-    override func tearDown() {
-        self.local.shutdown()
-        self.remote.shutdown()
-    }
+class FailureDetectorTests: ClusteredTwoNodesTestBase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: ManualFailureDetector tests
 
-    func joinNodes() throws {
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
-        sleep(1) // FIXME make sure assertions work well without any sleeps
-        try assertAssociated(system: local, expectAssociatedAddress: remoteUniqueAddress)
-        try assertAssociated(system: remote, expectAssociatedAddress: localUniqueAddress)
-    }
-
     func test_manualFailureDetector_shouldFailAllRefsOnSpecificAddress() throws {
+        self.setUpBoth()
         try self.joinNodes()
 
         // TODO: if we had a receptionist, use it here to get those refs

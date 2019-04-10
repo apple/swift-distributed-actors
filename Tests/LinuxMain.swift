@@ -55,7 +55,6 @@ import XCTest
          testCase(ParentChildActorTests.allTests),
          testCase(ProtoEnvelopeTests.allTests),
          testCase(RemoteActorRefProviderTests.allTests),
-         testCase(RemoteAssociationTests.allTests),
          testCase(RemoteHandshakeStateMachineTests.allTests),
          testCase(RemotingMessagingTests.allTests),
          testCase(RemotingTLSTests.allTests),

@@ -32,19 +32,3 @@ extension ActorSystem {
         return self._resolve(context: resolveContext)
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor System specific assertions
-
-internal func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress) throws {
-    let testKit = ActorTestKit(system)
-    let probe = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
-    try testKit.eventually(within: .milliseconds(500)) {
-        system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
-        let associatedNodes = try probe.expectMessage()
-        pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
-        pprint("      Associated nodes: \(associatedNodes)")
-        pprint("         Expected node: \(String(reflecting: address))")
-        associatedNodes.contains(address).shouldBeTrue()
-    }
-}

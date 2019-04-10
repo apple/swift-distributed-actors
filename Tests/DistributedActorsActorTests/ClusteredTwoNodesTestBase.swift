@@ -16,7 +16,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-open class RemotingTestBase: XCTestCase {
+open class ClusteredTwoNodesTestBase: XCTestCase {
     var _local: ActorSystem? = nil
     var local: ActorSystem {
         guard let system = self._local else {
@@ -93,7 +93,34 @@ open class RemotingTestBase: XCTestCase {
         self._remote?.shutdown()
     }
 
-    func assertAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress,
+    func joinNodes() throws {
+        try self.joinNodes(node: self.local, with: self.remote)
+    }
+
+    func joinNodes(node: ActorSystem, with other: ActorSystem) throws {
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+
+        try assertAssociated(node, with: other.settings.cluster.uniqueBindAddress)
+        try assertAssociated(other, with: node.settings.cluster.uniqueBindAddress)
+    }
+
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Assertions
+
+extension ClusteredTwoNodesTestBase {
+
+    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains the `address`.
+    func assertAssociated(_ system: ActorSystem, with address: UniqueNodeAddress,
+                          timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+                          verbose: Bool = false) throws {
+        try self.assertAssociated(system, withExactly: [address], timeout: timeout, interval: interval, verbose: verbose)
+    }
+
+    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains exactly the passed in `addresses`.
+    /// No "extra" addresses may be part of the
+    func assertAssociated(_ system: ActorSystem, withExactly addresses: [UniqueNodeAddress],
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                           verbose: Bool = false) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
@@ -107,21 +134,25 @@ open class RemotingTestBase: XCTestCase {
             testKit = ActorTestKit(system)
         }
 
-
-        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: [UniqueNodeAddress].self)
+        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: Set<UniqueNodeAddress>.self)
         defer { probe.stop() }
+
         try testKit.eventually(within: timeout ?? .seconds(1)) {
-            system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
+            system.clusterShell.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
             let associatedNodes = try probe.expectMessage() // TODO use interval here
 
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
-                pprint("         Expected node: \(String(reflecting: address))")
+                pprint("        Expected nodes: \(String(reflecting: addresses))")
             }
 
-            guard associatedNodes.contains(address) else {
-                throw TestError("[\(system)] did not associate the expected node: [\(address)]")
+
+            var diff = Set(associatedNodes)
+            diff.formSymmetricDifference(addresses)
+            guard diff.isEmpty else {
+                throw TestError("[\(system)] did not associate the expected nodes: [\(addresses)]. " + 
+                    "Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: addresses), diff: \(reflecting: diff). ")
             }
         }
     }
@@ -140,7 +171,7 @@ open class RemotingTestBase: XCTestCase {
             testKit = ActorTestKit(system)
         }
 
-        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: [UniqueNodeAddress].self)
+        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: Set<UniqueNodeAddress>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
@@ -156,7 +187,12 @@ open class RemotingTestBase: XCTestCase {
             }
         }
     }
+}
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Resolve utilities, for resolving remote refs "on" a specific system
+
+extension ClusteredTwoNodesTestBase {
     func resolveRemoteRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
         return self.resolveRef(on: system, type: type, path: path, targetSystem: self.remote)
     }
