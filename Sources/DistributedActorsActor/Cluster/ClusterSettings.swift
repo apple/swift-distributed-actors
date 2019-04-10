@@ -15,8 +15,7 @@
 import NIO
 import NIOSSL
 
-// Actors engage in 'Cluster' - the process of interacting with others to exchange information and develop contacts.
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor System Cluster Settings
 
 public struct ClusterSettings {

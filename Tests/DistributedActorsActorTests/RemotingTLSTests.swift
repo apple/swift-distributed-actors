@@ -18,7 +18,7 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 import NIOSSL
 
-class RemotingTLSTests: RemotingTestBase {
+class RemotingTLSTests: ClusteredTwoNodesTestBase {
 
     let testCert1 = """
 -----BEGIN CERTIFICATE-----
@@ -210,7 +210,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }
 
     func test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
@@ -245,7 +245,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         sleep(2)
 
         do {
-            let pSystem = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
+            let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNodeAddress>.self)
             local.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
             remote.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
@@ -253,7 +253,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         do {
-            let pRemote = testKit.spawnTestProbe(expecting: [UniqueNodeAddress].self)
+            let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNodeAddress>.self)
             local.clusterShell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.clusterShell.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
@@ -287,7 +287,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() throws {
@@ -327,7 +327,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }
 
 }

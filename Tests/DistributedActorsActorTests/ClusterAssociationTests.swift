@@ -17,8 +17,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class ClusterAssociationTests: RemotingTestBase {
-
+class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Happy path, accept association
@@ -26,10 +25,10 @@ class ClusterAssociationTests: RemotingTestBase {
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 
-        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: self.local, expectAssociatedAddress: self.remoteUniqueAddress)
-        try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+        try assertAssociated(remote, with: self.localUniqueAddress)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -38,10 +37,10 @@ class ClusterAssociationTests: RemotingTestBase {
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
         self.setUpBoth()
 
-        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: self.local, expectAssociatedAddress: self.remoteUniqueAddress)
-        try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
+        try assertAssociated(self.local, with: self.remoteUniqueAddress)
+        try assertAssociated(self.remote, with: self.localUniqueAddress)
 
         let oldRemote = self.remote
         let oldRemoteUniqueAddress = oldRemote.settings.cluster.uniqueBindAddress
@@ -53,15 +52,14 @@ class ClusterAssociationTests: RemotingTestBase {
 
         // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
         // instance (oldRemote) on the same address; It should accept this new handshake, and ban the previous node.
-        replacementRemote.remoting.tell(.command(.handshakeWith(self.localUniqueAddress.address))) // TODO nicer API
+        replacementRemote.clusterShell.tell(.command(.handshakeWith(self.localUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: self.local, expectAssociatedAddress: replacementUniqueAddress)
-        try assertAssociated(system: self.remote, expectAssociatedAddress: self.localUniqueAddress)
-
+        // verify we are associated only with the appropriate addresses now;
+        //
         // old address should have been removed from membership, by new one on same address "taking over"
         // note that connections to old node should also been severed // TODO cover this in a test
-        try assertNotAssociated(system: self.local, expectAssociatedAddress: oldRemoteUniqueAddress)
-        try assertNotAssociated(system: self.remote, expectAssociatedAddress: oldRemoteUniqueAddress)
+        try assertAssociated(self.local, withExactly: [replacementUniqueAddress])
+        try assertAssociated(self.remote, withExactly: [self.localUniqueAddress])
     }
 
     func test_association_shouldAllowSendingToRemoteReference() throws {
@@ -73,9 +71,9 @@ class ClusterAssociationTests: RemotingTestBase {
             return .same
         }, name: "remoteAcquaintance")
 
-        local.remoting.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
 
-        try assertAssociated(system: local, expectAssociatedAddress: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
@@ -99,12 +97,12 @@ class ClusterAssociationTests: RemotingTestBase {
         setUpLocal()
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
         let remoteAddress = NodeAddress(systemName: local.name, host: "localhost", port: self.remotePort)
-        local.remoting.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
         sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
         setUpRemote()
 
-        try assertAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
-        try assertAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+        try assertAssociated(remote, with: self.localUniqueAddress)
     }
 
     func test_association_shouldNotAssociateWhenRejected() throws {
@@ -113,7 +111,7 @@ class ClusterAssociationTests: RemotingTestBase {
         }
         setUpRemote()
 
-        local.remoting.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
 
         try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
