@@ -14,13 +14,12 @@
 
 extension ActorRef {
 
-    /// Widens the given
-    // FIXME this breaks in face of the recipient trying to watch this ref, we need to forward signals to the origin
-    // FIXME see more details in: https://github.com/apple/swift-distributed-actors/issues/40
+    /// Adapts this `ActorRef` to accept messages of another type by applying the conversion function
     public func adapt<From>(with converter: @escaping (From) -> Message) -> ActorRef<From> {
         return ActorRefAdapter(self, converter)
     }
 
+    /// Adapts this `ActorRef` to accept messages of another type by applying the conversion function
     public func adapt<From>(from: From.Type, with converter: @escaping (From) -> Message) -> ActorRef<From> {
         return ActorRefAdapter(self, converter)
     }
