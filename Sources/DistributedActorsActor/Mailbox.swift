@@ -51,11 +51,11 @@ final class Mailbox<Message> {
 
     // Implementation note: context for closure callbacks used for C-interop
     // They are never mutated, yet have to be `var` since passed to C (need inout semantics)
-    private var messageClosureContext: InterpretMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
-    private var systemMessageClosureContext: InterpretMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
-    private var deadLetterMessageClosureContext: DropMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
-    private var deadLetterSystemMessageClosureContext: DropMessageClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
-    private var invokeSupervisionClosureContext: InvokeSupervisionClosureContext! = nil // FIXME encountered  error: 'self' captured by a closure before all members were initialized suddenly otherwise...
+    private var messageClosureContext: InterpretMessageClosureContext!
+    private var systemMessageClosureContext: InterpretMessageClosureContext!
+    private var deadLetterMessageClosureContext: DropMessageClosureContext!
+    private var deadLetterSystemMessageClosureContext: DropMessageClosureContext!
+    private var invokeSupervisionClosureContext: InvokeSupervisionClosureContext!
 
     // Implementation note: closure callbacks passed to C-mailbox
     private let interpretMessage: InterpretMessageCallback
