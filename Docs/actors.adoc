@@ -9,20 +9,23 @@
 
 Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the Actor Model for Swift.
 
-=== Why Actors?
+=== "Thinking in Actors"
 
-#TODO: remove this section? No need for this here perhaps?#
+> One actor is no actor - they come in systems.
 
-Using actors unlocks several exciting use-cases, just to name a few:
+In order to build systems successfully using actors first you will need to get into the right mindset.
+In this section we will try to guide you towards "thinking in actors," but perhaps it's also best to first realize that:
+"you probably already know actors!"
 
-* **perform massively parallel computations** without having to think about low-level concurrency,
-**  since actors provide an "illusion of single-threaded execution" while scaling efficiently across many cores and machines.
-*  easily **scale systems across multiple nodes**, without changing their conceptual model
-*  **isolate failures**, so that a failure of a single actor does not fail the entire process.
-** in order to build fault-tolerant systems that span multiple cores and clustered nodes.
+Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
+happens: via asynchronous message passing. Actor take this observation and make it the core principle of anything built using them:
+
+- **Rule 1**: Actors only communicate using messaging.
 
 
-They do so thanks to a few core principles everything else is built on top of:
+Building systems using actors may seem slightly odd at first, if you are used to typical "web" frameworks
+
+The three core capabilities of actors are:
 
 . **Actors communicate _only_ using messages**,
 ** which allows the implementation to handle all the synchronization internally, so that code in the actor can be written
@@ -33,16 +36,18 @@ They do so thanks to a few core principles everything else is built on top of:
 . **Actors can change their behavior in reaction to a message**.
 ** which allows the modeling of arbitrary state machines and _stateful_ logic using actors.
 
-A key observation here is that actors lean themselves very well to writing state machines which many programs
-already are albeit perhaps more implicitly than explicitly -- with actors, transitions can be modeled more explicitly
-through behavior changes _or_ using a style with multiple mutable variables and mutating them within a single behavior.
-While we advertise for the first style, as it enables modeling the state space such that programming mistakes are less likely,
-the second style indeed leads to less boilerplate. Both styles are fully supported by Swift Distributed Actors and can be used at the user's discretion.
+To explain the entire idea in one sentence:
 
-Essentially an actor can be seen as an accumulator of state, that for every incoming message, returns a new behavior which based on its state may choose to act differently
-upon the next incoming message.
+> an actor can be seen as an accumulator of state, that for every incoming message,
+returns a new behavior which based on its state may choose to act differently upon the next incoming message.
 
-#TODO not so happy with the intro yet... We need to convey the main points, but also make it exciting.#
+That's great, but why would you use them rather than some other low level concurrency primitive?
+
+* **perform massively parallel computations** without having to think about low-level concurrency,
+**  since actors provide an "illusion of single-threaded execution" while scaling efficiently across many cores and machines.
+*  easily **scale systems across multiple nodes**, without changing their conceptual model
+*  **isolate failures**, so that a failure of a single actor does not fail the entire process.
+** in order to build fault-tolerant systems that span multiple cores and clustered nodes.
 
 ==== What Actors are **_not_**?
 
@@ -53,14 +58,6 @@ however, they do not provide addressable identities which are able to _keep stat
 
 In other words: actors are focused on identity, state, and distribution thereof.
 
-=== "Thinking in Actors"
-
-> One actor is no actor - they come in systems.
-
-In order to understand and successfully apply the actor model for building applications a number of key principles and
-assumptions about systems are best internalized beforehand.
-
-#TODO: Quite important section#
 
 ==== Design for Failure
 
@@ -347,6 +344,13 @@ catch one could log a warning about the "harmless" error having occurred.
 === Actor Paths and Hierarchy
 
 #TODO: explain that by looking at path you know: is it remote? is it someone's child? what's the unique id?#
+
+A feature of actors is that they have _unique identity_, which is represented by their address.
+
+
+Similar to real life, one can only send messages to an actor or friend if we know their address.
+
+are able to be referred to other parts of a system using api:ActorRef[class]s.
 
 
 === Interop with non-actor code

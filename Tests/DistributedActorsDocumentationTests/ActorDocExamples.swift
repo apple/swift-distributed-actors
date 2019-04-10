@@ -33,8 +33,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receive_behavior() throws {
         // tag::receive_behavior[]
-        let behavior: Behavior<Greetings> = .receive { context, message in
-            // <1>
+        let behavior: Behavior<Greetings> = .receive { context, message in // <1>
             print("Received \(message)") // <2>
             return .same // <3>
         }
