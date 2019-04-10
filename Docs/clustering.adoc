@@ -3,11 +3,29 @@
 
 > One actor is no actor, they come in systems.
 
-=== Configuration
+By connecting several nodes into a cluster you gain the ability to _transparently_ send and receive messages from actors
+located on other nodes. Along with this, advanced failure detection and migitation mechanisms are also enabled by default.
+#TODO: well, not yet since we didn't implement them yet#
 
-#TODO: Add more configuration documentation#
+=== Joining a Cluster
 
-==== Joining nodes
+In order to allow actors to message each other and make use of failure detection mechanisms nodes on which they reside
+have to form a cluster. Clustering is relatively lightweight and provides cluster membership and a gossip based failure
+detection and information dissemination protocol. #TODO: both of which are configurable and can be 'participated in',
+or plugged into external systems.#
+
+TIP: All capabilities that one has learnt about actors "locally" automatically translate and work without any code-changes
+     in a clustered environment.
+
+==== Node Lifecycle
+
+Nodes progress through a well-defined lifecycle when joining a cluster.
+
+#TODO: the exact details are to be defined more soon, for now we do not really implement these, and only allow for "join/leave"#
+
+image::cluster_lifecycle.svg[Cluster Node Lifecycle]
+
+==== Joining nodes (manually)
 
 In order for actors to be able to communicate across nodes, the nodes they reside one have to form a cluster (with exceptions,
 #TODO: ServiceRefs are the exception#).
@@ -36,15 +54,63 @@ NOTE: In some situations it may happen that a node crashes and comes up again us
       and "takes its place", however from the clusters perspective, it is not any special node -- it is treated the same way as
       any other freshly joined node (and has to go through the joining steps as any other node would).
 
+==== Node discovery (automatic)
+
+#TODO: discovery is not implemented yet;#
+
+It will be a pluggable mechanism that is queried by the system and should return a list of nodes that should be attempted
+to join to by the current node. This allows to automatically join existing clusters etc. Assisted rollouts are also a feature
+that we are planning here - e.g. for green/blue deployments and similar, and allowing coordination of these with a node
+orchestrator such as k8s or similar.
+
 === Receptionist ✗
 
-#TODO#
+#TODO: not implemented yet#
+
+Since in order to communicate with actors, one has to obtain well-typed `ActorRef<Message>` instances, it is not possible
+to do so safely without consulting some form of "registry." Such registry is implemented in form
+
+#TODO: maybe after all we would call it 'registry', needs consideration; Receptionist is a rather known pattern for actors,
+and wording is useful in the way that it keeps us in thinking about interactions with entities (as-if people).#
 
 === Replicated State Machines ✗
 
 #TODO#
 
-==== TLS
+=== Failure detection in Clusters
+
+Failure detection in clusters enables receiving `Terminated` signals with regards to watched actors residing on nodes,
+which have entirely crashed.
+
+Sadly, failure detection in distributed systems is always a trade-off between the time to signal a node failure,
+and potential false positives (where a node is detected as failed, however it was only "very slow to respond").
+To minimize these issues
+
+==== Watching Remote Actors
+
+Watching remote actors works the same way as it does for local actors -- if the remote actor terminates and was watched,
+the watching actor gets a api:Terminated[class] signal and may react to it.
+
+Additionally, not only individual actor failures are reported back, but also node failures.
+When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `Down`
+lifecycle state), upon this change local watchers receive a `Terminated` signal about actors that they have watched on
+given remote node. The following simplified diagram explains this mechanism:
+
+[.center]
+image::remote_watch_terminated.png[Remote Watch, when remote node crashes]
+
+[unstyled]
+- ❶ The `A` actor watches a remote actor `R` on another node,
+- ❷ The node `B` crashes abruptly, without performing a graceful leave,
+- ❸ The failure detector on node `A` eventually realizes what happened,
+- ❹ And triggers a `Terminated()` signal for all actors on the remote (now `Down`) node, notifying our local actor `A` which had watched `R` before.
+
+==== Custom Failure Detectors
+
+#TODO: we will likely allow plugging your own failure detector, while we'll implement a gossip based one by default,
+some users may have different needs for this or want to rely on other systems to check the health of nodes.#
+
+=== Secure Communication using TLS
 
 Communication between nodes can be secured with TLS by adding the necessary configuration.
 

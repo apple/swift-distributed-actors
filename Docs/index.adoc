@@ -29,6 +29,8 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :toclevels: 2
 :sectnumlevels: 3
 
+:imagesdir: images/
+
 :stylesdir: stylesheets/
 :stylesheet: pygments-default.css
 
