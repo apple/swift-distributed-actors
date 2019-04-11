@@ -354,8 +354,8 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     }
 
     private func setLoggerMetadata(_ context: ChannelHandlerContext) {
-        if let remoteAddress = context.remoteAddress { log.metadata["remoteAddress"] = .string("\(remoteAddress)") }
-        if let localAddress = context.localAddress { log.metadata["localAddress"] = .string("\(localAddress)") }
+        if let remoteAddress = context.remoteAddress { log[metadataKey: "remoteAddress"] = .string("\(remoteAddress)") }
+        if let localAddress = context.localAddress { log[metadataKey: "localAddress"] = .string("\(localAddress)") }
     }
 }
 
