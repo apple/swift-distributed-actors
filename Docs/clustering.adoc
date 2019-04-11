@@ -79,7 +79,7 @@ and wording is useful in the way that it keeps us in thinking about interactions
 
 === Failure detection in Clusters
 
-Failure detection in clusters enables receiving `Terminated` signals with regards to watched actors residing on nodes,
+Failure detection in clusters enables receiving api:Signals/Terminated[enum] signals with regards to watched actors residing on nodes,
 which have entirely crashed.
 
 Sadly, failure detection in distributed systems is always a trade-off between the time to signal a node failure,
@@ -89,11 +89,11 @@ To minimize these issues
 ==== Watching Remote Actors
 
 Watching remote actors works the same way as it does for local actors -- if the remote actor terminates and was watched,
-the watching actor gets a api:Terminated[class] signal and may react to it.
+the watching actor gets a api:Signals/Terminated[enum] signal and may react to it.
 
 Additionally, not only individual actor failures are reported back, but also node failures.
 When a node hosting actors fails, all of the hosted actors are assumed to have terminated (upon the node's move to `Down`
-lifecycle state), upon this change local watchers receive a `Terminated` signal about actors that they have watched on
+lifecycle state), upon this change local watchers receive a api:Signals/Terminated[enum] signal about actors that they have watched on
 given remote node. The following simplified diagram explains this mechanism:
 
 [.center]
