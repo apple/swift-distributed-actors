@@ -194,14 +194,13 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private func formatLevel(_ level: Logger.Level) -> String {
         switch level {
+        case .trace:     return "[TRACE]" 
         case .debug:     return "[DEBUG]" 
         case .info:      return "[INFO]"
         case .notice:    return "[NOTICE]"
         case .warning:   return "[WARN]"
         case .error:     return "[ERROR]"
         case .critical:  return "[CRITICAL]"
-        case .alert:     return "[ALERT]"
-        case .emergency: return "[EMERGENCY]"
         }
     }
 
