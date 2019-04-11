@@ -150,8 +150,9 @@ final class Mailbox<Message> {
             let envelope = envelopePtr.move()
             let msg = envelope.payload
 
-            let oldMetadata = Mailbox.populateLoggerMetadata(cell, from: envelope)
-            defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
+            // TODO: Depends on https://github.com/apple/swift-log/issues/37
+            // let oldMetadata = Mailbox.populateLoggerMetadata(cell, from: envelope)
+            // defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
 
             switch msg {
             case .userMessage(let message): 
@@ -494,16 +495,17 @@ extension Mailbox {
 
 // TODO: separate metadata things from the mailbox, perhaps rather we should do it inside the run (pain to do due to C interop a bit?)
 extension Mailbox {
-    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
-        let old = cell.log.metadata
-        #if SACT_DEBUG
-        cell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
-        #endif
-        return old
-    }
-    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logger.Metadata) {
-        cell.log.metadata = metadata
-    }
+    // TODO: enable again once https://github.com/apple/swift-log/issues/37 is resolved
+//    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
+//        let old = cell.log.metadata
+//        #if SACT_DEBUG
+//        cell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
+//        #endif
+//        return old
+//    }
+//    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logger.Metadata) {
+//        cell.log.metadata = metadata
+//    }
 }
 
 internal struct MessageProcessingFailure: Error {
