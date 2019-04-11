@@ -478,35 +478,55 @@ internal extension Behavior {
     @inlinable
     func canonicalize(_ context: ActorContext<Message>, next: Behavior<Message>) throws -> Behavior<Message> {
         // Note: on purpose not implemented as tail recursive function since tail-call elimination is not guaranteed
+        let failAtDepth = context.system.settings.actor.maxBehaviorNestingDepth
 
-        var canonical = next
-        while true {
-            switch canonical.underlying {
-            case .same:
-                if self.isSetup {
-                    throw IllegalBehaviorError.illegalTransition(from: self, to: next)
-                } else {
-                    return self
+        func canonicalize0(_ context: ActorContext<Message>, next: Behavior<Message>, depth: Int) throws -> Behavior<Message> {
+            guard depth < failAtDepth else {
+                throw IllegalBehaviorError.tooDeeplyNestedBehavior(reached: next, depth: depth)
+            }
+
+            var canonical = next
+            while true {
+                switch canonical.underlying {
+                case .same:
+                    if self.isSetup {
+                        throw IllegalBehaviorError.illegalTransition(from: self, to: next)
+                    } else {
+                        return self
+                    }
+
+                case .ignore:               return self
+                case .unhandled:            return self
+                case .custom:               return self
+                case .stopped(.none):       return .stopped(postStop: self)
+                case .stopped(.some):       return canonical
+                case .suspend(let handler): return .suspended(previousBehavior: self, handler: handler)
+
+                case .setup(let onStart):
+                    canonical = try onStart(context)
+
+                case .orElse(let first, let second):
+                    return try canonicalize0(context, next: first, depth: depth + 1)
+                        .orElse(canonicalize0(context, next: second, depth: depth + 1))
+
+                case let .intercept(inner, interceptor):
+                    let innerCanonicalized: Behavior<Message> = try inner.canonicalize(context, next: .same)
+                    return .intercept(behavior: innerCanonicalized, with: interceptor)
+
+                case .signalHandling(let onMessage, let onSignal):
+                    return .signalHandling(
+                        handleMessage: try canonicalize0(context, next: onMessage, depth: depth + 1),
+                        handleSignal: onSignal)
+
+                case .receive, .receiveMessage, .failed:
+                    return canonical
+                case .suspended:
+                    return canonical
                 }
-
-            case .ignore:               return self
-            case .unhandled:            return self
-            case .custom:               return self
-            case .stopped(.none):       return .stopped(postStop: self)
-            case .stopped(.some):       return canonical
-            case .suspend(let handler): return .suspended(previousBehavior: self, handler: handler)
-
-            case .setup(let onStart):
-                canonical = try onStart(context)
-
-            case let .intercept(inner, interceptor):
-                let innerCanonicalized: Behavior<Message> = try inner.canonicalize(context, next: .same)
-                return .intercept(behavior: innerCanonicalized, with: interceptor)
-
-            default:
-                return canonical
             }
         }
+
+        return try canonicalize0(context, next: next, depth: 0)
     }
 
     /// Starting a behavior means triggering all onStart actions of nested `.setup` calls.
