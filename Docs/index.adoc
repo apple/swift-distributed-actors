@@ -2,7 +2,6 @@
 :toc:
 :toc: left
 ifndef::host-github[:ext-relative: {outfilesuffix}]
-:icons: font
 :idprefix:
 :doctype: book
 :listing-caption: Listing
@@ -29,22 +28,27 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :toclevels: 2
 :sectnumlevels: 3
 
+:tip-caption: 💡
+:note-caption: 📘
+:important-caption: ❗️
+:caution-caption: 🔥
+:warning-caption: ⚠️
+
 :imagesdir: images/
 
-:stylesdir: stylesheets/
+:stylesdir:  stylesheets/
 :stylesheet: pygments-default.css
 
 :linkattrs:
 :mdash: &#8212;
 
 
-:dir_sact_doc_tests: ../Tests/Swift Distributed ActorsDocumentationTests
+:dir_sact_doc_tests:    ../Tests/Swift Distributed ActorsDocumentationTests
 :dir_sact_actor:        ../Sources/Swift Distributed ActorsActor
 :dir_sact_actor_tests:  ../Tests/Swift Distributed ActorsActorTests
 
 
 = Swift Distributed Actors Actors Reference Guide
-
 
 ++++
 <!--
