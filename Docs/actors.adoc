@@ -18,10 +18,9 @@ In this section we will try to guide you towards "thinking in actors," but perha
 "you probably already know actors!"
 
 Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
-happens: via asynchronous message passing. Actor take this observation and make it the core principle of anything built using them:
+happens: via asynchronous message passing. Actors take this observation and make it the core principle of anything built using them:
 
 - **Rule 1**: Actors only communicate using messaging.
-
 
 Building systems using actors may seem slightly odd at first, if you are used to typical "web" frameworks
 
@@ -346,11 +345,26 @@ catch one could log a warning about the "harmless" error having occurred.
 #TODO: explain that by looking at path you know: is it remote? is it someone's child? what's the unique id?#
 
 A feature of actors is that they have _unique identity_, which is represented by their address.
-
-
 Similar to real life, one can only send messages to an actor or friend if we know their address.
 
-are able to be referred to other parts of a system using api:ActorRef[class]s.
+The "sending" capability is expressed by obtaining an api:ActorRef[class], which also contains the actor's address.
+There can be many references (even on different nodes in a cluster) to the same actor, however its address remains the same.
+
+The address contains an UID which is sometimes referred to as the "Incarnation" ID. This UID is used to clarify identity in
+the following situation:
+
+- an actor is spawned under the `/user/animal/caplin` path;
+  - it gains an unique identifier which is appended to it's path like this automatically: `/user/animal/caplin#34535`.
+- the actor hands out a few references to itself to other actors for future use.
+- the actor decides it has performed it's task and should now stop itself.
+- after the actor stops, the `/user/animal` parent decides that another `caplin` should be spawned, to perform some tasks that Caplin's are good at.
+  - another _new_ actor is spawned under the _same path_ `/user/animal/caplin` and most likely will perform the same kind of work as the "previous caplin"
+- the new actor resides on the _same path_ however has a _different identity_ (and UID, which represents it)!
+- meanwhile, actors who were told about the original Caplin's `ActorRef` decide to send a message to it.
+- thanks to the different UID the system knows that these messages are _not_ intended for the _current_ Caplin -- as it has a different identity.
+  - note that this matters mostly for distributed systems, since in local systems the identity issue is resolved by simply
+    holding references to actor mailboxes; however semantically the model is exactly the same: the "old incarnation" is now gone.
+- messages sent to the "old" api:ActorRef[class] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
 
 === Interop with non-actor code
