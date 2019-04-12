@@ -9,31 +9,40 @@
 
 Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the Actor Model for Swift.
 
-=== "Thinking in Actors"
-
-> One actor is no actor - they come in systems.
+=== Thinking in Actors
 
 In order to build systems successfully using actors first you will need to get into the right mindset.
 In this section we will try to guide you towards "thinking in actors," but perhaps it's also best to first realize that:
-"you probably already know actors!"
+"you probably already know actors!" As any time you implemented some form of identity that was fed tasks that it should
+work on, most likely using some concurrent queue or other synchronization mechanism, you probably almost invented some form of actor-like structures there yourself 😊
 
 Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
 happens: via asynchronous message passing. Actors take this observation and make it the core principle of anything built using them:
 
-- **Rule 1**: Actors only communicate using messaging.
+> **Rule 1: Actors communicate only using messages.**
 
-Building systems using actors may seem slightly odd at first, if you are used to typical "web" frameworks
+Which is the single most important difference between actors and other concurrency styles. Actors communicate by sending
+messages to each other's mailboxes, and processing messages from their own mailboxes.
 
-The three core capabilities of actors are:
+This abstraction is very powerful and enables all core features of actors, namely:
 
-. **Actors communicate _only_ using messages**,
-** which allows the implementation to handle all the synchronization internally, so that code in the actor can be written
-   with the assumption of executing _as-if_ in a single thread, greatly simplifying our implementations based on actors.
-. **Actors can spawn other actors**, including "child actors"
+* handling concurrency without the need of thinking about threads or specific queues -- one only has to think about sending messages to specific identities;
+  ** Same as in real life: we only need to care about whom to send that important email, not about all the details how to safely get that email delivered to them (!)
+* being able to send messages to actors _the same way_, regardless if they are located on the same machine, on another clustered node, or potentially even somewhere completely different.
+  ** This is sometimes referred to as "location transparency," as we do not need to know about the physical location of the actor, as long as we have a reference to it.
+
+
+> **Rule 2: Actors can `spawn` other actors**
+
+Similarily to threads, processes, isolates or other isolation mechanisms
+
 ** which allows applications to be compartmentalized and structured in so-called <<supervision_tree, supervision trees>>,
     for better failure isolation and overall understandability of the system.
-. **Actors can change their behavior in reaction to a message**.
+
+> **Rule 3: Actors can change their behavior in reaction to a message**.
+
 ** which allows the modeling of arbitrary state machines and _stateful_ logic using actors.
+
 
 To explain the entire idea in one sentence:
 
