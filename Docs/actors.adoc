@@ -27,35 +27,43 @@ messages to each other's mailboxes, and processing messages from their own mailb
 This abstraction is very powerful and enables all core features of actors, namely:
 
 * handling concurrency without the need of thinking about threads or specific queues -- one only has to think about sending messages to specific identities;
-  ** Same as in real life: we only need to care about whom to send that important email, not about all the details how to safely get that email delivered to them (!)
+  ** Same as in real life: we only need to care about whom to send that important email, not about all the details how to safely get that email delivered to them!
 * being able to send messages to actors _the same way_, regardless if they are located on the same machine, on another clustered node, or potentially even somewhere completely different.
   ** This is sometimes referred to as "location transparency," as we do not need to know about the physical location of the actor, as long as we have a reference to it.
 
 
 > **Rule 2: Actors can `spawn` other actors**
 
-Similarily to threads, processes, isolates or other isolation mechanisms
+Similarly to threads, processes, isolates or other isolation mechanisms, actors can create (or "spawn" in actor terminology)
+other actors. This is a very useful capability as a single actor does not by itself give any parallelism to processing of messages,
+as it always processes one message at a time. In order to distribute work to be processed in parallel we want to use multiple actors,
+with each working on a piece or chunk of a lager work item. Or another way to view this is that if we represent users of our system
+by an actor reach -- we get parallelism in processing across all the users/actors, however each user/actor, is going to process
+its own pieces of work in a linear fashion.
 
-** which allows applications to be compartmentalized and structured in so-called <<supervision_tree, supervision trees>>,
-    for better failure isolation and overall understandability of the system.
+A typical example where spawning _child_ actors comes in handy is splitting up a bigger piece of work into smaller ones,
+and having the parent coordinate this work being done. For example, if we wanted to process a really complex dataset such
+as a data from radio telescopic observations of a black hole, and we were able to split up the work into small squares, that when connected up result in
+the complete image, we could create worker actors that would take care of the individual "squares" in parallel, and once
+complete send their rendered output back to the parent, which would assemble the complete picture from those partial renders.
+
+Another typical use case for being able to spawn millions of actors on a single machine, as opposed to threads,
+is the ability to use them to map real world identities, such as devices, measurements or people to their actor "counterpart,"
+inside of our actor application. This helps understandability and traceability when "things go wrong," as we can more easily
+trace back faults to perhaps a given users dataset or message sequence that caused a crash.
 
 > **Rule 3: Actors can change their behavior in reaction to a message**.
 
-** which allows the modeling of arbitrary state machines and _stateful_ logic using actors.
+An Actor's _raison d'être_ can well formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
+Actors enable us to write advanced concurrent and distributed applications by offering us a simple mental model: an
+actor processes a message, and the next time it receives a message, it may react differently than before -- since the previous message
+has changed its behavior. It is perhaps easier explained if we think about changing state -- if an incoming message changed an actor's
+state, such as a counter, the next message would be handled depending on the new counter's state -- in other words, state changes manifest
+in changes in an actors behavior.
 
-
-To explain the entire idea in one sentence:
-
-> an actor can be seen as an accumulator of state, that for every incoming message,
-returns a new behavior which based on its state may choose to act differently upon the next incoming message.
-
-That's great, but why would you use them rather than some other low level concurrency primitive?
-
-* **perform massively parallel computations** without having to think about low-level concurrency,
-**  since actors provide an "illusion of single-threaded execution" while scaling efficiently across many cores and machines.
-*  easily **scale systems across multiple nodes**, without changing their conceptual model
-*  **isolate failures**, so that a failure of a single actor does not fail the entire process.
-** in order to build fault-tolerant systems that span multiple cores and clustered nodes.
+In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
+stopping or suspending the actor, ignoring dropping or combining message handlers as "the next behavior." We will learn more about
+behaviors in the following sections.
 
 ==== What Actors are **_not_**?
 
