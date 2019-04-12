@@ -4,17 +4,17 @@
 > One actor is no actor, they come in systems.
 
 By connecting several nodes into a cluster you gain the ability to _transparently_ send and receive messages from actors
-located on other nodes. Along with this, advanced failure detection and migitation mechanisms are also enabled by default.
+located on other nodes. Along with this, advanced failure detection and mitigation mechanisms are also enabled by default.
 #TODO: well, not yet since we didn't implement them yet#
 
 === Joining a Cluster
 
-In order to allow actors to message each other and make use of failure detection mechanisms nodes on which they reside
-have to form a cluster. Clustering is relatively lightweight and provides cluster membership and a gossip based failure
+In order to allow actors to message each other and make use of failure detection mechanisms, nodes on which they reside
+have to form a cluster. Clustering is relatively lightweight and provides cluster membership, and a gossip based failure
 detection and information dissemination protocol. #TODO: both of which are configurable and can be 'participated in',
 or plugged into external systems.#
 
-TIP: All capabilities that one has learnt about actors "locally" automatically translate and work without any code-changes
+TIP: All capabilities that one has learned about actors "locally" automatically translate and work without any code-changes
      in a clustered environment.
 
 ==== Node Lifecycle
@@ -68,7 +68,9 @@ orchestrator such as k8s or similar.
 #TODO: not implemented yet#
 
 Since in order to communicate with actors, one has to obtain well-typed `ActorRef<Message>` instances, it is not possible
-to do so safely without consulting some form of "registry." Such registry is implemented in form
+to do so safely without consulting some form of "registry." Such registry is implemented in form of the `Receptionist`.
+
+#TODO document once it lands#
 
 #TODO: maybe after all we would call it 'registry', needs consideration; Receptionist is a rather known pattern for actors,
 and wording is useful in the way that it keeps us in thinking about interactions with entities (as-if people).#
@@ -84,7 +86,6 @@ which have entirely crashed.
 
 Sadly, failure detection in distributed systems is always a trade-off between the time to signal a node failure,
 and potential false positives (where a node is detected as failed, however it was only "very slow to respond").
-To minimize these issues
 
 ==== Watching Remote Actors
 
