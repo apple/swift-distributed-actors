@@ -103,6 +103,68 @@ class BehaviorCanonicalizeTests: XCTestCase {
         try p.expectMessage("received:ping")
     }
 
+    func test_canonicalize_orElse_shouldThrowOnTooDeeplyNestedBehaviors() throws {
+        let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        var behavior: Behavior<Int> = .receiveMessage { message in
+            p.tell(message)
+            return .same
+        }
+
+        for i in (0...system.settings.actor.maxBehaviorNestingDepth).reversed() {
+            behavior = Behavior<Int>.receiveMessage { message in
+                if message == i {
+                    p.tell(-i)
+                    return .same
+                } else {
+                    return .unhandled
+                }
+            }.orElse(behavior)
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+        try p.expectTerminated(ref)
+    }
+
+    func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let ref: ActorRef<String> = try system.spawn(.receiveMessage { msg in
+            let onlyA = Behavior<String>.setup { _ in
+                p.ref.tell("setup:onlyA")
+                return .receiveMessage { msg in
+                    switch msg {
+                    case "A":
+                        p.ref.tell("got:A")
+                        return .same
+                    default: return .unhandled
+                    }
+                }
+            }
+            let onlyB = Behavior<String>.setup { _ in
+                p.ref.tell("setup:onlyB")
+                return .receiveMessage { msg in
+                    switch msg {
+                    case "B":
+                        p.ref.tell("got:B")
+                        return .same
+                    default: return .unhandled
+                    }
+                }
+            }
+            return onlyA.orElse(onlyB)
+        }, name: "orElseCanonicalizeNestedSetups")
+
+        ref.tell("run the setups")
+
+        try p.expectMessage("setup:onlyA")
+        try p.expectMessage("setup:onlyB")
+        ref.tell("A")
+        try p.expectMessage("got:A")
+        ref.tell("B")
+        try p.expectMessage("got:B")
+    }
+
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "startBehaviorProbe")
 

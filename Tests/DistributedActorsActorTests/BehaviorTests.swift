@@ -270,45 +270,6 @@ class BehaviorTests: XCTestCase {
         try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
     }
 
-    func test_orElse_executeNestedSetupOnBecome() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
-
-        let ref: ActorRef<String> = try system.spawn(.receiveMessage { msg in
-            let onlyA = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyA")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "A":
-                        p.ref.tell("got:A")
-                        return .same
-                    default: return .unhandled
-                    }
-                }
-            }
-            let onlyB = Behavior<String>.setup { _ in
-                p.ref.tell("setup:onlyB")
-                return .receiveMessage { msg in
-                    switch msg {
-                    case "B":
-                        p.ref.tell("got:B")
-                        return .same
-                    default: return .unhandled
-                    }
-                }
-            }
-            return onlyA.orElse(onlyB)
-        }, name: "orElseCanonicalizeNestedSetups")
-
-        ref.tell("run the setups")
-
-        try p.expectMessage("setup:onlyA")
-        try p.expectMessage("setup:onlyB")
-        ref.tell("A")
-        try p.expectMessage("got:A")
-        ref.tell("B")
-        try p.expectMessage("got:B")
-    }
-
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
