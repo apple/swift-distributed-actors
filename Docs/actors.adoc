@@ -38,31 +38,27 @@ Similarly to threads, processes, isolates or other isolation mechanisms, actors 
 other actors. This is a very useful capability as a single actor does not by itself give any parallelism to processing of messages,
 as it always processes one message at a time. In order to distribute work to be processed in parallel we want to use multiple actors,
 with each working on a piece or chunk of a lager work item. Or another way to view this is that if we represent users of our system
-by an actor reach -- we get parallelism in processing across all the users/actors, however each user/actor, is going to process
+by an actor each -- we get parallelism in processing across all the users/actors, however each user/actor, is going to process
 its own pieces of work in a linear fashion.
 
-A typical example where spawning _child_ actors comes in handy is splitting up a bigger piece of work into smaller ones,
-and having the parent coordinate this work being done. For example, if we wanted to process a really complex dataset such
-as a data from radio telescopic observations of a black hole, and we were able to split up the work into small squares, that when connected up result in
-the complete image, we could create worker actors that would take care of the individual "squares" in parallel, and once
-complete send their rendered output back to the parent, which would assemble the complete picture from those partial renders.
+A typical example where spawning _child_ actors comes in handy is splitting up a bigger piece of work into smaller ones and having the parent coordinate this work being done. Examples of such tasks include simulations, rendering tasks or simply tasks which consist of many smaller tasks. Actors also fit very well for modeling anything that has identity and makes some independent decisions based on the outside world's signals, like for example units and CPU "players" in games.
 
 Another typical use case for being able to spawn millions of actors on a single machine, as opposed to threads,
 is the ability to use them to map real world identities, such as devices, measurements or people to their actor "counterpart,"
 inside of our actor application. This helps understandability and traceability when "things go wrong," as we can more easily
-trace back faults to perhaps a given users dataset or message sequence that caused a crash.
+trace back faults to perhaps a given user's dataset or message sequence that caused a crash.
 
 > **Rule 3: Actors can change their behavior in reaction to a message**.
 
-An Actor's _raison d'être_ can well formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
+An Actor's _raison d'être_ can be formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
 Actors enable us to write advanced concurrent and distributed applications by offering us a simple mental model: an
-actor processes a message, and the next time it receives a message, it may react differently than before -- since the previous message
-has changed its behavior. It is perhaps easier explained if we think about changing state -- if an incoming message changed an actor's
-state, such as a counter, the next message would be handled depending on the new counter's state -- in other words, state changes manifest
-in changes in an actors behavior.
+actor processes a message, and the next time it receives a message, it may react differently than before , since the previous message
+has changed its behavior. It is perhaps easier explained if we think about changing state. If an incoming message changed an actor's
+state, such as a counter, the next message would be handled depending on the new counter's state. In other words, state changes manifest
+in changes in an actor's behavior.
 
 In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
-stopping or suspending the actor, ignoring dropping or combining message handlers as "the next behavior." We will learn more about
+stopping or suspending the actor, ignoring, dropping or combining message handlers as "the next behavior." We will learn more about
 behaviors in the following sections.
 
 ==== What Actors are **_not_**?
@@ -367,15 +363,15 @@ Similar to real life, one can only send messages to an actor or friend if we kno
 The "sending" capability is expressed by obtaining an api:ActorRef[class], which also contains the actor's address.
 There can be many references (even on different nodes in a cluster) to the same actor, however its address remains the same.
 
-The address contains an UID which is sometimes referred to as the "Incarnation" ID. This UID is used to clarify identity in
+The address contains a UID which is sometimes referred to as the "Incarnation" ID. This UID is used to clarify identity in
 the following situation:
 
 - an actor is spawned under the `/user/animal/caplin` path;
-  - it gains an unique identifier which is appended to it's path like this automatically: `/user/animal/caplin#34535`.
+  - it gains a unique identifier which is appended to its path like this automatically: `/user/animal/caplin#34535`.
 - the actor hands out a few references to itself to other actors for future use.
-- the actor decides it has performed it's task and should now stop itself.
-- after the actor stops, the `/user/animal` parent decides that another `caplin` should be spawned, to perform some tasks that Caplin's are good at.
-  - another _new_ actor is spawned under the _same path_ `/user/animal/caplin` and most likely will perform the same kind of work as the "previous caplin"
+- the actor decides it has performed its task and should now stop itself.
+- after the actor stops, the `/user/animal` parent decides that another `caplin` should be spawned, to perform some tasks that Caplins are good at.
+  - another _new_ actor is spawned under the _same path_ `/user/animal/caplin` and most likely will perform the same kind of work as the "previous Caplin"
 - the new actor resides on the _same path_ however has a _different identity_ (and UID, which represents it)!
 - meanwhile, actors who were told about the original Caplin's `ActorRef` decide to send a message to it.
 - thanks to the different UID the system knows that these messages are _not_ intended for the _current_ Caplin -- as it has a different identity.
