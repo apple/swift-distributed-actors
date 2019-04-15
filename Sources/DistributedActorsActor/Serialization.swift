@@ -53,11 +53,12 @@ public struct Serialization {
         self.stringSerializer = StringSerializer(allocator)
 
         var log = Logger(label: "serialization", factory: { id in
-            let context = LoggingContext(identifier: id, dispatcher: nil)
+            let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
             return ActorOriginLogHandler(context)
         })
         // TODO: Dry up setting this metadata
         log[metadataKey: "actorSystemAddress"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
+        log.logLevel = systemSettings.defaultLogLevel
         self.log = log
 
         self.deadLetters = deadLetters

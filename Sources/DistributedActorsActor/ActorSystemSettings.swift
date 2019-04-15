@@ -17,7 +17,12 @@ import Logging
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
 
-    public var logLevel: Logger.Level = .info
+    /// Configure default log level for all `Logger` instances created by the library.
+    public var defaultLogLevel: Logger.Level = .info
+
+    // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
+    // logs are hard to follow with not consistent order of metadata etc (like system address etc).
+    public var useBuiltInFormatter: Bool = true
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default

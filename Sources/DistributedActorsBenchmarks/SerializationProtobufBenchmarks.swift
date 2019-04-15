@@ -73,7 +73,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
     _system = ActorSystem("SerializationProtobufBenchmarks") { settings in
         settings.serialization.register(protoSerializer, for: ProtoSmallMessage.self, underId: 1001)
         settings.serialization.register(protoSerializer, for: ProtoMediumMessage.self, underId: 1002)
-        settings.logLevel = .error
+        settings.defaultLogLevel = .error
     }
 
     protoSmallMessage.number = 1337
