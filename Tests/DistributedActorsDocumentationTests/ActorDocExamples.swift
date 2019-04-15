@@ -38,6 +38,7 @@ class ActorDocExamples: XCTestCase {
             return .same // <3>
         }
         // end::receive_behavior[]
+        _ = behavior // silence not-used warning
     }
 
     func example_receiveMessage_behavior() throws {
@@ -48,6 +49,7 @@ class ActorDocExamples: XCTestCase {
             return .same // <3>
         }
         // end::receiveMessage_behavior[]
+        _ = behavior // silence not-used warning
     }
 
     func example_classOriented_behavior() throws {
@@ -160,22 +162,25 @@ class ActorDocExamples: XCTestCase {
             return stopForTerminal(data)
         }
         // end::stop_myself_refactored[]
+        _ = lineHandling // silence not-used warning
     }
 
     func example_props() throws {
         // tag::props_example[]
         let props = Props()
         // end::props_example[]
+        _ = props // silence not-used warning
     }
     func example_props_inline() throws {
         let behavior: Behavior<String> = .ignore
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        try system.spawn(behavior, name: "worker", 
+        let worker = try system.spawn(behavior, name: "worker", 
             props: .withDispatcher(.default)
         )
         // end::props_inline[]
+        _ = worker // silence not-used warning
     }
 
 }
@@ -195,7 +200,7 @@ enum WorkerMessages {}
 
 func run(system: ActorSystem) throws {
     let (b, props) = ExampleWorker.suggested
-    try system.spawn(b, name: "heavy-worker", props: props)
+    _ = try system.spawn(b, name: "heavy-worker", props: props)
 }
 
 // end::suggested_props_pattern[]
