@@ -45,6 +45,7 @@ public struct ActorSettings {
     // TODO: arbitrary depth limit, could be configurable
     // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
     public let maxBehaviorNestingDepth: Int = 128
+
 }
 
 
