@@ -20,6 +20,10 @@ import Logging
 public class LoggingContext {
     let identifier: String
 
+    // TODO want to eventually not have this; also move to more structured logging perhaps...
+    /// If `true` the built-in "pretty" formatter should be used, rather than passing verbatim to underlying `LogHandler`
+    let useBuiltInFormatter: Bool
+
     @usableFromInline
     internal var _storage: Logger.Metadata = [:]
 
@@ -32,8 +36,9 @@ public class LoggingContext {
         }
     }
 
-    public init(identifier: String, dispatcher: (() -> String)?) {
+    public init(identifier: String, useBuiltInFormatter: Bool, dispatcher: (() -> String)?) {
         self.identifier = identifier
+        self.useBuiltInFormatter = useBuiltInFormatter
         if let makeDispatcherName = dispatcher {
             self._storage["dispatcher"] = .lazyString(makeDispatcherName)
         }
@@ -60,21 +65,22 @@ public class LoggingContext {
 
 public struct ActorLogger {
     static func make<T>(context: ActorContext<T>) -> Logger {
-        // we need to add our own storage, and can't do so to Logger since it is a struct...
-        // so we need to make such "proxy log handler", that does out actor specific things.
-        var actorLogHandlerProxyLogHandler = ActorOriginLogHandler(context)
-        actorLogHandlerProxyLogHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
-        actorLogHandlerProxyLogHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
+        var proxyHandler = ActorOriginLogHandler(context)
+        proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
+        proxyHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
 
-        return Logger(label: "\(context.path)", factory: { _ in actorLogHandlerProxyLogHandler })
+        var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
+        log.logLevel = context.system.settings.defaultLogLevel
+        return log
     }
 
     static func make(system: ActorSystem, identifier: String? = nil) -> Logger {
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
-        let actorLogHandlerProxyLogHandler = ActorOriginLogHandler(system)
+        var proxyHandler = ActorOriginLogHandler(system)
+        proxyHandler.metadata["actorSystemAddress"] = .lazyStringConvertible { () in system.settings.cluster.bindAddress }
 
-        return Logger(label: identifier ?? system.name, factory: { _ in actorLogHandlerProxyLogHandler })
+        return Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
     }
 }
 
@@ -83,7 +89,10 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private let context: LoggingContext
 
+    // TODO would be moved to actual "LoggingActor"
     private let formatter: DateFormatter
+
+    private let loggingSystemSelectedLogger: Logger
 
     public init(_ context: LoggingContext) {
         self.context = context
@@ -93,11 +102,14 @@ public struct ActorOriginLogHandler: LogHandler {
         formatter.locale = Locale(identifier: "en_US")
         formatter.calendar = Calendar(identifier: .gregorian)
         self.formatter = formatter
+
+        self.loggingSystemSelectedLogger = Logger(label: context.identifier)
     }
 
     public init<T>(_ context: ActorContext<T>) {
         self.init(LoggingContext(
             identifier: context.path.description,
+            useBuiltInFormatter: context.system.settings.useBuiltInFormatter,
             dispatcher: { [weak context = context] in context?.dispatcher.name ?? "unknown" }
         ))
     }
@@ -105,6 +117,7 @@ public struct ActorOriginLogHandler: LogHandler {
     public init(_ system: ActorSystem, identifier: String? = nil) {
         self.init(LoggingContext(
             identifier: identifier ?? system.name,
+            useBuiltInFormatter: system.settings.useBuiltInFormatter,
             dispatcher: { () in _hackyPThreadThreadId() }
         ))
     }
@@ -128,46 +141,50 @@ public struct ActorOriginLogHandler: LogHandler {
     internal func invokeConfiguredLoggingInfra(_ logMessage: LogMessage) {
         // TODO here we can either log... or dispatch to actor... or invoke Logging. etc
 
-        var l = logMessage
+        if self.context.useBuiltInFormatter {
 
-        // TODO: decide if we want to use those "extract into known place in format" things or not
-        // It makes reading the logs more uniform, so I think yes.
-        let dispatcherPart: String
-        if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
-            dispatcherPart = "[\(d)]"
+            var l = logMessage
+
+            // TODO: decide if we want to use those "extract into known place in format" things or not
+            // It makes reading the logs more uniform, so I think yes.
+            let dispatcherPart: String
+            if let d = l.effectiveMetadata?.removeValue(forKey: "dispatcher") {
+                dispatcherPart = "[\(d)]"
+            } else {
+                dispatcherPart = ""
+            }
+            let actorPathPart: String
+            if let d = l.effectiveMetadata?.removeValue(forKey: "actorPath") {
+                actorPathPart = "[\(d)]"
+            } else {
+                actorPathPart = ""
+            }
+
+            let actorSystemAddress: String
+            if let d = l.effectiveMetadata?.removeValue(forKey: "actorSystemAddress") {
+                actorSystemAddress = "[\(d)]"
+            } else {
+                actorSystemAddress = ""
+            }
+
+            // mock impl until we get the real infra
+            var msg = ""
+
+            // TODO free function to render metadata?
+            if let meta = l.effectiveMetadata, !meta.isEmpty {
+                msg += "[\(meta.map {"\($0)=\($1)" }.joined(separator: " "))]" // forces any lazy metadata to be rendered
+            }
+
+            msg += "\(actorSystemAddress)"
+            msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
+            msg += "\(dispatcherPart)"
+            msg += "\(actorPathPart)"
+            msg += " \(l.message)"
+
+            self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         } else {
-            dispatcherPart = ""
+            self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         }
-        let actorPathPart: String
-        if let d = l.effectiveMetadata?.removeValue(forKey: "actorPath") {
-            actorPathPart = "[\(d)]"
-        } else {
-            actorPathPart = ""
-        }
-
-        let actorSystemAddress: String
-        if let d = l.effectiveMetadata?.removeValue(forKey: "actorSystemAddress") {
-            actorSystemAddress = "[\(d)]"
-        } else {
-            actorSystemAddress = ""
-        }
-
-        // mock impl until we get the real infra
-        var msg = "\(formatter.string(from: l.time)) "
-        msg += "\(formatLevel(l.level))"
-
-        // TODO free function to render metadata?
-        if let meta = l.effectiveMetadata, !meta.isEmpty {
-            msg += "[\(meta.map {"\($0)=\($1)" }.joined(separator: " "))]" // forces any lazy metadata to be rendered
-        }
-
-        msg += "\(actorSystemAddress)"
-        msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
-        msg += "\(dispatcherPart)"
-        msg += "\(actorPathPart)"
-        msg += " \(l.message)"
-
-        print(msg)
     }
 
     // TODO hope to remove this one
