@@ -26,6 +26,16 @@ internal extension String.StringInterpolation {
     }
 }
 
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Quality of life for printing optional values
+
+public extension String.StringInterpolation {
+    mutating func appendInterpolation<T>(_ value: Optional<T>, orElse defaultValue: String) {
+        self.appendLiteral("[\(value.map({ "\($0)" }) ?? defaultValue)]")
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref custom interpolations
 

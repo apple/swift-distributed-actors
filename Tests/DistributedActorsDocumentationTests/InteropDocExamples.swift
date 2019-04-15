@@ -165,5 +165,6 @@ class InteropDocExamples: XCTestCase {
             }
         }
         // end::asyncOp_awaitResultThrowing[]
+        _ = behavior // silence not-used warning
     }
 }

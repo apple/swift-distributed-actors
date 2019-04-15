@@ -43,7 +43,6 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try assertAssociated(self.remote, with: self.localUniqueAddress)
 
         let oldRemote = self.remote
-        let oldRemoteUniqueAddress = oldRemote.settings.cluster.uniqueBindAddress
         oldRemote.shutdown() // kill remote node
 
         self.setUpRemote() // new system, same exact address, however new UID
