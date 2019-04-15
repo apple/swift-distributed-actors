@@ -74,7 +74,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         var path: UniqueActorPath = ref.path
         path.address = system.settings.cluster.uniqueBindAddress
 
-        var resolveContext = ResolveContext<Never>(path: path, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<Never>(path: path, deadLetters: system.deadLetters)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then

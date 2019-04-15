@@ -34,6 +34,7 @@ class SupervisionDocExamples {
         let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
             props: props) // <3>
         // end::supervise_props[]
+        _ = greeterRef
     }
 
     func supervise_inline() throws {
@@ -44,6 +45,7 @@ class SupervisionDocExamples {
         let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
             props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1)))) // <1>
         // end::supervise_inline[]
+        _ = greeterRef
     }
 
     func supervise_full_example() throws {
@@ -128,7 +130,6 @@ class SupervisionDocExamples {
             return .receiveMessage { error in
                 context.log.info("Throwing: \(error)")
                 throw error // "re-throw", yet inside the actor // <1>
-                return .same
             }
         }
 
