@@ -14,7 +14,7 @@
 
 import Logging
 
-// TODO none of these are currently configurable
+/// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
 
     public var logLevel: Logger.Level = .info
