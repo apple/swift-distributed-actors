@@ -64,8 +64,8 @@ public final class ActorSystem {
     // MARK: Logging
 
     public var log: Logger {
-        var l = ActorLogger.make(system: self)
-        l.logLevel = settings.logLevel
+        var l = ActorLogger.make(system: self) // we only do this to go "through" the proxy; we may not need it in the future?
+        l.logLevel = self.settings.defaultLogLevel
         return l
     }
 
@@ -95,7 +95,7 @@ public final class ActorSystem {
         // TODO actually attach dead letters to a parent?
         let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
         let deadLog = Logger(label: "/system/deadLetters", factory: {
-            let context = LoggingContext(identifier: $0, dispatcher: nil)
+            let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
             context[metadataKey: "actorSystemAddress"] = .stringConvertible(settings.cluster.uniqueBindAddress)
             return ActorOriginLogHandler(context)
         })

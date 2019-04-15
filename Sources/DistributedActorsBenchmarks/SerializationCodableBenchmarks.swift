@@ -44,7 +44,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
         settings.serialization.registerCodable(for: SmallMessage.self, underId: 1001)
         settings.serialization.registerCodable(for: MessageWithRef.self, underId: 1002)
         settings.serialization.registerCodable(for: MediumMessage.self, underId: 1003)
-        settings.logLevel = .error
+        settings.defaultLogLevel = .error
     }
     postSetUp()
 }
