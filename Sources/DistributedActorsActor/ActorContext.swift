@@ -59,7 +59,6 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     }
 
     /// Provides context metadata aware logger
-    // TODO: API wise this logger will be whichever type the SSWG group decides on, we will adopt it
     public var log: Logger {
         get {
             return undefined()
