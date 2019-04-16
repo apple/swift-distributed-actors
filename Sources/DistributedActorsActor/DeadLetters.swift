@@ -25,7 +25,22 @@ public struct DeadLetter {
     }
 }
 
-// FIXME this is just a quick workaround, will need to be a bit smarter than that
+/// Special actor reference, which logs any "dead letters.
+/// Dead letters are messages or signals which were unable to be delivered to recipient, e.g. because the recipient
+/// actor had terminated before the message could reach it, or the recipient never existed in the first place (although
+/// this could only happen in ad-hoc actor path resolve situations, which should not happen in user-land).
+///
+/// Note: Does _not_ point to a "real" actor, however for all intents and purposes can be treated as-if it did.
+///
+/// Obtaining an instance is best done by referring to the `system.deadLetters` instance.
+///
+/// # Watch semantics
+/// Watching the dead letters reference is always going to immediately reply with an `Terminated` signal.
+///
+/// This is not only to uphold the semantics of deadLetters itself, but also for general watch correctness:
+/// watching an actor which is terminated, may result in the `watch` system message be delivered to dead letters,
+/// in which case this property of dead letters will notify the watching actor that the "watchee" had already terminated.
+/// In these situations Terminated would be marked as `existenceConfirmed: false`.
 internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMessages {
     let _path: UniqueActorPath
     let log: Logger
