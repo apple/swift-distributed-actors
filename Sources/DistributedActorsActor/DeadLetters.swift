@@ -25,7 +25,7 @@ public struct DeadLetter {
     }
 }
 
-/// Special actor reference, which logs any "dead letters.
+/// Special actor reference, which logs any "dead letters".
 /// Dead letters are messages or signals which were unable to be delivered to recipient, e.g. because the recipient
 /// actor had terminated before the message could reach it, or the recipient never existed in the first place (although
 /// this could only happen in ad-hoc actor path resolve situations, which should not happen in user-land).
@@ -35,7 +35,7 @@ public struct DeadLetter {
 /// Obtaining an instance is best done by referring to the `system.deadLetters` instance.
 ///
 /// # Watch semantics
-/// Watching the dead letters reference is always going to immediately reply with an `Terminated` signal.
+/// Watching the dead letters reference is always going to immediately reply with a `Terminated` signal.
 ///
 /// This is not only to uphold the semantics of deadLetters itself, but also for general watch correctness:
 /// watching an actor which is terminated, may result in the `watch` system message be delivered to dead letters,
