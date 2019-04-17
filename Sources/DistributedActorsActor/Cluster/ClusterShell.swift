@@ -402,11 +402,11 @@ extension ClusterShell {
             switch $0 {
             case .success:
                 context.log.info("Unbound server socket [\(addrDesc)].")
-                signalOnceUnbound.offer(())
+                signalOnceUnbound.offerOnce(())
                 return .stopped
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)]. Error: \(err)")
-                signalOnceUnbound.offer(())
+                signalOnceUnbound.offerOnce(())
                 return .failed(error: err)
             }
         }

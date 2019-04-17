@@ -39,6 +39,7 @@ import XCTest
          testCase(BackoffStrategyTests.allTests),
          testCase(BehaviorCanonicalizeTests.allTests),
          testCase(BehaviorTests.allTests),
+         testCase(BlockingReceptacleTests.allTests),
          testCase(CMPSCLinkedQueueTests.allTests),
          testCase(CMailboxTests.allTests),
          testCase(ClusterAssociationTests.allTests),
