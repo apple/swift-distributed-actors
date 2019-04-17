@@ -90,7 +90,7 @@ class TraversalTests: XCTestCase {
         seen.shouldContain("inner-1")
         seen.shouldContain("inner-2")
         seen.shouldContain("inner-3")
-        seen.count.shouldEqual(8)
+        seen.count.shouldEqual(9)
     }
 
     func test_traverse_shouldAllowImplementingCollect() {

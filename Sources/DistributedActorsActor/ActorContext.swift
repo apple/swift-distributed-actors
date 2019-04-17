@@ -111,6 +111,10 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    internal func watch(_ watchee: BoxedHashableAnyReceivesSystemMessages) {
+        return undefined()
+    }
+
     /// Reverts the watching of an previously watched actor.
     ///
     /// Unwatching a not-previously-watched actor has no effect.
