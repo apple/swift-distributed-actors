@@ -74,4 +74,15 @@ class ActorTestProbeTests: XCTestCase {
 
         try watchingProbe.expectTerminated(watchedProbe.ref)
     }
+
+    func test_probe_expectMessageAnyOrderSuccess() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+        let messages = ["test1", "test2", "test3", "test4"]
+
+        for message in messages.reversed() {
+            p.ref.tell(message)
+        }
+
+        try p.expectMessagesInAnyOrder(messages)
+    }
 }

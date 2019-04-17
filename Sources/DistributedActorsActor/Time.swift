@@ -377,4 +377,7 @@ public extension Deadline {
         return self.uptimeNanoseconds < until.uptimeNanoseconds
     }
 
+    var timeLeft: TimeAmount {
+        return .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
+    }
 }

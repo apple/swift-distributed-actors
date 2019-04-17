@@ -57,6 +57,12 @@ public final class ActorSystem {
 
     public let serialization: Serialization
 
+    public var receptionist: ActorRef<Receptionist.Message> {
+        return self._receptionist
+    }
+
+    private var _receptionist: ActorRef<Receptionist.Message>
+
     // MARK: Cluster
 
     internal let _cluster: ClusterShell?
@@ -70,7 +76,7 @@ public final class ActorSystem {
     }
 
     #if SACT_TESTS_LEAKS
-    let cellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
+    let userCellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
     #endif
 
     /// Creates a named ActorSystem
@@ -140,6 +146,12 @@ public final class ActorSystem {
         let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
 
         self.serialization = Serialization(settings: settings, deadLetters: deadLetters, traversable: traversable)
+
+        // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
+        self._receptionist = deadLetters.adapted()
+
+        // TODO: Use `ClusterReceptionist` (once avaliable), when cluster is enabled
+        self._receptionist = try! self._spawnSystemActor(LocalReceptionist.behavior, name: "receptionst")
 
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
