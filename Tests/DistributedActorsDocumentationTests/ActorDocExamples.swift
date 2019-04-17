@@ -183,6 +183,58 @@ class ActorDocExamples: XCTestCase {
         _ = worker // silence not-used warning
     }
 
+    func example_receptionist_register() {
+        // tag::receptionist_register[]
+        let key = Receptionist.RegistrationKey(String.self, id: "my-actor")                    // <1>
+
+        let behavior: Behavior<String> = .setup { context in
+            context.system.receptionist.tell(Receptionist.Register(context.myself, key: key))  // <2>
+
+            return .receiveMessage { _ in
+                // ...
+                return .same
+            }
+        }
+        // end::receptionist_register[]
+
+        _ = behavior
+    }
+
+    func example_receptionist_lookup() {
+        let key = Receptionist.RegistrationKey(String.self, id: "my-actor")
+        // tag::receptionist_lookup[]
+        let behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
+            context.system.receptionist.tell(Receptionist.Lookup(key: key, replyTo: context.myself)) // <1>
+
+            return .receiveMessage {
+                for ref in $0.refs {
+                    ref.tell("Hello")
+                }
+                return .same
+            }
+        }
+        // end::receptionist_lookup[]
+
+        _ = behavior
+    }
+
+    func example_receptionist_subscribe() {
+        let key = Receptionist.RegistrationKey(String.self, id: "my-actor")
+        // tag::receptionist_subscribe[]
+        let behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
+            context.system.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: context.myself)) // <1>
+
+            return .receiveMessage {
+                for ref in $0.refs {
+                    ref.tell("Hello")
+                }
+                return .same
+            }
+        }
+        // end::receptionist_subscribe[]
+
+        _ = behavior
+    }
 }
 
 // tag::suggested_props_pattern[]

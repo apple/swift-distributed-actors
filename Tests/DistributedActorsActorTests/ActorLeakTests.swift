@@ -48,7 +48,7 @@ class ActorLeakingTests: XCTestCase {
         var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "printer")
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.cellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load()
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
             } else {
@@ -60,7 +60,7 @@ class ActorLeakingTests: XCTestCase {
         ref = nil
 
         let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
-            let counter = self.system.cellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {
@@ -101,7 +101,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell(expectedChildrenCount)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
-            let counter = self.system.cellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load()
             if counter != expectedActorCount {
                 throw NotEnoughActorsAlive(expected: expectedActorCount, current: counter)
             } else {
@@ -113,7 +113,7 @@ class ActorLeakingTests: XCTestCase {
         ref = nil
 
         let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
-            let counter = self.system.cellInitCounter.load()
+            let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
             } else {

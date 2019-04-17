@@ -123,14 +123,21 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
         }
 
         #if SACT_TESTS_LEAKS
-        _ = system.cellInitCounter.add(1)
+        // We deliberately only count user actors here, because the number of
+        // system actors may change over time and they are also not relevant for
+        // this type of test.
+        if path.segments.first?.value == "user" {
+            _ = system.userCellInitCounter.add(1)
+        }
         #endif
     }
 
     deinit {
         traceLog_Cell("deinit cell \(_path)")
         #if SACT_TESTS_LEAKS
-        _ = system.cellInitCounter.sub(1)
+        if self.path.segments.first?.value == "user" {
+            _ = system.userCellInitCounter.sub(1)
+        }
         #endif
     }
 
@@ -491,6 +498,10 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
     override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself, parent: self._parent)
         return watchee
+    }
+
+    override internal func watch(_ watchee: BoxedHashableAnyReceivesSystemMessages) {
+        self.deathWatch.watch(watchee: watchee, myself: context.myself, parent: self._parent)
     }
 
     override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {

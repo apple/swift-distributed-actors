@@ -234,6 +234,30 @@ extension ActorTestProbe where Message: Equatable {
         }
     }
 
+    public func expectMessagesInAnyOrder(_ _messages: [Message], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        var messages = _messages
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = expectationTimeout
+        var received: [Message] = []
+        do {
+            let deadline = Deadline.fromNow(timeout)
+
+            while !messages.isEmpty {
+                guard let got = self.messagesQueue.poll(deadline.timeLeft) else {
+                    throw ExpectationError.noMessagesInQueue
+                }
+                self.lastMessageObserved = got
+                guard let index = messages.firstIndex(where: { $0 == got }) else {
+                    throw callSite.error("Received unexpected message [\(got)]")
+                }
+                received.append(messages.remove(at: index))
+            }
+        } catch {
+            let message = "Received only (in order) [\(received)], but did not receive expected [\(messages)]:\(String(reflecting: Message.self)) within [\(timeout.prettyDescription)], error: \(error)"
+            throw callSite.error(message)
+        }
+    }
+
 }
 
 // MARK: TestProbes can ReceivesMessages
