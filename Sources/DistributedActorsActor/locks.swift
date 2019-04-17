@@ -114,8 +114,15 @@ public final class Mutex {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Blocking Receptacle
 
+/// :nodoc: Not intended to be used by end users.
+///
 /// Similar to `LinkedBlockingQueue` however specialized for a single element.
 /// Used most often as "await until something happens" mechanism.
+/// Can be used when no other execution context is available yet some waiting for another thread to complete some task
+/// has to be performed, e.g. during dispatcher / event-loop shutdown.
+///
+/// Is NOT intended as a general purpose future or promise like structure,
+/// it is our most modestly priced receptacle, after all.
 internal final class BlockingReceptacle<Value> {
     @usableFromInline
     let lock = Mutex()
@@ -124,7 +131,12 @@ internal final class BlockingReceptacle<Value> {
 
     private var _value: Value? = nil
 
-    func offer(_ value: Value) {
+    /// Offer a value to the Receptacle -- only once. Further offers will result in Faults.
+    ///
+    /// # Warning
+    /// - Faults: when offered a value a second time! This is considered a programmer error,
+    ///           make sure to always correctly only offer a single value to the receptacle.
+    func offerOnce(_ value: Value) {
         self.lock.synchronized {
             if self._value != nil {
                 fatalError("BlockingReceptacle can only be offered once. Already was offered [\(self._value, orElse: "no-value")] before, " + 
@@ -135,6 +147,7 @@ internal final class BlockingReceptacle<Value> {
         }
     }
 
+    /// Await the value to be set, or return `nil` if timeout passes and no value was set.
     func wait(atMost timeout: TimeAmount) -> Value? {
         return self.lock.synchronized { () -> Value in
             while true {
