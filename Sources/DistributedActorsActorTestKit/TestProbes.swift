@@ -133,21 +133,27 @@ extension ActorTestProbe {
     public func expectMessage(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = expectationTimeout
+
         do {
-            return try within(timeout) {
-                guard self.messagesQueue.size() > 0 else {
-                    throw ExpectationError.noMessagesInQueue
-                }
-                let message: Message = self.messagesQueue.dequeue()
-                self.lastMessageObserved = message
-                return message
-            }
+            return try self.receiveMessage(within: timeout)
         } catch {
             let message = "Did not receive message of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.error(message)
         }
     }
 
+    internal func receiveMessage(within timeout: TimeAmount) throws -> Message {
+        let deadline = Deadline.fromNow(timeout)
+        while deadline.hasTimeLeft() {
+            guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
+                continue
+            }
+            self.lastMessageObserved = message
+            return message
+        }
+
+        throw ExpectationError.noMessagesInQueue
+    }
 }
 
 extension ActorTestProbe {
@@ -164,24 +170,31 @@ extension ActorTestProbe {
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
     public func expectMessages(count: Int, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
+        let deadline = Deadline.fromNow(timeout)
+
         do {
-            return try within(timeout) {
-                let actualCount: Int = self.messagesQueue.size()
-                guard actualCount >= count else {
-                    throw ExpectationError.notEnoughMessagesInQueue(actualCount: actualCount, expectedCount: count)
-                }
+            var receivedMessages: [Message] = []
+            receivedMessages.reserveCapacity(count)
 
-                var gotMessages: [Message] = []
-                gotMessages.reserveCapacity(count)
-
-                for _ in 0..<count {
-                    let message: Message = self.messagesQueue.dequeue()
-                    gotMessages.append(message)
+            while deadline.hasTimeLeft() {
+                do {
+                    let message = try self.receiveMessage(within: deadline.timeLeft)
+                    receivedMessages.append(message)
                     self.lastMessageObserved = message
-                }
 
-                return gotMessages
+                    if receivedMessages.count == count {
+                        return receivedMessages
+                    }
+                } catch {
+                    switch error {
+                    case ExpectationError.noMessagesInQueue: break
+                    default: throw error
+                    }
+                }
             }
+
+            throw ExpectationError.notEnoughMessagesInQueue(actualCount: receivedMessages.count, expectedCount: count)
         } catch {
             let message = "Did not receive expected messages (count: \(count)) of type [\(Message.self)] within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.error(message)
@@ -209,14 +222,9 @@ extension ActorTestProbe where Message: Equatable {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = expectationTimeout
         do {
-            try within(timeout) {
-                guard self.messagesQueue.size() > 0 else {
-                    throw ExpectationError.noMessagesInQueue
-                }
-                let got: Message = self.messagesQueue.dequeue()
-                self.lastMessageObserved = got
-                got.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
-            }
+            let receivedMessage = try self.receiveMessage(within: timeout)
+            self.lastMessageObserved = receivedMessage
+            receivedMessage.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
         } catch {
             let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.error(message)
@@ -224,14 +232,9 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        try within(expectationTimeout) {
-            guard self.messagesQueue.size() > 0 else {
-                throw ExpectationError.noMessagesInQueue
-            }
-            let got = self.messagesQueue.dequeue()
-            self.lastMessageObserved = got
-            got.shouldBe(type)
-        }
+        let receivedMessage = try self.receiveMessage(within: self.expectationTimeout)
+        self.lastMessageObserved = receivedMessage
+        receivedMessage.shouldBe(type)
     }
 
     public func expectMessagesInAnyOrder(_ _messages: [Message], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -243,12 +246,10 @@ extension ActorTestProbe where Message: Equatable {
             let deadline = Deadline.fromNow(timeout)
 
             while !messages.isEmpty {
-                guard let got = self.messagesQueue.poll(deadline.timeLeft) else {
-                    throw ExpectationError.noMessagesInQueue
-                }
-                self.lastMessageObserved = got
-                guard let index = messages.firstIndex(where: { $0 == got }) else {
-                    throw callSite.error("Received unexpected message [\(got)]")
+                let receivedMessage = try self.receiveMessage(within: deadline.timeLeft)
+                self.lastMessageObserved = receivedMessage
+                guard let index = messages.firstIndex(where: { $0 == receivedMessage }) else {
+                    throw callSite.error("Received unexpected message [\(receivedMessage)]")
                 }
                 received.append(messages.remove(at: index))
             }
@@ -360,18 +361,13 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = expectationTimeout
         do {
-            return try within(timeout) {
-                guard self.messagesQueue.size() > 0 else {
-                    throw ExpectationError.noMessagesInQueue
-                }
-                let got: Message = self.messagesQueue.dequeue()
-                guard let extracted = try matchExtract(got) else {
-                    let message = "Received \(Message.self) message, however it did not pass the matching check, " + 
-                    "and did not produce the requested \(T.self)."
-                    throw callSite.error(message)
-                }
-                return extracted
+            let receivedMessage: Message = try self.receiveMessage(within: timeout)
+            guard let extracted = try matchExtract(receivedMessage) else {
+                let message = "Received \(Message.self) message, however it did not pass the matching check, " +
+                "and did not produce the requested \(T.self)."
+                throw callSite.error(message)
             }
+            return extracted
         } catch {
             let message = "Did not receive matching [\(Message.self)] message within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.error(message)
@@ -484,8 +480,9 @@ extension ActorTestProbe {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var pathSet: Set<UniqueActorPath> = Set(refs.map { $0.path })
 
-        while !pathSet.isEmpty {
-            guard let terminated = self.terminationsQueue.poll(expectationTimeout) else {
+        let deadline = Deadline.fromNow(self.expectationTimeout)
+        while !pathSet.isEmpty && deadline.hasTimeLeft() {
+            guard let terminated = self.terminationsQueue.poll(deadline.timeLeft) else {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
 
