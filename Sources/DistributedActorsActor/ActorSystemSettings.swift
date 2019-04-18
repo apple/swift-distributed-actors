@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import Foundation
 
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
@@ -37,8 +38,7 @@ public struct ActorSystemSettings {
     }
 
     // FIXME should have more proper config section
-    // TODO: better guesstimate for default thread pool size? take into account core count?
-    public let threadPoolSize: Int = 4
+    public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
 public struct ActorSettings {
