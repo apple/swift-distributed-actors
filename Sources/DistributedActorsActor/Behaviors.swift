@@ -80,8 +80,8 @@ extension Behavior {
     }
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
-    /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenienve overload that
-    /// allows users to specify a closure that will only be called on receival of `PostStop` and therefore does not
+    /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenience overload that
+    /// allows users to specify a closure that will only be called on receipt of `PostStop` and therefore does not
     /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
     public static func stopped(_ postStop: @escaping (ActorContext<Message>) throws -> ()) -> Behavior<Message> {
         return Behavior.stopped(postStop: Behavior.receiveSignal { context, signal in
