@@ -373,10 +373,10 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
     override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
         guard failure.shouldBeHandled(bySupervisorHandling: failureType) else {
             // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
-            return .stopped // TODO .escalate could be nicer
+            return .stopped(reason: .failure(failure)) // TODO .escalate could be nicer
         }
 
-        return .stopped
+        return .stopped(reason: .failure(failure))
     }
 
     override func isSame(as other: Supervisor<Message>) -> Bool {
@@ -412,7 +412,7 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
                 return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
             }
         }
-        return .stopped // TODO: escalate could be nicer
+        return .stopped(reason: .failure(failure)) // TODO: escalate could be nicer
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
@@ -497,7 +497,7 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
         guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
             traceLog_Supervision("Supervision: STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
-            return .stopped // TODO .escalate ???
+            return .stopped(reason: .failure(failure)) // TODO .escalate could be nicer
         }
 
         // TODO make proper .ordinalString function

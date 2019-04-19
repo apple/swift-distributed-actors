@@ -296,7 +296,7 @@ public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abstr
 
         case .stop:
             children.forEach { $0.sendSystemMessage(.stop) }
-            try self.becomeNext(behavior: .stopped)
+            try self.becomeNext(behavior: .stopped(reason: .stopByParent))
 
         case .resume(let result):
             switch self.behavior.underlying {
