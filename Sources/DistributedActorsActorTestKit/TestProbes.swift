@@ -129,11 +129,17 @@ extension ActorTestProbe {
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
     ///
-    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or an message is received by the actor.
+    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or a message is received by the actor.
     public func expectMessage(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
-        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let timeout = expectationTimeout
+        return try self.expectMessage(within: self.expectationTimeout, file: file, line: line, column: column)
+    }
 
+    /// Expects a message to arrive at the TestProbe and returns it for further assertions.
+    /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
+    ///
+    /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
+    public func expectMessage(within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         do {
             return try self.receiveMessage(within: timeout)
         } catch {
@@ -219,8 +225,11 @@ extension ActorTestProbe where Message: Equatable {
     ///     error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue
     ///
     public func expectMessage(_ message: Message, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        return try self.expectMessage(message, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+
+    public func expectMessage(_ message: Message, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let timeout = expectationTimeout
         do {
             let receivedMessage = try self.receiveMessage(within: timeout)
             self.lastMessageObserved = receivedMessage
@@ -232,15 +241,22 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     public func expectMessageType<T>(_ type: T.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        let receivedMessage = try self.receiveMessage(within: self.expectationTimeout)
+        return try self.expectMessageType(type, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+
+    public func expectMessageType<T>(_ type: T.Type, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        let receivedMessage = try self.receiveMessage(within: timeout)
         self.lastMessageObserved = receivedMessage
         receivedMessage.shouldBe(type)
     }
 
     public func expectMessagesInAnyOrder(_ _messages: [Message], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        return try self.expectMessagesInAnyOrder(_messages, within: self.expectationTimeout, file: file, line: line, column: column)
+    }
+
+    public func expectMessagesInAnyOrder(_ _messages: [Message], within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         var messages = _messages
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let timeout = expectationTimeout
         var received: [Message] = []
         do {
             let deadline = Deadline.fromNow(timeout)
