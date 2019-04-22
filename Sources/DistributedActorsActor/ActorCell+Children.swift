@@ -57,7 +57,7 @@ public struct Children {
         return boxedChild.receivesSystemMessages as? ActorRef<T>
     }
 
-    public mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
+    internal mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
         self.container[childCell.path.name] = childCell
     }
 
