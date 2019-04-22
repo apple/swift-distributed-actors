@@ -19,15 +19,14 @@ import CSwiftDistributedActorsMailbox
 
 // MARK: Actor internals; The so-called "cell" contains the actual "actor"
 
-// Implementation notes:
-// The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
-// Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
-// A strong reference to `ActorCell` is stored in `Children`. This is the one reference that keeps the ActorCell alive
-// until the actor is logically stopped. We only store weak references to `ActorCell` everywhere else. We have to do this
-// to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
-//
-// The cell is mutable, as it may replace the behavior it hosts
-public class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell {
+/// The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
+/// Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
+/// A strong reference to `ActorCell` is stored in `Children`. This is the one reference that keeps the ActorCell alive
+/// until the actor is logically stopped. We only store weak references to `ActorCell` everywhere else. We have to do this
+/// to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
+///
+/// The cell is mutable, as it may replace the behavior it hosts
+internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell {
     // TODO: the cell IS-A context is how we saved space on the JVM, though if context is a struct it does not matter here, perhaps reconsider
 
     // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
