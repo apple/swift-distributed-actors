@@ -22,8 +22,10 @@ short_version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
 long_version=$(git describe            --tags 2> /dev/null || echo "0.0.0")
 if [[ "$short_version" == "$long_version" ]]; then
   version="${short_version}"
+  doc_link_version="${version}"
 else
   version="${short_version}-dev"
+  doc_link_version="master" # since dev is latest development we point to master
 fi
 echo "Project version: ${version}"
 
@@ -65,6 +67,7 @@ jazzy_args=(--clean
             --readme "$module_switcher"
             --config .jazzy.json
             --documentation=$root_path/Docs/*.md
+            --github-file-prefix https://github.com/apple/swift-distributed-actors/blob/$doc_link_version
             --theme fullwidth
            )
 cat "$my_path/docs_includes/generate_docs_api_main.md" > "$module_switcher"
