@@ -264,16 +264,9 @@ MailboxRunResult cmailbox_run(
       // failure handling:
       jmp_buf* error_jmp_buf,
       void* supervision_context, InvokeSupervisionCallback supervision_invoke,
-      void** failed_message,
+      void** message, // We store the current message in here so that it is still accessible after a failure and from the calling Swift code.
       MailboxRunPhase* run_phase) {
     print_debug_status(mailbox, "Entering run");
-
-    // We store the message in a void** here so that it is still accessible after
-    // a failure. If we would store it in a simple void*, we would restore the
-    // initial value on the stack when longjmp'ing to the error handler. By using
-    // a void** the value on the stack will point to the same heap location that
-    // contains the actual message pointer even after restoring the stack frame.
-    void* message[1];
 
     int64_t status = set_processing_system_messages(mailbox);
 
@@ -320,8 +313,6 @@ MailboxRunResult cmailbox_run(
             // last message MUST be the tombstone.
             set_status_terminating(mailbox);
             print_debug_status(mailbox, "Supervision decided we should fail.  After status mod.");
-
-            *failed_message = *message;
 
             return MailboxRunResult_FailureTerminate;
         }
@@ -431,6 +422,9 @@ MailboxRunResult cmailbox_run(
             }
         }
 
+        // we finished without a failure, so we unset the message ptr
+        *message = NULL;
+
         // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
 
         int64_t old_status = decrement_status_activations(mailbox, *processed_activations);
@@ -442,7 +436,6 @@ MailboxRunResult cmailbox_run(
         print_debug_status(mailbox, "Run complete...");
 
         // issue directives to mailbox ---------------------------------------------------------------------------------
-
         if (run_result == ActorRunResult_shouldStop) {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stopped),
             // as other conditions may hold, yet we really are ready to terminate immediately.

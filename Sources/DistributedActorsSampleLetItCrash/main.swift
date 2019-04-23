@@ -74,4 +74,4 @@ func healthyMasterBehavior() -> Behavior<String> {
 let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(), name: "healthyMaster")
 
 
-sleep(1000)
+sleep(10)
