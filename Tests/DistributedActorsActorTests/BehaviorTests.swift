@@ -112,27 +112,23 @@ class BehaviorTests: XCTestCase {
 
     // TODO: another test with 2 senders, that either of their ordering is valid at recipient
 
-    class MyActor: ClassBehavior<TestMessage> {
+    class MyActorBehavior: ClassBehavior<TestMessage> {
         override public func receive(context: ActorContext<TestMessage>, message: TestMessage) -> Behavior<TestMessage> {
             message.replyTo.tell(thxFor(message.message))
             return .same
-        }
-
-        override func receiveSignal(context: ActorContext<BehaviorTests.TestMessage>, signal: Signal) -> Behavior<BehaviorTests.TestMessage> {
-            return .ignore
         }
 
         func thxFor(_ m: String) -> String {
             return "Thanks for: <\(m)>"
         }
     }
-
+    // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesMessages() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-5")
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-        let ref: ActorRef<TestMessage> = try system.spawnAnonymous(MyActor())
+        let ref: ActorRef<TestMessage> = try system.spawnAnonymous(MyActorBehavior())
 
         // first we send many messages
         for i in 0...10 {
@@ -146,9 +142,37 @@ class BehaviorTests: XCTestCase {
         // separately see if we got the expected replies in the right order.
         // we do so separately to avoid sending in "lock-step" in the first loop above here
         for i in 0...10 {
-            // TODO: make expectMessage()! that can terminate execution
             try p.expectMessage(thxFor("message-\(i)"))
         }
+    }
+
+    class MySignalActorBehavior: ClassBehavior<String> {
+        let probe: ActorRef<Signals.Terminated>
+
+        init(probe: ActorRef<Signals.Terminated>) {
+            self.probe = probe
+        }
+
+        override public func receive(context: ActorContext<String>, message: String) throws -> Behavior<String> {
+            _ = try context.spawnWatchedAnonymous(Behavior<String>.stopped)
+            return .same
+        }
+
+        override func receiveSignal(context: ActorContext<String>, signal: Signal) -> Behavior<String> {
+            if let terminated = signal as? Signals.Terminated {
+                self.probe.tell(terminated)
+            }
+            return .same
+        }
+    }
+    // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
+    func test_ClassBehavior_receivesSignals() throws {
+        let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-6a")
+        let ref: ActorRef<String> = try system.spawnAnonymous(MySignalActorBehavior(probe: p.ref))
+        ref.tell("do it")
+
+        let terminated = try p.expectMessage()
+        // receiveSignal was invoked successfully
     }
 
     enum OrElseProtocol {
@@ -428,8 +452,7 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("resumed:last")
     }
 
-    enum Boom: Error {
-        case boom
+    struct Boom: Error {
     }
 
     func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
@@ -461,9 +484,9 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._downcastUnsafe.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom.boom))))
+        ref._downcastUnsafe.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
 
-        try p.expectMessage("unsuspended:boom")
+        try p.expectMessage("unsuspended:Boom()")
         try p.expectMessage("resumed:something else")
     }
 
@@ -545,14 +568,14 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(Boom.boom)
+        promise.fail(Boom())
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard case Boom.boom = error.underlying else {
-                throw p.error("Expected failure(ExecutionException(underlying: Boom.boom)), got \(suspendResult)")
+            guard error.underlying is Boom else {
+                throw p.error("Expected failure(ExecutionException(underlying: Boom())), got \(suspendResult)")
             }
-        default: throw p.error("Expected failure(ExecutionException(underlying: Boom.boom)), got \(suspendResult)")
+        default: throw p.error("Expected failure(ExecutionException(underlying: Boom())), got \(suspendResult)")
         }
 
         try p.expectMessage("another test")
@@ -608,7 +631,7 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(Boom.boom)
+        promise.fail(Boom())
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
         try p.expectTerminated(ref)
     }

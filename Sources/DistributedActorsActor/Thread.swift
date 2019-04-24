@@ -22,6 +22,7 @@ import Glibc
 import NIO
 import DistributedActorsConcurrencyHelpers
 
+/// :nodoc:
 public enum ThreadError: Error {
     case threadCreationFailed
     case threadJoinFailed

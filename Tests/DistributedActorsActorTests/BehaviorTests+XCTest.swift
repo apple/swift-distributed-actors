@@ -29,6 +29,7 @@ extension BehaviorTests {
                 ("test_two_actors_should_wakeUp_on_new_message_lockstep", test_two_actors_should_wakeUp_on_new_message_lockstep),
                 ("test_receive_shouldReceiveManyMessagesInExpectedOrder", test_receive_shouldReceiveManyMessagesInExpectedOrder),
                 ("test_ClassBehavior_receivesMessages", test_ClassBehavior_receivesMessages),
+                ("test_ClassBehavior_receivesSignals", test_ClassBehavior_receivesSignals),
                 ("test_orElse_shouldExecuteFirstBehavior", test_orElse_shouldExecuteFirstBehavior),
                 ("test_orElse_shouldExecuteSecondBehavior", test_orElse_shouldExecuteSecondBehavior),
                 ("test_orElse_shouldNotExecuteSecondBehaviorOnIgnore", test_orElse_shouldNotExecuteSecondBehaviorOnIgnore),
