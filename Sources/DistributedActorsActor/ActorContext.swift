@@ -177,8 +177,12 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
     ///
+    /// Asynchronous callbacks are enqueued wrapped as _messages_, not _signals_, and thus can not be used directly to invoke
+    /// an actor which is not processing messages (e.g. is suspended, or for some other reason).
+    ///
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
+    @usableFromInline
     internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
             selfRef?.sendClosure($0)
@@ -203,10 +207,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(
-        of task: AR,
-        timeout: TimeAmount,
-        _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+    public func awaitResult<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
             task.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._downcastUnsafe] result in
                 selfRef?.sendSystemMessage(.resume(result.map { $0 }))
             }
@@ -232,23 +233,28 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) -> Behavior<Message> {
             return self.awaitResult(of: task, timeout: timeout) { result in
                 switch result {
-                case .success(let res):     return try continuation(res)
-                case .failure(let error):   throw error.underlying
+                case .success(let res):   return try continuation(res)
+                case .failure(let error): throw error.underlying
                 }
             }
     }
 }
 
-public struct AsynchronousCallback<T> {
+/// Used for the internal ability to schedule a callback to be executed by an actor.
+@usableFromInline
+internal struct AsynchronousCallback<T> {
     @usableFromInline
-    let callback: (T) throws -> Void
+    let _callback: (T) throws -> Void
     @usableFromInline
-    let send: (@escaping () throws -> Void) -> Void
+    let _send: (@escaping () throws -> Void) -> Void
+
+    public init(callback: @escaping (T) throws -> Void, send: @escaping (@escaping () throws -> Void) -> Void) {
+        self._callback = callback
+        self._send = send
+    }
 
     @inlinable
-    public func invoke(_ arg: T) {
-        self.send {
-            try self.callback(arg)
-        }
+    func invoke(_ arg: T) {
+        self._send { try self._callback(arg) }
     }
 }

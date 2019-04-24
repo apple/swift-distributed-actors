@@ -36,8 +36,10 @@ public protocol BackoffStrategy {
 /// Factory for `BackoffStrategy` instances.
 ///
 /// - SeeAlso: `BackoffStrategy` for interface semantics.
-/// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy
-/// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy
+/// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy.
+/// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy.
+///
+/// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public enum Backoff {
 
     // TODO: implement noLongerThan: .seconds(30), where total time is taken from actor system clock
@@ -46,7 +48,7 @@ public enum Backoff {
     ///
     /// See `ConstantBackoffStrategy` for details
     static func constant(_ backoff: TimeAmount) -> ConstantBackoffStrategy {
-        return .init(base: backoff)
+        return .init(timeAmount: backoff)
     }
 
     /// Creates a strategy implementing the exponential backoff pattern.
@@ -71,6 +73,7 @@ public enum Backoff {
         randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor) -> ExponentialBackoffStrategy {
         return .init(initialInterval: initialInterval, multiplier: multiplier, capInterval: maxInterval, randomFactor: randomFactor)
     }
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -79,15 +82,19 @@ public enum Backoff {
 /// Simple strategy, always yielding the same backoff interval.
 ///
 /// - SeeAlso: `ExponentialBackoffStrategy` for a most commonly used exponentially-increasing strategy
+///
+/// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public struct ConstantBackoffStrategy: BackoffStrategy {
-    private let base: TimeAmount
+    
+    /// The constant time amount to back-off by each time.
+    internal let timeAmount: TimeAmount
 
-    public init(base: TimeAmount) {
-        self.base = base
+    public init(timeAmount: TimeAmount) {
+        self.timeAmount = timeAmount
     }
 
     public func next() -> TimeAmount? {
-        return self.base
+        return self.timeAmount
     }
 
     public func reset() {
@@ -128,7 +135,9 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 /// interval upon each attempt may set the `multiplier` would be set to `2.0`. Higher multiplier values are also accepted,
 /// but not frequently used.
 ///
-/// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy
+/// - SeeAlso: `ConstantBackoffStrategy` for a simple constant backoff strategy.
+///
+/// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public struct ExponentialBackoffStrategy: BackoffStrategy {
     // TODO clock + limit "max total wait time" etc
 
@@ -185,7 +194,6 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
             self.currentBaseInterval = self.capInterval
         } else {
             self.currentBaseInterval = self.currentBaseInterval * self.multiplier
-
         }
     }
 

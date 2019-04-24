@@ -26,6 +26,7 @@ import CSwiftDistributedActorsMailbox
 /// to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
 ///
 /// The cell is mutable, as it may replace the behavior it hosts
+@usableFromInline
 internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell {
     // TODO: the cell IS-A context is how we saved space on the JVM, though if context is a struct it does not matter here, perhaps reconsider
 
@@ -239,7 +240,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         try self.becomeNext(behavior: next)
 
         if !self.behavior.isStillAlive {
-            children.forEach { $0.sendSystemMessage(.stop) }
+            self.children.stopAll()
         }
 
         return self.runState
@@ -271,7 +272,6 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
-        // initialization
         case .start:
             try self.interpretStart()
 
@@ -290,12 +290,8 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         case let .addressTerminated(remoteAddress):
             self.interpretAddressTerminated(remoteAddress)
 
-        case .tombstone:
-            return self.finishTerminating()
-
         case .stop:
-            children.forEach { $0.sendSystemMessage(.stop) }
-            try self.becomeNext(behavior: .stopped(reason: .stopByParent))
+            try self.interpretStop()
 
         case .resume(let result):
             switch self.behavior.underlying {
@@ -306,7 +302,11 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
                 try self.becomeNext(behavior: previousBehavior.canonicalize(self.context, next: nextBehavior))
             default:
                 self.log.error("Received .resume message while being in non-suspended state")
+
             }
+
+        case .tombstone:
+            return self.finishTerminating()
         }
 
         return self.runState
@@ -320,7 +320,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         try self.becomeNext(behavior: next)
 
         if !self.behavior.isStillAlive {
-            children.forEach { $0.sendSystemMessage(.stop) }
+            self.children.stopAll()
         }
 
         return self.runState
@@ -376,14 +376,27 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
-    @inlinable public func restart(behavior: Behavior<Message>) throws {
-        // TODO likely don't log here...
-        self.log.warning("Restarting.")
+    @inlinable public func _restartPrepare() throws {
+        self.children.stopAll()
+        self.timers.cancelAll() // TODO cancel all except the restart timer
 
-        self.timers.cancelAll()
+        // TODO really ignore?
+        // FIXME document pre restarts return value will be disregarded if so
         try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
-        self.behavior = behavior
+
+        // NOT interpreting Start yet, as it may have to be done after a delay
+    }
+
+    /// Used by supervision.
+    /// MUST be preceded by an invocation of `restartPrepare`.
+    /// The two steps MAY be performed in different point in time; reason being: backoff restarts,
+    /// which need to suspend the actor, and NOT start it just yet, until the system message awakens it again.
+    @inlinable public func _restartComplete(with behavior: Behavior<Message>) throws -> Behavior<Message> {
+        try behavior.validateAsInitial()
+
         try self.interpretStart()
+        try self.becomeNext(behavior: behavior)
+        return self.behavior
     }
 
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
@@ -567,6 +580,11 @@ extension ActorCell {
         self.deathWatch.receiveAddressTerminated(terminatedAddress, myself: self._myselfReceivesSystemMessages)
     }
 
+    @inlinable internal func interpretStop() throws {
+        children.stopAll()
+        try self.becomeNext(behavior: .stopped(reason: .stopByParent))
+    }
+
     @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {
         #if SACT_TRACE_CELL
         log.info("Received \(terminated)")
@@ -688,6 +706,17 @@ extension AbstractCell {
             return self.children._resolveUntyped(context: context.deeper)
         } else {
             return context.deadRef
+        }
+    }
+}
+
+internal extension ActorContext {
+    /// INTERNAL API: UNSAFE, DO NOT TOUCH.
+    @usableFromInline
+    var _downcastUnsafe: ActorCell<Message> {
+        switch self {
+        case let theCell as ActorCell<Message>: return theCell
+        default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorCell. This is a bug, please report this on the issue tracker.")
         }
     }
 }

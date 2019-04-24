@@ -81,6 +81,7 @@ internal extension SystemMessage {
     }
 }
 
+// TODO document where this is intended to be used; supervision and suspension? should we separate the two?
 public struct ExecutionError: Error {
     let underlying: Error
 }

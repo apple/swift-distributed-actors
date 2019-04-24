@@ -326,7 +326,7 @@ internal class Guardian: ReceivesSystemMessages {
             self.stopping = true
 
             // tell all children to stop and wait for them to be stopped
-            self._children.forEach { $0.sendSystemMessage(.stop) }
+            self._children.stopAll()
             self.allChildrenRemoved.wait(_childrenLock)
         }
     }

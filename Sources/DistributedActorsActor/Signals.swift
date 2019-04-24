@@ -80,13 +80,14 @@ public enum Signals {
         }
     }
 
-    /// This is sent right before an actor gets restarted
+    /// Signal sent to an actor right before it is restarted (by supervision).
+    /// The actor MAY use th
     public struct PreRestart: Signal {
         @usableFromInline
         init() {}
     }
 
-    /// This is sent right after the actor has stopped
+    /// Signal sent to an actor right after is has semantically been stopped (i.e. will receive no more messages nor signals, except this one).
     public struct PostStop: Signal {
         @usableFromInline
         init() {}

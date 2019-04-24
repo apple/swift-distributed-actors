@@ -204,6 +204,8 @@ final class Mailbox<Message> {
             deadLetters.tell(DeadLetter(msg))
         })
 
+        // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
+        // It has to implement the equivalent of `Supervisor.interpretSupervised`, for the fault handling path.
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
             logger: cell.log,
             handleMessageFailure: { [weak _cell = cell] supervisionFailure, runPhase in
@@ -214,35 +216,50 @@ final class Mailbox<Message> {
 
                 traceLog_Mailbox(self.path, "INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
-                let supervisionResultingBehavior: Behavior<Message>
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
                 cell.log.warning("Supervision: Actor has FAULTED while interpreting \(runPhase), handling with \(cell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
 
+                let supervisionDirective: SupervisionDirective<Message>
                 switch runPhase {
                 case .processingSystemMessages:
-                    supervisionResultingBehavior = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .signal)
+                    supervisionDirective = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .signal)
                 case .processingUserMessages:
-                    supervisionResultingBehavior = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .message)
+                    supervisionDirective = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .message)
                 }
 
                 // TODO: this handling MUST be aligned with the throws handling.
-                switch supervisionResultingBehavior.underlying {
-                case .stopped:
+                switch supervisionDirective {
+                case .stop:
                     // decision is to stop which is terminal, thus: Let it Crash!
                     return .failureTerminate
-                case .failed: // TODO: Carry this error to supervision?
-                    // decision is to fail, Let it Crash!
+
+                case .escalate:
+                    // failure escalated "all the way", so decision is to fail, Let it Crash!
+                    // TODO escalate to parent via terminated with the error?
+                    // TODO do we need to crash children explicitly here?
                     return .failureTerminate
-                default:
-                    // received new behavior, attempting restart:
+
+                case .restartImmediately(let nextBehavior):
                     do {
-                        try cell.restart(behavior: supervisionResultingBehavior)
+                        // received new behavior, restarting immediately
+                        try cell._restartPrepare()
+                        _ = try cell._restartComplete(with: nextBehavior)
+                        return .failureRestart
                     } catch {
-                        cell.system.shutdown() // FIXME nicer somehow, or hard exit() here?
                         fatalError("Double fault while restarting actor \(cell.path). Terminating.")
                     }
-                    return .failureRestart
+
+                case .restartDelayed(let delay, let nextBehavior):
+                    do {
+                        // received new behavior, however actual restart is delayed, so we only prepare
+                        try cell._restartPrepare()
+                        // and become the restarting behavior which schedules the wakeUp system message on setup
+                        try cell.becomeNext(behavior: SupervisionRestartDelayedBehavior.after(delay: delay, with: nextBehavior))
+                        return .failureRestart
+                    } catch {
+                        fatalError("Double fault while restarting actor \(cell.path). Terminating.")
+                    }
                 }
             },
             describeMessage: { failedMessageRawPtr in
@@ -423,6 +440,7 @@ final class Mailbox<Message> {
             // FIXME: !!! we must know if we should schedule or not after a restart...
             traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
             cell.dispatcher.execute(self.run)
+
         case .failureTerminate:
             // We are now terminating. The run has been aborted and other threads were not yet allowed to activate this
             // actor (since it was in the middle of processing). We MUST therefore activate right now, and at the same time
@@ -439,7 +457,6 @@ final class Mailbox<Message> {
             // we have to perform one last run to potentially drain any remaining system messages to dead letters for
             // death watch correctness.
             traceLog_Mailbox(self.path, "interpret failureTerminate")
-            pprint("interpret failureTerminate    \(self.path)")
             self.sendSystemTombstone() // Rest in Peace
         case .close:
             // termination has been set as mailbox status and we should send ourselves the .tombstone
