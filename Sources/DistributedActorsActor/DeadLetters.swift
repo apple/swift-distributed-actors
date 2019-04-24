@@ -19,7 +19,7 @@ public struct DeadLetter {
     let recipient: UniqueActorPath?
     // TODO: from, to, other metadata
 
-    init(_ message: Any, recipient: UniqueActorPath? = nil) {
+    init(_ message: Any, recipient: UniqueActorPath?) {
         self.message = message
         self.recipient = recipient
     }
@@ -69,7 +69,7 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMe
     }
 
     override func sendSystemMessage(_ message: SystemMessage) {
-        self.tell(DeadLetter(message))
+        self.tell(DeadLetter(message, recipient: self.path))
     }
 
     private func specialHandle(_ message: SystemMessage) -> Bool {
