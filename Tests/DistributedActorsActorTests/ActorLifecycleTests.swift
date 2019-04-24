@@ -95,17 +95,17 @@ class ActorLifecycleTests: XCTestCase {
 
         try p.expectMessage("init")
         try p.expectMessage("receive:stop")
-        // TODO: historically we have a "postStop" before dying; and we need it for the "not a class" behaviors anyway, implement this
+        try p.expectMessage("signal:PostStop()")
         try p.expectMessage("deinit")
     }
 
 }
 
-enum LifecycleDeinitActorMessage {
+private enum LifecycleDeinitActorMessage {
     case stop
 }
 
-final class LifecycleDeinitClassBehavior: ClassBehavior<LifecycleDeinitActorMessage> {
+private final class LifecycleDeinitClassBehavior: ClassBehavior<LifecycleDeinitActorMessage> {
     let probe: ActorRef<String>
 
     init(_ p: ActorRef<String>) {

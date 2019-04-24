@@ -1,0 +1,21 @@
+#!/bin/bash
+
+declare -r RED="$(tput setaf 1)"
+declare -r RST="$(tput sgr0)"
+
+swift test $@ 2>&1 | tee .build/full-log
+
+FAILED_NAMES="$(cat .build/full-log | grep 'Test Case .* failed' | awk '{print $4}')"
+if [ $? -eq 0 ] 
+then
+  echo -e "$RED====~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FAILED TESTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~====$RST"
+  for failed_name in $FAILED_NAMES
+  do
+    cat .build/full-log | grep -B500 "Test Case .*$failed_name failed" | grep -A100000 "$failed_name"
+    echo
+    echo "~~~"
+    echo
+  done
+fi
+
+rm .build/full-log
