@@ -24,13 +24,14 @@ internal enum _Behavior<Message> {
 
     // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
     case custom(behavior: ClassBehavior<Message>)
-    case same
     indirect case stopped(postStop: Behavior<Message>?, reason: StopReason)
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
-    indirect case intercept(behavior: Behavior<Message>, with: Interceptor<Message>) // TODO for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
-    case unhandled
+    case same
     case ignore
+    case unhandled
+
+    indirect case intercept(behavior: Behavior<Message>, with: Interceptor<Message>) // TODO for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
     indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
 
     // Internal only
@@ -348,13 +349,18 @@ public extension Behavior {
         }
     }
 
-    /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled`
-    /// if no `Behavior.signalHandling` was found.
+    /// Attempts interpreting signal using the current behavior, or returns `Behavior.unhandled` if no `Behavior.signalHandling` was found.
     @inlinable
     func interpretSignal(context: ActorContext<Message>, signal: Signal) throws -> Behavior<Message> {
+        // This switch does not use a `default:` clause on purpose!
+        // This is to enforce having to consider consider how a signal should be interpreted if a new behavior case is added.
         switch self.underlying {
-        case .stopped(.some(let postStop), let reason):
-            return try .stopped(postStop: postStop.interpretSignal(context: context, signal: signal), reason: reason)
+        case .stopped(let postStop, let reason):
+            if let postStop = postStop {
+                return try .stopped(postStop: postStop.interpretSignal(context: context, signal: signal), reason: reason)
+            } else {
+                return .same
+            }
         case .signalHandling(_, let handleSignal):
             return try handleSignal(context, signal)
         case .orElse(let first, let second):
@@ -373,8 +379,25 @@ public extension Behavior {
             } else {
                 return try .suspended(previousBehavior: previous.canonicalize(context, next: nextBehavior), handler: handler)
             }
-        default: // TODO default is EVIL </3
-            // no signal handling installed is semantically equivalent to unhandled
+
+        case .receiveMessage, .receive:
+            return .unhandled
+        case .setup(_):
+            return .unhandled
+
+        case .custom(let behavior):
+            return behavior.receiveSignal(context: context, signal: signal)
+
+        case .same:
+            return .unhandled
+        case .ignore:
+            return .unhandled
+        case .unhandled:
+            return .unhandled
+
+        case .failed:
+            return .unhandled
+        case .suspend:
             return .unhandled
         }
     }
@@ -463,16 +486,16 @@ internal extension Behavior {
     @inlinable
     var isSuspend: Bool {
         switch self.underlying {
-        case .suspend:      return true
-        default:            return false
+        case .suspend: return true
+        default:       return false
         }
     }
 
     @inlinable
     var isSuspended: Bool {
         switch self.underlying {
-        case .suspended:    return true
-        default:            return false
+        case .suspended: return true
+        default:         return false
         }
     }
 
@@ -487,8 +510,8 @@ internal extension Behavior {
     @inlinable
     var isSetup: Bool {
         switch self.underlying {
-        case .setup:    return true
-        default:        return false
+        case .setup: return true
+        default:     return false
         }
     }
 
@@ -514,14 +537,13 @@ internal extension Behavior {
             var canonical = next
             while true {
                 switch canonical.underlying {
-                case .setup(let onStart):
-                    canonical = try onStart(context)
+                case .setup(let onStart):           canonical = try onStart(context)
 
                 case .same where self.isSetup:      throw IllegalBehaviorError.illegalTransition(from: self, to: next)
                 case .same:                         return base
                 case .ignore:                       return base
                 case .unhandled:                    return base
-                case .custom:                       return base
+                case .custom:                       return canonical
 
                 case .stopped(.none, let reason):   return .stopped(postStop: base, reason: reason)
                 case .stopped(.some, _):            return canonical
@@ -592,7 +614,7 @@ internal extension Behavior {
             case .suspended(let previousBehavior, _):
                 return try start0(previousBehavior, depth: depth + 1)
 
-            default:
+            default: // TODO: remove the use of default: it is the devil </3
                 return behavior
             }
         }
