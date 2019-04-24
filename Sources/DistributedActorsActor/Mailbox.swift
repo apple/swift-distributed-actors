@@ -187,21 +187,23 @@ final class Mailbox<Message> {
             }
         })
 
-        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] envelopePtr in
+        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: {
+                [deadLetters = self.deadLetters, path = self.path] envelopePtr in
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
             let envelope = envelopePtr.move()
             let wrapped = envelope.payload
             switch wrapped {
             case .userMessage(let userMessage):
-                deadLetters.tell(DeadLetter(userMessage))
+                deadLetters.tell(DeadLetter(userMessage, recipient: path))
             case .closure(let f):
-                deadLetters.tell(DeadLetter("[\(String(describing: f))]:closure"))
+                deadLetters.tell(DeadLetter("[\(String(describing: f))]:closure", recipient: path))
             }
         })
-        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: { [deadLetters = self.deadLetters] sysMsgPtr in
+        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: {
+                [deadLetters = self.deadLetters, path = self.path] sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
-            deadLetters.tell(DeadLetter(msg))
+            deadLetters.tell(DeadLetter(msg, recipient: path))
         })
 
         // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
@@ -303,7 +305,7 @@ final class Mailbox<Message> {
         ptr.initialize(to: envelope)
 
         func sendAndDropAsDeadLetter() {
-            self.deadLetters.tell(DeadLetter(envelope.payload))
+            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: cell.path))
             _ = ptr.move()
             ptr.deallocate()
         }
@@ -332,7 +334,7 @@ final class Mailbox<Message> {
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage) {
         guard let cell = self.cell else {
-            self.deadLetters.tell(DeadLetter(systemMessage))
+            self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
             traceLog_Mailbox(self.path, "has already released the actor cell, dropping system message \(systemMessage)")
             return
         }
@@ -341,7 +343,7 @@ final class Mailbox<Message> {
         ptr.initialize(to: systemMessage)
 
         func sendAndDropAsDeadLetter() {
-            self.deadLetters.tell(DeadLetter(systemMessage))
+            self.deadLetters.tell(DeadLetter(systemMessage, recipient: cell.path))
             // we can not deallocate yet...
             // _ = ptr.move()
             // ptr.deallocate()
