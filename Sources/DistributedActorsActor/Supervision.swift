@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// MARK: Supervision props and strategies
-
 /// Properties configuring supervision for given actor.
 public struct SupervisionProps {
     // internal var supervisionMappings: [ErrorTypeIdentifier: SupervisionStrategy]
@@ -109,6 +107,58 @@ public extension Props {
 }
 
 /// Supervision strategies are a way to select and configure pre-defined supervisors.
+///
+/// **Supervision results in stopping or restarting**
+///
+/// Most of the following discussion focuses on the `.restart` strategy and its alternative versions and semantics.
+/// This is because the only other strategy is `stop`, which is self explanatory: it stops the actor upon any encountered failure.
+///
+/// **Understanding the failure time period**
+///
+/// The following visualization may be useful in understanding failure periods and their meaning to the "intensity"
+/// of how many restarts are allowed within a failure period:
+///
+/// ```
+/// Assuming supervision with: .restart(atMost: 2, within: .seconds(10))
+///
+///      fail-per-1  fail-per-2                    failure-period-3
+/// TFP: 0123456789  0123456789                       0123456789
+///     [x        x][x         ][... no failures ...][x   x  x!!]
+///      ^        ^  ^                                ^      ^
+///      |        |  |                                |      \ and whenever we hit a 3rd failure within it, we escalate (do not restart, and the actor is stopped)
+///      |        |  |                                \ any new failure after a while causes a new failure period
+///      |        |  \ another, 3rd in total, failure happens; however it is the beginning of a new failure period; we allow the restart
+///      |        \ another failure happens before the end of the period, atMost: 2, so we perform the restart
+///      \- a failure begins a failure period of 10 seconds
+/// ```
+///
+/// - Warning:
+/// While it is possible to omit the `within` parameter, it has a specific effect which may not often be useful:
+/// a `restart` supervision directive without a `within` parameter set effectively means that a given actor is allowed to restart
+/// `atMost` times _in total_ (in its entire lifetime). This rarely is a behavior one would desire, however it may sometimes come in handy.
+///
+/// - SeeAlso: Erlang OTP <a href="http://erlang.org/doc/design_principles/sup_princ.html#maximum-restart-intensity">Maximum Restart Intensity</a>.
+///
+/// **Restarting with Backoff**
+///
+/// It is possible to `.restart` a backoff strategy before completing a restart. In this case the passed in `SupervisionStrategy`
+/// is invoked and the returned `TimeAmount` is used to suspend the actor for this amount of time, before completing the restart,
+/// canonicalizing any `.setup` or similar top-level behaviors and continuing to process messages.
+///
+/// The following diagram explains how backoff interplays with the lifecycle signals sent to the actor upon a restart,
+/// as the prepare (`R`) and complete (`S`) signals of a restart would then occur in different points in time.
+///
+/// ```
+/// Actor: [S     x]R ~~~~~~~[S      x]R~~~~~~~~~[S   ...]
+///         ^     ^ ^ ^^^^^^^ ^
+///     .setup    | |    |    \- Complete the restart; If present, run any .setup and other nested behaviors, continue running as usual.
+///               | |    \- Backoff time before completing the restart, if backoff strategy is set and returns a value.
+///               | \- Signals.PreRestart is interpreted by the existing Behavior (in its .onSignal handler, if present)
+///               \- "Letting it Crash!"
+/// ```
+///
+/// Backoffs are tremendously useful in building resilient retrying systems, as they allow the avoidance of thundering situations,
+/// in case a fault caused multiple actors to fail for the same reason (e.g. the failure of a shared resource).
 public enum SupervisionStrategy {
     /// Default supervision strategy applied to all actors, unless a different one is selected in their `Props`.
     ///
@@ -118,36 +168,51 @@ public enum SupervisionStrategy {
     /// - SeeAlso: `DeathWatch` for discussion about how to be notified about an actor stopping / failing.
     case stop
 
-    /// Supervision strategy allowing the supervised actor to be restarted `atMost` times `within` a time period.
+    /// The restart supervision strategy allowing the supervised actor to be restarted `atMost` times `within` a time period.
+    /// In addition, each subsequent restart _may_ be performed after a certain backoff.
     ///
-    /// The following visualization may be useful in understanding failure periods and their meaning to the "intensity"
-    /// of how many restarts are allowed within a failure period:
-    /// ```
-    /// Assuming supervision with: .restart(atMost: 2, within: .seconds(10))
-    ///
-    ///      fail-per-1  fail-per-2                    failure-period-3
-    /// TFP: 0123456789  0123456789                       0123456789
-    ///     [x        x][x         ][... no failures ...][x   x  x!!]
-    ///      ^        ^  ^                                ^      ^
-    ///      |        |  |                                |      \ and whenever we hit a 3rd failure within it, we escalate (do do restart, and the actor is stopped)
-    ///      |        |  |                                \ any new failure after a while causes a new failure period
-    ///      |        |  \ another, 3rd in total, failure happens; however it is the beginning of a new failure period; we allow the restart
-    ///      |        \ another failure happens in before the end of the period, atMost: 2, so we perform the restart
-    ///      \- a failure begins a failure period of 10 seconds
-    /// ```
-    ///
-    /// - Warning:
-    /// While it is possible to omit the `within` parameter, it has a specific effect which may not often be useful:
-    /// a `restart` supervision directive without a `within` parameter set effectively means that a given actor is allowed to restart
-    /// `atMost` times _in total_ (in its entire lifetime). This rarely is a behavior one would desire, however it may sometimes come in handy.
+    /// - SeeAlso: The top level `SupervisionStrategy` documentation explores semantics of supervision in more depth.
     ///
     /// **Associated Values**
-    ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0.
+    ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0).
     ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
     ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    case restart(atMost: Int, within: TimeAmount?) // TODO would like to remove the `?` and model more properly
-    // TODO: backoff supervision https://github.com/apple/swift-distributed-actors/issues/133
+    ///   - `backoff` strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
+    ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
+    ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
+    case restart(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy?) // TODO would like to remove the `?` and model more properly
+}
+
+public extension SupervisionStrategy {
+
+    /// Simplified version of `SupervisionStrategy.restart(atMost:within:backoff:)`.
+    ///
+    /// - SeeAlso: The top level `SupervisionStrategy` documentation explores semantics of supervision in more depth.
+    ///
+    /// **Providing a `within` time period**
+    ///
+    /// This version is generally useful for long running actors, which may experience periodic failures, during which time they
+    /// should attempt to restart as quickly as possible (without backoff), yet if recovery is not possible and the actor keeps failing
+    /// within a designated time amount, it should escalate the failure.
+    ///
+    /// **Empty `within` failure time period**
+    ///
+    /// It is possible to pass in `nil` as time period explicitly, which effectively disables the time period.
+    /// This is only useful for temporary actors which should terminate after they have completed a specific task,
+    /// and the `atMost` allowed failures count is related to this task.
+    ///
+    /// For example `.restart(atMost: 2)` could be well suited for an actor that should try downloading a web page,
+    /// but if it fails twice at the task -- regardless how long it took to fetch/fail, it should be restarted.
+    ///
+    /// **Associated Values**
+    ///   - `atMost` number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0).
+    ///   - `within` amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
+    ///     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
+    ///     no restart is performed and the failure is escalated (and the actor terminates in the process).
+    static func restart(atMost: Int, within: TimeAmount?) -> SupervisionStrategy {
+        return .restart(atMost: atMost, within: within, backoff: nil)
+    }
 }
 
 internal struct ErrorTypeBoundSupervisionStrategy {
@@ -155,14 +220,17 @@ internal struct ErrorTypeBoundSupervisionStrategy {
     let strategy: SupervisionStrategy
 }
 
+/// Namespace for supervision associated types.
+///
+/// - SeeAlso: `SupervisionStrategy` for thorough documentation of supervision strategies and semantics.
 public struct Supervision {
 
-    /// Internal conversion from supervision props to apropriate (potentially composite) `Supervisor<Message>`.
+    /// Internal conversion from supervision props to appropriate (potentially composite) `Supervisor<Message>`.
     internal static func supervisorFor<Message>(_ system: ActorSystem, initialBehavior: Behavior<Message>, props: SupervisionProps) -> Supervisor<Message> {
         func supervisorFor0(failureType: Error.Type, strategy: SupervisionStrategy) -> Supervisor<Message> {
             switch strategy {
-            case let .restart(atMost, within):
-                let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within)
+            case let .restart(atMost, within, backoffStrategy):
+                let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
                 return RestartingSupervisor(initialBehavior: initialBehavior, restartLogic: strategy, failureType: failureType)
             case .stop:
                 return StoppingSupervisor(failureType: failureType)
@@ -271,7 +339,7 @@ public enum Supervise {
 
 /// Used in `Supervisor` to determine what type of processing caused the failure
 ///
-/// - message: failure happened during messsage processing
+/// - message: failure happened during message processing
 /// - signal: failure happened during signal processing
 /// - closure: failure happened during closure processing
 @usableFromInline
@@ -288,9 +356,11 @@ internal enum ProcessingType {
 @usableFromInline
 internal class Supervisor<Message> {
 
+    typealias Directive = SupervisionDirective<Message>
+
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
-        traceLog_Supervision("CALL WITH SUPERVISION: \(target) @@@@ [\(message)]:\(type(of: message))")
+        traceLog_Supervision("CALL WITH \(target) @@@@ [\(message)]:\(type(of: message))")
         return try self.interpretSupervised0(target: target, context: context, processingType: .message) {
             return try target.interpretMessage(context: context, message: message) // no-op implementation by default
         }
@@ -306,7 +376,7 @@ internal class Supervisor<Message> {
 
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: () throws -> Void) throws -> Behavior<Message> {
-        traceLog_Supervision("CALLING CLOSURE")
+        traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingType: .closure) {
             try closure()
             return .same
@@ -314,22 +384,41 @@ internal class Supervisor<Message> {
     }
 
     @inlinable
-    final internal func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, continuation: () throws -> Behavior<Message>) throws -> Behavior<Message> {
-        traceLog_Supervision("CALLING CLOSURE")
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: () throws -> Behavior<Message>) throws -> Behavior<Message> {
+        traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingType: .continuation) {
-            return try continuation()
+            return try closure()
         }
     }
 
+    /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
     @usableFromInline
-    func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingType: ProcessingType, block: () throws -> Behavior<Message>) throws -> Behavior<Message> {
+    final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingType: ProcessingType, closure: () throws -> Behavior<Message>) throws -> Behavior<Message> {
         do {
-            return try block()
+            return try closure()
         } catch {
             let err = error
-            context.log.warning("Supervision: Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)")
+            context.log.warning("Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)")
             do {
-                return try self.handleFailure(context, target: target, failure: .error(error), processingType: processingType).validatedAsInitial()
+                let directive: Directive = try self.handleFailure(context, target: target, failure: .error(error), processingType: processingType)
+                switch directive {
+                case .stop:
+                    return .stopped(reason: .failure(.error(error)))
+
+                case .escalate(let failure):
+                    // TODO this is not really escalating (yet)
+                    return .stopped(reason: .failure(failure))
+
+                case .restartImmediately(let replacement):
+                    // FIXME: should this not implement the same "call restartPrepare() / restartComplete()"?
+                    try context._downcastUnsafe._restartPrepare()
+                    return try context._downcastUnsafe._restartComplete(with: replacement)
+
+                case .restartDelayed(let delay, let replacement):
+                    try context._downcastUnsafe._restartPrepare()
+
+                    return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
+                }
             } catch {
                 throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
             }
@@ -339,8 +428,9 @@ internal class Supervisor<Message> {
     // MARK: Internal Supervisor API
 
     /// Handle a fault that happened during processing.
-    // TODO wording and impl on double-faults
-    open func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
+    ///
+    /// The returned `SupervisionDirective` will be interpreted apropriately.
+    open func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         return undefined()
     }
 
@@ -361,7 +451,7 @@ internal class Supervisor<Message> {
 }
 
 /// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
-/// At the same time, it may be useful to sometimes explicitly specifiy that for some type of error we want to stop
+/// At the same time, it may be useful to sometimes explicitly specify that for some type of error we want to stop
 /// (e.g. when used with composite supervisors, which restart for all failures, yet should not do so for some specific type of error).
 final class StoppingSupervisor<Message>: Supervisor<Message> {
     internal let failureType: Error.Type
@@ -370,13 +460,13 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         guard failure.shouldBeHandled(bySupervisorHandling: failureType) else {
             // TODO matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
-            return .stopped(reason: .failure(failure)) // TODO .escalate could be nicer
+            return .stop
         }
 
-        return .stopped(reason: .failure(failure))
+        return .stop
     }
 
     override func isSame(as other: Supervisor<Message>) -> Bool {
@@ -406,13 +496,13 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
         super.init()
     }
 
-    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         for supervisor in supervisors {
             if supervisor.canHandle(failure: failure) {
                 return try supervisor.handleFailure(context, target: target, failure: failure, processingType: processingType)
             }
         }
-        return .stopped(reason: .failure(failure)) // TODO: escalate could be nicer
+        return .stop
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
@@ -420,18 +510,39 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
     }
 }
 
+/// Instructs the mailbox to take specific action, reflecting wha the supervisor intends to do with the actor.
+///
+/// - SeeAlso: `Supervisor.handleFailure`
+enum SupervisionDirective<Message> {
+    /// Directs mailbox to directly stop processing.
+    case stop
+    /// Directs mailbox to prepare AND complete a restart immediately.
+    case restartImmediately(Behavior<Message>)
+    /// Directs mailbox to prepare a restart after a delay.
+    case restartDelayed(TimeAmount, Behavior<Message>)
+    /// Directs the mailbox to immediately fail and stop processing.
+    /// Failures should "bubble up".
+    case escalate(Supervision.Failure)
+}
+
+enum SupervisionDecision {
+    case restartImmediately
+    case restartBackoff(delay: TimeAmount) // could also configure "drop messages while restarting" etc
+    case escalate
+    case stop
+}
+
 /// Encapsulates logic around when a restart is allowed, i.e. tracks the deadlines of failure periods.
 internal struct RestartDecisionLogic {
     let maxRestarts: Int
     let within: TimeAmount?
-
-    typealias ShouldRestart = Bool
+    var backoffStrategy: BackoffStrategy?
 
     // counts how many times we failed during the "current" `within` period
     private var restartsWithinCurrentPeriod: Int = 0
     private var restartsPeriodDeadline: Deadline = Deadline.distantPast
 
-    init(maxRestarts: Int, within: TimeAmount?) {
+    init(maxRestarts: Int, within: TimeAmount?, backoffStrategy: BackoffStrategy?) {
         precondition(maxRestarts > 0, "RestartStrategy.maxRestarts MUST be > 0")
         self.maxRestarts = maxRestarts
         if let failurePeriodTime = within {
@@ -442,13 +553,13 @@ internal struct RestartDecisionLogic {
             self.restartsPeriodDeadline = .distantFuture
             self.within = nil
         }
-
+        self.backoffStrategy = backoffStrategy
     }
 
     /// Increment the failure counter (and possibly reset the failure period deadline).
     ///
     /// MUST be called whenever a failure reaches a supervisor.
-    mutating func recordFailure() -> ShouldRestart {
+    mutating func recordFailure() -> SupervisionDecision {
         if self.restartsPeriodDeadline.isOverdue() {
             // thus the next period starts, and we will start counting the failures within that time window anew
 
@@ -459,7 +570,24 @@ internal struct RestartDecisionLogic {
         }
         self.restartsWithinCurrentPeriod += 1
 
-        return self.periodHasTimeLeft && self.isWithinMaxRestarts
+        if self.periodHasTimeLeft && self.isWithinMaxRestarts {
+            guard self.backoffStrategy != nil else {
+                return .restartImmediately
+            }
+
+            // so the backoff strategy _is_ set, and a `nil` from it would mean "stop restarting"
+            if let backoffAmount = self.backoffStrategy?.next() {
+                return .restartBackoff(delay: backoffAmount)
+            } else {
+                // TODO: or plain stop? now they are the same though...
+                // we stop/escalate since the strategy decided we've been trying again enough and it is time to stop
+                return .escalate
+            }
+
+        } else {
+            // e.g. total time within which we are allowed to back off has been exceeded etc
+            return .escalate
+        }
     }
 
     private var periodHasTimeLeft:  Bool {
@@ -493,22 +621,38 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
         self.failureType = failureType
     }
 
-    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> Behavior<Message> {
-        let shouldRestart: RestartDecisionLogic.ShouldRestart = self.restartDecider.recordFailure()
-        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) && shouldRestart else {
-            traceLog_Supervision("Supervision: STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
-            return .stopped(reason: .failure(failure)) // TODO .escalate could be nicer
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+        let decision: SupervisionDecision = self.restartDecider.recordFailure()
+
+        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) else {
+            traceLog_Supervision("ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+
+            return .stop
         }
 
-        // TODO make proper .ordinalString function
-        traceLog_Supervision("Supervision: RESTART from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
-        // TODO has to modify restart counters here and supervise with modified supervisor
+        switch decision {
+        case .stop:
+            traceLog_Supervision("STOP from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
 
-        context.children.stopAll()
+            return .stop
 
-        _ = try target.interpretSignal(context: context, signal: Signals.PreRestart())
+        case .escalate:
+            traceLog_Supervision("ESCALATE from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
 
-        return try initialBehavior.start(context: context)
+            return .escalate(failure)
+
+        case .restartImmediately:
+            // TODO make proper .ordinalString function
+            traceLog_Supervision("RESTART from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+            // TODO has to modify restart counters here and supervise with modified supervisor
+
+            return .restartImmediately(self.initialBehavior)
+
+        case .restartBackoff(let delay):
+            traceLog_Supervision("RESTART BACKOFF(\(delay.prettyDescription)) from \(processingType) (\(self.restartDecider.remainingRestartsDescription)), failure was: \(failure)! >>>> \(initialBehavior)")
+
+            return .restartDelayed(delay, self.initialBehavior)
+        }
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
@@ -518,6 +662,29 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     // TODO complete impl
     override public func isSame(as other: Supervisor<Message>) -> Bool {
         return other is RestartingSupervisor<Message>
+    }
+}
+
+/// Behavior used to suspend after a `restartPrepare` has been issued by an `restartDelayed`.
+internal enum SupervisionRestartDelayedBehavior<Message> {
+    internal struct WakeUp {}
+
+    static func after(delay: TimeAmount, with replacement: Behavior<Message>) -> Behavior<Message> {
+        return .setup { context in
+            context.timers._startResumeTimer(key: "_restartBackoff", delay: delay, resumeWith: WakeUp())
+
+            return .suspend { (result: Result<WakeUp, ExecutionError>) in
+                traceLog_Supervision("RESTART BACKOFF TRIGGER")
+                switch result {
+                case .failure(let error):
+                    context.log.error("Failed result during backoff restart. Error was: \(error). Forcing actor to crash.")
+                    return .failed(error: error)
+                case .success:
+                    // _downcast safe, we know this may only ever run for a local ref, thus it will definitely be an ActorCell
+                    return try context._downcastUnsafe._restartComplete(with: replacement)
+                }
+            }
+        }
     }
 }
 

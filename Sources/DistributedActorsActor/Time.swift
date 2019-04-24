@@ -211,10 +211,6 @@ extension TimeAmount: CustomStringConvertible {
 
     }
 
-    public static func +(a: TimeAmount, b: TimeAmount) -> TimeAmount {
-        return .nanoseconds(a.nanoseconds + b.nanoseconds)
-    }
-
     public var toNIO: NIO.TimeAmount {
         return NIO.TimeAmount.nanoseconds(Int64(self.nanoseconds))
     }
@@ -259,12 +255,20 @@ extension TimeAmount {
 }
 
 public extension TimeAmount {
+    static func + (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
+        return .nanoseconds(lhs.nanoseconds + rhs.nanoseconds)
+    }
+    static func - (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
+        return .nanoseconds(lhs.nanoseconds - rhs.nanoseconds)
+    }
+
     static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         return TimeAmount(lhs.nanoseconds * Value(rhs))
     }
     static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
         return TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
     }
+
     static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         return TimeAmount(lhs.nanoseconds / Value(rhs))
     }

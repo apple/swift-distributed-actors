@@ -160,40 +160,44 @@ extension Behavior {
 
 // MARK: Internal behavior creators
 
-extension Behavior {
+internal extension Behavior {
     /// Internal way of expressing a failed actor.
     ///
     /// **Associated Values**
     ///   - `error` cause of the actor's failing.
     @usableFromInline
-    internal static func failed(error: Error) -> Behavior<Message> {
+    static func failed(error: Error) -> Behavior<Message> {
         return Behavior(underlying: .failed(error: error))
     }
 
     /// Allows handling signals such as termination or lifecycle events.
     @usableFromInline
-    internal static func signalHandling(handleMessage: Behavior<Message>, handleSignal: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
+    static func signalHandling(handleMessage: Behavior<Message>, handleSignal: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .signalHandling(handleMessage: handleMessage, handleSignal: handleSignal))
     }
 
-    /// Causes an actor to go into suspended state
+    /// Causes an actor to go into suspended state.
+    ///
+    /// MUST be canonicalized (to .suspended before storing in an `ActorCell`, as thr suspend behavior CAN NOT handle messages.
     @usableFromInline
-    internal static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .suspend(handler: { try handler($0.map { $0 as! T }) })) // cast here is okay, as user APIs are typed, so we should always get a T
+    static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .suspend(handler: { result in
+            return try handler(result.map { $0 as! T }) // cast here is okay, as user APIs are typed, so we should always get a T
+        }))
     }
 
-    /// Marks an actor as being suspended
+    /// Represents a behavior in suspended state.
     ///
-    /// A suspended actor will only react to system message, until it is resumed.
+    /// A suspended actor will only react to system messages, until it is resumed.
     /// This usually happens when an async operation that caused the suspension
     /// is completed.
     @usableFromInline
-    internal static func suspended(previousBehavior: Behavior<Message>, handler: @escaping (Result<Any, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+    static func suspended(previousBehavior: Behavior<Message>, handler: @escaping (Result<Any, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .suspended(previousBehavior: previousBehavior, handler: handler))
     }
 
     @usableFromInline
-    internal static func stopped(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
+    static func stopped(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
         return Behavior(underlying: .stopped(postStop: postStop, reason: reason))
     }
 }
@@ -515,15 +519,16 @@ internal extension Behavior {
                 case .ignore:                       return base
                 case .unhandled:                    return base
                 case .custom:                       return base
+
                 case .stopped(.none, let reason):   return .stopped(postStop: base, reason: reason)
                 case .stopped(.some, _):            return canonical
-                case .suspend(let handler):         return .suspended(previousBehavior: base, handler: handler)
 
                 case .orElse(let first, let second):
-                    return try canonicalize0(context, base: canonical, next: first, depth: deeper)
-                        .orElse(canonicalize0(context, base: canonical, next: second, depth: deeper))
+                    let canonicalFirst = try canonicalize0(context, base: canonical, next: first, depth: deeper)
+                    let canonicalSecond = try canonicalize0(context, base: canonical, next: second, depth: deeper)
+                    return canonicalFirst.orElse(canonicalSecond)
 
-                case let .intercept(inner, interceptor):
+                case .intercept(let inner, let interceptor):
                     let innerCanonicalized: Behavior<Message> = try canonicalize0(context, base: inner, next: .same, depth: deeper)
                     return .intercept(behavior: innerCanonicalized, with: interceptor)
 
@@ -532,9 +537,15 @@ internal extension Behavior {
                         handleMessage: try canonicalize0(context, base: canonical, next: onMessage, depth: deeper),
                         handleSignal: onSignal)
 
-                case .receive, .receiveMessage, .failed:
-                    return canonical
+                case .suspend(let handler):
+                    return .suspended(previousBehavior: base, handler: handler)
                 case .suspended:
+                    return canonical
+
+                case .receive, .receiveMessage:
+                    return canonical
+
+                case .failed:
                     return canonical
                 }
             }
@@ -558,6 +569,7 @@ internal extension Behavior {
                 throw IllegalBehaviorError.tooDeeplyNestedBehavior(reached: behavior, depth: depth)
             }
 
+            // Note: DO NOT use `default:`, we always want to explicitly know when we add a behavior and add specific handling here.
             switch behavior.underlying {
             case let .intercept(inner, interceptor):
                 // FIXME this should technically offload onto storage and then apply them again...
@@ -573,6 +585,9 @@ internal extension Behavior {
             case .orElse(let main, let fallback):
                 return try start0(main, depth: depth + 1)
                     .orElse(start0(fallback, depth: depth + 1))
+
+            case .suspended(let previousBehavior, _):
+                return try start0(previousBehavior, depth: depth + 1)
 
             default:
                 return behavior

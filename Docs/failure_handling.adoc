@@ -248,7 +248,7 @@ WARNING: PoC Limitation: the current _fault_ handling mechanisms rely on POSIX h
          as to when other `unwind` mechanisms would arrive in Swift itself. These would in turn allow implementing these
          in a more compatible fashion.
 
-==== Supervision Strategy: .restartWithBackoff
+==== Supervision Strategy: .restart(atMost:within:backoff)
 
 > Restarts the actor, applying backoff pauses between the restart attempts
 

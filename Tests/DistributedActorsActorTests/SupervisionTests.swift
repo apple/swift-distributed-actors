@@ -35,7 +35,7 @@ class SupervisionTests: XCTestCase {
     enum FaultyError: Error {
         case boom(message: String)
     }
-    enum FaultyMessages  {
+    enum FaultyMessage {
         case pleaseThrow(error: Error)
         case pleaseFatalError(message: String)
         case pleaseDivideByZero
@@ -43,12 +43,12 @@ class SupervisionTests: XCTestCase {
     }
 
     enum SimpleProbeMessages: Equatable {
-        case spawned(child: ActorRef<FaultyMessages>)
+        case spawned(child: ActorRef<FaultyMessage>)
         case echoing(message: String)
     }
 
     enum WorkerMessages: Equatable {
-        case setupRunning(ref: ActorRef<FaultyMessages>)
+        case setupRunning(ref: ActorRef<FaultyMessage>)
         case echo(message: String)
     }
 
@@ -57,7 +57,7 @@ class SupervisionTests: XCTestCase {
         case faulting
     }
 
-    func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessages> {
+    func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessage> {
         return .setup { context in
             probe?.tell(.setupRunning(ref: context.myself))
 
@@ -80,8 +80,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // TODO: test a double fault (throwing inside of a supervisor
-
-    // TODO: implement and test exponential backoff supervision
 
     func compileOnlyDSLReadabilityTest() {
         _ = { () -> Void in
@@ -112,9 +110,10 @@ class SupervisionTests: XCTestCase {
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
 
-    func sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: String, makeEvilMessage: (String) -> FaultyMessages) throws {
+    func sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
@@ -122,7 +121,7 @@ class SupervisionTests: XCTestCase {
         let parentBehavior: Behavior<Never> = .setup { context in
             let strategy: SupervisionStrategy = .stop
             let behavior = self.faulty(probe: p.ref)
-            let _: ActorRef<FaultyMessages> = try context.spawn(behavior, name: "\(runName)-erroring-1", 
+            let _: ActorRef<FaultyMessage> = try context.spawn(behavior, name: "\(runName)-erroring-1", 
                 props: .addingSupervision(strategy: strategy))
             return .same
         }
@@ -145,13 +144,15 @@ class SupervisionTests: XCTestCase {
 
     }
 
-    func sharedTestLogic_restartSupervised_shouldRestart(runName: String, makeEvilMessage: (String) -> FaultyMessages) throws {
+    func sharedTestLogic_restartSupervised_shouldRestart(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-2", 
+            let _: ActorRef<FaultyMessage> = try context.spawn(
+                self.faulty(probe: p.ref),
+                name: "\(runName)-erroring-2", 
                 props: Props().addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))))
 
             return .same
@@ -188,14 +189,129 @@ class SupervisionTests: XCTestCase {
         pinfo("Now it boomed but did not crash again!")
     }
 
-    func sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: String, makeEvilMessage: (String) -> FaultyMessages) throws {
+    func sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(
+            runName: String,
+            makeEvilMessage: @escaping (String) -> FaultyMessage) throws {
+        let backoff = Backoff.constant(.milliseconds(200))
+
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessage> = try context.spawn(
+                self.faulty(probe: p.ref), name: "\(runName)-failing-2", 
+                props: Props().addingSupervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)))
+
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "\(runName)-parent-2")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
+        p.watch(faultyWorker)
+
+        func boomExpectBackoffRestart(expectedBackoff: Swift Distributed ActorsActor.TimeAmount) throws {
+            // confirm it is alive and working
+            faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+            try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+
+            pinfo("make it crash")
+            // make it crash
+            faultyWorker.tell(makeEvilMessage("Boom: (\(runName))"))
+
+            // TODO: these tests would be much nicer if we had a controllable clock
+            // the racy part is: if we wait for exactly the amount of time of the backoff,
+            // we may be waiting "slightly too long" and get the unexpected message;
+            // we currently work around this by waiting slightly less.
+
+            pinfo("expect no restart for \(expectedBackoff)")
+            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(10)
+            try p.expectNoMessage(for: expectedSlightlyShortedToAvoidRaces)
+
+            // it should finally restart though
+            guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.error() }
+            pinfo("restarted!")
+
+            // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+            faultyWorkerRestarted.shouldEqual(faultyWorker)
+        }
+
+        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
+        try boomExpectBackoffRestart(expectedBackoff: backoff.timeAmount)
+    }
+
+    func sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(
+            runName: String,
+            makeEvilMessage: @escaping (String) -> FaultyMessage) throws {
+        let initialInterval: Swift Distributed ActorsActor.TimeAmount = .milliseconds(100)
+        let multiplier = 2.0
+        let backoff = Backoff.exponential(
+            initialInterval: initialInterval,
+            multiplier: multiplier,
+            randomFactor: 0.0
+        )
+
+        let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
+        let pp = testKit.spawnTestProbe(expecting: Never.self)
+
+        let parentBehavior: Behavior<Never> = .setup { context in
+            let _: ActorRef<FaultyMessage> = try context.spawn(
+                self.faulty(probe: p.ref), name: "\(runName)-exponentialBackingOff", 
+                props: Props().addingSupervision(strategy: .restart(atMost: 10, within: nil, backoff: backoff)))
+
+            return .same
+        }
+        let behavior = pp.interceptAllMessages(sentTo: parentBehavior)
+
+        let parent: ActorRef<Never> = try system.spawn(behavior, name: "\(runName)-parent-2")
+        pp.watch(parent)
+
+        guard case let .setupRunning(faultyWorker) = try p.expectMessage() else { throw p.error() }
+        p.watch(faultyWorker)
+
+        func boomExpectBackoffRestart(expectedBackoff: Swift Distributed ActorsActor.TimeAmount) throws {
+            // confirm it is alive and working
+            faultyWorker.tell(.echo(message: "one", replyTo: p.ref))
+            try p.expectMessage(WorkerMessages.echo(message: "echo:one"))
+
+            pinfo("make it crash")
+            // make it crash
+            faultyWorker.tell(makeEvilMessage("Boom: (\(runName))"))
+
+            // TODO: these tests would be much nicer if we had a controllable clock
+            // the racy part is: if we wait for exactly the amount of time of the backoff,
+            // we may be waiting "slightly too long" and get the unexpected message;
+            // we currently work around this by waiting slightly less.
+
+            pinfo("expect no restart for \(expectedBackoff)")
+            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(10)
+            try p.expectNoMessage(for: expectedSlightlyShortedToAvoidRaces)
+
+            // it should finally restart though
+            guard case let .setupRunning(faultyWorkerRestarted) = try p.expectMessage() else { throw p.error() }
+            pinfo("restarted!")
+
+            // the `myself` ref of a restarted ref should be EXACTLY the same as the original one, the actor identity remains the same
+            faultyWorkerRestarted.shouldEqual(faultyWorker)
+        }
+
+        try boomExpectBackoffRestart(expectedBackoff: .milliseconds(100))
+        try boomExpectBackoffRestart(expectedBackoff: .milliseconds(200))
+        try boomExpectBackoffRestart(expectedBackoff: .milliseconds(400))
+    }
+
+    func sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
         let failurePeriod: Swift Distributed ActorsActor.TimeAmount = .seconds(1) // .milliseconds(300)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-within-2",
+            let _: ActorRef<FaultyMessage> = try context.spawn(self.faulty(probe: p.ref), name: "\(runName)-erroring-within-2",
                 props: .addingSupervision(strategy: .restart(atMost: 2, within: failurePeriod)))
             return .same
         }
@@ -241,57 +357,91 @@ class SupervisionTests: XCTestCase {
         pinfo("Now it boomed but did not crash again!")
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Stopping supervision
 
     func test_stopSupervised_throws_shouldStop() throws {
         try self.sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessages.pleaseThrow(error: FaultyError.boom(message: msg))
+            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
     }
 
     func test_stopSupervised_fatalError_shouldStop() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessages.pleaseFatalError(message: msg)
+            FaultyMessage.pleaseFatalError(message: msg)
         })
         #endif
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
 
     func test_restartSupervised_fatalError_shouldRestart() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessages.pleaseFatalError(message: msg)
+            FaultyMessage.pleaseFatalError(message: msg)
         })
         #endif
     }
     func test_restartSupervised_throws_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
-            FaultyMessages.pleaseThrow(error: FaultyError.boom(message: msg))
+            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
     }
 
     func test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in 
-            FaultyMessages.pleaseThrow(error: FaultyError.boom(message: msg))
+            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
     }
     func test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessages.pleaseFatalError(message: msg)
+            FaultyMessage.pleaseFatalError(message: msg)
         })
         #endif
     }
 
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Restarting supervision with Backoff
+
+    func test_restartSupervised_fatalError_shouldRestartWithConstantBackoff() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "fatalError", makeEvilMessage: { msg in
+            FaultyMessage.pleaseFatalError(message: msg)
+        })
+        #endif
+    }
+    func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "throws", makeEvilMessage: { msg in
+            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+        })
+    }
+
+    func test_restartSupervised_fatalError_shouldRestartWithExponentialBackoff() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(runName: "fatalError", makeEvilMessage: { msg in
+            FaultyMessage.pleaseFatalError(message: msg)
+        })
+        #endif
+    }
+    func test_restartSupervised_throws_shouldRestartWithExponentialBackoff() throws {
+        try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(runName: "throws", makeEvilMessage: { msg in
+            FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
+        })
+    }
+
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling faults, divide by zero
     // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
 
     func test_stopSupervised_divideByZero_shouldStop() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessages.pleaseDivideByZero
+            FaultyMessage.pleaseDivideByZero
         })
         #endif
     }
@@ -299,11 +449,12 @@ class SupervisionTests: XCTestCase {
     func test_restartSupervised_divideByZero_shouldRestart() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessages.pleaseDivideByZero
+            FaultyMessage.pleaseDivideByZero
         })
         #endif
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Composite handler tests
 
     func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
@@ -353,7 +504,8 @@ class SupervisionTests: XCTestCase {
     // regardless which failures they caused...? Then one could argue that we need to always +1 all of them, which also is fair...
     // All in all, TODO and cement the meaning in docs and tests.
 
-    // MARK: Handling faults inside receiveSignal
+    // ==== ------------------------------------------------------------------------------------------------------------
+// MARK: Handling faults inside receiveSignal
 
     func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
         let parentProbe = testKit.spawnTestProbe(expecting: String.self)
@@ -416,6 +568,7 @@ class SupervisionTests: XCTestCase {
         #endif
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 
     func test_supervise_notSuperviseStackOverflow() throws {
@@ -428,7 +581,7 @@ class SupervisionTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: WorkerMessages.self)
         let pp = testKit.spawnTestProbe(expecting: Never.self)
 
-        let stackOverflowFaulty: Behavior<SupervisionTests.FaultyMessages> = .setup { context in
+        let stackOverflowFaulty: Behavior<SupervisionTests.FaultyMessage> = .setup { context in
             p.tell(.setupRunning(ref: context.myself))
             return .receiveMessage { message in
                 return self.daDoRunRunRunDaDoRunRun()
@@ -436,7 +589,7 @@ class SupervisionTests: XCTestCase {
         }
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessages> = try context.spawn(stackOverflowFaulty, name: "bad-decision-erroring-2",
+            let _: ActorRef<FaultyMessage> = try context.spawn(stackOverflowFaulty, name: "bad-decision-erroring-2",
                 props: .addingSupervision(strategy: .restart(atMost: 3, within: .seconds(5))))
             return .same
         }
@@ -455,13 +608,14 @@ class SupervisionTests: XCTestCase {
         try p.expectTerminated(faultyWorker) // faulty worker DID terminate, since the decision was bogus (".same")
         try pp.expectNoTerminationSignal(for: .milliseconds(100)) // parent did not terminate
     }
-    func daDoRunRunRun() -> Behavior<SupervisionTests.FaultyMessages> {
+    func daDoRunRunRun() -> Behavior<SupervisionTests.FaultyMessage> {
         return daDoRunRunRunDaDoRunRun() // mutually recursive to not trigger warnings; cause stack overflow
     }
-    func daDoRunRunRunDaDoRunRun() -> Behavior<SupervisionTests.FaultyMessages> {
+    func daDoRunRunRunDaDoRunRun() -> Behavior<SupervisionTests.FaultyMessage> {
         return daDoRunRunRun() // mutually recursive to not trigger warnings; cause stack overflow
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Tests for selective failure handlers
 
     /// Throws all Errors it receives, EXCEPT `PleaseReply` to which it replies to the probe
@@ -485,7 +639,7 @@ class SupervisionTests: XCTestCase {
         let supervisedThrower: ActorRef<Error> = try system.spawn(
             self.throwerBehavior(probe: p),
             name: "thrower-1",
-            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forErrorType: EasilyCatchable.self))
+            props: .addingSupervision(strategy: .restart(atMost: 10, within: nil), forErrorType: EasilyCatchable.self))
 
         supervisedThrower.tell(PleaseReply())
         try p.expectMessage(PleaseReply())

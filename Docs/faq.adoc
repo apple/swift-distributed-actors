@@ -42,11 +42,17 @@ Establishing the common language used when talking about actors.
                     They are also always re-delivered in face of network failure and reconnection of a networked node,
                     while this comes at a cost (buffering on sending node), it is required for correctness of mechanisms
                     like death watch et al.
-- failure -- Any kind of failure condition that may happen during message processing.
+- Failure -- Any kind of failure condition that may happen during message processing.
              It can refer to an error or fault specifically, when talking about actors.
              It is also used casually  when talking about node failures and failure detection.
 - `FailureDetector` -- A mechanism employed by the system to observe other nodes of a cluster, and notify the system in
                        case of suspicion that another node has become unresponsive or has crashed completely.
                        Failure detectors are necessary in distributed systems as one can never know for certain if another
                        node is only taking a long time to respond, is experiencing networking issues, or is actually fully crashed.
+- Canonicalize / Canonicalized Behavior -- refers to the "canonical" form of a behavior. A simple way to think about this process is
+                                           taking the example of nested `.setup()` behaviors, which have to be "canonicalize" when a behavior
+                                           starts, such that only the inner most `.receive` (or other) behavior is actually stored and executed,
+                                           the setups run only _once_ during startup after all -- at which time they are canonicalized.
+                                           Other behaviors which are automatically canonicalized on each reduction are e.g. interceptors,
+                                           `orElse` alternatives or suspension behaviors.
 - #TODO define all main words#

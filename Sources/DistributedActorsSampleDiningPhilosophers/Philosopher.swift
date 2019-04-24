@@ -32,7 +32,7 @@ public class Philosopher {
         self.right = right
     }
 
-    public var behavior: Behavior<Message> {
+    public var behavior: Behavior<Philosopher.Message> {
         return self.thinking
     }
 
@@ -69,8 +69,8 @@ public class Philosopher {
     }
 
     /// A hungry philosopher is waiting to obtain both forks before it can start eating
-    private var hungry: Behavior<Message> {
-        return .receive { context, msg in
+    private var hungry: Behavior<Philosopher.Message> {
+        return .receive { (context, msg) in
             switch msg {
             case let .forkReply(.pickedUp(fork)):
                 let other: Fork.Ref = (fork == self.left) ? self.right : self.left
@@ -102,7 +102,7 @@ public class Philosopher {
         }
     }
 
-    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref) -> Behavior<Message> {
+    private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref) -> Behavior<Philosopher.Message> {
         return .receive { (context, msg) in
             switch msg {
             case .forkReply(.pickedUp(pending)):
@@ -127,7 +127,7 @@ public class Philosopher {
 
     /// A state reached by successfully obtaining two forks and becoming "eating".
     /// Once the Philosopher is done eating, it will putBack both forks and become thinking again.
-    private var eating: Behavior<Message> {
+    private var eating: Behavior<Philosopher.Message> {
         return .setup { context in
             // here we act as if we "think and then eat"
             context.log.info("Setup eating, I have: \(uniquePath: self.left) and \(uniquePath: self.right)")
