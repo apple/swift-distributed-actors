@@ -330,18 +330,21 @@ public extension Behavior {
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .intercept(inner, interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case let .orElse(first, second):         return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
-        case .ignore:                            return .same // ignore message and remain .same
-        case .unhandled:                         return FIXME("NOT IMPLEMENTED YET")
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
-        case .same:                     return FIXME("Illegal to attempt to interpret message with .same behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
-        case .setup:                    return FIXME("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This could be a Swift Distributed Actors bug.", file: file, line: line)
-        case .suspend:                  return FIXME("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This could be a Swift Distributed Actors bug.", file: file, line: line)
-        case .failed(let error):        return FIXME("Illegal attempt to interpret message with .failed behavior! Reason for original failure was: \(error)", file: file, line: line)
-        case .stopped:                  return FIXME("No message should ever be delivered to a .stopped behavior! This is a mailbox bug.", file: file, line: line)
+        case .same:      fatalError("Illegal attempt to interpret message with .same behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .ignore:    fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
+        case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
+
+        case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
+
+        case .stopped:           fatalError("Illegal attempt to interpret message with .stopped behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .failed(let error): fatalError("Illegal attempt to interpret message with .stopped behavior! Actor should not be acting anymore. Original failure was: \(error). Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+
+        case .suspend:
+            fatalError("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
         case .suspended:
-            context.log.error("No message should ever be delivered to a .suspended behavior! This is a mailbox bug. \(message)")
-            return FIXME("No message should ever be delivered to a .suspended behavior! This is a mailbox bug.", file: file, line: line)
+            fatalError("No message should ever be delivered to a .suspended behavior! This is a bug, please open a ticket.", file: file, line: line)
         }
     }
 
