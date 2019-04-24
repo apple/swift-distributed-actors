@@ -135,7 +135,7 @@ class SupervisionDocExamples {
 
         let thrower = try system.spawn(throwerBehavior, name: "thrower",
             props: Props()
-                .addingSupervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self) // <2>
+                .addingSupervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self) // <2>
                 // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
         )
         // Starting...
