@@ -339,11 +339,13 @@ public enum Supervise {
 
 /// Used in `Supervisor` to determine what type of processing caused the failure
 ///
+/// - start: failure happened during actor (re-)starting, for example an error was thrown in an initial `.setup`
 /// - message: failure happened during message processing
 /// - signal: failure happened during signal processing
 /// - closure: failure happened during closure processing
 @usableFromInline
 internal enum ProcessingType {
+    case start
     case message
     case signal
     case closure
@@ -388,6 +390,14 @@ internal class Supervisor<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingType: .continuation) {
             return try closure()
+        }
+    }
+
+    @inlinable
+    final internal func startSupervised(target: Behavior<Message>, context: ActorContext<Message>) throws -> Behavior<Message> {
+        traceLog_Supervision("CALLING START")
+        return try self.interpretSupervised0(target: target, context: context, processingType: .start) {
+            return try target.start(context: context)
         }
     }
 

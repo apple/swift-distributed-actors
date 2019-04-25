@@ -394,8 +394,8 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     @inlinable public func _restartComplete(with behavior: Behavior<Message>) throws -> Behavior<Message> {
         try behavior.validateAsInitial()
 
+        self.behavior = behavior
         try self.interpretStart()
-        try self.becomeNext(behavior: behavior)
         return self.behavior
     }
 
@@ -415,7 +415,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
 
         traceLog_Cell("START with behavior: \(self.behavior)")
-        let started = try self.behavior.start(context: self)
+        let started = try self.supervisor.startSupervised(target: self.behavior, context: self.context)
         try self.becomeNext(behavior: started)
     }
 
