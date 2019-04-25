@@ -55,6 +55,13 @@ class SupervisionTests: XCTestCase {
     enum FailureMode {
         case throwing
         case faulting
+
+        func fail() throws {
+            switch self {
+            case .faulting: fatalError("SIGNAL_BOOM")
+            case .throwing: throw FaultyError.boom(message: "SIGNAL_BOOM")
+            }
+        }
     }
 
     func faulty(probe: ActorRef<WorkerMessages>?) -> Behavior<FaultyMessage> {
@@ -357,6 +364,94 @@ class SupervisionTests: XCTestCase {
         pinfo("Now it boomed but did not crash again!")
     }
 
+    func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: FailureMode) throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        var shouldFail = true
+        let behavior: Behavior<String> = .setup { _ in
+            if shouldFail {
+                shouldFail = false // we only fail the first time
+                probe.tell("failing")
+                try failureMode.fail()
+            }
+
+            probe.tell("starting")
+
+            return .receiveMessage {
+                probe.tell("started:\($0)")
+                return .same
+            }
+        }
+
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+
+        try probe.expectMessage("failing")
+        try probe.expectMessage("starting")
+        ref.tell("test")
+        try probe.expectMessage("started:test")
+    }
+
+    func sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: FailureMode) throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        // initial setup should not fail
+        var shouldFail = false
+        let behavior: Behavior<String> = .setup { _ in
+            if shouldFail {
+                shouldFail = false
+                probe.tell("setup:failing")
+                try failureMode.fail()
+            }
+
+            shouldFail = true // next setup should fail
+
+            probe.tell("starting")
+
+            return .receiveMessage { message in
+                switch message {
+                case "boom": throw FaultyError.boom(message: "boom")
+                default:
+                    probe.tell("started:\(message)")
+                    return .same
+                }
+            }
+        }
+
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+
+        try probe.expectMessage("starting")
+        ref.tell("test")
+        try probe.expectMessage("started:test")
+        ref.tell("boom")
+        try probe.expectMessage("setup:failing")
+        try probe.expectMessage("starting")
+        ref.tell("test")
+        try probe.expectMessage("started:test")
+    }
+
+    func sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: FailureMode) throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+
+        let strategy: SupervisionStrategy = .restart(atMost: 5, within: .seconds(10))
+        let behavior: Behavior<String> = .setup { _ in
+            probe.tell("starting")
+            try failureMode.fail()
+            return .receiveMessage {
+                probe.tell("started:\($0)")
+                return .same
+            }
+        }
+
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+        probe.watch(ref)
+        for _ in 1...5 {
+            try probe.expectMessage("starting")
+        }
+        try probe.expectTerminated(ref)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Stopping supervision
 
@@ -414,6 +509,15 @@ class SupervisionTests: XCTestCase {
         })
         #endif
     }
+
+    func test_restart_throws_shouldHandleFailureWhenInterpretingStart() throws {
+        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .throwing)
+    }
+    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStart() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .faulting)
+        #endif
+    }
     func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "throws", makeEvilMessage: { msg in
             FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
@@ -433,6 +537,23 @@ class SupervisionTests: XCTestCase {
         })
     }
 
+    func test_restart_throws_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {
+        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .throwing)
+    }
+    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .faulting)
+        #endif
+    }
+
+    func test_restart_throws_shouldFailAfterMaxFailuresInSetup() throws {
+        try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .throwing)
+    }
+    func test_restart_fatalError_shouldFailAfterMaxFailuresInSetup() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .faulting)
+        #endif
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handling faults, divide by zero
@@ -520,10 +641,7 @@ class SupervisionTests: XCTestCase {
             }.receiveSignal { context, signal in
                 if let terminated = signal as? Signals.Terminated {
                     parentProbe.tell("terminated:\(terminated.path.name)")
-                    switch failureMode {
-                    case .faulting: fatalError("SIGNAL_BOOM")
-                    case .throwing: throw FaultyError.boom(message: "SIGNAL_BOOM")
-                    }
+                    try failureMode.fail()
                 }
                 return .same
             }
@@ -725,10 +843,8 @@ class SupervisionTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
-            switch failureMode {
-            case .throwing: throw FaultyError.boom(message: "test")
-            case .faulting: fatalError("BOOM")
-            }
+            try failureMode.fail()
+            return .same
         }.receiveSignal { _, signal in
             if signal is Signals.PreRestart {
                 p.tell("preRestart")
@@ -788,10 +904,7 @@ class SupervisionTests: XCTestCase {
             return .receive { context, msg in
                 let cb: AsynchronousCallback<String> = context.makeAsynchronousCallback { str in
                     p.tell("crashing:\(str)")
-                    switch failureMode {
-                    case .throwing: throw FaultyError.boom(message: "test")
-                    case .faulting: fatalError("test")
-                    }
+                    try failureMode.fail()
                 }
 
                 context.dispatcher.execute {
@@ -839,10 +952,8 @@ class SupervisionTests: XCTestCase {
                 switch message {
                 case "suspend":
                     return context.awaitResult(of: future, timeout: .milliseconds(100)) { _ in
-                        switch failureMode {
-                        case .throwing: throw FaultyError.boom(message: "boom")
-                        case .faulting: fatalError("test")
-                        }
+                        try failureMode.fail()
+                        return .same
                     }
                 default:
                     p.tell(message)
