@@ -20,11 +20,16 @@ import Glibc
 
 import NIO
 
+// MARK: utilities to convert between TimeAmount and C timespec
+
 fileprivate let NANOS = 1_000_000_000
 
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public typealias TimeSpec = timespec
 
-// utilities to convert between TimeAmount and C timespec
+// TODO: move to Time.swift?
+
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public extension TimeSpec {
     static func from(timeAmount amount: TimeAmount) -> timespec {
         let seconds = Int(amount.nanoseconds) / NANOS
