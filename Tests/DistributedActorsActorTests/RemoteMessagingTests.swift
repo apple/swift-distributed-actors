@@ -181,6 +181,40 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try probe.expectMessage("response:echo:test")
     }
+
+    func test_sendingToNonTopLevelRemoteRef_shouldWork() throws {
+        setUpBoth {
+            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        }
+
+        let probe = self.localTestKit.spawnTestProbe(name: "X", expecting: String.self)
+
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
+                message.respondTo.tell("echo:\(message.string)")
+                return .same
+            }, name: "remoteAcquaintance")
+
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+
+        let _: ActorRef<Never> = try local.spawn(.setup { context in
+                let child: ActorRef<String> = try context.spawnAnonymous(.receiveMessage { message in
+                    probe.tell("response:\(message)")
+                    return .same
+                })
+
+                remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
+
+                return .receiveMessage { _ in
+                    return .same
+                }
+            }, name: "localRef")
+
+        try probe.expectMessage("response:echo:test")
+    }
 }
 
 fileprivate enum SerializationBehavior {
