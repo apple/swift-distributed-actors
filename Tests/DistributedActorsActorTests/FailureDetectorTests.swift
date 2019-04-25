@@ -39,7 +39,7 @@ class FailureDetectorTests: ClusteredTwoNodesTestBase {
 
         // --- prepare actor on local, which watches remote actors ---
 
-        try local.spawn(Behavior<String>.setup { context in
+        _ = try local.spawn(Behavior<String>.setup { context in
             context.watch(remote1)
             context.watch(remote2)
 
