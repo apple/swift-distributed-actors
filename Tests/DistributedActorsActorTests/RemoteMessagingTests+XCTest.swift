@@ -30,6 +30,7 @@ extension RemotingMessagingTests {
                 ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide),
                 ("test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork", test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork),
                 ("test_remoteActors_echo", test_remoteActors_echo),
+                ("test_sendingToNonTopLevelRemoteRef_shouldWork", test_sendingToNonTopLevelRemoteRef_shouldWork),
            ]
    }
 }
