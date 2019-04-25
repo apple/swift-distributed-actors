@@ -667,7 +667,7 @@ extension AbstractCell {
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
-        guard let selector = context.selectorSegments.first else {
+        guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if myself.path.uid == context.selectorUID {
                 switch myself {
@@ -682,17 +682,13 @@ extension AbstractCell {
             }
         }
 
-        if myself.path.name == selector.value {
-            return self.children._resolve(context: context.deeper)
-        } else {
-            return context.deadRef
-        }
+        return self.children._resolve(context: context)
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
         let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
-        guard let selector = context.selectorSegments.first else {
+        guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if myself.path.uid == context.selectorUID {
                 return self._myselfAnyReceivesMessages
@@ -702,11 +698,7 @@ extension AbstractCell {
             }
         }
 
-        if myself.path.name == selector.value {
-            return self.children._resolveUntyped(context: context.deeper)
-        } else {
-            return context.deadRef
-        }
+        return self.children._resolveUntyped(context: context)
     }
 }
 
