@@ -20,6 +20,7 @@ import Glibc
 
 import NIO
 
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public final class Condition {
     @usableFromInline
     var condition: pthread_cond_t = pthread_cond_t()

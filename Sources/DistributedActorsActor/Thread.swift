@@ -22,7 +22,7 @@ import Glibc
 import NIO
 import DistributedActorsConcurrencyHelpers
 
-/// :nodoc:
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public enum ThreadError: Error {
     case threadCreationFailed
     case threadJoinFailed
@@ -36,6 +36,7 @@ private class BoxedClosure {
     }
 }
 
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public class Thread {
     private let thread: pthread_t
     private let lock: Mutex
