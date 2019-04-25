@@ -14,6 +14,7 @@
 
 import NIO
 
+/// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public final class LinkedBlockingQueue<A> {
     @usableFromInline
     internal class Node<A> {

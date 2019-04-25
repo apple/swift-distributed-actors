@@ -17,14 +17,14 @@ import CSwiftDistributedActorsMailbox
 import Foundation
 import Logging
 
-enum WrappedMessage<Message> {
+internal enum WrappedMessage<Message> {
     case userMessage(Message)
     case closure(() throws -> Void)
 }
 extension WrappedMessage: NoSerializationVerification {}
 
-/// INTERNAL API
-struct Envelope<Message> {
+/// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
+internal struct Envelope<Message> {
     let payload: WrappedMessage<Message>
 
     // Note that we can pass around senders however we can not automatically get the type of them right.
@@ -42,8 +42,7 @@ struct Envelope<Message> {
     // TODO: let trace: TraceMetadata
 }
 
-// TODO: we may have to make public to enable inlining? :-( https://github.com/apple/swift-distributed-actors/issues/69
-final class Mailbox<Message> {
+internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CMailbox>
     private let path: UniqueActorPath
     private weak var cell: ActorCell<Message>?
