@@ -25,7 +25,7 @@ extension Philosopher.Message {
         case "eat":
             self = .eat
         case "forkReply":
-            let reply = try container.decode(Fork.Replies.self)
+            let reply = try container.decode(Fork.Reply.self)
             self = .forkReply(reply)
         case let unknown:
             throw PhilosophersCodingError("Unexpected philosopher message type: \(unknown)")
@@ -47,18 +47,16 @@ extension Philosopher.Message {
     }
 }
 
-extension Fork.Messages {
+extension Fork.Message {
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()
 
         switch try container.decode(String.self) {
         case "putBack":
-            let ref = try container.decode(Philosopher.Ref.self)
+            let ref = try container.decode(ActorRef<Fork.Reply>.self)
             self = .putBack(by: ref)
-        case "take": 
-//            let ref = try container.decode(ActorRef<Fork.Replies>.self)
-//            self = .take(by: ref)
-            let ref = try container.decode(Philosopher.Ref.self)
+        case "take":
+            let ref = try container.decode(ActorRef<Fork.Reply>.self)
             self = .take(by: ref)
         case let unknown:
             throw PhilosophersCodingError("Unexpected fork message type: \(unknown)")
@@ -79,7 +77,7 @@ extension Fork.Messages {
     }
 }
 
-extension Fork.Replies {
+extension Fork.Reply {
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()
         switch try container.decode(String.self) {
