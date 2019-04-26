@@ -26,41 +26,142 @@ class ActorRefAdapterTests: XCTestCase {
         system.shutdown()
     }
 
-    func test_ClassBehavior_adapt() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-6")
+    func test_adaptedRef_shouldConvertMessages() throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+        let refProbe = testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
 
-        let ref: ActorRef<String> = try! system.spawnAnonymous(.receiveMessage { msg in
-            p.ref.tell(msg)
-            return .same
-        })
-
-        let adapted: ActorRef<Int> = ref.adapt {
-            "\($0)"
+        let behavior: Behavior<String> = .setup { context in
+            refProbe.tell(try context.messageAdapter { "\($0)" })
+            return .receiveMessage { msg in
+                probe.ref.tell(msg)
+                return .same
+            }
         }
+
+        _ = try! system.spawnAnonymous(behavior)
+
+        let adapted = try refProbe.expectMessage()
 
         for i in 0...10 {
             adapted.tell(i)
         }
 
         for i in 0...10 {
-            try p.expectMessage("\(i)")
+            try probe.expectMessage("\(i)")
         }
     }
 
     func test_adaptedRef_shouldBeWatchable() throws {
-        let probe = testKit.spawnTestProbe(expecting: Never.self)
+        let probe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
-        let ref: ActorRef<Int> = try system.spawnAnonymous(.receiveMessage { _ in
+        let behavior: Behavior<Int> = .setup { context in
+            probe.tell(try context.messageAdapter { _ in 0 })
+            return .receiveMessage { _ in
                 return .stopped
-            })
+            }
+        }
 
-        let adaptedRef: ActorRef<String> = ref.adapt { _ in 0 }
+        _ = try system.spawnAnonymous(behavior)
+
+        let adaptedRef = try probe.expectMessage()
 
         probe.watch(adaptedRef)
 
         adaptedRef.tell("test")
 
         try probe.expectTerminated(adaptedRef)
+    }
+
+    enum LifecycleTestMessage {
+        case createAdapter(replyTo: ActorRef<ActorRef<String>>)
+        case crash
+        case stop
+        case message(String)
+    }
+
+    func test_adaptedRef_shouldShareTheSameLifecycleAsItsActor() throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+
+        let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
+
+        let behavior: Behavior<LifecycleTestMessage> = .setup { context in
+            return .receiveMessage {
+                switch $0 {
+                case .crash:
+                    throw Boom()
+                case .createAdapter(let replyTo):
+                    replyTo.tell(try context.messageAdapter { .message("\($0)") })
+                    return .same
+                case .stop:
+                    return .stopped
+                case .message(let string):
+                    probe.tell("received:\(string)")
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior, props: .addingSupervision(strategy: strategy))
+
+        ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
+        let adaptedRef = try receiveRefProbe.expectMessage()
+
+        probe.watch(ref)
+        probe.watch(adaptedRef)
+
+        ref.tell(.crash)
+
+        try probe.expectNoTerminationSignal(for: .milliseconds(100))
+
+        adaptedRef.tell("test")
+        try probe.expectMessage("received:test")
+
+        ref.tell(.stop)
+        try probe.expectTerminatedInAnyOrder([ref, adaptedRef])
+    }
+
+    func test_adaptedRef_newAdapterShouldReplaceOld() throws {
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+
+        let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
+
+        let behavior: Behavior<LifecycleTestMessage> = .setup { context in
+            var adapterCounter = 0
+            return .receiveMessage {
+                switch $0 {
+                case .createAdapter(let replyTo):
+                    let counter = adapterCounter
+                    replyTo.tell(try context.messageAdapter { .message("adapter-\(counter):\($0)") })
+                    adapterCounter += 1
+                    return .same
+                case .message(let string):
+                    probe.tell("received:\(string)")
+                    return .same
+                default:
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior, props: .addingSupervision(strategy: strategy))
+
+        ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
+        let adaptedRef = try receiveRefProbe.expectMessage()
+
+        adaptedRef.tell("test")
+        try probe.expectMessage("received:adapter-0:test")
+
+        ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
+        let adaptedRef2 = try receiveRefProbe.expectMessage()
+
+        adaptedRef2.tell("test")
+        try probe.expectMessage("received:adapter-1:test")
+
+        // existing ref stays valid
+        adaptedRef.tell("test")
+        try probe.expectMessage("received:adapter-0:test")
     }
 
 }
