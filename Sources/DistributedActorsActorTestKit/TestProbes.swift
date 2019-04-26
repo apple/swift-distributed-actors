@@ -70,7 +70,7 @@ final public class ActorTestProbe<Message> {
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
         }
-        self.exposedRef = self.internalRef.adapt(with: wrapRealMessages) // TODO: the simple adapter we have breaks in face of watching
+        self.exposedRef = try! self.internalRef._downcastUnsafe.cell!.messageAdapter(wrapRealMessages)
     }
 
     private static func behavior(messageQueue: LinkedBlockingQueue<Message>,

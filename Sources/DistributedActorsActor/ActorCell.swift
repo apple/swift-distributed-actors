@@ -377,7 +377,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
     @inlinable public func _restartPrepare() throws {
-        self.children.stopAll()
+        self.children.stopAll(includeAdapters: false)
         self.timers.cancelAll() // TODO cancel all except the restart timer
 
         // TODO really ignore?
@@ -462,6 +462,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
         // TODO validate all the nulling out; can we null out the cell itself?
         self._deathWatch = nil
+        self.messageAdapters = [:]
         self.behavior = .stopped // TODO or failed...
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath)) has completely terminated, and will never act again.")
@@ -519,6 +520,21 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
         self.deathWatch.unwatch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
         return watchee
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Message Adapters API
+
+    private var messageAdapters: [FullyQualifiedTypeName: AnyAddressableActorRef] = [:]
+
+    override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) throws -> ActorRef<From> {
+        let name = self.system.anonymousNames.nextName()
+        let adaptedPath = try self.path.makeChildPath(name: name, uid: ActorUID.random())
+
+        let ref = ActorRefAdapter(self.myself, path: adaptedPath, converter: adapter)
+
+        self._children.insert(ref)
+        return ref
     }
 }
 

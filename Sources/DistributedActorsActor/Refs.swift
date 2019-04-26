@@ -178,12 +178,12 @@ internal final class ActorRefWithCell<Message>: ActorRef<Message>, ReceivesSyste
 extension ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
     func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
-        return self.adapt(from: IncomingMessage.self) { m in DeadLetter(m, recipient: self.path) }
+        return DeadLettersAdapter(self)
     }
 
     /// Simplified `adapt` method for dead letters, which can be used in contexts where the adapted type can be inferred from context
     func adapted<IncomingMessage>() -> ActorRef<IncomingMessage> {
-        return self.adapt(from: IncomingMessage.self) { m in DeadLetter(m, recipient: self.path) }
+        return self.adapt(from: IncomingMessage.self)
     }
 }
 
@@ -327,7 +327,10 @@ internal class Guardian: ReceivesSystemMessages {
 
             // tell all children to stop and wait for them to be stopped
             self._children.stopAll()
-            self.allChildrenRemoved.wait(_childrenLock)
+            // extra check because adapted refs get removed immediately
+            if !self._children.isEmpty {
+                self.allChildrenRemoved.wait(_childrenLock)
+            }
         }
     }
 }

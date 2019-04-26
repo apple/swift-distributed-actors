@@ -31,6 +31,7 @@ extension RemotingMessagingTests {
                 ("test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork", test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork),
                 ("test_remoteActors_echo", test_remoteActors_echo),
                 ("test_sendingToNonTopLevelRemoteRef_shouldWork", test_sendingToNonTopLevelRemoteRef_shouldWork),
+                ("test_sendingToRemoteAdaptedRef_shouldWork", test_sendingToRemoteAdaptedRef_shouldWork),
            ]
    }
 }

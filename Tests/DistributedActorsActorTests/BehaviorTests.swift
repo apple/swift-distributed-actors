@@ -260,9 +260,9 @@ class BehaviorTests: XCTestCase {
     func test_orElse_shouldProperlyApplyTerminatedToSecondBehaviorBeforeCausingDeathPactError() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let first: Behavior<Never> = .setup { context in
-            let child: ActorRef<String> = try context.spawnWatchedAnonymous(.receiveMessage { msg in
+            let child: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
                 throw TestError.error
-            })
+            }, name: "child")
             child.tell("Please throw now.")
 
             return .receiveSignal { context, signal in
@@ -289,8 +289,8 @@ class BehaviorTests: XCTestCase {
 
         pprint("Spawning...")
 
-        try p.expectMessage("first:terminated-name:$a")
-        try p.expectMessage("second:terminated-name:$a")
+        try p.expectMessage("first:terminated-name:child")
+        try p.expectMessage("second:terminated-name:child")
         try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
     }
 
