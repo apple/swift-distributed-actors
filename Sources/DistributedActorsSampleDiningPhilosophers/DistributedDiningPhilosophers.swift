@@ -24,9 +24,9 @@ struct DistributedDiningPhilosophers {
     private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
         // TODO change the `registerCodable` API such that the IDs are easier to align (1st param),
         // which helps spotting mistakes if an ID was accidentally reused etc.
-        settings.serialization.registerCodable(for: Philosopher.Message.self, underId: 1001)
-        settings.serialization.registerCodable(for: Fork.Replies.self,        underId: 1002)
-        settings.serialization.registerCodable(for: Fork.Messages.self,       underId: 1003)
+        settings.serialization.registerCodable(for: Philosopher.Message.self,   underId: 1001)
+        settings.serialization.registerCodable(for: Fork.Reply.self,            underId: 1002)
+        settings.serialization.registerCodable(for: Fork.Message.self,          underId: 1003)
     }
 
     /// Enable networking on this node, and select which port it should bind to.
@@ -72,17 +72,17 @@ struct DistributedDiningPhilosophers {
         let fork5: Fork.Ref = try systemC.spawn(Fork.behavior, name: "fork-5")
 
         // TODO: since we are missing the receptionist feature we resolve manually (users will not [need to / be able to] do this)
-        let onA_fork1: ActorRef<Fork.Messages> = systemA._resolveKnownRemote(fork1, onRemoteSystem: systemA)
-        let onA_fork5: ActorRef<Fork.Messages> = systemA._resolveKnownRemote(fork5, onRemoteSystem: systemC)
+        let onA_fork1: ActorRef<Fork.Message> = systemA._resolveKnownRemote(fork1, onRemoteSystem: systemA)
+        let onA_fork5: ActorRef<Fork.Message> = systemA._resolveKnownRemote(fork5, onRemoteSystem: systemC)
 
-        let onB_fork1: ActorRef<Fork.Messages> = systemB._resolveKnownRemote(fork1, onRemoteSystem: systemA)
-        let onB_fork2: ActorRef<Fork.Messages> = systemB._resolveKnownRemote(fork2, onRemoteSystem: systemB)
+        let onB_fork1: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork1, onRemoteSystem: systemA)
+        let onB_fork2: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork2, onRemoteSystem: systemB)
         //  onB_fork2 is used twice
-        let onB_fork3: ActorRef<Fork.Messages> = systemB._resolveKnownRemote(fork3, onRemoteSystem: systemB)
-        let onC_fork3: ActorRef<Fork.Messages> = systemC._resolveKnownRemote(fork3, onRemoteSystem: systemB)
-        let onC_fork4: ActorRef<Fork.Messages> = systemC._resolveKnownRemote(fork4, onRemoteSystem: systemC)
+        let onB_fork3: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork3, onRemoteSystem: systemB)
+        let onC_fork3: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork3, onRemoteSystem: systemB)
+        let onC_fork4: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork4, onRemoteSystem: systemC)
         //  onC_fork4 is used twice
-        let onC_fork5: ActorRef<Fork.Messages> = systemC._resolveKnownRemote(fork5, onRemoteSystem: systemC)
+        let onC_fork5: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork5, onRemoteSystem: systemC)
         // TODO: end of workaround for lack of Receptionist feature
 
         // 5 philosophers, sitting in a circle, with the forks between them:
