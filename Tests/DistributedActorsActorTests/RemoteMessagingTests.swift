@@ -165,7 +165,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         let localRef: ActorRef<String> = try local.spawn(.receiveMessage { message in
                 probe.tell("response:\(message)")
                 return .same
-            }, name: "remoteAcquaintance")
+            }, name: "localRef")
 
         let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
                 message.respondTo.tell("echo:\(message.string)")
@@ -215,6 +215,40 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try probe.expectMessage("response:echo:test")
     }
+    
+    func test_sendingToRemoteAdaptedRef_shouldWork() throws {
+        setUpBoth {
+            $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        }
+
+        let probe = self.localTestKit.spawnTestProbe(name: "X", expecting: String.self)
+
+        let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
+            message.respondTo.tell("echo:\(message.string)")
+            return .same
+        }, name: "remoteAcquaintance")
+
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+
+        let _: ActorRef<WrappedString> = try local.spawn(.setup { context in
+            let adaptedRef = try context.messageAdapter(for: String.self) { WrappedString(string: $0) }
+            remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
+            return .receiveMessage { message in
+                probe.tell("response:\(message.string)")
+                return .same
+            }
+        }, name: "localRef")
+
+        try probe.expectMessage("response:echo:test")
+    }
+}
+
+struct WrappedString {
+    let string: String
 }
 
 fileprivate enum SerializationBehavior {
