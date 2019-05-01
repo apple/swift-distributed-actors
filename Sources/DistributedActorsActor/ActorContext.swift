@@ -174,6 +174,8 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    /// :nodoc: Not intended to be used by end users.
+    ///
     /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
     /// internal actor state from within an `AsynchronousCallback`.
     ///
@@ -184,6 +186,23 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
+            selfRef?.sendClosure($0)
+        }
+    }
+
+    /// :nodoc: Not intended to be used by end users.
+    ///
+    /// Turns a closure into an `AsynchronousCallback` that is executed in the context of this actor. It is safe to close over and modify
+    /// internal actor state from within an `AsynchronousCallback`.
+    ///
+    /// Asynchronous callbacks are enqueued wrapped as _messages_, not _signals_, and thus can not be used directly to invoke
+    /// an actor which is not processing messages (e.g. is suspended, or for some other reason).
+    ///
+    /// - Parameter callback: the closure that should be executed in this actor's context
+    /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
+    @usableFromInline
+    internal func makeAsynchronousCallback<T>(for type: T.Type, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
             selfRef?.sendClosure($0)
         }
@@ -204,6 +223,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the task will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
@@ -224,6 +244,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// - SeeAlso: `awaitResult`
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the task will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
@@ -237,6 +258,52 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
                 case .failure(let error): throw error.underlying
                 }
             }
+    }
+
+    /// Applies the result of the `task` to the given `continuation` within the
+    /// same actor context, after it completes. The returned behavior will be
+    /// assigned as the new behavior of the actor. The actor will keep processing
+    /// other incoming messages, while `task` has not been completed, as opposed
+    /// to `awaitResult`, which suspends message processing of the actor and
+    /// only allows signals to be processed.
+    ///
+    /// - Parameters:
+    ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    public func onResultAsync<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) {
+        let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, ExecutionError>.self) {
+            let nextBehavior = try continuation($0)
+            let cell = self._downcastUnsafe
+            cell.behavior = try cell.behavior.canonicalize(cell.context, next: nextBehavior)
+        }
+
+        task.withTimeout(after: timeout).onComplete(asyncCallback.invoke)
+    }
+
+    /// Applies the result of the `task` to the given `continuation` within the
+    /// same actor context, after it completes. The returned behavior will be
+    /// assigned as the new behavior of the actor. The actor will keep processing
+    /// other incoming messages, while `task` has not been completed, as opposed
+    /// to `awaitResult`, which suspends message processing of the actor and
+    /// only allows signals to be processed.
+    ///
+    /// In case the given `AsyncTask` completes with a `.failure`, the failure
+    /// will be escalated, causing the actor to crash (or be subject to supervision).
+    ///
+    /// - Parameters:
+    ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    public func onResultAsyncThrowing<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
+        self.onResultAsync(of: task, timeout: timeout) {
+            switch $0 {
+            case .success(let value): return try continuation(value)
+            case .failure(let error): throw error.underlying
+            }
+        }
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
