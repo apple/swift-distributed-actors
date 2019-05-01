@@ -467,15 +467,42 @@ so anyone who holds a reference to that actor can send this message to it.
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_insideActor_external_api]
 ----
 
-==== Awaiting asynchronous results in actors
+==== Handling asynchronous results in actors
 
 #TODO: Add better description of what problem are we facing and then how to solve it#
 
 In order to avoid having to add internal messages to the public message type, actors offer functionality to process asynchronous results
-as a continuation withing the actor itself, so it will be executed withing the same context and in sequence with all the
+as a continuation within the actor itself, so it will be executed within the same context and in sequence with all the
 other messages.
 
-#TODO: Add explanation and example for non-suspending awaitResult, once available#
+We can handle asynchronous results by providing a continuation, that will be run after the result is available, to `onResultAsync` or
+`onResultAsyncThrowing` on `api:ActorContext[class]`. This will ensure that the continuations are run within the same actor context
+to ensure the message processing guarantees are not violated and avoid data races. All messages that are received while the
+async result is not completed will be processed as usual, so the actor should not depend on the result to make progress (we will
+explain how to handle that case later in this document).
+
+Assume we have an actor that asynchronously fetches data from a database and caches the results for some time.
+
+If we have the following message protocol:
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_onResultAsync_enum_Messages]
+----
+
+We can implement the actor as follows:
+
+[source]
+----
+include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_onResultAsync]
+----
+<1> We create a cache that store users we have fetched for 30 seconds
+<2> If we have have the user cached, we return the cached value
+<3> Otherwise we fetch it from the database
+<4> Now we register the continuation to run when the result is available
+<5> If the request was successful, we store the user in the cache and send it to the `replyTo` ref
+<6> If we could not find the user in the database either, we response with `.unknownUser`
+<7> If the request failed, we respond with `lookupFailed`
 
 Some actors need to fetch initial state before they can start processing other messages or need to wait for an asynchronous
 result before resuming to process user messages. This can be achieved with the `awaitResult` and `awaitResultThrowing` calls

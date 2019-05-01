@@ -53,6 +53,14 @@ extension BehaviorTests {
                 ("test_suspendedActor_shouldKeepProcessingSystemMessages", test_suspendedActor_shouldKeepProcessingSystemMessages),
                 ("test_suspendedActor_shouldKeepProcessingSignals", test_suspendedActor_shouldKeepProcessingSignals),
                 ("test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped", test_suspendedActor_shouldStopWhenSignalHandlerReturnsStopped),
+                ("test_onResultAsync_shouldExecuteContinuationWhenFutureSucceeds", test_onResultAsync_shouldExecuteContinuationWhenFutureSucceeds),
+                ("test_onResultAsync_shouldExecuteContinuationWhenFutureFails", test_onResultAsync_shouldExecuteContinuationWhenFutureFails),
+                ("test_onResultAsync_shouldAssignBehaviorFromContinuationWhenFutureSucceeds", test_onResultAsync_shouldAssignBehaviorFromContinuationWhenFutureSucceeds),
+                ("test_onResultAsync_shouldCanonicalizeBehaviorFromContinuationWhenFutureSucceeds", test_onResultAsync_shouldCanonicalizeBehaviorFromContinuationWhenFutureSucceeds),
+                ("test_onResultAsync_shouldKeepProcessingMessagesWhileFutureIsNotCompleted", test_onResultAsync_shouldKeepProcessingMessagesWhileFutureIsNotCompleted),
+                ("test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted", test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted),
+                ("test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds", test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds),
+                ("test_onResultAsyncThrowing_shouldFailActorWhenFutureFails", test_onResultAsyncThrowing_shouldFailActorWhenFutureFails),
            ]
    }
 }

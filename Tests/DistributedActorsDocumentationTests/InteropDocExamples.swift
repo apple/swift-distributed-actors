@@ -94,6 +94,75 @@ class InteropDocExamples: XCTestCase {
         // end::asyncOp_sendResult_insideActor_external_api[]
     }
 
+    func example_asyncOp_onResultAsync() throws {
+
+        struct User {}
+        struct Cache<Key, Value> {
+            init(cacheDuration: Swift Distributed ActorsActor.TimeAmount) {}
+
+            func lookup(_ key: Key) -> Value? {
+                return nil
+            }
+
+            mutating func insert(_ key: Key, _ value: Value) {}
+        }
+
+        // tag::asyncOp_onResultAsync_enum_Messages[]
+        enum Messages {
+            case lookupUser(name: String, recipient: ActorRef<LookupResponse>)
+        }
+
+        enum LookupResponse {
+            case user(User)
+            case unknownUser(name: String)
+            case lookupFailed(Error)
+        }
+        // end::asyncOp_onResultAsync_enum_Messages[]
+
+        let system = ActorSystem("System")
+        defer { system.shutdown() }
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let eventLoop = eventLoopGroup.next()
+        func fetchUser(_ name: String) -> EventLoopFuture<User?> {
+            return eventLoop.makeSucceededFuture(nil)
+        }
+
+        // tag::asyncOp_onResultAsync[]
+        let behavior: Behavior<Messages> = .setup { context in
+            var cachedUsers: Cache<String, User> = Cache(cacheDuration: .seconds(30)) // <1>
+
+            return .receiveMessage { message in
+                switch message {
+                case .lookupUser(let name, let replyTo):
+                    if let cachedUser = cachedUsers.lookup(name) { // <2>
+                        replyTo.tell(.user(cachedUser))
+                    } else {
+                        let userFuture = fetchUser(name) // <3>
+
+                        context.onResultAsync(of: userFuture, timeout: .seconds(5)) { // <4>
+                            switch $0 {
+                            case .success(.some(let user)): // <5>
+                                cachedUsers.insert(name, user)
+                                replyTo.tell(.user(user))
+                            case .success(.none): // <6>
+                                replyTo.tell(.unknownUser(name: name))
+                            case .failure(let error): // <7>
+                                replyTo.tell(.lookupFailed(error))
+                            }
+
+                            return .same
+                        }
+                    }
+                }
+
+                return .same
+            }
+        }
+        // end::asyncOp_onResultAsync[]
+
+        _ = behavior
+    }
+
     func example_asyncOp_awaitResult() throws {
         // tag::asyncOp_awaitResult_enum_Messages[]
         enum Messages {
