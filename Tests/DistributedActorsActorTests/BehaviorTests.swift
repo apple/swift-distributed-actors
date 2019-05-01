@@ -850,4 +850,249 @@ class BehaviorTests: XCTestCase {
 
         try p.expectTerminated(ref)
     }
+
+    func test_onResultAsync_shouldExecuteContinuationWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .milliseconds(300)) {
+                switch $0 {
+                case .success(let res): probe.tell(res)
+                case .failure(let error): throw error
+                }
+                return .same
+            }
+
+            return .receiveMessage { _ in
+                return .same
+            }
+        }
+
+        _ = try system.spawnAnonymous(behavior)
+
+        promise.succeed(1)
+        try probe.expectMessage(1)
+    }
+
+    func test_onResultAsync_shouldExecuteContinuationWhenFutureFails() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<ExecutionError> = testKit.spawnTestProbe()
+        let error = Boom()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .milliseconds(300)) {
+                switch $0 {
+                case .success: throw Boom()
+                case .failure(let error): probe.tell(error)
+                }
+                return .same
+            }
+
+            return .receiveMessage { _ in
+                return .same
+            }
+        }
+
+        _ = try system.spawnAnonymous(behavior)
+
+        promise.fail(error)
+        _ = try probe.expectMessage()
+    }
+
+    func test_onResultAsync_shouldAssignBehaviorFromContinuationWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let resultProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let probe: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .milliseconds(300)) {
+                switch $0 {
+                case .success(let res): resultProbe.tell(res)
+                case .failure(let error): throw error
+                }
+                return .receiveMessage {
+                    probe.tell("assigned:\($0)")
+                    return .same
+                }
+            }
+
+            return .receiveMessage {
+                probe.tell("started:\($0)")
+                return .same
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        promise.succeed(1)
+        try resultProbe.expectMessage(1)
+
+        ref.tell("test")
+        try probe.expectMessage("assigned:test")
+    }
+
+    func test_onResultAsync_shouldCanonicalizeBehaviorFromContinuationWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let resultProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let probe: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .milliseconds(300)) {
+                switch $0 {
+                case .success(let res): resultProbe.tell(res)
+                case .failure(let error): throw error
+                }
+                return .setup { _ in
+                    probe.tell("setup")
+                    return .receiveMessage { _ in
+                        return .same
+                    }
+                }
+            }
+
+            return .receiveMessage { _ in
+                return .same
+            }
+        }
+
+        _ = try system.spawnAnonymous(behavior)
+
+        promise.succeed(1)
+        try resultProbe.expectMessage(1)
+
+        try probe.expectMessage("setup")
+    }
+
+    func test_onResultAsync_shouldKeepProcessingMessagesWhileFutureIsNotCompleted() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let resultProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .seconds(3)) {
+                switch $0 {
+                case .success(let res): resultProbe.tell(res)
+                case .failure(let error): throw error
+                }
+                return .same
+            }
+
+            return .receiveMessage {
+                probe.tell("started:\($0)")
+                return .same
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("test")
+        try probe.expectMessage("started:test")
+
+        ref.tell("test2")
+        try probe.expectMessage("started:test2")
+
+        promise.succeed(1)
+        try resultProbe.expectMessage(1)
+    }
+
+    func test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let resultProbe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsync(of: future, timeout: .seconds(3)) {
+                switch $0 {
+                case .success(let res): resultProbe.tell(res)
+                case .failure(let error): throw error
+                }
+                return .receiveMessage {
+                    probe.tell("assigned:\($0)")
+                    return .same
+                }
+            }
+
+            return .receiveMessage {
+                probe.tell("started:\($0)")
+                return .receiveMessage {
+                    probe.tell("changed:\($0)")
+                    return .same
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+
+        ref.tell("test")
+        try probe.expectMessage("started:test")
+
+        ref.tell("test")
+        try probe.expectMessage("changed:test")
+
+        promise.succeed(1)
+        try resultProbe.expectMessage(1)
+
+        ref.tell("test")
+        try probe.expectMessage("assigned:test")
+    }
+
+    func test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) {
+                probe.tell($0)
+                return .same
+            }
+
+            return .receiveMessage { _ in
+                return .same
+            }
+        }
+
+        _ = try system.spawnAnonymous(behavior)
+
+        promise.succeed(1)
+        try probe.expectMessage(1)
+    }
+
+    func test_onResultAsyncThrowing_shouldFailActorWhenFutureFails() throws {
+        let eventLoop = eventLoopGroup.next()
+        let promise: EventLoopPromise<Int> = eventLoop.makePromise()
+        let future = promise.futureResult
+        let probe: ActorTestProbe<Never> = testKit.spawnTestProbe()
+        let error = Boom()
+
+        let behavior: Behavior<String> = .setup { context in
+            context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) { _ in
+                return .same
+            }
+
+            return .receiveMessage { _ in
+                return .same
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        probe.watch(ref)
+
+        promise.fail(error)
+        try probe.expectTerminated(ref)
+    }
 }
