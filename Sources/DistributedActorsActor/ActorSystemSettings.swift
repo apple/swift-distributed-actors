@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
-import Foundation
+import class Foundation.ProcessInfo
 
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {

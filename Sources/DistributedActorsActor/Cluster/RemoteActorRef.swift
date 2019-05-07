@@ -22,8 +22,6 @@
 @usableFromInline
 internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemMessages {
 
-    // FIXME: warning when casting down to cell... things may be remote
-
     private let _path: UniqueActorPath
     override public var path: UniqueActorPath {
         return self._path
