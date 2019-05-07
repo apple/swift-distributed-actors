@@ -57,7 +57,7 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: Mutex, amount: TimeAmount) -> Bool {
+    public func wait(_ mutex: Mutex, atMost amount: TimeAmount) -> Bool {
 //    clock_gettime(CLOCK_REALTIME, &now)
 //    let reltime = sleep_til_this_absolute_time - now;
 

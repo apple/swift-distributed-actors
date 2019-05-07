@@ -35,7 +35,7 @@ public final class ActorSystem {
     // so without it we could not log anything.
     let eventStream = "" // FIXME actual implementation
 
-    @usableFromInline let deadLetters: ActorRef<DeadLetter>
+    public let deadLetters: ActorRef<DeadLetter>
 
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     internal let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where

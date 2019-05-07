@@ -29,6 +29,10 @@ import Glibc
 // > Create N processes in a ring.
 // > Send a message round the ring M times so that a total of N * M messages get sent.
 // > Time how long this takes for different values of N and M.
+//
+//
+// This benchmark measures how much time it takes to send messages around such "ring",
+// it involves waking up multiple actors and as such also shows the efficiency of the scheduling.
 
 public let RingBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
@@ -56,17 +60,17 @@ private func tearDown() {
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-let q = LinkedBlockingQueue<Int>()
+fileprivate let q = LinkedBlockingQueue<Int>()
 
-let spawnStart = Atomic<UInt64>(value: 0)
-let spawnStop = Atomic<UInt64>(value: 0)
+fileprivate let spawnStart = Atomic<UInt64>(value: 0)
+fileprivate let spawnStop = Atomic<UInt64>(value: 0)
 
-let ringStart = Atomic<UInt64>(value: 0)
-let ringStop = Atomic<UInt64>(value: 0)
+fileprivate let ringStart = Atomic<UInt64>(value: 0)
+fileprivate let ringStop = Atomic<UInt64>(value: 0)
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-struct Token {
+fileprivate struct Token {
     let payload: Int
 
     init(_ payload: Int) {
@@ -74,9 +78,9 @@ struct Token {
     }
 }
 
-let mutex = Mutex()
+fileprivate let mutex = Mutex()
 
-func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
+fileprivate func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
     return .receive { context, msg in
         switch msg.payload {
         case 1:
@@ -92,9 +96,9 @@ func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
     }
 }
 
-var loopEntryPoint: ActorRef<Token>! = nil
+fileprivate var loopEntryPoint: ActorRef<Token>! = nil
 
-private func initLoop(m messages: Int, n actors: Int) {
+fileprivate func initLoop(m messages: Int, n actors: Int) {
     loopEntryPoint = try! system.spawn(.setup { context in
         // TIME spawning
         // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")

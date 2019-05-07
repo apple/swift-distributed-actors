@@ -171,10 +171,6 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         }
     }
 
-    func sendToDeadLetters<M>(message: M) {
-        self.system.deadLetters.tell(DeadLetter(message, recipient: self.myself.path)) // TODO metadata
-    }
-
     func dropMessage(_ message: Message) {
         // TODO implement support for logging dropped messages; those are different than deadLetters
         pprint("[dropped] Message [\(message)]:\(type(of: message)) was not delivered.")

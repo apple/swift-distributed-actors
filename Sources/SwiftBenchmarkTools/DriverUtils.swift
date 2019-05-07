@@ -346,22 +346,25 @@ final public class Timer {
 }
 
 extension UInt64 {
-    public var nanoseconds: Int { return Int(self) }
+    public var nanoseconds:  Int { return Int(self) }
     public var microseconds: Int { return Int(self / 1000) }
     public var milliseconds: Int { return Int(self / 1000 / 1000) }
+    public var seconds:      Int { return Int(self / 1000 / 1000 / 1000) }
 }
 
 enum TimeUnit: String {
-    case nanoseconds = "ns"
+    case nanoseconds  = "ns"
     case microseconds = "μs"
     case milliseconds = "ms"
+    case seconds      = "s"
 
     init(_ from: String) {
         switch from {
         case "ns": self = .nanoseconds
         case "us", "μs": self = .microseconds
         case "ms": self = .milliseconds
-        default: fatalError("Only the following time units are supported: ns, us, ms")
+        case "s": self = .seconds
+        default: fatalError("Only the following time units are supported: ns, us, ms, s")
         }
   }
 
@@ -499,9 +502,10 @@ final class TestRunner {
         #endif
 
         switch c.timeUnit {
-        case .nanoseconds: return lastSampleTime.nanoseconds / numIters
+        case .nanoseconds:  return lastSampleTime.nanoseconds / numIters
         case .microseconds: return lastSampleTime.microseconds / numIters
         case .milliseconds: return lastSampleTime.milliseconds / numIters
+        case .seconds:      return lastSampleTime.seconds / numIters
         }
     }
 

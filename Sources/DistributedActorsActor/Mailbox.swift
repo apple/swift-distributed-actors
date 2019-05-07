@@ -343,9 +343,6 @@ internal final class Mailbox<Message> {
 
         func sendAndDropAsDeadLetter() {
             self.deadLetters.tell(DeadLetter(systemMessage, recipient: cell.path))
-            // we can not deallocate yet...
-            // _ = ptr.move()
-            // ptr.deallocate()
         }
 
         switch cmailbox_send_system_message(mailbox, ptr) {
