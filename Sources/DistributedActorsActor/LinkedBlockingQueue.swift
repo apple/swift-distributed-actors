@@ -104,7 +104,7 @@ public final class LinkedBlockingQueue<A> {
                 return item
             }
 
-            guard self.notEmpty.wait(lock, amount: timeout) else {
+            guard self.notEmpty.wait(lock, atMost: timeout) else {
                 return nil
             }
 
