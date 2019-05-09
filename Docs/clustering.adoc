@@ -63,14 +63,13 @@ to join to by the current node. This allows to automatically join existing clust
 that we are planning here - e.g. for green/blue deployments and similar, and allowing coordination of these with a node
 orchestrator such as k8s or similar.
 
-=== Receptionist ✗
-
-#TODO: not implemented yet#
+=== Receptionist
 
 Since in order to communicate with actors, one has to obtain well-typed `ActorRef<Message>` instances, it is not possible
 to do so safely without consulting some form of "registry." Such registry is implemented in form of the `Receptionist`.
-
-#TODO document once it lands#
+In cluster mode, the receptionists periodically sync their state. The interval of this sync can be configured though
+the `receptionistSyncInterval` setting on api:ClusterSettings[struct]. See <<actors.adoc#receptionist,Receptionist>>
+for more information.
 
 #TODO: maybe after all we would call it 'registry', needs consideration; Receptionist is a rather known pattern for actors,
 and wording is useful in the way that it keeps us in thinking about interactions with entities (as-if people).#

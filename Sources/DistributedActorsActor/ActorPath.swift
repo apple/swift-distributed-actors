@@ -38,7 +38,7 @@ public struct UniqueActorPath: Equatable, Hashable {
     }
 
     /// Only to be used by the "/" root "actor"
-    public static let _rootPath: UniqueActorPath = ActorPath._rootPath.makeUnique(uid: .opaque)
+    public static let _rootPath: UniqueActorPath = ActorPath._rootPath.makeUnique(uid: .wellKnown)
 
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
@@ -114,8 +114,9 @@ extension UniqueActorPath {
                 try ActorPathSegment(c)
             }
             let path = try ActorPath(segments, address: uniqueNodeAddress)
+            let uid: ActorUID = ActorUID(url.fragment) ?? .wellKnown
 
-            return UniqueActorPath(path: path, uid: ActorUID(Int(url.fragment!)!))
+            return UniqueActorPath(path: path, uid: uid)
         }
 
         throw ActorPathError.invalidPath(pathString)
@@ -352,10 +353,19 @@ public struct ActorUID: Equatable, Hashable {
 
 public extension ActorUID {
     /// To be used ONLY by special actors whose existence is perpetual, such as `/system/deadLetters`
-    static let opaque: ActorUID = ActorUID(0)
+    static let wellKnown: ActorUID = ActorUID(0)
 
     static func random() -> ActorUID {
         return ActorUID(Int.random(in: 1 ... .max))
+    }
+}
+
+internal extension ActorUID {
+    init?(_ value: String?) {
+        guard let int = (value.flatMap { Int($0) }), int >= 0 else {
+            return nil
+        }
+        self.init(int)
     }
 }
 

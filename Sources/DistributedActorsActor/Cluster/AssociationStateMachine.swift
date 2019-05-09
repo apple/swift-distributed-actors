@@ -58,7 +58,7 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
         }
 
         func makeRemoteControl() -> AssociationRemoteControl {
-            return AssociationRemoteControl(channel: self.channel) // FIXME what to expose here... this is likely not so good?
+            return AssociationRemoteControl(channel: self.channel, remoteAddress: self.remoteAddress)
             // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
         }
     }
@@ -78,10 +78,12 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 internal struct AssociationRemoteControl {
 
     private let channel: Channel // FIXME nope, some other way
-    private let removeThis_allocator = NIO.ByteBufferAllocator() // FIXME: just a hack
+    private let removeThis_allocator = NIO.ByteBufferAllocator() // FIXME: just a hack (https://github.com/apple/swift-distributed-actors/issues/597)
+    let remoteAddress: UniqueNodeAddress
 
-    init(channel: Channel) {
+    init(channel: Channel, remoteAddress: UniqueNodeAddress) {
         self.channel = channel
+        self.remoteAddress = remoteAddress
     }
 
     func sendUserMessage<Message>(envelope: Envelope<Message>, recipient: UniqueActorPath) {

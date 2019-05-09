@@ -25,6 +25,8 @@
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
+    internal static let name: String = "receptionist"
+
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
     public struct RegistrationKey<Message>: _RegistrationKey {
@@ -34,11 +36,23 @@ public enum Receptionist {
             self.id = id
         }
 
-        internal func cast(_ _ref: BoxedHashableAnyAddressableActorRef) -> ActorRef<Message> {
-            guard let ref = _ref._exposeUnderlying() as? ActorRef<Message> else {
-                fatalError("Type mismatch, expected: [\(String(reflecting: ActorRef<Message>.self))] got [\(_ref._exposeUnderlying())]")
+        internal func _unsafeAsActorRef(_ _ref: BoxedHashableAnyAddressableActorRef) -> ActorRef<Message> {
+            return self._unsafeAsActorRef(_ref._exposeUnderlying())
+        }
+
+        internal func _unsafeAsActorRef(_ _ref: AnyAddressableActorRef) -> ActorRef<Message> {
+            if let remoteRef = _ref as? RemoteActorRef<Any> {
+                return remoteRef.cast(to: Message.self)
+            }
+            guard let ref = _ref as? ActorRef<Message> else {
+                fatalError("Type mismatch, expected: [\(String(reflecting: ActorRef<Message>.self))] got [\(_ref)]")
             }
 
+            return ref
+        }
+
+        internal func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages {
+            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(path: path, deadLetters: system.deadLetters))
             return ref
         }
 
@@ -124,7 +138,7 @@ public enum Receptionist {
 
     /// Storage container for a receptionist's registrations and subscriptions
     internal final class Storage {
-        private var _registrations: [AnyRegistrationKey: Set<BoxedHashableAnyAddressableActorRef>] = [:]
+        internal var _registrations: [AnyRegistrationKey: Set<BoxedHashableAnyAddressableActorRef>] = [:]
         private var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
 
         func addRegistration(key: AnyRegistrationKey, ref: BoxedHashableAnyAddressableActorRef) -> Bool {
@@ -203,8 +217,9 @@ internal enum LocalReceptionist {
             try LocalReceptionist.startWatcher(ref: message._boxAnyReceivesSystemMessages, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
             if let subscribed = storage.subscriptions(forKey: key) {
+                let registrations = storage.registrations(forKey: key) ?? []
                 for subscription in subscribed {
-                    subscription._replyWith(storage.registrations(forKey: key) ?? [])
+                    subscription._replyWith(registrations)
                 }
             }
         }
@@ -292,25 +307,39 @@ internal protocol _Register: ReceptionistMessage {
 internal protocol _Lookup: ReceptionistMessage {
     var _key: _RegistrationKey { get }
     func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>)
+    func replyWith(_ refs: [AnyReceivesMessages])
 }
 
 internal protocol _RegistrationKey {
     var boxed: AnyRegistrationKey { get }
     var id: String { get }
     var typeString: FullyQualifiedTypeName { get }
+    // `resolve` has to be here, because the key is the only thing that knows which
+    // type is requested. See implementation in `RegistrationKey`
+    func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages
 }
 
 internal enum ReceptionistError: Error {
     case typeMismatch(expected: String)
 }
 
-internal struct AnyRegistrationKey: Hashable {
+internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
+    var boxed: AnyRegistrationKey {
+        return self
+    }
+
     var id: String
     var typeString: FullyQualifiedTypeName
 
     init(from key: _RegistrationKey) {
         self.id = key.id
         self.typeString = key.typeString
+    }
+
+    func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages {
+        // Since we don't have the type information here, we can't properly resolve
+        // and the only safe thing to do is to return `deadLetters`.
+        return system.deadLetters
     }
 }
 
@@ -356,7 +385,15 @@ internal protocol ListingRequest {
 internal extension ListingRequest {
     func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>) {
         let typedRefs = refs.map {
-            key.cast($0)
+            key._unsafeAsActorRef($0)
+        }
+
+        replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
+    }
+
+    func replyWith(_ refs: [AnyReceivesMessages]) {
+        let typedRefs = refs.map {
+            key._unsafeAsActorRef($0)
         }
 
         replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))

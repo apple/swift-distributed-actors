@@ -249,7 +249,7 @@ internal class Guardian: ReceivesSystemMessages {
         assert(parent.path == UniqueActorPath._rootPath, "A TopLevelGuardian MUST live directly under the `/` path.")
 
         do {
-            self.path = try ActorPath(root: name).makeUnique(uid: .opaque)
+            self.path = try ActorPath(root: name).makeUnique(uid: .wellKnown)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }

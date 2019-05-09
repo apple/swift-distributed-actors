@@ -34,7 +34,7 @@ internal class BenchmarkLatchRef<Message>: ActorRef<Message> {
     override var path: UniqueActorPath {
         var fakePath: ActorPath = ._rootPath
         try! fakePath.append(segment: .init("benchmarkLatch"))
-        return UniqueActorPath(path: fakePath, uid: .opaque)
+        return UniqueActorPath(path: fakePath, uid: .wellKnown)
     }
 
     func blockUntilMessageReceived() -> Message {

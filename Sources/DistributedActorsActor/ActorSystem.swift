@@ -106,7 +106,7 @@ public final class ActorSystem {
             return ActorOriginLogHandler(context)
         })
         deadLog.logLevel = settings.defaultLogLevel
-        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .opaque))
+        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
@@ -151,8 +151,8 @@ public final class ActorSystem {
         // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
         self._receptionist = deadLetters.adapted()
 
-        // TODO: Use `ClusterReceptionist` (once avaliable), when cluster is enabled
-        self._receptionist = try! self._spawnSystemActor(LocalReceptionist.behavior, name: "receptionst")
+        let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
+        self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, isWellKnown: true)
 
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
@@ -241,16 +241,23 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnActor(using: self.userProvider, behavior, name: name, props: props)
     }
 
-    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props)
+    // Implementation note:
+    // `isWellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
+    // to discover the receptionist actors on all nodes in order to replicate state between them. The UID of those actors will be `ActorUID.wellKnown`. This
+    // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
+    // should be configured for these types of actors.
+    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props, isWellKnown: isWellKnown)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
-        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: .random())
+        let uid: ActorUID = isWellKnown ? .wellKnown : .random()
+
+        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: uid)
         // TODO: reserve the name, atomically
 
         let dispatcher: MessageDispatcher

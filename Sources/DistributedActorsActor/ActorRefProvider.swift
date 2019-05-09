@@ -113,7 +113,7 @@ extension RemoteActorRefProvider {
     }
 
     internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> RemoteActorRef<Message> {
-        let remoteRef = RemoteActorRef<Message>(shell: self.cluster, path: path)
+        let remoteRef = RemoteActorRef<Message>(shell: self.cluster, path: path, deadLetters: context.deadLetters)
         return remoteRef
     }
 }
