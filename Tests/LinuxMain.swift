@@ -43,6 +43,7 @@ import XCTest
          testCase(CMPSCLinkedQueueTests.allTests),
          testCase(CMailboxTests.allTests),
          testCase(ClusterAssociationTests.allTests),
+         testCase(ClusterReceptionistTests.allTests),
          testCase(ConcurrencyHelpersTests.allTests),
          testCase(CustomStringInterpolationTests.allTests),
          testCase(DeadlineTests.allTests),

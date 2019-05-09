@@ -31,6 +31,9 @@ public struct Serialization {
 
     fileprivate static let SystemMessageSerializerId: SerializerId = 1
     fileprivate static let StringSerializerId: SerializerId = 2
+    fileprivate static let FullStateRequestSerializerId: SerializerId = 3
+    fileprivate static let ReplicateSerializerId: SerializerId = 4
+    fileprivate static let FullStateSerializerId: SerializerId = 5
 
     // TODO we may be forced to code-gen these?
     // TODO avoid 2 hops, we can do it in one, and enforce a serializer has an Id
@@ -72,6 +75,9 @@ public struct Serialization {
         // register all
         self.registerSystemSerializer(context, serializer: systemMessageSerializer, for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
         self.registerSystemSerializer(context, serializer: stringSerializer, for: String.self, underId: Serialization.StringSerializerId)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.FullStateRequestSerializerId)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.ReplicateSerializerId)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullState.self, underId: Serialization.FullStateSerializerId)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {

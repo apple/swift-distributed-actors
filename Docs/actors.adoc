@@ -379,7 +379,7 @@ the following situation:
     holding references to actor mailboxes; however semantically the model is exactly the same: the "old incarnation" is now gone.
 - messages sent to the "old" api:ActorRef[class] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
-=== Locating actors using the Receptionist
+=== Locating actors using the Receptionist [[receptionist]]
 
 The receptionist is a system actor that allows users to register actors under a api:Receptionist.RegistrationKey[struct] so that
 it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
@@ -388,8 +388,6 @@ with another node in the cluster, we have to send that reference to it, but that
 to an actor on that node. So by registering the actors we want to make accessible from other nodes in the cluster, we have a way
 of sharing them by communicating with a local ref only. The registered actors will then automatically be made available on all
 nodes in the cluster and can be looked up by sending a message to the local receptionist.
-
-#TODO clustered receptionist is not implemented yet#
 
 *Example*
 

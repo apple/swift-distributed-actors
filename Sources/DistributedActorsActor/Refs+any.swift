@@ -226,6 +226,8 @@ internal extension ActorRef {
             return BoxedHashableAnyReceivesSystemMessages(ref: remoteRef)
         case let adaptedRef as AbstractAdapterRef:
             return adaptedRef._receivesSystemMessages
+        case let deadLetters as DeadLettersAdapter<Message>:
+            return BoxedHashableAnyReceivesSystemMessages(ref: deadLetters)
         default:
             return BoxedHashableAnyReceivesSystemMessages(ref: self._downcastUnsafe)
         }

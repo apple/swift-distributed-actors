@@ -83,6 +83,10 @@ public struct ClusterSettings {
         }
     }
 
+    // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
+    /// Interval with which the receptionists will sync their state with the other nodes.
+    public var receptionistSyncInterval: TimeAmount = .seconds(5)
+
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
