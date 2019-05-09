@@ -48,6 +48,12 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         }
     }
 
+    var associationRemoteControls: [AssociationRemoteControl] {
+        return self._associationsLock.withLock {
+            return [AssociationRemoteControl](self._associationsRegistry.values)
+        }
+    }
+
     /// To be invoked by cluster shell whenever an association is made;
     /// The cache is used by remote actor refs to obtain means of sending messages into the pipeline,
     /// without having to queue through the cluster shell's mailbox.

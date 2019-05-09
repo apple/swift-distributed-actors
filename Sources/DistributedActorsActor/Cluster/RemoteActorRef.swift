@@ -27,6 +27,8 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
         return self._path
     }
 
+    private let deadLetters: ActorRef<DeadLetter>
+
     // Implementation notes:
     // 
     // Goal: we want to hand out the ref as soon as possible and then if someone uses it they may pay the for accessing 
@@ -49,10 +51,11 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
 
     private let clusterShell: ClusterShell
 
-    init(shell: ClusterShell, path: UniqueActorPath) {
+    init(shell: ClusterShell, path: UniqueActorPath, deadLetters: ActorRef<DeadLetter>) {
         assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
         self._path = path
         self.clusterShell = shell
+        self.deadLetters = deadLetters.adapted()
     }
 
     public override func tell(_ message: Message) {
@@ -60,9 +63,13 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     }
 
     @usableFromInline
-    func sendUserMessage<Message>(_ message: Message) {
+    func sendUserMessage(_ message: Message) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendUserMessage: \(message)")
-        self.remoteControl.sendUserMessage(envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
+        if let remoteControl = self.remoteControl {
+            remoteControl.sendUserMessage(envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
+        } else {
+            self.deadLetters.adapted().tell(message)
+        }
     }
 
     @usableFromInline
@@ -71,8 +78,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
         pprint("TODO: This would send \(message) to \(self.path) if it was implemented... :-) SOON...!") // FIXME: implement remote sends
     }
 
-    // TODO: This has to obtain the association in a QUICK way, no time for actor queues...
-    private var remoteControl: AssociationRemoteControl { // TODO types?
+    private var remoteControl: AssociationRemoteControl? { // TODO types?
         // optimally we would:
         if let control = self._cachedAssociationRemoteControl {
             return control
@@ -82,9 +88,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
                 fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
             }
             guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress.uid) else {
-                fatalError("Tried to obtain association remote control for address [\(remoteAddress)]. " + 
-                    "This should not happen, and could mean that an remote actor ref was fabricated without this system " + 
-                    "having completed a handshake with the remote node, in which case this is suspicious and should fault.")
+                return nil
             }
             self._cachedAssociationRemoteControl = obtainedRemoteControl // TODO atomically...
             return obtainedRemoteControl
@@ -94,3 +98,8 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     }
 }
 
+internal extension RemoteActorRef where Message == Any {
+    func cast<NewMessage>(to: NewMessage.Type) -> RemoteActorRef<NewMessage> {
+        return RemoteActorRef<NewMessage>(shell: self.clusterShell, path: self.path, deadLetters: self.deadLetters)
+    }
+}
