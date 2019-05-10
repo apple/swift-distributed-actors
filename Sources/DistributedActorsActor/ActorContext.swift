@@ -168,8 +168,9 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///    parent math of some actor, and we attempted to stop a non existing child, which also is a no-op however indicates an issue
     ///    in the logic of our actor.
     ///
-    /// - Throws: when an actor ref is passed in that is NOT a child of the current actor.
-    ///         An actor may not terminate another's child actors.
+    /// - Throws: an `ActorContextError` when an actor ref is passed in that is NOT a child of the current actor.
+    ///           An actor may not terminate another's child actors. Attempting to stop `myself` using this method will
+    ///           also throw, as the proper way of stopping oneself is returning a `Behavior.stopped`.
     public func stop<M>(child ref: ActorRef<M>) throws {
         return undefined()
     }

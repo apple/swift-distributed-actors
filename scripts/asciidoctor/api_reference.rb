@@ -5,7 +5,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
   use_dsl
 
   named :api
-  name_positional_attributes ['tpe', 'module']
+  name_positional_attributes ['tpe', 'module', 'alias']
 
   def process parent, target, attrs
     text = type_name = target
@@ -39,6 +39,12 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       %(api/#{lib_version}/#{api_module}/#{tpe}/#{type_name}.html)
     else
       %(api/#{lib_version}/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
+    end
+
+    text = if (nil != attrs['alias'])
+      attrs['alias']
+    else
+      text
     end
 
     expected_at = File.join(File.dirname(__FILE__), '../../', link)

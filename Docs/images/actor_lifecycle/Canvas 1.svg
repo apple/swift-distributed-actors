@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="396 -155 945 668" width="945" height="668">
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 8 3 0 0 0 9 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="975.0061" descent="-216.99524" font-weight="700">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue-Bold"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="15" panose-1="2 0 8 3 0 0 0 9 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="975.0061" descent="-216.99524" font-weight="700">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue-Bold"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="15" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="14" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Source Code Pro" font-size="16" panose-1="2 11 5 9 3 4 3 2 2 4" units-per-em="1000" underline-position="-75" underline-thickness="50" slope="0" x-height="480" cap-height="660" ascent="984.002" descent="-273.00055" font-weight="400">
+      <font-face-src>
+        <font-face-name name="SourceCodePro-Regular"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 9 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="-750" x-height="517" cap-height="714" ascent="957.0007" descent="-212.99744" font-style="italic" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue-Italic"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <font-face font-family="Lucida Grande" font-size="12" panose-1="2 11 6 0 4 5 2 2 2 4" units-per-em="1000" underline-position="-97.65625" underline-thickness="48.828125" slope="0" x-height="530.27344" cap-height="722.65625" ascent="966.7969" descent="-210.9375" font-weight="400">
+      <font-face-src>
+        <font-face-name name="LucidaGrande"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Source Code Pro" font-size="16" panose-1="2 11 7 9 3 4 3 2 2 4" units-per-em="1000" underline-position="-75" underline-thickness="50" slope="0" x-height="480" cap-height="660" ascent="984.002" descent="-273.00055" font-weight="700">
+      <font-face-src>
+        <font-face-name name="SourceCodePro-Bold"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Source Code Pro" font-size="15" panose-1="2 11 5 9 3 4 3 2 2 4" units-per-em="1000" underline-position="-75" underline-thickness="50" slope="0" x-height="480" cap-height="660" ascent="984.002" descent="-273.00055" font-weight="400">
+      <font-face-src>
+        <font-face-name name="SourceCodePro-Regular"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Zapf Dingbats" font-size="15" panose-1="5 2 1 2 1 7 4 2 6 9" units-per-em="1000" underline-position="-100.09766" underline-thickness="60.058594" slope="0" x-height="542.4805" cap-height="723.1445" ascent="813.9648" descent="-176.75781" font-weight="400">
+      <font-face-src>
+        <font-face-name name="ZapfDingbatsITC"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="15" panose-1="2 0 5 3 0 0 0 9 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="-800" x-height="517" cap-height="714" ascent="957.0007" descent="-212.99744" font-style="italic" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue-Italic"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="15" panose-1="2 0 8 3 0 0 0 9 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="1e3" x-height="517" cap-height="714" ascent="975.0061" descent="-216.99524" font-style="italic" font-weight="700">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue-BoldItalic"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Zapf Dingbats" font-size="16" panose-1="5 2 1 2 1 7 4 2 6 9" units-per-em="1000" underline-position="-100.09766" underline-thickness="60.058594" slope="0" x-height="542.4805" cap-height="723.1445" ascent="813.9648" descent="-176.75781" font-weight="400">
+      <font-face-src>
+        <font-face-name name="ZapfDingbatsITC"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="#003776">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_3" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="#666">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_4" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="#b1001c">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_5" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="#6d5000">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <font-face font-family="Source Code Pro" font-size="15" panose-1="2 11 7 9 3 4 3 9 2 4" units-per-em="1000" underline-position="-75" underline-thickness="50" slope="-733.3333" x-height="480" cap-height="660" ascent="984.002" descent="-273.00055" font-style="italic" font-weight="700">
+      <font-face-src>
+        <font-face-name name="SourceCodePro-BoldIt"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Times" font-size="12" panose-1="0 0 5 0 0 0 0 2 0 0" units-per-em="1000" underline-position="-75.68359" underline-thickness="49.316406" slope="0" x-height="453.6133" cap-height="661.6211" ascent="750" descent="-250" font-weight="400">
+      <font-face-src>
+        <font-face-name name="Times-Roman"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <metadata> Produced by OmniGraffle 7.10.2 
+    <dc:date>2019-05-08 05:37:25 +0000</dc:date>
+  </metadata>
+  <g id="Canvas_1" stroke-dasharray="none" stroke="none" fill-opacity="1" fill="none" stroke-opacity="1">
+    <title>Canvas 1</title>
+    <g id="Canvas_1: Layer 1">
+      <title>Layer 1</title>
+      <g id="Graphic_274">
+        <rect x="405" y="-130" width="88" height="89" fill="white"/>
+        <text transform="translate(410 -125)" fill="white"/>
+      </g>
+      <g id="Graphic_241">
+        <path d="M 409 -41 L 948 -41 C 954.0751 -41 959 -36.075132 959 -30 L 959 500 C 959 506.07513 954.0751 511 948 511 L 409 511 C 402.92487 511 398 506.07513 398 500 L 398 -30 C 398 -36.075132 402.92487 -41 409 -41 Z" fill="#3a8eed" fill-opacity="0"/>
+        <path d="M 408.7037 -41.00003 L 948.3318 -40.943713 C 953.5289 -41.404627 958.5539 -36.13695 959 -30 M 958.9999 -30.355643 L 959.0905 500.42533 C 958.4865 505.4565 954.2424 511.52607 948 511 M 948.7979 511.0001 L 408.53445 510.93787 C 402.92225 511.55793 398.0801 505.7717 398 500 M 397.99976 500.6116 L 398.21096 -30.286684 C 397.39516 -35.51639 403.3346 -40.73768 409 -41 M 409.8243 -41 L 408.40023 -41 M 408.8287 -41.132653 L 947.6592 -41.173047 C 953.7789 -41.654627 958.8039 -36.38695 959.25 -30.25 M 959.1263 -30.480644 L 959.2877 499.6564 C 958.7365 505.2065 954.4924 511.27607 948.25 510.75 M 948.9229 510.9251 L 409.1431 510.91827 C 403.17225 511.30793 398.3301 505.5217 398.25 499.75 M 398.09015 500.48656 L 398.2967 -30.1532 C 397.64516 -35.76639 403.5846 -40.98768 409.25 -41.25 M 409.9493 -41.089607 L 409.125 -41.00906" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(403 -36)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="0" y="16">ActorRef&lt;&gt;</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="700" fill="black" y="16"> </tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" y="16">(UniqueActorPath, containing “Incarnation” UID)</tspan>
+          <tspan font-family="Helvetica Neue" font-size="14" font-weight="400" fill="black" x="0" y="32.46411">Remains valid for the actor’s entire lifetime, including restarts.</tspan>
+        </text>
+      </g>
+      <g id="Graphic_7">
+        <path d="M 720.7889 -154 L 928.1057 -154 C 930.3148 -154 932.1057 -152.20914 932.1057 -150 L 932.1057 -112.98742 C 932.1057 -110.77828 930.3148 -108.98742 928.1057 -108.98742 L 720.7889 -108.98742 C 718.5798 -108.98742 716.7889 -110.77828 716.7889 -112.98742 L 716.7889 -150 C 716.7889 -152.20914 718.5798 -154 720.7889 -154 Z" fill="white"/>
+        <path d="M 720.7889 -154 L 928.1057 -154 C 930.3148 -154 932.1057 -152.20914 932.1057 -150 L 932.1057 -112.98742 C 932.1057 -110.77828 930.3148 -108.98742 928.1057 -108.98742 L 720.7889 -108.98742 C 718.5798 -108.98742 716.7889 -110.77828 716.7889 -112.98742 L 716.7889 -150 C 716.7889 -152.20914 718.5798 -154 720.7889 -154 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(721.7889 -141.99371)" fill="black">
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" x="6.6583956" y="16">.spawn…(behavior, …)</tspan>
+        </text>
+      </g>
+      <g id="Graphic_213">
+        <path d="M 753.576 48 L 899.576 48 C 901.7851 48 903.576 49.79086 903.576 52 L 903.576 89.01258 C 903.576 91.22172 901.7851 93.01258 899.576 93.01258 L 753.576 93.01258 C 751.3669 93.01258 749.576 91.22172 749.576 89.01258 L 749.576 52 C 749.576 49.79086 751.3669 48 753.576 48 Z" fill="#00b8ff" fill-opacity=".24306778"/>
+        <path d="M 753.576 48 L 899.576 48 C 901.7851 48 903.576 49.79086 903.576 52 L 903.576 89.01258 C 903.576 91.22172 901.7851 93.01258 899.576 93.01258 L 753.576 93.01258 C 751.3669 93.01258 749.576 91.22172 749.576 89.01258 L 749.576 52 C 749.576 49.79086 751.3669 48 753.576 48 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(754.576 60.50629)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="14.52" y="16">Alive / Running</tspan>
+        </text>
+      </g>
+      <g id="Graphic_214">
+        <path d="M 409 93 L 578 93 C 580.20914 93 582 94.79086 582 97 L 582 134.01258 C 582 136.22172 580.20914 138.01258 578 138.01258 L 409 138.01258 C 406.79086 138.01258 405 136.22172 405 134.01258 L 405 97 C 405 94.79086 406.79086 93 409 93 Z" fill="#ffe7e7"/>
+        <path d="M 409 93 L 578 93 C 580.20914 93 582 94.79086 582 97 L 582 134.01258 C 582 136.22172 580.20914 138.01258 578 138.01258 L 409 138.01258 C 406.79086 138.01258 405 136.22172 405 134.01258 L 405 97 C 405 94.79086 406.79086 93 409 93 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(410 105.50629)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-style="italic" font-weight="400" fill="black" x="60.388" y="15">Failing</tspan>
+        </text>
+      </g>
+      <g id="Graphic_217">
+        <path d="M 755.2886 306 L 901.2886 306 C 903.4977 306 905.2886 307.79086 905.2886 310 L 905.2886 347.0126 C 905.2886 349.2217 903.4977 351.0126 901.2886 351.0126 L 755.2886 351.0126 C 753.0794 351.0126 751.2886 349.2217 751.2886 347.0126 L 751.2886 310 C 751.2886 307.79086 753.0794 306 755.2886 306 Z" fill="#dadada"/>
+        <path d="M 755.2886 306 L 901.2886 306 C 903.4977 306 905.2886 307.79086 905.2886 310 L 905.2886 347.0126 C 905.2886 349.2217 903.4977 351.0126 901.2886 351.0126 L 755.2886 351.0126 C 753.0794 351.0126 751.2886 349.2217 751.2886 347.0126 L 751.2886 310 C 751.2886 307.79086 753.0794 306 755.2886 306 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(756.2886 318.5063)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="39.848" y="16">Stopped</tspan>
+        </text>
+      </g>
+      <g id="Line_229">
+        <line x1="826.732" y1="94.01258" x2="828.0668" y2="295.10022" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_232">
+        <line x1="824.695" y1="-107.98742" x2="826.224" y2="37.10055" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_233">
+        <rect x="740.5245" y="-99.02641" width="169.04629" height="49" fill="white"/>
+        <text transform="translate(745.5245 -94.02641)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="15.224707" y="16"> </tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="700" fill="black" y="16">Signals.Start</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" x="0" y="35">execute </tspan>
+          <tspan font-family="Source Code Pro" font-size="15" font-weight="400" fill="black" y="35">.setup{…} </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="15" font-weight="400" fill="black" y="35">❶</tspan>
+        </text>
+      </g>
+      <g id="Graphic_235">
+        <rect x="705.8244" y="127.31384" width="244.57898" height="48.435104" fill="white"/>
+        <text transform="translate(710.8244 132.31384)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="43.39105" y="16"> </tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" y="16">return .stopped</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="400" fill="black" x="54.0298" y="35">stopping </tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="700" fill="black" y="35">myself </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="35">❷</tspan>
+        </text>
+      </g>
+      <g id="Graphic_234">
+        <path d="M 755.2886 433.45104 L 901.2886 433.45104 C 903.4977 433.45104 905.2886 435.2419 905.2886 437.45104 L 905.2886 474.4636 C 905.2886 476.67276 903.4977 478.4636 901.2886 478.4636 L 755.2886 478.4636 C 753.0794 478.4636 751.2886 476.67276 751.2886 474.4636 L 751.2886 437.45104 C 751.2886 435.2419 753.0794 433.45104 755.2886 433.45104 Z" fill="#ccc"/>
+        <path d="M 755.2886 433.45104 L 901.2886 433.45104 C 903.4977 433.45104 905.2886 435.2419 905.2886 437.45104 L 905.2886 474.4636 C 905.2886 476.67276 903.4977 478.4636 901.2886 478.4636 L 755.2886 478.4636 C 753.0794 478.4636 751.2886 476.67276 751.2886 474.4636 L 751.2886 437.45104 C 751.2886 435.2419 753.0794 433.45104 755.2886 433.45104 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(756.2886 445.95733)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="29.352" y="16">Terminated</tspan>
+        </text>
+      </g>
+      <g id="Line_236">
+        <line x1="828.2886" y1="352.0126" x2="828.2886" y2="422.55104" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_237">
+        <rect x="735.3839" y="371.85387" width="185.80938" height="31" fill="white"/>
+        <text transform="translate(740.3839 376.85387)" fill="black">
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="700" fill="black" x="36948222e-20" y="16">Signals.PostStop </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="16">❹</tspan>
+        </text>
+      </g>
+      <g id="Line_243">
+        <line x1="904.9822" y1="441.0126" x2="979.6099" y2="425.64245" marker-end="url(#FilledArrow_Marker_2)" stroke="#003776" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_244">
+        <line x1="904.9822" y1="452.0126" x2="979.4405" y2="445.82047" marker-end="url(#FilledArrow_Marker_3)" stroke="#666" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_245">
+        <line x1="905.9822" y1="465.0126" x2="979.4066" y2="464.5307" marker-end="url(#FilledArrow_Marker_3)" stroke="#666" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_250">
+        <line x1="903.576" y1="475" x2="979.4392" y2="481.19433" marker-end="url(#FilledArrow_Marker_3)" stroke="#666" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_251">
+        <text transform="translate(996.3064 418.0126)" fill="#003776">
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="#003776" x="0" y="16">Signals.ChildTerminated</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" y="16"> sent to parent</tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" x="0" y="36">     </tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" x="0" y="56">Signals.Terminated</tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" y="56"> sent to watchers</tspan>
+        </text>
+      </g>
+      <g id="Graphic_259">
+        <path d="M 432 306 L 578 306 C 580.20914 306 582 307.79086 582 310 L 582 347.0126 C 582 349.2217 580.20914 351.0126 578 351.0126 L 432 351.0126 C 429.79086 351.0126 428 349.2217 428 347.0126 L 428 310 C 428 307.79086 429.79086 306 432 306 Z" fill="#ffe7e7"/>
+        <path d="M 432 306 L 578 306 C 580.20914 306 582 307.79086 582 310 L 582 347.0126 C 582 349.2217 580.20914 351.0126 578 351.0126 L 432 351.0126 C 429.79086 351.0126 428 349.2217 428 347.0126 L 428 310 C 428 307.79086 429.79086 306 432 306 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(433 318.5063)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="49.056" y="16">Failed</tspan>
+        </text>
+      </g>
+      <g id="Graphic_253">
+        <rect x="398" y="8" width="313" height="388" fill="#ff9833" fill-opacity=".093915"/>
+        <text transform="translate(403 13)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="700" fill="black" x="0" y="16">Supervision</tspan>
+        </text>
+      </g>
+      <g id="Graphic_265">
+        <path d="M 540 244 L 686 244 C 688.2091 244 690 245.79086 690 248 L 690 285.01258 C 690 287.22172 688.2091 289.01258 686 289.01258 L 540 289.01258 C 537.79086 289.01258 536 287.22172 536 285.01258 L 536 248 C 536 245.79086 537.79086 244 540 244 Z" fill="#fbb100" fill-opacity=".42388314"/>
+        <path d="M 540 244 L 686 244 C 688.2091 244 690 245.79086 690 248 L 690 285.01258 C 690 287.22172 688.2091 289.01258 686 289.01258 L 540 289.01258 C 537.79086 289.01258 536 287.22172 536 285.01258 L 536 248 C 536 245.79086 537.79086 244 540 244 Z" stroke="#636363" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+        <text transform="translate(541 256.5063)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-style="italic" font-weight="400" fill="black" x="23.552" y="15">New Instance</tspan>
+        </text>
+      </g>
+      <g id="Line_268">
+        <line x1="565" y1="139" x2="565" y2="234.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_270">
+        <path d="M 749 63 L 446 65 L 446 83.1" marker-end="url(#FilledArrow_Marker_4)" stroke="#b1001c" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_271">
+        <line x1="441" y1="138.01258" x2="441" y2="298.01797" marker-end="url(#FilledArrow_Marker_4)" stroke="#b1001c" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_272">
+        <line x1="583" y1="328.5063" x2="739.676" y2="328.5063" marker-end="url(#FilledArrow_Marker_4)" stroke="#b1001c" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_273">
+        <path d="M 657 244 L 658 85 L 741.3886 85" marker-end="url(#FilledArrow_Marker_5)" stroke="#6d5000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_275">
+        <rect x="476.5" y="151.38928" width="177" height="47.448" fill="white"/>
+        <text transform="translate(481.5 156.38928)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-style="italic" font-weight="400" fill="black" x="45.63531" y="15">“restart” </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="15">❻</tspan>
+          <tspan font-family="Source Code Pro" font-size="15" font-style="italic" font-weight="700" fill="black" x="2.5" y="33.448">Signals.PreRestart</tspan>
+        </text>
+      </g>
+      <g id="Graphic_278">
+        <rect x="407.36812" y="220.58594" width="67.26375" height="30" fill="white"/>
+        <text transform="translate(412.36812 225.58594)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-style="italic" font-weight="400" fill="black" x="3.2151875" y="15">“fail” </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="15">❼</tspan>
+        </text>
+      </g>
+      <g id="Line_281">
+        <line x1="1119.5784" y1="205.74753" x2="967.9105" y2="132.31423" marker-end="url(#FilledArrow_Marker_3)" stroke="#666" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_283">
+        <rect x="1119.5784" y="185.63023" width="78" height="78" id="path"/>
+        <clipPath id="clip_path">
+          <use xl:href="#path"/>
+        </clipPath>
+        <g clip-path="url(#clip_path)">
+          <image xl:href="image2.pdf" width="78" height="78" transform="translate(1119.5784 185.63023)"/>
+        </g>
+        <text transform="translate(1124.5784 214.63023)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">    B</tspan>
+        </text>
+      </g>
+      <g id="Graphic_284">
+        <rect x="973.628" y="159.1877" width="163.6" height="31" fill="white"/>
+        <text transform="translate(978.628 164.1877)" fill="black">
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" x="0" y="16">context.watch(A)</tspan>
+        </text>
+      </g>
+      <g id="Graphic_285">
+        <text transform="translate(978.628 268.63023)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" x="3126388e-19" y="15">It is legal to </tspan>
+          <tspan font-family="Source Code Pro" font-size="15" font-weight="400" fill="black" y="15">watch</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" y="15"> at any point in an actor’s lifecycle,</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" x="42.78" y="34">the </tspan>
+          <tspan font-family="Source Code Pro" font-size="15" font-weight="400" fill="black" y="34">Terminated</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" y="34"> signals are guaranteed</tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-weight="400" fill="black" x="61.1025" y="52">to be delivered upon crash or stop.</tspan>
+        </text>
+      </g>
+      <g id="Graphic_288">
+        <rect x="466.24806" y="46.13741" width="220.84938" height="30" fill="white"/>
+        <text transform="translate(471.24806 51.13741)" fill="#b1001c">
+          <tspan font-family="Helvetica Neue" font-size="16" font-style="italic" font-weight="400" fill="#b1001c" x="0" y="15">error thrown or fault occurs </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="#b1001c" y="15">❺</tspan>
+        </text>
+      </g>
+      <g id="Graphic_290">
+        <rect x="710.87344" y="221.71204" width="245.73425" height="48.435104" fill="white"/>
+        <text transform="translate(715.87344 226.71204)" fill="black">
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" x="12.267126" y="16">context.stop(childRef)</tspan>
+          <tspan font-family="Times" font-size="12" font-weight="400" fill="black" y="16"> </tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" y="16"> </tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="400" fill="black" x="13.919939" y="35">forcefully stopped by </tspan>
+          <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="700" fill="black" y="35">parent </tspan>
+          <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="35">❸</tspan>
+        </text>
+      </g>
+      <g id="Graphic_291">
+        <rect x="815.1705" y="183.6359" width="24.512" height="30" fill="white"/>
+        <text transform="translate(820.1705 188.6359)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="0" y="15">or</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>
