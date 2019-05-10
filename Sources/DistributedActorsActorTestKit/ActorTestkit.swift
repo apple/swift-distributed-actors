@@ -76,7 +76,7 @@ public extension ActorTestKit {
         defer { self.spawnProbesLock.unlock() }
 
         let name = maybeName ?? testProbeNames.nextName()
-        return try! ActorTestProbe(spawn: { probeBehavior in
+        return ActorTestProbe(spawn: { probeBehavior in
 
             // TODO: allow configuring dispatcher for the probe or always use the calling thread one
             var testProbeProps = Props()

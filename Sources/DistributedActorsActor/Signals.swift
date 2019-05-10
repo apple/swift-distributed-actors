@@ -23,12 +23,40 @@
 ///
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
+/// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
 public protocol Signal {
 }
 
+/// Namespace for all pre-defined `Signal` types.
+///
+/// - SeeAlso: `Signal`, for a semantic overview of what signals are.
 public enum Signals {
 
-    /// Signal sent in response to an actor terminating.
+    /// Signal sent to an actor right before it is restarted (by supervision).
+    ///
+    /// The signal is delivered to the current "failing" behavior, before it is replaced with a fresh initial behavior instance.
+    /// This leaves the opportunity to perform some final cleanup or logging from the failing behavior,
+    /// before all of its state is lost. Be aware however that doing so is inherently risky, as the reason for the restart
+    /// may have left the actors current state in an illegal state, and attempts to interact with it, other than e.g.
+    /// careful releasing of resources is generally not a good idea.
+    ///
+    /// Failing during processing of this signal will abort the restart process, and irrecoverably fail the actor.
+    public struct PreRestart: Signal {
+        @usableFromInline
+        init() {}
+    }
+
+    /// Signal sent to an actor right after is has semantically been stopped (i.e. will receive no more messages nor signals, except this one).
+    ///
+    /// This signal can be handled just like any other signal, using `Behavior.receiveSignal((ActorContext<Message>, Signal) throws -> Behavior<Message>)`,
+    /// however the `Behavior` returned by the closure will always be ignored and the actor will proceed to its `Terminated` state.
+    /// In other words, it is not possible to stop the actor from terminating once it has received the PostStop signal.
+    public struct PostStop: Signal {
+        @usableFromInline
+        init() {}
+    }
+
+    /// Signal sent to all watchers of an actor once the watchee has terminated.
     ///
     /// - See also: [ChildTerminated]
     /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
@@ -53,9 +81,6 @@ public enum Signals {
     /// to kill kill itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
     /// In other words, if the parent spawns child actors but does not watch them, this is taken as not caring enough about
     /// their lifetime as to trigger termination itself if one of them terminates.
-    ///
-    /// TODO we have to clear this up a bit... OR we can not deliver the siganl at all... The system message will be sent always, since we need it for children container management.
-    /// TODO: TL;DR; if parent does not watch child, it clearly "does not care" and will not kill itself if child dies, BUT we still manage the children container anyway
     public final class ChildTerminated: Terminated {
 
         /// Filled with the error that caused the child actor to terminate.
@@ -78,19 +103,6 @@ public enum Signals {
             }
             return "ChildTerminated(\(self.path)\(reason))"
         }
-    }
-
-    /// Signal sent to an actor right before it is restarted (by supervision).
-    /// The actor MAY use th
-    public struct PreRestart: Signal {
-        @usableFromInline
-        init() {}
-    }
-
-    /// Signal sent to an actor right after is has semantically been stopped (i.e. will receive no more messages nor signals, except this one).
-    public struct PostStop: Signal {
-        @usableFromInline
-        init() {}
     }
 }
 

@@ -21,6 +21,7 @@ Try to avoid using the `spawnAnonymous` version of spawning,
 your future self will thank you, since once things break you will know exactly which actor
 had the fault, rather than an anonymous one like "$abc".
 
+==== How to get an well-typed ActorRef<MyMessage> of a child actor?
 
 === Glossary
 
