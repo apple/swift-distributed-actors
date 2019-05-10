@@ -272,7 +272,7 @@ public struct Supervision {
 
     /// Thrown in the case of illegal supervision decisions being made, e.g. returning `.same` as decision,
     /// or other situations where supervision failed in some other way.
-    public enum DecisionError: Error {
+    public enum SupervisionError: Error {
         case illegalDecision(String, handledError: Error, error: Error)
     }
 }
@@ -358,6 +358,7 @@ internal enum ProcessingType {
 @usableFromInline
 internal class Supervisor<Message> {
 
+    @usableFromInline
     typealias Directive = SupervisionDirective<Message>
 
     @inlinable
@@ -402,36 +403,62 @@ internal class Supervisor<Message> {
     }
 
     /// Implements all directives, which supervisor implementations may yield to instruct how we should (if at all) restart an actor.
-    @usableFromInline
+    @inlinable
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingType: ProcessingType, closure: () throws -> Behavior<Message>) throws -> Behavior<Message> {
+        return try self.interpretSupervised0(target: target, context: context, processingType: processingType, closure: closure, nFoldFailureDepth: 1) // 1 since we already have "one failure"
+    }
+
+    @inlinable
+    final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingType: ProcessingType, closure: () throws -> Behavior<Message>, nFoldFailureDepth: Int) throws -> Behavior<Message> {
         do {
             return try closure()
         } catch {
-            let err = error
-            context.log.warning("Actor has THROWN [\(error)]:\(type(of: error)) while interpreting \(processingType), handling with \(self)")
-            do {
-                let directive: Directive = try self.handleFailure(context, target: target, failure: .error(error), processingType: processingType)
-                switch directive {
-                case .stop:
-                    return .stopped(reason: .failure(.error(error)))
+            var errorToHandle = error
 
-                case .escalate(let failure):
-                    // TODO this is not really escalating (yet)
-                    return .stopped(reason: .failure(failure))
+            // The following restart loop exists to support interpreting `PreRestart` and `Start` signal interpretation failures;
+            // If the actor fails during restarting, this failure becomes the new failure reason, and we supervise this failure
+            // this allows "try again a few times restarts" to happen even if the fault occurs in starting the actor (e.g. opening a file or obtaining some resource failing).
+            //
+            // This "restart loop" matters only for:
+            // - `.restartImmediately` decisions which result in throwing during `_restartPrepare` OR `_restartComplete`,
+            // - or `.restartDelayed` decisions which result in throwing during `_restartPrepare`.
+            //
+            // Since this is a special situation somewhat, in which the tight crash loop could consume considerable resources (and maybe never recover),
+            // we limit the number of times the restart is attempted
+            repeat {
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingType), handling with \(self)")
 
-                case .restartImmediately(let replacement):
-                    // FIXME: should this not implement the same "call restartPrepare() / restartComplete()"?
-                    try context._downcastUnsafe._restartPrepare()
-                    return try context._downcastUnsafe._restartComplete(with: replacement)
-
-                case .restartDelayed(let delay, let replacement):
-                    try context._downcastUnsafe._restartPrepare()
-
-                    return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
+                let directive: Directive
+                do {
+                    directive = try self.handleFailure(context, target: target, failure: .error(errorToHandle), processingType: processingType)
+                } catch {
+                    // An error was thrown by our Supervisor logic while handling the failure, this is a bug and thus we crash hard
+                    throw Supervision.SupervisionError.illegalDecision("Illegal supervision decision detected.", handledError: errorToHandle, error: error)
                 }
-            } catch {
-                throw Supervision.DecisionError.illegalDecision("Illegal supervision decision detected.", handledError: err, error: error)
-            }
+
+                do {
+                    switch directive {
+                    case .stop:
+                        return .stopped(reason: .failure(.error(error)))
+
+                    case .escalate(let failure):
+                        // TODO this is not really escalating (yet)
+                        return .stopped(reason: .failure(failure))
+
+                    case .restartImmediately(let replacement):
+                        try context._downcastUnsafe._restartPrepare()
+                        return try context._downcastUnsafe._restartComplete(with: replacement)
+
+                    case .restartDelayed(let delay, let replacement):
+                        try context._downcastUnsafe._restartPrepare()
+
+                        return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
+                    }
+                } catch {
+                    errorToHandle = error // the error captured from restarting is now the reason why we are failing, and should be passed to the supervisor
+                    continue // by now supervising the errorToHandle which has just occurred
+                }
+            } while true // the only way to break out of here is succeeding to interpret `directive` OR supervisor giving up (e.g. max nr of restarts being exhausted)
         }
     }
 
@@ -439,7 +466,7 @@ internal class Supervisor<Message> {
 
     /// Handle a fault that happened during processing.
     ///
-    /// The returned `SupervisionDirective` will be interpreted apropriately.
+    /// The returned `SupervisionDirective` will be interpreted appropriately.
     open func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
         return undefined()
     }
@@ -523,7 +550,8 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
 /// Instructs the mailbox to take specific action, reflecting wha the supervisor intends to do with the actor.
 ///
 /// - SeeAlso: `Supervisor.handleFailure`
-enum SupervisionDirective<Message> {
+@usableFromInline
+internal enum SupervisionDirective<Message> {
     /// Directs mailbox to directly stop processing.
     case stop
     /// Directs mailbox to prepare AND complete a restart immediately.
@@ -535,7 +563,7 @@ enum SupervisionDirective<Message> {
     case escalate(Supervision.Failure)
 }
 
-enum SupervisionDecision {
+internal enum SupervisionDecision {
     case restartImmediately
     case restartBackoff(delay: TimeAmount) // could also configure "drop messages while restarting" etc
     case escalate
@@ -676,9 +704,12 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
 }
 
 /// Behavior used to suspend after a `restartPrepare` has been issued by an `restartDelayed`.
+@usableFromInline
 internal enum SupervisionRestartDelayedBehavior<Message> {
+    @usableFromInline
     internal struct WakeUp {}
 
+    @usableFromInline
     static func after(delay: TimeAmount, with replacement: Behavior<Message>) -> Behavior<Message> {
         return .setup { context in
             context.timers._startResumeTimer(key: "_restartBackoff", delay: delay, resumeWith: WakeUp())

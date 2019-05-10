@@ -695,7 +695,7 @@ extension ActorRunResult: CustomStringConvertible {
 extension MailboxRunPhase: CustomStringConvertible {
     public var description: String {
         switch self {
-        case MailboxRunPhase.processingUserMessages:   return "MailboxRunPhase.processingUserMessages"
+        case MailboxRunPhase.processingUserMessages: return "MailboxRunPhase.processingUserMessages"
         case MailboxRunPhase.processingSystemMessages: return "MailboxRunPhase.processingSystemMessages"
         }
     }

@@ -285,7 +285,7 @@ MailboxRunResult cmailbox_run(
         run_result = ActorRunResult_shouldSuspend;
     }
 
-    // We store the current stack frame to `error_jmp_buf` so that we can restore
+    // We store the current stack frame to `tl_error_jmp_buf` so that we can restore
     // it to jump back here in case an error occurs during message processing.
     // `sigsetjmp` also stores the signal mask when the second argument is non-zero.
     if (sigsetjmp(*error_jmp_buf, 1)) {

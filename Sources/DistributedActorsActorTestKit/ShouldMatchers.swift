@@ -83,7 +83,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "to start with prefix: "
             if isTty { m += "\n                " } // align with "[error] Expected "
             m += "["
-            if isTty { m += "[\(ANSIColors.bold.rawValue)" }
+            if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
             m += "\(prefix.dropFirst(partialMatch.underestimatedCount))]."
