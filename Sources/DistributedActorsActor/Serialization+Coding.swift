@@ -335,3 +335,84 @@ internal extension UnkeyedDecodingContainer {
         return value
     }
 }
+
+extension SystemMessage: Codable {
+    enum CodingKeys: CodingKey {
+        case type
+
+        case watchee
+        case watcher
+
+        case ref
+        case existenceConfirmed
+        case addressTerminated
+    }
+
+    enum Types {
+        static let watch = 0
+        static let terminated = 1
+    }
+
+    @usableFromInline
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(Int.self, forKey: CodingKeys.type) {
+        case Types.watch:
+            let context = decoder.actorSerializationContext!
+            let watcheePath = try container.decode(UniqueActorPath.self, forKey: CodingKeys.watchee)
+            let watcherPath = try container.decode(UniqueActorPath.self, forKey: CodingKeys.watcher)
+            let watchee = context.resolveReceivesSystemMessages(path: watcheePath)
+            let watcher = context.resolveReceivesSystemMessages(path: watcherPath)
+            self = .watch(
+                watchee: BoxedHashableAnyReceivesSystemMessages(ref: watchee),
+                watcher: BoxedHashableAnyReceivesSystemMessages(ref: watcher))
+        case Types.terminated:
+            let context = decoder.actorSerializationContext!
+            let path = try container.decode(UniqueActorPath.self, forKey: CodingKeys.ref)
+            let ref = context.resolveReceivesSystemMessages(path: path)
+            let existanceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
+            let addressTerminated = try container.decode(Bool.self, forKey: CodingKeys.addressTerminated)
+            self = .terminated(ref: ref, existenceConfirmed: existanceConfirmed, addressTerminated: addressTerminated)
+        case let type:
+            self = FIXME("Can't decode type \(type)")
+        }
+    }
+
+    @usableFromInline
+    func encode(to encoder: Encoder) throws {
+        switch self {
+        case .watch(let watchee, let watcher):
+            let localAddress = encoder.actorSerializationContext?.serializationAddress
+            var watcheePath = watchee.path
+            if watcheePath.address == nil {
+                watcheePath.address = localAddress
+            }
+
+            var watcherPath = watcher.path
+            if watcherPath.address == nil {
+                watcherPath.address = localAddress
+            }
+
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(Types.watch, forKey: CodingKeys.type)
+            try container.encode(watcheePath, forKey: CodingKeys.watchee)
+            try container.encode(watcherPath, forKey: CodingKeys.watcher)
+
+        case .terminated(let ref, let existenceConfirmed, let addressTerminated):
+            let localAddress = encoder.actorSerializationContext?.serializationAddress
+            var path = ref.path
+            if path.address == nil {
+                path.address = localAddress
+            }
+
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(Types.terminated, forKey: CodingKeys.type)
+            try container.encode(path, forKey: CodingKeys.ref)
+            try container.encode(existenceConfirmed, forKey: CodingKeys.existenceConfirmed)
+            try container.encode(addressTerminated, forKey: CodingKeys.addressTerminated)
+
+        default:
+            return FIXME("Not serializable \(self)")
+        }
+    }
+}

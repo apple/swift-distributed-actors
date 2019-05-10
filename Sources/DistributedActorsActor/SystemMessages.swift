@@ -18,7 +18,7 @@
 ///
 /// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
 @usableFromInline
-internal enum SystemMessage: Equatable { 
+internal enum SystemMessage: Equatable {
 
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.

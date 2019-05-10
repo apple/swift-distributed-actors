@@ -156,7 +156,7 @@ internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSys
     private let anyRef: AnyReceivesSystemMessages
 
     /// Easiest used with [[ActorRefWithCell]]
-    public init<Ref: AnyReceivesSystemMessages & Hashable>(ref: Ref) {
+    public init(ref: AnyReceivesSystemMessages) {
         self.anyRef = ref
     }
 
