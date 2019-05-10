@@ -37,6 +37,7 @@ import Glibc
 ///  - optionally fault occurs: use the captured context to signal the fault to the actor and its watchers
 ///  - 3: at the successful end of a mailbox run OR occurrence of a fault, unset the context before yielding the thread
 ///       back to the [MessageDispatcher] using [unregisterCellFromCrashHandling].
+@usableFromInline
 internal struct FaultHandling {
 
     private init() {
