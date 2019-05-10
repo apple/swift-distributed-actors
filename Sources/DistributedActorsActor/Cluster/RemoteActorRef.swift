@@ -75,10 +75,15 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     @usableFromInline
     override func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendSystemMessage: \(message)")
-        pprint("TODO: This would send \(message) to \(self.path) if it was implemented... :-) SOON...!") // FIXME: implement remote sends
+        // TODO: make system messages reliable
+        if let remoteControl = self.remoteControl {
+            remoteControl.sendSystemMessage(message, recipient: self.path)
+        } else {
+            self.deadLetters.adapted().tell(message)
+        }
     }
 
-    private var remoteControl: AssociationRemoteControl? { // TODO types?
+    private var remoteControl: AssociationRemoteControl? {
         // optimally we would:
         if let control = self._cachedAssociationRemoteControl {
             return control

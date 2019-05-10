@@ -285,12 +285,14 @@ private final class SerializationHandler: ChannelDuplexHandler {
         // TODO: ensure message ordering. See comment in `write`.
         deserializationPromise.futureResult.whenComplete {
             switch $0 {
-            case .success(let message):
-                // TODO: Should this be in a separate stage?
-                let envelope = SerializationEnvelope(message: message, recipient: wireEnvelope.recipient)
-                let resolveContext = ResolveContext<Any>(path: envelope.recipient, deadLetters: self.system.deadLetters)
+            case .success(let message as SystemMessage):
+                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, deadLetters: self.system.deadLetters)
                 let ref = self.system._resolveUntyped(context: resolveContext)
-                ref._tellUnsafe(message: envelope.message)
+                ref.sendSystemMessage(message)
+            case .success(let message):
+                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, deadLetters: self.system.deadLetters)
+                let ref = self.system._resolveUntyped(context: resolveContext)
+                ref._tellUnsafe(message: message)
             case .failure(let error):
                 self.log.error("Error: \(error)")
             }

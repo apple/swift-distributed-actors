@@ -27,6 +27,7 @@ extension ClusterReceptionistTests {
                 ("test_clusterReceptionist_shouldReplicateRegistrations", test_clusterReceptionist_shouldReplicateRegistrations),
                 ("test_clusterReceptionist_shouldSyncPeriodically", test_clusterReceptionist_shouldSyncPeriodically),
                 ("test_clusterReceptionist_shouldMergeEntriesOnSync", test_clusterReceptionist_shouldMergeEntriesOnSync),
+                ("test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies", test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies),
            ]
    }
 }
