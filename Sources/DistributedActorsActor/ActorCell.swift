@@ -351,12 +351,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         switch error {
         case let DeathPactError.unhandledDeathPact(_, _, message):
             log.error("\(message)") // TODO configurable logging? in props?
-            // self.finishTerminating() // FIXME likely too eagerly, think again intensely here we need to assure we are all clear.
 
         default:
             log.error("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO configurable logging? in props?
-
-            // self.finishTerminating() // FIXME likely too eagerly, think again intensely here we need to assure we are all clear.
         }
     }
 
@@ -372,13 +369,16 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     /// Used by supervision, from failure recovery.
     /// In such case the cell must be restarted while the mailbox remain in-tact.
+    ///
+    /// - Warning: This call MAY throw if user code would throw in reaction to interpreting `PreRestart`;
+    ///            If this happens the actor MUST be terminated immediately as we suspect things went very bad™ somehow.
     @inlinable public func _restartPrepare() throws {
         self.children.stopAll(includeAdapters: false)
         self.timers.cancelAll() // TODO cancel all except the restart timer
 
-        // TODO really ignore?
-        // FIXME document pre restarts return value will be disregarded if so
-        try _ = self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
+        /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
+        /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
+        _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
 
         // NOT interpreting Start yet, as it may have to be done after a delay
     }

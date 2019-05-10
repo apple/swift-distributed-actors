@@ -14,7 +14,7 @@ Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the 
 In order to build systems successfully using actors first you will need to get into the right mindset.
 In this section we will try to guide you towards "thinking in actors," but perhaps it's also best to first realize that:
 "you probably already know actors!" As any time you implemented some form of identity that was fed tasks that it should
-work on, most likely using some concurrent queue or other synchronization mechanism, you probably almost invented some form of actor-like structures there yourself 😊
+work on, most likely using some concurrent queue or other synchronization mechanism, you probably almost invented some form of actor-like structures there yourself!
 
 Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
 happens: via asynchronous message passing. Actors take this observation and make it the core principle of anything built using them:
@@ -31,8 +31,20 @@ This abstraction is very powerful and enables all core features of actors, namel
 * being able to send messages to actors _the same way_, regardless if they are located on the same machine, on another clustered node, or potentially even somewhere completely different.
   ** This is sometimes referred to as "location transparency," as we do not need to know about the physical location of the actor, as long as we have a reference to it.
 
+> **Rule 2: Actors can change their behavior in reaction to a message**.
 
-> **Rule 2: Actors can `spawn` other actors**
+An Actor's _raison d'être_ can be formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
+Actors enable us to write advanced concurrent and distributed applications by offering us a simple mental model: an
+actor processes a message, and the next time it receives a message, it may react differently than before , since the previous message
+has changed its behavior. It is perhaps easier explained if we think about changing state. If an incoming message changed an actor's
+state, such as a counter, the next message would be handled depending on the new counter's state. In other words, state changes manifest
+in changes in an actor's behavior.
+
+In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
+stopping or suspending the actor, ignoring, dropping or combining message handlers as "the next behavior." We will learn more about
+behaviors in the following sections.
+
+> **Rule 3: Actors can `spawn` other actors**
 
 Similarly to threads, processes, isolates or other isolation mechanisms, actors can create (or "spawn" in actor terminology)
 other actors. This is a very useful capability as a single actor does not by itself give any parallelism to processing of messages,
@@ -47,19 +59,6 @@ Another typical use case for being able to spawn millions of actors on a single 
 is the ability to use them to map real world identities, such as devices, measurements or people to their actor "counterpart,"
 inside of our actor application. This helps understandability and traceability when "things go wrong," as we can more easily
 trace back faults to perhaps a given user's dataset or message sequence that caused a crash.
-
-> **Rule 3: Actors can change their behavior in reaction to a message**.
-
-An Actor's _raison d'être_ can be formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
-Actors enable us to write advanced concurrent and distributed applications by offering us a simple mental model: an
-actor processes a message, and the next time it receives a message, it may react differently than before , since the previous message
-has changed its behavior. It is perhaps easier explained if we think about changing state. If an incoming message changed an actor's
-state, such as a counter, the next message would be handled depending on the new counter's state. In other words, state changes manifest
-in changes in an actor's behavior.
-
-In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
-stopping or suspending the actor, ignoring, dropping or combining message handlers as "the next behavior." We will learn more about
-behaviors in the following sections.
 
 ==== What Actors are **_not_**?
 
@@ -238,39 +237,42 @@ TIP: Sending messages to actors always has the same form, regardless if they are
 
 #TODO: complete this section#
 
-=== Stopping actors
+=== Actor Lifecycle
 
-#TODO: Diagram of actor lifecycle#
+Each actor follows a well-defined lifecycle from the moment it it spawned until the moment it terminates.
 
-==== Guarantees
+The following diagram illustrates lifecycle transitions and signals which are delivered to an actor as it undergoes these
+transitions. Note that in normal situations, i.e. without faulty behaviors, the diagram is a simple linear transition from
+`Running` through `Stopped` to `Terminated`, all other states and transitions come into play only in face of faulty behaviors.
 
-For a given actor, the following is guaranteed:
+image::actor_lifecycle.png[Actor Lifecycle]
 
-- if an actor returns the `.stopped` behavior, no further messages will be delivered to its message (or signal) receive blocks.
-- if any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
+1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing it to execute all nested `.setup` behaviors.
+2. Stop Myself: An actor may decide to stop itself by returning an api:Behavior[struct,alias='Behavior.stopped'], causing it to transition to `Stopped`.
+    See also <<Stopping the Current Actor (Myself)>>.
+3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
+    Such stop signal _cannot_ be ignored by the child, and will take effect as soon as it is received by the child. See also <<Stopping Child Actors>>.
+4. PostStop: Once the actor has `Stopped` and drained its mailbox (to dead letters), it will process one last signal: `PostStop` which may be handled.
+    However, regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
+    Once `Terminated`, the actor will never again wake up nor process any more messages nor signals.
+5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, and invoke its supervisor will be invoked, to see if the actor should be restated or not.
+    To learn more about <<Supervision>> and the various supervision strategies, refer to the <<Failure Handling>> chapter of the documentation.
+6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), an :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
+    before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
+    from a clean slate, however _while preserving its mailbox and identity_.
+7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
+    the actor will transition to `Stopped` and `Terminated`, similarity to how it would have if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
 
-Internal guarantees:
+=== Stopping Actors
 
-- if the `.stopped` behavior is returned during handling system messages, no further user messages shall be processed.
-- all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
-- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
-  - during the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
-  - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
-- resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
-
-Parent-child relationships add a few more guarantees:
-
-- a parent is always notified about its child's failures
-  - these DO NOT cause it to kill itself
-- if the parent spawns AND watches the child though, the same death pact principles apply,
-  and a failing child WILL cause the parent to terminate as well.
+An actor can be stopped either by its own decision to do so, a failure occurring, or its parent sending it a stop signal which the actor must abide to.
 
 ==== Stopping the Current Actor (Myself)
 
 While an actor is running there exist only two ways in which it may decide end up _stopping itself_, either by:
 
-- stopping: returning a api:Behavior[struct]`.stopped` as the next behavior
-- crashing: by throwing an `Error` or causing a fault.
+- **stopping** – returning a api:Behavior[struct,alias='Behavior.stopped'] as the next behavior.
+- **crashing** – by throwing an `Error` or causing a fault.
 ** in which case <<supervision>> will handle the failure and determine what to do about it; by default stopping the actor.
 
 To see this in a more realistic example let's have a look at the following snippet:
@@ -279,8 +281,8 @@ To see this in a more realistic example let's have a look at the following snipp
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
 ----
-<1> We invoke some business logic that does not have to be aware of the actor details at all
-<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct]`.stopped`
+<1> We invoke some business logic that does not have to be aware of the actor details at all.
+<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct,alias='Behavior.stopped'].
 
 This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
 As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in its lifecycle.
@@ -302,13 +304,40 @@ NOTE: It is NOT possible to stop yourself by calling the `context.stop(child:)` 
 
 ==== Stopping Child Actors
 
-A parent actor may stop child actors by using `context.stop(child:)` on them,
+A parent actor may stop _its own_ child actors by using `context.stop(child:)` on them,
 which is implemented as a system message send asking the child to stop.
+
+WARN: Attempting to `ActorContext.stop(child:)` a reference that is _not_ a child of the current actor will result in an
+      `ActorContextError` being throw.
 
 The child MAY NOT refuse such stop command and it is effective immediately once the message arrives at the child actor.
 Bear in mind though that this stopping operation, by virtue of being a message send, is an asynchronous operation.
 
 #TODO: complete this section#
+
+==== Stopping Actors: Guarantees
+
+For a given actor, the following is guaranteed:
+
+- if an actor returns the `.stopped` behavior, no further messages will be delivered to its message (or signal) receive blocks,
+  - with the single exception of the :api:Signals[enum,alias='Signals.PostStop'] which is delivered once the actor has stopped and before it has completely Terminated.
+- if any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
+
+Internal guarantees:
+
+- if the `.stopped` behavior is returned during handling system messages, no further user messages shall be processed.
+- all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
+- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
+  - during the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
+  - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
+- resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.
+
+Parent-child relationships add a few more guarantees:
+
+- a parent is always notified about its child's failures
+  - these DO NOT cause it to kill itself
+- if the parent spawns AND watches the child though, the same death pact principles apply,
+  and a failing child WILL cause the parent to terminate as well.
 
 [[props]]
 === Configuring Actors with Props
@@ -381,7 +410,7 @@ the following situation:
 
 === Locating actors using the Receptionist [[receptionist]]
 
-The receptionist is a system actor that allows users to register actors under a api:Receptionist.RegistrationKey[struct] so that
+The receptionist is a system actor that allows users to register actors under a :api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
 it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
 but there are cases where this is not convenient or possible. One such example is communication in a cluster. To share a reference
 with another node in the cluster, we have to send that reference to it, but that is only possible, if we already have a reference
@@ -398,7 +427,7 @@ First we need to register the actor on the node it lives on. This is usually don
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_register]
 ----
 <1> Create the key under which the actor will be registered (can be re-used between calls)
-<2> Send `api:Receptionist.Register[struct]` message to receptionist to register the actor
+<2> Send `api:Receptionist[enum,alias='Receptionist.Register']` message to receptionist to register the actor
 
 Now we can lookup all actors that are registered under that key.
 
@@ -408,7 +437,7 @@ Now we can lookup all actors that are registered under that key.
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_lookup]
 ----
-<1> Send `api:Receptionist.Lookup[struct]` message to receptionist to get a `api:Receptionist.Listing[struct]` with all registered actors for the key
+<1> Send `api:Receptionist[enum,alias='Receptionist.Lookup']` message to receptionist to get a `api:Receptionist[enum,alias='Receptionist.Listing']` with all registered actors for the key
 
 If we are interested in changes to the registration, e.g. when a registered actor gets unregistered, because it terminated,
 or a new one was added, we can subscribe to those changes.
@@ -417,7 +446,7 @@ or a new one was added, we can subscribe to those changes.
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_subscribe]
 ----
-<1> Send `api:Receptionist.Subscribe[struct]` message to receptionist to receive an updated `api:Receptionist.Listing[struct]` on every change to the registrations under the key
+<1> Send `api:Receptionist[enum,alias='Receptionist.Subscribe']` message to receptionist to receive an updated `api:Receptionist[enum,alias='Receptionist.Listing']` on every change to the registrations under the key
 
 === Interop with non-actor code
 
