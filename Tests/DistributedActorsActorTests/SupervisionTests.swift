@@ -861,14 +861,67 @@ class SupervisionTests: XCTestCase {
         ref.tell("test")
         try p.expectTerminated(ref)
     }
-
     func test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting() throws {
         try sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .throwing)
     }
-
     func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .faulting)
+        #else
+        pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
+        #endif
+    }
+
+    func sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy failureMode: FailureMode, backoff: BackoffStrategy?) throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        var preRestartCounter = 0
+
+        let failOnBoom: Behavior<String> = Behavior.receiveMessage { message in
+            if message == "boom" {
+                try failureMode.fail()
+            }
+            return .same
+        }.receiveSignal { context, signal in
+
+            if signal is Signals.PreRestart {
+                preRestartCounter += 1
+                p.tell("preRestart-\(preRestartCounter)")
+                try failureMode.fail()
+                p.tell("NEVER")
+            }
+            return .same
+        }
+
+        let ref = try system.spawn(failOnBoom, name: "fail-onside-pre-restart", props: .addingSupervision(strategy: .restart(atMost: 3, within: nil, backoff: backoff)))
+        p.watch(ref)
+
+        ref.tell("boom")
+        try p.expectMessage("preRestart-1")
+        try p.expectMessage("preRestart-2") // keep trying...
+        try p.expectMessage("preRestart-3") // last try...
+
+        ref.tell("hello")
+        try p.expectNoMessage(for: .milliseconds(100))
+
+        try p.expectTerminated(ref)
+    }
+    func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
+        try sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: nil)
+    }
+    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .faulting, backoff: nil)
+        #else
+        pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
+        #endif
+    }
+    func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
+        try sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: Backoff.constant(.milliseconds(10)))
+    }
+    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
+        try sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .faulting, backoff: Backoff.constant(.milliseconds(10)))
         #else
         pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
         #endif
