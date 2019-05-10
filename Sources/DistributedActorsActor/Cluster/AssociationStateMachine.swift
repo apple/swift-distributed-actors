@@ -95,7 +95,7 @@ internal struct AssociationRemoteControl {
         }
     }
 
-    func sendSystemMessage(envelope: Envelope<SystemMessage>, recipient: UniqueActorPath) {
-        return undefined(hint: "NOT YET IMPLEMENTED SENDING OF (SYSTEM) MESSAGES VIA ASSOCIATION REMOTE CONTROL")
+    func sendSystemMessage(_ message: SystemMessage, recipient: UniqueActorPath) {
+        channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message, recipient: recipient)), promise: nil)
     }
 }

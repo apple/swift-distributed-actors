@@ -73,7 +73,9 @@ public struct Serialization {
         )
 
         // register all
-        self.registerSystemSerializer(context, serializer: systemMessageSerializer, for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
+        // FIXME: Implement and use proper system serializer
+        //self.registerSystemSerializer(context, serializer: systemMessageSerializer, for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
         self.registerSystemSerializer(context, serializer: stringSerializer, for: String.self, underId: Serialization.StringSerializerId)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.FullStateRequestSerializerId)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.ReplicateSerializerId)
@@ -233,9 +235,10 @@ extension Serialization {
     }
 
     public func deserialize(serializerId: SerializerId, from bytes: ByteBuffer) throws -> Any {
-        if serializerId == Serialization.SystemMessageSerializerId {
-            return try deserializeSystemMessage(bytes: bytes)
-        } else {
+        // FIXME: re-enable when proper system serializer is implemented
+        //if serializerId == Serialization.SystemMessageSerializerId {
+        //    return try deserializeSystemMessage(bytes: bytes)
+        //} else {
             guard let serializer = self.serializers[serializerId] else {
                 pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerKeyAvailableFor(type: "Id: \(serializerId)")
@@ -246,7 +249,7 @@ extension Serialization {
             traceLog_Serialization("Deserialize bytes:\(bytes), key: \(serializerId)")
             return deserialized
 
-        }
+        //}
     }
 
     /// Validates serialization round-trip is possible for given message.
@@ -326,7 +329,6 @@ public struct ActorSerializationContext {
         let resolved = self.traversable._resolveUntyped(context: context)
         return resolved
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
