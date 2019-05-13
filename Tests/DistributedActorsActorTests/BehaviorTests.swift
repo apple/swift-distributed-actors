@@ -323,6 +323,33 @@ class BehaviorTests: XCTestCase {
         try p.expectTerminated(ref) // due to death pact, since none of the signal handlers handled Terminated
     }
 
+    func test_orElse_shouldCanonicalizeNestedSetupInAlternative() throws {
+        let p: ActorTestProbe<OrElseProtocol> = testKit.spawnTestProbe()
+
+        let first: Behavior<OrElseProtocol> = .receiveMessage { message in
+            return .unhandled
+        }
+        let second: Behavior<OrElseProtocol> = .setup { _ in
+            p.tell(.second)
+            return .setup { _ in
+                p.tell(.second)
+                return .receiveMessage { message in
+                    p.tell(message)
+                    return .unhandled
+                }
+            }
+        }
+        let ref: ActorRef<OrElseProtocol> = try system.spawnAnonymous(first.orElse(second))
+
+        ref.tell(.second)
+        try p.expectMessage(.second)
+        try p.expectMessage(.second)
+        try p.expectMessage(.second)
+        try p.expectNoMessage(for: .milliseconds(10))
+    }
+
+
+
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
