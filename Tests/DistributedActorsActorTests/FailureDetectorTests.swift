@@ -47,13 +47,8 @@ class FailureDetectorTests: ClusteredTwoNodesTestBase {
                 return .same
             }
 
-            return recv.receiveSignal { context, signal in
-                switch signal {
-                case let terminated as Signals.Terminated:
-                    p.ref.tell(terminated)
-                default:
-                    break
-                }
+            return recv.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                p.ref.tell(terminated)
                 return .same
             }
         }, name: "local")
