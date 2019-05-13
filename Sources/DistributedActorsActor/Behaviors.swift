@@ -51,15 +51,16 @@ internal enum StopReason {
     case failure(Supervision.Failure)
 }
 
-/// A `Behavior` is what executes then an `Actor` handles messages.
+/// A `Behavior` encapsulates an Actor's **state** and **logic**, and is what is executed when the actor receives messages or signals.
 ///
 /// The most important behavior is `Behavior.receive` since it allows handling incoming messages with a simple block.
-/// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
+/// Various other predefined behaviors exist, such as "stopping" the actor, or "ignoring" a message.
 public struct Behavior<Message> {
     @usableFromInline
     internal let underlying: _Behavior<Message>
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Behavior combinators
 
 extension Behavior {
@@ -67,7 +68,7 @@ extension Behavior {
     /// Creates a new Behavior which on an incoming message will first execute the first (current) behavior,
     /// and if it returns `.unhandled` applies the alternative behavior passed in here.
     ///
-    /// If the alternative behavior contains a `.setup` or other deferred behavior, it will be canonicalized on its first execution // TODO: make a test for it
+    /// If the alternative behavior contains a `.setup` or other deferred behavior, it will be canonicalized on its first execution
     public func orElse(_ alternativeBehavior: Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .orElse(first: self, second: alternativeBehavior))
     }
@@ -76,6 +77,8 @@ extension Behavior {
     /// and the actor itself will stop. Return this behavior to stop your actors. The last assigned behavior
     /// will be used to handle the `PostStop` signal after the actor has stopped. This allows users to use
     /// the same signal handler (chain) to process all events.
+    ///
+    /// - SeeAlso: `stopped(_:)` and `stopped(postStop:) overloads for adding cleanup code to be executed upon receipt of PostStop signal.
     public static var stopped: Behavior<Message> {
         return Behavior.stopped(postStop: nil, reason: .stopMyself)
     }
@@ -197,25 +200,130 @@ internal extension Behavior {
         return Behavior(underlying: .suspended(previousBehavior: previousBehavior, handler: handler))
     }
 
+    /// Creates internal representation of stopped behavior, see `stopped(_:)` for public api.
     @usableFromInline
     static func stopped(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
         return Behavior(underlying: .stopped(postStop: postStop, reason: reason))
     }
 }
 
-// MARK: Signal receiving behaviors
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Signal handling behaviors
 
 extension Behavior {
 
-    /// While throwing in signal handlers is not permitted, supervision does take care of faults that could occur while handling a signal
+    /// Allows reacting to `Signal`s, such as lifecycle events.
+    ///
+    /// Note that this behavior _adds_ the ability to handle signals in addition to an existing message handling behavior
+    /// (e.g. ``receive`) rather than replacing it.
+    ///
+    /// #### Example usage
+    /// ```
+    /// let withSignalHandling = behavior.receiveSignal { context, signal in
+    ///     guard let terminated = signal as? Signals.Terminated else {
+    ///         return .unhandled
+    ///     }
+    ///     if terminated.path.name == "Juliet" {
+    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///     } else {
+    ///         return .ignore
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
+    /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
     public func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .signalHandling(handleMessage: self, handleSignal: handle))
+        return Behavior(underlying: .signalHandling(
+            handleMessage: self,
+            handleSignal: handle
+        ))
     }
 
-    /// -- || --
+    /// Allows reacting to `Signal`s, such as lifecycle events.
+    ///
+    /// Note that this behavior _adds_ the ability to handle signals in addition to an existing message handling behavior
+    /// (e.g. ``receive`) rather than replacing it.
+    ///
+    /// #### Example usage
+    /// ```
+    /// let withSignalHandling = behavior.receiveSignal { context, signal in
+    ///     guard let terminated = signal as? Signals.Terminated else {
+    ///         return .unhandled
+    ///     }
+    ///     if terminated.path.name == "Juliet" {
+    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///     } else {
+    ///         return .ignore
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
+    /// - SeeAlso: `receiveSpecificSignal` for convenience version of this behavior, simplifying handling a single type of `Signal`.
     public static func receiveSignal(_ handle: @escaping (ActorContext<Message>, Signal) throws -> Behavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .signalHandling(handleMessage: .unhandled, handleSignal: handle))
+        return Behavior(underlying: .signalHandling(
+            handleMessage: .unhandled,
+            handleSignal: handle
+        ))
     }
+
+    /// Convenience function similar to `Behavior.receiveSignal` however allowing for easier handling of a specific signal type, e.g.:
+    ///
+    /// #### Example usage
+    /// ```
+    /// let withSignalHandling = behavior.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
+    ///     if terminated.path.name == "Juliet" {
+    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///     } else {
+    ///         return .ignore
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
+    /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
+    public func receiveSpecificSignal<SpecificSignal: Signal>(_ signalType: SpecificSignal.Type, _ handle: @escaping (ActorContext<Message>, SpecificSignal) throws -> Behavior<Message>) -> Behavior<Message> {
+        // TODO better type printout so we know we only handle SpecificSignal with this one
+        return self.receiveSignal { context, signal in
+            switch signal {
+            case let matchingSignal as SpecificSignal:
+                return try handle(context, matchingSignal)
+            default:
+                return .unhandled
+            }
+        }
+    }
+
+    /// Convenience function similar to `Behavior.receiveSignal` however allowing for easier handling of a specific signal type, e.g.:
+    ///
+    /// #### Example usage
+    /// ```
+    /// return .receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
+    ///     if terminated.path.name == "Juliet" {
+    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///     } else {
+    ///         return .ignore
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
+    /// - SeeAlso: `receiveSignal` which allows receiving multiple types of signals.
+    public static func receiveSpecificSignal<SpecificSignal: Signal>(_ signalType: SpecificSignal.Type, _ handle: @escaping (ActorContext<Message>, SpecificSignal) throws -> Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .signalHandling(
+            handleMessage: .unhandled,
+            handleSignal: { context, signal in
+                switch signal {
+                case let matchingSignal as SpecificSignal:
+                    return try handle(context, matchingSignal)
+                default:
+                    return .unhandled
+                }
+            })
+        )
+    }
+
 }
 
 public enum IllegalBehaviorError<M>: Error {
@@ -242,11 +350,26 @@ public enum IllegalBehaviorError<M>: Error {
 
 
 /// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
+///
+/// - SeeAlso: `Behavior` for general documentation about behaviors,
+/// - SeeAlso: `Behavior.receive` and `Behavior.receiveSignal` for closure-style behaviors corresponding to the
+///            `receive` and `receiveSignal` functions of the `ClassBehavior`.
 open class ClassBehavior<Message> {
+
+    /// Invoked each time the actor running this behavior is to receive a message.
+    /// The returned behavior will be used for handling the next incoming message or signal.
+    /// In order to remain the same behavior as currently, return `.same`.
+    ///
+    /// - SeeAlso: `Behavior.receive`
     open func receive(context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         return undefined(hint: "MUST override receive(context:message:) when extending ClassBehavior")
     }
 
+    /// Invoked each time the actor running this behavior is to receive a `Signal`.
+    /// The returned behavior will be used for handling the next incoming message or signal,
+    /// with the exception of signals like `Signals.PostStop`.
+    ///
+    /// - SeeAlso: `Behavior.receiveSignal`
     open func receiveSignal(context: ActorContext<Message>, signal: Signal) -> Behavior<Message> {
         return .unhandled
     }

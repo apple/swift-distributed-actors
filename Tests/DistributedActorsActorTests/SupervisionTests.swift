@@ -626,7 +626,7 @@ class SupervisionTests: XCTestCase {
     // All in all, TODO and cement the meaning in docs and tests.
 
     // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Handling faults inside receiveSignal
+    // MARK: Handling faults inside receiveSignal
 
     func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
         let parentProbe = testKit.spawnTestProbe(expecting: String.self)

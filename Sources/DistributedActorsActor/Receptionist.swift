@@ -250,8 +250,8 @@ internal enum LocalReceptionist {
     private static func startWatcher<M>(ref: BoxedHashableAnyReceivesSystemMessages, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
         let behavior: Behavior<Never> = .setup { context in
             context.watch(ref)
-            return .receiveSignal { _, signal in
-                if let signal = signal as? Signals.Terminated, signal.path == ref.path {
+            return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                if terminated.path == ref.path {
                     terminatedCallback()
                     return .stopped
                 }

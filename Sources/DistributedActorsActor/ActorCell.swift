@@ -468,7 +468,6 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed
-    // TODO: not sure about this design yet
     func notifyWatchersWeDied() {
         traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.path)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
