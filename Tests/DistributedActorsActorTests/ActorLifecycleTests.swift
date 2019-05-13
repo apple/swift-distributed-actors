@@ -26,6 +26,7 @@ class ActorLifecycleTests: XCTestCase {
         system.shutdown()
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: starting actors
 
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
@@ -85,6 +86,9 @@ class ActorLifecycleTests: XCTestCase {
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
         pnote("NOT IMPLEMENTED YET")
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Stopping actors
 
     func test_stopping_shouldDeinitTheBehavior() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")

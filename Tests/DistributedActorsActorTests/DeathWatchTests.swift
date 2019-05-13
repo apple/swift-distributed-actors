@@ -109,7 +109,7 @@ class DeathWatchTests: XCTestCase {
                         fatalError("no other message is expected")
                     }
                 }
-                .receiveSignal { (context, signal) in
+                .receiveSpecificSignal(Signals.Terminated.self) { _, signal in
                     p3_partnerOfNotActuallyWatching.tell("whoops: actually DID receive terminated!")
                     return .same
                 }

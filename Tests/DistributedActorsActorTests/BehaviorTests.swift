@@ -171,8 +171,37 @@ class BehaviorTests: XCTestCase {
         let ref: ActorRef<String> = try system.spawnAnonymous(MySignalActorBehavior(probe: p.ref))
         ref.tell("do it")
 
-        let terminated = try p.expectMessage()
+        _ = try p.expectMessage()
         // receiveSignal was invoked successfully
+    }
+
+    func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
+        let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-specificSignal-1")
+        let _: ActorRef<String> = try system.spawnAnonymous(.setup { context in
+            let _: ActorRef<Never> = try context.spawnWatchedAnonymous(.stopped)
+
+            return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
+                p.tell(terminated)
+                return .stopped
+            }
+        })
+
+        _ = try p.expectMessage()
+        // receiveSignalType was invoked successfully
+    }
+    func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "probe-specificSignal-2")
+        let ref: ActorRef<String> = try system.spawnAnonymous(Behavior<String>.receiveMessage ({ message in
+            return .stopped
+        }).receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
+                p.tell("got:\(postStop)")
+                return .stopped
+            }
+        )
+        ref.tell("please stop")
+
+        try p.expectMessage("got:PostStop()")
+        // receiveSignalType was invoked successfully
     }
 
     enum OrElseProtocol {

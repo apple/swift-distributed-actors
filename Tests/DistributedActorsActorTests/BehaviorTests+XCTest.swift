@@ -30,6 +30,8 @@ extension BehaviorTests {
                 ("test_receive_shouldReceiveManyMessagesInExpectedOrder", test_receive_shouldReceiveManyMessagesInExpectedOrder),
                 ("test_ClassBehavior_receivesMessages", test_ClassBehavior_receivesMessages),
                 ("test_ClassBehavior_receivesSignals", test_ClassBehavior_receivesSignals),
+                ("test_receiveSpecificSignal_shouldReceiveAsExpected", test_receiveSpecificSignal_shouldReceiveAsExpected),
+                ("test_receiveSpecificSignal_shouldNotReceiveOtherSignals", test_receiveSpecificSignal_shouldNotReceiveOtherSignals),
                 ("test_orElse_shouldExecuteFirstBehavior", test_orElse_shouldExecuteFirstBehavior),
                 ("test_orElse_shouldExecuteSecondBehavior", test_orElse_shouldExecuteSecondBehavior),
                 ("test_orElse_shouldNotExecuteSecondBehaviorOnIgnore", test_orElse_shouldNotExecuteSecondBehaviorOnIgnore),

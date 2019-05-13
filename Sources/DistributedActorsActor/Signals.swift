@@ -32,6 +32,9 @@ public protocol Signal {
 /// - SeeAlso: `Signal`, for a semantic overview of what signals are.
 public enum Signals {
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor Lifecycle Events
+
     /// Signal sent to an actor right before it is restarted (by supervision).
     ///
     /// The signal is delivered to the current "failing" behavior, before it is replaced with a fresh initial behavior instance.
@@ -56,9 +59,12 @@ public enum Signals {
         init() {}
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Death Watch Related Signals
+
     /// Signal sent to all watchers of an actor once the watchee has terminated.
     ///
-    /// - See also: [ChildTerminated]
+    /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
     /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
     public class Terminated: Signal, CustomStringConvertible {
         public let path: UniqueActorPath
@@ -81,6 +87,11 @@ public enum Signals {
     /// to kill kill itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
     /// In other words, if the parent spawns child actors but does not watch them, this is taken as not caring enough about
     /// their lifetime as to trigger termination itself if one of them terminates.
+    ///
+    /// - Note: Note that `ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
+    ///         you may choose to handle all `Terminated` signals the same way.
+    ///
+    /// - SeeAlso: `Terminated` which is sent when a watched actor terminates.
     public final class ChildTerminated: Terminated {
 
         /// Filled with the error that caused the child actor to terminate.
