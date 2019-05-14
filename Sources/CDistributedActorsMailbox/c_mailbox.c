@@ -456,8 +456,10 @@ MailboxRunResult cmailbox_run(
             // length, return `Reschedule` to signal the queue should be re-scheduled
 
             char msg[300];
+#ifdef SACT_TRACE_MAILBOX
             snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, *processed_activations);
             print_debug_status(mailbox, msg);
+#endif
             return MailboxRunResult_Reschedule;
         } else if (run_result == ActorRunResult_closed) {
             print_debug_status(mailbox, "terminating, completely closed now...");
