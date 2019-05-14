@@ -36,41 +36,52 @@ internal enum Child {
 ///
 /// Convenience methods for locating children are provided, although it is recommended to keep the `ActorRef`
 /// of spawned actors in the context of where they are used, rather than looking them up continuously.
-public struct Children {
+public class Children {
 
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
     typealias Name = String
     private var container: [Name: Child]
     private var stopping: [UniqueActorPath: AbstractCell]
+    // **CAUTION**: All access to `container` or `stopping` must be protected by `rwLock`
+    private let rwLock: ReadWriteLock
 
     public init() {
         self.container = [:]
         self.stopping = [:]
+        self.rwLock = ReadWriteLock()
     }
 
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
-        switch self.container[uniquePath.name] {
-        case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
-        case .some(.adapter(let child)):    return child.path == uniquePath
-        case .none:                         return false
+        return self.rwLock.withReaderLock {
+            switch self.container[uniquePath.name] {
+            case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
+            case .some(.adapter(let child)):    return child.path == uniquePath
+            case .none:                         return false
+            }
         }
     }
 
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
-        switch self.container[name] {
-        case .some(.cell(let child)):       return child.receivesSystemMessages as? ActorRef<T>
-        case .some(.adapter(let child)):    return child as? ActorRef<T>
-        case .none:                         return nil
+        return self.rwLock.withReaderLock {
+            switch self.container[name] {
+            case .some(.cell(let child)):       return child.receivesSystemMessages as? ActorRef<T>
+            case .some(.adapter(let child)):    return child as? ActorRef<T>
+            case .none:                         return nil
+            }
         }
     }
 
-    internal mutating func insert<T, R: ActorCell<T>>(_ childCell: R) {
-        self.container[childCell.path.name] = .cell(childCell)
+    internal func insert<T, R: ActorCell<T>>(_ childCell: R) {
+        self.rwLock.withWriterLockVoid {
+            self.container[childCell.path.name] = .cell(childCell)
+        }
     }
 
-    internal mutating func insert<R: AbstractAdapterRef>(_ adapterRef: R) {
-        self.container[adapterRef.path.name] = .adapter(adapterRef)
+    internal func insert<R: AbstractAdapterRef>(_ adapterRef: R) {
+        self.rwLock.withWriterLockVoid {
+            self.container[adapterRef.path.name] = .adapter(adapterRef)
+        }
     }
 
     /// Imprecise contains function, which only checks for the existence of a child actor by its name,
@@ -78,17 +89,21 @@ public struct Children {
     ///
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
-        return self.container.keys.contains(name)
+        return self.rwLock.withReaderLock {
+            return self.container.keys.contains(name)
+        }
     }
     /// Precise contains function, which checks if this children container contains the specific actor
     /// identified by the passed in path.
     ///
     /// - SeeAlso: `contains(_:)`
     internal func contains(identifiedBy uniquePath: UniqueActorPath) -> Bool {
-        switch self.container[uniquePath.name] {
-        case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
-        case .some(.adapter(let child)):    return child.path == uniquePath
-        case .none:                         return false
+        return self.rwLock.withReaderLock {
+            switch self.container[uniquePath.name] {
+            case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
+            case .some(.adapter(let child)):    return child.path == uniquePath
+            case .none:                         return false
+            }
         }
     }
 
@@ -96,14 +111,16 @@ public struct Children {
     /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
-    internal mutating func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
-        switch self.container[path.name] {
-        case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
-            return self.container.removeValue(forKey: path.name) != nil
-        case .some(.adapter(let child)) where child.path.uid == path.uid:
-            return self.container.removeValue(forKey: path.name) != nil
-        default:
-            return self.stopping.removeValue(forKey: path) != nil
+    internal func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
+        return self.rwLock.withWriterLock {
+            switch self.container[path.name] {
+            case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
+                return self.container.removeValue(forKey: path.name) != nil
+            case .some(.adapter(let child)) where child.path.uid == path.uid:
+                return self.container.removeValue(forKey: path.name) != nil
+            default:
+                return self.stopping.removeValue(forKey: path) != nil
+            }
         }
     }
 
@@ -114,7 +131,16 @@ public struct Children {
     /// Returns: `true` upon successfully marking the ref identified by passed in path as stopping
     @usableFromInline
     @discardableResult
-    internal mutating func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
+    internal func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
+        return self.rwLock.withWriterLock {
+            return self._markAsStoppingChild(identifiedBy: path)
+        }
+    }
+
+    // **CAUTION**: Only call this method when already holding `rwLock.writeLock`
+    @usableFromInline
+    @discardableResult
+    internal func _markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
         switch self.container[path.name] {
         case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
             self.container.removeValue(forKey: path.name)
@@ -131,17 +157,21 @@ public struct Children {
 
     @usableFromInline
     internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
-        try self.container.values.forEach {
-            switch $0 {
-            case .cell(let child): try body(child.receivesSystemMessages)
-            case .adapter: ()
+        return try self.rwLock.withReaderLock {
+            try self.container.values.forEach {
+                switch $0 {
+                case .cell(let child): try body(child.receivesSystemMessages)
+                case .adapter: ()
+                }
             }
         }
     }
 
     @usableFromInline
     internal var isEmpty: Bool {
-        return self.container.isEmpty && self.stopping.isEmpty
+        return self.rwLock.withReaderLock {
+            return self.container.isEmpty && self.stopping.isEmpty
+        }
     }
 
     @usableFromInline
@@ -158,7 +188,11 @@ extension Children: _ActorTreeTraversable {
     internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
 
-        for child in self.container.values {
+        let children = self.rwLock.withReaderLock {
+            return self.container.values
+        }
+
+        for child in children {
             // result of traversing / descending deeper into the tree
             let descendResult: TraversalResult<T>
             switch child {
@@ -194,7 +228,11 @@ extension Children: _ActorTreeTraversable {
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
         }
 
-        switch self.container[selector.value] {
+        let child = self.rwLock.withReaderLock {
+            return self.container[selector.value]
+        }
+
+        switch child {
         case .some(.cell(let child)):       return child._resolve(context: context.deeper)
         case .some(.adapter(let child)):    return child._resolve(context: context.deeper)
         case .none:                         return context.deadRef
@@ -208,7 +246,11 @@ extension Children: _ActorTreeTraversable {
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
         }
 
-        switch self.container[selector.value] {
+        let child = self.rwLock.withReaderLock {
+            return self.container[selector.value]
+        }
+
+        switch child {
         case .some(.cell(let child)):       return child._resolveUntyped(context: context.deeper)
         case .some(.adapter(let child)):    return child._resolveUntyped(context: context.deeper)
         case .none:                         return context.deadRef
@@ -225,22 +267,27 @@ extension Children {
     /// Stops given child actor (if it exists) regardless of what type of messages it can handle.
     ///
     /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
-    mutating func stop(named name: String) -> Bool {
-        return self._stop(named: name, includeAdapters: true)
+    func stop(named name: String) -> Bool {
+        return self.rwLock.withWriterLock {
+            return self._stop(named: name, includeAdapters: true)
+        }
     }
 
     /// INTERNAL API: Normally users should know what children they spawned and stop them more explicitly
     // We may open this up once it is requested enough however...
-    public mutating func stopAll(includeAdapters: Bool = true) {
-        self.container.keys.forEach { name in
-            _ = self._stop(named: name, includeAdapters: includeAdapters)
+    public func stopAll(includeAdapters: Bool = true) {
+        self.rwLock.withWriterLockVoid {
+            self.container.keys.forEach { name in
+                _ = self._stop(named: name, includeAdapters: includeAdapters)
+            }
         }
     }
 
-    internal mutating func _stop(named name: String, includeAdapters: Bool) -> Bool {
+    // **CAUTION**: Only call this method when already holding `rwLock.writeLock`
+    internal func _stop(named name: String, includeAdapters: Bool) -> Bool {
         // implementation similar to find, however we do not care about the underlying type
         switch self.container[name] {
-        case .some(.cell(let cell)) where self.markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path):
+        case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path):
             cell.receivesSystemMessages.sendSystemMessage(.stop)
             return true
         case .some(.adapter(let ref)) where includeAdapters:
