@@ -710,6 +710,16 @@ internal extension Behavior {
         }
     }
 
+    /// Returns `false` if canonicalizing behavior is known to not create a change in behavior.
+    /// For example `.same` or semantically equivalent behaviors.
+    @inlinable
+    var isChanging: Bool {
+        switch self.underlying {
+        case .same, .ignore, .unhandled: return false
+        default: return true
+        }
+    }
+
     /// Ensure that the behavior is in "canonical form", i.e. that all setup behaviors are reduced (run)
     /// before storing the behavior. This process may trigger executing setup(onStart) behaviors.
     ///

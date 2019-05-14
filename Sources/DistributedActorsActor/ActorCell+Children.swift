@@ -174,7 +174,7 @@ public class Children {
         }
     }
 
-    @usableFromInline
+    @inlinable
     internal var nonEmpty: Bool {
         return !self.isEmpty
     }

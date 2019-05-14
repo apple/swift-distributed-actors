@@ -233,7 +233,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
-        try self.becomeNext(behavior: next)
+        if next.isChanging {
+            try self.becomeNext(behavior: next)
+        }
 
         if !self.behavior.isStillAlive {
             self.children.stopAll()
@@ -242,7 +244,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         return self.runState
     }
 
-    @usableFromInline
+    @inlinable
     var runState: ActorRunResult {
         if self.continueRunning {
             return .continueRunning
@@ -322,9 +324,14 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         return self.runState
     }
 
-    @usableFromInline
+    @inlinable
     internal var continueRunning: Bool {
-        return (self.behavior.isStillAlive || self.children.nonEmpty) && !self.isSuspended
+        switch self.behavior.underlying {
+        case .suspended: return false
+        case .stopped, .failed: return self.children.nonEmpty
+        default: return true
+        }
+        //return (self.behavior.isStillAlive || self.children.nonEmpty) && !self.isSuspended
     }
 
     @usableFromInline
@@ -402,7 +409,6 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     @inlinable
     internal func becomeNext(behavior next: Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
-
         self.behavior = try self.behavior.canonicalize(context, next: next)
     }
 
