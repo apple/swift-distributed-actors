@@ -96,7 +96,7 @@ typedef void SupervisionClosureContext;
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef ActorRunResult (*InterpretMessageCallback)(DropMessageClosureContext*, void*, MailboxRunPhase);
+typedef ActorRunResult (*InterpretMessageCallback)(DropMessageClosureContext*, void*, void*, MailboxRunPhase);
 
 /*
  * Callback for Swift interop.
@@ -151,6 +151,7 @@ MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tom
  */
 MailboxRunResult cmailbox_run(
     CMailbox* mailbox,
+    void* cell,
     // message processing:
     InterpretMessageClosureContext* context, InterpretSystemMessageClosureContext* system_context,
     DropMessageClosureContext* dead_letter_context, DropMessageClosureContext* dead_letter_system_context,
