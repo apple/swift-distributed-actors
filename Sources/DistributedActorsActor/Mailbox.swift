@@ -66,6 +66,7 @@ internal final class Mailbox<Message> {
 
     /// If `true`, all messages should be attempted to be serialized before sending
     private let serializeAllMessages: Bool
+    private var _run: () -> Void = {}
 
     init(cell: ActorCell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         self.mailbox = cmailbox_create(capacity, maxRunLength)
@@ -267,6 +268,8 @@ internal final class Mailbox<Message> {
                 // guaranteed to be of our generic Message type, however the context could not close over the generic type
                 return renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
             })
+
+        self._run = self.run
     }
 
     deinit {
@@ -312,7 +315,7 @@ internal final class Mailbox<Message> {
         switch cmailbox_send_message(mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.path, "Enqueued message \(envelope.payload), scheduling for execution")
-            cell.dispatcher.execute(self.run)
+            cell.dispatcher.execute(self._run)
         case .alreadyScheduled:
             traceLog_Mailbox(self.path, "Enqueued message \(envelope.payload), someone scheduled already")
 
@@ -348,7 +351,7 @@ internal final class Mailbox<Message> {
         switch cmailbox_send_system_message(mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.path, "Enqueued system message \(systemMessage), scheduling for execution")
-            cell.dispatcher.execute(self.run)
+            cell.dispatcher.execute(self._run)
         case .alreadyScheduled:
             traceLog_Mailbox(self.path, "Enqueued system message \(systemMessage), someone scheduled already")
             
@@ -386,7 +389,7 @@ internal final class Mailbox<Message> {
         switch cmailbox_send_system_tombstone(mailbox, ptr) {
         case .mailboxTerminating:
             // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
-            cell.dispatcher.execute(self.run)
+            cell.dispatcher.execute(self._run)
         default:
             fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.path). THIS IS A BUG.")
         }
@@ -429,7 +432,7 @@ internal final class Mailbox<Message> {
         switch mailboxRunResult {
         case .reschedule:
             // pending messages, and we are the one who should should reschedule
-            cell.dispatcher.execute(self.run)
+            cell.dispatcher.execute(self._run)
         case .done:
             // No more messages to run, we are done here
             return
@@ -437,7 +440,7 @@ internal final class Mailbox<Message> {
         case .failureRestart:
             // FIXME: !!! we must know if we should schedule or not after a restart...
             traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
-            cell.dispatcher.execute(self.run)
+            cell.dispatcher.execute(self._run)
 
         case .failureTerminate:
             // We are now terminating. The run has been aborted and other threads were not yet allowed to activate this
