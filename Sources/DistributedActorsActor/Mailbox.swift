@@ -292,22 +292,23 @@ internal final class Mailbox<Message> {
             }
         }
 
-        guard let cell = self.cell else {
-            traceLog_Mailbox(self.path, "has already stopped, dropping message \(envelope)")
-            return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
-        }
-
         let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
-        func sendAndDropAsDeadLetter() {
-            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: cell.path))
+        func sendAndDropAsDeadLetter(cell: ActorCell<Message>?) {
+            if let cell = cell {
+                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: cell.path))
+            }
             _ = ptr.move()
             ptr.deallocate()
         }
 
         switch cmailbox_send_message(mailbox, ptr) {
         case .needsScheduling:
+            guard let cell = self.cell else {
+                traceLog_Mailbox(self.path, "has already stopped, dropping message \(envelope)")
+                return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
+            }
             traceLog_Mailbox(self.path, "Enqueued message \(envelope.payload), scheduling for execution")
             cell.dispatcher.execute(self._run)
         case .alreadyScheduled:
@@ -317,13 +318,13 @@ internal final class Mailbox<Message> {
             // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
             //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed 
             //       and we can immediately send things to dead letters then. 
-            sendAndDropAsDeadLetter()
+            sendAndDropAsDeadLetter(cell: self.cell)
         case .mailboxClosed:
             traceLog_Mailbox(self.path, "is CLOSED, dropping message \(envelope)")
-            sendAndDropAsDeadLetter()
+            sendAndDropAsDeadLetter(cell: self.cell)
         case .mailboxFull:
             traceLog_Mailbox(self.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter() // TODO "Drop" rather than DeadLetter
+            sendAndDropAsDeadLetter(cell: self.cell) // TODO "Drop" rather than DeadLetter
         }
     }
 
