@@ -258,6 +258,7 @@ MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tom
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
 MailboxRunResult cmailbox_run(
       CMailbox* mailbox,
+      void* cell,
       // message processing:
       void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
       InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
@@ -325,7 +326,7 @@ MailboxRunResult cmailbox_run(
 
             while (*message != NULL && (run_result != ActorRunResult_shouldStop && run_result != ActorRunResult_closed)) {
                 // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-                run_result = interpret_message(system_context, *message, *run_phase);
+                run_result = interpret_message(system_context, cell, *message, *run_phase);
                 *message = cmpsc_linked_queue_dequeue(mailbox->system_messages);
             }
 
@@ -388,7 +389,7 @@ MailboxRunResult cmailbox_run(
                 *processed_activations += SINGLE_USER_MESSAGE_MASK;
                 // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
                 // TODO: fix this dance
-                run_result = interpret_message(context, *message, *run_phase); // TODO: we can optimize the keep_running into the processed counter?
+                run_result = interpret_message(context, cell, *message, *run_phase); // TODO: we can optimize the keep_running into the processed counter?
 
                 // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
                 if ((run_result == ActorRunResult_shouldStop) && !is_terminating(status)) {
