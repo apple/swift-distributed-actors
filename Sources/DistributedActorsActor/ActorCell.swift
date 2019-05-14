@@ -308,7 +308,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         return self.runState
     }
 
-    func interpretClosure(_ closure: () throws -> Void) throws -> ActorRunResult {
+    func interpretClosure(_ closure: @escaping () throws -> Void) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
         traceLog_Cell("Applied closure, becoming: \(next)")
