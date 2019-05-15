@@ -48,5 +48,6 @@ registerBenchmark(SerializationProtobufBenchmarks)
 
 registerBenchmark(RingBenchmarks)
 registerBenchmark(ActorPingPongBenchmarks)
+registerBenchmark(ActorMessageFloodingBenchmarks)
 
 main()
