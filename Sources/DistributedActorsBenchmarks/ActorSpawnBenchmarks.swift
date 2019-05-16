@@ -1,0 +1,109 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+@testable import Swift Distributed ActorsActor
+import SwiftBenchmarkTools
+import DistributedActorsConcurrencyHelpers
+
+public let ActorSpawnBenchmarks: [BenchmarkInfo] = [
+    BenchmarkInfo(
+        name: "ActorSpawnBenchmarks.bench_SpawnTopLevel",
+        runFunction: { _ in try! bench_SpawnTopLevel(50_000) },
+        tags: [],
+        setUpFunction: { setUp() },
+        tearDownFunction: tearDown
+    ),
+    BenchmarkInfo(
+        name: "ActorSpawnBenchmarks.bench_SpawnChildren",
+        runFunction: { _ in try! bench_SpawnChildren(50_000) },
+        tags: [],
+        setUpFunction: { setUp() },
+        tearDownFunction: tearDown
+    ),
+]
+
+private func setUp() {
+    _system = ActorSystem("ActorSpawnBenchmarks")
+}
+private func tearDown() {
+    _system = nil
+}
+
+func bench_SpawnTopLevel(_ actorCount: Int) throws -> Void {
+    let timer = SwiftBenchmarkTools.Timer()
+
+    let start = timer.getTime()
+
+    for i in 1 ... actorCount {
+        let _: ActorRef<Never> = try system.spawn(.ignore, name: "test-\(i)")
+    }
+
+    let stop = timer.getTime()
+
+    let time = timer.diffTimeInNanoSeconds(from: start, to: stop)
+
+    let seconds = (Double(time) / 1_000_000_000)
+    let perSecond = Int(Double(actorCount) / seconds)
+
+    print("Spawned \(actorCount) top-level actors in \(String(format: "%.3f", seconds)) seconds. (\(perSecond) actors/s)")
+
+    let shutdownStart = timer.getTime()
+    system.shutdown()
+    let shutdownStop = timer.getTime()
+    let shutdownTime = timer.diffTimeInNanoSeconds(from: shutdownStart, to: shutdownStop)
+    let shutdownSeconds = (Double(shutdownTime) / 1_000_000_000)
+    let stopsPerSecond = Int(Double(actorCount) / shutdownSeconds)
+
+    print("Stopped \(actorCount) top-level actors in \(String(format: "%.3f", shutdownSeconds)) seconds. (\(stopsPerSecond) actors/s)")
+}
+
+func bench_SpawnChildren(_ actorCount: Int) throws -> Void {
+    let timer = SwiftBenchmarkTools.Timer()
+
+    let latch = CountDownLatch(from: 1)
+
+    let spawnerBehavior: Behavior<String> = .receive { context, _ in
+        for i in 1 ... actorCount {
+            let _: ActorRef<Never> = try system.spawn(.ignore, name: "test-\(i)")
+        }
+        latch.countDown()
+        return .same
+    }
+
+    let ref = try system.spawnAnonymous(spawnerBehavior)
+
+    let start = timer.getTime()
+
+    ref.tell("start")
+    latch.wait()
+
+    let stop = timer.getTime()
+
+    let time = timer.diffTimeInNanoSeconds(from: start, to: stop)
+
+    let seconds = (Double(time) / 1_000_000_000)
+    let perSecond = Int(Double(actorCount) / seconds)
+
+    print("Spawned \(actorCount) child actors in \(String(format: "%.3f", seconds)) seconds. (\(perSecond) actors/s)")
+
+    let shutdownStart = timer.getTime()
+    system.shutdown()
+    let shutdownStop = timer.getTime()
+    let shutdownTime = timer.diffTimeInNanoSeconds(from: shutdownStart, to: shutdownStop)
+    let shutdownSeconds = (Double(shutdownTime) / 1_000_000_000)
+    let stopsPerSecond = Int(Double(actorCount) / shutdownSeconds)
+
+    print("Stopped \(actorCount) child actors in \(String(format: "%.3f", shutdownSeconds)) seconds. (\(stopsPerSecond) actors/s)")
+}

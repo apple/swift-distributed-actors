@@ -207,7 +207,6 @@ internal final class Mailbox<Message> {
         // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
         // It has to implement the equivalent of `Supervisor.interpretSupervised`, for the fault handling path.
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
-            logger: cell.log,
             handleMessageFailure: { [weak _cell = cell] supervisionFailure, runPhase in
                 guard let cell = _cell else {
                     /// if we cannot unwrap the cell it means it was closed and deallocated
@@ -590,16 +589,8 @@ private struct InvokeSupervisionClosureContext {
     // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
     private let _describeMessage: (UnsafeMutableRawPointer) -> String
 
-    /// The cell's logger may be used to log information about the supervision handling.
-    /// We assume that since we run supervision only for "not fatal faults" the logger should still be in a usable state
-    /// as we run the supervision handling. The good thing is that all metadata of the cell's logger will be included in
-    /// crash logs then. It may we worth reconsidering if we need to be even more defensive here, e.g.
-    /// take a logger without potential user changes made to it etc.
-    private let _log: Logger
-
-    init(logger: Logger, handleMessageFailure: @escaping (Supervision.Failure, MailboxRunPhase) throws -> MailboxRunResult,
+    init(handleMessageFailure: @escaping (Supervision.Failure, MailboxRunPhase) throws -> MailboxRunResult,
          describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
-        self._log = logger
         self._handleMessageFailureBecauseC = handleMessageFailure
         self._describeMessage = describeMessage
     }
@@ -622,12 +613,6 @@ private struct InvokeSupervisionClosureContext {
             return self._describeMessage(failedMessageRaw)
         }
     }
-
-    @inlinable
-    var log: Logger {
-        return self._log
-    }
-
 }
 
 /// Renders a `SystemMessage` or user `Message` appropriately given a raw pointer to such message.

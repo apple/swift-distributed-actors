@@ -141,7 +141,8 @@ public class Children {
     @usableFromInline
     @discardableResult
     internal func _markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
-        switch self.container[path.name] {
+        let childOpt = self.container[path.name]
+        switch childOpt {
         case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
             self.container.removeValue(forKey: path.name)
             self.stopping[path] = child
@@ -286,7 +287,8 @@ extension Children {
     // **CAUTION**: Only call this method when already holding `rwLock.writeLock`
     internal func _stop(named name: String, includeAdapters: Bool) -> Bool {
         // implementation similar to find, however we do not care about the underlying type
-        switch self.container[name] {
+        let childOpt = self.container[name]
+        switch childOpt {
         case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path):
             cell.receivesSystemMessages.sendSystemMessage(.stop)
             return true
