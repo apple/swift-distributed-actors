@@ -22,21 +22,20 @@ public let ActorMessageFloodingBenchmarks: [BenchmarkInfo] = [
         name: "ActorMessageFloodingBenchmarks.10_000_000_messages",
         runFunction: { _ in try! bench_messageFlooding(10_000_000) },
         tags: [],
-        setUpFunction: { setUp(and: setUp_visitSingleRef) },
+        setUpFunction: { setUp() },
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "ActorMessageFloodingBenchmarks.bench_messageFlooding_send(10_000_000)",
         runFunction: { _ in try! bench_messageFlooding_send(10_000_000) },
         tags: [],
-        setUpFunction: { setUp(and: setUp_visitSingleRef) },
+        setUpFunction: { setUp() },
         tearDownFunction: tearDown
     )
 ]
 
-private func setUp(and postSetUp: () -> Void) {
-    _system = ActorSystem("ActorResolveBenchmarks")
-    postSetUp()
+private func setUp() {
+    _system = ActorSystem("ActorMessageFloodingBenchmarks")
 }
 private func tearDown() {
     system.shutdown()
@@ -74,7 +73,7 @@ func bench_messageFlooding(_ messageCount: Int) throws -> Void {
 
     let time = timer.diffTimeInNanoSeconds(from: start, to: stop)
 
-    let seconds = (Double(time) / 1000_000_000)
+    let seconds = (Double(time) / 1_000_000_000)
     let perSecond = Int(Double(messageCount) / seconds)
 
     print("Processed \(messageCount) message in \(String(format: "%.3f", seconds)) seconds \(perSecond) msgs/s")
