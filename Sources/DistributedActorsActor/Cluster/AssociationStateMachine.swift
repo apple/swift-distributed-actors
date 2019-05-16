@@ -86,10 +86,10 @@ internal struct AssociationRemoteControl {
         self.remoteAddress = remoteAddress
     }
 
-    func sendUserMessage<Message>(envelope: Envelope<Message>, recipient: UniqueActorPath) {
+    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: UniqueActorPath) {
         switch envelope.payload {
         case .userMessage(let message):
-            channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message, recipient: recipient)), promise: nil)
+            channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message as! Message, recipient: recipient)), promise: nil)
         case .closure:
             fatalError("Tried to send a closure to a remote actor. This should never happen and is a bug.")
         }
