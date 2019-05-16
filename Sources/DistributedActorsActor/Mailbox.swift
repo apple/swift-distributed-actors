@@ -17,15 +17,19 @@ import CSwiftDistributedActorsMailbox
 import Foundation
 import Logging
 
-internal enum WrappedMessage<Message> {
-    case userMessage(Message)
+// this used to be typed according to the actor message type, but we found
+// that it added some runtime overhead when retrieving the messages from the
+// queue, because additional metatype information was retrieved, therefore
+// we removed it
+internal enum WrappedMessage {
+    case userMessage(Any)
     case closure(() throws -> Void)
 }
 extension WrappedMessage: NoSerializationVerification {}
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
-internal struct Envelope<Message> {
-    let payload: WrappedMessage<Message>
+internal struct Envelope {
+    let payload: WrappedMessage
 
     // Note that we can pass around senders however we can not automatically get the type of them right.
     // We may want to carry around the sender path for debugging purposes though "[pathA] crashed because message [Y] from [pathZ]"
@@ -143,7 +147,7 @@ internal final class Mailbox<Message> {
         self.messageClosureContext = InterpretMessageClosureContext(exec: { cellPtr, envelopePtr, runPhase in
             assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
             let cell = cellPtr.assumingMemoryBound(to: ActorCell<Message>.self).pointee
-            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
+            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
 
@@ -154,7 +158,7 @@ internal final class Mailbox<Message> {
             switch msg {
             case .userMessage(let message): 
                 traceLog_Mailbox(self.path, "INVOKE MSG: \(message)")
-                return try cell.interpretMessage(message: message)
+                return try cell.interpretMessage(message: message as! Message)
             case .closure(let f):
                 traceLog_Mailbox(self.path, "INVOKE CLOSURE: \(String(describing: f))")
                 return try cell.interpretClosure(f)
@@ -183,7 +187,7 @@ internal final class Mailbox<Message> {
 
         self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: {
                 [deadLetters = self.deadLetters, path = self.path] envelopePtr in
-            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope<Message>.self)
+            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
             let envelope = envelopePtr.move()
             let wrapped = envelope.payload
             switch wrapped {
@@ -277,13 +281,13 @@ internal final class Mailbox<Message> {
     }
 
     @inlinable
-    func sendMessage(envelope: Envelope<Message>) {
+    func sendMessage(envelope: Envelope) {
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
                 if case .userMessage(let message) = envelope.payload {
                     messageDescription = "[\(message)]:\(type(of: message))"
-                    try cell?.system.serialization.verifySerializable(message: message)
+                    try cell?.system.serialization.verifySerializable(message: message as! Message)
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription). " + 
@@ -292,7 +296,7 @@ internal final class Mailbox<Message> {
             }
         }
 
-        let ptr = UnsafeMutablePointer<Envelope<Message>>.allocate(capacity: 1)
+        let ptr = UnsafeMutablePointer<Envelope>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
         func sendAndDropAsDeadLetter(cell: ActorCell<Message>?) {
@@ -641,7 +645,7 @@ private func renderMessageDescription<Message>(runPhase: MailboxRunPhase, failed
 // such as the InvokeSupervisionClosureContext where we invoke things via a function calling into this one to avoid the
 // generics issue.
 private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointer, type: Message.Type) -> String {
-    let envelope = ptr.assumingMemoryBound(to: Envelope<Message>.self).move()
+    let envelope = ptr.assumingMemoryBound(to: Envelope.self).move()
     switch envelope.payload {
     case .closure: return "closure"
     case .userMessage(let message): return "[\(message)]:\(Message.self)"

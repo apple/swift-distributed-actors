@@ -66,7 +66,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     func sendUserMessage(_ message: Message) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendUserMessage: \(message)")
         if let remoteControl = self.remoteControl {
-            remoteControl.sendUserMessage(envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
+            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
         } else {
             self.deadLetters.adapted().tell(message)
         }

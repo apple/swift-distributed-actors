@@ -214,7 +214,7 @@ internal enum ClusterReceptionist {
             let remoteReceptionistPath = try UniqueActorPath(path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")], address: remoteControl.remoteAddress), uid: ActorUID.wellKnown)
             let path = ClusterReceptionist.makeRemotePath(register._boxHashableAnyAddressableActorRef.path, localAddress: context.system.settings.cluster.uniqueBindAddress)
 
-            remoteControl.sendUserMessage(envelope: Envelope(payload: .userMessage(Replicate(key: register._key.boxed, path: path))), recipient: remoteReceptionistPath)
+            remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: Envelope(payload: .userMessage(Replicate(key: register._key.boxed, path: path))), recipient: remoteReceptionistPath)
         }
     }
 
@@ -227,7 +227,7 @@ internal enum ClusterReceptionist {
 
         for remoteControl in remoteControls {
             let path = try UniqueActorPath(path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")], address: remoteControl.remoteAddress), uid: ActorUID.wellKnown)
-            remoteControl.sendUserMessage(envelope: Envelope(payload: .userMessage(ClusterReceptionist.FullStateRequest(replyTo: ref))), recipient: path)
+            remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: Envelope(payload: .userMessage(ClusterReceptionist.FullStateRequest(replyTo: ref))), recipient: path)
         }
     }
 
