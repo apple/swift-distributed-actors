@@ -24,6 +24,13 @@ public let ActorMessageFloodingBenchmarks: [BenchmarkInfo] = [
         tags: [],
         setUpFunction: { setUp(and: setUp_visitSingleRef) },
         tearDownFunction: tearDown
+    ),
+    BenchmarkInfo(
+        name: "ActorMessageFloodingBenchmarks.bench_messageFlooding_send(10_000_000)",
+        runFunction: { _ in try! bench_messageFlooding_send(10_000_000) },
+        tags: [],
+        setUpFunction: { setUp(and: setUp_visitSingleRef) },
+        tearDownFunction: tearDown
     )
 ]
 
@@ -71,4 +78,26 @@ func bench_messageFlooding(_ messageCount: Int) throws -> Void {
     let perSecond = Int(Double(messageCount) / seconds)
 
     print("Processed \(messageCount) message in \(String(format: "%.3f", seconds)) seconds \(perSecond) msgs/s")
+}
+
+func bench_messageFlooding_send(_ messageCount: Int) throws -> Void {
+    let timer = SwiftBenchmarkTools.Timer()
+    let latch = CountDownLatch(from: 1)
+
+    let ref = try system.spawnAnonymous(flooding_behavior(latch: latch, messageCount: messageCount))
+
+    let startSending = timer.getTime()
+
+    for i in 1 ... messageCount {
+        ref.tell(i)
+    }
+    let stopSending = timer.getTime()
+
+    latch.wait()
+
+    let sendingTime = timer.diffTimeInNanoSeconds(from: startSending, to: stopSending)
+    let sendingSeconds = (Double(sendingTime) / 1000_000_000)
+    let sendingPerSecond = Int((Double(messageCount) / sendingSeconds))
+
+    print("Sending \(messageCount) messages took:    \(String(format: "%.3f", sendingSeconds)) seconds \(sendingPerSecond) msgs/s")
 }
