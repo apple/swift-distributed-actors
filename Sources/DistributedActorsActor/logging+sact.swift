@@ -67,7 +67,11 @@ public struct ActorLogger {
     static func make<T>(context: ActorContext<T>) -> Logger {
         var proxyHandler = ActorOriginLogHandler(context)
         proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
-        proxyHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
+        if context.system.settings.cluster.enabled {
+            proxyHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
+        } else {
+            proxyHandler.metadata["actorSystemName"] = .string(context.system.name)
+        }
 
         var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
         log.logLevel = context.system.settings.defaultLogLevel
@@ -78,7 +82,13 @@ public struct ActorLogger {
         // we need to add our own storage, and can't do so to Logger since it is a struct...
         // so we need to make such "proxy log handler", that does out actor specific things.
         var proxyHandler = ActorOriginLogHandler(system)
-        proxyHandler.metadata["actorSystemAddress"] = .lazyStringConvertible { () in system.settings.cluster.bindAddress }
+        if system.settings.cluster.enabled {
+            proxyHandler.metadata["actorSystemAddress"] = .lazyStringConvertible { () in
+                system.settings.cluster.bindAddress
+            }
+        } else {
+            proxyHandler.metadata["actorSystemName"] = .string(system.name)
+        }
 
         return Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
     }
@@ -165,14 +175,17 @@ public struct ActorOriginLogHandler: LogHandler {
                 actorPathPart = ""
             }
 
-            let actorSystemAddress: String
+            let actorSystemIdentity: String
             if let d = l.effectiveMetadata?.removeValue(forKey: "actorSystemAddress") {
-                actorSystemAddress = "[\(d)]"
+                actorSystemIdentity = "[\(d)]"
             } else {
-                actorSystemAddress = ""
+                if let name = l.effectiveMetadata?.removeValue(forKey: "actorSystemName") {
+                    actorSystemIdentity = "[\(name)]"
+                } else {
+                    actorSystemIdentity = ""
+                }
             }
 
-            // mock impl until we get the real infra
             var msg = ""
 
             // TODO free function to render metadata?
@@ -180,7 +193,7 @@ public struct ActorOriginLogHandler: LogHandler {
                 msg += "[\(meta.map {"\($0)=\($1)" }.joined(separator: " "))]" // forces any lazy metadata to be rendered
             }
 
-            msg += "\(actorSystemAddress)"
+            msg += "\(actorSystemIdentity)"
             msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
             msg += "\(dispatcherPart)"
             msg += "\(actorPathPart)"
