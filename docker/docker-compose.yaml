@@ -47,19 +47,12 @@ services:
     <<: *common
     command: /bin/bash -cl "swift run Swift Distributed ActorsBenchmarks"
 
-  echo:
+  sample-crash:
     <<: *common
-    tty: true
-    ports:
-      - "9999:9999"
-    command: /bin/bash -cl "swift run NIOEchoServer 0.0.0.0 9999"
-
-  http:
+    command: /bin/bash -cl "swift run Swift Distributed ActorsSampleLetItCrash div-by-0"
+  sample-crash-actor:
     <<: *common
-    tty: true
-    ports:
-      - "8888:8888"
-    command: /bin/bash -cl "swift run NIOHTTP1Server 0.0.0.0 8888"
+    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' Swift Distributed ActorsSampleLetItCrash div-by-0 actor"
 
   bash:
     <<: *common
