@@ -47,8 +47,15 @@ void sact_complain_and_pause_thread(void* ctx);
 /** Return current (p)Thread ID */
 int sact_my_tid();
 
+typedef enum {
+    UNSET = 0,
+    SETTING = 1,
+    SET = 2,
+} SignalHandlerStatus;
+
 // we assume that setting the signal handler once for our application does the job.
-static atomic_flag handler_set = ATOMIC_FLAG_INIT;
+static _Atomic SignalHandlerStatus handler_status = ATOMIC_VAR_INIT(UNSET);
+
 
 // Each executing actor sets this value for the duration of its mailbox run.
 // If `false`, it means we captured a signal while NOT in the context of an actor and should NOT attempt to handle it.
@@ -57,8 +64,6 @@ static _Thread_local bool tl_fault_handling_enabled = false;
 static _Thread_local jmp_buf error_jmp_buf;
 
 static _Thread_local CCrashDetails* tl_crash_details = NULL;
-
-pthread_mutex_t lock;
 
 jmp_buf* sact_get_error_jmp_buf() {
     return &error_jmp_buf;
@@ -160,9 +165,8 @@ void sact_disable_fault_handling() {
 
 /* returns errno and sets errno appropriately, 0 on success */
 int sact_install_swift_crash_handler() {
-    pthread_mutex_lock(&lock); // TODO not really used?
-
-    if (atomic_flag_test_and_set(&handler_set) == 0) {
+    SignalHandlerStatus status = UNSET;
+    if (atomic_compare_exchange_strong(&handler_status, &status, SETTING)) {
         /* we won the race; we only set the signal handler once */
 
         struct sigaction sa = { 0 };
@@ -175,7 +179,6 @@ int sact_install_swift_crash_handler() {
             int errno_save = errno;
             errno = errno_save;
             assert(errno_save != 0);
-            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
@@ -187,7 +190,6 @@ int sact_install_swift_crash_handler() {
             int errno_save = errno;
             errno = errno_save;
             assert(errno_save != 0);
-            pthread_mutex_unlock(&lock);
             return errno_save;
         }
 
@@ -198,15 +200,15 @@ int sact_install_swift_crash_handler() {
         sa.sa_sigaction = sact_unrecoverable_sighandler;
         sigaction(SIGSEGV, &sa, NULL);
         sigaction(SIGBUS, &sa, NULL);
-
-        pthread_mutex_unlock(&lock);
-        return 0;
+        atomic_store_explicit(&handler_status, SET, memory_order_release);
     } else {
-        pthread_mutex_unlock(&lock);
-
-        errno = EBUSY;
-        return errno;
+        while (status != SET) {
+            status = atomic_load_explicit(&handler_status, memory_order_acquire);
+            // wait for handler to be set
+        }
     }
+
+    return 0;
 }
 
 int sact_my_tid() {
