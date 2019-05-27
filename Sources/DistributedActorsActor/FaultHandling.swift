@@ -80,8 +80,6 @@ internal struct FaultHandling {
         switch handlerInstalledCode {
         case 0:
             () // installed properly
-        case EBUSY:
-            () // not a problem, we installed the handler previously already
         default:
             throw FaultHandlingError.unableToInstallFaultHandlingHook(errorCode: Int(handlerInstalledCode))
         }
