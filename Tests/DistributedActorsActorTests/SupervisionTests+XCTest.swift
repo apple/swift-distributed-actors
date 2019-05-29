@@ -30,6 +30,7 @@ extension SupervisionTests {
                 ("test_restartSupervised_throws_shouldRestart", test_restartSupervised_throws_shouldRestart),
                 ("test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod", test_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod),
                 ("test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod", test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod),
+                ("test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior", test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior),
                 ("test_restartSupervised_fatalError_shouldRestartWithConstantBackoff", test_restartSupervised_fatalError_shouldRestartWithConstantBackoff),
                 ("test_restart_throws_shouldHandleFailureWhenInterpretingStart", test_restart_throws_shouldHandleFailureWhenInterpretingStart),
                 ("test_restart_fatalError_shouldHandleFailureWhenInterpretingStart", test_restart_fatalError_shouldHandleFailureWhenInterpretingStart),

@@ -324,26 +324,9 @@ internal enum _Behavior<Message> {
     case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>) // TODO: make them throws?
     case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
-    // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
-    ///
-    /// Note that this behavior _adds_ the ability to handle signals in addition to an existing message handling behavior
-    /// (e.g. ``receive`) rather than replacing it.
-    ///
-    /// #### Example usage
-    /// ```
-    /// let withSignalHandling = behavior.receiveSignal { context, signal in
-    case custom(behavior: ClassBehavior<Message>)
-    ///         return .unhandled
-    ///     }
-    ///     if terminated.path.name == "Juliet" {
+    case `class`(ClassBehavior<Message>)
     indirect case stopped(postStop: Behavior<Message>?, reason: StopReason)
-    ///     } else {
-    ///         return .ignore
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// - SeeAlso: `Signals` for a listing of signals that may be handled using this behavior.
+
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
     case same
@@ -398,13 +381,17 @@ public enum IllegalBehaviorError<M>: Error {
 
 extension Behavior {
 
-    /// Allows defining actors by extending the [[ClassBehavior]] class.
+    /// Allows defining actors by extending the `ClassBehavior` class.
     ///
     /// This allows for easier storage of mutable state, since one can utilize instance variables for this,
     /// rather than closing over state like it is typical in the more function heavy (class-less) style.
-    // TODO: rename it, as we not want to give of the impression this is "the" way to have custom behaviors, all ways are valid (!) (store something in a let etc)
-    public static func custom(behavior: ClassBehavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .custom(behavior: behavior))
+    public static func `class`(_ behavior: @escaping () -> ClassBehavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .setup { context in
+            return .class(behavior)
+        })
+    }
+    public static func `class`(_ behavior: ClassBehavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .class(behavior))
     }
 
 }
@@ -522,7 +509,7 @@ public extension Behavior {
         switch self.underlying {
         case let .receiveMessage(recv):          return try recv(message)
         case let .receive(recv):                 return try recv(context, message)
-        case let .custom(behavior):              return try behavior.receive(context: context, message: message) // TODO rename "custom"
+        case let .class(behavior):               return try behavior.receive(context: context, message: message)
         case let .signalHandling(recvMsg, _):    return try recvMsg.interpretMessage(context: context, message: message) // TODO: should we keep the signal handler even if not .same? // TODO: more signal handling tests
         case let .intercept(inner, interceptor): return try Interceptor.handleMessage(context: context, behavior: inner, interceptor: interceptor, message: message)
         case let .orElse(first, second):         return try self.interpretOrElse(context: context, first: first, orElse: second, message: message, file: file, line: line)
@@ -580,7 +567,7 @@ public extension Behavior {
         case .setup(_):
             return .unhandled
 
-        case .custom(let behavior):
+        case .class(let behavior):
             return behavior.receiveSignal(context: context, signal: signal)
 
         case .same:
@@ -748,7 +735,7 @@ internal extension Behavior {
                 case .same:                         return base
                 case .ignore:                       return base
                 case .unhandled:                    return base
-                case .custom:                       return canonical
+                case .class:                        return canonical
 
                 case .stopped(.none, let reason):   return .stopped(postStop: base, reason: reason)
                 case .stopped(.some, _):            return canonical
