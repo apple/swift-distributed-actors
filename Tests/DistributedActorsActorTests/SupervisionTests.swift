@@ -498,6 +498,41 @@ class SupervisionTests: XCTestCase {
         #endif
     }
 
+    func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+        let ref = try system.spawn(
+            MyCrashingClassBehavior(p.ref),
+            name: "class-behavior", 
+            props: .addingSupervision(strategy: .restart(atMost: 2, within: nil)))
+
+        ref.tell("one")
+        // throws and restarts
+        ref.tell("two")
+
+        try p.expectMessage("init")
+        let id1 = try p.expectMessage()
+        try p.expectMessage("message:one")
+        try p.expectMessage("init")
+        let id2 = try p.expectMessage()
+        try p.expectMessage("message:two")
+
+        id2.shouldNotEqual(id1)
+    }
+    class MyCrashingClassBehavior: ClassBehavior<String> {
+        let probe: ActorRef<String>
+
+        init(_ probe: ActorRef<String>) {
+            self.probe = probe
+            super.init()
+            probe.tell("init")
+            probe.tell("\(ObjectIdentifier(self))")
+        }
+
+        override func receive(context: ActorContext<String>, message: String) throws -> Behavior<String> {
+            probe.tell("message:\(message)")
+            throw FaultyError.boom(message: "Booming on purpose, in class behavior!")
+        }
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision with Backoff
