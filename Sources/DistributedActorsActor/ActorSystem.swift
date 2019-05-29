@@ -221,8 +221,8 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnUserActor(behavior, name: name, props: props)
     }
 
-    public func spawn<Message>(_ behavior: ClassBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try spawn(.custom(behavior: behavior), name: name, props: props)
+    public func spawn<Message>(_ makeBehavior: @autoclosure @escaping () -> ClassBehavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
+        return try spawn(.setup { context in Behavior.class(makeBehavior()) }, name: name, props: props)
     }
 
     // Implementation note:
@@ -233,8 +233,8 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnUserActor(behavior, name: self.anonymousNames.nextName(), props: props)
     }
 
-    public func spawnAnonymous<Message>(_ behavior: ClassBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self.spawnAnonymous(.custom(behavior: behavior), props: props)
+    public func spawnAnonymous<Message>(_ makeBehavior: @autoclosure @escaping () -> ClassBehavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self.spawnAnonymous(.setup { context in Behavior.class(makeBehavior()) }, props: props)
     }
 
     internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {

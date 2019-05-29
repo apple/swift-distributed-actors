@@ -118,6 +118,9 @@ extension RemoteActorRefProvider {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: LocalActorRefProvider
+
 internal struct LocalActorRefProvider: _ActorRefProvider {
     private let root: Guardian
 
@@ -134,9 +137,6 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         behavior: Behavior<Message>, path: UniqueActorPath,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message> {
-
-        // pprint("Spawning [\(path)], with behavior: [\(behavior)]")
-
         return try root.makeChild(path: path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let cell: ActorCell<Message> = ActorCell(
