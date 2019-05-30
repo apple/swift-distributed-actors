@@ -177,6 +177,31 @@ class BehaviorTests: XCTestCase {
         // receiveSignal was invoked successfully
     }
 
+    class MyStartingBehavior: ClassBehavior<String> {
+        let probe: ActorRef<String>
+
+        init(probe: ActorRef<String>) {
+            self.probe = probe
+            super.init()
+            self.probe.tell("init")
+        }
+
+        override public func receive(context: ActorContext<String>, message: String) throws -> Behavior<String> {
+            probe.tell("\(message)")
+            throw TestError("Boom on purpose!")
+        }
+    }
+    func test_ClassBehavior_executesInitOnStartSignal() throws {
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "probe-7a")
+        let ref: ActorRef<String> = try system.spawnAnonymous(MyStartingBehavior(probe: p.ref), props: .addingSupervision(strategy: .restart(atMost: 1, within: nil)))
+        ref.tell("hello")
+
+        try p.expectMessage("init")
+        try p.expectMessage("hello")
+        // restarts and executes init in new instance
+        try p.expectMessage("init")
+    }
+
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
         let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-specificSignal-1")
         let _: ActorRef<String> = try system.spawnAnonymous(.setup { context in
@@ -293,7 +318,7 @@ class BehaviorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
         let first: Behavior<Never> = .setup { context in
             let child: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
-                throw TestError.error
+                throw TestError("Boom")
             }, name: "child")
             child.tell("Please throw now.")
 
@@ -364,16 +389,12 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("postStop")
     }
 
-    enum TestError: Error {
-        case error
-    }
-
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<Never> = .stopped(postStop: .signalHandling(handleMessage: .ignore) { _, signal in
             p.tell("postStop")
-            throw TestError.error
+            throw TestError("Boom")
         })
 
         let ref = try system.spawnAnonymous(behavior)
