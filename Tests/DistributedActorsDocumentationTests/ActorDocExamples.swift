@@ -235,6 +235,35 @@ class ActorDocExamples: XCTestCase {
 
         _ = behavior
     }
+
+    func example_defer_simple() {
+        // tag::defer_simple[]
+        let behavior: Behavior<String> = .setup { context in
+            context.defer(until: .received) { // <1>
+                print("received-1")
+            }
+            context.defer(until: .receiveFailed) { // <2>
+                print("receiveFailed-2")
+            }
+            context.defer(until: .terminated) { // <3>
+                print("terminated-3")
+            }
+            context.defer(until: .failed) { // <4>
+                print("failed-4")
+            }
+
+            return .same // (a)
+            // or
+            return .stopped // (b)
+            // or
+            throw TestError("Whoops!") // (c)
+            // or
+            fatalError("Whoops!") // (d)
+        }
+        // end::defer_simple[]
+
+        _ = behavior
+    }
 }
 
 // tag::suggested_props_pattern[]

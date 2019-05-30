@@ -263,6 +263,37 @@ image::actor_lifecycle.png[Actor Lifecycle]
 7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
     the actor will transition to `Stopped` and `Terminated`, similarity to how it would have if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
 
+=== Actor Lifecycle-bound defer statements
+
+WARNING: This is an experimental API and may still evolve shape and semantics.
+
+In addition to lifecycle api:Signals[enum] actors also offer a more convenient in-line `context.defer(until:)`
+functions which expose semantics similar to Swift's `defer` blocks however bound to actor lifecycle, as well as
+being able to react to soft-faults.
+
+NOTE: Swift's `defer` statements currently do not execute upon soft _fault_ such as fatal error, so in order to guarantee
+      their execution upon such fault, please use the `.receiveFailed` or `.failed` until markers, since they work both
+      for `throws` of `Error`s as well as soft faults such as `fatalError`, force-unwrapping or similar.
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=defer_simple]
+----
+<1> Executes upon each completed receipt of message (be it successful or failed); Executes on (a), (b), (c) or (d);
+<2> Executes only upon a failed receipt of a message, otherwise is discarded after receive completes; Executes on (c) or (d);
+<3> Executes once actor terminates or restarts, either by failing or stopping normally; All defers using this `when`
+    are accumulated over the lifetime of this actor incarnation, watch out to not enqueue such callbacks infinitely (!);
+    Executes on (b), (c) or (d);
+<4> Executes once actor fails (or restarts), yet, is dropped (without executing) upon clean stopping; All defers using this `when`
+    are accumulated over the lifetime of this actor incarnation, watch out to not enqueue such callbacks infinitely (!);
+    Executes on (b) or (c);
+
+The order in which `context.defer` statements execute is the same as with Swift's own `defer`, i.e. they go "bottom to top,"
+just like popping elements of a stack of these deferred behaviors, where we added then when invoking the defer functions.
+
+If any defers exist from a previous message reduction (i.e. another `.terminated` defer), those would be naturally processed,
+after the "more recent" ones are processed.
+
 === Stopping Actors
 
 An actor can be stopped either by its own decision to do so, a failure occurring, or its parent sending it a stop signal which the actor must abide to.

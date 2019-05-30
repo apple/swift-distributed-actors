@@ -453,6 +453,14 @@ internal class Supervisor<Message> {
         //
         // Since this is a special situation somewhat, in which the tight crash loop could consume considerable resources (and maybe never recover),
         // we limit the number of times the restart is attempted
+
+        do {
+            try context._downcastUnsafe.deferred.invokeAllAfterReceiveFailed()
+        } catch {
+            context.log.warning("Failed while invoking deferred behaviors after failed receive. \(error)")
+            errorToHandle = error
+        }
+
         repeat {
             context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingType), handling with \(self)")
 
@@ -746,7 +754,7 @@ internal enum SupervisionRestartDelayedBehavior<Message> {
                 switch result {
                 case .failure(let error):
                     context.log.error("Failed result during backoff restart. Error was: \(error). Forcing actor to crash.")
-                    return .failed(error: error)
+                    throw error
                 case .success:
                     // _downcast safe, we know this may only ever run for a local ref, thus it will definitely be an ActorCell
                     return try context._downcastUnsafe._restartComplete(with: replacement)

@@ -113,7 +113,6 @@ class BarExclusivityViolation {
     }
 }
 func crashExclusiveAccessViolation() {
-    BarExclusivityViolation().doIt()
 }
 
 // Results from binary compiled as: `swift build -c release`
