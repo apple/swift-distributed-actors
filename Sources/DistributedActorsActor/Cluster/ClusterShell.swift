@@ -413,7 +413,7 @@ extension ClusterShell {
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)]. Error: \(err)")
                 signalOnceUnbound.offerOnce(())
-                return .failed(error: err)
+                throw err
             }
         }
     }

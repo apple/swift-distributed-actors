@@ -122,6 +122,7 @@ class BehaviorTests: XCTestCase {
             return "Thanks for: <\(m)>"
         }
     }
+
     // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesMessages() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "testActor-5")
@@ -165,6 +166,7 @@ class BehaviorTests: XCTestCase {
             return .same
         }
     }
+
     // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesSignals() throws {
         let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-6a")
@@ -189,14 +191,15 @@ class BehaviorTests: XCTestCase {
         _ = try p.expectMessage()
         // receiveSignalType was invoked successfully
     }
+
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "probe-specificSignal-2")
-        let ref: ActorRef<String> = try system.spawnAnonymous(Behavior<String>.receiveMessage ({ message in
+        let ref: ActorRef<String> = try system.spawnAnonymous(Behavior<String>.receiveMessage({ message in
             return .stopped
         }).receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
-                p.tell("got:\(postStop)")
-                return .stopped
-            }
+            p.tell("got:\(postStop)")
+            return .stopped
+        }
         )
         ref.tell("please stop")
 
@@ -347,7 +350,6 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage(.second)
         try p.expectNoMessage(for: .milliseconds(10))
     }
-
 
 
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
@@ -725,7 +727,7 @@ class BehaviorTests: XCTestCase {
         let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<String> = .setup { context in 
+        let behavior: Behavior<String> = .setup { context in
             p.tell("initializing")
             return context.awaitResult(of: future, timeout: .milliseconds(100)) { result in
                 suspendProbe.tell(result)
@@ -747,7 +749,7 @@ class BehaviorTests: XCTestCase {
             guard error.underlying is TimeoutError else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
-        default: 
+        default:
             throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
         }
 

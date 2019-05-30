@@ -37,7 +37,7 @@ services:
 
   test:
     <<: *common
-    command: /bin/bash -cl "swift test && ./scripts/integration_tests.sh"
+    command: /bin/bash -cl "swift test"
 
   validate-docs:
     <<: *common

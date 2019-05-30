@@ -506,7 +506,7 @@ extension Mailbox {
             failure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
         }
 
-        cell.reportCrashFail(error: failure)
+        cell.reportCrashFail(cause: failure)
     }
 }
 

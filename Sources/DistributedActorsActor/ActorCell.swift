@@ -59,11 +59,30 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     internal let _props: Props
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Fault handling infrastructure
 
     // We always have a supervisor in place, even if it is just the ".stop" one.
     @usableFromInline internal let supervisor: Supervisor<Message>
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stopped anyway
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Defer
+
+    @usableFromInline
+    internal var deferred = DefersContainer()
+
+    override public func `defer`(until: DeferUntilWhen,
+                                 file: String = #file, line: UInt = #line,
+                                 _ closure: @escaping () -> Void) {
+        do {
+            let deferred = ActorDeferredClosure(until: until, closure, file: file, line: line)
+            try self.deferred.push(deferred)
+        } catch {
+            // FIXME: Only reason this fails silently and not fatalErrors is since it would easily get into crash looping infinitely...
+            self.log.error("Attempted to invoke context.defer nested in another context.defer execution. This is currently not supported. \(error)")
+        }
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Death watch infrastructure
@@ -226,12 +245,13 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
 
-        // if a behavior was wrapped with supervision, this interpretMessage would encapsulate and contain the throw
         let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
         #if SACT_TRACE_CELL
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
+
+        try self.deferred.invokeAllAfterReceived()
 
         if next.isChanging {
             try self.becomeNext(behavior: next)
@@ -328,10 +348,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
-        case .stopped, .failed: return self.children.nonEmpty
-        default: return true
+        case .stopped:   return self.children.nonEmpty
+        default:         return true
         }
-        //return (self.behavior.isStillAlive || self.children.nonEmpty) && !self.isSuspended
     }
 
     @usableFromInline
@@ -366,12 +385,14 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     /// Similar to `fail` however assumes that the current mailbox run will never complete, which can happen when we crashed,
     /// and invoke this function from a signal handler.
-    public func reportCrashFail(error: Error) {
+    public func reportCrashFail(cause: MessageProcessingFailure) {
 
         // if supervision or configurations or failure domain dictates something else will happen, explain it to the user here
         let crashHandlingExplanation = "Terminating actor, process and thread remain alive."
 
-        log.error("Actor crashing, reason: [\(error)]:\(type(of: error)). \(crashHandlingExplanation)")
+        log.error("Actor crashing, reason: [\(cause)]:\(type(of: cause)). \(crashHandlingExplanation)")
+
+        self.behavior = self.behavior.makeFailed(cause: .fault(cause))
     }
 
     /// Used by supervision, from failure recovery.
@@ -382,6 +403,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     @inlinable public func _restartPrepare() throws {
         self.children.stopAll(includeAdapters: false)
         self.timers.cancelAll() // TODO cancel all except the restart timer
+
+        // since we are restarting that means that we have failed
+        try self.deferred.invokeAllAfterFailing()
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
@@ -455,6 +479,8 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         self.notifyParentWeDied()
         self.notifyWatchersWeDied()
 
+        self.invokePendingDeferredClosuresWhileTerminating()
+
         do {
             _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PostStop())
         } catch {
@@ -465,7 +491,12 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         // TODO validate all the nulling out; can we null out the cell itself?
         self._deathWatch = nil
         self.messageAdapters = [:]
-        self.behavior = .stopped // TODO or failed...
+
+        // become stopped, if not already
+        switch self.behavior.underlying {
+        case .stopped: () // already marked as stopped
+        default: self.behavior = .stopped
+        }
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myPath)) has completely terminated, and will never act again.")
 
@@ -482,6 +513,26 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         let parent: AnyReceivesSystemMessages = self._parent
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.path)], parent [\(parent.path)]")
         parent.sendSystemMessage(.childTerminated(ref: myself._boxAnyAddressableActorRef()))
+    }
+
+    func invokePendingDeferredClosuresWhileTerminating() {
+        do {
+            switch self.behavior.underlying {
+            case .stopped(_, let reason):
+                switch reason {
+                case .failure:
+                    try self.deferred.invokeAllAfterFailing()
+                case .stopMyself, .stopByParent:
+                    try self.deferred.invokeAllAfterStop()
+                }
+            case .failed:
+                try self.deferred.invokeAllAfterFailing()
+            default:
+                fatalError("Potential bug. Should only be invoked on .stopped / .failed")
+            }
+        } catch {
+            self.log.error("Invoking context.deferred closures threw: \(error), remaining closures will NOT be invoked. Proceeding with termination.")
+        }
     }
 
     // MARK: Spawn implementations
@@ -646,7 +697,7 @@ extension ActorCell: CustomStringConvertible {
 
 internal protocol FailableActorCell {
     /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
-    func reportCrashFail(error: Error)
+    func reportCrashFail(cause: MessageProcessingFailure)
 }
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children

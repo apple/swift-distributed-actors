@@ -17,7 +17,7 @@
 /// share a reference with that specific part directly. There are different reasons
 /// for using the receptionist over direct sharing of references, e.g. parts of
 /// the system can be brought up independently and then lookup the reference of
-/// snother part once it's ready, or subscribe to be notified once the other
+/// another part once it's ready, or subscribe to be notified once the other
 /// part has registered. Actors usually register themselves with the receptionist
 /// as part of their setup process.
 ///
