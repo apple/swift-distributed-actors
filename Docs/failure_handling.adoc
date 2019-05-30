@@ -10,6 +10,7 @@ CAUTION: **The current supervision implementation** (of "faults" specifically) *
          It "works, but..." will leak memory that the actor has allocated in case of
          supervision handling a fault (e.g. a division by zero). The application process will remain alive, the fault
          will be logged and handled by stopping or restarting the offending actor, however resources will leak. +
+         This behavior can be controlled with the `supervisionMode` setting on api:ActorSystemSettings[struct]. +
          +
          Supervision also handles `Error` throws which is safe in the same way throws in normal Swift applications are.
 
