@@ -111,7 +111,9 @@ public final class ActorSystem {
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         do {
-            try FaultHandling.installCrashHandling()
+            if settings.faultSupervisionMode.isEnabled {
+                try FaultHandling.installCrashHandling()
+            }
         } catch {
             CSwift Distributed ActorsMailbox.sact_dump_backtrace()
             fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")

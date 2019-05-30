@@ -70,6 +70,7 @@ internal final class Mailbox<Message> {
 
     /// If `true`, all messages should be attempted to be serialized before sending
     private let serializeAllMessages: Bool
+    private let handleCrashes: Bool
     private var _run: () -> Void = {}
 
     init(cell: ActorCell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
@@ -79,8 +80,8 @@ internal final class Mailbox<Message> {
         self.deadLetters = cell.system.deadLetters
 
         // TODO not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        let serialization: SerializationSettings? = self.cell?.system.settings.serialization
-        self.serializeAllMessages = serialization?.allMessages ?? false
+        self.serializeAllMessages = cell.system.settings.serialization.allMessages
+        self.handleCrashes = cell.system.settings.faultSupervisionMode.isEnabled
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -396,9 +397,11 @@ internal final class Mailbox<Message> {
 
     @inlinable
     func run() {
-        // For every run we make we mark "we are inside of an mailbox run now" and remove the marker once the run completes.
-        // This is because fault handling MUST ONLY be triggered for mailbox runs, we do not want to handle arbitrary failures on this thread.
-        FaultHandling.enableFaultHandling()
+        if self.handleCrashes {
+            // For every run we make we mark "we are inside of an mailbox run now" and remove the marker once the run completes.
+            // This is because fault handling MUST ONLY be triggered for mailbox runs, we do not want to handle arbitrary failures on this thread.
+            FaultHandling.enableFaultHandling()
+        }
         defer { FaultHandling.disableFaultHandling() }
 
         guard var cell = self.cell else {
@@ -416,7 +419,7 @@ internal final class Mailbox<Message> {
 
         // Run the mailbox:
         let mailboxRunResult: MailboxRunResult = cmailbox_run(mailbox,
-            &cell,
+            &cell, self.handleCrashes,
             &messageClosureContext, &systemMessageClosureContext,
             &deadLetterMessageClosureContext, &deadLetterSystemMessageClosureContext,
             interpretMessage, dropMessage,
