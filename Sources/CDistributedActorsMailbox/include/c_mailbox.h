@@ -151,7 +151,7 @@ MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tom
  */
 MailboxRunResult cmailbox_run(
     CMailbox* mailbox,
-    void* cell,
+    void* cell, bool handle_crashes,
     // message processing:
     InterpretMessageClosureContext* context, InterpretSystemMessageClosureContext* system_context,
     DropMessageClosureContext* dead_letter_context, DropMessageClosureContext* dead_letter_system_context,

@@ -258,7 +258,7 @@ MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tom
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
 MailboxRunResult cmailbox_run(
       CMailbox* mailbox,
-      void* cell,
+      void* cell, bool handle_crashes,
       // message processing:
       void* context, void* system_context, void* dead_letter_context, void* dead_letter_system_context,
       InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
@@ -289,7 +289,7 @@ MailboxRunResult cmailbox_run(
     // We store the current stack frame to `tl_error_jmp_buf` so that we can restore
     // it to jump back here in case an error occurs during message processing.
     // `sigsetjmp` also stores the signal mask when the second argument is non-zero.
-    if (sigsetjmp(*error_jmp_buf, 1)) {
+    if (handle_crashes && sigsetjmp(*error_jmp_buf, 1)) {
         // Supervision re-entry point; once a fault has occurred we resume here.
 
         // We attempt to invoke a supervisor for this crashing behavior:
