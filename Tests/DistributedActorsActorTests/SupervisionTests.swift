@@ -384,7 +384,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start-1", props: .addingSupervision(strategy: strategy))
 
         try probe.expectMessage("failing")
         try probe.expectMessage("starting")
@@ -419,7 +419,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start-2", props: .addingSupervision(strategy: strategy))
 
         try probe.expectMessage("starting")
         ref.tell("test")
@@ -444,7 +444,7 @@ class SupervisionTests: XCTestCase {
             }
         }
 
-        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start", props: .addingSupervision(strategy: strategy))
+        let ref: ActorRef<String> = try system.spawn(behavior, name: "fail-in-start-3", props: .addingSupervision(strategy: strategy))
         probe.watch(ref)
         for _ in 1...5 {
             try probe.expectMessage("starting")

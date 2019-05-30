@@ -73,11 +73,63 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Timers
+
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<Message> {
         return undefined()
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor Lifecycle-bound defer
+
+    /// - warning: Experimental API
+    ///
+    /// Similar to Swift's `defer` however bound to the enclosing actors lifecycle.
+    ///
+    /// Allows deferring execution of a closure until specified life-cycle event happens.
+    /// Most useful for running cleanup upon a fault or error, without having to explicitly prepare setup and `PostStop` signal handlers.
+    ///
+    /// Care should be taken to not accidentally grow the defer queue infinitely, e.g. always appending a
+    /// `defer(until: .termination)` on each handled message, as this way the defer queue could grow infinitely.
+    ///
+    /// #### Invocation order:
+    /// Deferred blocks are invoked in reverse order, while taking into account the lifecycle event to which it was delayed.
+    /// E.g. deferring `print("A")` followed by deferring `print("B")` will result in `B` being printed, followed by `A`.
+    ///
+    /// #### Example Usage:
+    /// ```
+    /// .receive { context, message in
+    ///     let resource = makeResource(message)
+    ///
+    ///     context.defer(until: .received) {
+    ///        context.log.info("Closing (1)")
+    ///        resource.complete()
+    ///     }
+    ///     context.defer(until: .receiveFailed) {
+    ///        context.log.info("Marking Failed (2)")
+    ///        resource.markFailed()
+    ///     }
+    ///
+    /// // Output, if receive FAILED (threw or soft-faulted) after the defer calls:
+    /// - "Closing (1)"
+    /// - "Marking Failed (2)"
+    ///
+    /// // Output, if receive completed successfully (no failures):
+    /// - "Closing (1)"
+    /// ```
+    ///
+    /// #### Concurrency:
+    ///  - MUST NOT be invoked concurrently i.e. from the "outside" of the current actor.
+    public func `defer`(until: DeferUntilWhen,
+                        file: String = #file, line: UInt = #line,
+                        _ closure: @escaping () -> Void) {
+        return undefined()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Death Watch
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
     /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
@@ -123,6 +175,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
     public func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {

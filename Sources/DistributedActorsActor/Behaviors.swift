@@ -18,7 +18,12 @@
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
 public struct Behavior<Message> {
     @usableFromInline
-    internal let underlying: _Behavior<Message>
+    let underlying: _Behavior<Message>
+
+    @usableFromInline
+    init(underlying: _Behavior<Message>) {
+        self.underlying = underlying
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -275,14 +280,6 @@ extension Behavior {
 // MARK: Internal behavior creators
 
 internal extension Behavior {
-    /// Internal way of expressing a failed actor.
-    ///
-    /// **Associated Values**
-    ///   - `error` cause of the actor's failing.
-    @usableFromInline
-    static func failed(error: Error) -> Behavior<Message> {
-        return Behavior(underlying: .failed(error: error))
-    }
 
     /// Allows handling signals such as termination or lifecycle events.
     @usableFromInline
@@ -315,17 +312,29 @@ internal extension Behavior {
     static func stopped(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
         return Behavior(underlying: .stopped(postStop: postStop, reason: reason))
     }
+
+    /// Internal way of expressing a failed actor, retains the behavior that has failed internally.
+    ///
+    /// - parameters
+    ///   - error: cause of the actor's failing.
+    @usableFromInline
+    func makeFailed(cause: Supervision.Failure) -> Behavior<Message> {
+        return Behavior(underlying: _Behavior<Message>.failed(behavior: self, cause: cause))
+    }
 }
 
 
 @usableFromInline
 internal enum _Behavior<Message> {
-    case receiveMessage(_ handle: (Message) throws -> Behavior<Message>) // TODO: make them throws?
-    case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>) // TODO: make them throws?
     case setup(_ onStart: (ActorContext<Message>) throws -> Behavior<Message>)
 
+    case receive(_ handle: (ActorContext<Message>, Message) throws -> Behavior<Message>)
+    case receiveMessage(_ handle: (Message) throws -> Behavior<Message>)
+
     case `class`(ClassBehavior<Message>)
+
     indirect case stopped(postStop: Behavior<Message>?, reason: StopReason)
+    indirect case failed(behavior: Behavior<Message>, cause: Supervision.Failure)
 
     indirect case signalHandling(handleMessage: Behavior<Message>,
                                  handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
@@ -336,8 +345,6 @@ internal enum _Behavior<Message> {
     indirect case intercept(behavior: Behavior<Message>, with: Interceptor<Message>) // TODO for printing it would be nicer to have "supervised" here, though, modeling wise it is exactly an intercept
 
     indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
-
-    case failed(error: Error)
 
     case suspend(handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
     indirect case suspended(previousBehavior: Behavior<Message>, handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
@@ -522,7 +529,7 @@ public extension Behavior {
         case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
 
         case .stopped:           fatalError("Illegal attempt to interpret message with .stopped behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
-        case .failed(let error): fatalError("Illegal attempt to interpret message with .stopped behavior! Actor should not be acting anymore. Original failure was: \(error). Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .failed:            fatalError("Illegal attempt to interpret message with .failed behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
 
         case .suspend:
             fatalError("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
@@ -543,6 +550,10 @@ public extension Behavior {
             } else {
                 return .same
             }
+
+        case .failed(let behavior, let cause):
+            return try Behavior(underlying: .failed(behavior: behavior.interpretSignal(context: context, signal: signal), cause: cause))
+
         case .signalHandling(_, let handleSignal):
             return try handleSignal(context, signal)
         case .orElse(let first, let second):
@@ -577,8 +588,6 @@ public extension Behavior {
         case .unhandled:
             return .unhandled
 
-        case .failed:
-            return .unhandled
         case .suspend:
             return .unhandled
         }
@@ -655,7 +664,7 @@ internal extension Behavior {
     var isTerminal: Bool {
         switch self.underlying {
         case .stopped, .failed: return true
-        default: return false
+        default:       return false
         }
     }
 
@@ -737,8 +746,9 @@ internal extension Behavior {
                 case .unhandled:                    return base
                 case .class:                        return canonical
 
-                case .stopped(.none, let reason):   return .stopped(postStop: base, reason: reason)
-                case .stopped(.some, _):            return canonical
+                case .stopped(.none, let reason): return .stopped(postStop: base, reason: reason)
+                case .stopped(.some, _):          return canonical
+                case .failed:                     return canonical
 
                 case .orElse(let first, let second):
                     let canonicalFirst = try canonicalize0(context, base: canonical, next: first, depth: deeper)
@@ -760,9 +770,6 @@ internal extension Behavior {
                     return canonical
 
                 case .receive, .receiveMessage:
-                    return canonical
-
-                case .failed:
                     return canonical
                 }
             }

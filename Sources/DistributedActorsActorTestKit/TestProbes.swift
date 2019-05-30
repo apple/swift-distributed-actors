@@ -78,7 +78,7 @@ final public class ActorTestProbe<Message> {
                                  terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { (context, message) in
             guard let cell = context.myself._downcastUnsafe.cell else {
-                return .failed(error: TestProbeInitializationError.failedToObtainUnderlyingCell)
+                throw TestProbeInitializationError.failedToObtainUnderlyingCell
             }
 
             switch message {
