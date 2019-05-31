@@ -442,22 +442,13 @@ MailboxRunResult cmailbox_run(
             // as other conditions may hold, yet we really are ready to terminate immediately.
             print_debug_status(mailbox, "terminating, notifying swift mailbox...");
             return MailboxRunResult_Close;
-        } else if (old_activations == *processed_activations && // processed everything
-            cmpsc_linked_queue_non_empty(mailbox->system_messages) && // but pending system messages it seems
-            activations(try_activate(mailbox)) == 0) { // need to activate again (mark that we have system messages)
-            // If we processed_activations all messages (including system messages) that have been
-            // present when we started to process messages and there are new system
-            // messages in the queue, but the mailbox has not been re-scheduled yet
-            // return `Reschedule` to signal the queue should be re-scheduled
-            print_debug_status(mailbox, "Run complete, shouldReschedule:true, pending system messages\n");
-            return MailboxRunResult_Reschedule;
         } else if ((old_activations > *processed_activations && !is_suspended(old_status)) || has_system_messages(old_status)) {
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
 
-            char msg[300];
 #ifdef SACT_TRACE_MAILBOX
+            char msg[300];
             snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, *processed_activations);
             print_debug_status(mailbox, msg);
 #endif
