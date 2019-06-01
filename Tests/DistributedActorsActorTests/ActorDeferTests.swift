@@ -353,5 +353,21 @@ class ActorDeferTests: XCTestCase {
         try p.expectMessages(count: 5).shouldEqual(["message:hello", "C", "NEST", "B", "A"])
 
     }
+
+    // regression test for a bug caused by not setting the actor behavior to failed
+    // in case canonicalization after setup fails
+    func test_executeDefer_whenSetupReturnsSame() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+        let b: Behavior<Never> = .setup { context in
+            context.defer(until: .terminated) {
+                p.tell("A")
+            }
+            return .same
+        }
+
+        _ = try system.spawnAnonymous(b)
+
+        try p.expectMessage("A")
+    }
     
 }
