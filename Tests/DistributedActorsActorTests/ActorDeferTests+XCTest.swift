@@ -43,6 +43,7 @@ extension ActorDeferTests {
                 ("test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction", test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction),
                 ("test_mixedDefers_shouldExecuteAtRightPointsInTime_failed", test_mixedDefers_shouldExecuteAtRightPointsInTime_failed),
                 ("test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped", test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped),
+                ("test_executeDefer_whenSetupReturnsSame", test_executeDefer_whenSetupReturnsSame),
            ]
    }
 }
