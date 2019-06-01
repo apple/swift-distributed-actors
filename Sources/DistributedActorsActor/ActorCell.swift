@@ -370,6 +370,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
     internal func fail(_ error: Error) {
         self._myselfInACell.mailbox.setFailed()
+        self.behavior = self.behavior.makeFailed(cause: .error(error))
         // TODO: we could handle here "wait for children to terminate"
 
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
