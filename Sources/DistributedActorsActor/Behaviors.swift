@@ -506,7 +506,7 @@ public extension Behavior {
 
     /// Interpret the passed in message.
     ///
-    /// Note: The returned behavior MUST be [[Behavior.canonicalize]]-ed in the vast majority of cases.
+    /// Note: The returned behavior MUST be `Behavior.canonicalize`-ed in the vast majority of cases.
     // Implementation note: We don't do so here automatically in order to keep interpretations transparent and testable.
     @inlinable
     func interpretMessage(context: ActorContext<Message>, message: Message, file: StaticString = #file, line: UInt = #line) throws -> Behavior<Message> {
