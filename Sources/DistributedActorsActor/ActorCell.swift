@@ -104,7 +104,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     private let _dispatcher: MessageDispatcher
 
     /// Guaranteed to be set during ActorRef creation
-    /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling [[myself]].
+    /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling `myself`.
     @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(
         path: self._path,
         cell: self,
@@ -362,7 +362,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     ///
     /// May ONLY be invoked by the Mailbox.
     ///
-    /// Special handling is applied to [[DeathPactError]] since if that error is passed in here, we know that `.terminated`
+    /// Special handling is applied to `DeathPactError` since if that error is passed in here, we know that `.terminated`
     /// was not handled and we have to adhere to the DeathPact contract by stopping this actor as well.
     ///
     /// We only FORCE the sending of a tombstone if we know we have parked the thread because an actual failure happened,
@@ -428,7 +428,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     }
 
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
-    /// Always invoke [[becomeNext]] rather than assigning to `self.behavior` manually.
+    /// Always invoke `becomeNext` rather than assigning to `self.behavior` manually.
     ///
     /// Returns: `true` if next behavior is .stopped and appropriate actions will be taken
     @inlinable

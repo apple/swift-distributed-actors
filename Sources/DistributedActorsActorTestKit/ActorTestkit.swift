@@ -23,7 +23,7 @@ import XCTest
 /// Due to their asynchronous nature Actors are sometimes tricky to write assertions for,
 /// since all communication is asynchronous and no access to internal state is offered.
 ///
-/// The [[ActorTestKit]] offers a number of helpers such as test probes and helper functions to
+/// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
 final public class ActorTestKit {
 
@@ -69,7 +69,7 @@ public struct ActorTestKitSettings {
 
 public extension ActorTestKit {
 
-    /// Spawn an [[ActorTestProbe]] which offers various assertion methods for actor messaging interactions.
+    /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     // TODO rename expecting to "receiving"? -- ktoso
     func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
