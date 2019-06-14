@@ -500,8 +500,7 @@ class SupervisionTests: XCTestCase {
 
     func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
-        let ref = try system.spawn(
-            MyCrashingClassBehavior(p.ref),
+        let ref = try system.spawn(.class { MyCrashingClassBehavior(p.ref) },
             name: "class-behavior", 
             props: .addingSupervision(strategy: .restart(atMost: 2, within: nil)))
 
