@@ -129,7 +129,7 @@ class BehaviorTests: XCTestCase {
 
         let messages = NotSynchronizedAnonymousNamesGenerator(prefix: "message-")
 
-        let ref: ActorRef<TestMessage> = try system.spawnAnonymous(MyActorBehavior())
+        let ref: ActorRef<TestMessage> = try system.spawnAnonymous(.class { MyActorBehavior() })
 
         // first we send many messages
         for i in 0...10 {
@@ -170,7 +170,7 @@ class BehaviorTests: XCTestCase {
     // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesSignals() throws {
         let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-6a")
-        let ref: ActorRef<String> = try system.spawnAnonymous(MySignalActorBehavior(probe: p.ref))
+        let ref: ActorRef<String> = try system.spawnAnonymous(.class { MySignalActorBehavior(probe: p.ref) })
         ref.tell("do it")
 
         _ = try p.expectMessage()
@@ -193,7 +193,8 @@ class BehaviorTests: XCTestCase {
     }
     func test_ClassBehavior_executesInitOnStartSignal() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "probe-7a")
-        let ref: ActorRef<String> = try system.spawnAnonymous(MyStartingBehavior(probe: p.ref), props: .addingSupervision(strategy: .restart(atMost: 1, within: nil)))
+        let ref: ActorRef<String> = try system.spawnAnonymous(.class { MyStartingBehavior(probe: p.ref) },
+            props: .addingSupervision(strategy: .restart(atMost: 1, within: nil)))
         ref.tell("hello")
 
         try p.expectMessage("init")

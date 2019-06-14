@@ -392,15 +392,11 @@ extension Behavior {
     ///
     /// This allows for easier storage of mutable state, since one can utilize instance variables for this,
     /// rather than closing over state like it is typical in the more function heavy (class-less) style.
-    public static func `class`(_ behavior: @escaping () -> ClassBehavior<Message>) -> Behavior<Message> {
+    public static func `class`(_ makeBehavior: @escaping () -> ClassBehavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .setup { context in
-            return .class(behavior)
+            return Behavior(underlying: .class(makeBehavior()))
         })
     }
-    public static func `class`(_ behavior: ClassBehavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .class(behavior))
-    }
-
 }
 
 /// Allows writing actors in "class style" by extending this behavior and spawning it using `.custom(MyBehavior())`
