@@ -363,14 +363,14 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter definded per type. Creating a new adapter will
     /// replace an existing adapter.
-    public func messageAdapter<From>(_ adapter: @escaping (From) -> Message) throws -> ActorRef<From> {
-        return try self.messageAdapter(for: From.self, with: adapter)
+    public final func messageAdapter<From>(_ adapter: @escaping (From) -> Message) -> ActorRef<From> {
+        return self.messageAdapter(for: From.self, with: adapter)
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter definded per type. Creating a new adapter will
     /// replace an existing adapter.
-    public func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) throws -> ActorRef<From> {
+    public func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         return undefined()
     }
 }

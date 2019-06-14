@@ -580,14 +580,22 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     private var messageAdapters: [FullyQualifiedTypeName: AnyAddressableActorRef] = [:]
 
-    override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) throws -> ActorRef<From> {
+    override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         let name = self.system.anonymousNames.nextName()
-        let adaptedPath = try self.path.makeChildPath(name: name, uid: ActorUID.random())
+        do {
+            let adaptedPath = try self.path.makeChildPath(name: name, uid: ActorUID.random())
 
-        let ref = ActorRefAdapter(self.myself, path: adaptedPath, converter: adapter)
+            let ref = ActorRefAdapter(self.myself, path: adaptedPath, converter: adapter)
 
-        self._children.insert(ref)
-        return ref
+            self._children.insert(ref)
+            return ref
+        } catch {
+            fatalError("""
+                       Failed while creating message adapter. This should never happen, since message adapters have unique names 
+                       generated for them using sequential names. Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)? 
+                       Error: \(error)
+                       """)
+        }
     }
 }
 
