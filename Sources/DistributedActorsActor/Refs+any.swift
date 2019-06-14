@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Type erasure for ActorRef
 
-/// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
+/// Type erased form of `AddressableActorRef` in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
 public protocol AnyAddressableActorRef {
     var path: UniqueActorPath { get }
@@ -23,7 +23,7 @@ public protocol AnyAddressableActorRef {
 }
 
 // Implementation notes:
-// Any [[AddressableRef]] is Hashable as well as can be packed as AnyHashable (for type-erasure)
+// Any `AddressableRef` is Hashable as well as can be packed as AnyHashable (for type-erasure)
 public extension AddressableActorRef {
     func asHashable() -> AnyHashable {
         return AnyHashable(self)
@@ -60,7 +60,7 @@ internal protocol AnyReceivesMessages: AnyReceivesSystemMessages {
 internal struct BoxedHashableAnyAddressableActorRef: Hashable, AnyAddressableActorRef {
     private let anyRef: AnyAddressableActorRef
 
-    /// Easiest used with [[ActorRefWithCell]]
+    /// Easiest used with `ActorRefWithCell`
     public init<Ref: AnyAddressableActorRef & Hashable>(ref: Ref) {
         self.anyRef = ref
     }
@@ -141,7 +141,7 @@ extension BoxedHashableAnyAddressableActorRef: CustomStringConvertible, CustomDe
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Type erasure for ReceivesSystemMessages
 
-/// Type erased form of [[AddressableActorRef]] in order to be used as existential type.
+/// Type erased form of `AddressableActorRef` in order to be used as existential type.
 @usableFromInline
 internal protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
     func sendSystemMessage(_ message: SystemMessage)
@@ -155,7 +155,7 @@ internal protocol AnyReceivesSystemMessages: AnyAddressableActorRef {
 internal struct BoxedHashableAnyReceivesSystemMessages: Hashable, AnyReceivesSystemMessages {
     private let anyRef: AnyReceivesSystemMessages
 
-    /// Easiest used with [[ActorRefWithCell]]
+    /// Easiest used with `ActorRefWithCell`
     public init(ref: AnyReceivesSystemMessages) {
         self.anyRef = ref
     }

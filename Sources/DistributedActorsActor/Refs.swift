@@ -17,11 +17,11 @@ import CSwiftDistributedActorsMailbox
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
 
-/// The most basic of types representing an [ActorRef] - without the ability to send messages to it.
+/// The most basic of type representing an `ActorRef<Message>` - without the ability to send messages to it.
 ///
 /// Useful for keeping an actor reference as key of some kind, e.g. in scenarios where an actor is
 /// "responsible for" other actors whose message types may be completely different, so keeping their references
-/// in a same-typed [ActorRef<M>] collection would not be possible.
+/// in a same-typed `ActorRef<Message>` collection would not be possible.
 public protocol AddressableActorRef: Hashable {
 
     /// The `UniqueActorPath` under which the actor is located.

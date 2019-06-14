@@ -130,7 +130,7 @@ extension UniqueActorPath {
 ///
 /// Names of user actors MUST:
 /// - not start with `$` (those names are reserved for Swift Distributed Actors internal system actors)
-/// - contain only ASCII characters and select special characters (listed in [[ValidPathSymbols.extraSymbols]]
+/// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`
 ///
 /// - Example: `/user/master/worker`
 public struct ActorPath: PathRelationships, Equatable, Hashable {
@@ -242,7 +242,7 @@ extension PathRelationships {
     ///
     /// Note: Path relationships only take into account the path segments, and can not be used
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
-    ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
+    ///       Such relationships must be confirmed by using the `ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
     /// - Parameter path: The path that is suspected to be the parent of `self`
     /// - Returns: `true` if this [ActorPath] is a direct descendant of `maybeParentPath`, `false` otherwise
@@ -253,7 +253,7 @@ extension PathRelationships {
     ///
     /// Note: Path relationships only take into account the path segments, and can not be used
     ///       to confirm whether or not a specific actor is the child of another another (identified by another unique path).
-    ///       Such relationships must be confirmed by using the [[ActorContext.children.hasChild(:UniqueActorPath)]] method. TODO: this does not exist yet
+    ///       Such relationships must be confirmed by using the `ActorContext.children.hasChild(:UniqueActorPath)` method. TODO: this does not exist yet
     ///
     /// - Parameter path: The path that is suspected to be a child of `self`
     /// - Returns: `true` if this [ActorPath] is a direct ancestor of `maybeChildPath`, `false` otherwise

@@ -419,7 +419,7 @@ extension ActorTestProbe {
 
     // MARK: Expecting termination signals
 
-    /// Expects a signal to be enqueued to this actor within the default [[expectationTimeout]].
+    /// Expects a signal to be enqueued to this actor within the default `expectationTimeout`.
     public func expectSignal(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
@@ -444,7 +444,7 @@ extension ActorTestProbe {
     /// There is no difference between keeping the passed in reference or using the returned ref from this method.
     /// The actor is the being watched subject, not a specific reference to it.
     ///
-    /// This enables it to use [[expectTerminated]] to await for the watched actors termination.
+    /// This enables it to use `expectTerminated` to await for the watched actors termination.
     /// 
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
@@ -488,7 +488,7 @@ extension ActorTestProbe {
         return terminated // ok!
     }
 
-    /// Awaits termination of all passed in actors in any order within the default [[expectationTimeout]].
+    /// Awaits termination of all passed in actors in any order within the default `expectationTimeout`.
     ///
     /// - Warning: Remember to first `watch` the actors you are expecting termination for,
     ///            otherwise the termination signal will never be received.
