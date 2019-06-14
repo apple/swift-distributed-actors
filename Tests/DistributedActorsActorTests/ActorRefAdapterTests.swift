@@ -31,7 +31,7 @@ class ActorRefAdapterTests: XCTestCase {
         let refProbe = testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
 
         let behavior: Behavior<String> = .setup { context in
-            refProbe.tell(try context.messageAdapter { "\($0)" })
+            refProbe.tell(context.messageAdapter { "\($0)" })
             return .receiveMessage { msg in
                 probe.ref.tell(msg)
                 return .same
@@ -55,7 +55,7 @@ class ActorRefAdapterTests: XCTestCase {
         let probe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let behavior: Behavior<Int> = .setup { context in
-            probe.tell(try context.messageAdapter { _ in 0 })
+            probe.tell(context.messageAdapter { _ in 0 })
             return .receiveMessage { _ in
                 return .stopped
             }
@@ -91,7 +91,7 @@ class ActorRefAdapterTests: XCTestCase {
                 case .crash:
                     throw Boom()
                 case .createAdapter(let replyTo):
-                    replyTo.tell(try context.messageAdapter { .message("\($0)") })
+                    replyTo.tell(context.messageAdapter { .message("\($0)") })
                     return .same
                 case .stop:
                     return .stopped
@@ -133,7 +133,7 @@ class ActorRefAdapterTests: XCTestCase {
                 switch $0 {
                 case .createAdapter(let replyTo):
                     let counter = adapterCounter
-                    replyTo.tell(try context.messageAdapter { .message("adapter-\(counter):\($0)") })
+                    replyTo.tell(context.messageAdapter { .message("adapter-\(counter):\($0)") })
                     adapterCounter += 1
                     return .same
                 case .message(let string):
