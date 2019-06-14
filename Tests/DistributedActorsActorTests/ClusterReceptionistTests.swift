@@ -176,7 +176,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         refA.tell("stop")
         refB.tell("stop")
 
-        try remoteLookupProbe.expectMessage().refs.count.shouldEqual(1)
-        try remoteLookupProbe.expectMessage().refs.count.shouldEqual(0)
+        try remoteLookupProbe.expectMessage(within: .seconds(1)).refs.count.shouldEqual(1)
+        try remoteLookupProbe.expectMessage(within: .seconds(1)).refs.count.shouldEqual(0)
     }
 }
