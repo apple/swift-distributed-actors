@@ -235,7 +235,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
 
         let _: ActorRef<WrappedString> = try local.spawn(.setup { context in
-            let adaptedRef = try context.messageAdapter(for: String.self) { WrappedString(string: $0) }
+            let adaptedRef = context.messageAdapter(for: String.self) { WrappedString(string: $0) }
             remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
             return .receiveMessage { message in
                 probe.tell("response:\(message.string)")
