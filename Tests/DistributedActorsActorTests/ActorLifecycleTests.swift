@@ -93,7 +93,7 @@ class ActorLifecycleTests: XCTestCase {
     func test_stopping_shouldDeinitTheBehavior() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")
         let chattyAboutLifecycle =
-            try system.spawn(LifecycleDeinitClassBehavior(p.ref), name: "deinitLifecycleActor")
+            try system.spawn(.class { LifecycleDeinitClassBehavior(p.ref) }, name: "deinitLifecycleActor")
 
         chattyAboutLifecycle.tell(.stop)
 
