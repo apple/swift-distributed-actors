@@ -208,7 +208,7 @@ MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* sys_m
     // the message in any case -- although having enqueued the message already. Where it MAY remain until cell is deallocated,
     // if the enqueue happened after terminated is set, but tombstone is enqueued.
     if (is_terminating(get_status(mailbox))) {
-        printf("Attempted system enqueue at TERMINATING mailbox, bailing out without enqueue");
+        print_debug_status(mailbox, "Attempted system enqueue at TERMINATING mailbox, bailing out without enqueue");
         return MailboxEnqueueResult_mailboxTerminating;
     }
 
