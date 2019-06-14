@@ -409,7 +409,8 @@ extension Behavior {
 /// - SeeAlso: `Behavior.receive` and `Behavior.receiveSignal` for closure-style behaviors corresponding to the
 ///            `receive` and `receiveSignal` functions of the `ClassBehavior`.
 open class ClassBehavior<Message> {
-
+    public init() {}
+    
     /// Invoked each time the actor running this behavior is to receive a message.
     /// The returned behavior will be used for handling the next incoming message or signal.
     /// In order to remain the same behavior as currently, return `.same`.
