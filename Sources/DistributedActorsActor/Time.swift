@@ -16,6 +16,9 @@ import struct Foundation.Date
 import struct Dispatch.DispatchTime
 import struct NIO.TimeAmount
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: TimeAmount
+
 // TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
 
 /// Represents a time _interval_.

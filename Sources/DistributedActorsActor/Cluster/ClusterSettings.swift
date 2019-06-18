@@ -64,7 +64,7 @@ public struct ClusterSettings {
     public var protocolVersion: Swift Distributed ActorsActor.Version {
         return self._protocolVersion
     }
-    // exposed for testing handshake negotiation while joining nodes of different versions
+    // Exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: Swift Distributed ActorsActor.Version = DistributedActorsProtocolVersion
 
     /// If set, this event loop group will be used by the cluster infrastructure.
@@ -74,12 +74,19 @@ public struct ClusterSettings {
     /// Configure what failure detector to use.
     // TODO: Since it MAY have specific requirements on other settings... we may want to allow it to run a validation after creation?
     public var failureDetector: FailureDetectorSettings
-    internal func makeFailureDetector(system: ActorSystem) -> FailureDetector {
+
+    /// Create FailureObserver and Detector instances and actors.
+    /// - throws: when name of being spawned failure detector actor is already taken -- which should never happen.
+    internal func makeFailureDetector(system: ActorSystem) throws -> FailureObserver {
         let context = FailureDetectorContext(system)
 
         switch self.failureDetector {
         case .manual:
-            return ManualFailureDetector(context: context)
+            return ManualFailureObserver(context: context)
+        case .swim(let settings):
+            let observer = ManualFailureObserver(context: context) // TODO not sure if this one or another one, but we want to call into it when SWIM decides a node should die etc.
+            let _ = try system._spawnSystemActor(SWIM.MembershipShell.behavior(settings, observer: observer), name: SWIM.MembershipShell.name)
+            fatalError("MISSING OBSERVER IMPL TO WORK WITH SWIM")
         }
     }
 
@@ -106,5 +113,6 @@ public struct ClusterSettings {
 
 public enum FailureDetectorSettings {
     case manual
+    case swim(SWIM.Settings)
     // case instance(FailureDetector) // TODO: once we decide to allow users implementing their own
 }
