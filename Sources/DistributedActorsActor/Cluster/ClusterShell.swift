@@ -113,7 +113,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         self._serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
-        let failureDetector = system.settings.cluster.makeFailureDetector(system: system)
+        let failureDetector = try system.settings.cluster.makeFailureDetector(system: system)
         self._failureDetectorRef = try system._spawnSystemActor(
             FailureDetectorShell.behavior(driving: failureDetector),
             name: "failureDetector")
