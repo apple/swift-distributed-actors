@@ -17,7 +17,7 @@ import Logging
 
 /// The callbacks defined on a `FailureDetector` are invoked by an enclosing actor, and thus synchronization is guaranteed
 // TODO could become public to allow people implementing `FailureDetector`s
-internal protocol FailureDetector {
+internal protocol FailureObserver {
 
     // TODO evolve this type a lot along with implementing a real failure detector
 
@@ -66,7 +66,7 @@ internal enum FailureDetectorShell {
 
     typealias Ref = ActorRef<FailureDetectorProtocol>
 
-    public static func behavior(driving failureDetector: FailureDetector) -> Behavior<FailureDetectorProtocol> {
+    public static func behavior(driving failureDetector: FailureObserver) -> Behavior<FailureDetectorProtocol> {
         return .receive { context, message in
 
             let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
