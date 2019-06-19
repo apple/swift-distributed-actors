@@ -370,9 +370,9 @@ extension SystemMessage: Codable {
             let context = decoder.actorSerializationContext!
             let path = try container.decode(UniqueActorPath.self, forKey: CodingKeys.ref)
             let ref = context.resolveReceivesSystemMessages(path: path)
-            let existanceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
+            let existenceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
             let addressTerminated = try container.decode(Bool.self, forKey: CodingKeys.addressTerminated)
-            self = .terminated(ref: ref, existenceConfirmed: existanceConfirmed, addressTerminated: addressTerminated)
+            self = .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: addressTerminated)
         case let type:
             self = FIXME("Can't decode type \(type)")
         }
