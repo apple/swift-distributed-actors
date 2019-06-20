@@ -218,9 +218,9 @@ class SerializationTests: XCTestCase {
             }
         }, name: "shouldGetSystemMessage")
 
-        let sysRef = ref._boxAnyReceivesSystemMessages()
+        let sysRef = ref.asAddressable()
 
-        let hasSysRef = HasReceivesSystemMsgs(sysRef: ref._downcastUnsafe)
+        let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
         pinfo("Before serialize: \(hasSysRef)")
 
@@ -237,12 +237,12 @@ class SerializationTests: XCTestCase {
         back.sysRef.path.shouldEqual(sysRef.path)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef.sendSystemMessage(.terminated(ref: watchMe, existenceConfirmed: false))
+        back.sysRef.sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false))
         try p.expectMessage("terminated:watchMe")
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Serialized messages in actor communication, locally
+     // ==== ------------------------------------------------------------------------------------------------------------
+     // MARK: Serialized messages in actor communication, locally
 
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
         let s2 = ActorSystem("SerializeMessages") { settings in
@@ -276,7 +276,7 @@ class SerializationTests: XCTestCase {
         let recipient: ActorRef<NotSerializable> = try s2.spawn(.ignore, name: "recipient")
 
         let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { context in
-            recipient.tell(NotSerializable())
+            recipient.tell(NotSerializable("\(#file):\(#line)"))
             return .same
         }, name: "expected-to-fault-due-to-serialization-check")
 
@@ -356,4 +356,10 @@ private struct NotCodableHasIntRef: Equatable {
     let containedRef: ActorRef<Int>
 }
 
-private struct NotSerializable {}
+private struct NotSerializable {
+    let pos: String
+
+    init(_ pos: String) {
+        self.pos = pos
+    }
+}

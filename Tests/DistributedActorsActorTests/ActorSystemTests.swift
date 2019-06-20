@@ -71,7 +71,7 @@ class ActorSystemTests: XCTestCase {
 
         system2.shutdown()
 
-        try p.expectTerminatedInAnyOrder([ref1, ref2])
+        try p.expectTerminatedInAnyOrder([ref1.asAddressable(), ref2.asAddressable()])
 
         ref1.tell("ref1")
         ref2.tell("ref2")

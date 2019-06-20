@@ -18,12 +18,16 @@ import SwiftBenchmarkTools
 
 /// `ActorRef` which acts like a "latch" which can await the receipt of exactly one message;
 @usableFromInline
-internal class BenchmarkLatchRef<Message>: ActorRef<Message> {
+internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly hack to inject a personality into an actor ref
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 
-    override func tell(_ message: Message) {
-        self.receptacle.offerOnce(message)
+    override init(parent: ReceivesSystemMessages, name: String) {
+        super.init(parent: parent, name: name)
+    }
+
+    override func trySendUserMessage(_ message: Any) {
+        self.receptacle.offerOnce(message as! Message)
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     }
 

@@ -640,7 +640,7 @@ internal extension Behavior {
         return self
     }
 
-    func validateAsInitialFatal(file: StaticString = #file, line: UInt = #line) {
+    func validateAsInitialFatal(file: String = #file, line: UInt = #line) {
         switch self.underlying {
         case .same, .unhandled: fatalError("Illegal initial behavior! Attempted to spawn(\(self)) at \(file):\(line)")
         default: return

@@ -17,11 +17,20 @@ import Logging
 public struct DeadLetter {
     let message: Any
     let recipient: UniqueActorPath?
-    // TODO: from, to, other metadata
 
+    // TODO: sender and other metadata
+
+    // TODO could be under a flag if we do carry the file/line or not?
     init(_ message: Any, recipient: UniqueActorPath?) {
         self.message = message
         self.recipient = recipient
+    }
+}
+
+extension ActorRef where ActorRef.Message == DeadLetter {
+    /// Redirects message, preserving its original `recipient` (this ref), to dead letters.
+    func sendDeadLetter(_ message: Any) {
+        self.tell(DeadLetter(message, recipient: self.path))
     }
 }
 
@@ -41,35 +50,45 @@ public struct DeadLetter {
 /// watching an actor which is terminated, may result in the `watch` system message be delivered to dead letters,
 /// in which case this property of dead letters will notify the watching actor that the "watchee" had already terminated.
 /// In these situations Terminated would be marked as `existenceConfirmed: false`.
-internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMessages {
+@usableFromInline
+internal class DeadLetters {
     let _path: UniqueActorPath
     let log: Logger
 
     init(_ log: Logger, path: UniqueActorPath) {
         self.log = log
         self._path = path
-        super.init()
     }
 
-    override var path: UniqueActorPath {
+    @usableFromInline
+    var path: UniqueActorPath {
         return _path
     }
 
-    override func tell(_ deadLetter: DeadLetter) {
+    var ref: ActorRef<DeadLetter> {
+        return .init(.deadLetters(self))
+    }
+
+    func drop(_ message: Any, file: String = #file, line: UInt = #line) {
+        if let alreadyDeadLetter = message as? DeadLetter {
+            self.sendDeadLetter(alreadyDeadLetter)
+        } else {
+            self.sendDeadLetter(DeadLetter(message, recipient: self.path))
+        }
+    }
+    
+    func sendDeadLetter(_ deadLetter: DeadLetter) {
+        let recipient = "to \(deadLetter.recipient, orElse: "no-recipient")"
+
         if let systemMessage = deadLetter.message as? SystemMessage {
             let handled = specialHandle(systemMessage)
             if !handled {
-                // TODO maybe dont log them...?
-                log.warning("[deadLetters] Dead letter encountered, recipient: \(deadLetter.recipient, orElse: "no-recipient"); System message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered.")
+                log.warning("Dead letter encountered. Sent \(recipient); System message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered.")
             }
         } else {
             // TODO more metadata (from Envelope)
-            log.warning("[deadLetters] Dead letter encountered, recipient: \(deadLetter.recipient, orElse: "no-recipient"); Message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered. ")
+            log.warning("Dead letter encountered. Sent \(recipient); Message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered. ")
         }
-    }
-
-    override func sendSystemMessage(_ message: SystemMessage) {
-        self.tell(DeadLetter(message, recipient: self.path))
     }
 
     private func specialHandle(_ message: SystemMessage) -> Bool {
@@ -78,7 +97,7 @@ internal final class DeadLettersActorRef: ActorRef<DeadLetter>, ReceivesSystemMe
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
             traceLog_Mailbox(self._path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
             return true // TODO would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
-        case let .watch(watchee, watcher):
+        case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters
             //   - was indeed sent to deadLetters directly, which immediately shall notify terminated; deadLetters is "undead"

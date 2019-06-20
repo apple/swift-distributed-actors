@@ -163,7 +163,8 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
-    internal func watch(_ watchee: BoxedHashableAnyReceivesSystemMessages) {
+    // TODO maybe allow watching an addressable?
+    internal func watch(_ watchee: AddressableActorRef) {
         return undefined()
     }
 
@@ -240,7 +241,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
+        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure($0)
         }
     }
@@ -257,7 +258,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
     internal func makeAsynchronousCallback<T>(for type: T.Type, callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
-        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._downcastUnsafe] in
+        return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
             selfRef?.sendClosure($0)
         }
     }
@@ -282,7 +283,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
     public func awaitResult<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
-            task.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._downcastUnsafe] result in
+            task.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
                 selfRef?.sendSystemMessage(.resume(result.map { $0 }))
             }
             return .suspend(handler: continuation)
@@ -329,8 +330,8 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     public func onResultAsync<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, ExecutionError>.self) {
             let nextBehavior = try continuation($0)
-            let cell = self._downcastUnsafe
-            cell.behavior = try cell.behavior.canonicalize(cell.context, next: nextBehavior)
+            let shell = self._downcastUnsafe
+            shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)
         }
 
         task.withTimeout(after: timeout).onComplete(asyncCallback.invoke)

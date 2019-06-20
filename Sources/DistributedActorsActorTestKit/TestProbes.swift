@@ -18,8 +18,8 @@ import DistributedActorsConcurrencyHelpers
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
-    case watchCommand(who: AnyReceivesSystemMessages)
-    case unwatchCommand(who: AnyReceivesSystemMessages)
+    case watchCommand(who: AddressableActorRef)
+    case unwatchCommand(who: AddressableActorRef)
     case stopCommand
 
     case realMessage(message: M)
@@ -70,31 +70,31 @@ final public class ActorTestProbe<Message> {
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
         }
-        self.exposedRef = try! self.internalRef._downcastUnsafe.cell!.messageAdapter(wrapRealMessages)
+        self.exposedRef = self.internalRef._unsafeUnwrapCell.actor!.messageAdapter(wrapRealMessages)
     }
 
     private static func behavior(messageQueue: LinkedBlockingQueue<Message>,
                                  signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
                                  terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { (context, message) in
-            guard let cell = context.myself._downcastUnsafe.cell else {
+            guard let cell = context.myself._unsafeUnwrapCell.actor else {
                 throw TestProbeInitializationError.failedToObtainUnderlyingCell
             }
 
             switch message {
-            case let .realMessage(msg):
+            case .realMessage(let msg):
                 traceLog_Probe("Probe received: [\(msg)]:\(type(of: msg))")
                 // real messages are stored directly
                 messageQueue.enqueue(msg)
                 return .same
 
                 // probe commands:
-            case let .watchCommand(who):
-                cell.deathWatch.watch(watchee: who._exposeBox(), myself: context.myself, parent: cell._parent)
+            case .watchCommand(let who):
+                cell.deathWatch.watch(watchee: who, myself: context.myself, parent: cell._parent)
                 return .same
 
-            case let .unwatchCommand(who):
-                cell.deathWatch.unwatch(watchee: who._exposeBox(), myself: context.myself)
+            case .unwatchCommand(let who):
+                cell.deathWatch.unwatch(watchee: who, myself: context.myself)
                 return .same
 
             case .stopCommand:
@@ -449,7 +449,7 @@ extension ActorTestProbe {
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee._boxAnyReceivesSystemMessages()))
+        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable()))
         return watchee
     }
 
@@ -463,7 +463,7 @@ extension ActorTestProbe {
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
     public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee._boxAnyReceivesSystemMessages()))
+        self.internalRef.tell(ProbeCommands.unwatchCommand(who: watchee.asAddressable()))
         return watchee
     }
 
@@ -492,7 +492,7 @@ extension ActorTestProbe {
     ///
     /// - Warning: Remember to first `watch` the actors you are expecting termination for,
     ///            otherwise the termination signal will never be received.
-    public func expectTerminatedInAnyOrder(_ refs: [AnyAddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         var pathSet: Set<UniqueActorPath> = Set(refs.map { $0.path })
 

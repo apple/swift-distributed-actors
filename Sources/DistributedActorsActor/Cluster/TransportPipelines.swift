@@ -292,7 +292,7 @@ private final class SerializationHandler: ChannelDuplexHandler {
             case .success(let message):
                 let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, deadLetters: self.system.deadLetters)
                 let ref = self.system._resolveUntyped(context: resolveContext)
-                ref._tellUnsafe(message: message)
+                ref._unsafeTellOrDrop(message)
             case .failure(let error):
                 self.log.error("Error: \(error)")
             }

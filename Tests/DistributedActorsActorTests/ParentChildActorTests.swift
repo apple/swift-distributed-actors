@@ -249,8 +249,7 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("stop")
 
-        let erroredStr = try p.expectMessage()
-        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: ActorRef<Swift.String>(/user/testProbe")
+        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: AddressableActorRef(/user/testProbe")
         try p.expectTerminated(parent)
     }
 
@@ -271,8 +270,7 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("stop")
 
-        let erroredStr = try p.expectMessage()
-        erroredStr.shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: ActorRef<Swift.String>(/user/parent-5")
+        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingMyselfUsingContext(ref: AddressableActorRef(/user/parent-5")
         try p.expectTerminated(parent)
     }
 
@@ -385,7 +383,7 @@ class ParentChildActorTests: XCTestCase {
         child.tell(.throwWhoops)
 
         // since the parent watched the child, it will also terminate
-        try p.expectTerminatedInAnyOrder([child, parent])
+        try p.expectTerminatedInAnyOrder([child.asAddressable(), parent.asAddressable()])
     }
 
     func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
@@ -488,6 +486,6 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell(.stop)
 
-        try p.expectTerminatedInAnyOrder([parent, childRef, grandchildRef])
+        try p.expectTerminatedInAnyOrder([parent.asAddressable(), childRef.asAddressable(), grandchildRef.asAddressable()])
     }
 }

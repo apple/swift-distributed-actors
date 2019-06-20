@@ -49,7 +49,7 @@ internal struct Envelope {
 internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CMailbox>
     private let path: UniqueActorPath
-    private weak var cell: ActorCell<Message>?
+    private weak var shell: ActorShell<Message>?
     private let deadLetters: ActorRef<DeadLetter>
 
     // Implementation note: context for closure callbacks used for C-interop
@@ -73,15 +73,15 @@ internal final class Mailbox<Message> {
     private let handleCrashes: Bool
     private var _run: () -> Void = {}
 
-    init(cell: ActorCell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+    init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         self.mailbox = cmailbox_create(capacity, maxRunLength)
-        self.cell = cell
-        self.path = cell.path
-        self.deadLetters = cell.system.deadLetters
+        self.shell = shell
+        self.path = shell.path
+        self.deadLetters = shell.system.deadLetters
 
         // TODO not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = cell.system.settings.serialization.allMessages
-        self.handleCrashes = cell.system.settings.faultSupervisionMode.isEnabled
+        self.serializeAllMessages = shell.system.settings.serialization.allMessages
+        self.handleCrashes = shell.system.settings.faultSupervisionMode.isEnabled
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -147,40 +147,40 @@ internal final class Mailbox<Message> {
 
         self.messageClosureContext = InterpretMessageClosureContext(exec: { cellPtr, envelopePtr, runPhase in
             assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
-            let cell = cellPtr.assumingMemoryBound(to: ActorCell<Message>.self).pointee
+            let shell = cellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
             let envelope = envelopePtr.move()
             let msg = envelope.payload
 
             // TODO: Depends on https://github.com/apple/swift-log/issues/37
-            // let oldMetadata = Mailbox.populateLoggerMetadata(cell, from: envelope)
-            // defer { Mailbox.resetLoggerMetadata(cell, to: oldMetadata) }
+            // let oldMetadata = Mailbox.populateLoggerMetadata(shell, from: envelope)
+            // defer { Mailbox.resetLoggerMetadata(shell, to: oldMetadata) }
 
             switch msg {
             case .userMessage(let message): 
                 traceLog_Mailbox(self.path, "INVOKE MSG: \(message)")
-                return try cell.interpretMessage(message: message as! Message)
+                return try shell.interpretMessage(message: message as! Message)
             case .closure(let f):
                 traceLog_Mailbox(self.path, "INVOKE CLOSURE: \(String(describing: f))")
-                return try cell.interpretClosure(f)
+                return try shell.interpretClosure(f)
             }
-        }, fail: { [weak _cell = cell, path = self.path] error in
-            traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
-            switch _cell {
+        }, fail: { [weak _shell = shell, path = self.path] error in
+            traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
+            switch _shell {
             case .some(let cell): cell.fail(error)
             case .none:           pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
-        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { cellPtr, sysMsgPtr, runPhase in
+        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { shellPtr, sysMsgPtr, runPhase in
             assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
-            let cell = cellPtr.assumingMemoryBound(to: ActorCell<Message>.self).pointee
+            let shell = shellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             traceLog_Mailbox(self.path, "INVOKE SYSTEM MSG: \(msg)")
-            return try cell.interpretSystemMessage(message: msg)
-        }, fail: { [weak _cell = cell, path = self.path] error in
-            traceLog_Mailbox(_cell?.path, "FAIL THE MAILBOX")
-            switch _cell {
+            return try shell.interpretSystemMessage(message: msg)
+        }, fail: { [weak _shell = shell, path = self.path] error in
+            traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
+            switch _shell {
             case .some(let cell): cell.fail(error)
             case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
@@ -208,8 +208,8 @@ internal final class Mailbox<Message> {
         // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
         // It has to implement the equivalent of `Supervisor.interpretSupervised`, for the fault handling path.
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
-            handleMessageFailure: { [weak _cell = cell] supervisionFailure, runPhase in
-                guard let cell = _cell else {
+            handleMessageFailure: { [weak _shell = shell] supervisionFailure, runPhase in
+                guard let shell = _shell else {
                     /// if we cannot unwrap the cell it means it was closed and deallocated
                     return .close
                 }
@@ -218,14 +218,14 @@ internal final class Mailbox<Message> {
 
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
-                cell.log.warning("Supervision: Actor has FAULTED while interpreting \(runPhase), handling with \(cell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
+                shell.log.warning("Supervision: Actor has FAULTED while interpreting \(runPhase), handling with \(shell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
 
                 let supervisionDirective: SupervisionDirective<Message>
                 switch runPhase {
                 case .processingSystemMessages:
-                    supervisionDirective = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .signal)
+                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .signal)
                 case .processingUserMessages:
-                    supervisionDirective = try cell.supervisor.handleFailure(cell.context, target: cell.behavior, failure: supervisionFailure, processingType: .message)
+                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .message)
                 }
 
                 // TODO: this handling MUST be aligned with the throws handling.
@@ -243,22 +243,22 @@ internal final class Mailbox<Message> {
                 case .restartImmediately(let nextBehavior):
                     do {
                         // received new behavior, restarting immediately
-                        try cell._restartPrepare()
-                        _ = try cell._restartComplete(with: nextBehavior)
+                        try shell._restartPrepare()
+                        _ = try shell._restartComplete(with: nextBehavior)
                         return .failureRestart
                     } catch {
-                        fatalError("Double fault while restarting actor \(cell.path). Terminating.")
+                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
                     }
 
                 case .restartDelayed(let delay, let nextBehavior):
                     do {
                         // received new behavior, however actual restart is delayed, so we only prepare
-                        try cell._restartPrepare()
+                        try shell._restartPrepare()
                         // and become the restarting behavior which schedules the wakeUp system message on setup
-                        try cell.becomeNext(behavior: SupervisionRestartDelayedBehavior.after(delay: delay, with: nextBehavior))
+                        try shell.becomeNext(behavior: SupervisionRestartDelayedBehavior.after(delay: delay, with: nextBehavior))
                         return .failureRestart
                     } catch {
-                        fatalError("Double fault while restarting actor \(cell.path). Terminating.")
+                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
                     }
                 }
             },
@@ -287,7 +287,7 @@ internal final class Mailbox<Message> {
             do {
                 if case .userMessage(let message) = envelope.payload {
                     messageDescription = "[\(message)]:\(type(of: message))"
-                    try cell?.system.serialization.verifySerializable(message: message as! Message)
+                    try shell?.system.serialization.verifySerializable(message: message as! Message)
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription). " + 
@@ -299,9 +299,9 @@ internal final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<Envelope>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
-        func sendAndDropAsDeadLetter(cell: ActorCell<Message>?) {
-            if let cell = cell {
-                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: cell.path))
+        func sendAndDropAsDeadLetter(shell: ActorShell<Message>?) {
+            if let shell = shell {
+                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: shell.path))
             }
             _ = ptr.move()
             ptr.deallocate()
@@ -309,7 +309,7 @@ internal final class Mailbox<Message> {
 
         switch cmailbox_send_message(mailbox, ptr) {
         case .needsScheduling:
-            guard let cell = self.cell else {
+            guard let cell = self.shell else {
                 traceLog_Mailbox(self.path, "has already stopped, dropping message \(envelope)")
                 return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
             }
@@ -322,19 +322,19 @@ internal final class Mailbox<Message> {
             // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
             //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed 
             //       and we can immediately send things to dead letters then. 
-            sendAndDropAsDeadLetter(cell: self.cell)
+            sendAndDropAsDeadLetter(shell: self.shell)
         case .mailboxClosed:
             traceLog_Mailbox(self.path, "is CLOSED, dropping message \(envelope)")
-            sendAndDropAsDeadLetter(cell: self.cell)
+            sendAndDropAsDeadLetter(shell: self.shell)
         case .mailboxFull:
             traceLog_Mailbox(self.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter(cell: self.cell) // TODO "Drop" rather than DeadLetter
+            sendAndDropAsDeadLetter(shell: self.shell) // TODO "Drop" rather than DeadLetter
         }
     }
 
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage) {
-        guard let cell = self.cell else {
+        guard let cell = self.shell else {
             self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
             traceLog_Mailbox(self.path, "has already released the actor cell, dropping system message \(systemMessage)")
             return
@@ -344,6 +344,7 @@ internal final class Mailbox<Message> {
         ptr.initialize(to: systemMessage)
 
         func sendAndDropAsDeadLetter() {
+            // TODO should deadLetters be special, since watching it is nonsense?
             self.deadLetters.tell(DeadLetter(systemMessage, recipient: cell.path))
         }
 
@@ -377,7 +378,7 @@ internal final class Mailbox<Message> {
 
         let systemMessage: SystemMessage = .tombstone
 
-        guard let cell = self.cell else {
+        guard let cell = self.shell else {
             traceLog_Mailbox(self.path, "has already released the actor cell, dropping system tombstone \(systemMessage)")
             return
         }
@@ -404,7 +405,7 @@ internal final class Mailbox<Message> {
         }
         defer { FaultHandling.disableFaultHandling() }
 
-        guard var cell = self.cell else {
+        guard var cell = self.shell else {
             traceLog_Mailbox(self.path, "has already stopped, ignoring run")
             return
         }
@@ -454,7 +455,7 @@ internal final class Mailbox<Message> {
             // Meaning supervision was either applied and decided to fail, or not applied and we should fail anyway.
             // We have to guarantee the processing of any outstanding system messages, and use a tombstone marker to notice this.
             let failedRunPhase = runPhase
-            self.reportCrashFailCellWithBestPossibleError(cell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
+            self.reportCrashFailCellWithBestPossibleError(shell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
 
             // since we may have faulted while processing user messages, while system messages were being enqueued,
             // we have to perform one last run to potentially drain any remaining system messages to dead letters for
@@ -491,7 +492,7 @@ internal final class Mailbox<Message> {
 extension Mailbox {
     
     // TODO rename to "log crash error"?
-    private func reportCrashFailCellWithBestPossibleError(cell: ActorCell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
+    private func reportCrashFailCellWithBestPossibleError(shell: ActorShell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
         
         let failure: MessageProcessingFailure
         
@@ -509,21 +510,21 @@ extension Mailbox {
             failure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
         }
 
-        cell.reportCrashFail(cause: failure)
+        shell.reportCrashFail(cause: failure)
     }
 }
 
 // TODO: separate metadata things from the mailbox, perhaps rather we should do it inside the run (pain to do due to C interop a bit?)
 extension Mailbox {
     // TODO: enable again once https://github.com/apple/swift-log/issues/37 is resolved
-//    internal static func populateLoggerMetadata(_ cell:  ActorCell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
-//        let old = cell.log.metadata
+//    internal static func populateLoggerMetadata(_ shell:  ActorShell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
+//        let old = shell.log.metadata
 //        #if SACT_DEBUG
-//        cell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
+//        shell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
 //        #endif
 //        return old
 //    }
-//    internal static func resetLoggerMetadata(_ cell:  ActorCell<Message>, to metadata: Logger.Metadata) {
+//    internal static func resetLoggerMetadata(_ shell:  ActorShell<Message>, to metadata: Logger.Metadata) {
 //        cell.log.metadata = metadata
 //    }
 }
