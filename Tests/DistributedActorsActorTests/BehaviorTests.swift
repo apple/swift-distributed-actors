@@ -415,7 +415,7 @@ class BehaviorTests: XCTestCase {
                 // actually being executed in the context of the actor. After
                 // calling the closure, it will check if the actor is still
                 // supposed to run and if it's not, it will be stopped.
-                context.myself._downcastUnsafe.cell?.behavior = .stopped
+                context.myself._unsafeUnwrapCell.actor?.behavior = .stopped
                 p.tell("fromCallback:\(msg)")
             }
 
@@ -484,7 +484,7 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1)))
+        ref.sendSystemMessage(.resume(.success(1)))
 
         try p.expectMessage("unsuspended:success(1)")
         try p.expectMessage("resumed:something else")
@@ -518,14 +518,14 @@ class BehaviorTests: XCTestCase {
         ref.tell("something else") // actor is suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
+        ref.sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
         try p.expectMessage("suspended:success(1)")
         try p.expectNoMessage(for: .milliseconds(50))
 
         ref.tell("last") // actor is still suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._downcastUnsafe.sendSystemMessage(.resume(.success("test")))
+        ref.sendSystemMessage(.resume(.success("test")))
 
         try p.expectMessage("unsuspended:success(\"test\")")
         try p.expectMessage("resumed:something else")
@@ -564,7 +564,7 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref._downcastUnsafe.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
+        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
 
         try p.expectMessage("unsuspended:Boom()")
         try p.expectMessage("resumed:something else")
@@ -861,7 +861,7 @@ class BehaviorTests: XCTestCase {
 
         ref.tell("something") // this message causes the actor the suspend
 
-        ref._downcastUnsafe.sendSystemMessage(.stop)
+        ref.sendSystemMessage(.stop)
 
         try p.expectTerminated(ref)
     }
@@ -898,7 +898,7 @@ class BehaviorTests: XCTestCase {
         try p.expectMessage("suspended")
 
         ref.tell("something else") // this message should not get processed until we resume, even though the behavior is changed by the signal
-        ref._downcastUnsafe.sendSystemMessage(.resume(.success(1)))
+        ref.sendSystemMessage(.resume(.success(1)))
 
         try p.expectMessage("signal:child")
         try p.expectMessage("unsuspended:1")

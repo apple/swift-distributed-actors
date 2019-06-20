@@ -56,9 +56,37 @@ public enum CodingError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable ActorRef
+
+extension ActorRef {
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        guard let serializationContext = encoder.actorSerializationContext else {
+            throw CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While encoding [\(self)], using [\(encoder)]")
+        }
+
+        traceLog_Serialization("encode \(self.path) WITH address")
+        try container.encodeWithAddress(self.path, using: serializationContext)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
+        let path: UniqueActorPath = try container.decode(UniqueActorPath.self)
+
+        guard let context = decoder.actorSerializationContext else {
+            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
+        }
+
+        self = context.resolveActorRef(path: path)
+    }
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable ReceivesMessages
 
-extension ReceivesMessages {
+extension ReceivesMessages { // TODO the decode may be unsafe now?
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
@@ -66,8 +94,13 @@ extension ReceivesMessages {
             throw CodingError.missingActorSerializationContext(Self.self, details: "While encoding [\(self)], using [\(encoder)]")
         }
 
-        traceLog_Serialization("encode \(self.path) WITH address")
-        try container.encodeWithAddress(self.path, using: serializationContext)
+        switch self {
+        case let ref as ActorRef<Message>:
+            traceLog_Serialization("encode \(ref.path) WITH address")
+            try container.encodeWithAddress(ref.path, using: serializationContext)
+        default:
+            fatalError("Can not serialize non-ActorRef ReceivesMessages! Was: \(self)")
+        }
     }
 
     public init(from decoder: Decoder) throws {
@@ -117,7 +150,7 @@ internal struct ReceivesSystemMessagesDecoder {
             fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
         }
 
-        return context.resolveReceivesSystemMessages(path: path) as! ReceivesSystemMessages // this is safe, we know Self IS-A ReceivesSystemMessages
+        return context.resolveReceivesSystemMessages(path: path)
     }
 }
 
@@ -269,39 +302,12 @@ extension UniqueNodeAddress: Codable {
         self.uid = try NodeUID(container.decode(UInt32.self))
     }
 }
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Codable Cell
-
-// Customize coding to avoid nesting as {"value": "..."}
-extension ActorRefWithCell {
-
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(self.path)
-    }
-
-    public convenience init(from decoder: Decoder) throws {
-        //        let container = try decoder.singleValueContainer()
-        //        let path = container.decode(UniqueActorPath.self)
-        //
-        //        guard let serializationContext = decoder.actorSerializationContext else {
-        //            fatalError("Can not resolve actor refs without CodingUserInfoKey.actorSerializationContext set!") // TODO: better message
-        //        }
-        //
-        //        switch serializationContext.resolve(path: path) {
-        //        case .some(let resolver):
-        //        case .none:
-        //            throw
-        //        }
-        fatalError("Not implemented. For remote cases this is not possible, it should resolve to a proxy basically, that is to hit remoting.")
-    }
-}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Decoding convenience extensions
 
 internal extension SingleValueDecodingContainer {
-    func decodeNonEmpty(_ type: String.Type, hint: StaticString) throws -> String {
+    func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
             throw DecodingError.dataCorruptedError(in: self,
@@ -324,9 +330,22 @@ public extension SingleValueEncodingContainer {
         }
     }
 }
+public extension UnkeyedEncodingContainer {
+    mutating func encodeWithAddress(_ path: UniqueActorPath, using context: ActorSerializationContext) throws {
+        if let pathAddress = path.path.address {
+            precondition(pathAddress == context.serializationAddress)
+            try self.encode(path) // we assume the already present path is correct
+        } else {
+            // path has no address, so we assume it is a local one and set it from as local system's address
+            var copy = path // copy to amend with address
+            copy.path.address = context.serializationAddress
+            try self.encode(copy)
+        }
+    }
+}
 
 internal extension UnkeyedDecodingContainer {
-    mutating func decodeNonEmpty(_ type: String.Type, hint: StaticString) throws -> String {
+    mutating func decodeNonEmpty(_ type: String.Type, hint: String) throws -> String {
         let value = try self.decode(type)
         if value.isEmpty {
             throw DecodingError.dataCorruptedError(in: self,
@@ -335,6 +354,9 @@ internal extension UnkeyedDecodingContainer {
         return value
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Codable SystemMessage
 
 extension SystemMessage: Codable {
     enum CodingKeys: CodingKey {
@@ -363,9 +385,7 @@ extension SystemMessage: Codable {
             let watcherPath = try container.decode(UniqueActorPath.self, forKey: CodingKeys.watcher)
             let watchee = context.resolveReceivesSystemMessages(path: watcheePath)
             let watcher = context.resolveReceivesSystemMessages(path: watcherPath)
-            self = .watch(
-                watchee: BoxedHashableAnyReceivesSystemMessages(ref: watchee),
-                watcher: BoxedHashableAnyReceivesSystemMessages(ref: watcher))
+            self = .watch(watchee: watchee, watcher: watcher)
         case Types.terminated:
             let context = decoder.actorSerializationContext!
             let path = try container.decode(UniqueActorPath.self, forKey: CodingKeys.ref)

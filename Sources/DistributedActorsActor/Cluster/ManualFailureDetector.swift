@@ -31,13 +31,13 @@ internal class ManualFailureObserver: FailureObserver {
     /// Members which have been removed
     private var systemTombstones: Set<UniqueNodeAddress> = .init()
 
-    private var remoteWatchers: [UniqueNodeAddress: Set<BoxedHashableAnyReceivesSystemMessages>] = [:]
+    private var remoteWatchers: [UniqueNodeAddress: Set<AddressableActorRef>] = [:]
 
     init(context: FailureDetectorContext) {
         self.context = context
     }
 
-    func onWatchedActor(by watcher: AnyReceivesSystemMessages, remoteAddress: UniqueNodeAddress) {
+    func onWatchedActor(by watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress) {
         guard !self.systemTombstones.contains(remoteAddress) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
             // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
@@ -54,10 +54,10 @@ internal class ManualFailureObserver: FailureObserver {
         }
 
         // if we did active monitoring, this would be a point in time to perhaps start monitoring an address if we never did so far?
-        log.info("Actor [\(watcher)] watched an actor on: [\(remoteAddress)]")
+        log.debug("Actor [\(watcher)] watched an actor on: [\(remoteAddress)]")
 
         var existingWatchers = self.remoteWatchers[remoteAddress] ?? []
-        existingWatchers.insert(watcher._exposeBox()) // FIXME: we have to remove it once it terminates...
+        existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
         self.remoteWatchers[remoteAddress] = existingWatchers
     }
 

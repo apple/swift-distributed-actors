@@ -97,18 +97,18 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let localLookupProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
-        let remoteLookupProbe = remoteTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = localTestKit.spawnTestProbe(name: "registeredProbe", expecting: Receptionist.Registered<String>.self)
+        let localLookupProbe = localTestKit.spawnTestProbe(name: "localLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let remoteLookupProbe = remoteTestKit.spawnTestProbe(name: "remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             return .same
         }
 
-        let refA: ActorRef<String> = try local.spawnAnonymous(behavior)
-        let refB: ActorRef<String> = try local.spawnAnonymous(behavior)
-        let refC: ActorRef<String> = try remote.spawnAnonymous(behavior)
-        let refD: ActorRef<String> = try remote.spawnAnonymous(behavior)
+        let refA: ActorRef<String> = try local.spawn(behavior, name: "refA")
+        let refB: ActorRef<String> = try local.spawn(behavior, name: "refB")
+        let refC: ActorRef<String> = try remote.spawn(behavior, name: "refC")
+        let refD: ActorRef<String> = try remote.spawn(behavior, name: "refD")
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 

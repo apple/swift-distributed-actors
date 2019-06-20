@@ -230,7 +230,9 @@ fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
         let numMessagesPerActorPair = 2_000_000
         // let totalMessages = numMessagesPerActorPair * numActors / 2
 
-        let benchmarkLatchRef = BenchmarkLatchRef<PingPongCommand>()
+        // Terrible hack
+        let latchGuardian = BenchmarkLatchGuardian<PingPongCommand>(parent: system._root, name: "benchmarkLatch")
+        let benchmarkLatchRef: ActorRef<PingPongCommand> = ActorRef(.guardian(latchGuardian as Guardian))
 
         supervisor.tell(
             .startPingPong(
@@ -242,7 +244,7 @@ fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
                 replyTo: benchmarkLatchRef)
         )
 
-        let start = benchmarkLatchRef.blockUntilMessageReceived()
+        let start = latchGuardian.blockUntilMessageReceived()
         guard case let .pingPongStarted(completedLatch, startNanoTime, totalNumMessages) = start else {
             fatalError("Boom")
         }

@@ -17,47 +17,66 @@ import Dispatch
 import Logging
 import CSwiftDistributedActorsMailbox
 
-// MARK: Actor internals; The so-called "cell" contains the actual "actor"
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor internals
 
-/// The "cell" is where the "actual actor" is kept; it is also what handles all the invocations, restarts of that actor.
-/// Other classes in this file are all "internal" in the sense of implementation; yet are of course exposed to users
-/// A strong reference to `ActorCell` is stored in `Children`. This is the one reference that keeps the ActorCell alive
-/// until the actor is logically stopped. We only store weak references to `ActorCell` everywhere else. We have to do this
-/// to prevent `ActorCell`s from sticking around when users hold on to an `ActorRef` after the actor has been terminated.
+/// The shell is responsible for interpreting messages using the current behavior.
+/// In simplified terms, it can be thought of as "the actual actor," as it is the most central piece where
+/// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
-/// The cell is mutable, as it may replace the behavior it hosts
+/// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
 @usableFromInline
-internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, AbstractCell {
-    // TODO: the cell IS-A context is how we saved space on the JVM, though if context is a struct it does not matter here, perhaps reconsider
+internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
-    // Each actor belongs to a specific Actor system, and may reach for it if it so desires:
-    @usableFromInline internal var _system: ActorSystem
-    public override var system: ActorSystem {
+    // The phrase that "actor change their behavior" can be understood quite literally;
+    // On each message interpretation the actor may return a new behavior that will be handling the next message.
+    @usableFromInline
+    var behavior: Behavior<Message>
+
+    let _parent: AddressableActorRef
+
+    let _path: UniqueActorPath
+
+    let _props: Props
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Basic ActorContext capabilities
+
+    private let _dispatcher: MessageDispatcher
+
+    @usableFromInline
+    var _system: ActorSystem
+    override public var system: ActorSystem {
         return self._system
     }
 
-    // MARK: The actors' "self" and relationships
+    /// Guaranteed to be set during ActorRef creation
+    /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling `myself`.
+    @usableFromInline
+    lazy var _myCell: ActorCell<Message> =
+        ActorCell<Message>(
+            path: self._path,
+            actor: self,
+            mailbox: Mailbox(shell: self, capacity: self._props.mailbox.capacity)
+        )
 
-    typealias SelfBehavior = Behavior<Message>
+    @usableFromInline
+    var _myselfReceivesSystemMessages: ReceivesSystemMessages {
+        return self.myself
+    }
+    @usableFromInline
+    var asAddressable: AddressableActorRef {
+        return self.myself.asAddressable()
+    }
 
-    // TODO: impl note: we need to ref hold the cell somehow, but the handed our refs dont have to, since they should go to deadletters once we terminate
-
-    // Implementation notes:
-    // The phrase that "actor change their behavior" is taken quite literally by our infrastructure,
-    // on each message being applied the actor may return a new behavior that will be handling the next message.
-    public var behavior: Behavior<Message>
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Timers
 
     override public var timers: Timers<Message> {
         return self._timers
     }
 
     lazy var _timers: Timers<Message> = Timers(context: self)
-
-    internal let _parent: AnyReceivesSystemMessages
-
-    internal let _path: UniqueActorPath
-
-    internal let _props: Props
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Fault handling infrastructure
@@ -85,7 +104,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Death watch infrastructure
+    // MARK: Death Watch infrastructure
 
     // Implementation of DeathWatch
     @usableFromInline internal var _deathWatch: DeathWatch<Message>?
@@ -101,27 +120,10 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         }
     }
 
-    private let _dispatcher: MessageDispatcher
-
-    /// Guaranteed to be set during ActorRef creation
-    /// Must never be exposed to users, rather expose the `ActorRef<Message>` by calling `myself`.
-    @usableFromInline internal lazy var _myselfInACell: ActorRefWithCell<Message> = ActorRefWithCell<Message>(
-        path: self._path,
-        cell: self,
-        mailbox: Mailbox(cell: self, capacity: self._props.mailbox.capacity)
-    )
-    @usableFromInline internal var _myselfReceivesSystemMessages: ReceivesSystemMessages {
-        // This is a workaround for https://github.com/apple/swift-distributed-actors/issues/69
-        return self._myselfInACell
-    }
-    @usableFromInline internal var _myselfAnyReceivesMessages: AnyReceivesMessages {
-        return self._myselfInACell
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ActorCell implementation
+    // MARK: ActorShell implementation
 
-    internal init(system: ActorSystem, parent: AnyReceivesSystemMessages,
+    internal init(system: ActorSystem, parent: AddressableActorRef,
                   behavior: Behavior<Message>, path: UniqueActorPath,
                   props: Props, dispatcher: MessageDispatcher) {
         self._system = system
@@ -162,17 +164,12 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
     /// as the actor needs to access its ref from its context during setup or other behavior reductions
-    internal func set(ref: ActorRefWithCell<Message>) {
-        self._myselfInACell = ref // TODO: atomic?
-    }
-
-    @inlinable
-    var context: ActorContext<Message> {
-        return self
+    internal func set(ref: ActorCell<Message>) {
+        self._myCell = ref // TODO: atomic?
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: ActorCellSpawning protocol requirements
+    // MARK: Children
 
     private let _childrenLock = ReadWriteLock()
     // All access must be protected with `_childrenLock`, or via `children` helper
@@ -204,7 +201,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     ///
     /// Warning: Do not use after actor has terminated (!)
     override public var myself: ActorRef<Message> {
-        return self._myselfInACell
+        return .init(.cell(self._myCell))
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
@@ -217,7 +214,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     }
 
     // access only from within actor
-    private lazy var _log = ActorLogger.make(context: self.context)
+    private lazy var _log = ActorLogger.make(context: self)
     override public var log: Logger {
         get {
             return self._log
@@ -232,7 +229,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Handling messages
+    // MARK: Interpreting messages
 
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
     /// next behavior (as returned by user code, which the message was applied to).
@@ -241,13 +238,13 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
     @inlinable
     func interpretMessage(message: Message) throws -> ActorRunResult {
-        #if SACT_TRACE_CELL
+        #if SACT_TRACE_ACTOR_SHELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
 
         let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: message)
 
-        #if SACT_TRACE_CELL
+        #if SACT_TRACE_ACTOR_SHELL
         log.info("Applied [\(message)]:\(type(of: message)), becoming: \(next)")
         #endif // TODO: make the \next printout nice TODO dont log messages (could leak pass etc)
 
@@ -317,7 +314,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
                 let nextBehavior = try self.supervisor.interpretSupervised(target: previousBehavior, context: self) {
                     return try handler(result)
                 }
-                try self.becomeNext(behavior: previousBehavior.canonicalize(self.context, next: nextBehavior))
+                try self.becomeNext(behavior: previousBehavior.canonicalize(self, next: nextBehavior))
             default:
                 self.log.error("Received .resume message while being in non-suspended state")
 
@@ -369,7 +366,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
     internal func fail(_ error: Error) {
-        self._myselfInACell.mailbox.setFailed()
+        self._myCell.mailbox.setFailed()
         self.behavior = self.behavior.makeFailed(cause: .error(error))
         // TODO: we could handle here "wait for children to terminate"
 
@@ -410,7 +407,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 
         /// Yes, we ignore the behavior returned by pre-restart on purpose, the supervisor decided what we should `become`,
         /// and we can not change this decision; at least not in the current scheme (which is simple and good enough for most cases).
-        _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PreRestart())
+        _ = try self.behavior.interpretSignal(context: self, signal: Signals.PreRestart())
 
         // NOT interpreting Start yet, as it may have to be done after a delay
     }
@@ -434,7 +431,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     @inlinable
     internal func becomeNext(behavior next: Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
-        self.behavior = try self.behavior.canonicalize(context, next: next)
+        self.behavior = try self.behavior.canonicalize(self, next: next)
     }
 
     @inlinable
@@ -442,7 +439,7 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         // start means we need to evaluate all `setup` blocks, since they need to be triggered eagerly
 
         traceLog_Cell("START with behavior: \(self.behavior)")
-        let started = try self.supervisor.startSupervised(target: self.behavior, context: self.context)
+        let started = try self.supervisor.startSupervised(target: self.behavior, context: self)
         try self.becomeNext(behavior: started)
     }
 
@@ -460,9 +457,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     ///
     /// Any remaining system messages are to be drained to deadLetters by the mailbox in its current run.
     private func finishTerminating() -> ActorRunResult {
-        self._myselfInACell.mailbox.setClosed()
+        self._myCell.mailbox.setClosed()
 
-        let myPath: UniqueActorPath? = self._myselfInACell.path
+        let myPath: UniqueActorPath? = self._myCell.path
         traceLog_Cell("FINISH TERMINATING \(self)")
 
         // TODO: stop all children? depends which style we'll end up with...
@@ -483,10 +480,10 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         self.invokePendingDeferredClosuresWhileTerminating()
 
         do {
-            _ = try self.behavior.interpretSignal(context: self.context, signal: Signals.PostStop())
+            _ = try self.behavior.interpretSignal(context: self, signal: Signals.PostStop())
         } catch {
             // TODO: should probably .escalate instead;
-            self.context.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
+            self.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
         }
 
         // TODO validate all the nulling out; can we null out the cell itself?
@@ -511,9 +508,9 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
     func notifyParentWeDied() {
-        let parent: AnyReceivesSystemMessages = self._parent
+        let parent: AddressableActorRef = self._parent
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.path)], parent [\(parent.path)]")
-        parent.sendSystemMessage(.childTerminated(ref: myself._boxAnyAddressableActorRef()))
+        parent.sendSystemMessage(.childTerminated(ref: myself.asAddressable()))
     }
 
     func invokePendingDeferredClosuresWhileTerminating() {
@@ -539,11 +536,11 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     // MARK: Spawn implementations
 
     public override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
-        return try self.internal_spawn(behavior, name: name, props: props)
+        return try self._spawn(behavior, name: name, props: props)
     }
 
     public override func spawnAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
-        return try self.internal_spawn(behavior, name: self.system.anonymousNames.nextName(), props: props)
+        return try self._spawn(behavior, name: self.system.anonymousNames.nextName(), props: props)
     }
 
     public override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
@@ -562,33 +559,32 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
     // MARK: Death Watch API
 
     override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself, parent: self._parent)
+        self.deathWatch.watch(watchee: watchee.asAddressable(), myself: self.myself, parent: self._parent)
         return watchee
     }
 
-    override internal func watch(_ watchee: BoxedHashableAnyReceivesSystemMessages) {
-        self.deathWatch.watch(watchee: watchee, myself: context.myself, parent: self._parent)
+    override internal func watch(_ watchee: AddressableActorRef) {
+        self.deathWatch.watch(watchee: watchee, myself: self.myself, parent: self._parent)
     }
 
     override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.unwatch(watchee: watchee._boxAnyReceivesSystemMessages(), myself: context.myself)
+        self.deathWatch.unwatch(watchee: watchee.asAddressable(), myself: self.myself)
         return watchee
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
-    private var messageAdapters: [FullyQualifiedTypeName: AnyAddressableActorRef] = [:]
+    private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]
 
     override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         let name = self.system.anonymousNames.nextName()
         do {
             let adaptedPath = try self.path.makeChildPath(name: name, uid: ActorUID.random())
-
             let ref = ActorRefAdapter(self.myself, path: adaptedPath, converter: adapter)
 
-            self._children.insert(ref)
-            return ref
+            self._children.insert(ref) // TODO separate adapters collection?
+            return .init(.adapter(ref))
         } catch {
             fatalError("""
                        Failed while creating message adapter. This should never happen, since message adapters have unique names 
@@ -602,18 +598,18 @@ internal class ActorCell<Message>: ActorContext<Message>, FailableActorCell, Abs
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal system message / signal handling functions
 
-extension ActorCell {
-    @inlinable internal func interpretSystemWatch(watcher: AnyReceivesSystemMessages) {
+extension ActorShell {
+    @inlinable internal func interpretSystemWatch(watcher: AddressableActorRef) {
         if self.behavior.isStillAlive {
             // TODO: make DeathWatch methods available via extension
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
         } else {
             // so we are in the middle of terminating already anyway
-            watcher.sendSystemMessage(.terminated(ref: self._myselfInACell._boxAnyAddressableActorRef(), existenceConfirmed: true))
+            watcher.sendSystemMessage(.terminated(ref: self.asAddressable, existenceConfirmed: true))
         }
     }
 
-    @inlinable internal func interpretSystemUnwatch(watcher: AnyReceivesSystemMessages) {
+    @inlinable internal func interpretSystemUnwatch(watcher: AddressableActorRef) {
         self.deathWatch.removeWatchedBy(watcher: watcher, myself: self.myself) // TODO: make DeathWatch methods available via extension
     }
 
@@ -621,8 +617,8 @@ extension ActorCell {
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
-    @inlinable internal func interpretTerminatedSignal(who deadRef: AnyAddressableActorRef, terminated: Signals.Terminated) throws {
-        #if SACT_TRACE_CELL
+    @inlinable internal func interpretTerminatedSignal(who deadRef: AddressableActorRef, terminated: Signals.Terminated) throws {
+        #if SACT_TRACE_ACTOR_SHELL
         log.info("Received terminated: \(deadRef)")
         #endif
 
@@ -636,8 +632,8 @@ extension ActorCell {
 
         switch next.underlying {
         case .unhandled:
-            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: context.myself,
-                message: "Death Pact error: [\(context.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
+            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: self.myself.asAddressable(),
+                message: "Death Pact error: [\(self.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
                     "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
@@ -650,11 +646,11 @@ extension ActorCell {
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
     @inlinable internal func interpretAddressTerminated(_ terminatedAddress: UniqueNodeAddress) {
-        #if SACT_TRACE_CELL
+        #if SACT_TRACE_ACTOR_SHELL
         log.info("Received address terminated: \(deadRef)")
         #endif
 
-        self.deathWatch.receiveAddressTerminated(terminatedAddress, myself: self._myselfReceivesSystemMessages)
+        self.deathWatch.receiveAddressTerminated(terminatedAddress, myself: self.asAddressable)
     }
 
     @inlinable internal func interpretStop() throws {
@@ -662,8 +658,8 @@ extension ActorCell {
         try self.becomeNext(behavior: .stopped(reason: .stopByParent))
     }
 
-    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AnyAddressableActorRef, terminated: Signals.ChildTerminated) throws {
-        #if SACT_TRACE_CELL
+    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
+        #if SACT_TRACE_ACTOR_SHELL
         log.info("Received \(terminated)")
         #endif
 
@@ -697,36 +693,32 @@ extension ActorCell {
     }
 }
 
-extension ActorCell: CustomStringConvertible {
+extension ActorShell: CustomStringConvertible {
     public var description: String {
-        let path = self._myselfInACell.path.description
+        let path = self._myCell.path.description
         return "\(type(of: self))(\(path))"
     }
 }
 
-internal protocol FailableActorCell {
-    /// Call only from a crash handler. As assumptions are made that the actor's current thread will never proceed.
-    func reportCrashFail(cause: MessageProcessingFailure)
-}
-
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
-internal protocol AbstractCell: _ActorTreeTraversable  {
+internal protocol AbstractActor: _ActorTreeTraversable  {
 
     var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
-    var _myselfAnyReceivesMessages: AnyReceivesMessages { get }
+    var asAddressable: AddressableActorRef { get }
 }
 
-extension AbstractCell {
+extension AbstractActor {
+
     @inlinable
     var receivesSystemMessages: ReceivesSystemMessages {
         return self._myselfReceivesSystemMessages
     }
 
     @inlinable
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self._myselfReceivesSystemMessages) {
+        switch visit(context, self.asAddressable) {
         case .continue:
             let res = self.children._traverse(context: c, visit)
             return res
@@ -762,16 +754,16 @@ extension AbstractCell {
         return self.children._resolve(context: context)
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if myself.path.uid == context.selectorUID {
-                return self._myselfAnyReceivesMessages
+                return self.asAddressable
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return context.deadRef
+                return context.deadRef.asAddressable()
             }
         }
 
@@ -782,9 +774,9 @@ extension AbstractCell {
 internal extension ActorContext {
     /// INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
-    var _downcastUnsafe: ActorCell<Message> {
+    var _downcastUnsafe: ActorShell<Message> {
         switch self {
-        case let theCell as ActorCell<Message>: return theCell
+        case let shell as ActorShell<Message>: return shell
         default: fatalError("Illegal downcast attempt from \(String(reflecting: self)) to ActorCell. This is a bug, please report this on the issue tracker.")
         }
     }

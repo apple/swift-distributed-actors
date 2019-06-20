@@ -25,9 +25,9 @@ internal enum SystemMessage: Equatable {
     case start
 
     /// Notifies an actor that it is being watched by the `from` actor
-    case watch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
+    case watch(watchee: AddressableActorRef, watcher: AddressableActorRef)
     /// Notifies an actor that it is no longer being watched by the `from` actor
-    case unwatch(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages)
+    case unwatch(watchee: AddressableActorRef, watcher: AddressableActorRef)
 
     /// Received after `watch` was issued to an actor ref
     /// - Parameters:
@@ -35,10 +35,10 @@ internal enum SystemMessage: Equatable {
     ///   - existenceConfirmed: true if the `terminated` message is sent as response to a watched actor terminating,
     ///     and `false` if the existence of the actor could not be proven (e.g. message ended up being routed to deadLetters,
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
-    case terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool, addressTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
+    case terminated(ref: AddressableActorRef, existenceConfirmed: Bool, addressTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
-    case childTerminated(ref: AnyAddressableActorRef)
+    case childTerminated(ref: AddressableActorRef)
 
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
@@ -68,15 +68,15 @@ internal enum SystemMessage: Equatable {
 
 internal extension SystemMessage {
     @inlinable
-    static func terminated(ref: AnyAddressableActorRef) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
     }
     @inlinable
-    static func terminated(ref: AnyAddressableActorRef, existenceConfirmed: Bool) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
     }
     @inlinable
-    static func terminated(ref: AnyAddressableActorRef, addressTerminated: Bool) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
     }
 }

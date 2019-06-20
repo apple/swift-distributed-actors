@@ -16,20 +16,16 @@ import NIO
 import Dispatch
 
 protocol ChildActorRefFactory: ActorRefFactory {
-    // MARK: Interface with actor cell
 
-    var children: Children { get set }
-
-    // MARK: Additional
+    var children: Children { get set } // lock-protected
 
     func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
     func stop<M>(child ref: ActorRef<M>) throws
-
 }
 
 internal enum Child {
-    case cell(AbstractCell)
-    case adapter(AbstractAdapterRef)
+    case cell(AbstractActor)
+    case adapter(AbstractAdapter)
 }
 
 /// Represents all the (current) children this actor has spawned.
@@ -42,7 +38,7 @@ public class Children {
     // as well as actor tree traversal.
     typealias Name = String
     private var container: [Name: Child]
-    private var stopping: [UniqueActorPath: AbstractCell]
+    private var stopping: [UniqueActorPath: AbstractActor]
     // **CAUTION**: All access to `container` or `stopping` must be protected by `rwLock`
     private let rwLock: ReadWriteLock
 
@@ -55,9 +51,12 @@ public class Children {
     public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         return self.rwLock.withReaderLock {
             switch self.container[uniquePath.name] {
-            case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
-            case .some(.adapter(let child)):    return child.path == uniquePath
-            case .none:                         return false
+            case .some(.cell(let child)):
+                return child.receivesSystemMessages.path == uniquePath
+            case .some(.adapter(let child)):
+                return child.path == uniquePath
+            case .none:
+                return false
             }
         }
     }
@@ -65,20 +64,23 @@ public class Children {
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
         return self.rwLock.withReaderLock {
             switch self.container[name] {
-            case .some(.cell(let child)):       return child.receivesSystemMessages as? ActorRef<T>
-            case .some(.adapter(let child)):    return child as? ActorRef<T>
-            case .none:                         return nil
+            case .some(.cell(let child)):
+                return child.receivesSystemMessages as? ActorRef<T>
+            case .some(.adapter(let child)):
+                return child as? ActorRef<T>
+            case .none:
+                return nil
             }
         }
     }
 
-    internal func insert<T, R: ActorCell<T>>(_ childCell: R) {
+    internal func insert<T, R: ActorShell<T>>(_ childCell: R) {
         self.rwLock.withWriterLockVoid {
             self.container[childCell.path.name] = .cell(childCell)
         }
     }
 
-    internal func insert<R: AbstractAdapterRef>(_ adapterRef: R) {
+    internal func insert<R: AbstractAdapter>(_ adapterRef: R) {
         self.rwLock.withWriterLockVoid {
             self.container[adapterRef.path.name] = .adapter(adapterRef)
         }
@@ -100,9 +102,12 @@ public class Children {
     internal func contains(identifiedBy uniquePath: UniqueActorPath) -> Bool {
         return self.rwLock.withReaderLock {
             switch self.container[uniquePath.name] {
-            case .some(.cell(let child)):       return child.receivesSystemMessages.path == uniquePath
-            case .some(.adapter(let child)):    return child.path == uniquePath
-            case .none:                         return false
+            case .some(.cell(let child)):
+                return child.receivesSystemMessages.path == uniquePath
+            case .some(.adapter(let child)):
+                return child.path == uniquePath
+            case .none:
+                return false
             }
         }
     }
@@ -157,12 +162,12 @@ public class Children {
     }
 
     @usableFromInline
-    internal func forEach(_ body: (AnyReceivesSystemMessages) throws -> Void) rethrows {
+    internal func forEach(_ body: (AddressableActorRef) throws -> Void) rethrows {
         return try self.rwLock.withReaderLock {
             try self.container.values.forEach {
                 switch $0 {
-                case .cell(let child): try body(child.receivesSystemMessages)
-                case .adapter: ()
+                case .cell(let child): try body(child.asAddressable)
+                case .adapter: () // do not apply onto adapters, only real actors
                 }
             }
         }
@@ -182,11 +187,12 @@ public class Children {
 
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Traversal
 
 extension Children: _ActorTreeTraversable {
     @usableFromInline
-    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
@@ -234,14 +240,17 @@ extension Children: _ActorTreeTraversable {
         }
 
         switch child {
-        case .some(.cell(let child)):       return child._resolve(context: context.deeper)
-        case .some(.adapter(let child)):    return child._resolve(context: context.deeper)
-        case .none:                         return context.deadRef
+        case .some(.cell(let child)):
+            return child._resolve(context: context.deeper)
+        case .some(.adapter(let child)):
+            return child._resolve(context: context.deeper)
+        case .none:
+            return context.deadRef
         }
     }
 
     @usableFromInline
-    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             // no selector, we should not be in this place!
             fatalError("Resolve should have stopped before stepping into children._resolve, this is a bug!")
@@ -252,9 +261,12 @@ extension Children: _ActorTreeTraversable {
         }
 
         switch child {
-        case .some(.cell(let child)):       return child._resolveUntyped(context: context.deeper)
-        case .some(.adapter(let child)):    return child._resolveUntyped(context: context.deeper)
-        case .none:                         return context.deadRef
+        case .some(.cell(let child)):
+            return child._resolveUntyped(context: context.deeper)
+        case .some(.adapter(let child)):
+            return child._resolveUntyped(context: context.deeper)
+        case .none:
+            return context.deadLetters.asAddressable()
         }
     }
 }
@@ -301,13 +313,12 @@ extension Children {
     }
 }
 
-// MARK: Extending ActorCell with internal operations
+// MARK: Extending ActorShell with internal operations
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
-extension ActorCell: ChildActorRefFactory {
+extension ActorShell: ChildActorRefFactory {
 
-    // TODO: Very similar to top level one, though it will be differing in small bits... Likely not worth to DRY completely
-    internal func internal_spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+    internal func _spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
         try behavior.validateAsInitial()
         try validateUniqueName(name)
         // TODO prefix $ validation (only ok for anonymous)
@@ -324,44 +335,43 @@ extension ActorCell: ChildActorRefFactory {
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let cell: ActorCell<M> = ActorCell<M>(
+        let actor: ActorShell<M> = ActorShell<M>(
             system: self.system,
-            parent: self.myself._boxAnyReceivesSystemMessages(),
+            parent: self.myself.asAddressable(),
             behavior: behavior,
             path: path,
             props: props,
             dispatcher: dispatcher
         )
-        let mailbox = Mailbox(cell: cell, capacity: props.mailbox.capacity)
+        let mailbox = Mailbox(shell: actor, capacity: props.mailbox.capacity)
 
-        // TODO: should be DEBUG once we clean up log messages more
         log.debug("Spawning [\(behavior)], on path: [\(path)]")
 
-        let refWithCell = ActorRefWithCell(
+        let cell = ActorCell(
             path: path,
-            cell: cell,
+            actor: actor,
             mailbox: mailbox
         )
 
-        self.children.insert(cell)
+        self.children.insert(actor)
 
-        cell.set(ref: refWithCell)
-        refWithCell.sendSystemMessage(.start)
+        actor.set(ref: cell)
+        cell.sendSystemMessage(.start)
 
-        return refWithCell
+        return .init(.cell(cell))
     }
 
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
         guard ref.path.isChildPathOf(self.path) else {
-            if ref.path == context.myself.path {
-                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref)
+            if ref.path == self.myself.path {
+                throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable())
             } else {
-                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref)
+                throw ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable())
             }
         }
 
         if self.children.markAsStoppingChild(identifiedBy: ref.path) {
-            ref._downcastUnsafe.sendSystemMessage(.stop)
+            ref.sendSystemMessage(.stop)
         }
     }
 
@@ -383,11 +393,11 @@ public enum ActorContextError: Error {
     /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
     /// it should return `Behavior.stopped` from its receive block, which will cause it to immediately stop processing
     /// any further messages.
-    case attemptedStoppingMyselfUsingContext(ref: AnyAddressableActorRef)
+    case attemptedStoppingMyselfUsingContext(ref: AddressableActorRef)
     /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system
     /// can stop arbitrary actors of another part of the system which was programmed under the assumption such actor would
     /// perpetually exist.
-    case attemptedStoppingNonChildActor(ref: AnyAddressableActorRef)
+    case attemptedStoppingNonChildActor(ref: AddressableActorRef)
     /// It is not allowed to spawn
     case duplicateActorPath(path: ActorPath)
     /// It is not allowed to spawn new actors when the system is stopping

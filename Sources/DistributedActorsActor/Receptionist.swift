@@ -36,24 +36,23 @@ public enum Receptionist {
             self.id = id
         }
 
-        internal func _unsafeAsActorRef(_ _ref: BoxedHashableAnyAddressableActorRef) -> ActorRef<Message> {
-            return self._unsafeAsActorRef(_ref._exposeUnderlying())
+        internal func _unsafeAsActorRef(_ addressable: AddressableActorRef) -> ActorRef<Message> {
+            if addressable.isRemote() {
+                let remotePersonality: RemotePersonality<Any> = addressable.ref._unsafeGetRemotePersonality()
+                let remoteWellTypedPersonality: RemotePersonality<Message> = remotePersonality.cast(to: Message.self)
+                return ActorRef(.remote(remoteWellTypedPersonality))
+            } else {
+                guard let ref = addressable.ref as? ActorRef<Message> else {
+                    fatalError("Type mismatch, expected: [\(String(reflecting: ActorRef<Message>.self))] got [\(addressable)]")
+                }
+
+                return ref
+            }
         }
 
-        internal func _unsafeAsActorRef(_ _ref: AnyAddressableActorRef) -> ActorRef<Message> {
-            if let remoteRef = _ref as? RemoteActorRef<Any> {
-                return remoteRef.cast(to: Message.self)
-            }
-            guard let ref = _ref as? ActorRef<Message> else {
-                fatalError("Type mismatch, expected: [\(String(reflecting: ActorRef<Message>.self))] got [\(_ref)]")
-            }
-
-            return ref
-        }
-
-        internal func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages {
+        internal func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef {
             let ref: ActorRef<Message> = system._resolve(context: ResolveContext(path: path, deadLetters: system.deadLetters))
-            return ref
+            return ref.asAddressable()
         }
 
         internal var typeString: FullyQualifiedTypeName {
@@ -77,12 +76,8 @@ public enum Receptionist {
             self.replyTo = replyTo
         }
 
-        internal var _boxHashableAnyAddressableActorRef: BoxedHashableAnyAddressableActorRef {
-            return BoxedHashableAnyAddressableActorRef(self.ref)
-        }
-
-        internal var _boxAnyReceivesSystemMessages: BoxedHashableAnyReceivesSystemMessages {
-            return self.ref._boxAnyReceivesSystemMessages()
+        internal var _addressableActorRef: AddressableActorRef {
+            return AddressableActorRef(self.ref)
         }
 
         internal var _key: _RegistrationKey {
@@ -126,8 +121,8 @@ public enum Receptionist {
             return AnySubscribe(subscribe: self)
         }
 
-        var _boxedSystemRef: BoxedHashableAnyReceivesSystemMessages {
-            return replyTo._boxAnyReceivesSystemMessages()
+        var _addressableActorRef: AddressableActorRef {
+            return replyTo.asAddressable()
         }
     }
 
@@ -138,18 +133,18 @@ public enum Receptionist {
 
     /// Storage container for a receptionist's registrations and subscriptions
     internal final class Storage {
-        internal var _registrations: [AnyRegistrationKey: Set<BoxedHashableAnyAddressableActorRef>] = [:]
+        internal var _registrations: [AnyRegistrationKey: Set<AddressableActorRef>] = [:]
         private var _subscriptions: [AnyRegistrationKey: Set<AnySubscribe>] = [:]
 
-        func addRegistration(key: AnyRegistrationKey, ref: BoxedHashableAnyAddressableActorRef) -> Bool {
+        func addRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Bool {
             return self.addTo(dict: &self._registrations, key: key, value: ref)
         }
 
-        func removeRegistration(key: AnyRegistrationKey, ref: BoxedHashableAnyAddressableActorRef) -> Set<BoxedHashableAnyAddressableActorRef>? {
+        func removeRegistration(key: AnyRegistrationKey, ref: AddressableActorRef) -> Set<AddressableActorRef>? {
             return self.removeFrom(dict: &self._registrations, key: key, value: ref)
         }
 
-        func registrations(forKey key: AnyRegistrationKey) -> Set<BoxedHashableAnyAddressableActorRef>? {
+        func registrations(forKey key: AnyRegistrationKey) -> Set<AddressableActorRef>? {
             return self._registrations[key]
         }
 
@@ -212,9 +207,11 @@ internal enum LocalReceptionist {
 
     private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
         let key = message._key.boxed
-        if storage.addRegistration(key: key, ref: message._boxHashableAnyAddressableActorRef) {
+        let addressable  = message._addressableActorRef
+
+        if storage.addRegistration(key: key, ref: addressable) {
             let terminatedCallback = LocalReceptionist.makeRemoveRegistrationCallback(context: context, message: message, storage: storage)
-            try LocalReceptionist.startWatcher(ref: message._boxAnyReceivesSystemMessages, context: context, terminatedCallback: terminatedCallback.invoke(()))
+            try LocalReceptionist.startWatcher(ref: addressable, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
             if let subscribed = storage.subscriptions(forKey: key) {
                 let registrations = storage.registrations(forKey: key) ?? []
@@ -232,7 +229,7 @@ internal enum LocalReceptionist {
         let key = AnyRegistrationKey(from: message._key)
         if storage.addSubscription(key: key, subscription: boxedMessage) {
             let terminatedCallback = LocalReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
-            try LocalReceptionist.startWatcher(ref: message._boxedSystemRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
+            try LocalReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
             boxedMessage.replyWith(storage.registrations(forKey: key) ?? [])
         }
@@ -247,7 +244,7 @@ internal enum LocalReceptionist {
     }
 
     // TODO: use context aware watch once implemented. See: https://github.com/apple/swift-distributed-actors/issues/544
-    private static func startWatcher<M>(ref: BoxedHashableAnyReceivesSystemMessages, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
+    private static func startWatcher<M>(ref: AddressableActorRef, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
         let behavior: Behavior<Never> = .setup { context in
             context.watch(ref)
             return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
@@ -264,7 +261,7 @@ internal enum LocalReceptionist {
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
-            let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._boxHashableAnyAddressableActorRef) ?? []
+            let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._addressableActorRef) ?? []
 
             if let subscribed = storage.subscriptions(forKey: message._key.boxed) {
                 for subscription in subscribed {
@@ -298,16 +295,15 @@ public protocol ReceptionistMessage {}
 internal typealias FullyQualifiedTypeName = String
 
 internal protocol _Register: ReceptionistMessage {
-    var _boxHashableAnyAddressableActorRef: BoxedHashableAnyAddressableActorRef { get }
-    var _boxAnyReceivesSystemMessages: BoxedHashableAnyReceivesSystemMessages { get }
+    var _addressableActorRef: AddressableActorRef { get }
     var _key: _RegistrationKey { get }
     func replyRegistered()
 }
 
 internal protocol _Lookup: ReceptionistMessage {
     var _key: _RegistrationKey { get }
-    func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>)
-    func replyWith(_ refs: [AnyReceivesMessages])
+    func replyWith(_ refs: Set<AddressableActorRef>)
+    func replyWith(_ refs: [AddressableActorRef])
 }
 
 internal protocol _RegistrationKey {
@@ -316,7 +312,7 @@ internal protocol _RegistrationKey {
     var typeString: FullyQualifiedTypeName { get }
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `RegistrationKey`
-    func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages
+    func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef
 }
 
 internal enum ReceptionistError: Error {
@@ -336,29 +332,29 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
         self.typeString = key.typeString
     }
 
-    func resolve(system: ActorSystem, path: UniqueActorPath) -> AnyReceivesMessages {
+    func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        return system.deadLetters
+        return system.deadLetters.asAddressable()
     }
 }
 
 internal protocol _Subscribe: ReceptionistMessage {
     var _key: _RegistrationKey { get }
     var _boxed: AnySubscribe { get }
-    var _boxedSystemRef: BoxedHashableAnyReceivesSystemMessages { get }
+    var _addressableActorRef: AddressableActorRef { get }
 }
 
 internal struct AnySubscribe: Hashable {
     let path: UniqueActorPath
-    let _replyWith: (Set<BoxedHashableAnyAddressableActorRef>) -> Void
+    let _replyWith: (Set<AddressableActorRef>) -> Void
 
     init<M>(subscribe: Receptionist.Subscribe<M>) {
         self.path = subscribe.replyTo.path
         self._replyWith = subscribe.replyWith
     }
 
-    func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>) {
+    func replyWith(_ refs: Set<AddressableActorRef>) {
         self._replyWith(refs)
     }
 
@@ -377,13 +373,13 @@ internal protocol ListingRequest {
     var key: Receptionist.RegistrationKey<Message> { get }
     var replyTo: ActorRef<Receptionist.Listing<Message>> { get }
 
-    func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>)
+    func replyWith(_ refs: Set<AddressableActorRef>)
 
     var _key: _RegistrationKey { get }
 }
 
 internal extension ListingRequest {
-    func replyWith(_ refs: Set<BoxedHashableAnyAddressableActorRef>) {
+    func replyWith(_ refs: Set<AddressableActorRef>) {
         let typedRefs = refs.map {
             key._unsafeAsActorRef($0)
         }
@@ -391,7 +387,7 @@ internal extension ListingRequest {
         replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
     }
 
-    func replyWith(_ refs: [AnyReceivesMessages]) {
+    func replyWith(_ refs: [AddressableActorRef]) {
         let typedRefs = refs.map {
             key._unsafeAsActorRef($0)
         }
