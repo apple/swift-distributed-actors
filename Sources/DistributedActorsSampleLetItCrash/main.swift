@@ -166,7 +166,7 @@ let crashTests = [
     // 39  libsystem_pthread.dylib             0x00007fff5b5be2eb _pthread_body + 126
     // 40  libsystem_pthread.dylib             0x00007fff5b5c1249 _pthread_start + 66
     // 41  libsystem_pthread.dylib             0x00007fff5b5bd40d thread_start + 13
-    // 2019-05-22T16:08:28+0900 error: [sact://LetItCrashSystem@localhost:7337][ActorCell.swift:374][thread:5891][/user/crasher#7547311714601715076] Actor crashing, reason: [Actor faulted while processing message '[let it crash: integer-overflow actor]:String', with backtrace]:MessageProcessingFailure. Terminating actor, process and thread remain alive.
+    // 2019-05-22T16:08:28+0900 error: [sact://LetItCrashSystem@localhost:7337][ActorShell.swift:374][thread:5891][/user/crasher#7547311714601715076] Actor crashing, reason: [Actor faulted while processing message '[let it crash: integer-overflow actor]:String', with backtrace]:MessageProcessingFailure. Terminating actor, process and thread remain alive.
     // ==== ------------------------------------------------------------------------------------------------------------
 
     , "force-unwrap-nil": crashNil

@@ -20,14 +20,14 @@
 /// is clear about its current lifecycle state (it may have already terminated the moment the message was sent,
 /// or even before then). To obtain lifecycle status of this actor the usual strategy of watching it needs to be employed.
 @usableFromInline
-internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemMessages {
+internal final class RemotePersonality<Message> {
 
     private let _path: UniqueActorPath
-    override public var path: UniqueActorPath {
+    public var path: UniqueActorPath {
         return self._path
     }
 
-    private let deadLetters: ActorRef<DeadLetter>
+    let deadLetters: ActorRef<DeadLetter>
 
     // Implementation notes:
     // 
@@ -58,14 +58,11 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
         self.deadLetters = deadLetters.adapted()
     }
 
-    public override func tell(_ message: Message) {
-        self.sendUserMessage(message)
-    }
-
     @usableFromInline
     func sendUserMessage(_ message: Message) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendUserMessage: \(message)")
         if let remoteControl = self.remoteControl {
+            // TODO optionally carry file/line?
             remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
         } else {
             self.deadLetters.adapted().tell(message)
@@ -73,7 +70,7 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     }
 
     @usableFromInline
-    override func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage) {
         traceLog_Cell("RemoteActorRef(\(self.path)) sendSystemMessage: \(message)")
         // TODO: make system messages reliable
         if let remoteControl = self.remoteControl {
@@ -103,8 +100,8 @@ internal final class RemoteActorRef<Message>: ActorRef<Message>, ReceivesSystemM
     }
 }
 
-internal extension RemoteActorRef where Message == Any {
-    func cast<NewMessage>(to: NewMessage.Type) -> RemoteActorRef<NewMessage> {
-        return RemoteActorRef<NewMessage>(shell: self.clusterShell, path: self.path, deadLetters: self.deadLetters)
+internal extension RemotePersonality where Message == Any {
+    func cast<NewMessage>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
+        return RemotePersonality<NewMessage>(shell: self.clusterShell, path: self.path, deadLetters: self.deadLetters)
     }
 }

@@ -39,7 +39,7 @@ class RemoteActorRefProviderTests: XCTestCase {
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
-        let theOne = TheOneWhoHasNoParentActorRef()
+        let theOne = TheOneWhoHasNoParent()
         let guardian = Guardian(parent: theOne, name: "user")
         let localProvider = LocalActorRefProvider(root: guardian)
 

@@ -19,7 +19,7 @@ import SwiftDistributedActorsActorTestKit
 
 class ActorRefAdapterTests: XCTestCase {
 
-    let system = ActorSystem("ActorSystemTests")
+    let system = ActorSystem("ActorRefAdapterTests")
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
@@ -41,6 +41,49 @@ class ActorRefAdapterTests: XCTestCase {
         _ = try! system.spawnAnonymous(behavior)
 
         let adapted = try refProbe.expectMessage()
+
+        for i in 0...10 {
+            adapted.tell(i)
+        }
+
+        for i in 0...10 {
+            try probe.expectMessage("\(i)")
+        }
+    }
+
+    func test_adaptedRef_overNetwork_shouldConvertMessages() throws {
+        let systemOne = ActorSystem("One-RemoteActorRefAdapterTests") { settings in
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.bindAddress.port = 1881
+        }
+        defer { systemOne.shutdown() }
+        let firstTestKit = ActorTestKit(systemOne)
+        let probe = firstTestKit.spawnTestProbe(expecting: String.self)
+        let refProbe = firstTestKit.spawnTestProbe(expecting: ActorRef<Int>.self)
+
+        let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in 
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.bindAddress.port = 1991
+        }
+        defer { systemTwo.shutdown() }
+
+        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.bindAddress))) // TODO nicer API
+
+        sleep(2)
+
+        let behavior: Behavior<String> = .setup { context in
+            refProbe.tell(context.messageAdapter { "\($0)" })
+            return .receiveMessage { msg in
+                probe.ref.tell(msg)
+                return .same
+            }
+        }
+
+        _ = try! systemTwo.spawn(behavior, name: "target")
+
+        let adapted: ActorRef<Int> = try refProbe.expectMessage()
 
         for i in 0...10 {
             adapted.tell(i)
@@ -118,7 +161,7 @@ class ActorRefAdapterTests: XCTestCase {
         try probe.expectMessage("received:test")
 
         ref.tell(.stop)
-        try probe.expectTerminatedInAnyOrder([ref, adaptedRef])
+        try probe.expectTerminatedInAnyOrder([ref.asAddressable(), adaptedRef.asAddressable()])
     }
 
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {

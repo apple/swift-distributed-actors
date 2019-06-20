@@ -24,7 +24,7 @@ internal protocol FailureObserver {
     /// Called when the `watcher` watches a remote actor which resides on the `remoteAddress`.
     /// A failure detector may have to start monitoring this address using some internal mechanism,
     /// in order to be able to signal the watcher in case the address terminates (e.g. the node crashes).
-    func onWatchedActor(by watcher: AnyReceivesSystemMessages, remoteAddress: UniqueNodeAddress)
+    func onWatchedActor(by watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress)
 
     /// Called when the cluster membership changes.
     ///
@@ -57,7 +57,7 @@ internal struct FailureDetectorContext { // TODO: Eventually to become public
 /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
 /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
 internal enum FailureDetectorProtocol {
-    case watchedActor(watcher: AnyReceivesSystemMessages, remoteAddress: UniqueNodeAddress)
+    case watchedActor(watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress)
     case membershipSnapshot(Membership)
     case membershipChange(MembershipChange)
 }

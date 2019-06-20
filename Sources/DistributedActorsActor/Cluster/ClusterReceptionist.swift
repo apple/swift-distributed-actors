@@ -76,17 +76,17 @@ internal enum ClusterReceptionist {
     }
 
     private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
-        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message._key.boxed, ref: message._boxHashableAnyAddressableActorRef, systemRef: message._boxAnyReceivesSystemMessages)
+        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message._key.boxed, ref: message._addressableActorRef)
 
         try ClusterReceptionist.replicate(context: context, register: message)
 
         message.replyRegistered()
     }
 
-    private static func addRegistration(context: ActorContext<Receptionist.Message>, storage: Receptionist.Storage, key: AnyRegistrationKey, ref: BoxedHashableAnyAddressableActorRef, systemRef: BoxedHashableAnyReceivesSystemMessages) throws {
+    private static func addRegistration(context: ActorContext<Receptionist.Message>, storage: Receptionist.Storage, key: AnyRegistrationKey, ref: AddressableActorRef) throws {
         if storage.addRegistration(key: key, ref: ref) {
             let terminatedCallback = ClusterReceptionist.makeRemoveRegistrationCallback(context: context, key: key, ref: ref, storage: storage)
-            try ClusterReceptionist.startWatcher(ref: systemRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
+            try ClusterReceptionist.startWatcher(ref: ref, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
             if let subscribed = storage.subscriptions(forKey: key) {
                 let registrations = storage.registrations(forKey: key) ?? []
@@ -102,7 +102,7 @@ internal enum ClusterReceptionist {
         let key = AnyRegistrationKey(from: message._key)
         if storage.addSubscription(key: key, subscription: boxedMessage) {
             let terminatedCallback = ClusterReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
-            try ClusterReceptionist.startWatcher(ref: message._boxedSystemRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
+            try ClusterReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
 
             boxedMessage.replyWith(storage.registrations(forKey: key) ?? [])
         }
@@ -130,12 +130,14 @@ internal enum ClusterReceptionist {
     }
 
     private static func onReplicate(context: ActorContext<Receptionist.Message>, message: ClusterReceptionist.Replicate, storage: Receptionist.Storage) throws {
-        guard let ref = context.system._resolveUntyped(context: ResolveContext(path: message.path, deadLetters: context.system.deadLetters)) as? RemoteActorRef<Any> else {
+        let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: message.path, deadLetters: context.system.deadLetters))
+
+        guard ref.isRemote() else {
             // is local ref and should be ignored
             return
         }
 
-        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message.key, ref: BoxedHashableAnyAddressableActorRef(ref: ref), systemRef: ref._boxAnyReceivesSystemMessages())
+        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message.key, ref: ref)
     }
 
     private static func onFullState(context: ActorContext<Receptionist.Message>, fullState: ClusterReceptionist.FullState, storage: Receptionist.Storage) throws {
@@ -143,18 +145,17 @@ internal enum ClusterReceptionist {
         for (key, paths) in fullState.registrations {
             var anyAdded = false
             for path in paths {
-                guard let anyRef = context.system._resolveUntyped(context: ResolveContext(path: path, deadLetters: context.system.deadLetters)) as? RemoteActorRef<Any> else {
+                let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: path, deadLetters: context.system.deadLetters))
+
+                guard ref.isRemote() else {
                     // is local ref and should be ignored
                     continue
                 }
 
-                let ref = BoxedHashableAnyAddressableActorRef(ref: anyRef)
-                let systemRef = anyRef._boxAnyReceivesSystemMessages()
-
                 if storage.addRegistration(key: key, ref: ref) {
                     anyAdded = true
                     let terminatedCallback = ClusterReceptionist.makeRemoveRegistrationCallback(context: context, key: key, ref: ref, storage: storage)
-                    try ClusterReceptionist.startWatcher(ref: systemRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
+                    try ClusterReceptionist.startWatcher(ref: ref, context: context, terminatedCallback: terminatedCallback.invoke(()))
                 }
             }
 
@@ -170,7 +171,7 @@ internal enum ClusterReceptionist {
     }
 
     // TODO: use context aware watch once implemented. See: https://github.com/apple/swift-distributed-actors/issues/544
-    private static func startWatcher<M>(ref: BoxedHashableAnyReceivesSystemMessages, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
+    private static func startWatcher<M>(ref: AddressableActorRef, context: ActorContext<M>, terminatedCallback: @autoclosure @escaping () -> Void) throws {
         let behavior: Behavior<Never> = .setup { context in
             context.watch(ref)
             return .receiveSignal { _, signal in
@@ -185,7 +186,7 @@ internal enum ClusterReceptionist {
         _ = try context.spawnAnonymous(behavior)
     }
 
-    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey, ref: BoxedHashableAnyAddressableActorRef, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
+    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey, ref: AddressableActorRef, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
             let remainingRegistrations = storage.removeRegistration(key: key, ref: ref) ?? []
 
@@ -212,7 +213,7 @@ internal enum ClusterReceptionist {
 
         for remoteControl in remoteControls {
             let remoteReceptionistPath = try UniqueActorPath(path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")], address: remoteControl.remoteAddress), uid: ActorUID.wellKnown)
-            let path = ClusterReceptionist.makeRemotePath(register._boxHashableAnyAddressableActorRef.path, localAddress: context.system.settings.cluster.uniqueBindAddress)
+            let path = ClusterReceptionist.makeRemotePath(register._addressableActorRef.path, localAddress: context.system.settings.cluster.uniqueBindAddress)
 
             remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: Envelope(payload: .userMessage(Replicate(key: register._key.boxed, path: path))), recipient: remoteReceptionistPath)
         }

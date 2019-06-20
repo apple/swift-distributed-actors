@@ -25,6 +25,7 @@ extension ActorRefAdapterTests {
    static var allTests : [(String, (ActorRefAdapterTests) -> () throws -> Void)] {
       return [
                 ("test_adaptedRef_shouldConvertMessages", test_adaptedRef_shouldConvertMessages),
+                ("test_adaptedRef_overNetwork_shouldConvertMessages", test_adaptedRef_overNetwork_shouldConvertMessages),
                 ("test_adaptedRef_shouldBeWatchable", test_adaptedRef_shouldBeWatchable),
                 ("test_adaptedRef_shouldShareTheSameLifecycleAsItsActor", test_adaptedRef_shouldShareTheSameLifecycleAsItsActor),
                 ("test_adaptedRef_newAdapterShouldReplaceOld", test_adaptedRef_newAdapterShouldReplaceOld),

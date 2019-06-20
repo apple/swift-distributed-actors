@@ -47,7 +47,7 @@ public final class ActorSystem {
     private let systemProvider: _ActorRefProvider
     private let userProvider: _ActorRefProvider
 
-    private let _theOneWhoWalksTheBubblesOfSpaceTime: ReceivesSystemMessages
+    internal let _root: ReceivesSystemMessages
 
     private let terminationLock = Lock()
 
@@ -106,7 +106,7 @@ public final class ActorSystem {
             return ActorOriginLogHandler(context)
         })
         deadLog.logLevel = settings.defaultLogLevel
-        self.deadLetters = DeadLettersActorRef(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown))
+        self.deadLetters = ActorRef(.deadLetters(.init(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown))))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
@@ -120,14 +120,13 @@ public final class ActorSystem {
         }
 
         // initialize top level guardians
-        self._theOneWhoWalksTheBubblesOfSpaceTime = TheOneWhoHasNoParentActorRef()
-        let theOne = self._theOneWhoWalksTheBubblesOfSpaceTime
-        let userGuardian = Guardian(parent: theOne, name: "user")
-        let systemGuardian = Guardian(parent: theOne, name: "system")
+        self._root = TheOneWhoHasNoParent()
+        let theOne = self._root
 
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: userGuardian)
-        let localSystemProvider = LocalActorRefProvider(root: systemGuardian) // TODO want to reconciliate those into one, and allow /dead as well
+        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user"))
+        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system")) 
+        // TODO want to reconciliate those into one, and allow /dead as well
 
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
@@ -266,13 +265,11 @@ extension ActorSystem: ActorRefFactory {
             fatalError("not implemented yet, only default dispatcher and calling thread one work")
         }
 
-        let refWithCell: ActorRef<Message> = try provider.spawn(
+        return try provider.spawn(
             system: self,
             behavior: behavior, path: path,
             dispatcher: dispatcher, props: props
         )
-
-        return refWithCell
     }
 }
 
@@ -308,7 +305,8 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    @usableFromInline
+    internal func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let systemTraversed: TraversalResult<T> = self.systemProvider._traverse(context: context, visit)
 
         switch systemTraversed {
@@ -330,17 +328,18 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
 
-    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let context = TraversalContext<T>()
         return self._traverse(context: context, visit)
     }
 
     @discardableResult
-    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AnyAddressableActorRef) -> TraversalDirective<Void>) -> TraversalResult<Void> {
+    internal func _traverseAllVoid(_ visit: (TraversalContext<Void>, AddressableActorRef) -> TraversalDirective<Void>) -> TraversalResult<Void> {
         return self._traverseAll(visit)
     }
 
 
+    @usableFromInline
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.deadRef
@@ -352,9 +351,10 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+    @usableFromInline
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return self.deadLetters.adapt(from: Any.self)
+            return self.deadLetters.adapt(from: Any.self).asAddressable()
         }
         switch selector.value {
         case "system": return self.systemProvider._resolveUntyped(context: context)

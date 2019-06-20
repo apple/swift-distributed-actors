@@ -12,12 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-internal protocol AbstractAdapterRef: AnyAddressableActorRef, _ActorTreeTraversable {
-    func cast<Message>(to: Message.Type) -> ActorRef<Message>?
+internal protocol AbstractAdapter: _ActorTreeTraversable {
+
+    var path: UniqueActorPath { get }
+    var deadLetters: ActorRef<DeadLetter> { get }
+
+    /// Try to `tell` given message, if the type matches the adapted (or direct) message type, it will be delivered.
+    func trySendUserMessage(_ message: Any)
+    func sendSystemMessage(_ message: SystemMessage)
 
     /// Synchronously stops the adapter ref and send terminated messages to all watchers.
     func stop()
-    var _receivesSystemMessages: BoxedHashableAnyReceivesSystemMessages { get }
+
 }
 
 /// :nodoc: Not intended to be used by end users.
@@ -29,53 +35,69 @@ internal protocol AbstractAdapterRef: AnyAddressableActorRef, _ActorTreeTraversa
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<From, To>: ActorRef<From>, AbstractAdapterRef {
-    private let ref: ActorRef<To>
+internal final class ActorRefAdapter<From, To>: AbstractAdapter {
+    private let target: ActorRef<To>
     private let converter: (From) -> To
-    private let _path: UniqueActorPath
-    private var watchers: Set<BoxedHashableAnyReceivesSystemMessages>?
+    private let adapterPath: UniqueActorPath
+    private var watchers: Set<AddressableActorRef>?
     private let lock = Mutex()
 
+    var path: UniqueActorPath {
+        return self.adapterPath
+    }
+    let deadLetters: ActorRef<DeadLetter>
+
     init(_ ref: ActorRef<To>, path: UniqueActorPath, converter: @escaping (From) -> To) {
-        self.ref = ref
-        self._path = path
+        self.target = ref
+        self.adapterPath = path
         self.converter = converter
         self.watchers = []
+
+        // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
+        // thus we should be able to reach a real dead letters instance by going through the target ref.
+        self.deadLetters = self.target._deadLetters
     }
 
-    override var path: UniqueActorPath {
-        return self._path
+    private var myself: ActorRef<From> {
+        return ActorRef(.adapter(self))
     }
 
-    override func tell(_ message: From) {
-        ref.tell(converter(message))
-    }
-
-    override func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage) {
         switch message {
         case .watch(let watchee, let watcher):
             self.addWatcher(watchee: watchee, watcher: watcher)
         case .unwatch(let watchee, let watcher):
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
-            if let watcher = ref as? AnyReceivesSystemMessages {
-                self.removeWatcher(watchee: self, watcher: watcher)
-            }
+            self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
         case .addressTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
-            () // ignore all other messages
+            () // ignore all other messages // TODO: why?
         }
     }
 
-    var _receivesSystemMessages: BoxedHashableAnyReceivesSystemMessages {
-        return BoxedHashableAnyReceivesSystemMessages(ref: self)
+    @usableFromInline
+    func sendUserMessage(_ message: From) {
+        self.target.tell(converter(message))
     }
 
-    func cast<Message>(to: Message.Type) -> ActorRef<Message>? {
-        return self as? ActorRef<Message>
+    @usableFromInline
+    func trySendUserMessage(_ message: Any) {
+        if let message = message as? From {
+            self.sendUserMessage(message)
+        } else {
+            if let directMessage = message as? To {
+                fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " + 
+                    "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(From.self)`.")
+            } else {
+                traceLog_Mailbox(self.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
+                return // TODO: "drop" the message
+            }
+        }
+
     }
 
-    private func addWatcher(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages) {
-        assert(watchee.path == self._path && watcher.path != self._path, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+    private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
+        assert(watchee.path == self.adapterPath && watcher.path != self.adapterPath, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -83,42 +105,41 @@ internal final class ActorRefAdapter<From, To>: ActorRef<From>, AbstractAdapterR
                 return
             }
 
-            let boxedRef = watcher._exposeBox()
-            guard !self.watchers!.contains(boxedRef) else {
+            guard !self.watchers!.contains(watcher) else {
                 return
             }
 
-            self.watchers?.insert(boxedRef)
+            self.watchers?.insert(watcher)
             self.watch(watcher)
         }
     }
 
-    private func removeWatcher(watchee: AnyReceivesSystemMessages, watcher: AnyReceivesSystemMessages) {
-        assert(watchee.path == self._path && watcher.path != self._path, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+    private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
+        assert(watchee.path == self.adapterPath && watcher.path != self.adapterPath, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
                 return
             }
 
-            self.watchers!.remove(watcher._exposeBox())
+            self.watchers!.remove(watcher)
         }
     }
 
-    private func watch(_ watchee: AnyReceivesSystemMessages) {
-        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: self._receivesSystemMessages))
+    private func watch(_ watchee: AddressableActorRef) {
+        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: self.myself.asAddressable()))
     }
 
-    private func unwatch(_ watchee: AnyReceivesSystemMessages) {
-        watchee.sendSystemMessage(.unwatch(watchee: watchee, watcher: self._receivesSystemMessages))
+    private func unwatch(_ watchee: AddressableActorRef) {
+        watchee.sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myself.asAddressable()))
     }
 
-    private func sendTerminated(_ ref: AnyReceivesSystemMessages) {
-        ref.sendSystemMessage(.terminated(ref: self._receivesSystemMessages, existenceConfirmed: true, addressTerminated: false))
+    private func sendTerminated(_ ref: AddressableActorRef) {
+        ref.sendSystemMessage(.terminated(ref: self.myself.asAddressable(), existenceConfirmed: true, addressTerminated: false))
     }
 
     func stop() {
-        var localWatchers: Set<BoxedHashableAnyReceivesSystemMessages> = []
+        var localWatchers: Set<AddressableActorRef> = []
         self.lock.synchronized {
             guard self.watchers != nil else {
                 return
@@ -137,9 +158,9 @@ internal final class ActorRefAdapter<From, To>: ActorRef<From>, AbstractAdapterR
 
 extension ActorRefAdapter {
     @inlinable
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AnyAddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         var c = context.deeper
-        switch visit(context, self) {
+        switch visit(context, self.myself.asAddressable()) {
         case .continue:
             ()
         case .accumulateSingle(let t):
@@ -158,7 +179,7 @@ extension ActorRefAdapter {
             return context.deadRef
         }
 
-        switch self {
+        switch self.myself {
         case let myself as ActorRef<Message>:
             return myself
         default:
@@ -166,12 +187,12 @@ extension ActorRefAdapter {
         }
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AnyReceivesMessages {
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard context.selectorSegments.first == nil, self.path.uid == context.selectorUID else {
-            return context.deadRef
+            return context.deadLetters.asAddressable()
         }
 
-        return self
+        return self.myself.asAddressable()
     }
 }
 
@@ -181,22 +202,41 @@ extension ActorRefAdapter {
 /// :nodoc: Not intended to be used by end users.
 ///
 /// Wraps the `DeadLettersActorRef` to get properly typed deadLetters refs.
-internal final class DeadLettersAdapter<Message>: ActorRef<Message> {
+internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
+
     let deadLetters: ActorRef<DeadLetter>
+    let deadRecipient: UniqueActorPath
 
-    init(_ ref: ActorRef<DeadLetter>) {
+    init(_ ref: ActorRef<DeadLetter>, deadRecipient: UniqueActorPath) {
         self.deadLetters = ref
+        self.deadRecipient = deadRecipient
     }
 
-    override func tell(_ message: Message) {
-        self.deadLetters.tell(DeadLetter(message, recipient: self.deadLetters.path))
-    }
-
-    override func sendSystemMessage(_ message: SystemMessage) {
-        self.deadLetters.sendSystemMessage(message)
-    }
-
-    override var path: UniqueActorPath {
+    var path: UniqueActorPath {
         return self.deadLetters.path
+    }
+
+    func trySendUserMessage(_ message: Any) {
+        self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient))
+    }
+
+    func sendSystemMessage(_ message: SystemMessage) {
+        self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient))
+    }
+
+    func stop() {
+        // nothing to stop, a dead letters adapter is special
+    }
+
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        return .completed
+    }
+
+    func _resolve<Message2>(context: ResolveContext<Message2>) -> ActorRef<Message2> {
+        return self.deadLetters.adapted()
+    }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+        return self.deadLetters.asAddressable()
     }
 }

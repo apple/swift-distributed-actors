@@ -33,7 +33,7 @@ struct Timer<Message> {
 struct TimerEvent {
     let key: String // TODO introduce a Key type https://github.com/apple/swift-distributed-actors/issues/269
     let generation: Int
-    let owner: AnyReceivesSystemMessages
+    let owner: AddressableActorRef
 }
 
 public class Timers<Message> {
@@ -102,7 +102,7 @@ public class Timers<Message> {
         self.cancelTimer(forKey: key)
 
         let generation = self.nextTimerGen()
-        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself._boxAnyReceivesSystemMessages())
+        let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.asAddressable())
         let handle: Cancelable
         let cb = self.timerCallback
         if repeated {
@@ -175,7 +175,7 @@ internal extension Timers {
             traceLog_Supervision("executing the task ::: \(context.myself)")
 
             // TODO avoid the box part?
-            context.myself._boxAnyReceivesSystemMessages().sendSystemMessage(.resume(.success(token)))
+            context.myself.asAddressable().sendSystemMessage(.resume(.success(token)))
         }
 
         traceLog_Supervision("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")
