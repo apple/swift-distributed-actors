@@ -141,7 +141,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
     }
 
     // TODO: remote watches are not yet implemented, so this does not work yet. Re-enable once https://github.com/apple/swift-distributed-actors/issues/609 is resolved
-    func test_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies() throws {
+    func disabled_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies() throws {
         setUpBoth {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
