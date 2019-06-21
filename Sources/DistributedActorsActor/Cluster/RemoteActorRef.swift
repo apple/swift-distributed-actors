@@ -50,12 +50,14 @@ internal final class RemotePersonality<Message> {
     private var _cachedAssociationRemoteControl: AssociationRemoteControl?
 
     private let clusterShell: ClusterShell
+    let system: ActorSystem
 
-    init(shell: ClusterShell, path: UniqueActorPath, deadLetters: ActorRef<DeadLetter>) {
+    init(shell: ClusterShell, path: UniqueActorPath, system: ActorSystem) {
         assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
         self._path = path
         self.clusterShell = shell
-        self.deadLetters = deadLetters.adapted()
+        self.deadLetters = system.deadLetters.adapted()
+        self.system = system
     }
 
     @usableFromInline
@@ -102,6 +104,6 @@ internal final class RemotePersonality<Message> {
 
 internal extension RemotePersonality where Message == Any {
     func cast<NewMessage>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
-        return RemotePersonality<NewMessage>(shell: self.clusterShell, path: self.path, deadLetters: self.deadLetters)
+        return RemotePersonality<NewMessage>(shell: self.clusterShell, path: self.path, system: self.system)
     }
 }

@@ -221,6 +221,21 @@ internal extension ActorRef {
         }
     }
 
+    @usableFromInline
+    var _system: ActorSystem? {
+        switch self.personality {
+        case .cell(let cell):
+            return cell.system
+        case .adapter(let adapter):
+            return adapter.system
+        case .guardian(let guardian):
+            return guardian.system
+        case .deadLetters(let deadLetters):
+            return deadLetters.system
+        case .remote(let remote):
+            return remote.system
+        }
+    }
 }
 
 /// An "cell" containing the real actor as well as its mailbox.
@@ -246,7 +261,7 @@ internal final class ActorCell<Message> {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return self.actor?.system.deadLetters ?? ActorRef(.deadLetters(.init(Logger(label: "deadLetters(shutting down)"), path: ._rootPath)))
+        return self.actor?.system.deadLetters ?? ActorRef(.deadLetters(.init(Logger(label: "deadLetters(shutting down)"), path: ._rootPath, system: self.system)))
     }
 
 
@@ -359,8 +374,9 @@ internal class Guardian {
 
     private let allChildrenRemoved: Condition = Condition()
     private var stopping: Bool = false
+    weak var system: ActorSystem?
 
-    init(parent: ReceivesSystemMessages, name: String) {
+    init(parent: ReceivesSystemMessages, name: String, system: ActorSystem) {
         assert(parent.path == UniqueActorPath._rootPath, "A Guardian MUST live directly under the `/` path.")
 
         do {
@@ -369,6 +385,7 @@ internal class Guardian {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
         self._children = Children()
+        self.system = system
     }
 
     var ref: ActorRef<Never> {
@@ -459,7 +476,7 @@ internal class Guardian {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.path))"), path: self.path)))
+        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.path))"), path: self.path, system: self.system)))
     }
 }
 

@@ -35,7 +35,11 @@ public final class ActorSystem {
     // so without it we could not log anything.
     let eventStream = "" // FIXME actual implementation
 
-    public let deadLetters: ActorRef<DeadLetter>
+    // initialized during startup
+    private var _deadLetters: ActorRef<DeadLetter>! = nil
+    public var deadLetters: ActorRef<DeadLetter> {
+        return self._deadLetters
+    }
 
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     internal let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
@@ -44,8 +48,8 @@ public final class ActorSystem {
 
     // TODO: converge into one tree? // YEAH
     // Note: This differs from Akka, we do full separate trees here
-    private let systemProvider: _ActorRefProvider
-    private let userProvider: _ActorRefProvider
+    private var systemProvider: _ActorRefProvider! = nil
+    private var userProvider: _ActorRefProvider! = nil
 
     internal let _root: ReceivesSystemMessages
 
@@ -55,17 +59,19 @@ public final class ActorSystem {
     /// Settings are immutable and may not be changed once the system is running.
     public let settings: ActorSystemSettings
 
-    public let serialization: Serialization
+    // initialized during startup
+    public var serialization: Serialization! = nil
 
     public var receptionist: ActorRef<Receptionist.Message> {
         return self._receptionist
     }
 
-    private var _receptionist: ActorRef<Receptionist.Message>
+    private var _receptionist: ActorRef<Receptionist.Message>! = nil
 
     // MARK: Cluster
 
-    internal let _cluster: ClusterShell?
+    // initialized during startup
+    internal var _cluster: ClusterShell? = nil
 
     // MARK: Logging
 
@@ -106,7 +112,6 @@ public final class ActorSystem {
             return ActorOriginLogHandler(context)
         })
         deadLog.logLevel = settings.defaultLogLevel
-        self.deadLetters = ActorRef(.deadLetters(.init(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown))))
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
@@ -123,9 +128,11 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
+        self._deadLetters = ActorRef(.deadLetters(.init(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown), system: self)))
+
         // actor providers
-        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user"))
-        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system")) 
+        let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))
+        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", system: self)) 
         // TODO want to reconciliate those into one, and allow /dead as well
 
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
@@ -147,7 +154,7 @@ public final class ActorSystem {
         // serialization
         let traversable = CompositeActorTreeTraversable(systemTree: effectiveSystemProvider, userTree: effectiveUserProvider)
 
-        self.serialization = Serialization(settings: settings, deadLetters: deadLetters, traversable: traversable)
+        self.serialization = Serialization(settings: settings, system: self, traversable: traversable)
 
         // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
         self._receptionist = deadLetters.adapted()
@@ -180,6 +187,7 @@ public final class ActorSystem {
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
+        self.serialization = nil
     }
 }
 
@@ -368,7 +376,7 @@ extension ActorSystem: _ActorTreeTraversable {
     public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
         var path = ref.path
         path.address = remote.settings.cluster.uniqueBindAddress
-        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
+        let context = ResolveContext<Message>(path: path, system: self)
         return self._resolve(context: context)
     }
 

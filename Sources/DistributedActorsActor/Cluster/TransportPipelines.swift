@@ -286,11 +286,11 @@ private final class SerializationHandler: ChannelDuplexHandler {
         deserializationPromise.futureResult.whenComplete {
             switch $0 {
             case .success(let message as SystemMessage):
-                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, deadLetters: self.system.deadLetters)
+                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, system: self.system)
                 let ref = self.system._resolveUntyped(context: resolveContext)
                 ref.sendSystemMessage(message)
             case .success(let message):
-                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, deadLetters: self.system.deadLetters)
+                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, system: self.system)
                 let ref = self.system._resolveUntyped(context: resolveContext)
                 ref._unsafeTellOrDrop(message)
             case .failure(let error):

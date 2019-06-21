@@ -22,8 +22,8 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 
-    override init(parent: ReceivesSystemMessages, name: String) {
-        super.init(parent: parent, name: name)
+    override init(parent: ReceivesSystemMessages, name: String, system: ActorSystem) {
+        super.init(parent: parent, name: name, system: system)
     }
 
     override func trySendUserMessage(_ message: Any) {

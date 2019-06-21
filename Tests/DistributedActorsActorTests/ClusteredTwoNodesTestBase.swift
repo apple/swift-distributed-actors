@@ -207,7 +207,7 @@ extension ClusteredTwoNodesTestBase {
 
         var uniqueRemotePath: UniqueActorPath = path
         uniqueRemotePath.address = remoteNodeAddress
-        let resolveContext = ResolveContext<M>(path: uniqueRemotePath, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<M>(path: uniqueRemotePath, system: self.local)
         return system._resolve(context: resolveContext)
     }
 }
