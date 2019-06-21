@@ -231,7 +231,7 @@ fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
         // let totalMessages = numMessagesPerActorPair * numActors / 2
 
         // Terrible hack
-        let latchGuardian = BenchmarkLatchGuardian<PingPongCommand>(parent: system._root, name: "benchmarkLatch")
+        let latchGuardian = BenchmarkLatchGuardian<PingPongCommand>(parent: system._root, name: "benchmarkLatch", system: system)
         let benchmarkLatchRef: ActorRef<PingPongCommand> = ActorRef(.guardian(latchGuardian as Guardian))
 
         supervisor.tell(

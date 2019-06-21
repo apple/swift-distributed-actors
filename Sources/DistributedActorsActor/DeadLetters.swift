@@ -54,10 +54,12 @@ extension ActorRef where ActorRef.Message == DeadLetter {
 internal class DeadLetters {
     let _path: UniqueActorPath
     let log: Logger
+    weak var system: ActorSystem?
 
-    init(_ log: Logger, path: UniqueActorPath) {
+    init(_ log: Logger, path: UniqueActorPath, system: ActorSystem?) {
         self.log = log
         self._path = path
+        self.system = system
     }
 
     @usableFromInline

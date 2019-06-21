@@ -51,7 +51,7 @@ public enum Receptionist {
         }
 
         internal func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef {
-            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(path: path, deadLetters: system.deadLetters))
+            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(path: path, system: system))
             return ref.asAddressable()
         }
 

@@ -28,7 +28,7 @@ extension ActorSystem {
         assertBacktrace(remotePath.path.address == nil, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
         remotePath.address = remoteSystem.settings.cluster.uniqueBindAddress
 
-        let resolveContext = ResolveContext<Message>(path: remotePath, deadLetters: self.deadLetters)
+        let resolveContext = ResolveContext<Message>(path: remotePath, system: self)
         return self._resolve(context: resolveContext)
     }
 }
