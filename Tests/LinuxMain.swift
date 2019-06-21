@@ -27,6 +27,7 @@ import XCTest
    @testable import Swift Distributed ActorsActorTests
 
    XCTMain([
+         testCase(ActorAskTests.allTests),
          testCase(ActorDeferTests.allTests),
          testCase(ActorIsolationFailureHandlingTests.allTests),
          testCase(ActorLeakingTests.allTests),

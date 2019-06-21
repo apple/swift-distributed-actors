@@ -202,20 +202,19 @@ class ActorDocExamples: XCTestCase {
 
     func example_receptionist_lookup() {
         let key = Receptionist.RegistrationKey(String.self, id: "my-actor")
+        let system = ActorSystem("LookupExample")
         // tag::receptionist_lookup[]
-        let behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
-            context.system.receptionist.tell(Receptionist.Lookup(key: key, replyTo: context.myself)) // <1>
+        let result = system.receptionist.ask(for: Receptionist.Listing.self, timeout: .seconds(1)) { // <1>
+            Receptionist.Lookup(key: key, replyTo: $0)
+        }
 
-            return .receiveMessage {
-                for ref in $0.refs {
-                    ref.tell("Hello")
-                }
-                return .same
+        result.nioFuture.whenSuccess { listing in
+            for ref in listing.refs {
+                ref.tell("Hello")
             }
         }
-        // end::receptionist_lookup[]
 
-        _ = behavior
+        // end::receptionist_lookup[]
     }
 
     func example_receptionist_subscribe() {
@@ -263,6 +262,32 @@ class ActorDocExamples: XCTestCase {
         // end::defer_simple[]
 
         _ = behavior
+    }
+
+    func example_ask() throws {
+        let system = ActorSystem("ExampleSystem")
+
+        // tag::ask[]
+        struct Hello {
+            let replyTo: ActorRef<String>
+        }
+
+        let behavior: Behavior<Hello> = .receiveMessage { msg in
+            msg.replyTo.tell("World")
+            return .same
+        }
+
+        let ref = try system.spawn(behavior, name: "greeter")
+
+        let response = ref.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
+            Hello(replyTo: replyTo) // <2>
+        }
+
+        let result = try response.nioFuture.wait() // <3>
+
+        print(result)
+
+        // end::ask[]
     }
 }
 
