@@ -56,5 +56,5 @@ extension EventLoopFuture: AsyncResult {
 
 /// Error that signals that an operation timed out.
 public struct TimeoutError: Error {
-    let message: String
+    public let message: String
 }
