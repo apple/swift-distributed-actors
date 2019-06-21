@@ -24,6 +24,7 @@ internal protocol AbstractAdapter: _ActorTreeTraversable {
     /// Synchronously stops the adapter ref and send terminated messages to all watchers.
     func stop()
 
+    var system: ActorSystem? { get }
 }
 
 /// :nodoc: Not intended to be used by end users.
@@ -60,6 +61,10 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
 
     private var myself: ActorRef<From> {
         return ActorRef(.adapter(self))
+    }
+
+    var system: ActorSystem? {
+        return self.target._system
     }
 
     func sendSystemMessage(_ message: SystemMessage) {
@@ -214,6 +219,10 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 
     var path: UniqueActorPath {
         return self.deadLetters.path
+    }
+
+    var system: ActorSystem? {
+        return nil
     }
 
     func trySendUserMessage(_ message: Any) {

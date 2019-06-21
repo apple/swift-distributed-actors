@@ -80,7 +80,7 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         var uniqueRemotePath: UniqueActorPath = refOnRemoteSystem.path
         uniqueRemotePath.address = remoteNodeAddress // since refOnRemoteSystem is "local" there, it has no address; thus we set it
         // to then obtain a remote ref ON the `system`, meaning that the address within remotePath is a remote one
-        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, deadLetters: local.deadLetters)
+        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, system: self.local)
         let resolvedRef = local._resolve(context: resolveContext)
         // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
         // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.

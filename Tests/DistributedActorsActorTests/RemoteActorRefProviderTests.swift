@@ -40,14 +40,14 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
         let theOne = TheOneWhoHasNoParent()
-        let guardian = Guardian(parent: theOne, name: "user")
+        let guardian = Guardian(parent: theOne, name: "user", system: system)
         let localProvider = LocalActorRefProvider(root: guardian)
 
         let clusterShell = ClusterShell()
         let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
         let uniqueRemotePath = remotePath.makeUnique(uid: ActorUID(1337))
-        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, system: system)
 
         // when
         let madeUpRef = provider.makeRemoteRef(resolveContext, remotePath: uniqueRemotePath)
@@ -74,7 +74,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         var path: UniqueActorPath = ref.path
         path.address = system.settings.cluster.uniqueBindAddress
 
-        let resolveContext = ResolveContext<Never>(path: path, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<Never>(path: path, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then
@@ -95,7 +95,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         var path: UniqueActorPath = ref.path
         path.address = system.settings.cluster.uniqueBindAddress
 
-        let resolveContext = ResolveContext<String>(path: path, deadLetters: system.deadLetters)
+        let resolveContext = ResolveContext<String>(path: path, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then

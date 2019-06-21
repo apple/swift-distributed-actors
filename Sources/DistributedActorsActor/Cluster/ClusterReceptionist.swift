@@ -130,7 +130,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onReplicate(context: ActorContext<Receptionist.Message>, message: ClusterReceptionist.Replicate, storage: Receptionist.Storage) throws {
-        let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: message.path, deadLetters: context.system.deadLetters))
+        let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: message.path, system: context.system))
 
         guard ref.isRemote() else {
             // is local ref and should be ignored
@@ -145,7 +145,7 @@ internal enum ClusterReceptionist {
         for (key, paths) in fullState.registrations {
             var anyAdded = false
             for path in paths {
-                let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: path, deadLetters: context.system.deadLetters))
+                let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: path, system: context.system))
 
                 guard ref.isRemote() else {
                     // is local ref and should be ignored

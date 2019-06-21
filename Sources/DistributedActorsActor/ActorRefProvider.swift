@@ -113,7 +113,7 @@ extension RemoteActorRefProvider {
     }
 
     internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> ActorRef<Message> {
-        let remoteRef = RemotePersonality<Message>(shell: self.cluster, path: path, deadLetters: context.deadLetters)
+        let remoteRef = RemotePersonality<Message>(shell: self.cluster, path: path, system: context.system)
         return ActorRef(.remote(remoteRef))
     }
 }
@@ -317,20 +317,25 @@ internal struct ResolveContext<Message> {
     /// Used only on "outer layer" of a resolve, where an `ActorRefProvider` may decide to fabricate a ref for given path.
     var path: UniqueActorPath? = nil
 
-    let deadLetters: ActorRef<DeadLetter>
+    let system: ActorSystem
 
-    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorUID: ActorUID, deadLetters: ActorRef<DeadLetter>) {
+    var deadLetters: ActorRef<DeadLetter> {
+        return self.system.deadLetters
+    }
+
+
+    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorUID: ActorUID, system: ActorSystem) {
         self.selectorSegments = remainingSelectorSegments
         self.selectorUID = actorUID
         self.path = nil
-        self.deadLetters = deadLetters
+        self.system = system
     }
 
-    init(path: UniqueActorPath, deadLetters: ActorRef<DeadLetter>) {
+    init(path: UniqueActorPath, system: ActorSystem) {
         self.path = path
         self.selectorSegments = path.segments[...]
         self.selectorUID = path.uid
-        self.deadLetters = deadLetters
+        self.system = system
     }
 
     /// Returns copy of traversal context yet "one level deeper"
@@ -345,7 +350,7 @@ internal struct ResolveContext<Message> {
         var c = ResolveContext(
             remainingSelectorSegments: self.selectorSegments.dropFirst(),
             actorUID: self.selectorUID,
-            deadLetters: self.deadLetters)
+            system: self.system)
         if keepPath {
             c.path = self.path
         }

@@ -50,7 +50,7 @@ public struct Serialization {
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
 
-    internal init(settings systemSettings: ActorSystemSettings, deadLetters: ActorRef<DeadLetter>, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
+    internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
         let settings = systemSettings.serialization
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
@@ -64,11 +64,11 @@ public struct Serialization {
         log.logLevel = systemSettings.defaultLogLevel
         self.log = log
 
-        self.deadLetters = deadLetters
+        self.deadLetters = system.deadLetters
         let context = ActorSerializationContext(
             log: log,
             serializationAddress: settings.serializationAddress,
-            deadLetters: deadLetters,
+            system: system,
             traversable: traversable
         )
 
@@ -291,7 +291,7 @@ public struct ActorSerializationContext {
     typealias MetaTypeKey = Serialization.MetaTypeKey
 
     public let log: Logger
-    public let deadLetters: ActorRef<DeadLetter>
+    public let system: ActorSystem
 
     private let traversable: _ActorTreeTraversable
 
@@ -301,11 +301,11 @@ public struct ActorSerializationContext {
 
     internal init(log: Logger,
                   serializationAddress: UniqueNodeAddress?,
-                  deadLetters: ActorRef<DeadLetter>,
+                  system: ActorSystem,
                   traversable: _ActorTreeTraversable) {
         self.log = log
         self.serializationAddress = serializationAddress
-        self.deadLetters = deadLetters
+        self.system = system
         self.traversable = traversable
     }
 
@@ -317,7 +317,7 @@ public struct ActorSerializationContext {
     ///
     /// - Returns: the erased `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
     public func resolveActorRef<Message>(path: UniqueActorPath) -> ActorRef<Message> {
-        let context = ResolveContext<Message>(path: path, deadLetters: self.deadLetters)
+        let context = ResolveContext<Message>(path: path, system: self.system)
         let resolved = self.traversable._resolve(context: context)
         return resolved
     }
@@ -325,7 +325,7 @@ public struct ActorSerializationContext {
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
     internal func resolveReceivesSystemMessages(path: UniqueActorPath) -> AddressableActorRef {
-        let context = ResolveContext<Any>(path: path, deadLetters: self.deadLetters)
+        let context = ResolveContext<Any>(path: path, system: self.system)
         let resolved = self.traversable._resolveUntyped(context: context)
         return resolved
     }
