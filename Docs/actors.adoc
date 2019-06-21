@@ -462,8 +462,6 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_register]
 
 Now we can lookup all actors that are registered under that key.
 
-#TODO: change example to use ask pattern once available #
-
 [source]
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=receptionist_lookup]
@@ -487,7 +485,17 @@ we can use existing APIs from actors and also receive and process responses from
 
 ==== Receiving responses from actors in non-actor code
 
-#TODO: Add paragraph about receiving future responses from actors, i.e. ask pattern, once available#
+When sending messages that expect a response the `ask` pattern can be used. The response will be captured in an async result type
+and that way can be handled from outside of actor code. Is no response is received within the specified timeout, the response will
+fail with a `api:TimeoutError[struct]`
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask]
+----
+<1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
+<2> Create the message that will be send to the ref that `ask` is called on
+<3> Retrieve the result from the `api:AskResponse[struct]`. In production code the blocking `wait` should be avoided and asynchronous callbacks should be used instead.
 
 ==== Sending results of asynchronous operations to actors
 

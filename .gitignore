@@ -16,4 +16,4 @@ Swift Distributed Actors.xcworkspace
 # rendered docs output dirs
 /reference/
 /api/
-
+.swiftpm/

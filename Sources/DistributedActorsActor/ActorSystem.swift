@@ -16,6 +16,7 @@ import DistributedActorsConcurrencyHelpers
 import CSwiftDistributedActorsMailbox
 import Dispatch
 import Logging
+import NIO
 
 /// An `ActorSystem` is a confined space which runs and manages Actors.
 ///
@@ -81,6 +82,8 @@ public final class ActorSystem {
         return l
     }
 
+    internal let eventLoopGroup: MultiThreadedEventLoopGroup
+
     #if SACT_TESTS_LEAKS
     let userCellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
     #endif
@@ -102,6 +105,9 @@ public final class ActorSystem {
         }
 
         self.settings = settings
+
+        // TODO: we should not rely on NIO for futures
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
 
         // dead letters init
         // TODO actually attach dead letters to a parent?
