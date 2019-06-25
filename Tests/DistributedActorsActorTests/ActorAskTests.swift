@@ -78,6 +78,7 @@ final class ActorAskTests: XCTestCase {
     struct AnswerMePlease {
         let replyTo: ActorRef<String>
     }
+
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
@@ -94,6 +95,30 @@ final class ActorAskTests: XCTestCase {
                 return .stopped
             }
         }, name: "awaitOnAskResult")
+
+        try p.expectMessage("Hello there")
+    }
+
+    func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
+            message.replyTo.tell("Hello there")
+            return .stopped
+        }, name: "greeterAskReply")
+
+        let _: ActorRef<Never> = try system.spawn(.setup { context in
+            let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in
+                return AnswerMePlease(replyTo: replyTo)
+            }
+
+            context.onResultAsyncThrowing(of: askResult, timeout: .seconds(1)) { greeting in
+                p.tell(greeting)
+                return .same
+            }
+
+            return .ignore
+        }, name: "askingAndOnResultAsyncThrowing")
 
         try p.expectMessage("Hello there")
     }
@@ -124,15 +149,10 @@ final class ActorAskTests: XCTestCase {
     }
 
  func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {
-        struct Message {
-            let replyTo: ActorRef<String>
-        }
-
-        let p: ActorTestProbe<String>
-        let ref = system.deadLetters.adapt(from: Message.self)
+        let ref = system.deadLetters.adapt(from: AnswerMePlease.self)
 
         let result = ref.ask(for: String.self, timeout: .milliseconds(300)) {
-            Message(replyTo: $0)
+            AnswerMePlease(replyTo: $0)
         }
 
         shouldThrow(expected: TimeoutError.self) {

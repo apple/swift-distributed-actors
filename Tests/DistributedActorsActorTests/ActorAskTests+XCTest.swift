@@ -28,6 +28,7 @@ extension ActorAskTests {
                 ("test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout", test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout),
                 ("test_ask_shouldCompleteWithFirstResponse", test_ask_shouldCompleteWithFirstResponse),
                 ("test_askResult_shouldBePossibleTo_contextAwaitOn", test_askResult_shouldBePossibleTo_contextAwaitOn),
+                ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn),
                 ("test_askResult_whenContextAwaitedOn_shouldRespectTimeout", test_askResult_whenContextAwaitedOn_shouldRespectTimeout),
                 ("test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters", test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters),
            ]
