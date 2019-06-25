@@ -42,12 +42,12 @@ private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> ()
     registerBenchmark(BenchmarkInfo(name: name, runFunction: function, tags: tags))
 }
 
-//registerBenchmark(ActorTreeTraversalBenchmarks)
-//registerBenchmark(SerializationCodableBenchmarks)
-//registerBenchmark(SerializationProtobufBenchmarks)
+registerBenchmark(ActorTreeTraversalBenchmarks)
+registerBenchmark(SerializationCodableBenchmarks)
+registerBenchmark(SerializationProtobufBenchmarks)
 registerBenchmark(RingBenchmarks)
-//registerBenchmark(ActorPingPongBenchmarks)
-//registerBenchmark(ActorMessageFloodingBenchmarks)
-//registerBenchmark(ActorSpawnBenchmarks)
+registerBenchmark(ActorPingPongBenchmarks)
+registerBenchmark(ActorMessageFloodingBenchmarks)
+registerBenchmark(ActorSpawnBenchmarks)
 
 main()
