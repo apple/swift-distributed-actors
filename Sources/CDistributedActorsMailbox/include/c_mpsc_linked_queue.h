@@ -34,25 +34,25 @@
 typedef struct Node {
     void* item;
     _Atomic (struct Node*) next;
-} Node;
+} CSActMPSCLinkedQueueNode;
 
 typedef struct {
-    char _pad0[64 - sizeof(_Atomic Node*)];
-    _Atomic (Node*) producer;
-    char _pad1[64 - sizeof(_Atomic Node*)];
-    _Atomic (Node*) consumer;
-    char _pad2[64 - sizeof(_Atomic Node*)];
-} CMPSCLinkedQueue;
+    char _pad0[64 - sizeof(_Atomic CSActMPSCLinkedQueueNode*)];
+    _Atomic (CSActMPSCLinkedQueueNode*) producer;
+    char _pad1[64 - sizeof(_Atomic CSActMPSCLinkedQueueNode*)];
+    _Atomic (CSActMPSCLinkedQueueNode*) consumer;
+    char _pad2[64 - sizeof(_Atomic CSActMPSCLinkedQueueNode*)];
+} CSActMPSCLinkedQueue;
 
-CMPSCLinkedQueue* cmpsc_linked_queue_create(void);
+CSActMPSCLinkedQueue* c_sact_mpsc_linked_queue_create(void);
 
-void cmpsc_linked_queue_destroy(CMPSCLinkedQueue* q);
+void c_sact_mpsc_linked_queue_destroy(CSActMPSCLinkedQueue* q);
 
-void cmpsc_linked_queue_enqueue(CMPSCLinkedQueue* q, void* item);
+void c_sact_mpsc_linked_queue_enqueue(CSActMPSCLinkedQueue* q, void* item);
 
-void* cmpsc_linked_queue_dequeue(CMPSCLinkedQueue* q);
+void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q);
 
-int cmpsc_linked_queue_is_empty(CMPSCLinkedQueue* q);
-int cmpsc_linked_queue_non_empty(CMPSCLinkedQueue* q);
+int c_sact_mpsc_linked_queue_is_empty(CSActMPSCLinkedQueue* q);
+int c_sact_mpsc_linked_queue_non_empty(CSActMPSCLinkedQueue* q);
 
 #endif /* CMPSCLinkedQueue_h */

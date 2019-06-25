@@ -31,32 +31,32 @@
 // This queue is based on the algorithm presented in:
 // http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
 
-CMPSCLinkedQueue* cmpsc_linked_queue_create() {
-    CMPSCLinkedQueue* q = malloc(sizeof(CMPSCLinkedQueue));
-    Node* node = calloc(sizeof(Node), 1);
+CSActMPSCLinkedQueue* c_sact_mpsc_linked_queue_create() {
+    CSActMPSCLinkedQueue* q = malloc(sizeof(CSActMPSCLinkedQueue));
+    CSActMPSCLinkedQueueNode* node = calloc(sizeof(CSActMPSCLinkedQueueNode), 1);
     atomic_store_explicit(&q->producer, node, memory_order_release);
     q->consumer = node;
     return q;
 }
 
-void cmpsc_linked_queue_destroy(CMPSCLinkedQueue* q) {
+void c_sact_mpsc_linked_queue_destroy(CSActMPSCLinkedQueue* q) {
     void* item;
-    while ((item = cmpsc_linked_queue_dequeue(q)) != NULL) {
+    while ((item = c_sact_mpsc_linked_queue_dequeue(q)) != NULL) {
         free(item);
     }
     free(q->producer);
     free(q);
 }
 
-void cmpsc_linked_queue_enqueue(CMPSCLinkedQueue* q, void* item) {
-    Node* node = calloc(sizeof(Node), 1);
+void c_sact_mpsc_linked_queue_enqueue(CSActMPSCLinkedQueue* q, void* item) {
+    CSActMPSCLinkedQueueNode* node = calloc(sizeof(CSActMPSCLinkedQueueNode), 1);
     node->item = item;
-    Node* old_node = atomic_exchange_explicit(&q->producer, node, memory_order_acq_rel);
+    CSActMPSCLinkedQueueNode* old_node = atomic_exchange_explicit(&q->producer, node, memory_order_acq_rel);
     atomic_store_explicit(&old_node->next, node, memory_order_release);
 }
 
-void* cmpsc_linked_queue_dequeue(CMPSCLinkedQueue* q) {
-    Node* node = atomic_load_explicit(&q->consumer->next, memory_order_acquire);
+void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q) {
+    CSActMPSCLinkedQueueNode* node = atomic_load_explicit(&q->consumer->next, memory_order_acquire);
     if (node == NULL) {
         if (q->consumer == atomic_load_explicit(&q->producer, memory_order_acquire)) {
             return NULL;
@@ -74,11 +74,11 @@ void* cmpsc_linked_queue_dequeue(CMPSCLinkedQueue* q) {
     return item;
 }
 
-int cmpsc_linked_queue_non_empty(CMPSCLinkedQueue* q) {
-    return !cmpsc_linked_queue_is_empty(q);
+int c_sact_mpsc_linked_queue_non_empty(CSActMPSCLinkedQueue* q) {
+    return !c_sact_mpsc_linked_queue_is_empty(q);
 }
 
-int cmpsc_linked_queue_is_empty(CMPSCLinkedQueue* q) {
+int c_sact_mpsc_linked_queue_is_empty(CSActMPSCLinkedQueue* q) {
     return atomic_load_explicit(&q->consumer->next, memory_order_acquire) == NULL
            && atomic_load_explicit(&q->producer, memory_order_acquire) == q->consumer;
 }

@@ -40,51 +40,51 @@
 // without the prefix they end up as `.Close`. The prefix also avoids name collisions in C.
 
 /** Used to mark in which phase of a mailbox run we are currently in. */
-SWIFT_CLOSED_ENUM(MailboxRunPhase) {
-    MailboxRunPhase_ProcessingSystemMessages,
-    MailboxRunPhase_ProcessingUserMessages,
-} MailboxRunPhase;
+SWIFT_CLOSED_ENUM(SActMailboxRunPhase) {
+    SActMailboxRunPhase_ProcessingSystemMessages,
+    SActMailboxRunPhase_ProcessingUserMessages,
+} SActMailboxRunPhase;
 
 typedef struct {
             uint32_t  capacity;
             uint32_t  max_run_length;
     _Atomic int64_t   status;
-    CMPSCLinkedQueue* system_messages;
-    CMPSCLinkedQueue* messages;
-} CMailbox;
+    CSActMPSCLinkedQueue* system_messages;
+    CSActMPSCLinkedQueue* messages;
+} CSActMailbox;
 
 /** Result of mailbox run, instructs swift part of code to perform follow up actions */
-SWIFT_CLOSED_ENUM(MailboxRunResult) {
-    MailboxRunResult_Close            = 0,
-    MailboxRunResult_Done             = 1,
-    MailboxRunResult_Reschedule       = 2,
+SWIFT_CLOSED_ENUM(SActMailboxRunResult) {
+    SActMailboxRunResult_Close            = 0,
+    SActMailboxRunResult_Done             = 1,
+    SActMailboxRunResult_Reschedule       = 2,
     // failure and supervision:
-    MailboxRunResult_FailureTerminate = 3,
-    MailboxRunResult_FailureRestart   = 4,
+    SActMailboxRunResult_FailureTerminate = 3,
+    SActMailboxRunResult_FailureRestart   = 4,
     // closed status reached, never run again.
-    MailboxRunResult_Closed           = 5,
-} MailboxRunResult;
+    SActMailboxRunResult_Closed           = 5,
+} SActMailboxRunResult;
 
-SWIFT_CLOSED_ENUM(MailboxEnqueueResult) {
-    MailboxEnqueueResult_needsScheduling    = 0,
-    MailboxEnqueueResult_alreadyScheduled   = 1,
-    MailboxEnqueueResult_mailboxTerminating = 2,
-    MailboxEnqueueResult_mailboxClosed      = 3,
-    MailboxEnqueueResult_mailboxFull        = 4,
-} MailboxEnqueueResult;
+SWIFT_CLOSED_ENUM(SActMailboxEnqueueResult) {
+    SActMailboxEnqueueResult_needsScheduling    = 0,
+    SActMailboxEnqueueResult_alreadyScheduled   = 1,
+    SActMailboxEnqueueResult_mailboxTerminating = 2,
+    SActMailboxEnqueueResult_mailboxClosed      = 3,
+    SActMailboxEnqueueResult_mailboxFull        = 4,
+} SActMailboxEnqueueResult;
 
-SWIFT_CLOSED_ENUM(ActorRunResult) {
-    ActorRunResult_continueRunning = 0,
-    ActorRunResult_shouldSuspend   = 1,
-    ActorRunResult_shouldStop      = 2,
-    ActorRunResult_closed          = 3,
-} ActorRunResult;
+SWIFT_CLOSED_ENUM(SActActorRunResult) {
+    SActActorRunResult_continueRunning = 0,
+    SActActorRunResult_shouldSuspend   = 1,
+    SActActorRunResult_shouldStop      = 2,
+    SActActorRunResult_closed          = 3,
+} SActActorRunResult;
 
 
-typedef void InterpretMessageClosureContext;
-typedef void InterpretSystemMessageClosureContext;
-typedef void DropMessageClosureContext;
-typedef void SupervisionClosureContext;
+typedef void *SActInterpretMessageClosureContext;
+typedef void *SActInterpretSystemMessageClosureContext;
+typedef void *SActDropMessageClosureContext;
+typedef void *SActSupervisionClosureContext;
 
 /*
  * Callback for Swift interop.
@@ -96,14 +96,14 @@ typedef void SupervisionClosureContext;
  * that the actor is terminating, and messages should be drained into
  * deadLetters.
  */
-typedef ActorRunResult (*InterpretMessageCallback)(DropMessageClosureContext*, void*, void*, MailboxRunPhase);
+typedef SActActorRunResult (*SActInterpretMessageCallback)(SActDropMessageClosureContext, void*, void*, SActMailboxRunPhase);
 
 /*
  * Callback for Swift interop.
  *
  * Drop message, when draining mailbox into dead letters.
  */
-typedef void (*DropMessageCallback)(DropMessageClosureContext*, void*); // TODO rename, deadletters
+typedef void (*SActDropMessageCallback)(SActDropMessageClosureContext, void*); // TODO rename, deadletters
 
 /*
  * Callback for Swift interop.
@@ -112,17 +112,17 @@ typedef void (*DropMessageCallback)(DropMessageClosureContext*, void*); // TODO 
  *
  * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
  */
-typedef MailboxRunResult (*InvokeSupervisionCallback)(SupervisionClosureContext*, MailboxRunPhase, void*);
+typedef SActMailboxRunResult (*SActInvokeSupervisionCallback)(SActSupervisionClosureContext, SActMailboxRunPhase, void*);
 
-CMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length);
+CSActMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length);
 
 /*
  * Destroy and deallocate passed in mailbox.
  */
-void cmailbox_destroy(CMailbox* mailbox);
+void cmailbox_destroy(CSActMailbox* mailbox);
 
 /* Returns if the actor should be scheduled for execution (or if it is already being scheduled) */
-MailboxEnqueueResult cmailbox_send_message(CMailbox* mailbox, void* envelope);
+SActMailboxEnqueueResult cmailbox_send_message(CSActMailbox* mailbox, void* envelope);
 
 /*
  * Returns if the actor should be scheduled for execution (or if it is already being scheduled)
@@ -134,7 +134,7 @@ MailboxEnqueueResult cmailbox_send_message(CMailbox* mailbox, void* envelope);
  * enqueueing the `tombstone` system message, which is used as terminal marker that all system messages are either
  * properly processed OR piped directly to dead letters.
  */
-MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* sys_msg);
+SActMailboxEnqueueResult cmailbox_send_system_message(CSActMailbox* mailbox, void* sys_msg);
 
 /*
  * Invoke only from a synchronously aborted or completed run.
@@ -144,32 +144,32 @@ MailboxEnqueueResult cmailbox_send_system_message(CMailbox* mailbox, void* sys_m
  *
  * This call MUST be followed by scheduling this actor for execution.
  */
-MailboxEnqueueResult cmailbox_send_system_tombstone(CMailbox* mailbox, void* tombstone);
+SActMailboxEnqueueResult cmailbox_send_system_tombstone(CSActMailbox* mailbox, void* tombstone);
 
 /*
  * Performs a "mailbox run", during which system and user messages are reduced and applied to the current actor behavior.
  */
-MailboxRunResult cmailbox_run(
-    CMailbox* mailbox,
+SActMailboxRunResult cmailbox_run(
+    CSActMailbox* mailbox,
     void* cell, bool handle_crashes,
     // message processing:
-    InterpretMessageClosureContext* context, InterpretSystemMessageClosureContext* system_context,
-    DropMessageClosureContext* dead_letter_context, DropMessageClosureContext* dead_letter_system_context,
-    InterpretMessageCallback interpret_message, DropMessageCallback drop_message,
+    SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
+    SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
+    SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
     // fault handling:
     jmp_buf* error_jmp_buf,
-    SupervisionClosureContext* supervision_context, InvokeSupervisionCallback supervision_invoke,
+    SActSupervisionClosureContext supervision_context, SActInvokeSupervisionCallback supervision_invoke,
     void** failed_message,
-    MailboxRunPhase* run_phase
+    SActMailboxRunPhase* run_phase
     );
 
-uint32_t cmailbox_message_count(CMailbox* mailbox);
+uint32_t cmailbox_message_count(CSActMailbox* mailbox);
 
 /* Sets the final CLOSED state. Should only be invoked just before finishing termination, and only while TERMINATING */
-void cmailbox_set_closed(CMailbox* mailbox);
+void cmailbox_set_closed(CSActMailbox* mailbox);
 
 /* Sets the TERMINATING state. Should only be invoked when the actor has failed. */
-void cmailbox_set_terminating(CMailbox* mailbox); // TODO naming...
+void cmailbox_set_terminating(CSActMailbox* mailbox); // TODO naming...
 
 int64_t sact_pthread_self();
 
