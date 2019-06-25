@@ -63,13 +63,13 @@ static _Thread_local bool tl_fault_handling_enabled = false;
 
 static _Thread_local jmp_buf error_jmp_buf;
 
-static _Thread_local CCrashDetails* tl_crash_details = NULL;
+static _Thread_local CSActCrashDetails* tl_crash_details = NULL;
 
 jmp_buf* sact_get_error_jmp_buf() {
     return &error_jmp_buf;
 }
 
-CCrashDetails* sact_get_crash_details() {
+CSActCrashDetails* sact_get_crash_details() {
     return tl_crash_details;
 }
 
@@ -110,7 +110,7 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
     int frame_count = sact_get_backtrace(&frames);
 
     // TODO(ktoso): safety wise perhaps better to keep some preallocated space for crash details
-    tl_crash_details = malloc(sizeof(CCrashDetails));
+    tl_crash_details = malloc(sizeof(CSActCrashDetails));
     tl_crash_details->backtrace = frames;
     tl_crash_details->backtrace_length = frame_count;
     // crash_details->run_phase = ; // TODO have to set it right here

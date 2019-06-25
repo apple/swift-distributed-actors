@@ -47,7 +47,7 @@ internal struct Envelope {
 }
 
 internal final class Mailbox<Message> {
-    private var mailbox: UnsafeMutablePointer<CMailbox>
+    private var mailbox: UnsafeMutablePointer<CSActMailbox>
     private let path: UniqueActorPath
     private weak var shell: ActorShell<Message>?
     private let deadLetters: ActorRef<DeadLetter>
@@ -61,12 +61,12 @@ internal final class Mailbox<Message> {
     private var invokeSupervisionClosureContext: InvokeSupervisionClosureContext!
 
     // Implementation note: closure callbacks passed to C-mailbox
-    private let interpretMessage: InterpretMessageCallback
-    private let dropMessage: DropMessageCallback
+    private let interpretMessage: SActInterpretMessageCallback
+    private let dropMessage: SActDropMessageCallback
     // Enables supervision to work for faults (and not only errors).
     // If the currently run behavior is wrapped using a supervision interceptor,
     // we store a reference to its Supervisor handler, that we invoke
-    private let invokeSupervision: InvokeSupervisionCallback
+    private let invokeSupervision: SActInvokeSupervisionCallback
 
     /// If `true`, all messages should be attempted to be serialized before sending
     private let serializeAllMessages: Bool
@@ -91,7 +91,7 @@ internal final class Mailbox<Message> {
                 return .shouldStop
             }
 
-            var shouldContinue: ActorRunResult
+            var shouldContinue: SActActorRunResult
             do {
                 shouldContinue = try context.pointee.exec(cellPtr: cellPtr!, messagePtr: msgPtr!, runPhase: runPhase)
             } catch {
@@ -416,10 +416,10 @@ internal final class Mailbox<Message> {
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
-        var runPhase: MailboxRunPhase = .processingSystemMessages
+        var runPhase: SActMailboxRunPhase = .processingSystemMessages
 
         // Run the mailbox:
-        let mailboxRunResult: MailboxRunResult = cmailbox_run(mailbox,
+        let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
             &cell, self.handleCrashes,
             &messageClosureContext, &systemMessageClosureContext,
             &deadLetterMessageClosureContext, &deadLetterSystemMessageClosureContext,
@@ -492,7 +492,7 @@ internal final class Mailbox<Message> {
 extension Mailbox {
     
     // TODO rename to "log crash error"?
-    private func reportCrashFailCellWithBestPossibleError(shell: ActorShell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: MailboxRunPhase) {
+    private func reportCrashFailCellWithBestPossibleError(shell: ActorShell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: SActMailboxRunPhase) {
         
         let failure: MessageProcessingFailure
         
@@ -548,22 +548,22 @@ extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringCo
 
 /// Wraps context for use in closures passed to C
 private struct InterpretMessageClosureContext {
-    private let _exec: (UnsafeMutableRawPointer, UnsafeMutableRawPointer, MailboxRunPhase) throws -> ActorRunResult
+    private let _exec: (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult
     private let _fail: (Error) -> ()
 
-    init(exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, MailboxRunPhase) throws -> ActorRunResult,
+    init(exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult,
          fail: @escaping (Error) -> ()) {
         self._exec = exec
         self._fail = fail
     }
 
     @inlinable
-    func exec(cellPtr: UnsafeMutableRawPointer, messagePtr: UnsafeMutableRawPointer, runPhase: MailboxRunPhase) throws -> ActorRunResult {
+    func exec(cellPtr: UnsafeMutableRawPointer, messagePtr: UnsafeMutableRawPointer, runPhase: SActMailboxRunPhase) throws -> SActActorRunResult {
         return try self._exec(cellPtr, messagePtr, runPhase)
     }
 
     @inlinable
-    func fail(error: Error) -> ActorRunResult {
+    func fail(error: Error) -> SActActorRunResult {
         _fail(error) // mutates ActorCell to become failed
         return .shouldStop // TODO: cell to decide if to continue later on (supervision); cleanup how we use this return value
     }
@@ -588,25 +588,25 @@ private struct InvokeSupervisionClosureContext {
     // and only yield us the "supervised run result", which usually will be `Failure` or `FailureRestart`
     //
     // private let _handleMessageFailure: (UnsafeMutableRawPointer) throws -> Behavior<Message>
-    private let _handleMessageFailureBecauseC: (Supervision.Failure, MailboxRunPhase) throws -> MailboxRunResult
+    private let _handleMessageFailureBecauseC: (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult
 
     // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
     private let _describeMessage: (UnsafeMutableRawPointer) -> String
 
-    init(handleMessageFailure: @escaping (Supervision.Failure, MailboxRunPhase) throws -> MailboxRunResult,
+    init(handleMessageFailure: @escaping (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult,
          describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
         self._handleMessageFailureBecauseC = handleMessageFailure
         self._describeMessage = describeMessage
     }
 
     @inlinable
-    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing runPhase: MailboxRunPhase) throws -> MailboxRunResult {
+    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing runPhase: SActMailboxRunPhase) throws -> SActMailboxRunResult {
         return try self._handleMessageFailureBecauseC(failure, runPhase)
     }
 
     // hides the generic Message and provides same capabilities of rendering messages as the free function of the same name
     @inlinable
-    func renderMessageDescription(runPhase: MailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer) -> String {
+    func renderMessageDescription(runPhase: SActMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer) -> String {
         switch runPhase {
         case .processingSystemMessages:
             // we can invoke it directly since it is not generic
@@ -621,7 +621,7 @@ private struct InvokeSupervisionClosureContext {
 
 /// Renders a `SystemMessage` or user `Message` appropriately given a raw pointer to such message.
 /// Only really needed due to the c-interop of failure handling where we need to recover the lost generic information this way.
-private func renderMessageDescription<Message>(runPhase: MailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
+private func renderMessageDescription<Message>(runPhase: SActMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
     switch runPhase {
     case .processingSystemMessages:
         return renderSystemMessageDescription(failedMessageRaw)
@@ -648,7 +648,7 @@ private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> S
 // MARK: Custom string representations of C-defined enumerations
 
 /// Helper for rendering the C defined `MailboxRunResult` enum in human readable format
-extension MailboxRunResult: CustomStringConvertible {
+extension SActMailboxRunResult: CustomStringConvertible {
     public var description: String {
         switch self {
         case .close:
@@ -668,7 +668,7 @@ extension MailboxRunResult: CustomStringConvertible {
 }
 
 /// Helper for rendering the C defined `MailboxRunResult` enum in human readable format
-extension ActorRunResult: CustomStringConvertible {
+extension SActActorRunResult: CustomStringConvertible {
     public var description: String {
         switch self {
         case .continueRunning:
@@ -684,11 +684,11 @@ extension ActorRunResult: CustomStringConvertible {
 }
 
 // Since the enum originates from C, we want to pretty render it more nicely
-extension MailboxRunPhase: CustomStringConvertible {
+extension SActMailboxRunPhase: CustomStringConvertible {
     public var description: String {
         switch self {
-        case MailboxRunPhase.processingUserMessages: return "MailboxRunPhase.processingUserMessages"
-        case MailboxRunPhase.processingSystemMessages: return "MailboxRunPhase.processingSystemMessages"
+        case .processingUserMessages: return "MailboxRunPhase.processingUserMessages"
+        case .processingSystemMessages: return "MailboxRunPhase.processingSystemMessages"
         }
     }
 }

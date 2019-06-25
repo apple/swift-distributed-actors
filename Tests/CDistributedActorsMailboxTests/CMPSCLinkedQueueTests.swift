@@ -19,51 +19,51 @@ import CSwiftDistributedActorsMailbox
 class CMPSCLinkedQueueTests: XCTestCase {
 
     func testIsEmptyWhenEmpty() {
-        let q = cmpsc_linked_queue_create()
-        let empty = cmpsc_linked_queue_is_empty(q)
+        let q = c_sact_mpsc_linked_queue_create()
+        let empty = c_sact_mpsc_linked_queue_is_empty(q)
 
         XCTAssertNotEqual(empty, 0)
     }
 
     func testIsEmptyWhenNonEmpty() {
-        let q = cmpsc_linked_queue_create()
+        let q = c_sact_mpsc_linked_queue_create()
         let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
         defer {
             p.deallocate()
         }
 
-        cmpsc_linked_queue_enqueue(q, p)
-        let empty = cmpsc_linked_queue_is_empty(q)
+        c_sact_mpsc_linked_queue_enqueue(q, p)
+        let empty = c_sact_mpsc_linked_queue_is_empty(q)
 
         XCTAssertEqual(empty, 0)
     }
 
     func testDequeueWhenEmpty() {
-        let q = cmpsc_linked_queue_create()
-        let res = cmpsc_linked_queue_dequeue(q)
+        let q = c_sact_mpsc_linked_queue_create()
+        let res = c_sact_mpsc_linked_queue_dequeue(q)
 
         XCTAssertNil(res)
     }
 
     func testEnqueueDequeue() {
-        let q = cmpsc_linked_queue_create()
+        let q = c_sact_mpsc_linked_queue_create()
         let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
         defer {
             p.deallocate()
         }
 
-        cmpsc_linked_queue_enqueue(q, p)
-        let res = cmpsc_linked_queue_dequeue(q)
+        c_sact_mpsc_linked_queue_enqueue(q, p)
+        let res = c_sact_mpsc_linked_queue_dequeue(q)
 
         XCTAssertEqual(p, res)
     }
 
     func testDestroy() {
         // jsut checking that it doesn't segfault here
-        let q = cmpsc_linked_queue_create()
+        let q = c_sact_mpsc_linked_queue_create()
         let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
 
-        cmpsc_linked_queue_enqueue(q, p)
-        cmpsc_linked_queue_destroy(q)
+        c_sact_mpsc_linked_queue_enqueue(q, p)
+        c_sact_mpsc_linked_queue_destroy(q)
     }
 }
