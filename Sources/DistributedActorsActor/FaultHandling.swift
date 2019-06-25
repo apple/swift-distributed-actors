@@ -148,7 +148,7 @@ internal struct FaultHandling {
 /// Carries information regarding where a fault has occurred.
 internal struct CrashDetails {
     let backtrace: [String]
-    let runPhase: MailboxRunPhase
+    let runPhase: SActMailboxRunPhase
 }
 
 /// Error related to, or failure "caught" by the failure handling mechanism.

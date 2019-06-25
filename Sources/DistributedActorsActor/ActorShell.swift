@@ -237,7 +237,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Warning: Mutates the cell's behavior.
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
     @inlinable
-    func interpretMessage(message: Message) throws -> ActorRunResult {
+    func interpretMessage(message: Message) throws -> SActActorRunResult {
         #if SACT_TRACE_ACTOR_SHELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(behavior)")
         #endif
@@ -262,7 +262,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     @inlinable
-    var runState: ActorRunResult {
+    var runState: SActActorRunResult {
         if self.continueRunning {
             return .continueRunning
         } else if self.isSuspended {
@@ -283,7 +283,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
     /// Fails:
     ///   - can potentially fail, which is handled by [FaultHandling] and terminates an actor run immediately.
-    func interpretSystemMessage(message: SystemMessage) throws -> ActorRunResult {
+    func interpretSystemMessage(message: SystemMessage) throws -> SActActorRunResult {
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
@@ -327,7 +327,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretClosure(_ closure: @escaping () throws -> Void) throws -> ActorRunResult {
+    func interpretClosure(_ closure: @escaping () throws -> Void) throws -> SActActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
         traceLog_Cell("Applied closure, becoming: \(next)")
@@ -456,7 +456,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// This is coordinated with its mailbox, which by then becomes closed, and shall no more accept any messages, not even system ones.
     ///
     /// Any remaining system messages are to be drained to deadLetters by the mailbox in its current run.
-    private func finishTerminating() -> ActorRunResult {
+    private func finishTerminating() -> SActActorRunResult {
         self._myCell.mailbox.setClosed()
 
         let myPath: UniqueActorPath? = self._myCell.path

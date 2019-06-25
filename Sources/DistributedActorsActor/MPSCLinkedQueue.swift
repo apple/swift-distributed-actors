@@ -15,14 +15,15 @@
 import CSwiftDistributedActorsMailbox
 
 public final class MPSCLinkedQueue<A> {
-    public let q: UnsafeMutablePointer<CMPSCLinkedQueue>;
+    public let q: UnsafeMutablePointer<CSActMPSCLinkedQueue>;
 
     public init() {
-        self.q = cmpsc_linked_queue_create()
+        self.q = c_sact_mpsc_linked_queue_create()
     }
 
     deinit {
-        cmpsc_linked_queue_destroy(self.q)
+        while dequeue() != nil {}
+        c_sact_mpsc_linked_queue_destroy(self.q)
     }
 
     /// Adds the given item to the end of the queue. This operation is atomic,
@@ -33,7 +34,7 @@ public final class MPSCLinkedQueue<A> {
     public func enqueue(_ item: A) -> Void {
         let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
         ptr.initialize(to: item)
-        cmpsc_linked_queue_enqueue(self.q, ptr)
+        c_sact_mpsc_linked_queue_enqueue(self.q, ptr)
     }
 
     /// Removes the current head from the queue and returns it. This operation
@@ -46,7 +47,7 @@ public final class MPSCLinkedQueue<A> {
     /// - Returns: The head of the queue if it is non-empty, nil otherwise.
     @inlinable
     public func dequeue() -> A? {
-        if let p = cmpsc_linked_queue_dequeue(self.q) {
+        if let p = c_sact_mpsc_linked_queue_dequeue(self.q) {
             let ptr = p.assumingMemoryBound(to: A.self)
             defer {
                 ptr.deallocate()
@@ -63,7 +64,7 @@ public final class MPSCLinkedQueue<A> {
     /// - Returns: `true` if the queue is empty, `false` otherwise.
     @inlinable
     public var isEmpty: Bool {
-        return cmpsc_linked_queue_is_empty(self.q) != 0
+        return c_sact_mpsc_linked_queue_is_empty(self.q) != 0
     }
 
     /// Checks whether this queue is non-empty. This is safe to be called from
