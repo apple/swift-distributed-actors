@@ -31,7 +31,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#include "../include/CNIOAtomics.h"
+#include "../include/c_atomics.h"
 #include "../include/cpp_magic.h"
 
 struct __catmc_atomic_flag {
