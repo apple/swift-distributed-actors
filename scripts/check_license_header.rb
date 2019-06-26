@@ -18,7 +18,7 @@ violations = []
 
 excludes = [
     "Sources/ConcurrencyHelpers",
-    "Sources/CAtomics",
+    "Sources/CSwift Distributed ActorsAtomics",
     "Tests/ConcurrencyHelpersTests",
     "Sources/Swift Distributed ActorsActor/sact.pb.swift",
     "Sources/Swift Distributed ActorsBenchmarks/bench.pb.swift"
