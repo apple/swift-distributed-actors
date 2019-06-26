@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CAtomics
+import CSwiftDistributedActorsAtomics
 
 public enum MemoryOrder {
     case relaxed
