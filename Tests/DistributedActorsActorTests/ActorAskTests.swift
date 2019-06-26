@@ -74,4 +74,21 @@ class ActorAskTests: XCTestCase {
 
         result.shouldEqual("received:1")
     }
+
+    func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {
+        struct Message {
+            let replyTo: ActorRef<String>
+        }
+
+        let p: ActorTestProbe<String>
+        let ref = system.deadLetters.adapt(from: Message.self)
+
+        let result = ref.ask(for: String.self, timeout: .milliseconds(300)) {
+            Message(replyTo: $0)
+        }
+
+        shouldThrow(expected: TimeoutError.self) {
+            try result.nioFuture.wait()
+        }
+    }
 }
