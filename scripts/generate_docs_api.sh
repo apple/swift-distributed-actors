@@ -62,6 +62,13 @@ fi
 if ! command -v jazzy > /dev/null; then
   gem install jazzy --no-ri --no-rdoc
 fi
+
+if [[ "$(jazzy --version)" != "jazzy version: 0.10.0" ]]; then
+    echo "Outdated Jazzy version detected. Please update to 0.10.0"
+    echo "Command: [sudo] gem update jazzy"
+    exit 1
+fi
+
 module_switcher="api/$version/README.md"
 jazzy_args=(--clean
             --readme "$module_switcher"
