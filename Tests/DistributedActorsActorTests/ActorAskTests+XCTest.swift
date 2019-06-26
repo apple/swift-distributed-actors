@@ -27,6 +27,7 @@ extension ActorAskTests {
                 ("test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout", test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout),
                 ("test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout", test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout),
                 ("test_ask_shouldCompleteWithFirstResponse", test_ask_shouldCompleteWithFirstResponse),
+                ("test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters", test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters),
            ]
    }
 }

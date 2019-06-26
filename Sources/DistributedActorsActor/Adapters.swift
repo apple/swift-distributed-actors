@@ -222,7 +222,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
     }
 
     var system: ActorSystem? {
-        return nil
+        return self.deadLetters._system
     }
 
     func trySendUserMessage(_ message: Any) {
