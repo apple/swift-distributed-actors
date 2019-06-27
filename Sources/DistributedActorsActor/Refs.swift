@@ -93,8 +93,9 @@ extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
         return "ActorRef<\(prettyTypeName)>(\(self.path))"
     }
     public var debugDescription: String {
-        let fullyQualifiedName = String(reflecting: Message.self)
-        return "ActorRef<\(fullyQualifiedName)>(\(self.personality), path:\(self.path))"
+//        let fullyQualifiedName = String(reflecting: Message.self)
+//        return "ActorRef<\(fullyQualifiedName)>(\(self.personality))"
+        return self.description // FIXME: until collection printouts are fixed; https://bugs.swift.org/browse/SR-11001
     }
 }
 

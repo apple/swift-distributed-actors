@@ -221,7 +221,7 @@ class ActorDocExamples: XCTestCase {
         let key = Receptionist.RegistrationKey(String.self, id: "my-actor")
         // tag::receptionist_subscribe[]
         let behavior: Behavior<Receptionist.Listing<String>> = .setup { context in
-            context.system.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: context.myself)) // <1>
+            context.system.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: context.myself)) // <1>
 
             return .receiveMessage {
                 for ref in $0.refs {
