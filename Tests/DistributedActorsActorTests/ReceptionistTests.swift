@@ -174,7 +174,7 @@ class ReceptionistTests: XCTestCase {
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
-        receptionist.tell(Receptionist.Subscribe(key: key, replyTo: lookupProbe.ref))
+        receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
         try lookupProbe.expectMessage(Receptionist.Listing(refs: []))
 
         receptionist.tell(Receptionist.Register(refA, key: key))

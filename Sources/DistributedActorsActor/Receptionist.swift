@@ -25,7 +25,7 @@
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
-    internal static let name: String = "receptionist"
+    internal static let name: String = "receptionist" // TODO make an ActorName
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
@@ -112,9 +112,9 @@ public enum Receptionist {
         public let key: RegistrationKey<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
-        public init(key: RegistrationKey<Message>, replyTo: ActorRef<Listing<Message>>) {
+        public init(key: RegistrationKey<Message>, subscriber: ActorRef<Listing<Message>>) {
             self.key = key
-            self.replyTo = replyTo
+            self.replyTo = subscriber
         }
 
         internal var _boxed: AnySubscribe {
@@ -127,8 +127,11 @@ public enum Receptionist {
     }
 
     /// Response to `Lookup` and `Subscribe` requests
-    public struct Listing<Message>: Equatable {
+    public struct Listing<Message>: Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
+        public var description: String {
+            return "Listing<\(Message.self)>(\(refs.map { $0.path }))"
+        }
     }
 
     /// Storage container for a receptionist's registrations and subscriptions
@@ -161,6 +164,7 @@ public enum Receptionist {
             return self._subscriptions[key]
         }
 
+        /// - returns: `tru`e if the value was a newly inserted value, `fals`e otherwise
         private func addTo<Value: Hashable>(dict: inout [AnyRegistrationKey: Set<Value>], key: AnyRegistrationKey, value: Value) -> Bool {
             guard !(dict[key]?.contains(value) ?? false) else {
                 return false
@@ -180,14 +184,35 @@ public enum Receptionist {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Receptionist ActorRef Extensions
+
+public extension ActorRef where Message == ReceptionistMessage {
+
+    /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
+    func register<M>(_ ref: ActorRef<M>, key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
+        self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))
+    }
+
+    /// Subscribe to changes in checked-in actors under given `key`.
+    /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die,
+    /// under the passed in key.
+    func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
+        self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
+    }
+
+}
+
 /// Receptionist for local execution. Does not depend on a cluster being available.
 internal enum LocalReceptionist {
     static var behavior: Behavior<Receptionist.Message> {
         return .setup { context in
             let storage = Receptionist.Storage()
 
-            return .receiveMessage {
-                switch $0 {
+            // TODO: implement configurable logging (to log if it gets registers etc)
+            // TODO: since all states access all the same state, allocating a local receptionist would result in less passing around storage
+            return .receiveMessage { message in
+                switch message {
                 case let message as _Register:
                     try LocalReceptionist.onRegister(context: context, message: message, storage: storage)
 
@@ -198,7 +223,7 @@ internal enum LocalReceptionist {
                     try LocalReceptionist.onSubscribe(context: context, message: message, storage: storage)
 
                 default:
-                    context.log.warning("Received unexpected message \($0)")
+                    context.log.warning("Received unexpected message \(message)")
                 }
                 return .same
             }
@@ -208,6 +233,8 @@ internal enum LocalReceptionist {
     private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
         let key = message._key.boxed
         let addressable  = message._addressableActorRef
+
+        context.log.debug("Registering \(addressable) under key: \(key)")
 
         if storage.addRegistration(key: key, ref: addressable) {
             let terminatedCallback = LocalReceptionist.makeRemoveRegistrationCallback(context: context, message: message, storage: storage)
@@ -227,6 +254,9 @@ internal enum LocalReceptionist {
     private static func onSubscribe(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) throws {
         let boxedMessage = message._boxed
         let key = AnyRegistrationKey(from: message._key)
+
+        context.log.debug("Subscribing \(message._addressableActorRef) to: \(key)")
+
         if storage.addSubscription(key: key, subscription: boxedMessage) {
             let terminatedCallback = LocalReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
             try LocalReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
