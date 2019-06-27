@@ -17,6 +17,7 @@
 
 /// Type erased form of `AddressableActorRef` in order to be used as existential type.
 /// This form allows us to check for "is this the same actor?" yet not send messages to it.
+// TODO: rename to AddressableRef -- actor ref implies we can send things to it, but we can not to this one
 public struct AddressableActorRef: Hashable {
     @usableFromInline
     enum RefType {

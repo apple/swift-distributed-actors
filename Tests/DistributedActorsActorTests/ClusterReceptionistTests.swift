@@ -37,7 +37,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: lookupProbe.ref))
+        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
 
         _ = try lookupProbe.expectMessage()
 
@@ -72,7 +72,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: lookupProbe.ref))
+        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
 
         _ = try lookupProbe.expectMessage()
 
@@ -124,10 +124,10 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         remote.receptionist.tell(Receptionist.Register(refD, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()
 
-        local.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: localLookupProbe.ref))
+        local.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: localLookupProbe.ref))
         _ = try localLookupProbe.expectMessage()
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: remoteLookupProbe.ref))
+        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))
@@ -164,7 +164,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         local.receptionist.tell(Receptionist.Register(refB, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()
 
-        remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: remoteLookupProbe.ref))
+        remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))

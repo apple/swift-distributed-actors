@@ -27,7 +27,7 @@ class StashBufferTests: XCTestCase {
         system.shutdown()
     }
 
-    func test_stashMessages() throws {
+    func test_stash_shouldStashMessages() throws {
         let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
@@ -71,6 +71,24 @@ class StashBufferTests: XCTestCase {
         shouldThrow(expected: StashError.self) {
             _ = try stash.stash(message: 2)
         }
+    }
+
+    func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
+        let p = testKit.spawnTestProbe(expecting: Int.self)
+
+        _ = try system.spawn(Behavior<Int>.setup { context in
+            let stash = StashBuffer<Int>(capacity: 2)
+            try stash.stash(message: 1)
+
+            return try stash.unstashAll(context: context, behavior: .setup { _ in
+                .receiveMessage { message in
+                    p.tell(message)
+                    return .stopped
+                }
+            })
+        }, name: "unstashIntoSetup")
+
+        try p.expectMessage(1)
     }
 
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {

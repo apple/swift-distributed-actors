@@ -28,6 +28,11 @@ public final class StashBuffer<Message> {
         self.buffer = RingBuffer(capacity: capacity)
     }
 
+    public init(owner: ActorContext<Message>, capacity: Int) {
+        // TODO: owner can be used to create metrics for the stash of specific owner
+        self.buffer = RingBuffer(capacity: capacity)
+    }
+
     /// Adds a message to the stash buffer, if the buffer is not full, otherwise
     /// throws `StashError.full`.
     ///
@@ -65,7 +70,15 @@ public final class StashBuffer<Message> {
     public func unstashAll(context: ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
         //TODO: can we make this honor the run length like `Mailbox` does?
         var iterator = buffer.iterator
-        return try behavior.interpretMessages(context: context, messages: &iterator)
+        let canonical = try context._downcastUnsafe.behavior.canonicalize(context, next: behavior)
+        return try canonical.interpretMessages(context: context, messages: &iterator)
+    }
+
+    /// Returns count of currently stashed messages.
+    /// Guaranteed to be lower or equal to `capacity` that the stash was initialized with.
+    @inlinable
+    public var count: Int {
+        return self.buffer.count
     }
 }
 
