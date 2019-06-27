@@ -58,7 +58,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -98,7 +98,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.patch += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -123,7 +123,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.major += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
@@ -155,7 +155,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address)
+        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
 
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")

@@ -25,10 +25,13 @@ extension ClusterAssociationTests {
    static var allTests : [(String, (ClusterAssociationTests) -> () throws -> Void)] {
       return [
                 ("test_boundServer_shouldAcceptAssociate", test_boundServer_shouldAcceptAssociate),
+                ("test_handshake_shouldNotifyOnSuccess", test_handshake_shouldNotifyOnSuccess),
+                ("test_handshake_shouldNotifySuccessWhenAlreadyConnected", test_handshake_shouldNotifySuccessWhenAlreadyConnected),
                 ("test_association_sameAddressNodeJoin_shouldOverrideExistingNode", test_association_sameAddressNodeJoin_shouldOverrideExistingNode),
                 ("test_association_shouldAllowSendingToRemoteReference", test_association_shouldAllowSendingToRemoteReference),
                 ("test_association_shouldKeepTryingUntilOtherNodeBindsPort", test_association_shouldKeepTryingUntilOtherNodeBindsPort),
                 ("test_association_shouldNotAssociateWhenRejected", test_association_shouldNotAssociateWhenRejected),
+                ("test_handshake_shouldNotifyOnRejection", test_handshake_shouldNotifyOnRejection),
            ]
    }
 }
