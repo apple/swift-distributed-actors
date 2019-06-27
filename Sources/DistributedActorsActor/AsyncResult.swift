@@ -24,6 +24,8 @@ public protocol AsyncResult {
     /// Returns a new `AsyncResult` that is completed with the value of this
     /// `AsyncResult`, or a `TimeoutError` when it is not completed within
     /// the specified timeout.
+    ///
+    /// - parameter after: defines a timeout after which the result should be considered failed.
     func withTimeout(after timeout: TimeAmount) -> Self
 
     // TODO func withAlreadyHasTimeout(really: .yes.really) j/k syntax but feature would be good
@@ -39,7 +41,7 @@ extension EventLoopFuture: AsyncResult {
     public func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
         let promise: EventLoopPromise<Value> = self.eventLoop.makePromise()
         let timeoutTask = self.eventLoop.scheduleTask(in: timeout.toNIO) {
-            promise.fail(TimeoutError(message: "Future timed out after \(timeout.prettyDescription)"))
+            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)"))
         }
         self.whenFailure {
             timeoutTask.cancel()
@@ -56,5 +58,5 @@ extension EventLoopFuture: AsyncResult {
 
 /// Error that signals that an operation timed out.
 public struct TimeoutError: Error {
-    public let message: String
+    let message: String
 }

@@ -83,11 +83,7 @@ not all things have to be expressed as actor messages.
 
 Consider the following situation: an actor accepting a `SummarizeBill` message, which will cause the actor calculate the total amount
 
-=== Using Actors
-
-In this section, we will learn the basics of using actors to implement simple messaging patterns.
-
-==== Defining Messages
+=== Defining Messages
 
 Before we dive in head-first into defining our actors, let's focus for a second what in reality might be the most
 important aspect of working with them, to begin with: defining message protocols.
@@ -113,7 +109,7 @@ TIP: Messages SHOULD be immutable values. Prefer structs and enumerations wherev
 #TODO: There should be another section eventually about designing message protocols.#
 
 
-==== Defining Actor Behaviors
+=== Defining Actor Behaviors
 
 Actors are _always_ defined by the api:Behavior[struct] that they are running (or "acting out" if you want to take the actor analogy one step further).
 
@@ -140,7 +136,7 @@ This is because conceptually and Actor is the sum of three parts:
 2. A api:Behavior[struct]  that should be run for each subsequent message.
 3. A api:MessageDispatcher[protocol] which "runs the Actor".
 
-===== Behaviors defined in `class`-oriented style
+==== Behaviors defined in `class`-oriented style
 
 To many developers, the more familiar way of defining api:Behavior[struct] is likely going to be the `class`-oriented style.
 While we consider this state to lead into sharing too much state between the various states an actor can reside in,
@@ -172,7 +168,7 @@ However, the thread-safety of accessing the actors stored property is guaranteed
 Effectively, within an actor you can work as-if it was a single threaded application. The same applies for the function-oriented style as well,
 which we'll explore in the following section.
 
-===== Behaviors defined in function-oriented style
+==== Behaviors defined in function-oriented style
 
 Those three elements together form one functioning actor. In other words, an actor is a behavior that is able to be run
 with messages from a mailbox. It is by design that the actor itself cannot be seen nor reached from user code, this
@@ -205,7 +201,7 @@ You might be curious how the message type looks like, now that we've seen a beha
 In our example we do not yet worry about the serialization of the messages, so it can be in fact any type,
 however we strongly recommend
 
-==== Spawning Actors
+=== Spawning Actors
 
 TIP: Starting actors is referred to as "spawning" them. In the same way one refers to spawning new threads by a thread pool or operating system.
 
@@ -218,7 +214,9 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 <2> An actor's "Behavior" contains all the logic and state that it will work with. There are numerous ways to define one, we'll learn about them very soon.
 <3> We `spawn` our actor using the `behavior` and we give it a `name` while we are at it as well. Names are tremendously helpful for understanding and debugging your application.
 
-==== Sending messages
+=== Sending messages
+
+==== Sending messages using `tell` (fire-and-forget)
 
 Sending messages to actors is straight forward and can be done thanks to the api:ActorRef[class]`.tell(_:)` method.
 
@@ -230,12 +228,67 @@ For example, now that we have obtained a reference to
 ----
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=tell_1]
 ----
-<1> We _tell_ our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message send to the actor.
+<1> We _tell_ our actor our name, so that it can greet us. This is an asynchronous fire-and-forget message sent to the actor.
 
 TIP: Sending messages to actors always has the same form, regardless if they are local or remote.
      (This is one of the ways the _location transparency_ property surfaces in the APIs.)
 
 #TODO: complete this section#
+
+==== Sending questions using `ask` (request-reply)
+
+While `tell` should be preferred for most actor-to-actor communication, an alternative, focused on request-reply interactions,
+method exists to send "questions" to other actors, expecting a reply back.
+
+Using the `ref.ask(for:timeout:makeQuestion:)` method, we send a message to the target actor and expect that it will reply to
+a special ask-actor, which in turn completes the returned `AskResponse<ResponseType>` (similar to how completing a `Promise`
+would complete a `Future`, although by using messaging -- meaning that the reply can come from any actor in a cluster, also a remote one).
+
+An `AskResponse` can also be handled from outside of actor code, making it an useful integration pattern between actor and non-actor code.
+
+Note that providing a `timeout` is _not_ optional, as in order to avoid potential deadlocks if a question was sent to an already dead actor.
+If no response is received within the specified `timeout`, the ask-response will fail with a `api:TimeoutError[struct]`.
+
+NOTE: `ask` is also useful when interacting with actors from "outside" (i.e. from not-actors), since the returned value
+      can be acted on asynchronously whenever it gets completed -- like a `Future`.
+
+The following example shows a simple "from outside" question being asked to an actor:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_outside]
+----
+<1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
+<2> Create the message that will be sent to the ref that `ask` is called on
+<3> Retrieve the result from the `api:AskResponse[struct]`. *In production code the blocking `wait` should be avoided and asynchronous callbacks should be used instead.
+
+WARNING: _Never_ invoke any kind of blocking operation such as `future.wait()` inside of an actor!
+         Same as blocking an event loop, blocking inside actors will cause starvation for other actors sharing the same dispatcher.
+         Rather than blocking, consider using one of the built-in functions for asynchronous values inter-op documented below.
+
+It is also possible to use `ask` from within actors, for simple request-response interactions with other actors,
+which may not want to be encoded in the asking-actors message protocol. Since sometimes, especially during initialization,
+an actor may need to "wait" until an asynchronous response to arrives, it is possible to use the `context.onResultAsync`
+as well as `context.awaitResult` functions to suspend the actor _without blocking the thread_ until the response arrives:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask_inside]
+----
+<1> First thing the `caplin` actor does, is to `ask` the `greeter` for a greeting,
+<2> Since it depends on that greeting to become the `greeted` state, it awaits on the reply using `context.awaitResultThrowing`,
+    which will either invoke the callback with the received reply, or throw if the timeout is exceeded.
+<3> Once the question is replied to, caplin will wake up from its suspended state and execute the callback, logging the greeting and becoming the `greeted()` behavior.
+
+Worth noting here is that `caplin` itself was never able to receive _any_ messages -- its `Message` type was bound to `Never` after all,
+which is a way of expressing that an actor cannot receive any messages. Yet at the same time, thanks to using the `ask` mechanism,
+it was able to communicate in a request-response fashion with the `greeter`.
+
+
+To learn more about the semantics of these asynchronous result inter-op behaviors you want to refer to their respective documentation sections:
+
+- <<onResultAsync>> for non-awaiting safe executing of callbacks on the Actor using `context.onResultAsync`,
+- and <<awaitResult>> for awaiting for a value before becoming another behavior using `context.awaitResult`.
 
 === Actor Lifecycle
 
@@ -483,26 +536,12 @@ In any reasonably complex system, different libraries will be used and we need t
 Actors are no exception to this. In this chapter we will look at ways to integrate actors nicely with non-actor code, so that
 we can use existing APIs from actors and also receive and process responses from actors outside of actor code.
 
-==== Receiving responses from actors in non-actor code
-
-When sending messages that expect a response the `ask` pattern can be used. The response will be captured in an async result type
-and that way can be handled from outside of actor code. Is no response is received within the specified timeout, the response will
-fail with a `api:TimeoutError[struct]`
-
-[source]
-----
-include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=ask]
-----
-<1> `replyTo` is an actor ref of the type specified with the `for` parameter of ask and is used to receive the response
-<2> Create the message that will be send to the ref that `ask` is called on
-<3> Retrieve the result from the `api:AskResponse[struct]`. In production code the blocking `wait` should be avoided and asynchronous callbacks should be used instead.
-
 ==== Sending results of asynchronous operations to actors
 
-Our code often has to interact with external systems like databases or other services. Those calls are usually being executed
-asynchronously and the result is being made available either as an asynchronous result type, like a future, or as parameter
-to a callback that needs to be passed in when calling an asynchronous API. Once we have the result, we can send it to an actor,
-alternatively converting it to a message that the actor understands beforehand.
+Our code often has to interact with external systems like databases or other services.
+Those calls are usually being executed asynchronously and the result is being made available either as an asynchronous result type,
+like a future, or as parameter to a callback that needs to be passed in when calling an asynchronous API. Once we have the result,
+we can send it to an actor, alternatively converting it to a message that the actor understands beforehand.
 
 [source]
 ----
@@ -533,7 +572,8 @@ so anyone who holds a reference to that actor can send this message to it.
 include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_sendResult_insideActor_external_api]
 ----
 
-==== Handling asynchronous results in actors
+[[onResultAsync]]
+==== Handling asynchronous results in Actors
 
 #TODO: Add better description of what problem are we facing and then how to solve it#
 
@@ -569,6 +609,9 @@ include::{dir_sact_doc_tests}/InteropDocExamples.swift[tag=asyncOp_onResultAsync
 <5> If the request was successful, we store the user in the cache and send it to the `replyTo` ref
 <6> If we could not find the user in the database either, we response with `.unknownUser`
 <7> If the request failed, we respond with `lookupFailed`
+
+[[awaitResult]]
+==== Awaiting on asynchronous results on Behavior transitions
 
 Some actors need to fetch initial state before they can start processing other messages or need to wait for an asynchronous
 result before resuming to process user messages. This can be achieved with the `awaitResult` and `awaitResultThrowing` calls

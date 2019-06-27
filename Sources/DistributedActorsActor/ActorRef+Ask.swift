@@ -14,6 +14,9 @@
 
 import NIO
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorRef + ask
+
 public extension ActorRef {
     /// Useful counterpart of ActorRef.tell but dedicated to request-response interactions.
     /// Allows for asking an actor for a reply without having to be an actor.
@@ -24,13 +27,16 @@ public extension ActorRef {
     /// The ephemeral ActorRef can only receive a single response
     /// and will be invalid afterwards. The AskResponse will be failed with a
     /// TimeoutError if no response is received within the specified timeout.
-    func ask<ResponseType>(
-        for type: ResponseType.Type,
+    ///
+    /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state. 
+    ///            It may be executed concurrently with regards to the current context.
+    func ask<Answer>(
+        for type: Answer.Type,
         timeout: TimeAmount,
         file: String = #file,
         function: String = #function,
         line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<ResponseType>) -> Message) -> AskResponse<ResponseType> {
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Message) -> AskResponse<Answer> {
         guard let system = self._system else {
             fatalError("`ask` was accessed while system was already terminated")
         }
@@ -50,12 +56,59 @@ public extension ActorRef {
     }
 }
 
-/// Response to an `ask` operation
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: AskResponse
+
+/// Asynchronously completed response to an `ask` operation.
+///
+/// It is possible to `context.awaitResult` or `context.onResultAsync` on this type to safely consume it inside
+/// the actors "single threaded illusion" context.
+///
+/// - warning: When exposing the underlying implementation and attaching callbacks to it, modifying or capturing
+///            enclosing actor state is NOT SAFE, as the underlying future MAY not be scheduled on the same context
+///            as the actor.
 public struct AskResponse<Value> {
+
+    /// *WARNING* Use with caution.
+    ///
+    /// Exposes underlying `NIO.EventLoopFuture`.
+    ///
+    /// - warning: DO NOT access or modify actor state from any of the future's callbacks as they MAY run concurrently to the actor.
+    /// - warning: `AskResponse` may in the future no longer be backed by a NIO future and this field deprecated, or replaced by an adapter.
     public let nioFuture: EventLoopFuture<Value>
 }
 
-/// :nodoc: Used to receive a single response to a message when using `ActorRef.ask`.
+extension AskResponse: AsyncResult {
+    public func onComplete(_ callback: @escaping (Result<Value, ExecutionError>) -> Void) {
+        self.nioFuture.onComplete { result in
+            callback(result)
+        }
+    }
+
+    public func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
+//        // TODO: ask errors should be lovely and include where they were asked from (source loc)
+        let eventLoop = self.nioFuture.eventLoop
+        let promise: EventLoopPromise<Value> = eventLoop.makePromise()
+        let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
+            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)"))
+        }
+        self.nioFuture.whenFailure {
+            timeoutTask.cancel()
+            promise.fail($0)
+        }
+        self.nioFuture.whenSuccess {
+            timeoutTask.cancel()
+            promise.succeed($0)
+        }
+
+        return .init(nioFuture: promise.futureResult)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Ask Actor
+
+/// :nodoc: Used to receive a single response to a message when using `ActorRef.ask`.extension EventLoopFuture: AsyncResult {
 /// Will either complete the `AskResponse` with the first message received, or fail
 /// it with a `TimeoutError` is no response is received within the specified timeout.
 ///
@@ -84,7 +137,11 @@ private enum AskActor {
             return .receiveMessage {
                 switch $0 {
                 case .timeout:
-                    let errorMessage = "No response received for ask to [\(ref.path)] within timeout [\(timeout.prettyDescription)]. Ask was initiated from function [\(function)] in [\(file):\(line)] and expected response of type [\(String(reflecting: ResponseType.self))]."
+                    let errorMessage = """
+                                       No response received for ask to [\(ref.path)] within timeout [\(timeout.prettyDescription)]. \
+                                       Ask was initiated from function [\(function)] in [\(file):\(line)] and \
+                                       expected response of type [\(String(reflecting: ResponseType.self))]. 
+                                       """
                     completable.fail(TimeoutError(message: errorMessage))
 
                 case .result(let message):

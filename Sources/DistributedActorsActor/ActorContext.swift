@@ -324,17 +324,19 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsync<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) {
+    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) {
         let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, ExecutionError>.self) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
             shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)
         }
 
-        task.withTimeout(after: timeout).onComplete(asyncCallback.invoke)
+        asyncResult.withTimeout(after: timeout).onComplete { res in
+            asyncCallback.invoke(res)
+        }
     }
 
     /// Applies the result of the `task` to the given `continuation` within the
@@ -349,12 +351,12 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///
     /// - Parameters:
     ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsyncThrowing<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
-        self.onResultAsync(of: task, timeout: timeout) {
-            switch $0 {
+    public func onResultAsyncThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) {
+        self.onResultAsync(of: asyncResult, timeout: timeout) { res in
+            switch res {
             case .success(let value): return try continuation(value)
             case .failure(let error): throw error.underlying
             }

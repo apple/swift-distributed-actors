@@ -264,30 +264,67 @@ class ActorDocExamples: XCTestCase {
         _ = behavior
     }
 
-    func example_ask() throws {
+    func example_ask_outside() throws {
         let system = ActorSystem("ExampleSystem")
 
-        // tag::ask[]
+        // tag::ask_outside[]
         struct Hello {
+            let name: String
             let replyTo: ActorRef<String>
         }
 
-        let behavior: Behavior<Hello> = .receiveMessage { msg in
-            msg.replyTo.tell("World")
+        let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
+            message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
 
-        let ref = try system.spawn(behavior, name: "greeter")
+        let greeter = try system.spawn(greeterBehavior, name: "greeter")
 
-        let response = ref.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
-            Hello(replyTo: replyTo) // <2>
+        let response = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
+            Hello(name: "Anne", replyTo: replyTo) // <2>
         }
 
         let result = try response.nioFuture.wait() // <3>
+        // end::ask_outside[]
+    }
 
-        print(result)
+    func example_ask_inside() throws {
+        let system = ActorSystem("ExampleSystem")
 
-        // end::ask[]
+        // tag::ask_inside[]
+        struct Hello {
+            let name: String
+            let replyTo: ActorRef<String>
+        }
+
+        let greeterBehavior: Behavior<Hello> = .receiveMessage { message in
+            message.replyTo.tell("Hello \(message.name)!")
+            return .same
+        }
+        let greeter = try system.spawn(greeterBehavior, name: "greeter")
+
+        let caplinBehavior: Behavior<Never> = .setup { context in
+            let timeout: TimeAmount = .seconds(1)
+
+            let response: AskResponse<String> = // <1>
+                greeter.ask(for: String.self, timeout: timeout) {
+                    Hello(name: context.name, replyTo: $0)
+                }
+
+            func greeted() -> Behavior<Never> {
+                return .stopped
+            }
+
+            context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>
+                context.log.info("I've been greeted: \(greeting)")
+                return .stopped // <3>
+            }
+
+            return .stopped
+        }
+
+        _ = try system.spawn(caplinBehavior, name: "caplin")
+        // end::ask_inside[]
     }
 }
 
