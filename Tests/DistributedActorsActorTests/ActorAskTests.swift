@@ -18,7 +18,7 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 import NIO
 
-class ActorAskTests: XCTestCase {
+final class ActorAskTests: XCTestCase {
     let system = ActorSystem("AskSupportTestsSystem")
     lazy var testKit: ActorTestKit = ActorTestKit(system)
 
@@ -75,7 +75,55 @@ class ActorAskTests: XCTestCase {
         result.shouldEqual("received:1")
     }
 
-    func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {
+    struct AnswerMePlease {
+        let replyTo: ActorRef<String>
+    }
+    func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
+            message.replyTo.tell("Hello there")
+            return .stopped
+        }, name: "greeterAskReply")
+
+        let _: ActorRef<Never> = try system.spawn(.setup { context in
+            let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
+
+            return context.awaitResultThrowing(of: askResult, timeout: .seconds(1)) { greeting in
+                p.tell(greeting)
+                return .stopped
+            }
+        }, name: "awaitOnAskResult")
+
+        try p.expectMessage("Hello there")
+    }
+
+    func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let void: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
+            return .same
+        }, name: "theVoid")
+
+        let _: ActorRef<Never> = try system.spawn(.setup { context in
+            let askResult = void
+                .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
+
+            return context.awaitResult(of: askResult, timeout: .milliseconds(100)) { greeting in
+                switch greeting {
+                case .failure(let err):
+                    p.tell("\(err)")
+                case .success:
+                    p.tell("no timeout...")
+                }
+                return .stopped
+            }
+        }, name: "onResultAsync")
+
+        try p.expectMessage("ExecutionError(underlying: Swift Distributed ActorsActor.TimeoutError(message: \"AskResponse<String> timed out after 100ms\"))")
+    }
+
+ func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {
         struct Message {
             let replyTo: ActorRef<String>
         }
