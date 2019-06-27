@@ -148,7 +148,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         // this is basically our API internally for this system
 
         // case bind(Wire.NodeAddress) since binds right away from config settings // TODO: Bind is done right away in start, should we do the bind command instead?
-        case handshakeWith(NodeAddress)
+        case handshakeWith(NodeAddress, replyTo: ActorRef<HandshakeResult>?)
         case unbind(BlockingReceptacle<Void>)
     } 
     enum QueryMessage: NoSerializationVerification {
@@ -160,6 +160,11 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
         case handshakeAccepted(Wire.HandshakeAccept, channel: Channel)
         case handshakeRejected(Wire.HandshakeReject)
         case handshakeFailed(NodeAddress, Error) // TODO remove?
+    }
+
+    internal enum HandshakeResult: Equatable {
+        case success(NodeAddress)
+        case failure(NodeAddress)
     }
 
     private var behavior: Behavior<Message> {
@@ -210,8 +215,8 @@ extension ClusterShell {
     private func ready(state: ClusterShellState) -> Behavior<Message> {
         func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             switch command {
-            case .handshakeWith(let remoteAddress):
-                return self.beginHandshake(context, state, with: remoteAddress)
+            case .handshakeWith(let remoteAddress, let replyTo):
+                return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .unbind(let receptacle):
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
             }
@@ -255,17 +260,18 @@ extension ClusterShell {
     /// Initiate an outgoing handshake to the `address`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    private func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress) -> Behavior<Message> {
+    private func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
         var state = state
 
         if let existingAssociation = state.association(with: remoteAddress) {
             // TODO in reality should attempt and may need to drop the other "old" one?
             state.log.warning("Attempted associating with already associated node: [\(remoteAddress)], existing association: [\(existingAssociation)]")
+            replyTo?.tell(.success(remoteAddress))
             return .same
         }
 
         state.log.info("Initiating handshake with \(remoteAddress)...")
-        let hsm = state.registerHandshake(with: remoteAddress)
+        let hsm = state.registerHandshake(with: remoteAddress, replyTo: replyTo)
         // we MUST register the intention of shaking hands with remoteAddress before obtaining the connection,
         // in order to let the fsm handle any retry decisions in face of connection failures et al.
 
@@ -317,7 +323,9 @@ extension ClusterShell {
 
             case .rejectHandshake(let rejectedHandshake):
                 log.info("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
-                newState.abortHandshake(with: offer.from.address)
+                if let hsmState = newState.abortHandshake(with: offer.from.address) {
+                    notifyHandshakeFailure(state: hsmState, address: offer.from.address)
+                }
                 promise.succeed(.reject(rejectedHandshake.makeReject()))
                 return self.ready(state: newState)
             }
@@ -349,11 +357,13 @@ extension ClusterShell {
                 context.timers.startSingleTimer(
                     key: "handshake-timer-\(remoteAddress)", 
                     // message: .command(.retryHandshakeWith(remoteAddress)), // TODO better?
-                    message: .command(.handshakeWith(remoteAddress)),
+                    message: .command(.handshakeWith(remoteAddress, replyTo: nil)),
                     delay: delay
                 )
             case .giveUpOnHandshake:
-                state.abortHandshake(with: remoteAddress)
+                if let hsmState = state.abortHandshake(with: remoteAddress) {
+                    notifyHandshakeFailure(state: hsmState, address: remoteAddress)
+                }
             }
 
         case .wasOfferedHandshake(let state):
@@ -385,6 +395,9 @@ extension ClusterShell {
 
         state.log.debug("[Cluster] Associated with: \(completed.remoteAddress).")
         self.cacheAssociationRemoteControl(association)
+
+        completed.replyTo?.tell(.success(association.remoteAddress.address))
+
         return self.ready(state: state)
     }
 
@@ -393,8 +406,22 @@ extension ClusterShell {
 
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
 
-        state.abortHandshake(with: reject.from)
+        if let hsmState = state.abortHandshake(with: reject.from) {
+            notifyHandshakeFailure(state: hsmState, address: reject.from)
+        }
+
         return self.ready(state: state)
+    }
+
+    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, address: NodeAddress) {
+        switch state {
+        case .initiated(let initiated):
+            initiated.replyTo?.tell(.failure(address))
+        case .completed(let completed):
+            completed.replyTo?.tell(.failure(address))
+        case .wasOfferedHandshake:
+            () // nothing to be done
+        }
     }
 }
 
@@ -507,14 +534,14 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 extension ClusterShellState {
 
     /// This is the entry point for a client initiating a handshake with a remote node.
-    mutating func registerHandshake(with remoteAddress: NodeAddress) -> HandshakeStateMachine.InitiatedState {
+    mutating func registerHandshake(with remoteAddress: NodeAddress, replyTo: ActorRef<ClusterShell.HandshakeResult>?) -> HandshakeStateMachine.InitiatedState {
         // TODO more checks here, so we don't reconnect many times etc
 
         if let existingAssociation = self.association(with: remoteAddress) {
             self.log.warning("Beginning new handshake to [\(reflecting: remoteAddress)], with already existing association: \(existingAssociation). Could this be a bug?")
         }
 
-        let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: remoteAddress)
+        let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: remoteAddress, replyTo: replyTo)
         let handshakeState = HandshakeStateMachine.State.initiated(handshakeFsm)
         self._handshakes[remoteAddress] = handshakeState
         return handshakeFsm
@@ -525,8 +552,8 @@ extension ClusterShellState {
     }
 
     /// Abort a handshake, clearing any of its state;
-    mutating func abortHandshake(with address: NodeAddress) {
-        self._handshakes.removeValue(forKey: address)
+    mutating func abortHandshake(with address: NodeAddress) -> HandshakeStateMachine.State? {
+        return self._handshakes.removeValue(forKey: address)
     }
 
     /// This is the entry point for a server receiving a handshake with a remote node.
@@ -613,9 +640,13 @@ extension ActorSystem {
         return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
     }
 
-    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
     public func join(address: NodeAddress) {
-        self.clusterShell.tell(.command(.handshakeWith(address)))
+        self.join(address: address, replyTo: nil)
+    }
+
+    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
+    internal func join(address: NodeAddress, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
+        self.clusterShell.tell(.command(.handshakeWith(address, replyTo: replyTo)))
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.

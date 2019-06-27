@@ -98,7 +98,7 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
     }
 
     func joinNodes(node: ActorSystem, with other: ActorSystem) throws {
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(node, with: other.settings.cluster.uniqueBindAddress)
         try assertAssociated(other, with: node.settings.cluster.uniqueBindAddress)
