@@ -25,10 +25,38 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
     func test_boundServer_shouldAcceptAssociate() throws {
         self.setUpBoth()
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: self.remoteUniqueAddress)
         try assertAssociated(remote, with: self.localUniqueAddress)
+    }
+
+    func test_handshake_shouldNotifyOnSuccess() throws {
+        self.setUpBoth()
+        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: p.ref))) // TODO nicer API
+
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+        try assertAssociated(remote, with: self.localUniqueAddress)
+
+        try p.expectMessage(.success(self.remoteUniqueAddress.address))
+    }
+
+    func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
+        self.setUpBoth()
+        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: p.ref))) // TODO nicer API
+
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+        try assertAssociated(remote, with: self.localUniqueAddress)
+
+        try p.expectMessage(.success(self.remoteUniqueAddress.address))
+
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: p.ref))) // TODO nicer API
+
+        try p.expectMessage(.success(self.remoteUniqueAddress.address))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -37,7 +65,7 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
         self.setUpBoth()
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(self.local, with: self.remoteUniqueAddress)
         try assertAssociated(self.remote, with: self.localUniqueAddress)
@@ -51,7 +79,7 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
         // instance (oldRemote) on the same address; It should accept this new handshake, and ban the previous node.
-        replacementRemote.clusterShell.tell(.command(.handshakeWith(self.localUniqueAddress.address))) // TODO nicer API
+        replacementRemote.clusterShell.tell(.command(.handshakeWith(self.localUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         // verify we are associated only with the appropriate addresses now;
         //
@@ -70,7 +98,7 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
             return .same
         }, name: "remoteAcquaintance")
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -96,7 +124,7 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         setUpLocal()
         // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
         let remoteAddress = NodeAddress(systemName: local.name, host: "localhost", port: self.remotePort)
-        local.clusterShell.tell(.command(.handshakeWith(remoteAddress))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteAddress, replyTo: nil))) // TODO nicer API
         sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
         setUpRemote()
 
@@ -110,9 +138,41 @@ class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         }
         setUpRemote()
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
 
         try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+    }
+
+    func test_handshake_shouldNotifyOnRejection() throws {
+        setUpLocal {
+            $0.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
+        }
+        setUpRemote()
+
+        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: p.ref))) // TODO nicer API
+
+        try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
+        try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
+
+        try p.expectMessage(.failure(self.remoteUniqueAddress.address))
+    }
+
+    // TODO: once initiated, handshake seem to retry until they succeed, that seems
+    //      like a problem and should be fixed. This test should be re-enabled,
+    //      once https://github.com/apple/swift-distributed-actors/issues/724 (handshakes should not retry forever) is resolved
+    func disabled_test_handshake_shouldNotifyOnConnectionFailure() throws {
+        setUpLocal()
+
+        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        var address = self.localUniqueAddress.address
+        address.port = address.port + 10
+
+        local.clusterShell.tell(.command(.handshakeWith(address, replyTo: p.ref))) // TODO nicer API
+
+        try p.expectMessage(.failure(address), within: .seconds(1))
     }
 }

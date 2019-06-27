@@ -25,7 +25,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         let registeredProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Registered<String>.self)
         let lookupProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address)))
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
         let ref: ActorRef<String> = try local.spawnAnonymous(
@@ -79,7 +79,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         local.receptionist.tell(Receptionist.Register(ref, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address)))
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
         let listing = try lookupProbe.expectMessage()
@@ -130,7 +130,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address)))
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
         let localListing = try localLookupProbe.expectMessage()
@@ -167,7 +167,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         remote.receptionist.tell(Receptionist.Subscribe(key: key, replyTo: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address)))
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil)))
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
         let remoteListing = try remoteLookupProbe.expectMessage()

@@ -69,7 +69,7 @@ class ActorRefAdapterTests: XCTestCase {
         }
         defer { systemTwo.shutdown() }
 
-        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.bindAddress))) // TODO nicer API
+        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.bindAddress, replyTo: nil))) // TODO nicer API
 
         sleep(2)
 

@@ -68,24 +68,26 @@ internal struct HandshakeStateMachine {
     // MARK: Handshake Initiated
 
     internal struct InitiatedState {
-        internal var backoff: BackoffStrategy
+        var backoff: BackoffStrategy
         let settings: ClusterSettings
 
-        internal var protocolVersion: Swift Distributed ActorsActor.Version {
+        var protocolVersion: Swift Distributed ActorsActor.Version {
             return self.settings.protocolVersion
         }
 
-        internal let remoteAddress: NodeAddress
-        internal let localAddress: UniqueNodeAddress
+        let remoteAddress: NodeAddress
+        let localAddress: UniqueNodeAddress
+        let replyTo: ActorRef<ClusterShell.HandshakeResult>?
 
         // TODO counter for how many times to retry associating (timeouts)
 
-        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress) {
+        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
             precondition(localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy
             self.localAddress = localAddress
             self.remoteAddress = remoteAddress
+            self.replyTo = replyTo
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
@@ -118,20 +120,20 @@ internal struct HandshakeStateMachine {
     internal struct HandshakeReceivedState {
         private let state: ReadOnlyClusterState
 
-        public let offer: Wire.HandshakeOffer
-        internal var boundAddress: UniqueNodeAddress {
+        let offer: Wire.HandshakeOffer
+        var boundAddress: UniqueNodeAddress {
             return self.state.localAddress
         }
-        internal var protocolVersion: Swift Distributed ActorsActor.Version {
+        var protocolVersion: Swift Distributed ActorsActor.Version {
             return state.settings.protocolVersion
         }
 
         // do not call directly, rather obtain the completed state via negotiate()
-        internal func _makeCompletedState() -> CompletedState {
+        func _makeCompletedState() -> CompletedState {
             return CompletedState(fromReceived: self, remoteAddress: offer.from)
         }
 
-        internal init(state: ReadOnlyClusterState, offer: Wire.HandshakeOffer) {
+        init(state: ReadOnlyClusterState, offer: Wire.HandshakeOffer) {
             self.state = state
             self.offer = offer
         }
@@ -175,9 +177,10 @@ internal struct HandshakeStateMachine {
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.
     /// This state is used to unlock creating an Association.
     internal struct CompletedState {
-        internal let protocolVersion: Version
-        internal var remoteAddress: UniqueNodeAddress
-        internal var localAddress: UniqueNodeAddress
+        let protocolVersion: Version
+        var remoteAddress: UniqueNodeAddress
+        var localAddress: UniqueNodeAddress
+        let replyTo: ActorRef<ClusterShell.HandshakeResult>?
         // let unique association ID?
 
         // State Transition used by Client Side of initial Handshake.
@@ -189,6 +192,7 @@ internal struct HandshakeStateMachine {
             self.protocolVersion = state.protocolVersion
             self.remoteAddress = remoteAddress
             self.localAddress = state.localAddress
+            self.replyTo = state.replyTo
         }
 
         // State Transition used by Client Side of initial Handshake.
@@ -197,6 +201,7 @@ internal struct HandshakeStateMachine {
             self.protocolVersion = state.protocolVersion
             self.remoteAddress = remoteAddress
             self.localAddress = state.boundAddress
+            self.replyTo = nil
         }
 
         func makeAccept() -> Wire.HandshakeAccept {
@@ -205,10 +210,10 @@ internal struct HandshakeStateMachine {
     }
 
     internal struct RejectedState {
-        internal let protocolVersion: Version
-        internal let localAddress: NodeAddress
-        internal let remoteAddress: UniqueNodeAddress
-        internal let error: HandshakeError
+        let protocolVersion: Version
+        let localAddress: NodeAddress
+        let remoteAddress: UniqueNodeAddress
+        let error: HandshakeError
 
         init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress, error: HandshakeError) {
             self.protocolVersion = state.protocolVersion
