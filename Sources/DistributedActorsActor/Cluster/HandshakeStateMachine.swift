@@ -195,7 +195,7 @@ internal struct HandshakeStateMachine {
             self.replyTo = state.replyTo
         }
 
-        // State Transition used by Client Side of initial Handshake.
+        // State Transition used by Server Side on accepting a received Handshake.
         init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress) {
             precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
             self.protocolVersion = state.protocolVersion
