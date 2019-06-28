@@ -277,13 +277,13 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// behavior is legal, and causes another suspension.
     ///
     /// - Parameters:
-    ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(of task: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
-            task.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
+    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+            asyncResult.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
                 selfRef?.sendSystemMessage(.resume(result.map { $0 }))
             }
             return .suspend(handler: continuation)
@@ -298,16 +298,16 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///
     /// - SeeAlso: `awaitResult`
     /// - Parameters:
-    ///   - task: result of an asynchronous operation the actor is waiting for
-    ///   - timeout: time after which the task will be failed if it does not complete
+    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
     public func awaitResultThrowing<AR: AsyncResult>(
-        of task: AR,
+        of asyncResult: AR,
         timeout: TimeAmount,
         _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) -> Behavior<Message> {
-            return self.awaitResult(of: task, timeout: timeout) { result in
+            return self.awaitResult(of: asyncResult, timeout: timeout) { result in
                 switch result {
                 case .success(let res):   return try continuation(res)
                 case .failure(let error): throw error.underlying
