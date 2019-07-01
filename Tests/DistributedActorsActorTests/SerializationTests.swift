@@ -155,12 +155,12 @@ class SerializationTests: XCTestCase {
         pinfo("Before serialize: \(hasRef)")
 
         let bytes = try shouldNotThrow {
-            return try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(message: hasRef)
         }
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            return try system.serialization.deserialize(HasStringRef.self, from: bytes)
+            try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
