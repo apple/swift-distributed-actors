@@ -92,12 +92,12 @@ class SerializationTests: XCTestCase {
         pinfo("Before serialize: \(hasRef)")
 
         let bytes = try shouldNotThrow {
-            return try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(message: hasRef)
         }
         pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasStringRef = try shouldNotThrow {
-            return try system.serialization.deserialize(HasStringRef.self, from: bytes)
+            try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -126,7 +126,7 @@ class SerializationTests: XCTestCase {
         pinfo("Before serialize: \(hasRef)")
 
         let bytes = try shouldNotThrow {
-            return try remoteCapableSystem.serialization.serialize(message: hasRef)
+            try remoteCapableSystem.serialization.serialize(message: hasRef)
         }
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
@@ -137,7 +137,7 @@ class SerializationTests: XCTestCase {
         serializedFormat.contains("\(ClusterSettings.Default.port)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
-            return try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)
+            try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)
         }
         pinfo("Deserialized again: \(back)")
 
@@ -149,39 +149,33 @@ class SerializationTests: XCTestCase {
 
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
-        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
+        let p = testKit.spawnTestProbe(expecting: Never.self)
+        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival")
+        p.watch(stoppedRef)
+
         let hasRef = HasStringRef(containedRef: stoppedRef)
-
-        pinfo("Before serialize: \(hasRef)")
-
         let bytes = try shouldNotThrow {
             try system.serialization.serialize(message: hasRef)
         }
-        pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
+        try p.expectTerminated(stoppedRef)
         let back: HasStringRef = try shouldNotThrow {
             try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
-        pinfo("Deserialized again: \(back)")
 
-        back.containedRef.tell("Should become a dead letter")
         "\(back.containedRef.path)".shouldEqual("/system/deadLetters")
     }
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
         let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
-        pinfo("Before serialize: \(hasRef)")
-
         let bytes = try shouldNotThrow {
-            return try system.serialization.serialize(message: hasRef)
+            try system.serialization.serialize(message: hasRef)
         }
-        pinfo("serialized ref: \(bytes.stringDebugDescription())")
 
         let back: HasInterestingMessageRef = try shouldNotThrow {
-            return try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
+            try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
         }
-        pinfo("Deserialized again: \(back)")
 
         back.containedInterestingRef.tell(InterestingMessage())
         "\(back.containedInterestingRef.path)".shouldEqual("/system/deadLetters")
@@ -189,7 +183,7 @@ class SerializationTests: XCTestCase {
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
         let err = shouldThrow {
-            return try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
+            try system.serialization.serialize(message: NotCodableHasInt(containedInt: 1337))
         }
 
         switch err {
@@ -222,17 +216,13 @@ class SerializationTests: XCTestCase {
 
         let hasSysRef = HasReceivesSystemMsgs(sysRef: ref)
 
-        pinfo("Before serialize: \(hasSysRef)")
-
         let bytes = try shouldNotThrow {
-            return try system.serialization.serialize(message: hasSysRef)
+            try system.serialization.serialize(message: hasSysRef)
         }
-        pinfo("serialized refs: \(bytes.stringDebugDescription())")
 
         let back: HasReceivesSystemMsgs = try shouldNotThrow {
-            return try system.serialization.deserialize(HasReceivesSystemMsgs.self, from: bytes)
+            try system.serialization.deserialize(HasReceivesSystemMsgs.self, from: bytes)
         }
-        pinfo("Deserialized again: \(back)")
 
         back.sysRef.path.shouldEqual(sysRef.path)
 
