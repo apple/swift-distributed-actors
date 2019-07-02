@@ -294,7 +294,7 @@ extension ActorCell: CustomDebugStringConvertible {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Convenience extensions for dead letters
 
-extension ActorRef where Message == DeadLetter {
+public extension ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
     func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
         let adapter: AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.path)

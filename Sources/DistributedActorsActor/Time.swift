@@ -129,6 +129,10 @@ extension TimeAmount: CustomStringConvertible {
 
     public func prettyDescription(precision: Int = 2) -> String {
         assert(precision > 0, "precision MUST BE > 0")
+        if self.isEffectivelyInfinite {
+            return "∞ (infinite)"
+        }
+
         var res = ""
         var remainingNanos = self.nanoseconds
 
@@ -244,14 +248,21 @@ public extension TimeAmount {
     var days: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
     }
+
+    /// Returns true if the time amount is "effectively infinite" (equal to `TimeAmount.effectivelyInfinite`)
+    var isEffectivelyInfinite: Bool {
+        return self == TimeAmount.effectivelyInfinite
+    }
 }
 
-extension TimeAmount {
+public extension TimeAmount {
     /// Largest time amount expressible using this type.
     /// Roughly equivalent to 292 years, which for the intents and purposes of this type can serve as "infinite".
     static var effectivelyInfinite: TimeAmount {
         return TimeAmount(Value.max)
     }
+
+    /// Smallest non-negative time amount.
     static var zero: TimeAmount {
         return TimeAmount(0)
     }

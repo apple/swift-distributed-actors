@@ -12,7 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import struct NIO.EventLoopPromise
+import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorRef + ask
@@ -86,7 +87,11 @@ extension AskResponse: AsyncResult {
     }
 
     public func withTimeout(after timeout: TimeAmount) -> AskResponse<Value> {
-//        // TODO: ask errors should be lovely and include where they were asked from (source loc)
+        if timeout.isEffectivelyInfinite {
+            return self
+        }
+
+        // TODO: ask errors should be lovely and include where they were asked from (source loc)
         let eventLoop = self.nioFuture.eventLoop
         let promise: EventLoopPromise<Value> = eventLoop.makePromise()
         let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
@@ -133,7 +138,11 @@ private enum AskActor {
             let adapter = context.messageAdapter(for: ResponseType.self, with: { .result($0) })
             let message = makeQuestion(adapter)
             ref.tell(message)
-            context.timers.startSingleTimer(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
+
+            if !timeout.isEffectivelyInfinite {
+                context.timers.startSingleTimer(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
+            }
+
             return .receiveMessage {
                 switch $0 {
                 case .timeout:
