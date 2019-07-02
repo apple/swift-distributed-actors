@@ -14,9 +14,9 @@
 
 import Foundation
 import XCTest
-@testable import Swift Distributed ActorsActor
+import Swift Distributed ActorsActor
+import struct Swift Distributed ActorsActor.TimeAmount
 import SwiftDistributedActorsActorTestKit
-import NIO
 
 final class ActorAskTests: XCTestCase {
     let system = ActorSystem("AskSupportTestsSystem")
@@ -99,7 +99,7 @@ final class ActorAskTests: XCTestCase {
         try p.expectMessage("Hello there")
     }
 
-    func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn() throws {
+    func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
         let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
@@ -108,27 +108,33 @@ final class ActorAskTests: XCTestCase {
         }, name: "greeterAskReply")
 
         let _: ActorRef<Never> = try system.spawn(.setup { context in
-            let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in
-                return AnswerMePlease(replyTo: replyTo)
+            let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
+                AnswerMePlease(replyTo: replyTo)
             }
 
-            context.onResultAsyncThrowing(of: askResult, timeout: .seconds(1)) { greeting in
+            context.onResultAsyncThrowing(of: askResult, timeout: timeout) { greeting in
                 p.tell(greeting)
                 return .same
             }
 
-            return .ignore
+            // TODO: cannot become .ignore since that results in "become .same in .setup"
+            // See also https://github.com/apple/swift-distributed-actors/issues/746
+            return .receiveMessage { _ in .same }
         }, name: "askingAndOnResultAsyncThrowing")
 
-        try p.expectMessage("Hello there")
+        try p.expectMessage("Hello there", within: .seconds(3))
+    }
+    func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout()  throws {
+        try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .seconds(1))
+    }
+    func test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout() throws {
+        try self.shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout: .effectivelyInfinite)
     }
 
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let void: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
-            return .same
-        }, name: "theVoid")
+        let void: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in .same }, name: "theVoid")
 
         let _: ActorRef<Never> = try system.spawn(.setup { context in
             let askResult = void
