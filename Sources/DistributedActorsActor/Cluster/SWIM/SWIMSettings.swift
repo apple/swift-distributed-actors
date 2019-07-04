@@ -50,6 +50,13 @@ public struct SWIMGossipSettings {
     /// Interval at which gossip messages should be issued.
     /// Every `interval` a `fanout` number of gossip messages will be sent.
     var probeInterval: TimeAmount = .milliseconds(300)
+
+    // FIXME: investigate size of messages and find good default
+    //
+    // max number of messages included in any gossip payload
+    var maxNumberOfMessages: Int = 20
+
+    var maxGossipCountPerMessage: Int = 6
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -73,10 +80,13 @@ public struct SWIMFailureDetectorSettings {
     }
 
     // FIXME: those timeouts are not the actual timeout, the actual timeout is recalculated each time when we get more `suspect` information
-    var suspicionTimeoutMax: SuspicionTimeout = .probeIntervals(3)
-    var suspicionTimeoutMin: SuspicionTimeout = .probeIntervals(3)
-    enum SuspicionTimeout {
-        case probeIntervals(Int)
-        case timeAmount(TimeAmount)
-    }
+
+    /// Suspicion timeouts are specified as number of probe intervals. E.g. a `probeInterval`
+    /// of 300 milliseconds and `suspicionTimeoutMax` means that a suspicious node will be
+    /// marked `.dead` after approx. 900ms.
+    var suspicionTimeoutMax: Int = 3
+    var suspicionTimeoutMin: Int = 3
+
+    var probeInterval: TimeAmount = .milliseconds(300)
+    var pingTimeout: TimeAmount = .milliseconds(100)
 }
