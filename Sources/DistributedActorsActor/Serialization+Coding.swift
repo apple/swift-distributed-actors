@@ -319,8 +319,9 @@ internal extension SingleValueDecodingContainer {
 
 public extension SingleValueEncodingContainer {
     mutating func encodeWithAddress(_ path: UniqueActorPath, using context: ActorSerializationContext) throws {
-        if let pathAddress = path.path.address {
-            precondition(pathAddress == context.serializationAddress)
+        if path.path.address != nil {
+            // FIXME: this check seems wrong, because it prevents us from sending remote refs to another node,
+            //        which has to be possible.
             try self.encode(path) // we assume the already present path is correct
         } else {
             // path has no address, so we assume it is a local one and set it from as local system's address
