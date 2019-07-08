@@ -74,7 +74,7 @@ internal enum SWIMMembershipShell {
                 return
             }
 
-            if self.membershipInfos[member] == nil {
+            if self.membershipInfos[member] == nil && member.path.address != nil {
                 // Newly added members are inserted at a random spot in the list of members
                 // to ping, to have a better distribution of messages to this node from all
                 // other nodes. If for example all nodes would add it to the end of the list,
@@ -100,7 +100,11 @@ internal enum SWIMMembershipShell {
                 // the time until state is spread across the whole cluster, by guaranteeing
                 // that each node will be gossiped to within N cycles (where N is the
                 // cluster size).
-                self.membersToPing = self.membershipInfos.keys.shuffled()
+                self.membersToPing = self.membershipInfos.filter { $0.key.path.address != nil && !$0.value.isDead }.keys.shuffled()
+            }
+
+            if self.membersToPing.isEmpty {
+                return nil
             }
 
             return self.membersToPing.removeFirst()
@@ -278,7 +282,7 @@ internal enum SWIMMembershipShell {
             context.log.trace("Received periodic trigger to ping random member [protocolPeriod=\(state.protocolPeriod)]")
 
             // needs to be done first, so we can gossip out the most up to date state
-            checkSuspicionTimeouts(state: state)
+            checkSuspicionTimeouts(context: context, state: state)
 
             if let toPing = state.nextMemberToPing() {
                 sendPing(context: context, to: toPing, replyTo: nil, state: state)
@@ -293,7 +297,7 @@ internal enum SWIMMembershipShell {
         replyTo: ActorRef<SWIM.Ack>?,
         state: State) {
         let payload = state.createGossipPayload()
-        context.log.trace("Sending ping to [\(to)] with payload [\(payload)]")
+        context.log.info("Sending ping to [\(to)] with payload [\(payload)]")
 
         let response = to.ask(for: SWIM.Ack.self, timeout: state.settings.failureDetector.pingTimeout) {
             SWIM.Message.remote(.ping(replyTo: $0, payload: payload))
@@ -388,7 +392,7 @@ internal enum SWIMMembershipShell {
         }
     }
 
-    static func checkSuspicionTimeouts(state: State) {
+    static func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>, state: State) {
         // FIXME: use decaying timeout as propsed in lifeguard paper
         let timeout = (state.protocolPeriod - state.settings.failureDetector.suspicionTimeoutMax)
         for (member, membershipInfo) in state.suspects where membershipInfo.protocolPeriod <= timeout {
@@ -396,6 +400,7 @@ internal enum SWIMMembershipShell {
             // of removing the node from the member list. We do that in order to preevent dead nodes
             // from being re-added to the cluster.
             // TODO: add time of death to the status
+            context.log.warning("Marking \(member) as dead. Was marked suspect in protocol period [\(membershipInfo.protocolPeriod)], current period [\(state.protocolPeriod)].")
             state.setMembership(for: member, status: .dead)
         }
     }
@@ -407,11 +412,12 @@ internal enum SWIMMembershipShell {
         state: State) {
         switch lastKnownState {
         case .alive(let incarnation):
+            context.log.warning("Marking [\(member)] as suspect")
             state.setMembership(for: member, status: .suspect(incarnation: incarnation))
         case .suspect:
             () // already suspect, nothing to be done
         case .dead:
-            context.log.trace("Not making [\(member)] suspect, because it has been marked as dead already")
+            context.log.trace("Not marking [\(member)] as suspect, because it has been marked as dead already")
         }
     }
 
