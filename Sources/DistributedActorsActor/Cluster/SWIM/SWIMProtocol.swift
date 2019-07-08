@@ -33,7 +33,7 @@ public enum SWIM {
 
     // TODO: make serializable
     internal enum Remote {
-        case ping(replyTo: ActorRef<Ack>, payload: Payload)
+        case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
         case getMembershipState(replyTo: ActorRef<MembershipState>)
@@ -126,6 +126,13 @@ extension SWIM.Status {
             return false
         }
     }
+
+    // return true if `self` is greater than or equal to `other` based on the
+    // following ordering:
+    // `alive(N)` < `suspect(N)` < `alive(N+1)` < `suspect(N+1)` < `dead`
+    func supersedes(_ other: SWIM.Status) -> Bool {
+        return self >= other
+    }
 }
 
 extension SWIM.Payload {
@@ -161,6 +168,7 @@ extension SWIM.Message: Codable {
     }
 
     enum PingCodingKeys: CodingKey {
+        case lastKnownStatus
         case replyTo
         case payload
     }
@@ -219,16 +227,18 @@ extension SWIM.Message: Codable {
 
     private static func decodePing(from container: inout KeyedDecodingContainer<PingCodingKeys>) throws -> SWIM.Message {
         let replyTo = try container.decode(ActorRef<SWIM.Ack>.self, forKey: .replyTo)
+        let lastKnownStatus = try container.decode(SWIM.Status.self, forKey: .lastKnownStatus)
         let payload = try container.decode(SWIM.Payload.self, forKey: .payload)
 
-        return .remote(.ping(replyTo: replyTo, payload: payload))
+        return .remote(.ping(lastKnownStatus: lastKnownStatus, replyTo: replyTo, payload: payload))
     }
 
     private static func encodePing(_ message: SWIM.Remote, to container: inout KeyedEncodingContainer<PingCodingKeys>) throws {
-        guard case .ping(let replyTo, let payload) = message else {
+        guard case .ping(let lastKnownStatus, let replyTo, let payload) = message else {
             fatalError("Called `encodePing` with unexpected message \(message)")
         }
 
+        try container.encode(lastKnownStatus, forKey: .lastKnownStatus)
         try container.encode(replyTo, forKey: .replyTo)
         try container.encode(payload, forKey: .payload)
     }

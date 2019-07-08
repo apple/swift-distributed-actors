@@ -65,6 +65,7 @@ import XCTest
          testCase(RemotingMessagingTests.allTests),
          testCase(RemotingTLSTests.allTests),
          testCase(RingBufferTests.allTests),
+         testCase(SWIMMembershipShellStateTests.allTests),
          testCase(SWIMMembershipShellTests.allTests),
          testCase(SerializationPoolTests.allTests),
          testCase(SerializationTests.allTests),
