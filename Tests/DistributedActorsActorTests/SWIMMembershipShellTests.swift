@@ -24,7 +24,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
 
         let ref = try local.spawn(SWIMMembershipShell.ready(state: makeSwimState(members: [])), name: "SWIM")
 
-        ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+        ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
         let response = try p.expectMessage()
 
@@ -43,7 +43,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         func behavior(postFix: String) -> Behavior<SWIM.Message> {
             return .receive { context, message in
                 switch message {
-                case .remote(.ping(let replyTo, _)):
+                case .remote(.ping(_, let replyTo, _)):
                     replyTo.tell(.init(from: context.myself, incarnation: 0, payload: .none))
                     p.tell("pinged:\(postFix)")
                 default: ()
@@ -206,9 +206,9 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
 
         ref.tell(.local(.pingRandomMember))
 
-        try expectPing(on: p, reply: true, incarnation: 0)
+        try expectPing(on: p, reply: true, incarnation: 1)
 
-        try awaitStatus(.alive(incarnation: 0), for: remoteProbeRef, on: ref, within: .seconds(1))
+        try awaitStatus(.alive(incarnation: 1), for: remoteProbeRef, on: ref, within: .seconds(1))
     }
 
     func test_SWIMMembershipShell_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout() throws {
@@ -281,7 +281,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
 
         let ref = try local.spawn(SWIMMembershipShell.ready(state: makeSwimState(members: [remoteMemberRef])), name: "SWIM")
 
-        ref.tell(.remote(.ping(replyTo: remoteProbeRef, payload: .none)))
+        ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: remoteProbeRef, payload: .none)))
 
         let response = try p.expectMessage()
         switch response.payload {
@@ -348,7 +348,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let ref = try local.spawn(SWIMMembershipShell.ready(state: makeSwimState(members: [memberProbe.ref])), name: "SWIM")
 
         for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage {
-            ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+            ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
             let response = try p.expectMessage()
 
@@ -360,7 +360,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
             }
         }
 
-        ref.tell(.remote(.ping(replyTo: p.ref, payload: .none)))
+        ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
         let response = try p.expectMessage()
 
@@ -420,7 +420,7 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
                     file: StaticString = #file, line: UInt = #line, column: UInt = #column,
                     assertPayload: (SWIM.Payload) throws -> Void = { _ in }) throws {
         switch try probe.expectMessage(file: file, line: line, column: column) {
-        case .remote(.ping(let replyTo, let payload)):
+        case .remote(.ping(_, let replyTo, let payload)):
             try assertPayload(payload)
             if reply {
                 replyTo.tell(SWIM.Ack(from: probe.ref, incarnation: incarnation, payload: .none))

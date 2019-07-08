@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// TODO ...
 internal enum SWIMMembershipShell {
 
@@ -69,7 +71,7 @@ internal enum SWIMMembershipShell {
         }
 
         func addMember(_ member: ActorRef<SWIM.Message>, status: SWIM.Status) {
-            if let previousState = self.getMembershipStatus(for: member), previousState > status {
+            if let previousStatus = self.membershipStatus(of: member), previousStatus.supersedes(status) {
                 // we already have a newer state for this member
                 return
             }
@@ -110,25 +112,22 @@ internal enum SWIMMembershipShell {
             return self.membersToPing.removeFirst()
         }
 
-        func updateMembership(for member: ActorRef<SWIM.Message>, status: SWIM.Status) {
-            if let previousState = self.getMembershipStatus(for: member), previousState > status {
-                // we already have a newer state for this member
-                return
-            }
-
-            self.membershipInfos[member] = MembershipInfo(status: status, protocolPeriod: self.protocolPeriod)
-            self.addGossip(membership: SWIM.Member(ref: member, status: status))
+        enum MarkResult {
+            case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
+            case applied(previousStatus: SWIM.Status?)
         }
 
-        /// TODO: split into methods to `setAlive`, `setSuspect`, `setDead`
-        func setMembership(for member: ActorRef<SWIM.Message>, status: SWIM.Status) {
-            if let previousState = self.getMembershipStatus(for: member), previousState.isDead {
-                // this node has been marked as dead and can't come back
-                return
+        func mark(_ member: ActorRef<SWIM.Message>, as status: SWIM.Status) -> MarkResult {
+            let previousStatusOption = self.membershipStatus(of: member)
+            if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
+                // we already have a newer status for this member
+                return .ignoredDueToOlderStatus(currentStatus: previousStatus)
             }
 
             self.membershipInfos[member] = MembershipInfo(status: status, protocolPeriod: self.protocolPeriod)
             self.addGossip(membership: SWIM.Member(ref: member, status: status))
+
+            return .applied(previousStatus: previousStatusOption)
         }
 
         func incrementIncarnation() {
@@ -147,11 +146,11 @@ internal enum SWIMMembershipShell {
             return self._protocolPeriod
         }
 
-        func getMembershipStatus(for member: ActorRef<SWIM.Message>) -> SWIM.Status? {
+        func membershipStatus(of member: ActorRef<SWIM.Message>) -> SWIM.Status? {
             return self.membershipInfos[member]?.status
         }
 
-        func getMembershipInfo(for member: ActorRef<SWIM.Message>) -> MembershipInfo? {
+        func membershipInfo(for member: ActorRef<SWIM.Message>) -> MembershipInfo? {
             return self.membershipInfos[member]
         }
 
@@ -244,29 +243,36 @@ internal enum SWIMMembershipShell {
 
     static func handleRemoteMessage(context: ActorContext<SWIM.Message>, message: SWIM.Remote, state: State) {
         switch message {
-        case .ping(let replyTo, let payload):
-            context.log.warning("Received ping from [\(replyTo)] with payload [\(payload)]")
+        case .ping(let lastKnownStatus, let replyTo, let payload):
+            // if a node suspects us in the current incarnation, we need to increment
+            // the incarnation, so the new `alive`status can properly propagate through
+            // the cluster
+            if case .suspect(let incarnation) = lastKnownStatus, incarnation == state.incarnation {
+                state.incrementIncarnation()
+            }
+
+            context.log.trace("Received ping from [\(replyTo)] with payload [\(payload)]")
             replyTo.tell(.init(from: context.myself, incarnation: state.incarnation, payload: state.createGossipPayload()))
             processGossip(context: context, payload: payload, state: state)
 
-        case .pingReq(let target, let lastKnownState, let replyTo, let payload):
+        case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !state.isMember(target) {
                 if let address = target.path.address?.address {
                     ensureConnected(context: context, remoteAddress: address, state: state) {
-                         state.addMember(target, status: lastKnownState)
-                         sendPing(context: context, to: target, replyTo: replyTo, state: state)
+                         state.addMember(target, status: lastKnownStatus)
+                        sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, state: state)
                     }
                 } else {
                     // FIXME: This is a workaround for the lack of serializers for these messages
                     //        which prevents us from using remote systems for the tests. This should
                     //        be removed once we have serializers and reworked the tests to use
                     //        remoting as well.
-                    state.addMember(target, status: lastKnownState)
-                    sendPing(context: context, to: target, replyTo: replyTo, state: state)
+                    state.addMember(target, status: lastKnownStatus)
+                    sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, state: state)
                 }
             } else {
-                sendPing(context: context, to: target, replyTo: replyTo, state: state)
+                sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, state: state)
             }
             processGossip(context: context, payload: payload, state: state)
 
@@ -284,8 +290,8 @@ internal enum SWIMMembershipShell {
             // needs to be done first, so we can gossip out the most up to date state
             checkSuspicionTimeouts(context: context, state: state)
 
-            if let toPing = state.nextMemberToPing() {
-                sendPing(context: context, to: toPing, replyTo: nil, state: state)
+            if let toPing = state.nextMemberToPing(), let lastKnownStatus = state.membershipStatus(of: toPing) {
+                sendPing(context: context, to: toPing, lastKnownStatus: lastKnownStatus, replyTo: nil, state: state)
             }
             state.incrementProtocolPeriod()
         }
@@ -294,13 +300,14 @@ internal enum SWIMMembershipShell {
     static func sendPing(
         context: ActorContext<SWIM.Message>,
         to: ActorRef<SWIM.Message>,
+        lastKnownStatus: SWIM.Status,
         replyTo: ActorRef<SWIM.Ack>?,
         state: State) {
         let payload = state.createGossipPayload()
-        context.log.info("Sending ping to [\(to)] with payload [\(payload)]")
+        context.log.trace("Sending ping to [\(to)] with payload [\(payload)]")
 
         let response = to.ask(for: SWIM.Ack.self, timeout: state.settings.failureDetector.pingTimeout) {
-            SWIM.Message.remote(.ping(replyTo: $0, payload: payload))
+            SWIM.Message.remote(.ping(lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload))
         }
 
         // timeout is already handled by the ask, so we can set it to infinite here to not have two timeouts
@@ -311,21 +318,21 @@ internal enum SWIMMembershipShell {
     }
 
     static func sendPingRequests(context: ActorContext<SWIM.Message>, toPing: ActorRef<SWIM.Message>, state: State) {
-        guard let lastKnownStatus = state.getMembershipStatus(for: toPing) else {
+        guard let lastKnownStatus = state.membershipStatus(of: toPing) else {
             context.log.trace("Skipping ping requests after failed ping to [\(toPing)] because node has been removed from member list")
             return
         }
 
         // select random members to send ping requests to
         let membersToRequest = state.members.shuffled()
-            .filter { $0 != toPing }
+            .filter { $0.path.address != nil && $0 != toPing }
             .prefix(state.settings.failureDetector.indirectProbeCount)
 
         guard !membersToRequest.isEmpty else {
             // there are no nodes available to send a ping request to, so we mark
             // `toPing` suspicious immediately
-            if let currentState = state.getMembershipStatus(for: toPing) {
-                makeSuspect(context: context, member: toPing, lastKnownState: currentState, state: state)
+            if let currentState = state.membershipStatus(of: toPing) {
+                markSuspect(context: context, member: toPing, lastKnownState: currentState, state: state)
             }
             return
         }
@@ -364,8 +371,8 @@ internal enum SWIMMembershipShell {
             }
         case .success(let ack):
             // FIXME: process payload
-            context.log.warning("Received ack from [\(ack.from)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
-            state.setMembership(for: ack.from, status: .alive(incarnation: ack.incarnation))
+            context.log.trace("Received ack from [\(ack.from)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
+            markMember(ack.from, as: .alive(incarnation: ack.incarnation), state: state, log: context.log)
             replyTo?.tell(ack)
             processGossip(context: context, payload: ack.payload, state: state)
         }
@@ -378,17 +385,17 @@ internal enum SWIMMembershipShell {
         state: State) {
         switch result {
         case .failure:
-            guard let lastKnownState = state.getMembershipStatus(for: pingedMember) else {
+            guard let lastKnownState = state.membershipStatus(of: pingedMember) else {
                 context.log.trace("Ignoring timed out ping request, because member [\(pingedMember)] has been removed from the member list in the meantime")
                 return
             }
 
-            makeSuspect(context: context, member: pingedMember, lastKnownState: lastKnownState, state: state)
+            markSuspect(context: context, member: pingedMember, lastKnownState: lastKnownState, state: state)
 
         case .success(let ack):
             // FIXME: process payload
             processGossip(context: context, payload: ack.payload, state: state)
-            state.setMembership(for: ack.from, status: .alive(incarnation: ack.incarnation))
+            markMember(ack.from, as: .alive(incarnation: ack.incarnation), state: state, log: context.log)
         }
     }
 
@@ -401,23 +408,7 @@ internal enum SWIMMembershipShell {
             // from being re-added to the cluster.
             // TODO: add time of death to the status
             context.log.warning("Marking \(member) as dead. Was marked suspect in protocol period [\(membershipInfo.protocolPeriod)], current period [\(state.protocolPeriod)].")
-            state.setMembership(for: member, status: .dead)
-        }
-    }
-
-    static func makeSuspect(
-        context: ActorContext<SWIM.Message>,
-        member: ActorRef<SWIM.Message>,
-        lastKnownState: SWIM.Status,
-        state: State) {
-        switch lastKnownState {
-        case .alive(let incarnation):
-            context.log.warning("Marking [\(member)] as suspect")
-            state.setMembership(for: member, status: .suspect(incarnation: incarnation))
-        case .suspect:
-            () // already suspect, nothing to be done
-        case .dead:
-            context.log.trace("Not marking [\(member)] as suspect, because it has been marked as dead already")
+            markMember(member, as: .dead, state: state, log: context.log)
         }
     }
 
@@ -431,17 +422,17 @@ internal enum SWIMMembershipShell {
 
         for members in members {
             if state.isMember(members.ref) {
-                state.updateMembership(for: members.ref, status: members.status)
+                markMember(members.ref, as: members.status, state: state, log: context.log)
             } else if let address = members.ref.path.address?.address {
                 ensureConnected(context: context, remoteAddress: address, state: state) {
-                    state.updateMembership(for: members.ref, status: members.status)
+                    markMember(members.ref, as: members.status, state: state, log: context.log)
                 }
             } else {
                 // FIXME: This is a workaround for the lack of serializers for these messages
                 //        which prevents us from using remote systems for the tests. This should
                 //        be removed once we have serializers and reworked the tests to use
                 //        remoting as well.
-                state.updateMembership(for: members.ref, status: members.status)
+                markMember(members.ref, as: members.status, state: state, log: context.log)
             }
         }
     }
@@ -463,6 +454,35 @@ internal enum SWIMMembershipShell {
                 context.log.warning("Failed to connect to remote node [\(remoteAddress)]")
             }
             return .same
+        }
+    }
+
+    // To mark a member as `.suspect`, consider using `markSuspect` instead,
+    // which extracts the incarnation number from the last known status
+    static func markMember(_ member: ActorRef<SWIM.Message>, as status: SWIM.Status, state: State, log: Logger) {
+        switch state.mark(member, as: status) {
+        case .applied(let previousStatus):
+            let previousStatusString = previousStatus.map { "\($0)" } ?? "unknown"
+            log.trace("Marked member [\(member)] as [\(status)], from previous status [\(previousStatusString)]")
+        case .ignoredDueToOlderStatus(let currentStatus):
+            log.trace("Did not apply status update [\(status)] for member [\(member)] because newer status [\(currentStatus)] is already known")
+        }
+    }
+
+    // convenience function to mark a member as suspect using the last known incarnation
+    static func markSuspect(
+        context: ActorContext<SWIM.Message>,
+        member: ActorRef<SWIM.Message>,
+        lastKnownState: SWIM.Status,
+        state: State) {
+        switch lastKnownState {
+        case .alive(let incarnation):
+            context.log.warning("Marking [\(member)] as suspect")
+            markMember(member, as: .suspect(incarnation: incarnation), state: state, log: context.log)
+        case .suspect:
+            () // already suspect, nothing to be done
+        case .dead:
+            context.log.trace("Not marking [\(member)] as suspect, because it has been marked as dead already")
         }
     }
 }
