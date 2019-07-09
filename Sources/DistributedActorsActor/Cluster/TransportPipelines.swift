@@ -367,7 +367,7 @@ extension ClusterShell {
 
     // TODO: abstract into `Transport`?
 
-    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, log: Logger, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -396,8 +396,9 @@ extension ClusterShell {
                     }
                 }
 
-                // Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
+                let log = ActorLogger.make(system: system, identifier: "remoting-server")
 
+                // TODO: Ensure we don't read faster than we can write by adding the BackPressureHandler into the pipeline.
                 let otherHandlers: [(String?, ChannelHandler)] = [
                     ("magic validator", ProtocolMagicBytesValidator()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
@@ -423,7 +424,7 @@ extension ClusterShell {
         return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, log: Logger, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -449,6 +450,8 @@ extension ClusterShell {
                         return channel.eventLoop.makeFailedFuture(error)
                     }
                 }
+
+                let log = ActorLogger.make(system: system, identifier: "remoting-client")
 
                 let otherHandlers: [(String?, ChannelHandler)] = [
                     ("magic prepender", ProtocolMagicBytesPrepender()),
