@@ -193,8 +193,7 @@ extension ClusterShell {
             // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
-            let chanLogger = ActorLogger.make(system: context.system, identifier: "channel") // TODO better id
-            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, shell: context.myself, log: chanLogger, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
+            let chanElf: EventLoopFuture<Channel> = self.bootstrapServerSide(system: context.system, shell: context.myself, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
 
             // TODO: configurable bind timeout?
 
@@ -281,7 +280,6 @@ extension ClusterShell {
         let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(
             system: context.system,
             shell: context.myself,
-            log: context.log,
             targetAddress: remoteAddress,
             handshakeOffer: hsm.makeOffer(),
             settings: state.settings,
