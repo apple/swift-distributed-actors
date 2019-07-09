@@ -104,7 +104,7 @@ internal extension WorkerPool {
                     var workers = Array(listing.refs)
                     workers.sort { l, r in l.path.description < r.path.description }
 
-                    context.log.info("Flushing buffered messages (count: \(stash.count)) on initial worker listing (count: \(workers.count))")
+                    context.log.debug("Flushing buffered messages (count: \(stash.count)) on initial worker listing (count: \(workers.count))")
                     return try stash.unstashAll(context: context, behavior: self.forwarding(to: workers))
 
                 case .forward(let message):
@@ -132,6 +132,7 @@ internal extension WorkerPool {
                 switch poolMessage {
                 case .forward(let message):
                     let selected = selectWorker()
+                    context.log.debug("Forwarding [\(message)] to [\(selected)]")
                     selected.tell(message)
                     return .same
 

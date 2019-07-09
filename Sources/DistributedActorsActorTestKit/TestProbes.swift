@@ -129,6 +129,8 @@ extension ActorTestProbe {
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
     ///
+    /// - SeeAlso: `maybeExpectMessage(file:line:column:)` which does not fail upon encountering no message within the timeout.
+    ///
     /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or a message is received by the actor.
     public func expectMessage(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
         return try self.expectMessage(within: self.expectationTimeout, file: file, line: line, column: column)
@@ -136,6 +138,7 @@ extension ActorTestProbe {
 
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
+    /// - SeeAlso: `maybeExpectMessage(within:file:line:column:)` which does not fail upon encountering no message within the timeout.
     ///
     /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
     public func expectMessage(within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Message {
@@ -149,6 +152,52 @@ extension ActorTestProbe {
     }
 
     internal func receiveMessage(within timeout: TimeAmount) throws -> Message {
+        let deadline = Deadline.fromNow(timeout)
+        while deadline.hasTimeLeft() {
+            guard let message = self.messagesQueue.poll(deadline.timeLeft) else {
+                continue
+            }
+            self.lastMessageObserved = message
+            return message
+        }
+
+        throw ExpectationError.noMessagesInQueue
+    }
+}
+
+extension ActorTestProbe {
+
+    /// Expects a message to "maybe" arrive at the `ActorTestProbe` and returns it for further assertions,
+    /// if no message arrives within the timeout (by default `expectationTimeout`) a `nil` value is returned.
+    ///
+    /// In general these the `maybeExpect` family of methods is more useful in loops or for testing optional replies,
+    /// when a reply may or may not arrive (i.e. it is known to be racy).
+    ///
+    /// - SeeAlso: `expectMessage(file:line:column)` that throws and fails if no message is encountered during the timeout.
+    ///
+    /// - Warning: Blocks the current thread until the `expectationTimeout` is exceeded or a message is received by the actor.
+    public func maybeExpectMessage() throws -> Message? {
+        return try self.maybeExpectMessage(within: self.expectationTimeout)
+    }
+
+    /// Expects a message to "maybe" arrive at the `ActorTestProbe` and returns it for further assertions,
+    /// if no message arrives within the timeout (by default `expectationTimeout`) a `nil` value is returned.
+    ///
+    /// In general these the `maybeExpect` family of methods is more useful in loops or for testing optional replies,
+    /// when a reply may or may not arrive (i.e. it is known to be racy).
+    ///
+    /// - SeeAlso: `expectMessage(within:file:line:column)` that throws and fails if no message is encountered during the timeout.
+    ///
+    /// - Warning: Blocks the current thread until the `timeout` is exceeded or a message is received by the actor.
+    public func maybeExpectMessage(within timeout: TimeAmount) throws -> Message? {
+        do {
+            return try self.maybeReceiveMessage(within: timeout)
+        } catch {
+            return nil
+        }
+    }
+
+    internal func maybeReceiveMessage(within timeout: TimeAmount) throws -> Message? {
         let deadline = Deadline.fromNow(timeout)
         while deadline.hasTimeLeft() {
             guard let message = self.messagesQueue.poll(deadline.timeLeft) else {

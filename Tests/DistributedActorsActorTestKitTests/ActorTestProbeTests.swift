@@ -25,7 +25,7 @@ class ActorTestProbeTests: XCTestCase {
         system.shutdown()
     }
 
-    func test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
+    func test_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
         #if !SACT_TESTS_CRASH
         pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
@@ -37,7 +37,7 @@ class ActorTestProbeTests: XCTestCase {
         try probe.expectMessage("awaiting-forever")
     }
 
-    func test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived() throws {
+    func test_expectMessage_shouldFailWhenWrongMessageReceived() throws {
         #if !SACT_TESTS_CRASH
         pnote("Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
@@ -48,13 +48,23 @@ class ActorTestProbeTests: XCTestCase {
 
         probe.tell("one")
 
-        try probe.expectMessage("two") // TODO: style question if we want to enforce `try! ...`? It does not throw but log XCTest errors
-        // this causes a nice failure like:
-        //    /Users/ktoso/code/sact/Tests/Swift Distributed ActorsActorTestKitTests/ActorTestProbeTests.swift:48: error: -[Swift Distributed ActorsActorTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived] : XCTAssertEqual failed: ("one") is not equal to ("two") -
-        //        try! probe.expectMessage("two")
-        //                   ^~~~~~~~~~~~
-        //    error: Assertion failed: [one] did not equal expected [two]
+        try probe.expectMessage("two")
+    }
 
+    func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
+        let probe = testKit.spawnTestProbe(name: "p2", expecting: String.self)
+
+        probe.tell("one")
+
+        try probe.maybeExpectMessage().shouldEqual("one")
+    }
+
+    func test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded() throws {
+        let probe = testKit.spawnTestProbe(name: "p2", expecting: String.self)
+
+        probe.tell("one")
+
+        try probe.maybeExpectMessage().shouldEqual("one")
     }
 
     func test_expectNoMessage() throws {
@@ -64,7 +74,7 @@ class ActorTestProbeTests: XCTestCase {
         p.stop()
     }
 
-    func test_probe_shouldBeWatchable() throws {
+    func test_shouldBeWatchable() throws {
         let watchedProbe = testKit.spawnTestProbe(expecting: Never.self)
         let watchingProbe = testKit.spawnTestProbe(expecting: Never.self)
 
@@ -75,7 +85,7 @@ class ActorTestProbeTests: XCTestCase {
         try watchingProbe.expectTerminated(watchedProbe.ref)
     }
 
-    func test_probe_expectMessageAnyOrderSuccess() throws {
+    func test_expectMessageAnyOrderSuccess() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
         let messages = ["test1", "test2", "test3", "test4"]
 
