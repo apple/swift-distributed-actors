@@ -90,7 +90,9 @@ public struct ActorLogger {
             proxyHandler.metadata["actorSystemName"] = .string(system.name)
         }
 
-        return Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
+        var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
+        log.logLevel = system.settings.defaultLogLevel
+        return log
     }
 }
 
@@ -112,13 +114,14 @@ public struct ActorOriginLogHandler: LogHandler {
     // TODO would be moved to actual "LoggingActor"
     private let formatter: DateFormatter
 
-    private let loggingSystemSelectedLogger: Logger
+    private var loggingSystemSelectedLogger: Logger
 
     public init(_ context: LoggingContext) {
         self.context = context
         self.formatter = ActorOriginLogHandler._formatter
 
         self.loggingSystemSelectedLogger = Logger(label: context.identifier)
+        self.loggingSystemSelectedLogger.logLevel = self.logLevel
     }
 
     public init<T>(_ context: ActorContext<T>) {
@@ -215,7 +218,17 @@ public struct ActorOriginLogHandler: LogHandler {
         }
     }
 
-    public var logLevel: Logger.Level = Logger.Level.info
+    private var _logLevel: Logger.Level = .info
+
+    public var logLevel: Logger.Level {
+        get {
+            return self._logLevel
+        }
+        set {
+            self._logLevel = newValue
+            self.loggingSystemSelectedLogger.logLevel = newValue
+        }
+    }
 
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
     public var metadata: Logger.Metadata {
