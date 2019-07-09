@@ -14,13 +14,13 @@
 
 import Foundation
 import XCTest
-@testable import Swift Distributed ActorsActor
+import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
 // TODO "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: XCTestCase {
 
-    let system = ActorSystem("WorkerPoolTests") 
+    let system = ActorSystem("WorkerPoolTests")
     lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
@@ -44,6 +44,7 @@ final class WorkerPoolTests: XCTestCase {
                 }
             }
         }
+
         _ = try system.spawn(worker(p: pA), name: "worker-a")
         _ = try system.spawn(worker(p: pB), name: "worker-b")
         _ = try system.spawn(worker(p: pC), name: "worker-c")
@@ -71,7 +72,7 @@ final class WorkerPoolTests: XCTestCase {
         try pC.expectNoMessage(for: .milliseconds(50))
     }
 
-        func test_workerPool_removeDeadActors() throws {
+    func test_workerPool_removeDeadActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
@@ -91,6 +92,7 @@ final class WorkerPoolTests: XCTestCase {
                 }
             }
         }
+
         let workerA = try system.spawn(worker(p: pA), name: "worker-a")
         pA.watch(workerA)
         let workerB = try system.spawn(worker(p: pB), name: "worker-b")
@@ -101,7 +103,7 @@ final class WorkerPoolTests: XCTestCase {
         let workers = try WorkerPool.spawn(system, select: .dynamic(workerKey), name: "workersMayDie")
 
         workers.tell("a")
-        workers.tell("b") 
+        workers.tell("b")
         workers.tell("c")
         try pA.expectMessage("work:a at worker-a")
         try pB.expectMessage("work:b at worker-b")
@@ -109,18 +111,26 @@ final class WorkerPoolTests: XCTestCase {
 
         workerA.tell("stop")
         try pA.expectTerminated(workerA)
-        // this is somewhat racy... since the worker pool also needs to receive a Listing without the worker now...
+        // inherently this is racy, if a worker dies it may have taken a message with it
+        // TODO: may introduce work-pulling pool which never would drop a message.
 
-        workers.tell("d")
-        workers.tell("e")
-        workers.tell("f")
-        workers.tell("g")
-        workers.tell("h")
+        // with A removed, the worker pool races to get the information about this death,
+        // while we send new work to it -- it may happen that it sends to the dead A since it did not yet
+        // receive the terminated; here we instead check that at least thr work is being handled by the other workers
+        for i in 0...2 {
+            try testKit.eventually(within: .seconds(1)) {
+                workers.tell("after-A-dead-\(i)")
+                let maybeBGotIt = try pB.maybeExpectMessage()
+                let maybeCGotIt = try pC.maybeExpectMessage()
 
-        try pB.expectMessage("work:d at worker-b")
-        try pC.expectMessage("work:e at worker-c")
-        try pB.expectMessage("work:f at worker-b")
-        try pC.expectMessage("work:g at worker-c")
-        try pB.expectMessage("work:h at worker-b")
+                // one of the workers should have handled it
+                (maybeBGotIt != nil || maybeCGotIt != nil).shouldBeTrue()
+                // but NOT both!
+                (maybeBGotIt != nil && maybeCGotIt != nil).shouldBeFalse()
+                let theMessage = maybeBGotIt ?? maybeCGotIt ?? "<none>"
+                theMessage.shouldStartWith(prefix: "work:after-A-dead-\(i) at worker")
+            }
+        }
+        try pA.expectNoMessage(for: .milliseconds(50))
     }
 }
