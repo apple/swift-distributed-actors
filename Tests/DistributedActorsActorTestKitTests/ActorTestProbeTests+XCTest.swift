@@ -24,11 +24,13 @@ extension ActorTestProbeTests {
 
    static var allTests : [(String, (ActorTestProbeTests) -> () throws -> Void)] {
       return [
-                ("test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout", test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout),
-                ("test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived", test_testProbe_expectMessage_shouldFailWhenWrongMessageReceived),
+                ("test_expectMessage_shouldFailWhenNoMessageSentWithinTimeout", test_expectMessage_shouldFailWhenNoMessageSentWithinTimeout),
+                ("test_expectMessage_shouldFailWhenWrongMessageReceived", test_expectMessage_shouldFailWhenWrongMessageReceived),
+                ("test_maybeExpectMessage_shouldReturnTheReceivedMessage", test_maybeExpectMessage_shouldReturnTheReceivedMessage),
+                ("test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded", test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded),
                 ("test_expectNoMessage", test_expectNoMessage),
-                ("test_probe_shouldBeWatchable", test_probe_shouldBeWatchable),
-                ("test_probe_expectMessageAnyOrderSuccess", test_probe_expectMessageAnyOrderSuccess),
+                ("test_shouldBeWatchable", test_shouldBeWatchable),
+                ("test_expectMessageAnyOrderSuccess", test_expectMessageAnyOrderSuccess),
            ]
    }
 }
