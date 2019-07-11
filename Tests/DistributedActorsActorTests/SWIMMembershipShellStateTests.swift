@@ -31,8 +31,11 @@ class SWIMMembershipShellStateTests: XCTestCase {
 
         state.addMember(probe.ref, status: .suspect(incarnation: 1))
         state.incrementProtocolPeriod()
-        guard case .ignoredDueToOlderStatus(currentStatus: .suspect(incarnation: 1)) = state.mark(probe.ref, as: .suspect(incarnation: 1)) else {
-            throw Boom()
+
+        let markResult = state.mark(probe.ref, as: .suspect(incarnation: 1))
+        guard case .ignoredDueToOlderStatus(currentStatus: .suspect(incarnation: 1)) = markResult else {
+            let expected = SWIMMembershipShell.State.MarkResult.ignoredDueToOlderStatus(currentStatus: .suspect(incarnation: 1))
+            throw self.testKit.fail("Expected `\(expected), got \(markResult)`")
         }
 
         state.membershipInfo(for: probe.ref)!.protocolPeriod.shouldEqual(0)

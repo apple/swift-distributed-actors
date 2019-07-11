@@ -398,9 +398,11 @@ extension CallSiteInfo {
 
     /// Returns an Error that should be thrown by the called.
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
-    public func error(_ message: String) -> Error {
+    public func error(_ message: String, failTest: Bool = true) -> Error {
         let details = detailedMessage(message)
-        XCTFail(details, file: self.file, line: self.line)
+        if failTest {
+            XCTFail(details, file: self.file, line: self.line)
+        }
 
         return CallSiteError.CallSiteError(message: details)
     }
@@ -409,7 +411,6 @@ extension CallSiteInfo {
 
 public enum CallSiteError: Error {
     case CallSiteError(message: String)
-
 }
 
 enum ANSIColors: String {

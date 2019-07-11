@@ -399,15 +399,19 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
             print("Status B: \(statusB)")
 
             guard statusA.membershipStatus.count == 2, statusB.membershipStatus.count == 2 else {
-                throw Boom()
+                throw localTestKit.error("Expected count of both memberships to be 2, was [statusA=\(statusA.membershipStatus.count), statusB=\(statusB.membershipStatus.count)]")
             }
 
             for (ref, status) in statusA.membershipStatus {
                 // there has to be a better way to do this, but that paths are
                 // different, because they reside on different nodes, so we
                 // compare only the segments, which are unique per instance
-                guard let (_, otherStatus) = statusB.membershipStatus.first(where: { $0.key.path.path.segments == ref.path.path.segments }), otherStatus == status else {
-                    throw Boom()
+                guard let (_, otherStatus) = statusB.membershipStatus.first(where: { $0.key.path.path.segments == ref.path.path.segments }) else {
+                    throw localTestKit.error("Did not get status for [\(ref)] in statusB")
+                }
+
+                guard otherStatus == status else {
+                    throw localTestKit.error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
                 }
             }
         }
@@ -452,8 +456,9 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let stateProbe = localTestKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
         try localTestKit.eventually(within: timeout, file: file, line: line, column: column) {
             membershipShell.tell(.remote(.getMembershipState(replyTo: stateProbe.ref)))
-            guard try stateProbe.expectMessage().membershipStatus[member] == status else {
-                throw Boom()
+            let otherStatus = try stateProbe.expectMessage().membershipStatus[member]
+            guard otherStatus == status else {
+                throw localTestKit.error("Expected status [\(status)] for [\(member)], but found \(otherStatus.debugDescription)")
             }
         }
     }
@@ -464,8 +469,9 @@ class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let stateProbe = localTestKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
         try localTestKit.assertHolds(for: timeout, file: file, line: line, column: column) {
             membershipShell.tell(.remote(.getMembershipState(replyTo: stateProbe.ref)))
-            guard try stateProbe.expectMessage().membershipStatus[member] == status else {
-                throw Boom()
+            let otherStatus = try stateProbe.expectMessage().membershipStatus[member]
+            guard otherStatus == status else {
+                throw localTestKit.error("Expected status [\(status)] for [\(member)], but found \(otherStatus.debugDescription)")
             }
         }
     }
