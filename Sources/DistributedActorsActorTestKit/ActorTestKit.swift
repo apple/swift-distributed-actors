@@ -279,3 +279,34 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Error
+
+extension ActorTestKit {
+    /// Returns an error that can be used when coniditions in tests are not met. This is especially useful in
+    /// calls to `testKit.eventually`, where a condition is checked multiple times, until it is successful
+    /// or times out.
+    ///
+    /// Examples:
+    ///
+    ///     testkit.eventually(within: .seconds(1)) {
+    ///         guard ... else { throw testKit.error("failed to extract expected information") }
+    ///     }
+    public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let fullMessage: String = message ?? "<no message>"
+        return callSite.error(fullMessage, failTest: false)
+    }
+
+    /// Returns a failure with additional callsite information and fails the test.
+    ///
+    /// Examples:
+    ///
+    ///     guard ... else { throw testKit.failure("failed to extract expected information") }
+    public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let fullMessage: String = message ?? "<no message>"
+        return callSite.error(fullMessage, failTest: true)
+    }
+}

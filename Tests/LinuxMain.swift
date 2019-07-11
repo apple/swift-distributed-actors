@@ -36,6 +36,7 @@ import XCTest
          testCase(ActorPathTests.allTests),
          testCase(ActorRefAdapterTests.allTests),
          testCase(ActorSystemTests.allTests),
+         testCase(ActorTestKitTests.allTests),
          testCase(ActorTestProbeTests.allTests),
          testCase(AnonymousNamesGeneratorTests.allTests),
          testCase(BackoffStrategyTests.allTests),
