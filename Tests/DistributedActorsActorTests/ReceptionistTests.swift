@@ -151,7 +151,7 @@ class ReceptionistTests: XCTestCase {
 
             // TODO: modify TestKit to allow usage of matchers instead
             guard message.refs.isEmpty else {
-                throw Boom()
+                throw self.testKit.error()
             }
         }
     }

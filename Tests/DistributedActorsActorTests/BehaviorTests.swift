@@ -564,9 +564,9 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
+        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: testKit.error()))))
 
-        try p.expectMessage("unsuspended:Boom()")
+        try p.expectMessage().starts(with: "unsuspended:CallSiteError").shouldBeTrue()
         try p.expectMessage("resumed:something else")
     }
 
@@ -648,14 +648,14 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(Boom())
+        promise.fail(testKit.error())
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard error.underlying is Boom else {
-                throw p.error("Expected failure(ExecutionException(underlying: Boom())), got \(suspendResult)")
+            guard error.underlying is CallSiteError else {
+                throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
             }
-        default: throw p.error("Expected failure(ExecutionException(underlying: Boom())), got \(suspendResult)")
+        default: throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
         }
 
         try p.expectMessage("another test")
@@ -711,7 +711,7 @@ class BehaviorTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(10))
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
 
-        promise.fail(Boom())
+        promise.fail(testKit.error())
         try suspendProbe.expectNoMessage(for: .milliseconds(10))
         try p.expectTerminated(ref)
     }
@@ -962,12 +962,12 @@ class BehaviorTests: XCTestCase {
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let probe: ActorTestProbe<ExecutionError> = testKit.spawnTestProbe()
-        let error = Boom()
+        let error = testKit.error()
 
         let behavior: Behavior<String> = .setup { context in
             context.onResultAsync(of: future, timeout: .milliseconds(300)) {
                 switch $0 {
-                case .success: throw Boom()
+                case .success: throw self.testKit.error()
                 case .failure(let error): probe.tell(error)
                 }
                 return .same
@@ -1157,7 +1157,7 @@ class BehaviorTests: XCTestCase {
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
         let probe: ActorTestProbe<Never> = testKit.spawnTestProbe()
-        let error = Boom()
+        let error = testKit.error()
 
         let behavior: Behavior<String> = .setup { context in
             context.onResultAsyncThrowing(of: future, timeout: .milliseconds(300)) { _ in
