@@ -198,23 +198,36 @@ end
 allTestSubDirectories = []
 allFiles = []
 
+
 Dir[testsDirectory + '/*'].each do |subDirectory|
   next unless File.directory?(subDirectory)
-  directoryHasClasses = false
-  Dir[subDirectory + '/*Test{s,}.swift'].each do |fileName|
-    next unless File.file? fileName
-    fileClasses = parseSourceFile(fileName)
+  def findTestClasses(subDirectory, allFiles)
+    directoryHasClasses = false
+    Dir[subDirectory + "/*"].each do |fileName|
+      if File.directory? fileName
+        directoryHasClasses |= findTestClasses(fileName, allFiles)
+        next
+      elsif !(File.file? fileName) || !(fileName =~ /Test(s?)\.swift/)
+        next
+      end
 
-    #
-    # If there are classes in the
-    # test source file, create an extension
-    # file for it.
-    #
-    next unless fileClasses.count > 0
-    createExtensionFile(fileName, fileClasses)
-    directoryHasClasses = true
-    allFiles << fileClasses
+      fileClasses = parseSourceFile(fileName)
+
+      #
+      # If there are classes in the
+      # test source file, create an extension
+      # file for it.
+      #
+      next unless fileClasses.count > 0
+      createExtensionFile(fileName, fileClasses)
+      directoryHasClasses = true
+      allFiles << fileClasses
+    end
+
+    return directoryHasClasses
   end
+
+  directoryHasClasses = findTestClasses(subDirectory, allFiles)
 
   if directoryHasClasses
     allTestSubDirectories << Pathname.new(subDirectory).split.last.to_s
