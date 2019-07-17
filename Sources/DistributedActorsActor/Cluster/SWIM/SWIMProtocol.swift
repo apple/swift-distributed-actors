@@ -25,13 +25,11 @@ public enum SWIM {
 
     typealias Incarnation = UInt64
 
-    // TODO: make serializable
     internal enum Message {
         case local(Local)
         case remote(Remote)
     }
 
-    // TODO: make serializable
     internal enum Remote {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
@@ -45,7 +43,6 @@ public enum SWIM {
         // case nack(Payload)
     }
 
-    // make serializable
     internal struct Ack: Codable {
         let from: ActorRef<Message>
         let incarnation: Incarnation
@@ -56,8 +53,7 @@ public enum SWIM {
         let membershipStatus: [ActorRef<SWIM.Message>: Status]
     }
 
-    // make serializable
-    internal struct Member: Equatable, Codable {
+    internal struct Member: Equatable, Hashable, Codable {
         let ref: ActorRef<SWIM.Message>
         let status: Status
     }
@@ -66,14 +62,13 @@ public enum SWIM {
         case pingRandomMember
     }
 
-    // make serializable
     internal enum Payload {
         case none
         case membership([Member])
     }
 
     // TODO may move around
-    internal enum Status: Equatable {
+    internal enum Status: Equatable, Hashable {
         case alive(incarnation: Incarnation)
         case suspect(incarnation: Incarnation)
         case dead
