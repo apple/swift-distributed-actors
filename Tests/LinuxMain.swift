@@ -77,5 +77,6 @@ import XCTest
          testCase(TimersTests.allTests),
          testCase(TraversalTests.allTests),
          testCase(UniqueNodeAddressTests.allTests),
+         testCase(WorkerPoolTests.allTests),
     ])
 #endif

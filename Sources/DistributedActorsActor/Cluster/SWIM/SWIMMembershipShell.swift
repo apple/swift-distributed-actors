@@ -60,13 +60,18 @@ internal enum SWIMMembershipShell {
         // be declared `.dead` after not receiving an `.alive` for approx. 3 seconds.
         private var _protocolPeriod: Int = 0
 
+        // We need to store the path to the owning SWIMMembershipShell to avoid adding it
+        // to the `membersToPing` list
+        private let localShellPath: UniqueActorPath
+
         private var _messagesToGossip = Heap(of: Gossip.self, comparator: {
             $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
         })
 
         let settings: SWIM.Settings
 
-        init(_ settings: SWIM.Settings) {
+        init(localShellPath: UniqueActorPath, settings: SWIM.Settings) {
+            self.localShellPath = localShellPath
             self.settings = settings
         }
 
@@ -76,7 +81,7 @@ internal enum SWIMMembershipShell {
                 return
             }
 
-            if self.membershipInfos[member] == nil && member.path.address != nil {
+            if self.membershipInfos[member] == nil && member.path != self.localShellPath {
                 // Newly added members are inserted at a random spot in the list of members
                 // to ping, to have a better distribution of messages to this node from all
                 // other nodes. If for example all nodes would add it to the end of the list,
@@ -102,7 +107,7 @@ internal enum SWIMMembershipShell {
                 // the time until state is spread across the whole cluster, by guaranteeing
                 // that each node will be gossiped to within N cycles (where N is the
                 // cluster size).
-                self.membersToPing = self.membershipInfos.filter { $0.key.path.address != nil && !$0.value.isDead }.keys.shuffled()
+                self.membersToPing = self.membershipInfos.filter { $0.key.path != self.localShellPath && !$0.value.isDead }.keys.shuffled()
             }
 
             if self.membersToPing.isEmpty {
@@ -174,7 +179,7 @@ internal enum SWIMMembershipShell {
             return self.membershipInfos[member] != nil
         }
 
-        func createGossipPayload() -> SWIM.Payload {
+        func makeGossipPayload() -> SWIM.Payload {
             // In order to avoid duplicates within a single gossip payload, we
             // first collect all messages we need to gossip out and only then
             // re-insert them into `messagesToGossip`. Otherwise, we may end up
@@ -205,6 +210,13 @@ internal enum SWIMMembershipShell {
             return .membership(messages)
         }
 
+        func randomMembersToRequestPing(target: ActorRef<SWIM.Message>) -> ArraySlice<ActorRef<SWIM.Message>> {
+            return self.members.shuffled()
+                .filter { $0.path != self.localShellPath && $0 != target }
+                .prefix(self.settings.failureDetector.indirectProbeCount)
+        }
+
+
         private func addGossip(membership: SWIM.Member) {
             // we need to remove old state before we add the new gossip, so we don't gossip out stale state
             self._messagesToGossip.remove(where: { $0.member.ref == membership.ref })
@@ -219,7 +231,7 @@ internal enum SWIMMembershipShell {
     static func behavior(settings: SWIM.Settings, observer: FailureObserver? = nil) -> Behavior<SWIM.Message> {
         return .setup { context in
 
-            let state = State(settings)
+            let state = State(localShellPath: context.path, settings: settings)
             context.timers.startPeriodicTimer(key: periodicPingKey, message: .local(.pingRandomMember), interval: settings.gossip.probeInterval)
 
             state.addMember(context.myself, status: .alive(incarnation: 0))
@@ -252,22 +264,13 @@ internal enum SWIMMembershipShell {
             }
 
             context.log.trace("Received ping from [\(replyTo)] with payload [\(payload)]")
-            replyTo.tell(.init(from: context.myself, incarnation: state.incarnation, payload: state.createGossipPayload()))
+            replyTo.tell(.init(from: context.myself, incarnation: state.incarnation, payload: state.makeGossipPayload()))
             processGossip(context: context, payload: payload, state: state)
 
         case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !state.isMember(target) {
-                if let address = target.path.address?.address {
-                    ensureConnected(context: context, remoteAddress: address, state: state) {
-                         state.addMember(target, status: lastKnownStatus)
-                        sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, state: state)
-                    }
-                } else {
-                    // FIXME: This is a workaround for the lack of serializers for these messages
-                    //        which prevents us from using remote systems for the tests. This should
-                    //        be removed once we have serializers and reworked the tests to use
-                    //        remoting as well.
+                ensureConnected(context: context, remoteAddress: target.path.address?.address, state: state) {
                     state.addMember(target, status: lastKnownStatus)
                     sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, state: state)
                 }
@@ -303,7 +306,7 @@ internal enum SWIMMembershipShell {
         lastKnownStatus: SWIM.Status,
         replyTo: ActorRef<SWIM.Ack>?,
         state: State) {
-        let payload = state.createGossipPayload()
+        let payload = state.makeGossipPayload()
         context.log.trace("Sending ping to [\(to)] with payload [\(payload)]")
 
         let response = to.ask(for: SWIM.Ack.self, timeout: state.settings.failureDetector.pingTimeout) {
@@ -324,9 +327,7 @@ internal enum SWIMMembershipShell {
         }
 
         // select random members to send ping requests to
-        let membersToRequest = state.members.shuffled()
-            .filter { $0.path.address != nil && $0 != toPing }
-            .prefix(state.settings.failureDetector.indirectProbeCount)
+        let membersToRequest = state.randomMembersToRequestPing(target: toPing)
 
         guard !membersToRequest.isEmpty else {
             // there are no nodes available to send a ping request to, so we mark
@@ -342,11 +343,11 @@ internal enum SWIMMembershipShell {
         // The failure case is handled through the timeout of the whole operation.
         let firstSuccess = context.system.eventLoopGroup.next().makePromise(of: SWIM.Ack.self)
         for ref in membersToRequest {
-            let payload = state.createGossipPayload()
+            let payload = state.makeGossipPayload()
 
             context.log.trace("Sending ping request for [\(toPing)] to [\(ref)] with payload: \(payload)")
             ref.ask(for: SWIM.Ack.self, timeout: state.settings.failureDetector.pingTimeout) {
-                SWIM.Message.remote(.pingReq(target: toPing, lastKnownStatus: lastKnownStatus, replyTo: $0, payload: state.createGossipPayload()))
+                SWIM.Message.remote(.pingReq(target: toPing, lastKnownStatus: lastKnownStatus, replyTo: $0, payload: state.makeGossipPayload()))
             }.nioFuture.cascadeSuccess(to: firstSuccess)
         }
 
@@ -423,22 +424,17 @@ internal enum SWIMMembershipShell {
         for members in members {
             if state.isMember(members.ref) {
                 markMember(members.ref, as: members.status, state: state, log: context.log)
-            } else if let address = members.ref.path.address?.address {
-                ensureConnected(context: context, remoteAddress: address, state: state) {
-                    markMember(members.ref, as: members.status, state: state, log: context.log)
-                }
             } else {
-                // FIXME: This is a workaround for the lack of serializers for these messages
-                //        which prevents us from using remote systems for the tests. This should
-                //        be removed once we have serializers and reworked the tests to use
-                //        remoting as well.
-                markMember(members.ref, as: members.status, state: state, log: context.log)
+                ensureConnected(context: context, remoteAddress: members.ref.path.address?.address, state: state) {
+                    state.addMember(members.ref, status: members.status)
+                }
             }
         }
     }
 
-    static func ensureConnected(context: ActorContext<SWIM.Message>, remoteAddress: NodeAddress, state: State, onSuccess: @escaping () -> Void) {
-        if remoteAddress == context.system.settings.cluster.bindAddress {
+    static func ensureConnected(context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, state: State, onSuccess: @escaping () -> Void) {
+        // this is a local node, so we don't need to connect first
+        guard let remoteAddress = address else {
             onSuccess()
             return
         }
