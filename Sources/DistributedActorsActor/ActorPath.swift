@@ -97,6 +97,13 @@ extension UniqueActorPath: PathRelationships {
     public var segments: [ActorPathSegment] {
         return path.segments
     }
+
+    /// Creates a new path with `segment` appended
+    public func appending(segment: ActorPathSegment) -> UniqueActorPath {
+        var path = self
+        path.path.append(segment: segment)
+        return path
+    }
 }
 
 extension UniqueActorPath {
@@ -157,6 +164,11 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
         try self.init([root])
     }
 
+    init(address: UniqueNodeAddress, root: String) throws {
+        try self.init(root: root)
+        self.address = address
+    }
+
     /// INTERNAL API: Special purpose initializer, only for the "/" path. None other may use such path.
     private init() {
         self.segments = []
@@ -167,6 +179,13 @@ public struct ActorPath: PathRelationships, Equatable, Hashable {
     /// Appends a segment to this actor path
     mutating func append(segment: ActorPathSegment) {
         self.segments.append(segment)
+    }
+
+    /// Creates a new path with `segment` appended
+    public func appending(segment: ActorPathSegment) -> ActorPath {
+        var path = self
+        path.append(segment: segment)
+        return path
     }
 
     func makeUnique(uid: ActorUID) -> UniqueActorPath {
@@ -225,17 +244,14 @@ extension PossiblyRemotePath {
 
 public protocol PathRelationships {
     var segments: [ActorPathSegment] { get }
+    func appending(segment: ActorPathSegment) -> Self
 }
 
 extension PathRelationships {
 
     /// Combines the base path with a child segment returning the concatenated path.
-    static func /(base: Self, child: ActorPathSegment) -> ActorPath {
-        var segments = base.segments
-        segments.append(child)
-
-        // try safe: because we know that `segments` is not empty
-        return try! ActorPath(segments)
+    static func /(base: Self, child: ActorPathSegment) -> Self {
+        return base.appending(segment: child)
     }
 
     /// Checks whether this [ActorPath] is a direct descendant of the passed in path.

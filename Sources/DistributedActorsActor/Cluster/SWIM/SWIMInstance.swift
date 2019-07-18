@@ -78,6 +78,7 @@ final class SWIMInstance {
         case newerMemberAlreadyPresent(SWIM.Member)
     }
 
+    @discardableResult
     func addMember(_ ref: ActorRef<SWIM.Message>, status: SWIM.Status) -> AddMemberDirective {
         let maybeExistingMember = self.member(for: ref)
         if let existingMember = maybeExistingMember, existingMember.status.supersedes(status) {
@@ -155,6 +156,7 @@ final class SWIMInstance {
         return self.notMyself(ref.path)
     }
 
+    @discardableResult
     func mark(_ ref: ActorRef<SWIM.Message>, as status: SWIM.Status) -> MarkResult {
         let previousStatusOption = self.status(of: ref)
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {

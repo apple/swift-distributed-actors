@@ -40,7 +40,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try assertAssociated(local, with: self.remoteUniqueAddress)
         try assertAssociated(remote, with: self.localUniqueAddress)
 
-        try p.expectMessage(.success(self.remoteUniqueAddress.address))
+        try p.expectMessage(.success(self.remoteUniqueAddress))
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
@@ -52,11 +52,11 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try assertAssociated(local, with: self.remoteUniqueAddress)
         try assertAssociated(remote, with: self.localUniqueAddress)
 
-        try p.expectMessage(.success(self.remoteUniqueAddress.address))
+        try p.expectMessage(.success(self.remoteUniqueAddress))
 
         local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueAddress.address, replyTo: p.ref))) // TODO nicer API
 
-        try p.expectMessage(.success(self.remoteUniqueAddress.address))
+        try p.expectMessage(.success(self.remoteUniqueAddress))
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

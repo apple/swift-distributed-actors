@@ -69,6 +69,7 @@ public enum SWIM {
 
     internal enum LocalMessage {
         case pingRandomMember
+        case join(NodeAddress)
     }
 
     // TODO: make serializable
