@@ -19,7 +19,7 @@ import Logging
 //
 // TODO: rename, this is what contains the logic about "trigger Terminated about actors if node dies",
 //       we likely can keep this independent of HOW we get those node failure notifications (i.e. by SWIM or someone just letting us know otherwise)
-internal class ManualFailureObserver: FailureObserver {
+internal final class ManualFailureObserver: FailureObserver {
 
     private let context: FailureDetectorContext
     private var log: Logger {

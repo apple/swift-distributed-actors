@@ -12,143 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-/// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
-///
-/// Namespace containing message types used to implement the SWIM protocol.
-///
-/// > As you swim lazily through the milieu,
-/// > The secrets of the world will infect you.
-///
-/// - SeeAlso: https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf
-public enum SWIM {
-
-    typealias Incarnation = UInt64
-
-    internal enum Message {
-        case local(Local)
-        case remote(Remote)
-    }
-
-    internal enum Remote {
-        case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
-        case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
-
-        case getMembershipState(replyTo: ActorRef<MembershipState>)
-        /// Extension: Lifeguard, Local Health Aware Probe
-        /// LHAProbe adds a `nack` message to the fault detector protocol,
-        /// which is sent in the case of failed indirect probes. This gives the member that
-        ///  initiates the indirect probe a way to check if it is receiving timely responses
-        /// from the `k` members it enlists, even if the target of their indirect pings is not responsive.
-        // case nack(Payload)
-    }
-
-    internal struct Ack: Codable {
-        let from: ActorRef<Message>
-        let incarnation: Incarnation
-        let payload: Payload
-    }
-
-    internal struct MembershipState: Codable {
-        let membershipStatus: [ActorRef<SWIM.Message>: Status]
-    }
-
-    internal struct Member: Equatable, Hashable, Codable {
-        let ref: ActorRef<SWIM.Message>
-        let status: Status
-    }
-
-    internal enum Local {
-        case pingRandomMember
-    }
-
-    internal enum Payload {
-        case none
-        case membership([Member])
-    }
-
-    // TODO may move around
-    internal enum Status: Equatable, Hashable {
-        case alive(incarnation: Incarnation)
-        case suspect(incarnation: Incarnation)
-        case dead
-    }
-}
-
-extension SWIM.Status: Comparable {
-    static func < (lhs: SWIM.Status, rhs: SWIM.Status) -> Bool {
-        switch (lhs, rhs) {
-        case (.alive(let selfIncarnation), .alive(let rhsIncarnation)):
-            return selfIncarnation < rhsIncarnation
-        case (.alive(let selfIncarnation), .suspect(let rhsIncarnation)):
-            return selfIncarnation <= rhsIncarnation
-        case (.suspect(let selfIncarnation), .suspect(let rhsIncarnation)):
-            return selfIncarnation < rhsIncarnation
-        case (.suspect(let selfIncarnation), .alive(let rhsIncarnation)):
-            return selfIncarnation < rhsIncarnation
-        case (.dead, _):
-            return false
-        case (_, .dead):
-            return true
-        }
-    }
-}
-
-extension SWIM.Status {
-    var isAlive: Bool {
-        switch self {
-        case .alive:
-            return true
-        case .suspect, .dead:
-            return false
-        }
-    }
-
-    var isSuspect: Bool {
-        switch self {
-        case .suspect:
-            return true
-        case .alive, .dead:
-            return false
-        }
-    }
-
-    var isDead: Bool {
-        switch self {
-        case .dead:
-            return true
-        case .alive, .suspect:
-            return false
-        }
-    }
-
-    // return true if `self` is greater than or equal to `other` based on the
-    // following ordering:
-    // `alive(N)` < `suspect(N)` < `alive(N+1)` < `suspect(N+1)` < `dead`
-    func supersedes(_ other: SWIM.Status) -> Bool {
-        return self >= other
-    }
-}
-
-extension SWIM.Payload {
-    var isNone: Bool {
-        switch self {
-        case .none:
-            return true
-        case .membership:
-            return false
-        }
-    }
-
-    var isMembership: Bool {
-        switch self {
-        case .none:
-            return false
-        case .membership:
-            return true
-        }
-    }
-}
+import Foundation
 
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -228,7 +92,7 @@ extension SWIM.Message: Codable {
         return .remote(.ping(lastKnownStatus: lastKnownStatus, replyTo: replyTo, payload: payload))
     }
 
-    private static func encodePing(_ message: SWIM.Remote, to container: inout KeyedEncodingContainer<PingCodingKeys>) throws {
+    private static func encodePing(_ message: SWIM.RemoteMessage, to container: inout KeyedEncodingContainer<PingCodingKeys>) throws {
         guard case .ping(let lastKnownStatus, let replyTo, let payload) = message else {
             fatalError("Called `encodePing` with unexpected message \(message)")
         }
@@ -247,7 +111,7 @@ extension SWIM.Message: Codable {
         return .remote(.pingReq(target: target, lastKnownStatus: lastKnownStatus, replyTo: replyTo, payload: payload))
     }
 
-    private static func encodePingReq(_ message: SWIM.Remote, to container: inout KeyedEncodingContainer<PingReqCodingKeys>) throws {
+    private static func encodePingReq(_ message: SWIM.RemoteMessage, to container: inout KeyedEncodingContainer<PingReqCodingKeys>) throws {
         guard case .pingReq(let target, let letLastKnownStatus, let replyTo, let payload) = message else {
             fatalError("Called `encodePingReq` with unexpected message \(message)")
         }
@@ -264,7 +128,7 @@ extension SWIM.Message: Codable {
         return .remote(.getMembershipState(replyTo: replyTo))
     }
 
-    private static func encodeGetMembershipState(_ message: SWIM.Remote, to container: inout KeyedEncodingContainer<GetMembershipStateCodingKeys>) throws {
+    private static func encodeGetMembershipState(_ message: SWIM.RemoteMessage, to container: inout KeyedEncodingContainer<GetMembershipStateCodingKeys>) throws {
         guard case .getMembershipState(let replyTo) = message else {
             fatalError("Called `encodeGetMembershipStatus` with unexpected message \(message)")
         }
@@ -334,5 +198,41 @@ extension SWIM.Status: Codable {
             try container.encode(StatusType.dead, forKey: .type)
             try container.encodeNil(forKey: .incarnation)
         }
+    }
+}
+
+extension SWIM.Member: Codable {
+    enum CodingKeys: CodingKey {
+        case ref
+        case status
+        case protocolPeriod
+    }
+
+    public init(from decoder: Decoder) throws {
+        guard let context = decoder.actorSerializationContext else {
+            throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While decoding [\(SWIM.Member.self)], using [\(decoder)]")
+        }
+        var container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let path = try container.decode(UniqueActorPath.self, forKey: .ref)
+        self.ref = context.resolveActorRef(path: path)
+
+        self.status = try container.decode(SWIM.Status.self, forKey: .status)
+
+        self.protocolPeriod = try container.decode(Int.self, forKey: .protocolPeriod)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While encoding [\(self)], using [\(encoder)]")
+        }
+
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(self.ref, forKey: .ref)
+
+        try container.encode(self.status, forKey: .status)
+
+        try container.encode(self.protocolPeriod, forKey: .protocolPeriod)
     }
 }

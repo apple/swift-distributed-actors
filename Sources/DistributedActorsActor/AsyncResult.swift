@@ -49,7 +49,7 @@ extension EventLoopFuture: AsyncResult {
 
         let promise: EventLoopPromise<Value> = self.eventLoop.makePromise()
         let timeoutTask = self.eventLoop.scheduleTask(in: timeout.toNIO) {
-            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)"))
+            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout))
         }
         self.whenFailure {
             timeoutTask.cancel()
@@ -67,4 +67,10 @@ extension EventLoopFuture: AsyncResult {
 /// Error that signals that an operation timed out.
 public struct TimeoutError: Error {
     let message: String
+    let timeout: TimeAmount
+
+    public init(message: String, timeout: TimeAmount) {
+        self.message = message
+        self.timeout = timeout
+    }
 }

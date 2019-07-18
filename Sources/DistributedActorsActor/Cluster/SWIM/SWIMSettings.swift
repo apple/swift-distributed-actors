@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SWIM Settings
 
@@ -30,6 +32,12 @@ public struct SWIMSettings {
     var gossip: SWIMGossipSettings = .default
 
     var failureDetector: SWIMFailureDetectorSettings = .default
+
+    /// When enabled traces _all_ incoming SWIM protocol communication (remote messages).
+    /// These logs will contain SWIM.Instance metadata, as offered by `SWIM.Instance.metadata`.
+    /// All logs will be prefixed using `[tracelog:SWIM]`, for easier grepping and inspecting only logs related to the SWIM instance.
+    // TODO how to make this nicely dynamically changeable during runtime
+    var traceLogLevel: Logger.Level? = nil
 
 }
 
@@ -84,8 +92,8 @@ public struct SWIMFailureDetectorSettings {
     /// Suspicion timeouts are specified as number of probe intervals. E.g. a `probeInterval`
     /// of 300 milliseconds and `suspicionTimeoutMax` means that a suspicious node will be
     /// marked `.dead` after approx. 900ms.
-    var suspicionTimeoutMax: Int = 3
-    var suspicionTimeoutMin: Int = 3
+    var suspicionTimeoutPeriodsMax: Int = 3
+    var suspicionTimeoutPeriodsMin: Int = 3
 
     var probeInterval: TimeAmount = .milliseconds(300)
     var pingTimeout: TimeAmount = .milliseconds(100)

@@ -404,13 +404,13 @@ extension CallSiteInfo {
             XCTFail(details, file: self.file, line: self.line)
         }
 
-        return CallSiteError.CallSiteError(message: details)
+        return CallSiteError.error(message: details)
     }
 
 }
 
 public enum CallSiteError: Error {
-    case CallSiteError(message: String)
+    case error(message: String)
 }
 
 enum ANSIColors: String {

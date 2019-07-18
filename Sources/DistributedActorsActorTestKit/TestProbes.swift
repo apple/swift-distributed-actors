@@ -30,7 +30,6 @@ extension ActorTestProbeCommand: NoSerializationVerification {}
 /// which make testing asynchronous actor interactions simpler.
 final public class ActorTestProbe<Message> {
 
-    // TODO: is weak the right thing here?
     public let name: String
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>
@@ -122,6 +121,13 @@ final public class ActorTestProbe<Message> {
         case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
     }
 
+}
+
+extension ActorTestProbe: CustomStringConvertible {
+    public var description: String {
+        let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
+        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.path))"
+    }
 }
 
 extension ActorTestProbe {

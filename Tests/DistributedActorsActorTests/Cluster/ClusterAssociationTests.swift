@@ -17,7 +17,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class ClusterAssociationTests: ClusteredTwoNodesTestBase {
+final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Happy path, accept association

@@ -44,13 +44,13 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
 
     internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
         return self._associationsLock.withLock {
-            return self._associationsRegistry[uid]
+            self._associationsRegistry[uid]
         }
     }
 
     var associationRemoteControls: [AssociationRemoteControl] {
         return self._associationsLock.withLock {
-            return [AssociationRemoteControl](self._associationsRegistry.values)
+            [AssociationRemoteControl](self._associationsRegistry.values)
         }
     }
 
