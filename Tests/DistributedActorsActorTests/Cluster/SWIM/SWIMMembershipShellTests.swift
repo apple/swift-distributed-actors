@@ -346,8 +346,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         var settings: SWIMSettings = .default
         settings.failureDetector.probeInterval = .milliseconds(50)
 
-        let localRef = try local.spawn(SWIM.Shell(SWIM.Instance(settings)).behavior(), name: "SWIM-A")
-        let remoteRef = try remote.spawn(SWIM.Shell(SWIM.Instance(settings)).behavior(), name: "SWIM-B")
+        let localRef = try local.spawn(SWIM.Shell(SWIM.Instance(settings)).behavior, name: "SWIM-A")
+        let remoteRef = try remote.spawn(SWIM.Shell(SWIM.Instance(settings)).behavior, name: "SWIM-B")
 
         let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
 
@@ -378,6 +378,20 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
             }
         }
     }
+
+    func test_SWIMMembershipShell_shouldBeAbleToJoinACluster() throws {
+        setUpBoth()
+
+        let remoteSwim = try remote._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
+        let localSwim = try local._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
+
+        let remoteSwimRemoteRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+
+        localSwim.tell(.local(.join(remoteUniqueAddress.address)))
+
+        try awaitStatus(.alive(incarnation: 0), for: remoteSwimRemoteRef, on: localSwim, within: .seconds(1))
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: utility functions
 
@@ -475,7 +489,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         return .setup { context in
             let swim = self.makeSWIM(forPath: context.path, members: members, configuredWith: configure)
             swim.addMyself(context.myself)
-            return SWIM.Shell(swim).ready()
+            return SWIM.Shell(swim).ready
         }
     }
 }
