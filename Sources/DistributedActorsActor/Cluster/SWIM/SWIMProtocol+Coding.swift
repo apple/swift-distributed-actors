@@ -212,7 +212,7 @@ extension SWIM.Member: Codable {
         guard let context = decoder.actorSerializationContext else {
             throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While decoding [\(SWIM.Member.self)], using [\(decoder)]")
         }
-        var container = try decoder.container(keyedBy: CodingKeys.self)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
 
         let path = try container.decode(UniqueActorPath.self, forKey: .ref)
         self.ref = context.resolveActorRef(path: path)
@@ -223,7 +223,7 @@ extension SWIM.Member: Codable {
     }
 
     public func encode(to encoder: Encoder) throws {
-        guard let context = encoder.actorSerializationContext else {
+        guard encoder.actorSerializationContext != nil else {
             throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While encoding [\(self)], using [\(encoder)]")
         }
 

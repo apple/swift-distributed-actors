@@ -85,7 +85,7 @@ public struct ClusterSettings {
             return ManualFailureObserver(context: context)
         case .swim(let settings):
             let observer = ManualFailureObserver(context: context) // TODO not sure if this one or another one, but we want to call into it when SWIM decides a node should die etc.
-            let _ = try system._spawnSystemActor(SWIM.Shell(settings: settings, observer: observer).behavior(), name: SWIM.Shell.name)
+            let _ = try system._spawnSystemActor(SWIMMembershipShell(settings: settings, observer: observer).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
             fatalError("MISSING OBSERVER IMPL TO WORK WITH SWIM")
         }
     }

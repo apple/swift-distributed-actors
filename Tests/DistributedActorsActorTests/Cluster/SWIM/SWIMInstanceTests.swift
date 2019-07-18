@@ -57,7 +57,7 @@ final class SWIMInstanceTests: XCTestCase {
         }
         let localTestKit = ActorTestKit(local)
 
-        let shell = try localTestKit.spawnTestProbe(name: "swim", expecting: SWIM.Message.self).ref
+        let shell = localTestKit.spawnTestProbe(name: "swim", expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -68,7 +68,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
-        let shell = try testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -77,8 +77,8 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_notMyself_shouldDetectRandomNotMyselfActor() {
-        let shell = try testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let someone = try testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let someone = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)

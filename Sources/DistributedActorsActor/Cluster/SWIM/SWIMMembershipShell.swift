@@ -40,7 +40,7 @@ internal struct SWIMMembershipShell {
 
     /// Initial behavior, kicks off timers and becomes `ready`.
     // FIXME: utilize FailureObserver
-    func behavior() -> Behavior<SWIM.Message> {
+    var behavior: Behavior<SWIM.Message> {
         return .setup { context in
 
             let probeInterval = self.swim.settings.gossip.probeInterval
@@ -48,11 +48,11 @@ internal struct SWIMMembershipShell {
 
             self.swim.addMyself(context.myself)
 
-            return self.ready()
+            return self.ready
         }
     }
 
-    func ready() -> Behavior<SWIM.Message> {
+    var ready: Behavior<SWIM.Message> {
         return .receive { context, wrappedMessage in
             switch wrappedMessage {
             case .remote(let message):
@@ -91,7 +91,7 @@ internal struct SWIMMembershipShell {
             self.tracelog(context, .receive, message: message)
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !self.swim.isMember(target) {
-                self.ensureConnected(context: context, remoteAddress: target.path.address?.address) {
+                self.ensureConnected(context: context, remoteAddress: target.path.address?.address) { _ in
                     self.swim.addMember(target, status: lastKnownStatus)
                     self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                 }
@@ -102,8 +102,6 @@ internal struct SWIMMembershipShell {
 
         case .getMembershipState(let replyTo): // TODO why is this a remote message? could it be a "testing" one?
             // NOT tracelogging it on purpose, it is a testing message
-            var members: [ActorRef<SWIM.Message>: SWIM.Status] = [:]
-
             replyTo.tell(SWIM.MembershipState(membershipStatus: swim._allMembersDict))
         }
     }
@@ -123,6 +121,13 @@ internal struct SWIMMembershipShell {
                 }
             }
             self.swim.incrementProtocolPeriod()
+
+        case .join(let address):
+            ensureConnected(context: context, remoteAddress: address) { uniqueRemoteAddress in
+                if let address = uniqueRemoteAddress {
+                    self.joinCluster(context: context, remoteAddress: address)
+                }
+            }
         }
     }
 
@@ -225,7 +230,7 @@ internal struct SWIMMembershipShell {
             }
         case .success(let ack):
             context.log.trace("Received ack from [\(ack.pinged)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
-            _ = self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation)) // TODO log ?
+            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation)) // TODO log ?
             pingReqOrigin?.tell(ack)
             self.processGossipPayload(context: context, payload: ack.payload)
         }
@@ -236,7 +241,7 @@ internal struct SWIMMembershipShell {
         // TODO do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
 
         switch self.swim.onPingRequestResponse(result, pingedMember: pingedMember) {
-        case let .alive(previousStatus, payloadToProcess):
+        case .alive(_, let payloadToProcess):
             self.processGossipPayload(context: context, payload: payloadToProcess)
         case .newlySuspect:
             context.log.debug("Member [\(pingedMember)] marked as suspect")
@@ -273,9 +278,9 @@ internal struct SWIMMembershipShell {
             for member in members {
                 // TODO: push INTO SWIM, could it tell us to "please connect?"
                 if swim.isMember(member.ref) {
-                    _ = self.swim.mark(member.ref, as: member.status)
-                } else if let address = member.ref.path.address?.address {
-                    self.ensureConnected(context: context, remoteAddress: member.ref.path.address?.address) {
+                    self.swim.mark(member.ref, as: member.status)
+                } else if member.ref.path.address?.address != nil {
+                    self.ensureConnected(context: context, remoteAddress: member.ref.path.address?.address) { _ in
                         self.swim.mark(member.ref, as: member.status)
                     }
                 }
@@ -286,10 +291,10 @@ internal struct SWIMMembershipShell {
         }
     }
 
-    func ensureConnected(context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, onSuccess: @escaping () -> Void) {
+    func ensureConnected(context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, onSuccess: @escaping (UniqueNodeAddress?) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteAddress = address else {
-            onSuccess()
+            onSuccess(nil)
             return
         }
 
@@ -299,8 +304,8 @@ internal struct SWIMMembershipShell {
         }
         context.onResultAsync(of: result, timeout: .effectivelyInfinite) {
             switch $0 {
-            case .success(.success):
-                onSuccess()
+            case .success(.success(let remoteAddress)):
+                onSuccess(remoteAddress)
             default:
                 context.log.warning("Failed to connect to remote node [\(remoteAddress)]")
             }
@@ -308,6 +313,19 @@ internal struct SWIMMembershipShell {
         }
     }
 
+    func joinCluster(context: ActorContext<SWIM.Message>, remoteAddress: UniqueNodeAddress) {
+        do {
+            let path = try (ActorPath(address: remoteAddress, root: "system") /  ActorPathSegment(SWIMMembershipShell.name)).makeUnique(uid: .wellKnown)
+            let resolveContext = ResolveContext<SWIM.Message>(path: path, system: context.system)
+            let ref = context.system._resolve(context: resolveContext)
+
+            // TODO: we are sending the ping here to initiate cluster membership. Once available
+            //       this should do a state sync instead
+            self.sendPing(context: context, to: ref, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
+        } catch {
+            fatalError("Failed to resolve SWIM ref for node [\(remoteAddress)] with error: \(error)")
+        }
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

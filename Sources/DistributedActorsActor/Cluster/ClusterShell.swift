@@ -163,7 +163,7 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
     }
 
     internal enum HandshakeResult: Equatable {
-        case success(NodeAddress)
+        case success(UniqueNodeAddress)
         case failure(NodeAddress)
     }
 
@@ -265,7 +265,11 @@ extension ClusterShell {
         if let existingAssociation = state.association(with: remoteAddress) {
             // TODO in reality should attempt and may need to drop the other "old" one?
             state.log.warning("Attempted associating with already associated node: [\(remoteAddress)], existing association: [\(existingAssociation)]")
-            replyTo?.tell(.success(remoteAddress))
+            switch existingAssociation {
+            case .associated(let associationState):
+                replyTo?.tell(.success(associationState.remoteAddress))
+            }
+
             return .same
         }
 
@@ -394,7 +398,7 @@ extension ClusterShell {
         state.log.debug("[Cluster] Associated with: \(completed.remoteAddress).")
         self.cacheAssociationRemoteControl(association)
 
-        completed.replyTo?.tell(.success(association.remoteAddress.address))
+        completed.replyTo?.tell(.success(association.remoteAddress))
 
         return self.ready(state: state)
     }
