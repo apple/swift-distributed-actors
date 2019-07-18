@@ -52,7 +52,7 @@ final class ActorAskTests: XCTestCase {
 
         let ref = try system.spawnAnonymous(behavior)
 
-        let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
+        let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
         shouldThrow(expected: TimeoutError.self) {
             _ = try response.nioFuture.wait()
