@@ -119,7 +119,23 @@ public extension ActorTestKit {
             }
         }
 
-        let message = callSite.detailedMessage("No result within \(timeAmount.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
+        // This dance is necessary to "nicely print" if we had an embedded call site error,
+        // which include colour and formatting, so we have to print the \(msg) directly for that case.
+        let lastErrorMessage: String
+        switch lastError {
+        case .none:
+            lastErrorMessage = "Last error: <none>"
+        case .some(CallSiteError.error(let message)):
+            lastErrorMessage = "Last error: \(message)"
+        case .some(let error):
+            lastErrorMessage = "Last error: \(error)"
+        }
+
+        let message = callSite.detailedMessage("""
+                                               No result within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+                                               Queried \(polledTimes) times. \
+                                               \(lastErrorMessage)
+                                               """)
         XCTFail(message, file: callSite.file, line: callSite.line)
         throw EventuallyError(message: message, lastError: lastError)
     }

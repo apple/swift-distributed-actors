@@ -24,19 +24,19 @@ extension SWIMMembershipShellTests {
 
    static var allTests : [(String, (SWIMMembershipShellTests) -> () throws -> Void)] {
       return [
-                ("test_SWIMMembershipShell_shouldRespondWithAckToPing", test_SWIMMembershipShell_shouldRespondWithAckToPing),
-                ("test_SWIMMembershipShell_shouldPingRandomMember", test_SWIMMembershipShell_shouldPingRandomMember),
-                ("test_SWIMMembershipShell_shouldPingSpecificMemberWhenRequested", test_SWIMMembershipShell_shouldPingSpecificMemberWhenRequested),
-                ("test_SWIMMembershipShell_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested", test_SWIMMembershipShell_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested),
-                ("test_SWIMMembershipShell_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing", test_SWIMMembershipShell_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing),
-                ("test_SWIMMembershipShell_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing", test_SWIMMembershipShell_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing),
-                ("test_SWIMMembershipShell_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout", test_SWIMMembershipShell_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout),
-                ("test_SWIMMembershipShell_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout", test_SWIMMembershipShell_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout),
-                ("test_SWIMMembershipShell_shouldSendGossipInPing", test_SWIMMembershipShell_shouldSendGossipInPing),
-                ("test_SWIMMembershipShell_shouldSendGossipInAck", test_SWIMMembershipShell_shouldSendGossipInAck),
-                ("test_SWIMMembershipShell_shouldSendGossipInPingReq", test_SWIMMembershipShell_shouldSendGossipInPingReq),
-                ("test_SWIMMembershipShell_shouldSendGossipOnlyTheConfiguredNumberOfTimes", test_SWIMMembershipShell_shouldSendGossipOnlyTheConfiguredNumberOfTimes),
-                ("test_SWIMMembershipShell_shouldConvergeStateThroughGossip", test_SWIMMembershipShell_shouldConvergeStateThroughGossip),
+                ("test_swim_shouldRespondWithAckToPing", test_swim_shouldRespondWithAckToPing),
+                ("test_swim_shouldPingRandomMember", test_swim_shouldPingRandomMember),
+                ("test_swim_shouldPingSpecificMemberWhenRequested", test_swim_shouldPingSpecificMemberWhenRequested),
+                ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested),
+                ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing),
+                ("test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing", test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing),
+                ("test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout),
+                ("test_swim_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout),
+                ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
+                ("test_swim_shouldSendGossipInPing_", test_swim_shouldSendGossipInPing_),
+                ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),
+                ("test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes", test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes),
+                ("test_swim_shouldConvergeStateThroughGossip", test_swim_shouldConvergeStateThroughGossip),
            ]
    }
 }

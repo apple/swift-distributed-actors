@@ -95,7 +95,7 @@ extension AskResponse: AsyncResult {
         let eventLoop = self.nioFuture.eventLoop
         let promise: EventLoopPromise<Value> = eventLoop.makePromise()
         let timeoutTask = eventLoop.scheduleTask(in: timeout.toNIO) {
-            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)"))
+            promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout))
         }
         self.nioFuture.whenFailure {
             timeoutTask.cancel()
@@ -151,7 +151,7 @@ private enum AskActor {
                                        Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                                        expected response of type [\(String(reflecting: ResponseType.self))]. 
                                        """
-                    completable.fail(TimeoutError(message: errorMessage))
+                    completable.fail(TimeoutError(message: errorMessage, timeout: timeout))
 
                 case .result(let message):
                     context.timers.cancelAll()

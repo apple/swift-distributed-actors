@@ -16,7 +16,7 @@ import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
 
-// NOT thread safe by itself
+/// - Warning: NOT thread safe! Only use from Actors, properly synchronize access, or create multiple instances for each execution context.
 public class LoggingContext {
     let identifier: String
 
@@ -190,17 +190,23 @@ public struct ActorOriginLogHandler: LogHandler {
             }
 
             var msg = ""
-
-            // TODO free function to render metadata?
             if let meta = l.effectiveMetadata, !meta.isEmpty {
-                msg += "[\(meta.map {"\($0)=\($1)" }.joined(separator: " "))]" // forces any lazy metadata to be rendered
+                let ms = meta
+                    .lazy
+                    .sorted(by: { $0.key < $1.key })
+                    .map {"\"\($0)\":\($1)"}
+                    .joined(separator: ",")
+                msg += "{\(ms)}" // forces any lazy metadata to be rendered
             }
+            l.effectiveMetadata?.removeAll()
+
 
             msg += "\(actorSystemIdentity)"
             msg += "[\(l.file.description.split(separator: "/").last ?? "<unknown-file>"):\(l.line)]"
             msg += "\(dispatcherPart)"
             msg += "\(actorPathPart)"
             msg += " \(l.message)"
+
 
             self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         } else {

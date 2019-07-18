@@ -84,6 +84,10 @@ internal extension SystemMessage {
 // TODO document where this is intended to be used; supervision and suspension? should we separate the two?
 public struct ExecutionError: Error {
     let underlying: Error
+
+    func extractUnderlying<ErrorType: Error>(as type: ErrorType.Type) -> ErrorType? {
+        return self.underlying as? ErrorType
+    }
 }
 
 // Implementation notes:

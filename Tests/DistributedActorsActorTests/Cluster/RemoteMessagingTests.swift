@@ -208,9 +208,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
                 remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
 
-                return .receiveMessage { _ in
-                    return .same
-                }
+                return .receiveMessage { _ in .same }
             }, name: "localRef")
 
         try probe.expectMessage("response:echo:test")

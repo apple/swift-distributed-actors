@@ -266,6 +266,7 @@ extension Heap: Sequence {
         return i + 1
     }
 
+    // TODO: document if cheap (AFAICS yes)
     var count: Int {
         return self.storage.count
     }
