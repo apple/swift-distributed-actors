@@ -151,7 +151,12 @@ final class ActorAskTests: XCTestCase {
             }
         }, name: "onResultAsync")
 
-        try p.expectMessage("ExecutionError(underlying: Swift Distributed ActorsActor.TimeoutError(message: \"AskResponse<String> timed out after 100ms\"))")
+        var msg = "ExecutionError(underlying: "
+        msg += "Swift Distributed ActorsActor.TimeoutError("
+        msg += "message: \"AskResponse<String> timed out after 100ms\", "
+        msg += "timeout: TimeAmount(100ms, nanoseconds: 100000000))"
+        msg += ")"
+        try p.expectMessage(msg)
     }
 
  func test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters() throws {

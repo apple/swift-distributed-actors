@@ -66,23 +66,23 @@ internal enum FailureDetectorShell {
 
     typealias Ref = ActorRef<FailureDetectorProtocol>
 
-    public static func behavior(driving failureDetector: FailureObserver) -> Behavior<FailureDetectorProtocol> {
+    public static func behavior(driving observer: FailureObserver) -> Behavior<FailureDetectorProtocol> {
         return .receive { context, message in
 
             let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
 
             switch message {
             case .watchedActor(let watcher, let remoteAddress):
-                _ = failureDetector.onWatchedActor(by: watcher, remoteAddress: remoteAddress) // TODO return and interpret directives
+                _ = observer.onWatchedActor(by: watcher, remoteAddress: remoteAddress) // TODO return and interpret directives
 
             case .membershipSnapshot(let membership):
                 let diff = Membership.diff(from: lastMembership, to: membership)
 
                 for change in diff.entries {
-                    _ = failureDetector.onMembershipChanged(change) // TODO return and interpret directives
+                    _ = observer.onMembershipChanged(change) // TODO return and interpret directives
                 }
             case  .membershipChange(let change):
-                _ = failureDetector.onMembershipChanged(change) // TODO return and interpret directives
+                _ = observer.onMembershipChanged(change) // TODO return and interpret directives
             }
             return .same
 

@@ -540,7 +540,7 @@ class BehaviorTests: XCTestCase {
 
         let behavior: Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                return .suspend { (msg: Result<Int, ExecutionError>) in
+                .suspend { (msg: Result<Int, ExecutionError>) in
                     switch msg {
                     case .success(let res): p.tell("unsuspended:\(res)")
                     case .failure(let error): p.tell("unsuspended:\(error.underlying)")
@@ -564,9 +564,9 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: testKit.error()))))
+        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
 
-        try p.expectMessage().starts(with: "unsuspended:CallSiteError").shouldBeTrue()
+        try p.expectMessage().shouldStartWith(prefix: "unsuspended:Boom")
         try p.expectMessage("resumed:something else")
     }
 

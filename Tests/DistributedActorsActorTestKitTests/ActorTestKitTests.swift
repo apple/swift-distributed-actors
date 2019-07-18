@@ -26,7 +26,7 @@ class ActorTestKitTests: XCTestCase {
 
     func test_error_withoutMessage() throws {
         let error = testKit.error()
-        guard case CallSiteError.CallSiteError(let message) = error else {
+        guard case CallSiteError.error(let message) = error else {
             throw error
         }
         message.contains("<no message>").shouldBeTrue()
@@ -34,7 +34,7 @@ class ActorTestKitTests: XCTestCase {
 
     func test_error_withMessage() throws {
         let error = testKit.error("test")
-        guard case CallSiteError.CallSiteError(let message) = error else {
+        guard case CallSiteError.error(let message) = error else {
             throw error
         }
         message.contains("test").shouldBeTrue()
