@@ -276,6 +276,19 @@ internal struct SWIMMembershipShell {
         switch payload {
         case .membership(let members):
             for member in members {
+                guard self.swim.notMyself(member.ref) else {
+                    switch self.swim.onSelfGossip(member.status) {
+                    case .none(let warning):
+                        if let warning = warning {
+                            context.log.warning("\(warning)")
+                        }
+                        continue
+                    case .shutdown:
+                        // TODO: handle shutdown differently?
+                        context.system.shutdown()
+                        return
+                    }
+                }
                 // TODO: push INTO SWIM, could it tell us to "please connect?"
                 if swim.isMember(member.ref) {
                     self.swim.mark(member.ref, as: member.status)
