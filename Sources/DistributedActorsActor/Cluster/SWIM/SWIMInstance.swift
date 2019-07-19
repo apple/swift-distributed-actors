@@ -345,20 +345,20 @@ extension SWIM.Instance {
         switch status {
         case .alive:
             // as long as other nodes see us as alive, we're happy
-            return .none(nil)
+            return .none(warning: nil)
         case .suspect(let suspectedInIncarnation):
             // someone suspected us, so we need to increment our
             // incarnation number to spread our alive status with
             // the incremented incarnation
             if suspectedInIncarnation == self.incarnation {
                 self._incarnation += 1
-                return .none(nil)
+                return .none(warning: nil)
             } else {
                 let warning = """
                 Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
                 which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
                 """
-                return .none(warning)
+                return .none(warning: warning)
             }
 
         case .dead:
@@ -366,7 +366,7 @@ extension SWIM.Instance {
         }
     }
     enum OnSelfGossipDirective {
-        case none(String?)
+        case none(warning: String?)
         case shutdown
     }
 }

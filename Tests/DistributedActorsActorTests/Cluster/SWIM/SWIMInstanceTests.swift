@@ -312,7 +312,7 @@ final class SWIMInstanceTests: XCTestCase {
 
         currentIncarnation = swim.incarnation
 
-        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation-1))
+        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation - 1))
 
         swim.incarnation.shouldEqual(currentIncarnation)
 
