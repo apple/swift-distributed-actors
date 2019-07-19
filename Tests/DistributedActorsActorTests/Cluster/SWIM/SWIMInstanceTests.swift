@@ -268,6 +268,93 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: handling gossip about the receiving node
+
+    func test_onSelfGossip_withAlive_shouldReturn_none() throws {
+        let swim = SWIM.Instance(.default)
+        let currentIncarnation = swim.incarnation
+
+        let res = swim.onSelfGossip(.alive(incarnation: currentIncarnation))
+
+        swim.incarnation.shouldEqual(currentIncarnation)
+
+        switch res {
+        case .none(nil):
+            ()
+        default:
+            throw testKit.fail("Expected `.none(nil)`, got \(res)")
+        }
+    }
+
+    func test_onSelfGossip_withSuspectAndSameIncarnation_shouldIncrementIncarnationAndReturn_none() throws {
+        let swim = SWIM.Instance(.default)
+        let currentIncarnation = swim.incarnation
+
+        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation))
+
+        swim.incarnation.shouldEqual(currentIncarnation + 1)
+
+        switch res {
+        case .none(nil):
+            ()
+        default:
+            throw testKit.fail("Expected `.none(nil)`, got \(res)")
+        }
+    }
+
+    func test_onSelfGossip_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnationAndReturn_none() throws {
+        let swim = SWIM.Instance(.default)
+
+        var currentIncarnation = swim.incarnation
+
+        // necessary to increment incarnation
+        _ = swim.onSelfGossip(.suspect(incarnation: currentIncarnation))
+
+        currentIncarnation = swim.incarnation
+
+        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation-1))
+
+        swim.incarnation.shouldEqual(currentIncarnation)
+
+        switch res {
+        case .none(let message) where message != nil:
+            ()
+        default:
+            throw testKit.fail("Expected `.none(message)`, got \(res)")
+        }
+    }
+
+    func test_onSelfGossip_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnationAndReturn_noneWithWarning() throws {
+        let swim = SWIM.Instance(.default)
+
+        let currentIncarnation = swim.incarnation
+
+        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation+6))
+
+        swim.incarnation.shouldEqual(currentIncarnation)
+
+        switch res {
+        case .none(let warning) where warning != nil:
+            ()
+        default:
+            throw testKit.fail("Expected `.none(message)`, got \(res)")
+        }
+    }
+
+    func test_onSelfGossip_withDead_shouldReturn_shutdown() throws {
+        let swim = SWIM.Instance(.default)
+
+        let res = swim.onSelfGossip(.dead)
+
+        switch res {
+        case .shutdown:
+            ()
+        default:
+            throw testKit.fail("Expected `.shutdown`, got \(res)")
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: increment-ing counters
 
     func test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne() {

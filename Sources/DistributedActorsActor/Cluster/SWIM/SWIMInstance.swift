@@ -279,7 +279,7 @@ extension SWIM.Instance {
         // the cluster (and "win" over the old `.suspect` status).
         if case .suspect(let suspectedInIncarnation) = lastKnownStatus {
             if suspectedInIncarnation == self._incarnation {
-                self._incarnation = suspectedInIncarnation + 1
+                self._incarnation += 1
                 warning = nil
             } else if suspectedInIncarnation > self._incarnation {
                 // this should never happen, because the only member allowed to increment our incarnation nr is _us_,
@@ -300,7 +300,7 @@ extension SWIM.Instance {
     }
 
     /// React to an `Ack` (or lack thereof within timeout)
-    func onPingRequestResponse(_ result: Result<SWIM.Ack, ExecutionError>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResultDirective {
+    func onPingRequestResponse(_ result: Result<SWIM.Ack, ExecutionError>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
         guard let lastKnownStatus = self.status(of: member) else {
             return .unknownMember
         }
@@ -332,13 +332,42 @@ extension SWIM.Instance {
             }
         }
     }
-    enum OnPingRequestResultDirective {
+    enum OnPingRequestResponseDirective {
         case alive(previous: SWIM.Status, payloadToProcess: SWIM.Payload)
         case unknownMember
         case newlySuspect
         case alreadySuspect
         case alreadyDead
         case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
+    }
+
+    func onSelfGossip(_ status: SWIM.Status) -> OnSelfGossipDirective {
+        switch status {
+        case .alive:
+            // as long as other nodes see us as alive, we're happy
+            return .none(nil)
+        case .suspect(let suspectedInIncarnation):
+            // someone suspected us, so we need to increment our
+            // incarnation number to spread our alive status with
+            // the incremented incarnation
+            if suspectedInIncarnation == self.incarnation {
+                self._incarnation += 1
+                return .none(nil)
+            } else {
+                let warning = """
+                Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
+                which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                """
+                return .none(warning)
+            }
+
+        case .dead:
+            return .shutdown
+        }
+    }
+    enum OnSelfGossipDirective {
+        case none(String?)
+        case shutdown
     }
 }
 
