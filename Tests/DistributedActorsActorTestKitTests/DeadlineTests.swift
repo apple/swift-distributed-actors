@@ -56,6 +56,15 @@ class DeadlineTests: XCTestCase {
         now.hasTimeLeft(until: Deadline.distantFuture).shouldBeFalse()
     }
 
+    func test_deadline_subtracting() {
+        let older = Deadline.now()
+        Thread.sleep(until: Date().addingTimeInterval(0.02))
+        let newer = Deadline.now()
+
+        XCTAssertLessThan(older - newer, .nanoseconds(0))
+        XCTAssertGreaterThan(newer - older, .nanoseconds(0))
+    }
+
     func test_fromNow() {
         let now = Deadline.now()
         let deadline = Deadline.fromNow(.seconds(3))
