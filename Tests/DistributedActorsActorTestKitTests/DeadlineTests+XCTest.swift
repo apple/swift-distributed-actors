@@ -27,6 +27,7 @@ extension DeadlineTests {
                 ("test_deadline_nowIsNotPastNow", test_deadline_nowIsNotPastNow),
                 ("test_deadline_remainingShouldReturnExpectedTimeAmounts", test_deadline_remainingShouldReturnExpectedTimeAmounts),
                 ("test_deadline_hasTimeLeft", test_deadline_hasTimeLeft),
+                ("test_deadline_subtracting", test_deadline_subtracting),
                 ("test_fromNow", test_fromNow),
            ]
    }

@@ -353,7 +353,7 @@ extension Deadline: CustomStringConvertible {
 
 extension Deadline {
     public static func - (lhs: Deadline, rhs: Deadline) -> TimeAmount {
-        return .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds - rhs.uptimeNanoseconds))
+        return .nanoseconds(TimeAmount.Value(lhs.uptimeNanoseconds) - TimeAmount.Value(rhs.uptimeNanoseconds))
     }
 
     public static func + (lhs: Deadline, rhs: TimeAmount) -> Deadline {
