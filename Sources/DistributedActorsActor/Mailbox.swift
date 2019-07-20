@@ -149,7 +149,9 @@ internal final class Mailbox<Message> {
             assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
             let shell = cellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
-            let envelope = envelopePtr.move()
+            defer { envelopePtr.deinitialize(count: 1) }
+
+            let envelope = envelopePtr.pointee
             let msg = envelope.payload
 
             // TODO: Depends on https://github.com/apple/swift-log/issues/37
@@ -175,7 +177,9 @@ internal final class Mailbox<Message> {
             assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
             let shell = shellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
-            let msg = envelopePtr.move()
+            defer { envelopePtr.deinitialize(count: 1) }
+
+            let msg = envelopePtr.pointee
             traceLog_Mailbox(self.path, "INVOKE SYSTEM MSG: \(msg)")
             return try shell.interpretSystemMessage(message: msg)
         }, fail: { [weak _shell = shell, path = self.path] error in
@@ -441,11 +445,20 @@ internal final class Mailbox<Message> {
             return
 
         case .failureRestart:
+            // in case of a failure, we need to deinitialize the message here,
+            // because usually it would be deinitialized after processing,
+            // but in case of a failure that code can not be executed
+            failedMessagePtr.deinitialize(count: 1)
             // FIXME: !!! we must know if we should schedule or not after a restart...
             traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
             cell.dispatcher.execute(self._run)
 
         case .failureTerminate:
+            // in case of a failure, we need to deinitialize the message here,
+            // because usually it would be deinitialized after processing,
+            // but in case of a failure that code can not be executed
+            failedMessagePtr.deinitialize(count: 1)
+
             // We are now terminating. The run has been aborted and other threads were not yet allowed to activate this
             // actor (since it was in the middle of processing). We MUST therefore activate right now, and at the same time
             // force the enqueue of the tombstone system message, as the actor now will NOT accept any more messages
@@ -634,14 +647,14 @@ private func renderMessageDescription<Message>(runPhase: SActMailboxRunPhase, fa
 // such as the InvokeSupervisionClosureContext where we invoke things via a function calling into this one to avoid the
 // generics issue.
 private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointer, type: Message.Type) -> String {
-    let envelope = ptr.assumingMemoryBound(to: Envelope.self).move()
+    let envelope = ptr.assumingMemoryBound(to: Envelope.self).pointee
     switch envelope.payload {
     case .closure: return "closure"
     case .userMessage(let message): return "[\(message)]:\(Message.self)"
     }
 }
 private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
-    let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).move()
+    let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).pointee
     return "[\(systemMessage)]:\(SystemMessage.self)"
 }
 
