@@ -143,19 +143,21 @@ internal final class BlockingReceptacle<Value> {
                     "and can not accept new offer: [\(value)]!")
             }
             self._value = value
-            self.notEmpty.signal()
+            self.notEmpty.signalAll()
         }
     }
 
     /// Await the value to be set, or return `nil` if timeout passes and no value was set.
     func wait(atMost timeout: TimeAmount) -> Value? {
-        return self.lock.synchronized { () -> Value in
-            while true {
+        let deadline = Deadline.fromNow(timeout)
+        return self.lock.synchronized { () -> Value? in
+            while deadline.hasTimeLeft() {
                 if let v = self._value {
                     return v
                 }
-                self.notEmpty.wait(self.lock)
+                _ = self.notEmpty.wait(self.lock, atMost: deadline.timeLeft)
             }
+            return nil
         }
     }
 
