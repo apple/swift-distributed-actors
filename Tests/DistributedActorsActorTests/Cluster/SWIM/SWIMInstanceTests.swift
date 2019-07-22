@@ -270,84 +270,107 @@ final class SWIMInstanceTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: handling gossip about the receiving node
 
-    func test_onSelfGossip_withAlive_shouldReturn_none() throws {
+    func test_onGossipPayload_myself_withAlive() throws {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let res = swim.onSelfGossip(.alive(incarnation: currentIncarnation))
+        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        let myselfMember = swim.member(for: myself)!
+
+        let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .none(nil):
+        case .applied(let warning) where warning == nil:
             ()
         default:
-            throw testKit.fail("Expected `.none(nil)`, got \(res)")
+            throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
-    func test_onSelfGossip_withSuspectAndSameIncarnation_shouldIncrementIncarnationAndReturn_none() throws {
+    func test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation() throws {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation))
+        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+        myselfMember.status = .suspect(incarnation: currentIncarnation)
+
+        let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation + 1)
 
         switch res {
-        case .none(nil):
+        case .applied(let warning) where warning == nil:
             ()
         default:
-            throw testKit.fail("Expected `.none(nil)`, got \(res)")
+            throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
-    func test_onSelfGossip_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnationAndReturn_none() throws {
+    func test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation() throws {
         let swim = SWIM.Instance(.default)
-
         var currentIncarnation = swim.incarnation
 
+        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+
         // necessary to increment incarnation
-        _ = swim.onSelfGossip(.suspect(incarnation: currentIncarnation))
+        myselfMember.status = .suspect(incarnation: currentIncarnation)
+        _ = swim.onGossipPayload(about: myselfMember)
 
         currentIncarnation = swim.incarnation
 
-        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation - 1))
+        myselfMember.status = .suspect(incarnation: currentIncarnation - 1) // purposefully "previous"
+        let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .none(let message) where message != nil:
+        case .applied(let warning) where warning != nil:
             ()
         default:
             throw testKit.fail("Expected `.none(message)`, got \(res)")
         }
     }
 
-    func test_onSelfGossip_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnationAndReturn_noneWithWarning() throws {
+    func test_onGossipPayload_myself_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnation() throws {
         let swim = SWIM.Instance(.default)
-
         let currentIncarnation = swim.incarnation
 
-        let res = swim.onSelfGossip(.suspect(incarnation: currentIncarnation+6))
+        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+
+        myselfMember.status = .suspect(incarnation: currentIncarnation + 6)
+        let res = swim.onGossipPayload(about: myselfMember)
 
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .none(let warning) where warning != nil:
+        case .applied(let warning) where warning != nil:
             ()
         default:
             throw testKit.fail("Expected `.none(message)`, got \(res)")
         }
     }
 
-    func test_onSelfGossip_withDead_shouldReturn_shutdown() throws {
+    func test_onGossipPayload_myself_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let res = swim.onSelfGossip(.dead)
+        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+        myselfMember.status = .dead
+
+        let res = swim.onGossipPayload(about: myselfMember)
 
         switch res {
-        case .shutdown:
+        case .selfDeterminedDead:
             ()
         default:
             throw testKit.fail("Expected `.shutdown`, got \(res)")

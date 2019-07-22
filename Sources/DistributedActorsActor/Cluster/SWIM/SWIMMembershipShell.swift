@@ -14,10 +14,15 @@
 
 import Logging
 
-/// TODO ...
+/// The SWIM shell is responsible for driving all interactions of the `SWIM.Instance` with the outside world.
+///
+/// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
 internal struct SWIMMembershipShell {
 
     static let name: String = "membership-swim" // TODO String -> ActorName
+    static func remotePath(address: UniqueNodeAddress) -> UniqueActorPath {
+        return try! (ActorPath(address: address, root: "system") /  ActorPathSegment(SWIMMembershipShell.name)).makeUnique(uid: .wellKnown)
+    }
     static let periodicPingKey = "swim/periodic-ping"
 
     let swim: SWIM.Instance
@@ -91,8 +96,8 @@ internal struct SWIMMembershipShell {
             self.tracelog(context, .receive, message: message)
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !self.swim.isMember(target) {
-                self.ensureConnected(context: context, remoteAddress: target.path.address?.address) { _ in
-                    self.swim.addMember(target, status: lastKnownStatus)
+                self.ensureConnected(context, remoteAddress: target.path.address?.address) { _ in
+                    self.swim.addMember(target, status: lastKnownStatus) // TODO push into SWIM?
                     self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                 }
             } else {
@@ -110,24 +115,10 @@ internal struct SWIMMembershipShell {
     func receiveLocalMessage(context: ActorContext<SWIM.Message>, message: SWIM.LocalMessage) {
         switch message {
         case .pingRandomMember:
-            context.log.trace("Received periodic trigger to ping random member", metadata: self.swim.metadata)
-
-            // needs to be done first, so we can gossip out the most up to date state
-            self.checkSuspicionTimeouts(context: context)
-
-            if let toPing = swim.nextMemberToPing() {
-                if let lastKnownStatus = swim.status(of: toPing) {
-                    self.sendPing(context: context, to: toPing, lastKnownStatus: lastKnownStatus, pingReqOrigin: nil)
-                }
-            }
-            self.swim.incrementProtocolPeriod()
+            self.handlePingRandomMember(context)
 
         case .join(let address):
-            ensureConnected(context: context, remoteAddress: address) { uniqueRemoteAddress in
-                if let address = uniqueRemoteAddress {
-                    self.joinCluster(context: context, remoteAddress: address)
-                }
-            }
+            self.handleJoin(context, address: address)
         }
     }
 
@@ -250,6 +241,34 @@ internal struct SWIMMembershipShell {
         }
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Handling local messages
+
+    func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
+        context.log.trace("Received periodic trigger to ping random member", metadata: self.swim.metadata)
+
+        // needs to be done first, so we can gossip out the most up to date state
+        self.checkSuspicionTimeouts(context: context)
+
+        if let toPing = swim.nextMemberToPing() {
+            if let lastKnownStatus = swim.status(of: toPing) {
+                self.sendPing(context: context, to: toPing, lastKnownStatus: lastKnownStatus, pingReqOrigin: nil)
+            }
+        }
+        self.swim.incrementProtocolPeriod()
+    }
+
+    func handleJoin(_ context: ActorContext<SWIM.Message>, address: NodeAddress) {
+        self.ensureConnected(context, remoteAddress: address) { uniqueAddress in
+            guard let remoteUniqueAddress = uniqueAddress else {
+                fatalError("")
+            }
+
+            assert(remoteUniqueAddress.address == address, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
+            self.sendFirstRemotePing(context, on: remoteUniqueAddress)
+        }
+    }
+
     func checkSuspicionTimeouts(context: ActorContext<SWIM.Message>) {
         // TODO: push more of logic into SWIM instance, the calculating
         // FIXME: use decaying timeout as proposed in lifeguard paper
@@ -276,26 +295,33 @@ internal struct SWIMMembershipShell {
         switch payload {
         case .membership(let members):
             for member in members {
-                guard self.swim.notMyself(member.ref) else {
-                    switch self.swim.onSelfGossip(member.status) {
-                    case .none(let warning):
-                        if let warning = warning {
-                            context.log.warning("\(warning)")
+                switch self.swim.onGossipPayload(about: member) {
+                case .applied:
+                    ()
+                case .connect(let address, let continueAddingMember):
+                    // ensuring a connection is asynchronous, but executes callback in actor context
+                    self.ensureConnected(context, remoteAddress: address) { uniqueAddress in
+                        // it COULD happen that we kick off connecting to a node based on this connection
+                        // TODO test for this
+                        if let uniqueRemoteAddress = uniqueAddress {
+                            continueAddingMember(uniqueRemoteAddress)
+                            return
+                        } else {
+                            // was a local address... weird
+                            context.log.warning("Attempted to connect to local address....? nonsense!") // TODO fixme, not optional param here
+                            return
                         }
-                        continue
-                    case .shutdown:
-                        // TODO: handle shutdown differently?
-                        context.system.shutdown()
-                        return
                     }
-                }
-                // TODO: push INTO SWIM, could it tell us to "please connect?"
-                if swim.isMember(member.ref) {
-                    self.swim.mark(member.ref, as: member.status)
-                } else if member.ref.path.address?.address != nil {
-                    self.ensureConnected(context: context, remoteAddress: member.ref.path.address?.address) { _ in
-                        self.swim.mark(member.ref, as: member.status)
+                case .ignored(let warning):
+                    if let warning = warning {
+                        context.log.warning("Warning while processing SWIM membership gossip: \(warning)")
                     }
+                    return
+
+                case .selfDeterminedDead:
+                    // TODO: handle shutdown differently?
+                    context.system.shutdown()
+                    return
                 }
             }
 
@@ -304,7 +330,7 @@ internal struct SWIMMembershipShell {
         }
     }
 
-    func ensureConnected(context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, onSuccess: @escaping (UniqueNodeAddress?) -> Void) {
+    func ensureConnected(_ context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, onSuccess: @escaping (UniqueNodeAddress?) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteAddress = address else {
             onSuccess(nil)
@@ -312,32 +338,31 @@ internal struct SWIMMembershipShell {
         }
 
         // FIXME: use reasonable timeout, depends on https://github.com/apple/swift-distributed-actors/issues/724
-        let result = context.system.clusterShell.ask(for: ClusterShell.HandshakeResult.self, timeout: .seconds(1)) {
+        let handshakeResultAnswer = context.system.clusterShell.ask(for: ClusterShell.HandshakeResult.self, timeout: .seconds(3)) {
             .command(.handshakeWith(remoteAddress, replyTo: $0))
         }
-        context.onResultAsync(of: result, timeout: .effectivelyInfinite) {
-            switch $0 {
-            case .success(.success(let remoteAddress)):
-                onSuccess(remoteAddress)
-            default:
+        context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in
+            switch handshakeResultResult {
+            case .success(.success(let remoteUniqueAddress)):
+                onSuccess(remoteUniqueAddress)
+            case .success(.failure(let error)):
                 context.log.warning("Failed to connect to remote node [\(remoteAddress)]")
+            case .failure:
+                context.log.warning("Connecting to remote node [\(remoteAddress)] timed out")
             }
+
             return .same
         }
     }
 
-    func joinCluster(context: ActorContext<SWIM.Message>, remoteAddress: UniqueNodeAddress) {
-        do {
-            let path = try (ActorPath(address: remoteAddress, root: "system") /  ActorPathSegment(SWIMMembershipShell.name)).makeUnique(uid: .wellKnown)
-            let resolveContext = ResolveContext<SWIM.Message>(path: path, system: context.system)
-            let ref = context.system._resolve(context: resolveContext)
+    /// This is effectively joining the SWIM membership of the other member.
+    func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on remoteAddress: UniqueNodeAddress) {
+        let path = SWIMMembershipShell.remotePath(address: remoteAddress)
+        let resolveContext = ResolveContext<SWIM.Message>(path: path, system: context.system)
+        let ref = context.system._resolve(context: resolveContext)
 
-            // TODO: we are sending the ping here to initiate cluster membership. Once available
-            //       this should do a state sync instead
-            self.sendPing(context: context, to: ref, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
-        } catch {
-            fatalError("Failed to resolve SWIM ref for node [\(remoteAddress)] with error: \(error)")
-        }
+        // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
+        self.sendPing(context: context, to: ref, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
     }
 }
 

@@ -37,7 +37,11 @@ public struct SWIMSettings {
     /// These logs will contain SWIM.Instance metadata, as offered by `SWIM.Instance.metadata`.
     /// All logs will be prefixed using `[tracelog:SWIM]`, for easier grepping and inspecting only logs related to the SWIM instance.
     // TODO how to make this nicely dynamically changeable during runtime
+    #if SACT_TRACE_SWIM
+    var traceLogLevel: Logger.Level? = .warning
+    #else
     var traceLogLevel: Logger.Level? = nil
+    #endif
 
 }
 

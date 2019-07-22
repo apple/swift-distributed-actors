@@ -164,7 +164,11 @@ internal class ClusterShell { // TODO: may still change the name, we'll see how 
 
     internal enum HandshakeResult: Equatable {
         case success(UniqueNodeAddress)
-        case failure(NodeAddress)
+        case failure(HandshakeConnectionError)
+    }
+    struct HandshakeConnectionError: Error, Equatable { // TODO merge with HandshakeError?
+        let address: NodeAddress
+        let message: String
     }
 
     private var behavior: Behavior<Message> {
@@ -237,9 +241,8 @@ extension ClusterShell {
                 return self.onHandshakeAccepted(state, accepted, channel: channel)
             case .handshakeRejected(let rejected):
                 return self.onHandshakeRejected(state, rejected)
-            case .handshakeFailed(_, let error):
-                // return self.onHandshakeFailed(state, rejected) // FIXME implement this basically disassociate() right away?
-                return FIXME("HANDSHAKE FAILED: [\(error)]:\(type(of: error))") // FIXME: handshake reject should be implemented
+            case .handshakeFailed(let address, let error):
+                return self.onHandshakeFailed(state, with: address, error: error) // FIXME implement this basically disassociate() right away?
             }
         }
 
@@ -324,9 +327,10 @@ extension ClusterShell {
                 return self.ready(state: newState)
 
             case .rejectHandshake(let rejectedHandshake):
-                log.info("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
-                if let hsmState = newState.abortHandshake(with: offer.from.address) {
-                    notifyHandshakeFailure(state: hsmState, address: offer.from.address)
+                log.warning("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
+                let address = offer.from.address
+                if let hsmState = newState.abortHandshake(with: address) {
+                    notifyHandshakeFailure(state: hsmState, address: address, error: rejectedHandshake.error)
                 }
                 promise.succeed(.reject(rejectedHandshake.makeReject()))
                 return self.ready(state: newState)
@@ -364,7 +368,7 @@ extension ClusterShell {
                 )
             case .giveUpOnHandshake:
                 if let hsmState = state.abortHandshake(with: remoteAddress) {
-                    notifyHandshakeFailure(state: hsmState, address: remoteAddress)
+                    notifyHandshakeFailure(state: hsmState, address: remoteAddress, error: error)
                 }
             }
 
@@ -409,18 +413,30 @@ extension ClusterShell {
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
 
         if let hsmState = state.abortHandshake(with: reject.from) {
-            notifyHandshakeFailure(state: hsmState, address: reject.from)
+            notifyHandshakeFailure(state: hsmState, address: reject.from, error: HandshakeConnectionError(address: reject.from, message: reject.reason))
         }
 
         return self.ready(state: state)
     }
 
-    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, address: NodeAddress) {
+    private func onHandshakeFailed(_ state: ClusterShellState, with address: NodeAddress, error: Error) -> Behavior<Message> {
+        var state = state
+
+        state.log.error("Handshake error while connecting [\(address)]: \(error)")
+        if let hsmState = state.abortHandshake(with: address) {
+            self.notifyHandshakeFailure(state: hsmState, address: address, error: error)
+        }
+
+        return self.ready(state: state)
+    }
+
+
+    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, address: NodeAddress, error: Error) {
         switch state {
         case .initiated(let initiated):
-            initiated.replyTo?.tell(.failure(address))
+            initiated.replyTo?.tell(.failure(HandshakeConnectionError(address: address, message: "\(error)")))
         case .completed(let completed):
-            completed.replyTo?.tell(.failure(address))
+            completed.replyTo?.tell(.failure(HandshakeConnectionError(address: address, message: "\(error)")))
         case .wasOfferedHandshake:
             () // nothing to be done
         }
@@ -542,6 +558,8 @@ extension ClusterShellState {
         if let existingAssociation = self.association(with: remoteAddress) {
             self.log.warning("Beginning new handshake to [\(reflecting: remoteAddress)], with already existing association: \(existingAssociation). Could this be a bug?")
         }
+
+        // TODO what if already a handshake is in progress for this node? we should return the existing handshake fsm
 
         let handshakeFsm = HandshakeStateMachine.InitiatedState(settings: self.settings, localAddress: self.localAddress, connectTo: remoteAddress, replyTo: replyTo)
         let handshakeState = HandshakeStateMachine.State.initiated(handshakeFsm)
