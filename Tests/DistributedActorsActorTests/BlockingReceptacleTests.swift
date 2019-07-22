@@ -41,16 +41,17 @@ class BlockingReceptacleTests: XCTestCase {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 
         _ = try Thread {
-            receptacle.offerOnce("hello")
+            let res = receptacle.wait(atMost: .milliseconds(200))
+            res.shouldEqual("hello")
         }
 
         _ = try Thread {
             let res = receptacle.wait(atMost: .milliseconds(200))
             res.shouldEqual("hello")
         }
+
         _ = try Thread {
-            let res = receptacle.wait(atMost: .milliseconds(200))
-            res.shouldEqual("hello")
+            receptacle.offerOnce("hello")
         }
 
         let res = receptacle.wait(atMost: .milliseconds(200))
