@@ -55,9 +55,9 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
             }
         }
 
-        let refA = try remote.spawn(behavior(postFix: "A"), name: "SWIMRefA")
+        let refA = try remote.spawn(behavior(postFix: "A"), name: "SWIM-A")
         let remoteRefA = local._resolveKnownRemote(refA, onRemoteSystem: remote)
-        let refB = try remote.spawn(behavior(postFix: "B"), name: "SWIMRefB")
+        let refB = try remote.spawn(behavior(postFix: "B"), name: "SWIM-B")
         let remoteRefB = local._resolveKnownRemote(refB, onRemoteSystem: remote)
 
         let ref = try local.spawn(swimBehavior(members: [remoteRefA, remoteRefB]), name: "SWIM")
@@ -215,22 +215,26 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
 
         local.join(address: remoteUniqueAddress.address)
         try assertAssociated(local, with: remoteUniqueAddress)
+        try assertAssociated(remote, with: localUniqueAddress)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Ack.self)
-        let remoteProbeRef = remote._resolveKnownRemote(p.ref, onRemoteSystem: remote)
-        let memberProbe = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteMemberRef = remote._resolveKnownRemote(memberProbe.ref, onRemoteSystem: remote)
+        let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
+
+        let memberProbe = remoteTestKit.spawnTestProbe(name: "RemoteSWIM", expecting: SWIM.Message.self)
+        let remoteMemberRef = local._resolveKnownRemote(memberProbe.ref, onRemoteSystem: remote)
 
         let swimRef = try local.spawn(swimBehavior(members: [remoteMemberRef]), name: "SWIM")
 
         swimRef.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: remoteProbeRef, payload: .none)))
 
-        let response = try p.expectMessage()
+        let response: SWIM.Ack = try p.expectMessage()
         switch response.payload {
         case .membership(let members):
-            members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
-            members.shouldContain(SWIM.Member(ref: swimRef, status: .alive(incarnation: 0), protocolPeriod: 0))
             members.count.shouldEqual(2)
+            members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
+            // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
+            // so we want to expect a full (with address) ref here:
+            members.shouldContain(SWIM.Member(ref: remote._resolveKnownRemote(swimRef, onRemoteSystem: local), status: .alive(incarnation: 0), protocolPeriod: 0))
         case .none:
             throw p.error("Expected gossip, but got `.none`")
         }
@@ -271,8 +275,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
 
         let probe = localTestKit.spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefA")
-        let refB = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefB")
+        let refA = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIM-A")
+        let refB = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIM-B")
 
         let behavior = swimBehavior(members: [refA, refB]) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
@@ -472,7 +476,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         for member in members {
             memberStatus[member] = .alive(incarnation: 0)
         }
-        return makeSWIM(forPath: path, members: memberStatus, configuredWith: configure)
+        return self.makeSWIM(forPath: path, members: memberStatus, configuredWith: configure)
     }
 
     func makeSWIM(forPath path: UniqueActorPath, members: [ActorRef<SWIM.Message>: SWIM.Status], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {

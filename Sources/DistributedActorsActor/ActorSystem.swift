@@ -378,12 +378,13 @@ extension ActorSystem: _ActorTreeTraversable {
     }
 
 
-    // TODO: REMOVE THIS as it is a workaround for lack of Receptionist really and used in testing / demo only
+    // FIXME REMOVE THIS
+    /// Internal utility to create "known remote ref" on known target system.
+    /// Real applications should never do this, and instead rely on the `Receptionist` to discover references.
     public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
-        var path = ref.path
-        path.address = remote.settings.cluster.uniqueBindAddress
-        let context = ResolveContext<Message>(path: path, system: self)
-        return self._resolve(context: context)
+        var remotePath = ref.path
+        remotePath.address = remote.settings.cluster.uniqueBindAddress
+        return ActorRef(.remote(RemotePersonality(shell: self._cluster!, path: remotePath, system: self)))
     }
 
 }
