@@ -50,7 +50,7 @@ internal final class RemotePersonality<Message> {
     private var _cachedAssociationRemoteControl: AssociationRemoteControl?
 
     private let clusterShell: ClusterShell
-    let system: ActorSystem
+    let system: ActorSystem // TODO maybe don't need to store it and access via clusterShell?
 
     init(shell: ClusterShell, path: UniqueActorPath, system: ActorSystem) {
         assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")

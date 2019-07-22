@@ -1,0 +1,84 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+import XCTest
+@testable import Swift Distributed ActorsActor
+import SwiftDistributedActorsActorTestKit
+
+/// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
+final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: handling gossip about the receiving node
+
+    func test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully() throws {
+        // we do not really cluster up the nodes, but need their existence to drive our swim interactions
+        self.setUpBoth()
+
+        let swim = SWIM.Instance(.default)
+
+        let myself = try local.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+        swim.memberCount.shouldEqual(1)
+
+        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
+        let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
+        var remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
+
+        let res = swim.onGossipPayload(about: remoteMember)
+
+        switch res {
+        case .connect(let address, let onceConnected):
+            swim.memberCount.shouldEqual(1) // the new member should not yet be added until we can confirm we are able to connect
+
+            // we act as if we connected successfully
+            onceConnected(remote.settings.cluster.uniqueBindAddress)
+
+            swim.memberCount.shouldEqual(2) // successfully joined
+            swim.member(for: remoteShell)!.status.shouldEqual(remoteMember.status)
+
+        default:
+            throw self.localTestKit.fail("Should have requested connecting to the new node")
+        }
+    }
+
+    func test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember() throws {
+        // we do not really cluster up the nodes, but need their existence to drive our swim interactions
+        self.setUpBoth()
+
+        let swim = SWIM.Instance(.default)
+
+        let myself = try local.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        swim.addMyself(myself)
+        var myselfMember = swim.member(for: myself)!
+        swim.memberCount.shouldEqual(1)
+
+        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
+        let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
+        var remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
+
+        let res = swim.onGossipPayload(about: remoteMember)
+
+        switch res {
+        case .connect(let address, let onceConnected):
+            // and we never trigger onceConnected ... thus the member is never added
+            swim.memberCount.shouldEqual(1)
+
+        default:
+            throw self.localTestKit.fail("Should have requested connecting to the new node")
+        }
+    }
+
+}

@@ -157,7 +157,12 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try assertNotAssociated(system: local, expectAssociatedAddress: self.remoteUniqueAddress)
         try assertNotAssociated(system: remote, expectAssociatedAddress: self.localUniqueAddress)
 
-        try p.expectMessage(.failure(self.remoteUniqueAddress.address))
+        switch try p.expectMessage() {
+        case ClusterShell.HandshakeResult.failure:
+            () // ok
+        default:
+            throw p.error()
+        }
     }
 
     // TODO: once initiated, handshake seem to retry until they succeed, that seems
@@ -173,6 +178,11 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(address, replyTo: p.ref))) // TODO nicer API
 
-        try p.expectMessage(.failure(address), within: .seconds(1))
+        switch try p.expectMessage(within: .seconds(1)) {
+        case ClusterShell.HandshakeResult.failure:
+            () // ok
+        default:
+            throw p.error()
+        }
     }
 }
