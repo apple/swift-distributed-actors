@@ -18,12 +18,16 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 class ActorDeferTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("ActorDeferTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     enum ReductionReaction {

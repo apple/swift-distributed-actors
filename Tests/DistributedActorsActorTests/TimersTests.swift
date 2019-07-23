@@ -19,12 +19,16 @@ import SwiftDistributedActorsActorTestKit
 @testable import Swift Distributed ActorsActor
 
 class TimersTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("System")
-    lazy var testKit: ActorTestKit = ActorTestKit(system)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_startSingleTimer_shouldSendSingleMessage() throws {

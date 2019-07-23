@@ -19,11 +19,16 @@ import SwiftDistributedActorsActorTestKit
 
 class ActorRefAdapterTests: XCTestCase {
 
-    let system = ActorSystem("ActorRefAdapterTests")
-    lazy var testKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_adaptedRef_shouldConvertMessages() throws {

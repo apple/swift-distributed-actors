@@ -17,9 +17,13 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 final class SWIMInstanceTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("SWIMInstanceTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        system = ActorSystem(String(describing: type(of: self)))
+        testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
         system.shutdown()

@@ -454,10 +454,12 @@ extension ClusterShell {
             case .success:
                 context.log.info("Unbound server socket [\(addrDesc)].")
                 signalOnceUnbound.offerOnce(())
+                self.serializationPool.shutdown()
                 return .stopped
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)]. Error: \(err)")
                 signalOnceUnbound.offerOnce(())
+                self.serializationPool.shutdown()
                 throw err
             }
         }

@@ -22,8 +22,8 @@ import SwiftDistributedActorsActorTestKit
 
 class TraversalTests: XCTestCase {
 
-    var system: ActorSystem! = nil
-    lazy var testKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
     struct ActorReady {
         let name: String
@@ -33,7 +33,8 @@ class TraversalTests: XCTestCase {
     }
 
     override func setUp() {
-        self.system = ActorSystem("TraversalTests")
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(self.system)
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
         let probe = testKit.spawnTestProbe(expecting: ActorReady.self)
@@ -65,7 +66,7 @@ class TraversalTests: XCTestCase {
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_printTree_shouldPrintActorTree() throws {

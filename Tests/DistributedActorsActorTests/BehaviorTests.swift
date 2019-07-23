@@ -17,16 +17,22 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 import NIO
+import DistributedActorsConcurrencyHelpers
 
 class BehaviorTests: XCTestCase {
+    var system: ActorSystem!
+    var eventLoopGroup: EventLoopGroup!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("BehaviorTests")
-    let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
-        try! eventLoopGroup.syncShutdownGracefully()
+        self.system.shutdown()
+        try! self.eventLoopGroup.syncShutdownGracefully()
     }
 
     public struct TestMessage {

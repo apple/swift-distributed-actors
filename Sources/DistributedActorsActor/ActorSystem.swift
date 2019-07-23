@@ -104,10 +104,14 @@ public final class ActorSystem {
                 "Both names MUST match in order to avoid confusion.")
         }
 
-        self.settings = settings
-
         // TODO: we should not rely on NIO for futures
-        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
+        settings.cluster.eventLoopGroup = eventLoopGroup
+
+        // TODO: should we share this, or have a separate ELG for IO?
+        self.eventLoopGroup = eventLoopGroup
+
+        self.settings = settings
 
         // dead letters init
         // TODO actually attach dead letters to a parent?
@@ -193,6 +197,7 @@ public final class ActorSystem {
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
+        try! self.eventLoopGroup.syncShutdownGracefully()
         self.serialization = nil
     }
 }

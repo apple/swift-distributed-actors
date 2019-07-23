@@ -19,17 +19,22 @@ import SwiftDistributedActorsActorTestKit
 
 class DeathWatchTests: XCTestCase {
 
-    let system = ActorSystem("ActorSystemTests")
-    lazy var testKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
+
+    override func tearDown() {
+        self.system.shutdown()
+    }
 
     // MARK: Termination watcher
 
     enum TerminationWatcherMessages {
         case watch(who: ActorRef<String>, notifyOnDeath: ActorRef<String>) // TODO: abstracting over this needs type erasure?
-    }
-
-    override func tearDown() {
-        system.shutdown()
     }
 
     // MARK: stopping actors

@@ -21,19 +21,24 @@ import SwiftDistributedActorsActorTestKit
 
 class SerializationTests: XCTestCase {
 
-    let system = ActorSystem("SerializationTests") { settings in
-        settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
-        settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-        settings.serialization.registerCodable(for: InterestingMessage.self, underId: 1003)
-        settings.serialization.registerCodable(for: HasInterestingMessageRef.self, underId: 1004)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.serialization.registerCodable(for: ActorRef<String>.self, underId: 1001)
+            settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
 
-        settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
+            settings.serialization.registerCodable(for: InterestingMessage.self, underId: 1003)
+            settings.serialization.registerCodable(for: HasInterestingMessageRef.self, underId: 1004)
+
+            settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
+        }
+        self.testKit = ActorTestKit(system)
     }
-    lazy var testKit = ActorTestKit(system)
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
