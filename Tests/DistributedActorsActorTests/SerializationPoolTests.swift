@@ -69,25 +69,31 @@ class SerializationPoolTests: XCTestCase {
         init() {}
     }
 
-    let system = ActorSystem("SerializationTests") { settings in
-        settings.serialization.registerCodable(for: Test1.self, underId: 1001)
-        settings.serialization.registerCodable(for: Test2.self, underId: 1002)
-    }
-    lazy var testKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
     var actorPath1: ActorPath! = nil
     var actorPath2: ActorPath! = nil
 
-    let elg = MultiThreadedEventLoopGroup(numberOfThreads: 4)
-    lazy var el = self.elg.next()
+    var elg: MultiThreadedEventLoopGroup!
+    var el: EventLoop!
     let allocator = ByteBufferAllocator()
 
-    override func tearDown() {
-        system.shutdown()
-    }
-
     override func setUp() {
+        self.system = ActorSystem("SerializationTests") { settings in
+            settings.serialization.registerCodable(for: Test1.self, underId: 1001)
+            settings.serialization.registerCodable(for: Test2.self, underId: 1002)
+        }
+        self.testKit = ActorTestKit(system)
+        self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.el = self.elg.next()
         self.actorPath1 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("bar")])
         self.actorPath2 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("baz")])
+    }
+
+    override func tearDown() {
+        self.system.shutdown()
+        try! self.elg.syncShutdownGracefully()
     }
 
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {

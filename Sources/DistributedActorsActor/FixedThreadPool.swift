@@ -48,9 +48,16 @@ public final class FixedThreadPool {
     private var workers: [Worker] = []
 
     @usableFromInline
-    internal var stopping: Atomic<Bool> = Atomic(value: false)
+    internal let stopping: Atomic<Bool> = Atomic(value: false)
+
+    @usableFromInline
+    internal let runningWorkers: Atomic<Int>
+
+    internal let allThreadsStopped: BlockingReceptacle<Void> = BlockingReceptacle()
 
     public init(_ threadCount: Int) throws {
+        self.runningWorkers = Atomic(value: threadCount)
+
         for _ in 1...threadCount {
             let worker = Worker()
             let thread = try Thread {
@@ -69,6 +76,11 @@ public final class FixedThreadPool {
                         worker.completedTasks += 1
                     }
                 }
+
+                if self.runningWorkers.sub(1) == 1 {
+                    // the last thread that stopped notifies the thread(s) waiting for the shutdown
+                    self.allThreadsStopped.offerOnce(())
+                }
             }
             worker.thread = thread
 
@@ -84,6 +96,7 @@ public final class FixedThreadPool {
         if !self.stopping.exchange(with: true) {
             self.workers.removeAll()
             self.q.clear()
+            self.allThreadsStopped.wait()
         }
     }
 

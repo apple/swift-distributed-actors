@@ -21,14 +21,19 @@ import Dispatch
 
 class DispatcherTests: XCTestCase {
 
-    let group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    var group: EventLoopGroup!
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("DispatcherTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
-        group.shutdownGracefully(queue: DispatchQueue.global(), { error in
+        self.system.shutdown()
+        self.group.shutdownGracefully(queue: DispatchQueue.global(), { error in
             _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
         })
     }

@@ -53,12 +53,16 @@ final class TerminatedInterceptor<Message>: Interceptor<Message> {
 }
 
 class InterceptorTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("ActorSystemTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_interceptor_shouldConvertMessages() throws {

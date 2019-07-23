@@ -53,6 +53,7 @@ import XCTest
          testCase(DeathWatchTests.allTests),
          testCase(DispatcherTests.allTests),
          testCase(FailureDetectorTests.allTests),
+         testCase(FixedThreadPoolTests.allTests),
          testCase(HeapTests.allTests),
          testCase(InterceptorTests.allTests),
          testCase(MPSCLinkedQueueTests.allTests),
