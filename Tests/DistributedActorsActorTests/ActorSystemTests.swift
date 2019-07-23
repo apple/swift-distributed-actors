@@ -21,11 +21,16 @@ class ActorSystemTests: XCTestCase {
 
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
-    let system = ActorSystem("ActorSystemTests")
-    lazy var testKit: ActorTestKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {

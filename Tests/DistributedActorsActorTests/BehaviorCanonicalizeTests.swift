@@ -18,12 +18,16 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 class BehaviorCanonicalizeTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("ActorSystemTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {

@@ -19,9 +19,13 @@ import SwiftDistributedActorsActorTestKit
 
 // TODO "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: XCTestCase {
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
-    let system = ActorSystem("WorkerPoolTests")
-    lazy var testKit = ActorTestKit(system)
+    override func setUp() {
+        system = ActorSystem(String(describing: type(of: self)))
+        testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
         system.shutdown()

@@ -19,7 +19,6 @@ import Swift Distributed ActorsActor
 
 class DeadlineTests: XCTestCase {
 
-
     func test_deadline_nowIsNotPastNow() {
         let now = Deadline.now()
         let beforeDeadline = now - .seconds(100)

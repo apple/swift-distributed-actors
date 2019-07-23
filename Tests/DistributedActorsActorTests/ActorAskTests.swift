@@ -19,11 +19,16 @@ import struct Swift Distributed ActorsActor.TimeAmount
 import SwiftDistributedActorsActorTestKit
 
 final class ActorAskTests: XCTestCase {
-    let system = ActorSystem("AskSupportTestsSystem")
-    lazy var testKit: ActorTestKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
+
+    override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+    }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     struct TestMessage {

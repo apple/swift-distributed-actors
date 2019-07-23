@@ -22,12 +22,12 @@ class ReceptionistTests: XCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        system = ActorSystem("TestSystem")
-        testKit = ActorTestKit(system)
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {

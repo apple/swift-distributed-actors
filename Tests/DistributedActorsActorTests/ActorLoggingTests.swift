@@ -18,9 +18,8 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 class ActorLoggingTests: XCTestCase {
-
-    let system = ActorSystem("\(ActorLoggingTests.self)")
-    lazy var testKit: ActorTestKit = ActorTestKit(system)
+    var system: ActorSystem!
+    var testKit: ActorTestKit!
 
     var exampleSenderPath: ActorPath! = nil
     let exampleTrace = Trace(
@@ -31,16 +30,19 @@ class ActorLoggingTests: XCTestCase {
         traceFlags: 134
     )
 
-    override func tearDown() {
-        system.shutdown()
-    }
-
     override func setUp() {
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(system)
+
         self.exampleSenderPath = try! ActorPath(root: "user")
         self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("deep"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("path"))
         self.exampleSenderPath.append(segment: try! ActorPathSegment("avoid-rendering-this-if-possible"))
+    }
+
+    override func tearDown() {
+        self.system.shutdown()
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {
