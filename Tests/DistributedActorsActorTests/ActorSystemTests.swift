@@ -28,7 +28,7 @@ class ActorSystemTests: XCTestCase {
         system.shutdown()
     }
 
-    func test_spawn_shouldThrowOnDuplicateName() throws {
+    func test_system_spawn_shouldThrowOnDuplicateName() throws {
         let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
 
         let error = shouldThrow {
@@ -44,7 +44,7 @@ class ActorSystemTests: XCTestCase {
         path.shouldEqual(expected)
     }
 
-    func test_spawn_shouldNotThrowOnNameReUse() throws {
+    func test_system_spawn_shouldNotThrowOnNameReUse() throws {
         let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
         let ref: ActorRef<String> = try system.spawn(.stopped, name: "test")
@@ -52,7 +52,11 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref)
         try p.expectTerminated(ref)
 
-        let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+        // since spawning on top level is racy for the names replacements;
+        // we try a few times, and if it eventually succeeds things are correct -- it should succeed only once though
+        try testKit.eventually(within: .milliseconds(500)) {
+            let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+        }
     }
 
     func test_terminate_shouldStopAllActors() throws {
