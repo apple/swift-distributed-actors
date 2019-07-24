@@ -14,13 +14,15 @@
 
 import struct NIO.ByteBuffer
 
-// TODO: rename file? move the proto stuff here as well
+internal protocol WireMessage {}
 
 /// The wire protocol data types are namespaced using this enum.
 ///
 /// When written onto they wire they are serialized to their transport specific formats (e.g. using protobuf or hand-rolled serializers).
 /// These models are intentionally detached from their serialized forms.
-enum Wire {
+internal enum Wire {
+
+    typealias Message = WireMessage
 
     /// The wire protocol version is the Swift Distributed ActorsActor version (at least now)
     public typealias Version = Swift Distributed ActorsActor.Version
@@ -38,14 +40,14 @@ enum Wire {
     }
 
     // TODO: such messages should go over a priority lane
-    internal struct HandshakeOffer {
+    internal struct HandshakeOffer: WireMessage {
         internal var version: Version
 
         internal var from: UniqueNodeAddress
         internal var to: NodeAddress
     }
 
-    internal enum HandshakeResponse {
+    internal enum HandshakeResponse: WireMessage {
         case accept(HandshakeAccept)
         case reject(HandshakeReject)
 
@@ -58,7 +60,7 @@ enum Wire {
         }
     }
 
-    internal struct HandshakeAccept {
+    internal struct HandshakeAccept: WireMessage {
         internal let version: Version
         // TODO: Maybe offeringToSpeakAtVersion or something like that?
 
@@ -77,7 +79,7 @@ enum Wire {
     }
 
     /// Negative. We can not establish an association with this node.
-    internal struct HandshakeReject { // TODO: Naming bikeshed
+    internal struct HandshakeReject: WireMessage {
         internal let version: Version
         internal let reason: String
 

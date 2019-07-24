@@ -21,9 +21,6 @@ import NIO
 public let DistributedActorsProtocolVersion: Swift Distributed ActorsActor.Version = Version(reserved: 0, major: 0, minor: 0, patch: 1)
 
 
-// FIXME: !!!! all the Wire.Version and Wire.Handshake... do not really talk about wire; just Protocol so we should move them somehow -- ktoso
-//        This is also important to keep the machine clean of any "network stuff", and just have "protocol stuff"
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Constants for Cluster
 
@@ -40,11 +37,8 @@ internal struct HandshakeStateMachine {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Directives
 
-     enum StateWithDirective {
-     }
-
     /// Directives are what instructs the state machine driver about what should be performed next.
-    internal enum Directive {
+    internal enum NegotiateDirective {
         /// The handshake has completed successfully, and shall be "upgraded" to an association.
         /// The handshake has fulfilled its purpose and may be dropped.
         case acceptAndAssociate(CompletedState)
@@ -77,17 +71,25 @@ internal struct HandshakeStateMachine {
 
         let remoteAddress: NodeAddress
         let localAddress: UniqueNodeAddress
-        let replyTo: ActorRef<ClusterShell.HandshakeResult>?
+        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
+
+        /// Channel which was established when we initiated the handshake (outgoing connection),
+        /// which may want to be closed when we `abortHandshake` and want to kill the related outgoing connection as we do so.
+        ///
+        /// This is ALWAYS set once the initial clientBootstrap has completed.
+        var channel: Channel?
 
         // TODO counter for how many times to retry associating (timeouts)
 
-        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
+        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress,
+             whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
+             ) {
             precondition(localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy
             self.localAddress = localAddress
             self.remoteAddress = remoteAddress
-            self.replyTo = replyTo
+            self.whenCompleted = whenCompleted
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
@@ -103,6 +105,10 @@ internal struct HandshakeStateMachine {
             }
         }
 
+        mutating func onChannelConnected(channel: Channel) {
+            self.channel = channel
+        }
+
         mutating func onHandshakeError(_ error: Error) -> HandshakeStateMachine.RetryDirective {
             switch self.backoff.next() {
             case .some(let amount):
@@ -110,6 +116,20 @@ internal struct HandshakeStateMachine {
             case .none:
                 return .giveUpOnHandshake
             }
+        }
+    }
+
+//    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Handshake In-Flight, and should attach to existing negotiation
+
+    internal struct InFlightState {
+        private let state: ReadOnlyClusterState
+
+        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>
+
+        init(state: ReadOnlyClusterState, whenCompleted: EventLoopPromise<Wire.HandshakeResponse>) {
+            self.state = state
+            self.whenCompleted = whenCompleted
         }
     }
 
@@ -128,37 +148,51 @@ internal struct HandshakeStateMachine {
             return state.settings.protocolVersion
         }
 
-        // do not call directly, rather obtain the completed state via negotiate()
-        func _makeCompletedState() -> CompletedState {
-            return CompletedState(fromReceived: self, remoteAddress: offer.from)
-        }
+        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
 
-        init(state: ReadOnlyClusterState, offer: Wire.HandshakeOffer) {
+        init(state: ReadOnlyClusterState, offer: Wire.HandshakeOffer, whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?) {
             self.state = state
             self.offer = offer
+            self.whenCompleted = whenCompleted
         }
 
-        func negotiate() -> HandshakeStateMachine.Directive {
+        // do not call directly, rather obtain the completed state via negotiate()
+        func _acceptAndMakeCompletedState() -> CompletedState {
+            let completed = CompletedState(fromReceived: self, remoteAddress: offer.from)
+            self.whenCompleted?.succeed(.accept(completed.makeAccept()))
+            return completed
+        }
+
+        func negotiate() -> HandshakeStateMachine.NegotiateDirective {
             guard self.boundAddress.address == self.offer.to else {
                 let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfAddress: self.boundAddress)
-                return .rejectHandshake(RejectedState(fromReceived: self, remoteAddress: self.offer.from, error: error))
+
+                let rejectedState = RejectedState(fromReceived: self, remoteAddress: self.offer.from, error: error)
+                self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
+                return .rejectHandshake(rejectedState)
             }
 
             // negotiate version
-            if let rejectionBecauseOfVersion = self.negotiateVersion(local: self.protocolVersion, remote: self.offer.version) {
-                return rejectionBecauseOfVersion
+            if let negotiatedVersion = self.negotiateVersion(local: self.protocolVersion, remote: self.offer.version) {
+                switch negotiatedVersion {
+                case .rejectHandshake(let rejectedState):
+                    self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
+                    return negotiatedVersion
+                case.acceptAndAssociate:
+                    fatalError("Should not happen, only rejections or nothing should be yielded from negotiateVersion") // TODO more typesafety would be nice
+                }
             }
 
             // negotiate capabilities
             // self.negotiateCapabilities(...) // TODO: We may want to negotiate other options
 
-            return .acceptAndAssociate(self._makeCompletedState())
+            return .acceptAndAssociate(self._acceptAndMakeCompletedState())
         }
 
         // TODO determine the actual logic we'd want here, for now we accept anything except major changes; use semver?
         /// - Returns `rejectHandshake` or `nil`
-        func negotiateVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version) -> HandshakeStateMachine.Directive? {
-            let accept: HandshakeStateMachine.Directive? = nil
+        func negotiateVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version) -> HandshakeStateMachine.NegotiateDirective? {
+            let accept: HandshakeStateMachine.NegotiateDirective? = nil
 
             guard local.major == remote.major else {
                 let error = HandshakeError.incompatibleProtocolVersion(
@@ -180,7 +214,7 @@ internal struct HandshakeStateMachine {
         let protocolVersion: Version
         var remoteAddress: UniqueNodeAddress
         var localAddress: UniqueNodeAddress
-        let replyTo: ActorRef<ClusterShell.HandshakeResult>?
+        let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
         // let unique association ID?
 
         // State Transition used by Client Side of initial Handshake.
@@ -192,7 +226,7 @@ internal struct HandshakeStateMachine {
             self.protocolVersion = state.protocolVersion
             self.remoteAddress = remoteAddress
             self.localAddress = state.localAddress
-            self.replyTo = state.replyTo
+            self.whenCompleted = state.whenCompleted
         }
 
         // State Transition used by Server Side on accepting a received Handshake.
@@ -201,7 +235,7 @@ internal struct HandshakeStateMachine {
             self.protocolVersion = state.protocolVersion
             self.remoteAddress = remoteAddress
             self.localAddress = state.boundAddress
-            self.replyTo = nil
+            self.whenCompleted = state.whenCompleted
         }
 
         func makeAccept() -> Wire.HandshakeAccept {
@@ -229,8 +263,13 @@ internal struct HandshakeStateMachine {
 
     internal enum State {
         case initiated(InitiatedState)
+        /// A handshake is already in-flight and was initiated by someone else previously.
+        /// rather than creating another handshake dance, we will be notified along with the already initiated
+        /// by someone else handshake completes.
+        case inFlight(InFlightState)
         case wasOfferedHandshake(HandshakeReceivedState)
         case completed(CompletedState)
+
     }
 
 }
@@ -247,7 +286,7 @@ enum HandshakeError: Error {
 
     /// Attempted accepting handshake which was not in progress.
     /// Could mean that the sending side sent the accept twice?
-    case acceptAttemptForNotInProgressHandshake(Wire.HandshakeAccept)
+    case acceptAttemptForNotInProgressHandshake(HandshakeStateMachine.CompletedState)
 
     /// The node at which the handshake arrived does not recognize the "to" address of the handshake.
     /// This may be a configuration issue (due to bind address and NAT mixups), or a routing issue

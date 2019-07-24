@@ -261,7 +261,7 @@ internal struct SWIMMembershipShell {
     func handleJoin(_ context: ActorContext<SWIM.Message>, address: NodeAddress) {
         self.ensureConnected(context, remoteAddress: address) { uniqueAddress in
             guard let remoteUniqueAddress = uniqueAddress else {
-                fatalError("")
+                fatalError("") // FIXME fix this
             }
 
             assert(remoteUniqueAddress.address == address, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
@@ -369,29 +369,6 @@ internal struct SWIMMembershipShell {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal "trace-logging" for debugging purposes
 
-internal enum TraceLogType: CustomStringConvertible {
-    case reply(to: ActorRef<SWIM.Ack>)
-    case receive(pinged: ActorRef<SWIM.Message>?)
-    case ask(ActorRef<SWIM.Message>)
-
-    static var receive: TraceLogType {
-        return .receive(pinged: nil)
-    }
-
-    var description: String {
-        switch self {
-        case .receive(nil):
-            return "RECV"
-        case .receive(let .some(pinged)):
-            return "RECV(pinged:\(pinged.path))"
-        case .reply(let to):
-            return "REPL(to:\(to.path))"
-        case .ask(let who):
-            return "ASK(\(who.path))"
-        }
-    }
-}
-
 extension SWIMMembershipShell {
     /// Optional "dump all messages" logging.
     /// Enabled by `SWIM.Settings.traceLogLevel`
@@ -406,4 +383,28 @@ extension SWIMMembershipShell {
             )
         }
     }
+
+    internal enum TraceLogType: CustomStringConvertible {
+        case reply(to: ActorRef<SWIM.Ack>)
+        case receive(pinged: ActorRef<SWIM.Message>?)
+        case ask(ActorRef<SWIM.Message>)
+
+        static var receive: TraceLogType {
+            return .receive(pinged: nil)
+        }
+
+        var description: String {
+            switch self {
+            case .receive(nil):
+                return "RECV"
+            case .receive(let .some(pinged)):
+                return "RECV(pinged:\(pinged.path))"
+            case .reply(let to):
+                return "REPL(to:\(to.path))"
+            case .ask(let who):
+                return "ASK(\(who.path))"
+            }
+        }
+    }
+
 }

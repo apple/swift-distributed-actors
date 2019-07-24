@@ -14,6 +14,7 @@
 
 import NIO
 import NIOSSL
+import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor System Cluster Settings
@@ -102,6 +103,14 @@ public struct ClusterSettings {
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
+
+    /// When enabled traces _all_ incoming and outgoing cluster (e.g. handshake) protocol communication (remote messages).
+    /// All logs will be prefixed using `[tracelog:cluster]`, for easier grepping.
+    #if SACT_TRACE_CLUSTER
+    var traceLogLevel: Logger.Level? = .warning
+    #else
+    var traceLogLevel: Logger.Level? = nil
+    #endif
 
     public init(bindAddress: NodeAddress, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
         self.bindAddress = bindAddress
