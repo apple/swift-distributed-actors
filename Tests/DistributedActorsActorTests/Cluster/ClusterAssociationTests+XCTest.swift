@@ -29,6 +29,8 @@ extension ClusterAssociationTests {
                 ("test_handshake_shouldNotifySuccessWhenAlreadyConnected", test_handshake_shouldNotifySuccessWhenAlreadyConnected),
                 ("test_association_sameAddressNodeJoin_shouldOverrideExistingNode", test_association_sameAddressNodeJoin_shouldOverrideExistingNode),
                 ("test_association_shouldAllowSendingToRemoteReference", test_association_shouldAllowSendingToRemoteReference),
+                ("test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing", test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing),
+                ("test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing", test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing),
                 ("test_association_shouldKeepTryingUntilOtherNodeBindsPort", test_association_shouldKeepTryingUntilOtherNodeBindsPort),
                 ("test_association_shouldNotAssociateWhenRejected", test_association_shouldNotAssociateWhenRejected),
                 ("test_handshake_shouldNotifyOnRejection", test_handshake_shouldNotifyOnRejection),

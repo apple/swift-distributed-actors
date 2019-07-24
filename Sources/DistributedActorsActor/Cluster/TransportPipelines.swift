@@ -361,6 +361,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
@@ -369,8 +370,6 @@ extension ClusterShell {
 
     internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
-
-        // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
 
         let bootstrap = ServerBootstrap(group: group)
             // Specify backlog and enable SO_REUSEADDR for the server itself

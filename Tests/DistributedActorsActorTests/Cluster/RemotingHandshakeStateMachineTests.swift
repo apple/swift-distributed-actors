@@ -23,7 +23,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
 
     typealias HSM = HandshakeStateMachine
 
-    let systemName = "RemotingHandshakeTests"
+    let systemName = "RemoteHandshakeStateMachineTests"
 
     // usual reminder that Swift Distributed Actors is not inherently "client/server" once associated, only the handshake is
     enum HandshakeSide: String {
@@ -58,12 +58,12 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, whenCompleted: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
-        _ = received._makeCompletedState() // TODO hide this
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
+        _ = received._acceptAndMakeCompletedState() // TODO hide this
 
         let serverCompleted: HSM.CompletedState
         switch received.negotiate() {
@@ -98,11 +98,11 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.patch += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, whenCompleted: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
 
         // then
 
@@ -123,11 +123,11 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
             settings._protocolVersion.major += 1
         }
 
-        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
+        let clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, whenCompleted: nil)
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer)
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
 
         // then
 
@@ -155,7 +155,7 @@ class RemoteHandshakeStateMachineTests: XCTestCase {
         }
 
         // client
-        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, replyTo: nil)
+        var clientInitiated = HSM.InitiatedState(settings: clientKernel.settings, localAddress: clientKernel.localAddress, connectTo: serverAddress.address, whenCompleted: nil)
 
         guard case .scheduleRetryHandshake = clientInitiated.onHandshakeTimeout() else {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")

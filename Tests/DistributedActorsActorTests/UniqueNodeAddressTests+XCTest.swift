@@ -25,6 +25,8 @@ extension UniqueNodeAddressTests {
    static var allTests : [(String, (UniqueNodeAddressTests) -> () throws -> Void)] {
       return [
                 ("test_uniqueNodeAddress_shouldRenderProperly", test_uniqueNodeAddress_shouldRenderProperly),
+                ("test_uniqueNodeAddress_comparison_equal", test_uniqueNodeAddress_comparison_equal),
+                ("test_uniqueNodeAddress_comparison_lessThan", test_uniqueNodeAddress_comparison_lessThan),
            ]
    }
 }

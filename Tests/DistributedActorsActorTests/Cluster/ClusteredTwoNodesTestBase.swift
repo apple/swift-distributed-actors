@@ -114,15 +114,15 @@ extension ClusteredTwoNodesTestBase {
     /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains the `address`.
     func assertAssociated(_ system: ActorSystem, with address: UniqueNodeAddress,
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                          verbose: Bool = false) throws {
-        try self.assertAssociated(system, withExactly: [address], timeout: timeout, interval: interval, verbose: verbose)
+                          verbose: Bool = false, file: StaticString = #file, line: UInt = #line) throws {
+        try self.assertAssociated(system, withExactly: [address], timeout: timeout, interval: interval, verbose: verbose, file: file, line: line)
     }
 
     /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains exactly the passed in `addresses`.
     /// No "extra" addresses may be part of the
     func assertAssociated(_ system: ActorSystem, withExactly addresses: [UniqueNodeAddress],
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                          verbose: Bool = false) throws {
+                          verbose: Bool = false, file: StaticString = #file, line: UInt = #line) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
         let testKit: ActorTestKit
@@ -139,7 +139,7 @@ extension ClusteredTwoNodesTestBase {
 
         try testKit.eventually(within: timeout ?? .seconds(1)) {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
-            let associatedNodes = try probe.expectMessage() // TODO use interval here
+            let associatedNodes = try probe.expectMessage(file: file, line: line)
 
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
