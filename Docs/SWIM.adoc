@@ -1,15 +1,15 @@
 
 == SWIM Membership Protocol
 
-Swift Distributed Actors uses the https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM Membership Protocol] to determine which processes
-are participating in the cluster communication and to reliably detect communication issues in a scalable manner.
+Swift Distributed Actors implements a variant of the https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM Membership Protocol]
+with https://arxiv.org/abs/1707.00788[Lifeguard extensions] for its low-level membership and failure detection.
 
 === Membership
 
 SWIM provides a weakly consistent view on the process group membership. Membership in this context
 means that we have some knowledge about the node, that was acquired by either communicating with
 the node directly, for example when initially connecting to the cluster, or because some other
-node shared information with us. A node can be either `alive`, `suspect`, or `dead`.
+node shared information about it with us. A node can be either `alive`, `suspect`, or `dead`.
 To avoid moving a node back into `alive` or `suspect` state because of older statuses that
 get replicated, we need to be able put them into temporal order. For this reason each node
 has an incarnation number assigned to it. This number is monotonically increasing and can only
@@ -27,9 +27,9 @@ the cluster and is usually in the order of a few days.
 
 === Failure detection
 
-Each node will periodically try to ping a random peerfootnote:swim_divergence[Our implementation diverges from the SWIM paper, <<random_ping_divergence_note,see note>>]
-to determine whether that node is still reachable. If the pinged node is alive and well, it will
-respond with an acknowledgement message and everything stays the same. If the pinged node does not
+Each node will periodically try to ping a random peerfootnote to determine whether that node
+is still reachable. If the pinged node is alive and well, it will respond with an
+acknowledgement message and everything stays the same. If the pinged node does not
 respond within the configured timeout, the initiating node will request a configured
 number of other nodes to try and ping that node, to see if it is simply a point-to-point
 communication issue, or if the node is actually unreachable. If any of the requested nodes
@@ -37,6 +37,8 @@ is able to reach the pinged node, it will forward the acknowledgement to the req
 node and the node will remain in the alive status. If none of the nodes can reach the pinged node,
 the initiating node will mark the pinged node as `suspect`. The diagram below visualizes
 this process.
+
+##TODO: Make requested nodes reply with NAck as proposed in Lifeguard ##
 
 image::SWIM/ping_pingreq_cycle.png[SWIM Ping Cycle]
 
@@ -50,24 +52,19 @@ be reached before the maximum number of protocol periods are reached, it will be
 to inform the node about a possible suspicion, so that it can react and increment its incarnation
 number if necessary.
 
-[[random_ping_divergence_note]]
-[NOTE]
-====
-Our implementation diverges in the random selection of the node to ping in that it creates a
-random view of all members and iterates through that list instead of chosing a fully random
-node each time. This gives us the guarantee that each node is pinged once within **N** protocol
-periods. New nodes will be added to the list at a random location to keep the randomness across
-different nodes and not end up with newly added nodes being pinged by all nodes at the same time.
-These changes have been proposed as part of the https://arxiv.org/pdf/1707.00788.pdf[Lifeguard Extensions]
-to SWIM.
-====
-
 === Gossip
 
-SWIM uses an infection style gossip mechanism to replicate state across the cluster. The gossip
-will be piggybacked onto the regular messages, i.e. whenever a node is sending a ping, a ping
-request, or is responding with an acknowledgement, it will include the latest gossip with that
-message as well. When a node receives gossip, it has to apply the statuses to its local state
-according to the <<status_ordering,ordering stated above>>. If a node receives gossip about itself,
-it has to react accordingly. If it is suspected by another node in its current incarnation, it has
-to increment its incarnation in response. If it has been marked as dead, it has to shut itself down.
+SWIM uses an infection style gossip mechanism to replicate state across the cluster.
+The gossip payload contains information about other node's observed status, and will be
+disseminated throughout the cluster by piggybacking onto periodic health check messages,
+i.e. whenever a node is sending a ping, a ping request, or is responding with an
+acknowledgement, it will include the latest gossip with that message as well. When a
+node receives gossip, it has to apply the statuses to its local state according to the
+<<status_ordering,ordering stated above>>. If a node receives gossip about itself, it
+has to react accordingly. If it is suspected by another node in its current incarnation,
+it has to increment its incarnation in response. If it has been marked as dead, it has
+to shut itself down.
+
+=== Optimizations
+
+##TODO: Document the optimizations we use and why##
