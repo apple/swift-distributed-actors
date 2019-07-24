@@ -239,7 +239,7 @@ class SupervisionTests: XCTestCase {
             // we currently work around this by waiting slightly less.
 
             pinfo("expect no restart for \(expectedBackoff)")
-            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(10)
+            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(50)
             try p.expectNoMessage(for: expectedSlightlyShortedToAvoidRaces)
 
             // it should finally restart though
@@ -299,7 +299,7 @@ class SupervisionTests: XCTestCase {
             // we currently work around this by waiting slightly less.
 
             pinfo("expect no restart for \(expectedBackoff)")
-            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(10)
+            let expectedSlightlyShortedToAvoidRaces = expectedBackoff - .milliseconds(50)
             try p.expectNoMessage(for: expectedSlightlyShortedToAvoidRaces)
 
             // it should finally restart though
