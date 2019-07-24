@@ -415,6 +415,14 @@ extension NodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
     }
 }
 
+extension NodeAddress: Comparable {
+    // Silly but good enough comparison for deciding "who is lower address"
+    // as we only use those for "tie-breakers" any ordering is fine to be honest here.
+    public static func < (lhs: NodeAddress, rhs: NodeAddress) -> Bool {
+        return "\(lhs)" < "\(rhs)"
+    }
+}
+
 public struct UniqueNodeAddress: Hashable {
     let address: NodeAddress
     let uid: NodeUID // TODO ponder exact value here here
@@ -442,6 +450,17 @@ extension UniqueNodeAddress: CustomStringConvertible, CustomDebugStringConvertib
         return "\(a.protocol)://\(a.systemName):\(self.uid)@\(a.host):\(a.port)" 
     }
 }
+extension UniqueNodeAddress: Comparable {
+    // Silly but good enough comparison for deciding "who is lower address"
+    // as we only use those for "tie-breakers" any ordering is fine to be honest here.
+    public static func < (lhs: UniqueNodeAddress, rhs: UniqueNodeAddress) -> Bool {
+        if lhs.address == rhs.address {
+            return lhs.uid < rhs.uid
+        } else {
+            return lhs.address < rhs.address
+        }
+    }
+}
 
 public struct NodeUID: Hashable {
     let value: UInt32 // TODO redesign / reconsider exact size
@@ -450,7 +469,11 @@ public struct NodeUID: Hashable {
         self.value = value
     }
 }
-
+extension NodeUID: Comparable {
+    public static func <(lhs: NodeUID, rhs: NodeUID) -> Bool {
+        return lhs.value < rhs.value
+    }
+}
 extension NodeUID: CustomStringConvertible {
     public var description: String {
         return "\(value)"
@@ -460,9 +483,6 @@ public extension NodeUID {
     static func random() -> NodeUID {
         return NodeUID(UInt32.random(in: 1 ... .max))
     }
-}
-
-extension NodeUID: Equatable {
 }
 
 // MARK: Path errors

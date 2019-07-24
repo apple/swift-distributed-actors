@@ -398,20 +398,13 @@ extension SWIM.Instance {
         /// and do not have a connection to it either (e.g. we joined only seed nodes, and more nodes joined them later
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
+        // TODO: OR! actually we add them right away, and if they don't reply to our probing we'd declare them down...? A bit weird hm...
         case connect(address: NodeAddress, onceConnected: (UniqueNodeAddress) -> ())
         case selfDeterminedDead
     }
 }
 
-extension SWIM.Instance: CustomStringConvertible, CustomDebugStringConvertible {
-    public var description: String {
-        return """
-               SWIMInstance(settings: \(settings),\
-                _incarnation: \(_incarnation), _protocolPeriod: \(_protocolPeriod)\
-               members: \(members), membersToPing: \(membersToPing), myLocalPath: \(myLocalPath), myRemotePath: \(myRemotePath), myShellMyself: \(myShellMyself), _messagesToGossip: \(_messagesToGossip)\
-               )
-               """
-    }
+extension SWIM.Instance: CustomDebugStringConvertible {
     public var debugDescription: String {
         // multi-line on purpose
         return """

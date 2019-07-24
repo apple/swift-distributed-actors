@@ -222,7 +222,7 @@ internal final class Mailbox<Message> {
 
 
                 // TODO improve logging, should include what decision was taken; same for THROWN
-                shell.log.warning("Supervision: Actor has FAULTED while interpreting \(runPhase), handling with \(shell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
+                shell.log.warning("Supervision: Actor has FAULTED while \("\(runPhase)".split(separator: ".").dropFirst().first!), handling with \(shell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
 
                 let supervisionDirective: SupervisionDirective<Message>
                 switch runPhase {

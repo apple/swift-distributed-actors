@@ -120,7 +120,7 @@ extension Membership {
             // TODO define semantics of "new node joins 'over' existing node" (should cause a removal of old one and termination signals I think)
             if member.address == address {
                 // technically we could ignore this... but to be honest, this is VERY WEIRD, so we should make sure it never happens (i.e. even if resends etc, should be filtered out)
-                return fatalErrorBacktrace("WEIRD; same unique address joining again: \(member)")
+                return fatalErrorBacktrace("WEIRD; same unique address joining again: \(member), members: [\(self)]")
             } else {
                 self.members[address.address] = newMember
                 return .init(previousAddress: member.address, address: address, fromStatus: member.status, toStatus: newMember.status)

@@ -217,7 +217,7 @@ public extension ActorTestKit {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
-        return MockActorContext()
+        return MockActorContext(self.system)
     }
 
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
@@ -240,6 +240,15 @@ struct MockActorContextError: Error, CustomStringConvertible {
 }
 
 final class MockActorContext<Message>: ActorContext<Message> {
+    private let _system: ActorSystem
+
+    init(_ system: ActorSystem) {
+        self._system = system
+    }
+
+    override var system: ActorSystem {
+        return self._system
+    }
     override var path: UniqueActorPath {
         return super.path
     }
@@ -247,7 +256,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
         return "MockActorContext<\(Message.self)>"
     }
     override var myself: ActorRef<Message> {
-        fatalError("Failed: \(MockActorContextError())")
+        return system.deadLetters.adapted()
     }
     private lazy var _log: Logger = Logger(label: "\(type(of: self))")
     override var log: Logger {

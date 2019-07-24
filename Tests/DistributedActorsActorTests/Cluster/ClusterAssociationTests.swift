@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
+import NIO
 import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
@@ -115,6 +115,44 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         resolvedRef.tell("HELLO")
 
         try probeOnRemote.expectMessage("forwarded:HELLO")
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Concurrently initiated handshakes to same node should both get completed
+
+    func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
+        self.setUpBoth()
+
+        let p7337 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p8228 = remoteTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        // here we attempt to make a race where the nodes race to join each other
+        // again, only one association should be created.
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p7337.ref)))
+        remote.clusterShell.tell(.command(.handshakeWith(localUniqueAddress.address, replyTo: p8228.ref)))
+
+        let handshakeResult1 = try p7337.expectMessage()
+        let handshakeResult2 = try p8228.expectMessage()
+
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
+    }
+
+    func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing() throws {
+        self.setUpBoth()
+
+        let p7337 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p8228 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+
+        // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p7337.ref)))
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p8228.ref)))
+
+        let handshakeResult1 = try p7337.expectMessage()
+        let handshakeResult2 = try p8228.expectMessage()
+
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
