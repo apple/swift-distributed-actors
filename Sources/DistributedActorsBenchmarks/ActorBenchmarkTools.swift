@@ -26,19 +26,19 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
         super.init(parent: parent, name: name, system: system)
     }
 
-    override func trySendUserMessage(_ message: Any) {
+    override func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
         self.receptacle.offerOnce(message as! Message)
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     }
 
-    override func sendSystemMessage(_ message: SystemMessage) {
+    override func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         // ignore
     }
 
-    override var path: UniqueActorPath {
-        var fakePath: ActorPath = ._rootPath
+    override var address: ActorAddress {
+        var fakePath: ActorPath = ._root
         try! fakePath.append(segment: .init("benchmarkLatch"))
-        return UniqueActorPath(path: fakePath, uid: .wellKnown)
+        return ActorAddress(path: fakePath, incarnation: .perpetual)
     }
 
     func blockUntilMessageReceived() -> Message {

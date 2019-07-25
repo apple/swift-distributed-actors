@@ -210,12 +210,12 @@ extension SWIM.Member: Codable {
 
     public init(from decoder: Decoder) throws {
         guard let context = decoder.actorSerializationContext else {
-            throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While decoding [\(SWIM.Member.self)], using [\(decoder)]")
+            throw ActorCoding.CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While decoding [\(SWIM.Member.self)], using [\(decoder)]")
         }
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        let path = try container.decode(UniqueActorPath.self, forKey: .ref)
-        self.ref = context.resolveActorRef(path: path)
+        let path = try container.decode(ActorAddress.self, forKey: .ref)
+        self.ref = context.resolveActorRef(identifiedBy: path)
 
         self.status = try container.decode(SWIM.Status.self, forKey: .status)
 
@@ -224,7 +224,7 @@ extension SWIM.Member: Codable {
 
     public func encode(to encoder: Encoder) throws {
         guard encoder.actorSerializationContext != nil else {
-            throw CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While encoding [\(self)], using [\(encoder)]")
+            throw ActorCoding.CodingError.missingActorSerializationContext(SWIM.Member.self, details: "While encoding [\(self)], using [\(encoder)]")
         }
 
         var container = encoder.container(keyedBy: CodingKeys.self)

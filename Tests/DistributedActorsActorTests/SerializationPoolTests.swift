@@ -121,9 +121,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(message: test2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recipientPath: actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -151,8 +151,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectNoMessage(for: .milliseconds(20))
@@ -186,8 +186,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectMessage("p2")
@@ -227,9 +227,9 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recepientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.deserialize(Test2.self, from: buffer2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -262,8 +262,8 @@ class SerializationPoolTests: XCTestCase {
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recepientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recepientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath1, promise: promise2)
 
         Test2.deserializerLock.unlock()
 
@@ -302,8 +302,8 @@ class SerializationPoolTests: XCTestCase {
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(Test1.self, from: buffer1, recepientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recepientPath: actorPath2, promise: promise2)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath2, promise: promise2)
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -337,8 +337,8 @@ class SerializationPoolTests: XCTestCase {
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
-        serializationPool.serialize(message: test1, recepientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test1.self, from: buffer, recepientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(Test1.self, from: buffer, recipientPath: actorPath1, promise: promise2)
 
         try p.expectNoMessage(for: .milliseconds(20))
 

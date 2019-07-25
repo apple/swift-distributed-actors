@@ -50,8 +50,8 @@ public enum Receptionist {
             }
         }
 
-        internal func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef {
-            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(path: path, system: system))
+        internal func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
+            let ref: ActorRef<Message> = system._resolve(context: ResolveContext(address: address, system: system))
             return ref.asAddressable()
         }
 
@@ -130,7 +130,7 @@ public enum Receptionist {
     public struct Listing<Message>: Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
-            return "Listing<\(Message.self)>(\(refs.map { $0.path }))"
+            return "Listing<\(Message.self)>(\(refs.map { $0.address }))"
         }
     }
 
@@ -278,7 +278,7 @@ internal enum LocalReceptionist {
         let behavior: Behavior<Never> = .setup { context in
             context.watch(ref)
             return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
-                if terminated.path == ref.path {
+                if terminated.address == ref.address {
                     terminatedCallback()
                     return .stopped
                 }
@@ -342,7 +342,7 @@ internal protocol _RegistrationKey {
     var typeString: FullyQualifiedTypeName { get }
     // `resolve` has to be here, because the key is the only thing that knows which
     // type is requested. See implementation in `RegistrationKey`
-    func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef
 }
 
 internal enum ReceptionistError: Error {
@@ -362,7 +362,7 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
         self.typeString = key.typeString
     }
 
-    func resolve(system: ActorSystem, path: UniqueActorPath) -> AddressableActorRef {
+    func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
         return system.deadLetters.asAddressable()
@@ -376,11 +376,11 @@ internal protocol _Subscribe: ReceptionistMessage {
 }
 
 internal struct AnySubscribe: Hashable {
-    let path: UniqueActorPath
+    let address: ActorAddress
     let _replyWith: (Set<AddressableActorRef>) -> Void
 
     init<M>(subscribe: Receptionist.Subscribe<M>) {
-        self.path = subscribe.replyTo.path
+        self.address = subscribe.replyTo.address
         self._replyWith = subscribe.replyWith
     }
 
@@ -389,11 +389,11 @@ internal struct AnySubscribe: Hashable {
     }
 
     static func == (lhs: AnySubscribe, rhs: AnySubscribe) -> Bool {
-        return lhs.path == rhs.path
+        return lhs.address == rhs.address
     }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(self.path)
+        hasher.combine(self.address)
     }
 }
 

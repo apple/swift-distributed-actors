@@ -110,7 +110,7 @@ internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: St
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
-internal func traceLog_Mailbox(_ path: UniqueActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
+internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
     pprint("SACT_TRACE_MAILBOX(\(path.map({ "\($0)" }) ?? "<unknown>")): \(message())", file: file, line: line)
     #endif

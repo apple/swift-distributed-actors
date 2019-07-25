@@ -40,7 +40,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try assertAssociated(local, with: self.remoteUniqueAddress)
         try assertAssociated(remote, with: self.localUniqueAddress)
 
-        try p.expectMessage(.success(self.remoteUniqueAddress))
+        try p.expectMessage(.success(self.remoteUniqueAddress), within: .seconds(3))
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
@@ -104,11 +104,9 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNodeAddress = remote.settings.cluster.uniqueBindAddress
-        var uniqueRemotePath: UniqueActorPath = refOnRemoteSystem.path
-        uniqueRemotePath.address = remoteNodeAddress // since refOnRemoteSystem is "local" there, it has no address; thus we set it
+        let uniqueRemoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindAddress, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
         // to then obtain a remote ref ON the `system`, meaning that the address within remotePath is a remote one
-        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, system: self.local)
+        let resolveContext = ResolveContext<String>(address: uniqueRemoteAddress, system: self.local)
         let resolvedRef = local._resolve(context: resolveContext)
         // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
         // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.

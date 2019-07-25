@@ -173,7 +173,7 @@ extension Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.path.name == "Juliet" {
+    ///     if terminated.address.name == "Juliet" {
     ///         return .stopped // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -201,7 +201,7 @@ extension Behavior {
     ///     guard let terminated = signal as? Signals.Terminated else {
     ///         return .unhandled
     ///     }
-    ///     if terminated.path.name == "Juliet" {
+    ///     if terminated.address.name == "Juliet" {
     ///         return .stopped // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -223,7 +223,7 @@ extension Behavior {
     /// #### Example usage
     /// ```
     /// let withSignalHandling = behavior.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.path.name == "Juliet" {
+    ///     if terminated.address.name == "Juliet" {
     ///         return .stopped // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
@@ -250,7 +250,7 @@ extension Behavior {
     /// #### Example usage
     /// ```
     /// return .receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
-    ///     if terminated.path.name == "Juliet" {
+    ///     if terminated.address.name == "Juliet" {
     ///         return .stopped // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore

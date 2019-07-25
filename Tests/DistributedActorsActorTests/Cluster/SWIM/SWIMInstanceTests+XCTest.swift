@@ -25,7 +25,6 @@ extension SWIMInstanceTests {
    static var allTests : [(String, (SWIMInstanceTests) -> () throws -> Void)] {
       return [
                 ("test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod", test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod),
-                ("test_notMyself_shouldDetectDirectLocalRef", test_notMyself_shouldDetectDirectLocalRef),
                 ("test_notMyself_shouldDetectRemoteVersionOfSelf", test_notMyself_shouldDetectRemoteVersionOfSelf),
                 ("test_notMyself_shouldDetectRandomNotMyselfActor", test_notMyself_shouldDetectRandomNotMyselfActor),
                 ("test_mark_shouldNotApplyEqualStatus", test_mark_shouldNotApplyEqualStatus),

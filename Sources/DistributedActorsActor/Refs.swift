@@ -39,13 +39,13 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
         self.personality = personality
     }
 
-    public var path: UniqueActorPath {
+    public var address: ActorAddress {
         switch self.personality {
-        case .cell(let cell): return cell.path
-        case .remote(let remote): return remote.path
-        case .adapter(let adapter): return adapter.path
-        case .guardian(let guardian): return guardian.path
-        case .deadLetters(let letters): return letters.path
+        case .cell(let cell): return cell.address
+        case .remote(let remote): return remote.address
+        case .adapter(let adapter): return adapter.address
+        case .guardian(let guardian): return guardian.address
+        case .deadLetters(let letters): return letters.address
         }
     }
 
@@ -56,18 +56,18 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
     /// This method is thread-safe, and may be used by multiple threads to send messages concurrently.
     /// No ordering guarantees are made about the order of the messages written by those multiple threads,
     /// in respect to each other however.
-    public func tell(_ message: Message) {
+    public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
-            cell.sendMessage(message)
+            cell.sendMessage(message, file: file, line: line)
         case .remote(let remote):
-            remote.sendUserMessage(message)
+            remote.sendUserMessage(message, file: file, line: line)
         case .adapter(let adapter):
-            adapter.trySendUserMessage(message)
+            adapter.trySendUserMessage(message, file: file, line: line)
         case .guardian(let guardian):
             guardian.trySendUserMessage(message)
         case .deadLetters(let deadLetters):
-            deadLetters.drop(message) // drop message directly into dead letters
+            deadLetters.send(message) // drop message directly into dead letters
         }
     }
 }
@@ -85,28 +85,23 @@ public extension ActorRef {
     }
 }
 
-extension ActorRef: CustomStringConvertible, CustomDebugStringConvertible {
+extension ActorRef: CustomStringConvertible {
     public var description: String {
         // we do this in order to print `Fork.Messages` rather than `Swift Distributed ActorsSampleDiningPhilosophers.Fork.Messages`
         // or the `Messages` which a simple "\(Message.self)" would yield.
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorRef<\(prettyTypeName)>(\(self.path))"
-    }
-    public var debugDescription: String {
-//        let fullyQualifiedName = String(reflecting: Message.self)
-//        return "ActorRef<\(fullyQualifiedName)>(\(self.personality))"
-        return self.description // FIXME: until collection printouts are fixed; https://bugs.swift.org/browse/SR-11001
+        return "ActorRef<\(prettyTypeName)>(\(self.address))"
     }
 }
 
 /// Actor ref equality and hashing are directly related to the pointed to unique actor path.
 extension ActorRef: Hashable {
     public func hash(into hasher: inout Hasher) {
-        self.path.hash(into: &hasher)
+        self.address.hash(into: &hasher)
     }
 
     public static func ==(lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
-        return lhs.path == rhs.path
+        return lhs.address == rhs.address
     }
 }
 
@@ -114,13 +109,13 @@ extension ActorRef.Personality {
     public static func ==(lhs: ActorRef.Personality, rhs: ActorRef.Personality) -> Bool {
         switch (lhs, rhs) {
         case (.cell(let l), .cell(let r)):
-            return l.path == r.path
+            return l.address == r.address
         case (.remote(let l), .remote(let r)):
-            return l.path == r.path
+            return l.address == r.address
         case (.adapter(let l), .adapter(let r)):
-            return l.path == r.path
+            return l.address == r.address
         case (.guardian(let l), .guardian(let r)):
-            return l.path == r.path
+            return l.address == r.address
         case (.deadLetters, .deadLetters):
             return true
 
@@ -141,7 +136,7 @@ public protocol ReceivesMessages: Codable {
     ///
     /// Note that `tell` is a "fire-and-forget" operation and does not block.
     /// The actor will eventually, asynchronously process the message sent to it.
-    func tell(_ message: Message)
+    func tell(_ message: Message, file: String, line: UInt)
 
 }
 
@@ -152,16 +147,23 @@ public protocol ReceivesMessages: Codable {
 @usableFromInline
 internal protocol ReceivesSystemMessages: Codable {
 
-    var path: UniqueActorPath { get }
+    var address: ActorAddress { get }
+    var path: ActorPath { get }
 
     /// Internal API causing an immediate send of a system message to target actor.
     /// System messages are given stronger delivery guarantees in a distributed setting than "user" messages.
-    func sendSystemMessage(_ message: SystemMessage)
+    func sendSystemMessage(_ message: SystemMessage, file: String, line: UInt)
 
     /// INTERNAL API: This way remoting sends messages
-    func _unsafeTellOrDrop(_ message: Any)
+    func _tellOrDeadLetter(_ message: Any, file: String, line: UInt)
 
     func _unsafeGetRemotePersonality() -> RemotePersonality<Any>
+}
+
+extension ReceivesSystemMessages {
+    public var path: ActorPath {
+        return self.address.path
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -170,18 +172,18 @@ internal protocol ReceivesSystemMessages: Codable {
 internal extension ActorRef {
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
-            cell.sendSystemMessage(message)
+            cell.sendSystemMessage(message, file: file, line: line)
         case .remote(let remote):
-            remote.sendSystemMessage(message)
+            remote.sendSystemMessage(message, file: file, line: line)
         case .adapter(let adapter):
-            adapter.sendSystemMessage(message)
+            adapter.sendSystemMessage(message, file: file, line: line)
         case .guardian(let guardian):
-            guardian.sendSystemMessage(message)
+            guardian.sendSystemMessage(message, file: file, line: line)
         case .deadLetters(let dead):
-            dead.sendDeadLetter(DeadLetter(message, recipient: self.path))
+            dead.sendDeadLetter(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
         }
     }
 
@@ -194,7 +196,7 @@ internal extension ActorRef {
         case .adapter(let adapter):
             return adapter.deadLetters
         case .deadLetters(let dead):
-            return ActorRef<DeadLetter>(.adapter(_DeadLetterAdapterPersonality(dead.ref, deadRecipient: self.path)))
+            return ActorRef<DeadLetter>(.adapter(_DeadLetterAdapterPersonality(dead.ref, deadRecipient: self.address)))
         case .guardian(let guardian):
             return guardian.deadLetters
         }
@@ -202,14 +204,14 @@ internal extension ActorRef {
 
     /// Used internally by remoting layer, to send message when known it should be "fine"
     @usableFromInline
-    func _unsafeTellOrDrop(_ message: Any) {
+    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self);")
-            self._deadLetters.tell(DeadLetter(message, recipient: self.path))
+            traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
+            self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
             return // TODO: "drop" the message rather than dead letter it?
         }
 
-        self.tell(_message)
+        self.tell(_message, file: file, line: line)
     }
 
     @usableFromInline
@@ -245,14 +247,14 @@ internal extension ActorRef {
 @usableFromInline
 internal final class ActorCell<Message> {
 
-    let path: UniqueActorPath
+    let address: ActorAddress
 
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
 
-    init(path: UniqueActorPath, actor: ActorShell<Message>, mailbox: Mailbox<Message>) {
-        self.path = path
+    init(address: ActorAddress, actor: ActorShell<Message>, mailbox: Mailbox<Message>) {
+        self.address = address
         self.actor = actor
         self.mailbox = mailbox
     }
@@ -262,32 +264,32 @@ internal final class ActorCell<Message> {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return self.actor?.system.deadLetters ?? ActorRef(.deadLetters(.init(Logger(label: "deadLetters(shutting down)"), path: ._rootPath, system: self.system)))
+        return self.actor?.system.deadLetters ?? ActorRef(.deadLetters(.init(Logger(label: "deadLetters(shutting down)"), address: ._localRoot, system: self.system)))
     }
 
 
     @usableFromInline
     func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-        traceLog_Mailbox(self.path, "sendMessage: [\(message)], to: \(self)")
-        self.mailbox.sendMessage(envelope: Envelope(payload: .userMessage(message)))
+        traceLog_Mailbox(self.address.path, "sendMessage: [\(message)], to: \(self)")
+        self.mailbox.sendMessage(envelope: Envelope(payload: .userMessage(message)), file: file, line: line)
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
-        traceLog_Mailbox(self.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
-        self.mailbox.sendSystemMessage(message)
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        traceLog_Mailbox(self.address.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
+        self.mailbox.sendSystemMessage(message, file: file, line: line)
     }
 
     @usableFromInline
     func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
-        traceLog_Mailbox(self.path, "sendClosure from \(file):\(line) to: \(self)")
-        self.mailbox.sendMessage(envelope: Envelope(payload: .closure(f)))
+        traceLog_Mailbox(self.address.path, "sendClosure from \(file):\(line) to: \(self)")
+        self.mailbox.sendMessage(envelope: Envelope(payload: .closure(f)), file: file, line: line)
     }
 }
 
 extension ActorCell: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "ActorCell(path: \(self.path), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
+        return "ActorCell(\(self.address), mailbox: \(self.mailbox), actor: \(String(describing: self.actor)))"
     }
 }
 
@@ -297,7 +299,7 @@ extension ActorCell: CustomDebugStringConvertible {
 public extension ActorRef where Message == DeadLetter {
     /// Simplified `adapt` method for dead letters, since it is known how the adaptation function looks like.
     func adapt<IncomingMessage>(from: IncomingMessage.Type) -> ActorRef<IncomingMessage> {
-        let adapter: AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.path)
+        let adapter: AbstractAdapter = _DeadLetterAdapterPersonality(self._deadLetters, deadRecipient: self.address)
         return .init(.adapter(adapter))
     }
 
@@ -319,29 +321,29 @@ internal struct TheOneWhoHasNoParent: ReceivesSystemMessages { // FIXME fix the 
 
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
-    let path: UniqueActorPath = ._rootPath
+    let address: ActorAddress = ._localRoot
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message);")
+        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
-    func _unsafeTellOrDrop(_ message: Any) {
+    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(path) actor MUST NOT receive any messages. Yet received \(message);")        
+        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")        
     }
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(path)
+        return AnyHashable(address)
     }
 
     @usableFromInline
     func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
         CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(path) actor MUST NOT be interacted with directly!")
+        fatalError("The \(address) actor MUST NOT be interacted with directly!")
     }
 }
 
@@ -359,10 +361,14 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
 @usableFromInline
 internal class Guardian {
     @usableFromInline
-    let _path: UniqueActorPath
-    var path: UniqueActorPath {
-        return self._path
+    let _address: ActorAddress
+    var address: ActorAddress {
+        return self._address
     }
+    var path: ActorPath {
+        return self.address.path
+    }
+    let name: String
 
     // any access to children has to be protected by `lock`
     private var _children: Children
@@ -378,15 +384,16 @@ internal class Guardian {
     weak var system: ActorSystem?
 
     init(parent: ReceivesSystemMessages, name: String, system: ActorSystem) {
-        assert(parent.path == UniqueActorPath._rootPath, "A Guardian MUST live directly under the `/` path.")
+        assert(parent.address == ActorAddress._localRoot, "A Guardian MUST live directly under the `/` path.")
 
         do {
-            self._path = try ActorPath(root: name).makeUnique(uid: .wellKnown)
+            self._address = try ActorPath(root: name).makeLocalAddress(incarnation: .perpetual)
         } catch {
             fatalError("Illegal Guardian path, as those are only to be created by ActorSystem startup, considering this fatal.")
         }
         self._children = Children()
         self.system = system
+        self.name = name
     }
 
     var ref: ActorRef<Never> {
@@ -394,16 +401,16 @@ internal class Guardian {
     }
 
     @usableFromInline
-    func trySendUserMessage(_ message: Any) {
-        self.deadLetters.tell(DeadLetter(message, recipient: self.path))
+    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+        self.deadLetters.tell(DeadLetter(message, recipient: self.address))
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case let .childTerminated(ref):
             _childrenLock.synchronized {
-                _ = self._children.removeChild(identifiedBy: ref.path)
+                _ = self._children.removeChild(identifiedBy: ref.address)
                 // if we are stopping and all children have been stopped,
                 // we need to notify waiting threads about it
                 if self.stopping && self._children.isEmpty {
@@ -412,23 +419,23 @@ internal class Guardian {
             }
         default:
             CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-            fatalError("The \(self.path) actor MUST NOT receive any messages. Yet received \(message);")
+            fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
         }
     }
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self.path)
+        return AnyHashable(self.address)
     }
 
-    func makeChild<Message>(path: UniqueActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
+    func makeChild<Message>(path: ActorPath, spawn: () throws -> ActorShell<Message>) throws -> ActorRef<Message> {
         return try self._childrenLock.synchronized {
             if self.stopping {
                 throw ActorContextError.alreadyStopping
             }
 
             if self._children.contains(name: path.name) {
-                throw ActorContextError.duplicateActorPath(path: path.path)
+                throw ActorContextError.duplicateActorPath(path: path)
             }
 
             let cell = try spawn()
@@ -440,11 +447,11 @@ internal class Guardian {
 
     func stopChild(_ childRef: AddressableActorRef) throws {
         return try self._childrenLock.synchronized {
-            guard self._children.contains(identifiedBy: childRef.path) else {
+            guard self._children.contains(identifiedBy: childRef.address) else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: childRef)
             }
 
-            if self._children.removeChild(identifiedBy: childRef.path) {
+            if self._children.removeChild(identifiedBy: childRef.address) {
                 childRef.sendSystemMessage(.stop)
             }
         }
@@ -477,7 +484,7 @@ internal class Guardian {
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.path))"), path: self.path, system: self.system)))
+        return ActorRef(.deadLetters(.init(Logger(label: "Guardian(\(self.address))"), address: self.address, system: self.system)))
     }
 }
 
@@ -508,7 +515,7 @@ extension Guardian: _ActorTreeTraversable {
             fatalError("Expected selector in guardian._resolve()!")
         }
 
-        if self.path.name == selector.value {
+        if self.address.name == selector.value {
             return self.children._resolve(context: context.deeper)
         } else {
             return context.deadRef
@@ -521,7 +528,7 @@ extension Guardian: _ActorTreeTraversable {
             fatalError("Expected selector in guardian._resolve()!")
         }
 
-        if self.path.name == selector.value {
+        if self.name == selector.value {
             return self.children._resolveUntyped(context: context.deeper)
         } else {
             return context.deadLetters.asAddressable()
@@ -531,6 +538,6 @@ extension Guardian: _ActorTreeTraversable {
 
 extension Guardian: CustomStringConvertible {
     public var description: String {
-        return "Guardian(\(path))"
+        return "Guardian(\(self.address.path))"
     }
 }

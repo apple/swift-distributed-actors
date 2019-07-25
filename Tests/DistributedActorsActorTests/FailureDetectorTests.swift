@@ -69,10 +69,10 @@ class FailureDetectorTests: ClusteredTwoNodesTestBase {
         // --- should cause termination of all remote actors, observed by the local actor ---
         let terminations: [Signals.Terminated] = try p.expectMessages(count: 2)
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.path.name == "remote-1"
+            (!terminated.existenceConfirmed) && terminated.address.name == "remote-1"
         })
         terminations.shouldContain(where: { terminated in
-            (!terminated.existenceConfirmed) && terminated.path.name == "remote-2"
+            (!terminated.existenceConfirmed) && terminated.address.name == "remote-2"
         })
 
         // should not trigger terminated again for any of the remote refs

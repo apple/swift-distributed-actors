@@ -32,10 +32,10 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     let nodeAddress = UniqueNodeAddress(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, uid: NodeUID(888888))
-    lazy var remotePath: ActorPath = try! ActorPath(["user", "henry", "hacker"].map(ActorPathSegment.init), address: nodeAddress)
+    lazy var remoteAddress = ActorAddress(node: nodeAddress, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Properly resolve
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Properly resolve
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
@@ -46,16 +46,17 @@ class RemoteActorRefProviderTests: XCTestCase {
         let clusterShell = ClusterShell()
         let provider = RemoteActorRefProvider(settings: system.settings, cluster: clusterShell, localProvider: localProvider)
 
-        let uniqueRemotePath = remotePath.makeUnique(uid: ActorUID(1337))
-        let resolveContext = ResolveContext<String>(path: uniqueRemotePath, system: system)
+        let nodeAddress = UniqueNodeAddress(address: .init(systemName: "system", host: "3.3.3.3", port: 2322), nid: .random())
+        let remoteAddress = ActorAddress(node: nodeAddress, path: try ActorPath._user.appending("henry").appending("hacker"), incarnation: ActorIncarnation(1337))
+        let resolveContext = ResolveContext<String>(address: remoteAddress, system: system)
 
         // when
-        let madeUpRef = provider.makeRemoteRef(resolveContext, remotePath: uniqueRemotePath)
+        let madeUpRef = provider.makeRemoteRef(resolveContext, remoteAddress: remoteAddress)
         let _: ActorRef<String> = madeUpRef // check inferred type
 
         // then
         pinfo("Made remote ref: \(madeUpRef)")
-        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://RemoteAssociationTests@127.0.0.1:9559/user/henry/hacker#1337)")
+        "\(madeUpRef)".shouldEqual("ActorRef<String>(sact://system@3.3.3.3:2322/user/henry/hacker)")
 
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
         // so this concludes the trivial test here; at least it shows that we resolve and sanity checks how we print remote refs
@@ -70,16 +71,14 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<String> = try system.spawn(.ignore, name: "ignoresStrings")
 
+        var address: ActorAddress = ref.address
+        address._location = .remote(system.settings.cluster.uniqueBindAddress)
 
-        var path: UniqueActorPath = ref.path
-        path.address = system.settings.cluster.uniqueBindAddress
-
-        let resolveContext = ResolveContext<Never>(path: path, system: system)
+        let resolveContext = ResolveContext<Never>(address: address, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then
-        pinfo("Made remote ref: \(resolvedRef)")
-        "\(resolvedRef)".shouldEqual("ActorRef<Never>(/system/deadLetters)")
+        "\(resolvedRef)".shouldEqual("ActorRef<Never>(/system/deadLetters)") // TODO /dead/ignoresStrings
 
         // Note: Attempting to send to it will not work, we have not associated and there's no real system around here
         // so this concludes the trivial test here; at least it shows that we resolve and sanity checks how we print remote refs
@@ -92,10 +91,10 @@ class RemoteActorRefProviderTests: XCTestCase {
         let ref: ActorRef<String> = system.deadLetters.adapt(from: String.self)
 
 
-        var path: UniqueActorPath = ref.path
-        path.address = system.settings.cluster.uniqueBindAddress
+        var address: ActorAddress = ref.address
+        address._location = .remote(system.settings.cluster.uniqueBindAddress)
 
-        let resolveContext = ResolveContext<String>(path: path, system: system)
+        let resolveContext = ResolveContext<String>(address: address, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
 
         // then

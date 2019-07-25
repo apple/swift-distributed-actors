@@ -29,8 +29,7 @@ internal enum Wire {
 
     /// Envelope type carrying messages over the network.
     struct Envelope {
-        // TODO recipient to contain address?
-        var recipient: UniqueActorPath
+        var recipient: ActorAddress
 
         // TODO metadata
         // TODO "flags" incl. isSystemMessage

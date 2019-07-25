@@ -108,7 +108,7 @@ class ParentChildActorTests: XCTestCase {
             switch signal {
             case let terminated as Signals.Terminated:
                 if notifyWhenChildStops {
-                    probe.tell(.childStopped(name: terminated.path.name))
+                    probe.tell(.childStopped(name: terminated.address.name))
                 }
             default:
                 ()
@@ -158,17 +158,17 @@ class ParentChildActorTests: XCTestCase {
         parent.tell(.findByName(name: unknownName))
         try p.expectMessage(.childNotFound(name: unknownName))
 
-        parent.tell(.findByName(name: child.path.name))
-        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // should return same (or equal) ref
+        parent.tell(.findByName(name: child.address.name))
+        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.path.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.address.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // we get the same, now dead, ref back
 
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
-        try p.expectMessage(.childNotFound(name: child.path.name))
+        parent.tell(.findByName(name: child.address.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.address.name))
     }
     func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
         let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
@@ -179,17 +179,17 @@ class ParentChildActorTests: XCTestCase {
         guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
         pnote("Hello: \(child)")
 
-        parent.tell(.findByName(name: child.path.name))
-        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // should return same (or equal) ref
+        parent.tell(.findByName(name: child.address.name))
+        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // should return same (or equal) ref
 
-        parent.tell(.stopByName(name: child.path.name)) // stopping by name
-        try p.expectMessage(.childFound(name: child.path.name, ref: child)) // we get the same, now dead, ref back
+        parent.tell(.stopByName(name: child.address.name)) // stopping by name
+        try p.expectMessage(.childFound(name: child.address.name, ref: child)) // we get the same, now dead, ref back
 
         p.watch(child) // watching dead ref triggers terminated
         try p.expectTerminated(child)
 
-        parent.tell(.findByName(name: child.path.name)) // should not find that child anymore, it was stopped
-        try p.expectMessage(.childNotFound(name: child.path.name))
+        parent.tell(.findByName(name: child.address.name)) // should not find that child anymore, it was stopped
+        try p.expectMessage(.childNotFound(name: child.address.name))
     }
 
     func test_contextSpawn_duplicateNameShouldFail() throws {
@@ -313,8 +313,8 @@ class ParentChildActorTests: XCTestCase {
         guard case let .spawned(childB) = try p2.expectMessage() else { throw p2.error() }
         p2.watch(childB)
 
-        try p1.expectTerminated(childA)
-        try p2.expectTerminated(childB)
+        try p1.expectTerminated(childA, within: .milliseconds(500))
+        try p2.expectTerminated(childB, within: .milliseconds(500))
         try p.expectNoTerminationSignal(for: .milliseconds(100))
     }
 
@@ -356,8 +356,8 @@ class ParentChildActorTests: XCTestCase {
             return p.watch(ref)
         }
 
-        secondChild.path.path.shouldEqual(child.path.path)
-        secondChild.path.uid.shouldNotEqual(child.path.uid)
+        secondChild.address.path.shouldEqual(child.address.path)
+        secondChild.address.incarnation.shouldNotEqual(child.address.incarnation)
     }
 
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
@@ -409,10 +409,10 @@ class ParentChildActorTests: XCTestCase {
             switch signal {
             case let terminated as Signals.ChildTerminated:
                 // only this should match
-                p.tell(.childStopped(name: "child-term:\(terminated.path.name)"))
+                p.tell(.childStopped(name: "child-term:\(terminated.address.name)"))
             case let terminated as Signals.Terminated:
                 // no second "generic" terminated should be sent (though one could match for just Terminated)
-                p.tell(.childStopped(name: "term:\(terminated.path.name)"))
+                p.tell(.childStopped(name: "term:\(terminated.address.name)"))
             default:
                 return .ignore
             }
@@ -459,7 +459,7 @@ class ParentChildActorTests: XCTestCase {
 
         let parent = try system.spawnAnonymous(parentBehavior.receiveSignal { (_, signal) in
             if case let terminated as Signals.Terminated = signal {
-                p.tell(.childStopped(name: terminated.path.name))
+                p.tell(.childStopped(name: terminated.address.name))
             }
 
             return .same
@@ -470,7 +470,7 @@ class ParentChildActorTests: XCTestCase {
         guard case let .spawned(childRef) = try p.expectMessage() else { throw p.error() }
         guard case let .childStopped(name) = try p.expectMessage() else { throw p.error() }
 
-        childRef.path.name.shouldEqual(name)
+        childRef.address.name.shouldEqual(name)
     }
 
     func test_stopParent_shouldWaitForChildrenToStop() throws {

@@ -67,16 +67,16 @@ public enum Signals {
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
     /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
     public class Terminated: Signal, CustomStringConvertible {
-        public let path: UniqueActorPath
+        public let address: ActorAddress
         public let existenceConfirmed: Bool
 
-        public init(path: UniqueActorPath, existenceConfirmed: Bool) {
-            self.path = path
+        public init(address: ActorAddress, existenceConfirmed: Bool) {
+            self.address = address
             self.existenceConfirmed = existenceConfirmed
         }
 
         public var description: String {
-            return "Terminated(\(self.path), existenceConfirmed:\(self.existenceConfirmed))"
+            return "Terminated(\(self.address), existenceConfirmed:\(self.existenceConfirmed))"
         }
     }
 
@@ -100,9 +100,9 @@ public enum Signals {
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
         public let cause: Error?
 
-        public init(path: UniqueActorPath, error: Error?) {
+        public init(address: ActorAddress, error: Error?) {
             self.cause = error
-            super.init(path: path, existenceConfirmed: true)
+            super.init(address: address, existenceConfirmed: true)
         }
 
         override public var description: String {
@@ -112,19 +112,19 @@ public enum Signals {
             } else {
                 reason = ""
             }
-            return "ChildTerminated(\(self.path)\(reason))"
+            return "ChildTerminated(\(self.address)\(reason))"
         }
     }
 }
 
 extension Signals.Terminated: Equatable, Hashable {
     public static func ==(lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
-        return lhs.path == rhs.path &&
+        return lhs.address == rhs.address &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }
 
     public func hash(into hasher: inout Hasher) {
-        self.path.hash(into: &hasher)
+        self.address.hash(into: &hasher)
         self.existenceConfirmed.hash(into: &hasher)
     }
 }

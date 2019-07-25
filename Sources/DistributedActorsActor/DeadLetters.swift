@@ -33,21 +33,26 @@ import Logging
 /// See also [Dead letter office](https://en.wikipedia.org/wiki/Dead_letter_office) on Wikipedia.
 public struct DeadLetter {
     let message: Any
-    let recipient: UniqueActorPath?
+    let recipient: ActorAddress?
 
     // TODO: sender and other metadata
 
+    let sentAtFile: String?
+    let sentAtLine: UInt?
+
     // TODO could be under a flag if we do carry the file/line or not?
-    init(_ message: Any, recipient: UniqueActorPath?) {
+    init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
         self.recipient = recipient
+        self.sentAtFile = sentAtFile
+        self.sentAtLine = sentAtLine
     }
 }
 
 extension ActorRef where ActorRef.Message == DeadLetter {
     /// Redirects message, preserving its original `recipient` (this ref), to dead letters.
-    func sendDeadLetter(_ message: Any) {
-        self.tell(DeadLetter(message, recipient: self.path))
+    func sendDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        self.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 }
 
@@ -69,44 +74,56 @@ extension ActorRef where ActorRef.Message == DeadLetter {
 /// In these situations Terminated would be marked as `existenceConfirmed: false`.
 @usableFromInline
 internal class DeadLetters {
-    let _path: UniqueActorPath
+    let _address: ActorAddress
     let log: Logger
     weak var system: ActorSystem?
 
-    init(_ log: Logger, path: UniqueActorPath, system: ActorSystem?) {
+    init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
         self.log = log
-        self._path = path
+        self._address = address
         self.system = system
     }
 
     @usableFromInline
-    var path: UniqueActorPath {
-        return _path
+    var address: ActorAddress {
+        return self._address
+    }
+    @usableFromInline
+    var path: ActorPath {
+        return self._address.path
     }
 
+    @usableFromInline
     var ref: ActorRef<DeadLetter> {
         return .init(.deadLetters(self))
     }
 
-    func drop(_ message: Any, file: String = #file, line: UInt = #line) {
+    func send(_ message: Any, file: String = #file, line: UInt = #line) {
         if let alreadyDeadLetter = message as? DeadLetter {
             self.sendDeadLetter(alreadyDeadLetter)
         } else {
-            self.sendDeadLetter(DeadLetter(message, recipient: self.path))
+            self.sendDeadLetter(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
         }
     }
     
     func sendDeadLetter(_ deadLetter: DeadLetter) {
-        let recipient = "to \(deadLetter.recipient, orElse: "no-recipient")"
+        let locationInfo: String
+        if let file = deadLetter.sentAtFile, let line = deadLetter.sentAtLine {
+            locationInfo = "at [\(file):\(line)] "
+        } else {
+            locationInfo = ""
+        }
+
+        let recipient = "to \(deadLetter.recipient.map { $0.debugDescription }, orElse: "no-recipient")"
 
         if let systemMessage = deadLetter.message as? SystemMessage {
             let handled = specialHandle(systemMessage)
             if !handled {
-                log.warning("Dead letter encountered. Sent \(recipient); System message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered.")
+                log.warning("Dead letter encountered. Sent \(locationInfo)\(recipient); System message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered.")
             }
         } else {
             // TODO more metadata (from Envelope)
-            log.warning("Dead letter encountered. Sent \(recipient); Message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered. ")
+            log.warning("Dead letter encountered. Sent \(locationInfo)\(recipient); Message [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered. ")
         }
     }
 
@@ -114,7 +131,7 @@ internal class DeadLetters {
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
-            traceLog_Mailbox(self._path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
+            traceLog_Mailbox(self.address.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
             return true // TODO would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:

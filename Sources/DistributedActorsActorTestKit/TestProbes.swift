@@ -18,7 +18,7 @@ import DistributedActorsConcurrencyHelpers
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
-    case watchCommand(who: AddressableActorRef)
+    case watchCommand(who: AddressableActorRef, file: String, line: UInt)
     case unwatchCommand(who: AddressableActorRef)
     case stopCommand
 
@@ -64,7 +64,7 @@ final public class ActorTestProbe<Message> {
             terminationsQueue: self.terminationsQueue)
         self.internalRef = try! spawn(behavior)
 
-        self.name = internalRef.path.name
+        self.name = internalRef.address.name
 
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
@@ -88,8 +88,8 @@ final public class ActorTestProbe<Message> {
                 return .same
 
                 // probe commands:
-            case .watchCommand(let who):
-                cell.deathWatch.watch(watchee: who, myself: context.myself, parent: cell._parent)
+            case .watchCommand(let who, let file, let line):
+                cell.deathWatch.watch(watchee: who, myself: context.myself, parent: cell._parent, file: file, line: line)
                 return .same
 
             case .unwatchCommand(let who):
@@ -126,7 +126,7 @@ final public class ActorTestProbe<Message> {
 extension ActorTestProbe: CustomStringConvertible {
     public var description: String {
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
-        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.path))"
+        return "ActorTestProbe<\(prettyTypeName)>(\(self.ref.address))"
     }
 }
 
@@ -335,12 +335,12 @@ extension ActorTestProbe where Message: Equatable {
 // MARK: TestProbes can ReceivesMessages
 
 extension ActorTestProbe: ReceivesMessages {
-    public var path: UniqueActorPath {
-        return self.exposedRef.path
+    public var address: ActorAddress {
+        return self.exposedRef.address
     }
 
-    public func tell(_ message: Message) {
-        self.exposedRef.tell(message)
+    public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
+        self.exposedRef.tell(message, file: file, line: line)
     }
 }
 
@@ -503,8 +503,8 @@ extension ActorTestProbe {
     /// 
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable()))
+    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        self.internalRef.tell(ProbeCommands.watchCommand(who: watchee.asAddressable(), file: file, line: line))
         return watchee
     }
 
@@ -529,14 +529,15 @@ extension ActorTestProbe {
     /// - Returns: the matched `.terminated` message
     @discardableResult
     // TODO expectTermination(of: ...) maybe nicer wording?
-    public func expectTerminated<T>(_ ref: ActorRef<T>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
+    public func expectTerminated<T>(_ ref: ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        let timeout = timeout ?? self.expectationTimeout
 
-        guard let terminated = self.terminationsQueue.poll(expectationTimeout) else {
-            throw callSite.error("Expected [\(ref.path)] to terminate within \(self.expectationTimeout.prettyDescription)")
+        guard let terminated = self.terminationsQueue.poll(timeout) else {
+            throw callSite.error("Expected [\(ref.address)] to terminate within \(timeout.prettyDescription)")
         }
-        guard terminated.path == ref.path else {
-            throw callSite.error("Expected [\(ref.path)] to terminate, but received [\(terminated.path)] terminated signal first instead. " +
+        guard terminated.address == ref.address else {
+            throw callSite.error("Expected [\(ref.address)] to terminate, but received [\(terminated.address)] terminated signal first instead. " +
                 "This could be an ordering issue, inspect your signal order assumptions.")
         }
 
@@ -549,7 +550,7 @@ extension ActorTestProbe {
     ///            otherwise the termination signal will never be received.
     public func expectTerminatedInAnyOrder(_ refs: [AddressableActorRef], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        var pathSet: Set<UniqueActorPath> = Set(refs.map { $0.path })
+        var pathSet: Set<ActorAddress> = Set(refs.map { $0.address })
 
         let deadline = Deadline.fromNow(self.expectationTimeout)
         while !pathSet.isEmpty && deadline.hasTimeLeft() {
@@ -557,8 +558,8 @@ extension ActorTestProbe {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
 
-            guard pathSet.remove(terminated.path) != nil else {
-                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.path)] terminated signal first instead. " +
+            guard pathSet.remove(terminated.address) != nil else {
+                throw callSite.error("Expected any of \(pathSet) to terminate, but received [\(terminated.address)] terminated signal first instead. " +
                     "This could be an ordering issue, inspect your signal order assumptions.")
             }
         }

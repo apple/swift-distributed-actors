@@ -98,13 +98,13 @@ extension SystemMessage {
         case (.start, .start): return true
 
         case let (.watch(lWatchee, lWatcher), .watch(rWatchee, rWatcher)):
-            return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
+            return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
         case let (.unwatch(lWatchee, lWatcher), .unwatch(rWatchee, rWatcher)):
-            return lWatchee.path == rWatchee.path && lWatcher.path == rWatcher.path
+            return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
         case let (.terminated(lRef, lExisted, lAddrTerminated), .terminated(rRef, rExisted, rAddrTerminated)):
-            return lRef.path == rRef.path && lExisted == rExisted && lAddrTerminated == rAddrTerminated
+            return lRef.address == rRef.address && lExisted == rExisted && lAddrTerminated == rAddrTerminated
         case let (.childTerminated(lPath), .childTerminated(rPath)):
-            return lPath.path == rPath.path
+            return lPath.address == rPath.address
         case let (.addressTerminated(lAddress), .addressTerminated(rAddress)):
             return lAddress == rAddress
 

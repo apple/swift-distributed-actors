@@ -48,9 +48,11 @@ final class SWIMInstance {
     private var _protocolPeriod: Int = 0
 
     // We need to store the path to the owning SWIMMembershipShell to avoid adding it to the `membersToPing` list
-    private var myLocalPath: UniqueActorPath? = nil
-    private var myRemotePath: UniqueActorPath? = nil
+    // private var myRemoteAddress: ActorAddress? = nil
     private var myShellMyself: ActorRef<SWIM.Message>? = nil
+    private var myShellAddress: ActorAddress? {
+        return self.myShellMyself?.address
+    }
 
     private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
@@ -64,11 +66,6 @@ final class SWIMInstance {
     }
 
     func addMyself(_ ref: ActorRef<SWIM.Message>) {
-        self.myLocalPath = ref.path
-
-        let myRemoteAddress = ref._system!.settings.cluster.uniqueBindAddress // !-safe, system is always available, or we are dying anyway so crash is "ok"
-        self.myRemotePath = ref.path
-        self.myRemotePath?.address =  myRemoteAddress
         self.myShellMyself = ref
         self.addMember(ref, status: .alive(incarnation: 0))
     }
@@ -135,7 +132,7 @@ final class SWIMInstance {
     /// Selects `settings.failureDetector.indirectProbeCount` members to send a `ping-req` to.
     func membersToPingRequest(target: ActorRef<SWIM.Message>) -> ArraySlice<SWIM.Member> {
         func notTarget(_ ref: ActorRef<SWIM.Message>) -> Bool {
-            return ref.path != target.path
+            return ref.address != target.address
         }
         let candidates = self.membersToPing
             .filter { notTarget($0.ref) && notMyself($0.ref) }
@@ -148,16 +145,16 @@ final class SWIMInstance {
         return self.notMyself(member.ref)
     }
     func notMyself(_ ref: ActorRef<SWIM.Message>) -> Bool {
-        return self.notMyself(ref.path)
+        return self.notMyself(ref.address)
     }
-    func notMyself(_ memberPath: UniqueActorPath) -> Bool {
-        return !self.isMyself(memberPath)
+    func notMyself(_ memberAddress: ActorAddress) -> Bool {
+        return !self.isMyself(memberAddress)
     }
     func isMyself(_ member: SWIM.Member) -> Bool {
-        return self.isMyself(member.ref.path)
+        return self.isMyself(member.ref.address)
     }
-    func isMyself(_ memberPath: UniqueActorPath) -> Bool {
-        return self.myLocalPath == memberPath || self.myRemotePath == memberPath
+    func isMyself(_ memberAddress: ActorAddress) -> Bool {
+        return self.myShellAddress == memberAddress
     }
 
     @discardableResult
@@ -224,7 +221,7 @@ final class SWIMInstance {
         // the ref could be either:
         // - "us" (i.e. the actor which hosts this SWIM instance, or
         // - a "known member"
-        return ref.path == self.myLocalPath || self.members[ref] != nil
+        return ref.address == self.myShellAddress || self.members[ref] != nil
     }
 
     func makeGossipPayload() -> SWIM.Payload {
@@ -326,7 +323,7 @@ extension SWIM.Instance {
             }
 
         case .success(let ack):
-            assert(ack.pinged.path == member.path, "The ack.from member [\(ack.pinged)] MUST be equal to the pinged member \(member.path)]; The Ack message is being forwarded back to us from the pinged member.")
+            assert(ack.pinged.address == member.address, "The ack.from member [\(ack.pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
             switch self.mark(member, as: .alive(incarnation: ack.incarnation)) {
             case .applied:
                 // TODO we can be more interesting here, was it a move suspect -> alive or a reassurance?
@@ -377,7 +374,7 @@ extension SWIM.Instance {
                 case .ignoredDueToOlderStatus(let currentStatus):
                     return .ignored(warning: "Ignoring gossip about member [\(member)] due to older status, incoming: [\(member.status)], current: [\(currentStatus)]")
                 }
-            } else if let remoteMemberAddress = member.ref.path.address?.address {
+            } else if let remoteMemberAddress = member.ref.address.node?.address {
                 return .connect(address: remoteMemberAddress, onceConnected: { _ in
                     self.addMember(member.ref, status: member.status)
                 })
@@ -411,8 +408,7 @@ extension SWIM.Instance: CustomDebugStringConvertible {
                SWIMInstance(
                    settings: \(settings),
                    
-                   myLocalPath: \(String(reflecting: myLocalPath)),
-                   myRemotePath: \(String(reflecting: myRemotePath)),
+                   myLocalPath: \(String(reflecting: myShellAddress)),
                    myShellMyself: \(String(reflecting: myShellMyself)),
                                        
                    _incarnation: \(_incarnation),

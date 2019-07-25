@@ -47,7 +47,7 @@ public struct ClusterSettings {
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
     public var uniqueBindAddress: UniqueNodeAddress {
-        return UniqueNodeAddress(address: self.bindAddress, uid: self.uid)
+        return UniqueNodeAddress(address: self.bindAddress, nid: self.uid)
     }
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
@@ -86,7 +86,7 @@ public struct ClusterSettings {
             return ManualFailureObserver(context: context)
         case .swim(let settings):
             let observer = ManualFailureObserver(context: context) // TODO not sure if this one or another one, but we want to call into it when SWIM decides a node should die etc.
-            let _ = try system._spawnSystemActor(SWIMMembershipShell(settings: settings, observer: observer).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
+            let _ = try system._spawnSystemActor(SWIMMembershipShell(settings: settings, observer: observer).behavior, name: SWIMMembershipShell.name, perpetual: true)
             fatalError("MISSING OBSERVER IMPL TO WORK WITH SWIM")
         }
     }

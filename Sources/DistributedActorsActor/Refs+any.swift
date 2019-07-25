@@ -45,8 +45,8 @@ public struct AddressableActorRef: Hashable {
     }
 
     @inlinable
-    var path: UniqueActorPath {
-        return self.ref.path
+    var address: ActorAddress {
+        return self.ref.address
     }
 
     func asReceivesSystemMessages() -> ReceivesSystemMessages {
@@ -61,24 +61,24 @@ public struct AddressableActorRef: Hashable {
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
-        self.ref.sendSystemMessage(message)
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        self.ref.sendSystemMessage(message, file: file, line: line)
     }
 }
 
 extension AddressableActorRef: CustomStringConvertible {
     public var description: String {
-        return "AddressableActorRef(\(ref.path))"
+        return "AddressableActorRef(\(ref.address))"
     }
 }
 
 extension AddressableActorRef {
     public func hash(into hasher: inout Hasher) {
-        self.path.hash(into: &hasher)
+        self.address.hash(into: &hasher)
     }
 
     public static func ==(lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
-        return lhs.path == rhs.path
+        return lhs.address == rhs.address
     }
 
 }
@@ -88,8 +88,8 @@ extension AddressableActorRef {
 
 extension AddressableActorRef: ReceivesSystemMessages {
     @usableFromInline
-    internal func _unsafeTellOrDrop(_ message: Any) {
-        return self.ref._unsafeTellOrDrop(message)
+    internal func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+        return self.ref._tellOrDeadLetter(message, file: file, line: line)
     }
 
     @usableFromInline
@@ -100,13 +100,13 @@ extension AddressableActorRef: ReceivesSystemMessages {
 
 internal extension RemotePersonality {
     @usableFromInline
-    func _tellUnsafe(_ message: Any) {
+    func _tellUnsafe(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
-            traceLog_Remote("\(self.path)._tellUnsafe [\(message)] failed because of invalid type; self: \(self);")
+            traceLog_Remote("\(self.address)._tellUnsafe [\(message)] failed because of invalid type; self: \(self); Sent at \(file):\(line)")
             return // TODO: drop the message
         }
 
-        self.sendUserMessage(_message)
+        self.sendUserMessage(_message, file: file, line: line)
     }
 }
 
