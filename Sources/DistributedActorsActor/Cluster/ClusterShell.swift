@@ -374,7 +374,6 @@ extension ClusterShell {
 
             case .rejectHandshake(let rejectedHandshake):
                 state.log.warning("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
-                // self.notifyHandshakeFailure(state: , address: offer.from.address, error: rejectedHandshake.error)
 
                 // note that we should NOT abort the channel here since we still want to send back the rejection.
 
