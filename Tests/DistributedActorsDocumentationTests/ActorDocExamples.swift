@@ -315,12 +315,10 @@ class ActorDocExamples: XCTestCase {
                 return .stopped
             }
 
-            context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>
+            return context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>
                 context.log.info("I've been greeted: \(greeting)")
                 return .stopped // <3>
             }
-
-            return .stopped
         }
 
         _ = try system.spawn(caplinBehavior, name: "caplin")

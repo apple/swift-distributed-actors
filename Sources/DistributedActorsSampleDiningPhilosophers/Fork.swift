@@ -54,7 +54,7 @@ public final class Fork {
     private static func taken(_ context: ActorContext<Fork.Message>, by owner: ActorRef<Fork.Reply>) -> SelfBehavior {
         return .receiveMessage { message in
             switch message {
-            case .putBack(let who) where owner.path == owner.path:
+            case .putBack(let who) where owner.address == owner.address:
                 context.log.info("\(uniquePath: who) is putting back the fork \(uniquePath: context.myself)...")
                 return available()
 

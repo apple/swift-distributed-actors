@@ -36,9 +36,10 @@ public class Children {
 
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
-    typealias Name = String
+    typealias Name = String // TODO ActorName
+
     private var container: [Name: Child]
-    private var stopping: [UniqueActorPath: AbstractActor]
+    private var stopping: [ActorPath: AbstractActor]
     // **CAUTION**: All access to `container` or `stopping` must be protected by `rwLock`
     private let rwLock: ReadWriteLock
 
@@ -48,17 +49,20 @@ public class Children {
         self.rwLock = ReadWriteLock()
     }
 
-    public func hasChild(identifiedBy uniquePath: UniqueActorPath) -> Bool {
+    public func hasChild(identifiedBy path: ActorPath) -> Bool {
         return self.rwLock.withReaderLock {
-            switch self.container[uniquePath.name] {
+            switch self.container[path.name] {
             case .some(.cell(let child)):
-                return child.receivesSystemMessages.path == uniquePath
+                return child.receivesSystemMessages.address.path == path
             case .some(.adapter(let child)):
-                return child.path == uniquePath
+                return child.address.path == path
             case .none:
                 return false
             }
         }
+    }
+    public func hasChild(identifiedBy address: ActorAddress) -> Bool {
+        return self.hasChild(identifiedBy: address.path)
     }
 
     public func find<T>(named name: String, withType type: T.Type) -> ActorRef<T>? {
@@ -76,13 +80,13 @@ public class Children {
 
     internal func insert<T, R: ActorShell<T>>(_ childCell: R) {
         self.rwLock.withWriterLockVoid {
-            self.container[childCell.path.name] = .cell(childCell)
+            self.container[childCell.address.name] = .cell(childCell)
         }
     }
 
     internal func insert<R: AbstractAdapter>(_ adapterRef: R) {
         self.rwLock.withWriterLockVoid {
-            self.container[adapterRef.path.name] = .adapter(adapterRef)
+            self.container[adapterRef.address.name] = .adapter(adapterRef)
         }
     }
 
@@ -98,14 +102,14 @@ public class Children {
     /// Precise contains function, which checks if this children container contains the specific actor
     /// identified by the passed in path.
     ///
-    /// - SeeAlso: `contains(_:)`
-    internal func contains(identifiedBy uniquePath: UniqueActorPath) -> Bool {
+    /// - SeeAlso: `contains(name:)`
+    internal func contains(identifiedBy address: ActorAddress) -> Bool {
         return self.rwLock.withReaderLock {
-            switch self.container[uniquePath.name] {
+            switch self.container[address.name] {
             case .some(.cell(let child)):
-                return child.receivesSystemMessages.path == uniquePath
+                return child.receivesSystemMessages.address == address
             case .some(.adapter(let child)):
-                return child.path == uniquePath
+                return child.address == address
             case .none:
                 return false
             }
@@ -116,15 +120,15 @@ public class Children {
     /// Returns: `true` upon successful removal of the ref identified by passed in path, `false` otherwise
     @usableFromInline
     @discardableResult
-    internal func removeChild(identifiedBy path: UniqueActorPath) -> Bool {
+    internal func removeChild(identifiedBy address: ActorAddress) -> Bool {
         return self.rwLock.withWriterLock {
-            switch self.container[path.name] {
-            case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
-                return self.container.removeValue(forKey: path.name) != nil
-            case .some(.adapter(let child)) where child.path.uid == path.uid:
-                return self.container.removeValue(forKey: path.name) != nil
+            switch self.container[address.name] {
+            case .some(.cell(let child)) where child.receivesSystemMessages.address.incarnation == address.incarnation:
+                return self.container.removeValue(forKey: address.name) != nil
+            case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
+                return self.container.removeValue(forKey: address.name) != nil
             default:
-                return self.stopping.removeValue(forKey: path) != nil
+                return self.stopping.removeValue(forKey: address.path) != nil
             }
         }
     }
@@ -136,25 +140,23 @@ public class Children {
     /// Returns: `true` upon successfully marking the ref identified by passed in path as stopping
     @usableFromInline
     @discardableResult
-    internal func markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
+    internal func markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
         return self.rwLock.withWriterLock {
-            return self._markAsStoppingChild(identifiedBy: path)
+            return self._markAsStoppingChild(identifiedBy: address)
         }
     }
 
     // **CAUTION**: Only call this method when already holding `rwLock.writeLock`
     @usableFromInline
     @discardableResult
-    internal func _markAsStoppingChild(identifiedBy path: UniqueActorPath) -> Bool {
-        let childOpt = self.container[path.name]
-        switch childOpt {
-        case .some(.cell(let child)) where child.receivesSystemMessages.path.uid == path.uid:
-            self.container.removeValue(forKey: path.name)
-            self.stopping[path] = child
+    internal func _markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
+        switch self.container.removeValue(forKey: address.name) {
+        case .some(.cell(let child)) where child.asAddressable.address.incarnation == address.incarnation:
+            self.stopping[address.path] = child
             return true
-        case .some(.adapter(let child)) where child.path.uid == path.uid:
+        case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
             // adapters don't have to be stopped as they are not real actors, so removing is sufficient
-            self.container.removeValue(forKey: path.name)
+            self.container.removeValue(forKey: address.name)
             return true
         default:
             return false
@@ -301,8 +303,8 @@ extension Children {
         // implementation similar to find, however we do not care about the underlying type
         let childOpt = self.container[name]
         switch childOpt {
-        case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.path):
-            cell.receivesSystemMessages.sendSystemMessage(.stop)
+        case .some(.cell(let cell)) where self._markAsStoppingChild(identifiedBy: cell.receivesSystemMessages.address):
+            cell.receivesSystemMessages.sendSystemMessage(.stop, file: #file, line: #line)
             return true
         case .some(.adapter(let ref)) where includeAdapters:
             ref.stop()
@@ -313,19 +315,18 @@ extension Children {
     }
 }
 
-// MARK: Extending ActorShell with internal operations
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Internal shell operations
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
 
     internal func _spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
         try behavior.validateAsInitial()
-        try validateUniqueName(name)
+        try validateUniqueName(name) // FIXME reserve name
         // TODO prefix $ validation (only ok for anonymous)
 
-        let path = try self.path.makeChildPath(name: name, uid: .random())
-
-        // TODO reserve name
+        let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
@@ -339,16 +340,16 @@ extension ActorShell: ChildActorRefFactory {
             system: self.system,
             parent: self.myself.asAddressable(),
             behavior: behavior,
-            path: path,
+            address: address,
             props: props,
             dispatcher: dispatcher
         )
         let mailbox = Mailbox(shell: actor, capacity: props.mailbox.capacity)
 
-        log.debug("Spawning [\(behavior)], on path: [\(path)]")
+        log.debug("Spawning [\(behavior)], on path: [\(address.path)]")
 
         let cell = ActorCell(
-            path: path,
+            address: address,
             actor: actor,
             mailbox: mailbox
         )
@@ -362,15 +363,15 @@ extension ActorShell: ChildActorRefFactory {
     }
 
     internal func internal_stop<T>(child ref: ActorRef<T>) throws {
-        guard ref.path.isChildPathOf(self.path) else {
-            if ref.path == self.myself.path {
+        guard ref.address.path.isChildPathOf(self.address.path) else {
+            if ref.address == self.myself.address {
                 throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable())
             } else {
                 throw ActorContextError.attemptedStoppingNonChildActor(ref: ref.asAddressable())
             }
         }
 
-        if self.children.markAsStoppingChild(identifiedBy: ref.path) {
+        if self.children.markAsStoppingChild(identifiedBy: ref.address) {
             ref.sendSystemMessage(.stop)
         }
     }
@@ -381,7 +382,7 @@ extension ActorShell: ChildActorRefFactory {
 
     private func validateUniqueName(_ name: String) throws {
         if children.contains(name: name) {
-            let childPath: ActorPath = try self.path.makeChildPath(name: name)
+            let childPath: ActorPath = try self.address.path.makeChildPath(name: name)
             throw ActorContextError.duplicateActorPath(path: childPath)
         }
     }

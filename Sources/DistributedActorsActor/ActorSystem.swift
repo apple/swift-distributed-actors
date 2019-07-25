@@ -138,7 +138,7 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
-        self._deadLetters = ActorRef(.deadLetters(.init(deadLog, path: deadLettersPath.makeUnique(uid: .wellKnown), system: self)))
+        self._deadLetters = ActorRef(.deadLetters(DeadLetters(deadLog, address: deadLettersPath.makeLocalAddress(incarnation: .perpetual), system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))
@@ -170,7 +170,7 @@ public final class ActorSystem {
         self._receptionist = deadLetters.adapted()
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, isWellKnown: true)
+        self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, perpetual: true)
 
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
@@ -258,8 +258,8 @@ extension ActorSystem: ActorRefFactory {
     // to discover the receptionist actors on all nodes in order to replicate state between them. The UID of those actors will be `ActorUID.wellKnown`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props, isWellKnown: isWellKnown)
+    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props, isWellKnown: perpetual)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
@@ -267,10 +267,10 @@ extension ActorSystem: ActorRefFactory {
     internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
-        let uid: ActorUID = isWellKnown ? .wellKnown : .random()
+        let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
 
-        let path: UniqueActorPath = try provider.rootPath.makeChildPath(name: name, uid: uid)
-        // TODO: reserve the name, atomically
+        let address: ActorAddress = try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
+        // FIXME: reserve the name, atomically
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
@@ -286,7 +286,7 @@ extension ActorSystem: ActorRefFactory {
 
         return try provider.spawn(
             system: self,
-            behavior: behavior, path: path,
+            behavior: behavior, address: address,
             dispatcher: dispatcher, props: props
         )
     }
@@ -319,7 +319,7 @@ extension ActorSystem: _ActorTreeTraversable {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth))- /\(ref.path.name) - \(ref)")
+            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) - \(ref)")
             return .continue
         }
     }
@@ -380,16 +380,6 @@ extension ActorSystem: _ActorTreeTraversable {
         case "user":   return self.userProvider._resolveUntyped(context: context) // TODO not in love with the keep path, maybe always keep it
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
-    }
-
-
-    // FIXME REMOVE THIS
-    /// Internal utility to create "known remote ref" on known target system.
-    /// Real applications should never do this, and instead rely on the `Receptionist` to discover references.
-    public func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
-        var remotePath = ref.path
-        remotePath.address = remote.settings.cluster.uniqueBindAddress
-        return ActorRef(.remote(RemotePersonality(shell: self._cluster!, path: remotePath, system: self)))
     }
 
 }

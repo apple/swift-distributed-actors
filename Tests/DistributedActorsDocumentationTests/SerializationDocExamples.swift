@@ -149,11 +149,11 @@ class SerializationDocExamples {
         }
 
         override func deserialize(bytes: ByteBuffer) throws -> ContainsActorRef {
-            let path: UniqueActorPath = undefined(hint: "your favourite serialization")
+            let address: ActorAddress = undefined(hint: "your favourite serialization")
             guard let context = self.context else {
                 throw CustomCodingError.serializationContextNotAvailable
             }
-            let resolved: ActorRef<String> = context.resolveActorRef(path: path) // <2>
+            let resolved: ActorRef<String> = context.resolveActorRef(identifiedBy: address) // <2>
             return ContainsActorRef(ref: resolved)
         }
 

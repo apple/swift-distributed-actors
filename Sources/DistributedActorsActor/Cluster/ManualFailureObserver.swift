@@ -45,11 +45,11 @@ internal final class ManualFailureObserver: FailureObserver {
             return
         }
 
-        if watcher.path.isKnownRemote(localAddress: context.address) {
+        if watcher.address.isRemote { // isKnownRemote(localAddress: context.address) {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.
-            let err = ManualFailureDetectorError.watcherActorWasNotLocal(watcherPath: watcher.path, localAddress: context.address)
+            let err = ManualFailureDetectorError.watcherActorWasNotLocal(watcherAddress: watcher.address, localAddress: context.address)
             return fatalErrorBacktrace("Attempted registering non-local actor with manual failure detector: \(err)")
         }
 
@@ -87,5 +87,5 @@ internal final class ManualFailureObserver: FailureObserver {
 
 public enum ManualFailureDetectorError: Error {
     case attemptedToFailUnknownAddress(Membership, UniqueNodeAddress)
-    case watcherActorWasNotLocal(watcherPath: UniqueActorPath, localAddress: UniqueNodeAddress?)
+    case watcherActorWasNotLocal(watcherAddress: ActorAddress, localAddress: UniqueNodeAddress?)
 }

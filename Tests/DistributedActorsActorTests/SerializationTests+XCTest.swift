@@ -26,7 +26,8 @@ extension SerializationTests {
       return [
                 ("test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer", test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer),
                 ("test_serialize_actorPath", test_serialize_actorPath),
-                ("test_serialize_uniqueActorPath", test_serialize_uniqueActorPath),
+                ("test_serialize_actorAddress_shouldDemandContext", test_serialize_actorAddress_shouldDemandContext),
+                ("test_serialize_actorAddress_usingContext", test_serialize_actorAddress_usingContext),
                 ("test_serialize_actorRef_inMessage", test_serialize_actorRef_inMessage),
                 ("test_serialize_actorRef_inMessage_forRemoting", test_serialize_actorRef_inMessage_forRemoting),
                 ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType),

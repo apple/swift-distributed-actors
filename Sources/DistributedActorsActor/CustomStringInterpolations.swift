@@ -41,14 +41,14 @@ public extension String.StringInterpolation {
 
 public extension String.StringInterpolation {
     mutating func appendInterpolation<Message>(name ref: ActorRef<Message>) {
-        self.appendLiteral("[\(ref.path.name)]")
+        self.appendLiteral("[\(ref.address.name)]")
     }
 
     mutating func appendInterpolation<Message>(uniquePath ref: ActorRef<Message>) {
-        self.appendLiteral("[\(ref.path)]") // TODO make those address
+        self.appendLiteral("[\(ref.address)]") // TODO make those address
     }
 
     mutating func appendInterpolation<Message>(path ref: ActorRef<Message>) {
-        self.appendLiteral("[\(ref.path.path)]")
+        self.appendLiteral("[\(ref.address.path)]")
     }
 }

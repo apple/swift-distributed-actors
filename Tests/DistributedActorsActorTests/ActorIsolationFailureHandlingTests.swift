@@ -140,10 +140,11 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
         guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
 
-        let workerPath: UniqueActorPath = worker.path
-        let replacementPath: UniqueActorPath = workerReplacement.path
-        replacementPath.path.shouldEqual(workerPath.path) // same path
-        replacementPath.uid.shouldNotEqual(workerPath.uid) // NOT same uid
+        let workerAddress: ActorAddress = worker.address
+        let replacementAddress: ActorAddress = workerReplacement.address
+        replacementAddress.shouldNotEqual(workerAddress) // NOT same address
+        replacementAddress.path.shouldEqual(workerAddress.path) // same path
+        replacementAddress.incarnation.shouldNotEqual(workerAddress.incarnation) // NOT same uid
         workerReplacement.shouldNotEqual(worker) // NOT same identity
 
         workerReplacement.tell(.work(n: 1000, divideBy: 100))
@@ -183,10 +184,12 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
         pw.watch(workerReplacement)
 
-        let workerPath: UniqueActorPath = worker.path
-        let replacementPath: UniqueActorPath = workerReplacement.path
-        replacementPath.path.shouldEqual(workerPath.path) // same path
-        replacementPath.uid.shouldNotEqual(workerPath.uid) // NOT same uid
+        let workerAddress: ActorAddress = worker.address
+        let replacementAddress: ActorAddress = workerReplacement.address
+        replacementAddress.shouldNotEqual(workerAddress) // NOT same address
+        replacementAddress.path.shouldEqual(workerAddress.path) // same path
+        replacementAddress.incarnation.shouldNotEqual(workerAddress.incarnation) // NOT same uid
+        replacementAddress.path.shouldEqual(workerAddress.path) // same path
         workerReplacement.shouldNotEqual(worker) // NOT same identity
 
         pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")

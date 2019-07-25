@@ -22,10 +22,7 @@
 @usableFromInline
 internal final class RemotePersonality<Message> {
 
-    private let _path: UniqueActorPath
-    public var path: UniqueActorPath {
-        return self._path
-    }
+    let address: ActorAddress
 
     let deadLetters: ActorRef<DeadLetter>
 
@@ -52,33 +49,33 @@ internal final class RemotePersonality<Message> {
     private let clusterShell: ClusterShell
     let system: ActorSystem // TODO maybe don't need to store it and access via clusterShell?
 
-    init(shell: ClusterShell, path: UniqueActorPath, system: ActorSystem) {
-        assertBacktrace(path.address != nil, "RemoteActorRef MUST have address defined. Path was: \(path)")
-        self._path = path
+    init(shell: ClusterShell, address: ActorAddress, system: ActorSystem) {
+        assert(address.isRemote, "RemoteActorRef MUST be remote. ActorAddress was: \(String(reflecting: address))")
+        self.address = address
         self.clusterShell = shell
         self.deadLetters = system.deadLetters.adapted()
         self.system = system
     }
 
     @usableFromInline
-    func sendUserMessage(_ message: Message) {
-        traceLog_Cell("RemoteActorRef(\(self.path)) sendUserMessage: \(message)")
+    func sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+        traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
         if let remoteControl = self.remoteControl {
             // TODO optionally carry file/line?
-            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .userMessage(message)), recipient: self.path)
+            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .userMessage(message)), recipient: self.address)
         } else {
-            self.deadLetters.adapted().tell(message)
+            self.deadLetters.adapted().tell(message, file: file, line: line)
         }
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage) {
-        traceLog_Cell("RemoteActorRef(\(self.path)) sendSystemMessage: \(message)")
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        traceLog_Cell("RemoteActorRef(\(self.address)) sendSystemMessage: \(message)")
         // TODO: make system messages reliable
         if let remoteControl = self.remoteControl {
-            remoteControl.sendSystemMessage(message, recipient: self.path)
+            remoteControl.sendSystemMessage(message, recipient: self.address)
         } else {
-            self.deadLetters.adapted().tell(message)
+            self.deadLetters.adapted().tell(message, file: file, line: line)
         }
     }
 
@@ -88,10 +85,10 @@ internal final class RemotePersonality<Message> {
             return control
         } else {
             // FIXME has to be done atomically... since other senders also reaching here
-            guard let remoteAddress = self.path.address else {
+            guard let remoteAddress = self.address.node else {
                 fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
             }
-            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress.uid) else {
+            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress.nid) else {
                 return nil
             }
             self._cachedAssociationRemoteControl = obtainedRemoteControl // TODO atomically...
@@ -104,6 +101,6 @@ internal final class RemotePersonality<Message> {
 
 internal extension RemotePersonality where Message == Any {
     func cast<NewMessage>(to: NewMessage.Type) -> RemotePersonality<NewMessage> {
-        return RemotePersonality<NewMessage>(shell: self.clusterShell, path: self.path, system: self.system)
+        return RemotePersonality<NewMessage>(shell: self.clusterShell, address: self.address, system: self.system)
     }
 }

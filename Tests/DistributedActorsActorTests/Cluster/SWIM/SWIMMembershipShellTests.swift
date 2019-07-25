@@ -372,7 +372,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
                 // there has to be a better way to do this, but that paths are
                 // different, because they reside on different nodes, so we
                 // compare only the segments, which are unique per instance
-                guard let (_, otherStatus) = statusB.membershipStatus.first(where: { $0.key.path.path.segments == ref.path.path.segments }) else {
+                guard let (_, otherStatus) = statusB.membershipStatus.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
                     throw localTestKit.error("Did not get status for [\(ref)] in statusB")
                 }
 
@@ -386,14 +386,13 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_SWIMMembershipShell_shouldBeAbleToJoinACluster() throws {
         setUpBoth()
 
-        let remoteSwim = try remote._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
-        let localSwim = try local._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, isWellKnown: true)
-
-        let remoteSwimRemoteRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+        let remoteSwim = try remote._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, perpetual: true)
+        let localSwim = try local._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, perpetual: true)
 
         localSwim.tell(.local(.join(remoteUniqueAddress.address)))
 
-        try awaitStatus(.alive(incarnation: 0), for: remoteSwimRemoteRef, on: localSwim, within: .seconds(1))
+        let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+        try awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -449,7 +448,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         try localTestKit.eventually(within: timeout, file: file, line: line, column: column) {
             membershipShell.tell(.remote(.getMembershipState(replyTo: stateProbe.ref)))
             let membership = try stateProbe.expectMessage()
-            pprint("membership: \(membership.membershipStatus)")
+            pinfo("membership: \(membership.membershipStatus)")
             let otherStatus = membership.membershipStatus[member]
             guard otherStatus == status else {
                 throw localTestKit.error("Expected status [\(status)] for [\(member)], but found \(otherStatus.debugDescription)")
@@ -471,27 +470,27 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         }
     }
 
-    func makeSWIM(forPath path: UniqueActorPath, members: [ActorRef<SWIM.Message>], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
+    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
         var memberStatus: [ActorRef<SWIM.Message>: SWIM.Status] = [:]
         for member in members {
             memberStatus[member] = .alive(incarnation: 0)
         }
-        return self.makeSWIM(forPath: path, members: memberStatus, configuredWith: configure)
+        return self.makeSWIM(for: address, members: memberStatus, configuredWith: configure)
     }
 
-    func makeSWIM(forPath path: UniqueActorPath, members: [ActorRef<SWIM.Message>: SWIM.Status], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
+    func makeSWIM(for address: ActorAddress, members: [ActorRef<SWIM.Message>: SWIM.Status], configuredWith configure: (inout SWIM.Settings) -> Void = { _ in }) -> SWIM.Instance {
         var settings = SWIM.Settings()
         configure(&settings)
-        let state = SWIM.Instance(settings)
+        let instance = SWIM.Instance(settings)
         for (member, status) in members {
-            state.addMember(member, status: status)
+            instance.addMember(member, status: status)
         }
-        return state
+        return instance
     }
 
     func swimBehavior(members: [ActorRef<SWIM.Message>], configuredWith configure: @escaping (inout SWIM.Settings) -> Void = { _ in }) -> Behavior<SWIM.Message> {
         return .setup { context in
-            let swim = self.makeSWIM(forPath: context.path, members: members, configuredWith: configure)
+            let swim = self.makeSWIM(for: context.address, members: members, configuredWith: configure)
             swim.addMyself(context.myself)
             return SWIM.Shell(swim).ready
         }

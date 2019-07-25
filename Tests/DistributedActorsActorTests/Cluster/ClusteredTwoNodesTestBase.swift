@@ -193,21 +193,20 @@ extension ClusteredTwoNodesTestBase {
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
 extension ClusteredTwoNodesTestBase {
-    func resolveRemoteRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
-        return self.resolveRef(on: system, type: type, path: path, targetSystem: self.remote)
+    func resolveRemoteRef<M>(on system: ActorSystem, type: M.Type, address: ActorAddress) -> ActorRef<M> {
+        return self.resolveRef(on: system, type: type, address: address, targetSystem: self.remote)
     }
-    func resolveLocalRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath) -> ActorRef<M> {
-        return self.resolveRef(on: system, type: type, path: path, targetSystem: self.local)
+    func resolveLocalRef<M>(on system: ActorSystem, type: M.Type, address: ActorAddress) -> ActorRef<M> {
+        return self.resolveRef(on: system, type: type, address: address, targetSystem: self.local)
     }
 
-    func resolveRef<M>(on system: ActorSystem, type: M.Type, path: UniqueActorPath, targetSystem: ActorSystem) -> ActorRef<M> {
+    func resolveRef<M>(on system: ActorSystem, type: M.Type, address: ActorAddress, targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNodeAddress = targetSystem.settings.cluster.uniqueBindAddress
 
-        var uniqueRemotePath: UniqueActorPath = path
-        uniqueRemotePath.address = remoteNodeAddress
-        let resolveContext = ResolveContext<M>(path: uniqueRemotePath, system: self.local)
+        var uniqueRemoteAddress = ActorAddress(node: remoteNodeAddress, path: address.path, incarnation: address.incarnation)
+        let resolveContext = ResolveContext<M>(address: uniqueRemoteAddress, system: self.local)
         return system._resolve(context: resolveContext)
     }
 }

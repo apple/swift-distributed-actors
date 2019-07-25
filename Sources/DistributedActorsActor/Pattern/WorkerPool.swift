@@ -102,7 +102,7 @@ internal extension WorkerPool {
 
                     // naive "somewhat effort" on keeping the balancing stable when new members will be joining
                     var workers = Array(listing.refs)
-                    workers.sort { l, r in l.path.description < r.path.description }
+                    workers.sort { l, r in l.address.description < r.address.description }
 
                     context.log.debug("Flushing buffered messages (count: \(stash.count)) on initial worker listing (count: \(workers.count))")
                     return try stash.unstashAll(context: context, behavior: self.forwarding(to: workers))
@@ -143,7 +143,7 @@ internal extension WorkerPool {
                     }
 
                     var newWorkers = Array(listing.refs) // TODO smarter logic here, remove dead ones etc; keep stable round robin while new listing arrives
-                    newWorkers.sort { l, r in l.path.description < r.path.description }
+                    newWorkers.sort { l, r in l.address.description < r.address.description }
 
                     context.log.debug("Active workers: \(newWorkers.count)")
                     // TODO if no more workers may want to issue warnings or timeouts
@@ -160,7 +160,7 @@ internal extension WorkerPool {
             let eagerlyRemoteTerminatedWorkers: Behavior<WorkerPoolMessage<Message>> =
                 .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     var remainingWorkers = workers
-                    remainingWorkers.removeAll { ref in ref.path == terminated.path } // TODO removeFirst is enough, but has no closure version
+                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO removeFirst is enough, but has no closure version
                     if remainingWorkers.count > 0 {
                         return self.forwarding(to: remainingWorkers)
                     } else {
@@ -182,8 +182,8 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
     }
 
     @inlinable
-    public func tell(_ message: Message) {
-        self.ref.tell(.forward(message))
+    public func tell(_ message: Message, file: String = #file, line: UInt = #line) {
+        self.ref.tell(.forward(message), file: file, line: line)
     }
 
     // other query methods

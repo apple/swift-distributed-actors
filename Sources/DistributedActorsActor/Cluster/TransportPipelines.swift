@@ -217,8 +217,8 @@ private final class EnvelopeHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope = self.unwrapOutboundIn(data)
-
-        let protoEnvelope = ProtoEnvelope(fromEnvelope: envelope)
+        pprint("ENVELOPE OUT \(String(reflecting: envelope))")
+        let protoEnvelope = ProtoEnvelope(envelope)
         do {
             let bytes = try protoEnvelope.serializedByteBuffer(allocator: context.channel.allocator)
             context.writeAndFlush(NIOAny(bytes), promise: promise)
@@ -261,7 +261,8 @@ private final class SerializationHandler: ChannelDuplexHandler {
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope = self.unwrapOutboundIn(data)
         let serializationPromise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)> = context.eventLoop.makePromise()
-        self.serializationPool.serialize(message: envelope.message, metaType: envelope.metaType, recepientPath: envelope.recipient.path, promise: serializationPromise)
+        
+        self.serializationPool.serialize(message: envelope.message, metaType: envelope.metaType, recipientPath: envelope.recipient.path, promise: serializationPromise)
         serializationPromise.futureResult.whenComplete {
             switch $0 {
             case .success((let serializerId, let bytes)):
@@ -280,19 +281,21 @@ private final class SerializationHandler: ChannelDuplexHandler {
         let wireEnvelope = self.unwrapInboundIn(data)
         let deserializationPromise: EventLoopPromise<Any> = context.eventLoop.makePromise()
 
-        serializationPool.deserialize(serializerId: wireEnvelope.serializerId, from: wireEnvelope.payload, recepientPath: wireEnvelope.recipient.path, promise: deserializationPromise)
+        serializationPool.deserialize(serializerId: wireEnvelope.serializerId, from: wireEnvelope.payload, recipientPath: wireEnvelope.recipient.path, promise: deserializationPromise)
 
         // TODO: ensure message ordering. See comment in `write`.
-        deserializationPromise.futureResult.whenComplete {
-            switch $0 {
+        deserializationPromise.futureResult.whenComplete { deserializedResult in
+            switch deserializedResult {
             case .success(let message as SystemMessage):
-                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, system: self.system)
+                let resolveContext = ResolveContext<Any>(address: wireEnvelope.recipient, system: self.system)
                 let ref = self.system._resolveUntyped(context: resolveContext)
                 ref.sendSystemMessage(message)
             case .success(let message):
-                let resolveContext = ResolveContext<Any>(path: wireEnvelope.recipient, system: self.system)
+                let resolveContext = ResolveContext<Any>(address: wireEnvelope.recipient, system: self.system)
+                self.log.warning("resolveContext.address     = \(resolveContext.address)")  
                 let ref = self.system._resolveUntyped(context: resolveContext)
-                ref._unsafeTellOrDrop(message)
+                self.log.warning("resolveContext.address ref = \(ref)")  
+                ref._tellOrDeadLetter(message)
             case .failure(let error):
                 self.log.error("Error: \(error)")
             }
@@ -326,6 +329,7 @@ extension ReceivingHandshakeHandler {
 
 enum WireFormatError: Error {
     case missingField(String)
+    case emptyRepeatedField(String)
     case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
 
@@ -344,7 +348,7 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
         self.setLoggerMetadata(context)
 
         let event = self.unwrapInboundIn(data)
-        self.log.debug("[dump-\(self.role)] Received: \(event.formatHexDump)")
+        self.log.debug("[dump-\(self.role)] Received: \(event.formatHexDump(maxBytes: 10000))")
         context.fireChannelRead(data)
     }
 
@@ -450,7 +454,7 @@ extension ClusterShell {
                     }
                 }
 
-                let log = ActorLogger.make(system: system, identifier: "remoting-client")
+                let log = ActorLogger.make(system: system, identifier: "client")
 
                 let otherHandlers: [(String?, ChannelHandler)] = [
                     ("magic prepender", ProtocolMagicBytesPrepender()),
@@ -483,27 +487,6 @@ extension ClusterShell {
             return try NIOSSLContext(configuration: tlsConfig)
         }
 
-    }
-}
-
-// MARK: Parsing utilities
-
-// Note: Since we don't want to necessarily bind everything into protobuf just yet
-extension UniqueActorPath {
-    // TODO optimize or replace with other mechanism
-    func _parse(_ buf: inout ByteBuffer) throws -> UniqueActorPath? {
-        guard let string = buf.readString(length: buf.readableBytes) else { // TODO meh
-            return nil
-        }
-
-        var path = ActorPath._rootPath
-        for part in string.split(separator: "/") {
-            path = try path / ActorPathSegment(part)
-        }
-
-        // TODO take the UID as well
-
-        return path.makeUnique(uid: .random()) // FIXME
     }
 }
 

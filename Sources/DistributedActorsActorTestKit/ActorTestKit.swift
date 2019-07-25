@@ -194,7 +194,7 @@ extension ActorTestKit {
         
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let res: TraversalResult<AddressableActorRef> = self.system._traverseAll { context, ref in
-            if ref.path.path.description == path {
+            if ref.address.path.description == path {
                 return .accumulateSingle(ref) // TODO: could use the .return(...)
             } else {
                 return .continue
@@ -249,7 +249,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override var system: ActorSystem {
         return self._system
     }
-    override var path: UniqueActorPath {
+    override var path: ActorPath {
         return super.path
     }
     override var name: String {
@@ -271,11 +271,11 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        return super.watch(watchee)
+    override func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        return super.watch(watchee, file: file, line: line)
     }
 
-    override func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
+    override func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
 

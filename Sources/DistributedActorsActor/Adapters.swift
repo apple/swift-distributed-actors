@@ -14,12 +14,12 @@
 
 internal protocol AbstractAdapter: _ActorTreeTraversable {
 
-    var path: UniqueActorPath { get }
+    var address: ActorAddress { get }
     var deadLetters: ActorRef<DeadLetter> { get }
 
     /// Try to `tell` given message, if the type matches the adapted (or direct) message type, it will be delivered.
-    func trySendUserMessage(_ message: Any)
-    func sendSystemMessage(_ message: SystemMessage)
+    func trySendUserMessage(_ message: Any, file: String, line: UInt)
+    func sendSystemMessage(_ message: SystemMessage, file: String, line: UInt)
 
     /// Synchronously stops the adapter ref and send terminated messages to all watchers.
     func stop()
@@ -39,18 +39,18 @@ internal protocol AbstractAdapter: _ActorTreeTraversable {
 internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     private let target: ActorRef<To>
     private let converter: (From) -> To
-    private let adapterPath: UniqueActorPath
+    private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = Mutex()
 
-    var path: UniqueActorPath {
-        return self.adapterPath
+    var address: ActorAddress {
+        return self.adapterAddress
     }
     let deadLetters: ActorRef<DeadLetter>
 
-    init(_ ref: ActorRef<To>, path: UniqueActorPath, converter: @escaping (From) -> To) {
+    init(_ ref: ActorRef<To>, address: ActorAddress, converter: @escaping (From) -> To) {
         self.target = ref
-        self.adapterPath = path
+        self.adapterAddress = address
         self.converter = converter
         self.watchers = []
 
@@ -67,7 +67,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
         return self.target._system
     }
 
-    func sendSystemMessage(_ message: SystemMessage) {
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case .watch(let watchee, let watcher):
             self.addWatcher(watchee: watchee, watcher: watcher)
@@ -86,7 +86,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     }
 
     @usableFromInline
-    func trySendUserMessage(_ message: Any) {
+    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
         if let message = message as? From {
             self.sendUserMessage(message)
         } else {
@@ -94,7 +94,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
                 fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " + 
                     "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(From.self)`.")
             } else {
-                traceLog_Mailbox(self.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
+                traceLog_Mailbox(self.address.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
                 return // TODO: "drop" the message
             }
         }
@@ -102,7 +102,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.path == self.adapterPath && watcher.path != self.adapterPath, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -120,7 +120,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     }
 
     private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
-        assert(watchee.path == self.adapterPath && watcher.path != self.adapterPath, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
 
         self.lock.synchronized {
             guard self.watchers != nil else {
@@ -180,7 +180,8 @@ extension ActorRefAdapter {
     }
 
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        guard context.selectorSegments.first == nil, self.path.uid == context.selectorUID else {
+        guard context.selectorSegments.first == nil,
+            self.address.incarnation == context.selectorIncarnation else {
             return context.deadRef
         }
 
@@ -193,7 +194,7 @@ extension ActorRefAdapter {
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil, self.path.uid == context.selectorUID else {
+        guard context.selectorSegments.first == nil && self.address.incarnation == context.selectorIncarnation else {
             return context.deadLetters.asAddressable()
         }
 
@@ -210,27 +211,27 @@ extension ActorRefAdapter {
 internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 
     let deadLetters: ActorRef<DeadLetter>
-    let deadRecipient: UniqueActorPath
+    let deadRecipient: ActorAddress
 
-    init(_ ref: ActorRef<DeadLetter>, deadRecipient: UniqueActorPath) {
+    init(_ ref: ActorRef<DeadLetter>, deadRecipient: ActorAddress) {
         self.deadLetters = ref
         self.deadRecipient = deadRecipient
     }
 
-    var path: UniqueActorPath {
-        return self.deadLetters.path
+    var address: ActorAddress {
+        return self.deadLetters.address
     }
 
     var system: ActorSystem? {
         return self.deadLetters._system
     }
 
-    func trySendUserMessage(_ message: Any) {
-        self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient))
+    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+        self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient, sentAtFile: file, sentAtLine: line), file: file, line: line)
     }
 
-    func sendSystemMessage(_ message: SystemMessage) {
-        self.deadLetters.tell(DeadLetter(message, recipient: self.deadRecipient))
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        self.deadLetters.sendSystemMessage(message, file: file, line: line)
     }
 
     func stop() {

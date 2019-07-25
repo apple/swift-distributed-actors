@@ -71,15 +71,41 @@ class SerializationTests: XCTestCase {
         pathAgain.shouldEqual(path)
     }
 
-    func test_serialize_uniqueActorPath() throws {
-        let path: UniqueActorPath = (try ActorPath(root: "user") / ActorPathSegment("hello")).makeUnique(uid: .random())
-        let encoded = try JSONEncoder().encode(path)
-        pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
+    func test_serialize_actorAddress_shouldDemandContext() throws {
+        let err = try shouldThrow() {
+            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
-        let pathAgain = try JSONDecoder().decode(UniqueActorPath.self, from: encoded)
-        pinfo("Deserialized again: \(String(reflecting: pathAgain))")
+            let encoder = JSONEncoder()
+            let encoded = try encoder.encode(address)
+        }
 
-        pathAgain.shouldEqual(path)
+        "\(err)".shouldStartWith(prefix: """
+                                         missingActorSerializationContext(Swift Distributed ActorsActor.ActorAddress, details: "While encoding [/user/hello]
+                                         """)
+    }
+    func test_serialize_actorAddress_usingContext() throws {
+        try shouldNotThrow() {
+            let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
+
+            let encoder = JSONEncoder()
+            let decoder = JSONDecoder()
+
+            let context = ActorSerializationContext(log: self.system.log,
+                localNodeAddress: self.system.settings.cluster.uniqueBindAddress,
+                system: self.system,
+                traversable: self.system)
+
+            encoder.userInfo[.actorSerializationContext] = context
+            decoder.userInfo[.actorSerializationContext] = context
+
+            let encoded = try encoder.encode(address)
+            pinfo("Serialized actor path: \(encoded.copyToNewByteBuffer().stringDebugDescription())")
+
+            let addressAgain = try decoder.decode(ActorAddress.self, from: encoded)
+            pinfo("Deserialized again: \(String(reflecting: addressAgain))")
+
+            "\(addressAgain)".shouldEqual("sact://SerializationTests@localhost:7337/user/hello")
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -136,7 +162,7 @@ class SerializationTests: XCTestCase {
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindAddress.uid)").shouldBeTrue()
+        serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindAddress.nid)").shouldBeTrue()
         serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
         serializedFormat.contains("\(ClusterSettings.Default.host)").shouldBeTrue()
         serializedFormat.contains("\(ClusterSettings.Default.port)").shouldBeTrue()
@@ -168,7 +194,7 @@ class SerializationTests: XCTestCase {
             try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
 
-        "\(back.containedRef.path)".shouldEqual("/system/deadLetters")
+        "\(back.containedRef.address)".shouldEqual("/system/deadLetters")
     }
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
         let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
@@ -183,7 +209,7 @@ class SerializationTests: XCTestCase {
         }
 
         back.containedInterestingRef.tell(InterestingMessage())
-        "\(back.containedInterestingRef.path)".shouldEqual("/system/deadLetters")
+        "\(back.containedInterestingRef.address)".shouldEqual("/system/deadLetters")
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
@@ -209,7 +235,7 @@ class SerializationTests: XCTestCase {
             return .receiveSignal{ _, signal in
                 switch signal {
                 case let terminated as Signals.Terminated:
-                    p.tell("terminated:\(terminated.path.name)")
+                    p.tell("terminated:\(terminated.address.name)")
                 default:
                     ()
                 }
@@ -229,10 +255,10 @@ class SerializationTests: XCTestCase {
             try system.serialization.deserialize(HasReceivesSystemMsgs.self, from: bytes)
         }
 
-        back.sysRef.path.shouldEqual(sysRef.path)
+        back.sysRef.address.shouldEqual(sysRef.address)
 
         // Only to see that the deserialized ref indeed works for sending system messages to it
-        back.sysRef.sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false))
+        back.sysRef.sendSystemMessage(.terminated(ref: watchMe.asAddressable(), existenceConfirmed: false), file: #file, line: #line)
         try p.expectMessage("terminated:watchMe")
     }
 

@@ -29,11 +29,7 @@ public struct ActorSystemSettings {
     public var serialization: SerializationSettings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
-            if self.cluster.enabled {
-                self.serialization.serializationAddress = self.cluster.uniqueBindAddress // TODO later on this would be `address` vs `bindAddress`
-            } else {
-                self.serialization.serializationAddress = nil
-            }
+            self.serialization.localNodeAddress = self.cluster.uniqueBindAddress
         }
     }
 
