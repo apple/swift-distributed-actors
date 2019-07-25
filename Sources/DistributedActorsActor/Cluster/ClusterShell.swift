@@ -31,7 +31,7 @@ internal class ClusterShell {
 
     /// Used by remote actor refs to obtain associations
     /// - Protected by: `_associationsLock`
-    private var _associationsRegistry: [NodeUID: AssociationRemoteControl]
+    private var _associationsRegistry: [UniqueNodeAddress: AssociationRemoteControl]
 
     // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
     // any earlier access to the pool is a bug (in our library) and must be treated as such.
@@ -43,9 +43,9 @@ internal class ClusterShell {
         return pool
     }
 
-    internal func associationRemoteControl(with uid: NodeUID) -> AssociationRemoteControl? {
+    internal func associationRemoteControl(with nodeAddress: UniqueNodeAddress) -> AssociationRemoteControl? {
         return self._associationsLock.withLock {
-            self._associationsRegistry[uid]
+            self._associationsRegistry[nodeAddress]
         }
     }
 
@@ -61,7 +61,7 @@ internal class ClusterShell {
     private func cacheAssociationRemoteControl(_ associationState: AssociationStateMachine.AssociatedState) {
         self._associationsLock.withLockVoid {
             // TODO or association ID rather than the remote id?
-            self._associationsRegistry[associationState.remoteAddress.nid] = associationState.makeRemoteControl()
+            self._associationsRegistry[associationState.remoteAddress] = associationState.makeRemoteControl()
         }
     }
     
