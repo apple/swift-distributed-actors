@@ -88,7 +88,7 @@ internal final class RemotePersonality<Message> {
             guard let remoteAddress = self.address.node else {
                 fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
             }
-            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress.nid) else {
+            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress) else {
                 return nil
             }
             self._cachedAssociationRemoteControl = obtainedRemoteControl // TODO atomically...
