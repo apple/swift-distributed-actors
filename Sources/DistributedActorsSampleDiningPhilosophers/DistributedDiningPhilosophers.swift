@@ -71,26 +71,12 @@ struct DistributedDiningPhilosophers {
         let fork4: Fork.Ref = try systemC.spawn(Fork.behavior, name: "fork-4")
         let fork5: Fork.Ref = try systemC.spawn(Fork.behavior, name: "fork-5")
 
-        // TODO: since we are missing the receptionist feature we resolve manually (users will not [need to / be able to] do this)
-        let onA_fork1: ActorRef<Fork.Message> = systemA._resolveKnownRemote(fork1, onRemoteSystem: systemA)
-        let onA_fork5: ActorRef<Fork.Message> = systemA._resolveKnownRemote(fork5, onRemoteSystem: systemC)
-
-        let onB_fork1: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork1, onRemoteSystem: systemA)
-        let onB_fork2: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork2, onRemoteSystem: systemB)
-        //  onB_fork2 is used twice
-        let onB_fork3: ActorRef<Fork.Message> = systemB._resolveKnownRemote(fork3, onRemoteSystem: systemB)
-        let onC_fork3: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork3, onRemoteSystem: systemB)
-        let onC_fork4: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork4, onRemoteSystem: systemC)
-        //  onC_fork4 is used twice
-        let onC_fork5: ActorRef<Fork.Message> = systemC._resolveKnownRemote(fork5, onRemoteSystem: systemC)
-        // TODO: end of workaround for lack of Receptionist feature
-
         // 5 philosophers, sitting in a circle, with the forks between them:
-        let _: Philosopher.Ref = try systemA.spawn(Philosopher(left: onA_fork5, right: onA_fork1).behavior, name: "Konrad")
-        let _: Philosopher.Ref = try systemB.spawn(Philosopher(left: onB_fork1, right: onB_fork2).behavior, name: "Dario")
-        let _: Philosopher.Ref = try systemB.spawn(Philosopher(left: onB_fork2, right: onB_fork3).behavior, name: "Johannes")
-        let _: Philosopher.Ref = try systemC.spawn(Philosopher(left: onC_fork3, right: onC_fork4).behavior, name: "Cory")
-        let _: Philosopher.Ref = try systemC.spawn(Philosopher(left: onC_fork4, right: onC_fork5).behavior, name: "Norman")
+        _ = try systemA.spawn(Philosopher(left: fork5, right: fork1).behavior, name: "Konrad")
+        _ = try systemB.spawn(Philosopher(left: fork1, right: fork2).behavior, name: "Dario")
+        _ = try systemB.spawn(Philosopher(left: fork2, right: fork3).behavior, name: "Johannes")
+        _ = try systemC.spawn(Philosopher(left: fork3, right: fork4).behavior, name: "Cory")
+        _ = try systemC.spawn(Philosopher(left: fork4, right: fork5).behavior, name: "Norman")
 
         Thread.sleep(time)
     }

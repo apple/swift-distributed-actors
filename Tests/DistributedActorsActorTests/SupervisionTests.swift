@@ -678,7 +678,7 @@ class SupervisionTests: XCTestCase {
                 return .same
             }.receiveSignal { context, signal in
                 if let terminated = signal as? Signals.Terminated {
-                    parentProbe.tell("terminated:\(terminated.path.name)")
+                    parentProbe.tell("terminated:\(terminated.address.name)")
                     try failureMode.fail()
                 }
                 return .same

@@ -43,7 +43,7 @@ final class WorkerPoolTests: XCTestCase {
                 context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
-                    p.tell("work:\(work) at \(context.path.name)")
+                    p.tell("work:\(work) at \(context.name)")
                     return .same
                 }
             }

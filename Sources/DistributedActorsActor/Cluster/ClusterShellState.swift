@@ -172,7 +172,7 @@ extension ClusterShellState {
         switch state {
         case .initiated(let initiated):
             assert(initiated.channel != nil, "Channel should always be present after the initial initialization.")
-            initiated.channel?.close()
+            _ = initiated.channel?.close()
         case .wasOfferedHandshake:
             fatalError("abortOutgoingHandshake was called in a context where the handshake was not an outgoing one! Was: \(state)")
         case .completed:
@@ -190,7 +190,7 @@ extension ClusterShellState {
     ///
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
     mutating func abortIncomingHandshake(offer: Wire.HandshakeOffer, channel: Channel) {
-        channel.close()
+        _ = channel.close()
     }
 
     /// This is the entry point for a server receiving a handshake with a remote node.
@@ -230,15 +230,6 @@ extension ClusterShellState {
                              detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
                              """)
             if tieBreakWinner {
-                let concurrentHandshakeError = ClusterShell.HandshakeConnectionError(
-                    address: offer.from.address,
-                    message: """
-                             Concurrently initiated handshake initialization between nodes [\(initiated.localAddress)](local) \
-                             and [\(offer.from)](remote) detected! Terminating OUR "outgoing" connection and will negotiate on incoming
-                             connection. Association will be established based on negotiation outcome.
-                             """
-                )
-
                 if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.address) {
                     self.log.info("Aborted handshake, as concurrently negotiating another one with same node already; Aborted handshake: \(abortedHandshake)")
                 }

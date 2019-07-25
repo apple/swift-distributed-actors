@@ -80,7 +80,6 @@ internal struct NIOEventLoopGroupDispatcher: MessageDispatcher {
     }
 
     func execute(_ f: @escaping () -> Void) {
-        pprint("Execute on \(self)")
         group.next().execute(f)
     }
 }

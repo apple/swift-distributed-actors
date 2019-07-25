@@ -70,7 +70,7 @@ public struct Serialization {
         self.deadLetters = system.deadLetters
         let context = ActorSerializationContext(
             log: log,
-            serializationAddress: settings.serializationAddress,
+            localNodeAddress: settings.localNodeAddress,
             system: system,
             traversable: traversable
         )
@@ -194,7 +194,7 @@ extension Serialization {
             }
             guard let serializer = self.serializers[serializerId] else {
                 self.debugPrintSerializerTable()
-                pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
+                traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerRegisteredFor(type: "\(M.self)")
             }
             bytes = try serializer.unsafeAsSerializerOf(M.self).serialize(message: message)
@@ -211,7 +211,7 @@ extension Serialization {
         }
         guard let serializer = self.serializers[serializerId] else {
             self.debugPrintSerializerTable()
-            pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
+            traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
             throw SerializationError.noSerializerRegisteredFor(type: "\(metaType)")
         }
 
@@ -226,11 +226,11 @@ extension Serialization {
             return systemMessage as! M // guaranteed that M is SystemMessage
         } else {
             guard let serializerId = self.serializerIdFor(type: type) else {
-                pprint("FAILING; Available serializers: \(self.serializers)")
+                traceLog_Serialization("FAILING; Available serializers: \(self.serializers)")
                 throw SerializationError.noSerializerKeyAvailableFor(type: "\(type)")
             }
             guard let serializer = self.serializers[serializerId] else {
-                pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
+                traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerKeyAvailableFor(type: "\(type)")
             }
 
@@ -248,7 +248,7 @@ extension Serialization {
         //    return try deserializeSystemMessage(bytes: bytes)
         //} else {
             guard let serializer = self.serializers[serializerId] else {
-                pprint("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
+                traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerKeyAvailableFor(type: "Id: \(serializerId)")
             }
 
@@ -266,7 +266,6 @@ extension Serialization {
     func verifySerializable<M>(message: M) throws {
         switch message {
         case is NoSerializationVerification:
-            pprint("SKIPPING serialization check, type: [\(type(of: message))]") // TODO should be debug log
             return // skip
         default:
             let bytes = try self.serialize(message: message)
@@ -303,16 +302,15 @@ public struct ActorSerializationContext {
 
     private let traversable: _ActorTreeTraversable
 
-    /// Address to be included in serialized actor refs if they contain no address yet
-    /// `nil` if clustering is not enabled, thus there is no need to serialize with address.
-    public let serializationAddress: UniqueNodeAddress?
+    /// Address to be included in serialized actor refs if they are local references.
+    public let localNodeAddress: UniqueNodeAddress
 
     internal init(log: Logger,
-                  serializationAddress: UniqueNodeAddress?,
+                  localNodeAddress: UniqueNodeAddress,
                   system: ActorSystem,
                   traversable: _ActorTreeTraversable) {
         self.log = log
-        self.serializationAddress = serializationAddress
+        self.localNodeAddress = localNodeAddress
         self.system = system
         self.traversable = traversable
     }
@@ -323,17 +321,17 @@ public struct ActorSerializationContext {
     /// If a "new" actor was started on the same `path`, its `uid` would be different, and thus it would not resolve using this method.
     /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
     ///
-    /// - Returns: the erased `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
-    public func resolveActorRef<Message>(path: UniqueActorPath) -> ActorRef<Message> {
-        let context = ResolveContext<Message>(path: path, system: self.system)
+    /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
+    public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress) -> ActorRef<Message> {
+        let context = ResolveContext<Message>(address: address, system: self.system)
         let resolved = self.traversable._resolve(context: context)
         return resolved
     }
 
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-    internal func resolveReceivesSystemMessages(path: UniqueActorPath) -> AddressableActorRef {
-        let context = ResolveContext<Any>(path: path, system: self.system)
+    internal func resolveReceivesSystemMessages(identifiedBy address: ActorAddress) -> AddressableActorRef {
+        let context = ResolveContext<Any>(address: address, system: self.system)
         let resolved = self.traversable._resolveUntyped(context: context)
         return resolved
     }
@@ -399,7 +397,9 @@ public struct SerializationSettings {
     /// 
     /// If clustering is not configured on this node, this value SHOULD be `nil`,
     /// as it is not useful to render any address for actors which shall never be reached remotely.
-    public var serializationAddress: UniqueNodeAddress? = nil // TODO or unique one? I think we take care of the UIDs on the level of the envelopes already after all
+    ///
+    /// This is set automatically when modifying the systems cluster settings.
+    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, uid: NodeUID(0))
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]

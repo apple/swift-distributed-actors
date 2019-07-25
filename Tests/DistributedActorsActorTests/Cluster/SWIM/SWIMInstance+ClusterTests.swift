@@ -62,7 +62,7 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
         let myself = try local.spawn(SWIM.Shell(swim).ready, name: "SWIM")
         swim.addMyself(myself)
-        var myselfMember = swim.member(for: myself)!
+        _ = swim.member(for: myself)!
         swim.memberCount.shouldEqual(1)
 
         let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")

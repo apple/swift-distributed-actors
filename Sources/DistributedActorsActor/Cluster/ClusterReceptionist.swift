@@ -16,7 +16,7 @@ internal enum ClusterReceptionist {
 
     struct Replicate: Receptionist.Message, Codable {
         let key: AnyRegistrationKey
-        let path: UniqueActorPath
+        let address: ActorAddress
     }
 
     struct FullStateRequest: Receptionist.Message, Codable {
@@ -24,7 +24,7 @@ internal enum ClusterReceptionist {
     }
 
     struct FullState: Receptionist.Message, Codable {
-        let registrations: [AnyRegistrationKey: [UniqueActorPath]]
+        let registrations: [AnyRegistrationKey: [ActorAddress]]
     }
 
     struct Sync: Receptionist.Message {
@@ -54,7 +54,7 @@ internal enum ClusterReceptionist {
                     try ClusterReceptionist.onFullState(context: context, fullState: fullState, storage: storage)
 
                 case _ as ClusterReceptionist.Sync:
-                    try ClusterReceptionist.syncRegistrations(context: context, ref: replicateAdapter)
+                    try ClusterReceptionist.syncRegistrations(context: context, myself: replicateAdapter)
 
                 case let message as _Register:
                     try ClusterReceptionist.onRegister(context: context, message: message, storage: storage)
@@ -114,23 +114,23 @@ internal enum ClusterReceptionist {
 
     private static func onFullStateRequest(context: ActorContext<Receptionist.Message>, request: ClusterReceptionist.FullStateRequest, storage: Receptionist.Storage) {
         context.log.info("Received full state request from [\(request.replyTo)]")
-        var registrations: [AnyRegistrationKey: [UniqueActorPath]] = [:]
+        var registrations: [AnyRegistrationKey: [ActorAddress]] = [:]
         registrations.reserveCapacity(storage._registrations.count)
         for (key, values) in storage._registrations {
-            var paths: [UniqueActorPath] = []
-            paths.reserveCapacity(values.count)
+            var addresses: [ActorAddress] = []
+            addresses.reserveCapacity(values.count)
             for ref in values {
-                let path = ClusterReceptionist.makeRemotePath(ref.path, localAddress: context.system.settings.cluster.uniqueBindAddress)
-                paths.append(path)
+                let path = ClusterReceptionist.setNodeAddress(ref.address, localAddress: context.system.settings.cluster.uniqueBindAddress)
+                addresses.append(path)
             }
-            registrations[key] = paths
+            registrations[key] = addresses
         }
 
         request.replyTo.tell(FullState(registrations: registrations))
     }
 
     private static func onReplicate(context: ActorContext<Receptionist.Message>, message: ClusterReceptionist.Replicate, storage: Receptionist.Storage) throws {
-        let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: message.path, system: context.system))
+        let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(address: message.address, system: context.system))
 
         guard ref.isRemote() else {
             // is local ref and should be ignored
@@ -145,7 +145,7 @@ internal enum ClusterReceptionist {
         for (key, paths) in fullState.registrations {
             var anyAdded = false
             for path in paths {
-                let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(path: path, system: context.system))
+                let ref: AddressableActorRef = context.system._resolveUntyped(context: ResolveContext(address: path, system: context.system))
 
                 guard ref.isRemote() else {
                     // is local ref and should be ignored
@@ -175,7 +175,7 @@ internal enum ClusterReceptionist {
         let behavior: Behavior<Never> = .setup { context in
             context.watch(ref)
             return .receiveSignal { _, signal in
-                if let signal = signal as? Signals.Terminated, signal.path == ref.path {
+                if let signal = signal as? Signals.Terminated, signal.address == ref.address {
                     terminatedCallback()
                     return .stopped
                 }
@@ -186,7 +186,8 @@ internal enum ClusterReceptionist {
         _ = try context.spawnAnonymous(behavior)
     }
 
-    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey, ref: AddressableActorRef, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
+    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey,
+                                                       ref: AddressableActorRef, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
             let remainingRegistrations = storage.removeRegistration(key: key, ref: ref) ?? []
 
@@ -205,38 +206,48 @@ internal enum ClusterReceptionist {
     }
 
     private static func replicate(context: ActorContext<Receptionist.Message>, register: _Register) throws {
-        let remoteControls = context.system._cluster!.associationRemoteControls
+        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME should not be needed and use cluster members instead
 
         guard !remoteControls.isEmpty else {
-            return
+            return // nothing to do, no remote members
         }
 
+        // TODO: should we rather resolve the targets and send to them via actor refs? Manually creating envelopes may be hard to marry with context propagation
+        // TODO: this will be reimplemented to use CRDTs anyway so perhaps not worth changing now
         for remoteControl in remoteControls {
-            let remoteReceptionistPath = try UniqueActorPath(path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")], address: remoteControl.remoteAddress), uid: ActorUID.wellKnown)
-            let path = ClusterReceptionist.makeRemotePath(register._addressableActorRef.path, localAddress: context.system.settings.cluster.uniqueBindAddress)
+            let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
+            let address = ClusterReceptionist.setNodeAddress(register._addressableActorRef.address, localAddress: context.system.settings.cluster.uniqueBindAddress)
 
-            remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: Envelope(payload: .userMessage(Replicate(key: register._key.boxed, path: path))), recipient: remoteReceptionistPath)
+            let envelope: Envelope = Envelope(payload: .userMessage(Replicate(key: register._key.boxed, address: address)))
+            remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: envelope, recipient: remoteReceptionistAddress)
         }
     }
 
-    private static func syncRegistrations(context: ActorContext<Receptionist.Message>, ref: ActorRef<ClusterReceptionist.FullState>) throws {
-        let remoteControls = context.system._cluster!.associationRemoteControls
+    private static func syncRegistrations(context: ActorContext<Receptionist.Message>, myself: ActorRef<ClusterReceptionist.FullState>) throws {
+        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME should not be needed and use cluster members instead
 
         guard !remoteControls.isEmpty else {
-            return
+            return // nothing to do, no remote members
         }
 
         for remoteControl in remoteControls {
-            let path = try UniqueActorPath(path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")], address: remoteControl.remoteAddress), uid: ActorUID.wellKnown)
-            remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: Envelope(payload: .userMessage(ClusterReceptionist.FullStateRequest(replyTo: ref))), recipient: path)
+            let remoteReceptionist = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
+            let envelope  = Envelope(payload: .userMessage(ClusterReceptionist.FullStateRequest(replyTo: myself)))
+
+            remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: envelope, recipient: remoteReceptionist)
         }
     }
 
-    private static func makeRemotePath(_ _path: UniqueActorPath, localAddress: UniqueNodeAddress) -> UniqueActorPath {
-        var path = _path
-        if path.address == nil {
-            path.address = localAddress
+    private static func setNodeAddress(_ address: ActorAddress, localAddress: UniqueNodeAddress) -> ActorAddress {
+        var address = address
+        if address.node == nil {
+            address._location = .remote(localAddress)
         }
-        return path
+        return address
+    }
+
+    private static func makeRemoteAddress(on node: UniqueNodeAddress) -> ActorAddress {
+        return try! .init(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")]), incarnation: .perpetual)
     }
 }
+

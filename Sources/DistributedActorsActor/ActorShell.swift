@@ -35,7 +35,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     let _parent: AddressableActorRef
 
-    let _path: UniqueActorPath
+    let _address: ActorAddress
 
     let _props: Props
 
@@ -55,7 +55,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     @usableFromInline
     lazy var _myCell: ActorCell<Message> =
         ActorCell<Message>(
-            path: self._path,
+            address: self.address,
             actor: self,
             mailbox: Mailbox(shell: self, capacity: self._props.mailbox.capacity)
         )
@@ -111,7 +111,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     @usableFromInline internal var deathWatch: DeathWatch<Message> {
         get {
             guard let d = self._deathWatch else {
-                fatalError("BUG! Tried to access deathWatch on \(self.path) and it was nil!!!! Maybe a message was handled after tombstone?")
+                fatalError("BUG! Tried to access deathWatch on \(self.address) and it was nil!!!! Maybe a message was handled after tombstone?")
             }
             return d
         }
@@ -124,13 +124,13 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: ActorShell implementation
 
     internal init(system: ActorSystem, parent: AddressableActorRef,
-                  behavior: Behavior<Message>, path: UniqueActorPath,
+                  behavior: Behavior<Message>, address: ActorAddress,
                   props: Props, dispatcher: MessageDispatcher) {
         self._system = system
         self._parent = parent
 
         self.behavior = behavior
-        self._path = path
+        self._address = address
         self._props = props
         self._dispatcher = dispatcher
 
@@ -147,16 +147,16 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         // We deliberately only count user actors here, because the number of
         // system actors may change over time and they are also not relevant for
         // this type of test.
-        if path.segments.first?.value == "user" {
+        if address.segments.first?.value == "user" {
             _ = system.userCellInitCounter.add(1)
         }
         #endif
     }
 
     deinit {
-        traceLog_Cell("deinit cell \(_path)")
+        traceLog_Cell("deinit cell \(self._address)")
         #if SACT_TESTS_LEAKS
-        if self.path.segments.first?.value == "user" {
+        if self.address.segments.first?.value == "user" {
             _ = system.userCellInitCounter.sub(1)
         }
         #endif
@@ -205,12 +205,16 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
-    override public var path: UniqueActorPath {
-        return self._path
+    override public var address: ActorAddress {
+        return self._address
+    }
+    // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
+    override public var path: ActorPath {
+        return self._address.path
     }
     // Implementation note: Watch out when accessing from outside of an actor run, myself could have been unset (!)
     override public var name: String {
-        return self.path.name
+        return self._address.name
     }
 
     // access only from within actor
@@ -297,10 +301,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             self.interpretSystemUnwatch(watcher: watcher)
 
         case let .terminated(ref, existenceConfirmed, _):
-            let terminated = Signals.Terminated(path: ref.path, existenceConfirmed: existenceConfirmed)
+            let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
         case let .childTerminated(ref):
-            let terminated = Signals.ChildTerminated(path: ref.path, error: nil) // TODO what about the errors
+            let terminated = Signals.ChildTerminated(address: ref.address, error: nil) // TODO what about the errors
             try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
         case let .addressTerminated(remoteAddress):
             self.interpretAddressTerminated(remoteAddress)
@@ -459,7 +463,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     private func finishTerminating() -> SActActorRunResult {
         self._myCell.mailbox.setClosed()
 
-        let myPath: UniqueActorPath? = self._myCell.path
+        let myAddress: ActorAddress? = self._myCell.address
         traceLog_Cell("FINISH TERMINATING \(self)")
 
         // TODO: stop all children? depends which style we'll end up with...
@@ -496,7 +500,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         default: self.behavior = .stopped
         }
 
-        traceLog_Cell("CLOSED DEAD: \(String(describing: myPath)) has completely terminated, and will never act again.")
+        traceLog_Cell("CLOSED DEAD: \(String(describing: myAddress)) has completely terminated, and will never act again.")
 
         // It shall act, ah, nevermore!
         return .closed
@@ -504,12 +508,12 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     // Implementation note: bridge method so Mailbox can call this when needed
     func notifyWatchersWeDied() {
-        traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.path)")
+        traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.address)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
     func notifyParentWeDied() {
         let parent: AddressableActorRef = self._parent
-        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.path)], parent [\(parent.path)]")
+        traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.address)], parent [\(parent.address)]")
         parent.sendSystemMessage(.childTerminated(ref: myself.asAddressable()))
     }
 
@@ -558,17 +562,17 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Death Watch API
 
-    override public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.watch(watchee: watchee.asAddressable(), myself: self.myself, parent: self._parent)
+    override public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        self.deathWatch.watch(watchee: watchee.asAddressable(), myself: self.myself, parent: self._parent, file: file, line: line)
         return watchee
     }
 
-    override internal func watch(_ watchee: AddressableActorRef) {
-        self.deathWatch.watch(watchee: watchee, myself: self.myself, parent: self._parent)
+    override internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
+        self.deathWatch.watch(watchee: watchee, myself: self.myself, parent: self._parent, file: file, line: line)
     }
 
-    override public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
-        self.deathWatch.unwatch(watchee: watchee.asAddressable(), myself: self.myself)
+    override public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
+        self.deathWatch.unwatch(watchee: watchee.asAddressable(), myself: self.myself, file: file, line: line)
         return watchee
     }
 
@@ -580,8 +584,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         let name = self.system.anonymousNames.nextName()
         do {
-            let adaptedPath = try self.path.makeChildPath(name: name, uid: ActorUID.random())
-            let ref = ActorRefAdapter(self.myself, path: adaptedPath, converter: adapter)
+            let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
+            let ref = ActorRefAdapter(self.myself, address: adaptedAddress, converter: adapter)
 
             self._children.insert(ref) // TODO separate adapters collection?
             return .init(.adapter(ref))
@@ -633,7 +637,7 @@ extension ActorShell {
         switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: self.myself.asAddressable(),
-                message: "Death Pact error: [\(self.path)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
+                message: "Death Pact error: [\(self.address)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
                     "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try becomeNext(behavior: next) // FIXME make sure we don't drop the behavior...?
@@ -664,7 +668,7 @@ extension ActorShell {
         #endif
 
         // we always first need to remove the now terminated child from our children
-        _ = self.children.removeChild(identifiedBy: terminatedRef.path)
+        _ = self.children.removeChild(identifiedBy: terminatedRef.address)
         // Implementation notes:
         // Normally this does not happen, however it MAY occur when the parent actor (self)
         // immediately performed a `stop()` on the child, and thus removes it from its
@@ -672,7 +676,7 @@ extension ActorShell {
         // reach the parent in which the child was already removed.
 
         // next we may apply normal deathWatch logic if the child was being watched
-        if self.deathWatch.isWatching(path: terminatedRef.path) {
+        if self.deathWatch.isWatching(terminatedRef.address) {
             return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
         } else {
             // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
@@ -695,7 +699,7 @@ extension ActorShell {
 
 extension ActorShell: CustomStringConvertible {
     public var description: String {
-        let path = self._myCell.path.description
+        let path = self._myCell.address.description
         return "\(type(of: self))(\(path))"
     }
 }
@@ -738,7 +742,7 @@ extension AbstractActor {
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
-            if myself.path.uid == context.selectorUID {
+            if myself.address.incarnation == context.selectorIncarnation {
                 switch myself {
                 case let myself as ActorRef<Message>:
                     return myself
@@ -755,11 +759,9 @@ extension AbstractActor {
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
-
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
-            if myself.path.uid == context.selectorUID {
+            if self._myselfReceivesSystemMessages.address.incarnation == context.selectorIncarnation {
                 return self.asAddressable
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)

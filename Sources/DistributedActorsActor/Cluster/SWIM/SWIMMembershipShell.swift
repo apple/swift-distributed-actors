@@ -19,12 +19,6 @@ import Logging
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
 internal struct SWIMMembershipShell {
 
-    static let name: String = "membership-swim" // TODO String -> ActorName
-    static func remotePath(address: UniqueNodeAddress) -> UniqueActorPath {
-        return try! (ActorPath(address: address, root: "system") /  ActorPathSegment(SWIMMembershipShell.name)).makeUnique(uid: .wellKnown)
-    }
-    static let periodicPingKey = "swim/periodic-ping"
-
     let swim: SWIM.Instance
     let observer: FailureObserver?
 
@@ -96,7 +90,7 @@ internal struct SWIMMembershipShell {
             self.tracelog(context, .receive, message: message)
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !self.swim.isMember(target) {
-                self.ensureConnected(context, remoteAddress: target.path.address?.address) { _ in
+                self.ensureConnected(context, remoteAddress: target.address.node?.address) { _ in
                     self.swim.addMember(target, status: lastKnownStatus) // TODO push into SWIM?
                     self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                 }
@@ -117,8 +111,8 @@ internal struct SWIMMembershipShell {
         case .pingRandomMember:
             self.handlePingRandomMember(context)
 
-        case .join(let address):
-            self.handleJoin(context, address: address)
+        case .join(let node):
+            self.handleJoin(context, node: node)
         }
     }
 
@@ -258,14 +252,14 @@ internal struct SWIMMembershipShell {
         self.swim.incrementProtocolPeriod()
     }
 
-    func handleJoin(_ context: ActorContext<SWIM.Message>, address: NodeAddress) {
-        self.ensureConnected(context, remoteAddress: address) { uniqueAddress in
-            guard let remoteUniqueAddress = uniqueAddress else {
-                fatalError("") // FIXME fix this
+    func handleJoin(_ context: ActorContext<SWIM.Message>, node: NodeAddress) {
+        self.ensureConnected(context, remoteAddress: node) { uniqueNode in
+            guard let uniqueNode = uniqueNode else {
+                fatalError("This is guaranteed to run with an unique node address")
             }
 
-            assert(remoteUniqueAddress.address == address, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
-            self.sendFirstRemotePing(context, on: remoteUniqueAddress)
+            assert(uniqueNode.address == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
+            self.sendFirstRemotePing(context, on: uniqueNode)
         }
     }
 
@@ -345,7 +339,7 @@ internal struct SWIMMembershipShell {
             switch handshakeResultResult {
             case .success(.success(let remoteUniqueAddress)):
                 onSuccess(remoteUniqueAddress)
-            case .success(.failure(let error)):
+            case .success(.failure):
                 context.log.warning("Failed to connect to remote node [\(remoteAddress)]")
             case .failure:
                 context.log.warning("Connecting to remote node [\(remoteAddress)] timed out")
@@ -356,18 +350,55 @@ internal struct SWIMMembershipShell {
     }
 
     /// This is effectively joining the SWIM membership of the other member.
-    func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on remoteAddress: UniqueNodeAddress) {
-        let path = SWIMMembershipShell.remotePath(address: remoteAddress)
-        let resolveContext = ResolveContext<SWIM.Message>(path: path, system: context.system)
-        let ref = context.system._resolve(context: resolveContext)
+    func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on node: UniqueNodeAddress) {
+        let remoteSwimAddress = SWIMMembershipShell.address(on: node)
+
+        pprint("String(reflecting: remoteSwimAddress) = \(String(reflecting: remoteSwimAddress))")
+
+        let resolveContext = ResolveContext<SWIM.Message>(address: remoteSwimAddress, system: context.system)
+        let remoteSwimRef = context.system._resolve(context: resolveContext)
+        pprint("String(reflecting: remoteSwimRef) = \(String(reflecting: remoteSwimRef))")
 
         // TODO: we are sending the ping here to initiate cluster membership. Once available this should do a state sync instead
-        self.sendPing(context: context, to: ref, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
+        self.sendPing(context: context, to: remoteSwimRef, lastKnownStatus: .alive(incarnation: 0), pingReqOrigin: nil)
     }
+}
+
+extension SWIMMembershipShell {
+    static let name: String = "membership-swim" // TODO String -> ActorName
+
+    static func address(on node: UniqueNodeAddress) -> ActorAddress {
+        return try! ActorPath._system.appending(SWIMMembershipShell.name).makeRemoteAddress(on: node, incarnation: .perpetual)
+    }
+
+    static let periodicPingKey = "swim/periodic-ping"
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal "trace-logging" for debugging purposes
+
+internal enum TraceLogType: CustomStringConvertible {
+    case reply(to: ActorRef<SWIM.Ack>)
+    case receive(pinged: ActorRef<SWIM.Message>?)
+    case ask(ActorRef<SWIM.Message>)
+
+    static var receive: TraceLogType {
+        return .receive(pinged: nil)
+    }
+
+    var description: String {
+        switch self {
+        case .receive(nil):
+            return "RECV"
+        case .receive(let .some(pinged)):
+            return "RECV(pinged:\(pinged.address))"
+        case .reply(let to):
+            return "REPL(to:\(to.address))"
+        case .ask(let who):
+            return "ASK(\(who.address))"
+        }
+    }
+}
 
 extension SWIMMembershipShell {
     /// Optional "dump all messages" logging.

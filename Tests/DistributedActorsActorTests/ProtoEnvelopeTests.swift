@@ -21,19 +21,19 @@ import NIO
 class ProtoEnvelopeTests: XCTestCase {
 
     func test_init_ProtoEnvelopeZeroCopy() throws {
-        var envelope = ProtoEnvelope()
-        envelope.payload = Data.init([1,2,3])
-        envelope.recipient = "test"
-        envelope.serializerID = 5
+        var proto = ProtoEnvelope()
+        proto.payload = Data.init([1,2,3])
+        proto.recipient = ProtoActorAddress(ActorAddress(path: ._user, incarnation: .perpetual))
+        proto.serializerID = 5
         let allocator = ByteBufferAllocator()
 
         var envelope_deserialized: ProtoEnvelope
 
         do {
-            var envelopeBytes = try envelope.serializedByteBuffer(allocator: allocator)
+            var envelopeBytes = try proto.serializedByteBuffer(allocator: allocator)
             envelope_deserialized = try ProtoEnvelope(bytes: &envelopeBytes)
         }
 
-        envelope_deserialized.shouldEqual(envelope)
+        envelope_deserialized.shouldEqual(proto)
     }
 }

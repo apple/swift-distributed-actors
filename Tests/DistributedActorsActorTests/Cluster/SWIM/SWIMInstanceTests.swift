@@ -39,9 +39,7 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incrementProtocolPeriod()
 
         swim.isMember(probe.ref).shouldBeFalse()
-
-        let res = swim.addMember(probe.ref, status: status)
-        pprint("res = \(res)")
+        _ = swim.addMember(probe.ref, status: status)
 
         swim.isMember(probe.ref).shouldBeTrue()
         let member = swim.member(for: probe.ref)!
@@ -49,27 +47,8 @@ final class SWIMInstanceTests: XCTestCase {
         member.status.shouldEqual(status)
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Detecting myself
-
-    func test_notMyself_shouldDetectDirectLocalRef() {
-        let local = ActorSystem("SWIMInstanceTests") { settings in
-            settings.cluster.enabled = true
-        }
-        defer {
-            local.shutdown()
-        }
-        let localTestKit = ActorTestKit(local)
-
-        let shell = localTestKit.spawnTestProbe(name: "swim", expecting: SWIM.Message.self).ref
-
-        let swim = SWIM.Instance(.default)
-        swim.addMyself(shell)
-
-        var pathWithAddress = shell.path
-        pathWithAddress.address = local.settings.cluster.uniqueBindAddress // so a path that happens to also have the local address, could happen
-        swim.notMyself(pathWithAddress).shouldBeFalse()
-    }
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Detecting myself
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
         let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref

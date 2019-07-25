@@ -21,22 +21,22 @@ final class UniqueNodeAddressTests: XCTestCase {
 
     func test_uniqueNodeAddress_shouldRenderProperly() {
         let address = NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111)
-        let uniqueAddress = UniqueNodeAddress(address: address, uid: NodeUID(2222))
+        let uniqueAddress = UniqueNodeAddress(address: address, nid: NodeUID(2222))
 
         "\(uniqueAddress)".shouldEqual("sact://SystemName@188.121.122.3:1111")
         "\(String(reflecting: uniqueAddress))".shouldEqual("sact://SystemName:2222@188.121.122.3:1111")
     }
 
     func test_uniqueNodeAddress_comparison_equal() {
-        let two = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), uid: NodeUID(2222))
+        let two = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeUID(2222))
         let anotherTwo = two
 
         two.shouldEqual(anotherTwo)
         two.shouldBeLessThanOrEqual(anotherTwo)
     }
     func test_uniqueNodeAddress_comparison_lessThan() {
-        let two = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), uid: NodeUID(2222))
-        let three = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), uid: NodeUID(3333))
+        let two = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeUID(2222))
+        let three = UniqueNodeAddress(address: NodeAddress(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeUID(3333))
 
         two.shouldBeLessThan(three)
     }

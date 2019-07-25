@@ -16,7 +16,8 @@ import SwiftProtobuf
 import NIO
 import struct Foundation.Data // TODO would refer to not go "through" Data as our target always is ByteBuffer
 
-// MARK: Serialization with ByteBuf // TODO is forced to allocate more than it would have to normally (due to hop through Data)
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: // MARK: Serialization with ByteBuf
 
 extension SwiftProtobuf.Message {
 
@@ -54,7 +55,7 @@ extension SwiftProtobuf.Message {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Wire.Envelope
+// MARK: ProtoEnvelope
 
 enum WireEnvelopeError: Error {
     case unsetSerializerId(UInt32)
@@ -67,30 +68,77 @@ extension Wire.Envelope {
             throw WireEnvelopeError.unsetSerializerId(proto.serializerID)
         }
 
-        guard !proto.recipient.isEmpty else {
+        guard proto.hasRecipient else {
             throw WireEnvelopeError.emptyRecipient
         }
 
-        self.recipient = try UniqueActorPath.parse(fromString: proto.recipient)
+        self.recipient = try ActorAddress(proto.recipient)
+
+        self.serializerId = proto.serializerID
         var payloadBuffer = allocator.buffer(capacity: proto.payload.count)
         payloadBuffer.writeBytes(proto.payload)
         self.payload = payloadBuffer
-        self.serializerId = proto.serializerID
     }
 }
 
 extension ProtoEnvelope {
-    init(fromEnvelope envelope: Wire.Envelope) {
-        self.recipient = envelope.recipient.debugDescription
+    init(_ envelope: Wire.Envelope) {
+        self.recipient = ProtoActorAddress(envelope.recipient)
+
         self.serializerID = envelope.serializerId
-        // force unwrap is okay here because we read exactly the number of readable bytes
         var payloadBuffer = envelope.payload
-        self.payload = payloadBuffer.readData(length: payloadBuffer.readableBytes)!
+        self.payload = payloadBuffer.readData(length: payloadBuffer.readableBytes)! // !-safe because we read exactly the number of readable bytes
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Wire.Version
+// MARK: ProtoActorAddress
+
+extension ActorAddress {
+    init (_ proto: ProtoActorAddress) throws {
+        let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
+        let incarnation = ActorIncarnation(Int(proto.incarnation))
+
+        // TODO switch over senderNode | recipientNode | address
+        if proto.hasNode {
+            self = try ActorAddress(node: UniqueNodeAddress(proto.node), path: path, incarnation: incarnation)
+        } else {
+            self = try ActorAddress(path: path, incarnation: incarnation)
+        }
+    }
+}
+
+extension ProtoActorAddress {
+    init(_ value: ActorAddress) {
+        if let node = value.node {
+            self.node = .init(node)
+        }
+        self.path = .init(value.path)
+        self.incarnation = value.incarnation.value
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ProtoActorPath
+
+extension ActorPath {
+    init(_ proto: ProtoActorPath) throws {
+        guard !proto.segments.isEmpty else {
+            throw WireFormatError.emptyRepeatedField("path.segments")
+        }
+
+        self.segments = try proto.segments.map { try ActorPathSegment($0) }
+    }
+}
+
+extension ProtoActorPath {
+    init(_ value: ActorPath) {
+        self.segments = value.segments.map { $0.value } // TODO avoiding the mapping could be nice... store segments as strings?
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ProtoProtocolVersion
 
 // TODO conversions are naive here, we'd want to express this more nicely...
 extension Wire.Version {
@@ -114,7 +162,7 @@ extension ProtoProtocolVersion {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Wire.HandshakeAccept from ProtoHandshakeAccept
+// MARK: ProtoHandshakeAccept
 
 extension Wire.HandshakeAccept {
     init(_ proto: ProtoHandshakeAccept) throws {
@@ -134,7 +182,7 @@ extension Wire.HandshakeAccept {
     }
 }
 
-// MARK: ProtoHandshakeAccept from Wire.HandshakeAccept
+
 extension ProtoHandshakeAccept {
     init(_ accept: Wire.HandshakeAccept) {
         self.version = .init(accept.version)
@@ -145,7 +193,7 @@ extension ProtoHandshakeAccept {
 
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Wire.HandshakeReject from ProtoHandshakeReject
+// MARK: ProtoHandshakeReject
 
 extension Wire.HandshakeReject {
     init(_ proto: ProtoHandshakeReject) throws {
@@ -166,7 +214,7 @@ extension Wire.HandshakeReject {
     }
 }
 
-// MARK: ProtoHandshakeAccept from Wire.HandshakeAccept
+
 extension ProtoHandshakeReject {
     init(_ reject: Wire.HandshakeReject) {
         self.version = .init(reject.version)
@@ -188,14 +236,14 @@ extension UniqueNodeAddress {
         }
         let address = NodeAddress(proto.address)
         let uid = NodeUID(proto.uid)
-        self.init(address: address, uid: uid)
+        self.init(address: address, nid: uid)
     }
 }
 
 extension ProtoUniqueNodeAddress {
     init(_ address: UniqueNodeAddress) {
-        self.address = ProtoAddress(address.address)
-        self.uid = address.uid.value
+        self.address =  ProtoNodeAddress(address.address)
+        self.uid = address.nid.value
     }
 }
 
@@ -203,7 +251,7 @@ extension ProtoUniqueNodeAddress {
 // MARK: NodeAddress
 
 extension NodeAddress {
-    init(_ proto: ProtoAddress) {
+    init(_ proto: ProtoNodeAddress) {
         self.protocol = proto.protocol
         self.systemName = proto.system
         self.host = proto.hostname
@@ -211,7 +259,7 @@ extension NodeAddress {
     }
 }
 
-extension ProtoAddress {
+extension ProtoNodeAddress {
     init(_ address: NodeAddress) {
         self.protocol = address.protocol
         self.system = address.systemName
@@ -245,7 +293,7 @@ extension ProtoHandshakeOffer {
     init(_ offer: Wire.HandshakeOffer) {
         self.version = ProtoProtocolVersion(offer.version)
         self.from = ProtoUniqueNodeAddress(offer.from)
-        self.to = ProtoAddress(offer.to)
+        self.to = ProtoNodeAddress(offer.to)
     }
 
     init(serializedData data: Data) throws {

@@ -77,8 +77,8 @@ class TraversalTests: XCTestCase {
         var seen: [String] = []
 
         self.system._traverseAllVoid { context, ref in
-            if ref.path.name != "traversalProbe" {
-                seen.append(ref.path.name)
+            if ref.address.name != "traversalProbe" {
+                seen.append(ref.address.name)
             }
             return .continue
         }
@@ -96,9 +96,9 @@ class TraversalTests: XCTestCase {
 
     func test_traverse_shouldAllowImplementingCollect() {
         let found: TraversalResult<String> = self.system._traverseAll { context, ref in
-            if ref.path.name.contains("inner") {
+            if ref.address.name.contains("inner") {
                 // collect it
-                return .accumulateSingle(ref.path.name)
+                return .accumulateSingle(ref.address.name)
             } else {
                 return .continue
             }
@@ -117,10 +117,10 @@ class TraversalTests: XCTestCase {
 
     func test_traverse_shouldHaveRightDepthInContext() {
         let _: TraversalResult<String> = self.system._traverseAll { context, ref in
-            if ref.path.name == "hello" {
+            if ref.address.name == "hello" {
                 context.depth.shouldEqual(1)
                 return .continue
-            } else if ref.path.name == "world" {
+            } else if ref.address.name == "world" {
                 context.depth.shouldEqual(2)
                 return .continue
             } else {

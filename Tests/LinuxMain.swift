@@ -27,13 +27,13 @@ import XCTest
    @testable import Swift Distributed ActorsActorTests
 
    XCTMain([
+         testCase(ActorAddressTests.allTests),
          testCase(ActorAskTests.allTests),
          testCase(ActorDeferTests.allTests),
          testCase(ActorIsolationFailureHandlingTests.allTests),
          testCase(ActorLeakingTests.allTests),
          testCase(ActorLifecycleTests.allTests),
          testCase(ActorLoggingTests.allTests),
-         testCase(ActorPathTests.allTests),
          testCase(ActorRefAdapterTests.allTests),
          testCase(ActorSystemTests.allTests),
          testCase(ActorTestKitTests.allTests),
@@ -61,6 +61,7 @@ import XCTest
          testCase(NIOExtensionTests.allTests),
          testCase(ParentChildActorTests.allTests),
          testCase(ProtoEnvelopeTests.allTests),
+         testCase(ProtobufRoundTripTests.allTests),
          testCase(ReceptionistTests.allTests),
          testCase(RemoteActorRefProviderTests.allTests),
          testCase(RemoteHandshakeStateMachineTests.allTests),

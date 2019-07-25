@@ -86,7 +86,7 @@ internal struct AssociationRemoteControl {
         self.remoteAddress = remoteAddress
     }
 
-    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: UniqueActorPath) {
+    func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress) {
         switch envelope.payload {
         case .userMessage(let message):
             channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message as! Message, recipient: recipient)), promise: nil)
@@ -95,7 +95,7 @@ internal struct AssociationRemoteControl {
         }
     }
 
-    func sendSystemMessage(_ message: SystemMessage, recipient: UniqueActorPath) {
+    func sendSystemMessage(_ message: SystemMessage, recipient: ActorAddress) {
         channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message, recipient: recipient)), promise: nil)
     }
 }

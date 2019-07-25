@@ -41,12 +41,12 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
 
-        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, path: codableRefOnRemoteSystem.path)
+        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, address: codableRefOnRemoteSystem.address)
         codableResolvedRef.tell("HELLO")
 
         try probeOnRemote.expectMessage("forwarded:HELLO")
@@ -75,12 +75,12 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
 
-        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, path: codableRefOnRemoteSystem.path)
+        let codableResolvedRef = self.resolveRemoteRef(on: self.local, type: String.self, address: codableRefOnRemoteSystem.address)
         codableResolvedRef.tell("HELLO")
 
         try probeOnRemote.expectMessage("forwarded:HELLO")
@@ -102,7 +102,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: refOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: refOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
@@ -127,7 +127,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, path: nonCodableRefOnRemoteSystem.path)
+        let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
 
         try probeOnRemote.expectNoMessage(for: .milliseconds(100))
@@ -149,7 +149,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         }, name: "local")
 
         let localResolvedRefWithLocalAddress =
-            self.resolveLocalRef(on: self.local, type: String.self, path: localRef.path)
+            self.resolveLocalRef(on: self.local, type: String.self, address: localRef.address)
 
         localResolvedRefWithLocalAddress.tell("hello")
         try probe.expectMessage("received:hello")
@@ -176,7 +176,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
 
         try probe.expectMessage("response:echo:test")
@@ -198,7 +198,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
 
         let _: ActorRef<Never> = try local.spawn(.setup { context in
                 let child: ActorRef<String> = try context.spawnAnonymous(.receiveMessage { message in
@@ -230,7 +230,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
-        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, path: refOnRemoteSystem.path)
+        let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
 
         let _: ActorRef<WrappedString> = try local.spawn(.setup { context in
             let adaptedRef = context.messageAdapter(for: String.self) { WrappedString(string: $0) }

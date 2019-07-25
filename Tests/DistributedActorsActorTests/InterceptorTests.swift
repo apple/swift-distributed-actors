@@ -150,7 +150,7 @@ class InterceptorTests: XCTestCase {
         // so we have to check that the message we get is from one of them and afterwards we should not receive
         // any additional messages
         let terminated = try p.expectMessage()
-        (terminated.path.name == "stopperOne" || terminated.path.name == "stopperTwo").shouldBeTrue()
+        (terminated.address.name == "stopperOne" || terminated.address.name == "stopperTwo").shouldBeTrue()
         try p.expectNoMessage(for: .milliseconds(100))
     }
 

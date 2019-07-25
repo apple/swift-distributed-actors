@@ -41,14 +41,14 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     // MARK: perform watch/unwatch
 
     /// Performed by the sending side of "watch", therefore the `watcher` should equal `context.myself`
-    public mutating func watch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, parent: AddressableActorRef) {
+    public mutating func watch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, parent: AddressableActorRef, file: String, line: UInt) {
         traceLog_DeathWatch("issue watch: \(watchee) (from \(watcher) (myself))")
         // watching ourselves is a no-op, since we would never be able to observe the Terminated message anyway:
-        guard watchee.path != watcher.path else {
+        guard watchee.address != watcher.address else {
             return
         }
 
-        guard watchee.path != parent.path else {
+        guard watchee.address != parent.address else {
             // No need to store the parent in watchedBy, since we ALWAYS let the parent know about termination
             // and do so by sending an ChildTerminated, which is a sub class of Terminated.
             //
@@ -57,47 +57,47 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
             return
         }
 
-        if self.isWatching(path: watchee.path) {
+        if self.isWatching(watchee.address) {
             return
         }
 
-        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)))
+        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
-        subscribeAddressTerminatedEvents(myself: watcher, address: watchee.path.address)
+        subscribeAddressTerminatedEvents(myself: watcher, address: watchee.address.node)
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
-    public mutating func unwatch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>) {
+    public mutating func unwatch(watchee: AddressableActorRef, myself watcher: ActorRef<Message>, file: String = #file, line: UInt = #line) {
         traceLog_DeathWatch("issue unwatch: watchee: \(watchee) (from \(watcher) myself)")
         // we could short circuit "if watchee == myself return" but it's not really worth checking since no-op anyway
         if let removed = watching.remove(watchee) {
-            removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)))
+            removed.sendSystemMessage(.unwatch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         }
     }
 
     /// - Returns `true` if the passed in actor ref is being watched
     @usableFromInline
-    internal func isWatching(path: UniqueActorPath) -> Bool {
+    internal func isWatching(_ address: ActorAddress) -> Bool {
         // TODO: not efficient, however this is only for when termination of a child happens
         // TODO: we could make system messages send AddressableActorRef here...
-        return self.watching.contains(where: { $0.path == path })
+        return self.watching.contains(where: { $0.address == address })
     }
 
     // MARK: react to watch or unwatch signals
 
     public mutating func becomeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>) {
-        guard watcher.path != myself.path else {
+        guard watcher.address != myself.address else {
             traceLog_DeathWatch("Attempted to watch 'myself' [\(myself)], which is a no-op, since such watch's terminated can never be observed. " +
                 "Likely a programming error where the wrong actor ref was passed to watch(), please check your code.")
             return
         }
 
-        traceLog_DeathWatch("Become watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Become watched by: \(watcher.address)     inside: \(myself)")
         self.watchedBy.insert(watcher)
     }
 
     public mutating func removeWatchedBy(watcher: AddressableActorRef, myself: ActorRef<Message>) {
-        traceLog_DeathWatch("Remove watched by: \(watcher.path)     inside: \(myself)")
+        traceLog_DeathWatch("Remove watched by: \(watcher.address)     inside: \(myself)")
         self.watchedBy.remove(watcher)
     }
 
@@ -105,9 +105,9 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     ///
     /// Returns: `true` if the termination was concerning a currently watched actor, false otherwise.
     public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> Bool {
-        let deadPath = terminated.path
+        let deadPath = terminated.address
         let pathsEqual: (AddressableActorRef) -> Bool = { watched in
-            return watched.path == deadPath
+            return watched.address == deadPath
         }
 
         // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
@@ -134,9 +134,9 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    public mutating func receiveAddressTerminated(_ terminatedAddress: UniqueNodeAddress, myself: ReceivesSystemMessages) {
-        for watched in self.watching where watched.path.address == terminatedAddress {
-            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: false, addressTerminated: true))
+    public mutating func receiveAddressTerminated(_ terminatedNode: UniqueNodeAddress, myself: ReceivesSystemMessages) {
+        for watched in self.watching where watched.address.node == terminatedNode {
+            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: false, addressTerminated: true), file: #file, line: #line)
         }
     }
 
@@ -147,7 +147,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
         for watcher in self.watchedBy {
             traceLog_DeathWatch("[\(myself)] Notify \(watcher) that we died...")
-            watcher.sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true))
+            watcher.sendSystemMessage(.terminated(ref: AddressableActorRef(myself), existenceConfirmed: true), file: #file, line: #line)
         }
     }
 

@@ -332,7 +332,7 @@ class BehaviorTests: XCTestCase {
             return .receiveSignal { context, signal in
                 switch signal {
                 case let terminated as Signals.Terminated:
-                    p.tell("first:terminated-name:\(terminated.path.name)")
+                    p.tell("first:terminated-name:\(terminated.address.name)")
                 default:
                     ()
                 }
@@ -342,7 +342,7 @@ class BehaviorTests: XCTestCase {
         let second: Behavior<Never> = .receiveSignal { context, signal in
             switch signal {
             case let terminated as Signals.Terminated:
-                p.tell("second:terminated-name:\(terminated.path.name)")
+                p.tell("second:terminated-name:\(terminated.address.name)")
             default:
                 ()
             }
@@ -350,8 +350,6 @@ class BehaviorTests: XCTestCase {
         }
         let ref: ActorRef<Never> = try system.spawn(first.orElse(second), name: "orElseTerminated")
         p.watch(ref)
-
-        pprint("Spawning...")
 
         try p.expectMessage("first:terminated-name:child")
         try p.expectMessage("second:terminated-name:child")
@@ -889,7 +887,7 @@ class BehaviorTests: XCTestCase {
             guard let s = signal as? Signals.Terminated else {
                 return .same
             }
-            p.tell("signal:\(s.path.name)")
+            p.tell("signal:\(s.address.name)")
 
             // returning this behavior should not unsuspend the actor
             return Behavior<String>.receiveMessage { msg in

@@ -137,7 +137,7 @@ private enum AskActor {
         return .setup { context in
             let adapter = context.messageAdapter(for: ResponseType.self, with: { .result($0) })
             let message = makeQuestion(adapter)
-            ref.tell(message)
+            ref.tell(message, file: file, line: line)
 
             if !timeout.isEffectivelyInfinite {
                 context.timers.startSingleTimer(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
@@ -147,7 +147,7 @@ private enum AskActor {
                 switch $0 {
                 case .timeout:
                     let errorMessage = """
-                                       No response received for ask to [\(ref.path)] within timeout [\(timeout.prettyDescription)]. \
+                                       No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
                                        Ask was initiated from function [\(function)] in [\(file):\(line)] and \
                                        expected response of type [\(String(reflecting: ResponseType.self))]. 
                                        """

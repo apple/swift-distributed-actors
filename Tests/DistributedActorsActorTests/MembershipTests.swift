@@ -16,12 +16,12 @@
 import SwiftDistributedActorsActorTestKit
 import XCTest
 
-class MembershipTests: XCTestCase {
+final class MembershipTests: XCTestCase {
 
-    let firstMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "1.1.1.1", port: 7337), uid: .random()), status: .alive)
-    let secondMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "2.2.2.2", port: 8228), uid: .random()), status: .alive)
-    let thirdMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "3.3.3.3", port: 9119), uid: .random()), status: .alive)
-    let newMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "4.4.4.4", port: 1001), uid: .random()), status: .alive)
+    let firstMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .alive)
+    let secondMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .alive)
+    let thirdMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .alive)
+    let newMember = Member(address: UniqueNodeAddress(address: NodeAddress(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .alive)
 
     lazy var initialMembership: Membership = [
         firstMember, secondMember, thirdMember

@@ -199,7 +199,7 @@ fileprivate struct EchoMessage: CustomStringConvertible {
     }
 
     var description: String {
-        return "EchoMessage(\(seqNr) replyTo: \(replyTo.path.name))"
+        return "EchoMessage(\(seqNr) replyTo: \(replyTo.address.name))"
     }
 }
 

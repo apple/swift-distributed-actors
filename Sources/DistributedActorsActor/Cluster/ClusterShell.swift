@@ -61,7 +61,7 @@ internal class ClusterShell {
     private func cacheAssociationRemoteControl(_ associationState: AssociationStateMachine.AssociatedState) {
         self._associationsLock.withLockVoid {
             // TODO or association ID rather than the remote id?
-            self._associationsRegistry[associationState.remoteAddress.uid] = associationState.makeRemoteControl()
+            self._associationsRegistry[associationState.remoteAddress.nid] = associationState.makeRemoteControl()
         }
     }
     
@@ -124,7 +124,7 @@ internal class ClusterShell {
             self.bind(),
             name: ClusterShell.name,
             props: self.props,
-            isWellKnown: true)
+            perpetual: true)
         
         return self.ref
     }

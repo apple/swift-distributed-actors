@@ -26,23 +26,25 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
-    /// Uniquely identifies this actor by its path and unique identifier in the current actor hierarchy.
-    /// Segments are separated by "/" and signify the parent actors of each individual level in the hierarchy.
-    ///
-    /// Paths are mostly used to make systems more human-readable and understandable during debugging e.g. answering questions
-    /// like "where did this actor come from?" or "who (at least) is expected to supervise this actor"? // TODO: wording must match the semantics we decide on for supervision
-    public var path: UniqueActorPath {
+    /// Uniquely identifies this actor in the cluster.
+    public var address: ActorAddress {
         return undefined()
     }
 
-    /// Name of the Actor
-    /// The `name` is the last segment of the Actor's `path`
+    /// Local path under which this actor resides within the actor tree.
+    public var path: ActorPath {
+        return undefined()
+    }
+
+    /// Name of this actor.
+    ///
+    /// The `name` is the last segment of the Actor's `path`.
     ///
     /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
     // Implementation note:
     // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
-    public var name: String { // TODO: decide if Substring or String; TBH we may go with something like ActorPathSegment and ActorPath?
+    public var name: String {
         return undefined()
     }
 
@@ -58,7 +60,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
-    /// Provides context metadata aware logger
+    /// Provides context metadata aware `Logger`
     public var log: Logger {
         get {
             return undefined()
@@ -121,7 +123,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// ```
     ///
     /// #### Concurrency:
-    ///  - MUST NOT be invoked concurrently i.e. from the "outside" of the current actor.
+    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     public func `defer`(until: DeferUntilWhen,
                         file: String = #file, line: UInt = #line,
                         _ closure: @escaping () -> Void) {
@@ -158,21 +160,34 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     ///
     ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
     ///     let child = try context.watch(context.spawn(behavior, name: "child"))
+    ///
+    /// #### Concurrency:
+    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> { // TODO: fix signature, should return the watchee
+    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> { // TODO: fix signature, should return the watchee
         return undefined()
     }
 
-    // TODO maybe allow watching an addressable?
-    internal func watch(_ watchee: AddressableActorRef) {
+    internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
         return undefined()
     }
 
     /// Reverts the watching of an previously watched actor.
     ///
     /// Unwatching a not-previously-watched actor has no effect.
+    ///
+    /// ### Semantics for in-flight Terminated signals
+    ///
+    /// After invoking `unwatch`, even if a `Signals.Terminated` signal was already enqueued at this actors
+    /// mailbox; this signal would NOT be delivered to the `onSignal` behavior, since the intent of no longer
+    /// watching the terminating actor takes immediate effect.
+    ///
+    /// #### Concurrency:
+    ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
+    ///
+    /// - Returns: the passed in watchee reference for easy chaining `e.g. return context.unwatch(ref)`
     @discardableResult
-    public func unwatch<M>(_ watchee: ActorRef<M>) -> ActorRef<M> {
+    public func unwatch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
         return undefined()
     }
 

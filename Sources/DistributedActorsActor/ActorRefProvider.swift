@@ -21,14 +21,14 @@ import DistributedActorsConcurrencyHelpers
 internal protocol _ActorRefProvider: _ActorTreeTraversable {
 
     /// Path of the root guardian actor for this part of the actor tree.
-    var rootPath: UniqueActorPath { get }
+    var rootAddress: ActorAddress { get }
 
     /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].
     ///
     /// The returned actor ref is immediately valid and may have messages sent to.
     func spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, path: UniqueActorPath,
+        behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message>
 
@@ -43,7 +43,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
 
 // TODO consider if we need abstraction / does it cost us?
 internal struct RemoteActorRefProvider: _ActorRefProvider {
-    private let localAddress: UniqueNodeAddress
+    private let localNode: UniqueNodeAddress
     private let localProvider: LocalActorRefProvider
 
     let cluster: ClusterShell
@@ -55,23 +55,23 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
          localProvider: LocalActorRefProvider) {
         precondition(settings.cluster.enabled, "Remote actor provider should only be used when clustering is enabled")
 
-        self.localAddress = settings.cluster.uniqueBindAddress
+        self.localNode = settings.cluster.uniqueBindAddress
         self.cluster = cluster
         self.localProvider = localProvider
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: RemoteActorRefProvider delegates most tasks to underlying LocalARP
+// MARK: RemoteActorRefProvider delegates most tasks to underlying LocalActorRefProvider
 
 extension RemoteActorRefProvider {
-    var rootPath: UniqueActorPath {
-        return self.localProvider.rootPath
+    var rootAddress: ActorAddress {
+        return self.localProvider.rootAddress
     }
 
-    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, path: UniqueActorPath, dispatcher: MessageDispatcher, props: Props) throws -> ActorRef<Message> {
+    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, address: ActorAddress, dispatcher: MessageDispatcher, props: Props) throws -> ActorRef<Message> {
         // spawn is always local, thus we delegate to the underlying provider
-        return try self.localProvider.spawn(system: system, behavior: behavior, path: path, dispatcher: dispatcher, props: props)
+        return try self.localProvider.spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props)
     }
 
     func stopAll() {
@@ -89,32 +89,36 @@ extension RemoteActorRefProvider {
 extension RemoteActorRefProvider {
 
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        guard let path = context.path else {
-            preconditionFailure("Path MUST be set when resolving using remote resolver")
+        guard let address = context.address else {
+            preconditionFailure("context.address MUST be set when resolving using remote resolver")
         }
 
-        if self.localAddress == path.address {
+        switch address._location {
+        case .local:
             return self.localProvider._resolve(context: context)
-        } else {
-            return self.makeRemoteRef(context, remotePath: path)
+        case .remote(let node) where node == self.localNode:
+            // in case we got a forwarded reference to ourselves, we can do this to serialize properly as .local
+
+            return self.localProvider._resolve(context: context)
+        case .remote:
+            return self.makeRemoteRef(context, remoteAddress: address)
         }
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard let path = context.path else {
-            preconditionFailure("Path MUST be set when resolving using remote resolver")
+        guard let address = context.address else {
+            preconditionFailure("context.address MUST be set when resolving using remote resolver")
         }
 
-        if self.localAddress == path.address {
+        if self.localNode == address.node {
             return self.localProvider._resolveUntyped(context: context)
         } else {
-            return AddressableActorRef(self.makeRemoteRef(context, remotePath: path))
+            return AddressableActorRef(self.makeRemoteRef(context, remoteAddress: address))
         }
     }
 
-    internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remotePath path: UniqueActorPath) -> ActorRef<Message> {
-        let remoteRef = RemotePersonality<Message>(shell: self.cluster, path: path, system: context.system)
-        return ActorRef(.remote(remoteRef))
+    internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> ActorRef<Message> {
+        return ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
     }
 }
 
@@ -124,8 +128,8 @@ extension RemoteActorRefProvider {
 internal struct LocalActorRefProvider: _ActorRefProvider {
     private let root: Guardian
 
-    var rootPath: UniqueActorPath {
-        return root.path
+    var rootAddress: ActorAddress {
+        return self.root.address
     }
 
     init(root: Guardian) {
@@ -134,16 +138,16 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 
     func spawn<Message>(
         system: ActorSystem,
-        behavior: Behavior<Message>, path: UniqueActorPath,
+        behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message> {
-        return try root.makeChild(path: path) {
+        return try root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: ActorShell<Message> = ActorShell(
                 system: system,
                 parent: AddressableActorRef(root.ref),
                 behavior: behavior,
-                path: path,
+                address: address,
                 props: props,
                 dispatcher: dispatcher
             )
@@ -312,10 +316,11 @@ internal struct ResolveContext<Message> {
     /// The "remaining path" of the resolve being performed
     var selectorSegments: ArraySlice<ActorPathSegment>
     /// The unique ID of an actor which we are trying to resolve
-    var selectorUID: ActorUID
+    var selectorIncarnation: ActorIncarnation
 
-    /// Used only on "outer layer" of a resolve, where an `ActorRefProvider` may decide to fabricate a ref for given path.
-    var path: UniqueActorPath? = nil
+    /// Used only on "outer layer" of a resolve, where an `ActorRefProvider` may decide to fabricate a ref for given address
+    /// based e.g. on the fact that it is a remote one
+    var address: ActorAddress?
 
     let system: ActorSystem
 
@@ -324,35 +329,36 @@ internal struct ResolveContext<Message> {
     }
 
 
-    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorUID: ActorUID, system: ActorSystem) {
+    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorIncarnation: ActorIncarnation, system: ActorSystem) {
         self.selectorSegments = remainingSelectorSegments
-        self.selectorUID = actorUID
-        self.path = nil
+        self.selectorIncarnation = actorIncarnation
+        self.address = nil
         self.system = system
     }
 
-    init(path: UniqueActorPath, system: ActorSystem) {
-        self.path = path
-        self.selectorSegments = path.segments[...]
-        self.selectorUID = path.uid
+    init(address: ActorAddress, system: ActorSystem) {
+        self.address = address
+        self.selectorSegments = address.path.segments[...]
+        self.selectorIncarnation = address.incarnation
         self.system = system
     }
 
     /// Returns copy of traversal context yet "one level deeper"
     /// Note that this also drops the `path` if it was present, but retains the `UID` as we may want to resolve a _specific_ ref after all
     var deeper: ResolveContext {
-        return self.deeper(keepPath: false)
+        return self.deeper(keepAddress: false)
     }
 
-    func deeper(keepPath: Bool) -> ResolveContext {
+    func deeper(keepAddress: Bool) -> ResolveContext {
         var deeperSelector = self.selectorSegments
         deeperSelector = deeperSelector.dropFirst()
         var c = ResolveContext(
             remainingSelectorSegments: self.selectorSegments.dropFirst(),
-            actorUID: self.selectorUID,
-            system: self.system)
-        if keepPath {
-            c.path = self.path
+            actorIncarnation: self.selectorIncarnation,
+            system: self.system
+        )
+        if keepAddress {
+            c.address = self.address
         }
         return c
     }
