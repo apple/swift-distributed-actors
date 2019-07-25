@@ -129,8 +129,8 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p7337.ref)))
         remote.clusterShell.tell(.command(.handshakeWith(localUniqueAddress.address, replyTo: p8228.ref)))
 
-        let handshakeResult1 = try p7337.expectMessage()
-        let handshakeResult2 = try p8228.expectMessage()
+        _ = try p7337.expectMessage()
+        _ = try p8228.expectMessage()
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
         try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
@@ -146,8 +146,8 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p7337.ref)))
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: p8228.ref)))
 
-        let handshakeResult1 = try p7337.expectMessage()
-        let handshakeResult2 = try p8228.expectMessage()
+        _ = try p7337.expectMessage()
+        _ = try p8228.expectMessage()
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
         try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
@@ -199,6 +199,28 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         default:
             throw p.error()
         }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Remote control caching
+
+    func test_cachedRemoteControlsWithSameNodeUID_shouldNotOverwriteEachOther() throws {
+        setUpBoth()
+        remote.join(address: self.localUniqueAddress.address)
+
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+
+        let thirdSystem = ActorSystem("ClusterAssociationTests") { settings in
+            settings.cluster.enabled = true
+            settings.cluster.uid = self.remote.settings.cluster.uid
+            settings.cluster.bindAddress.port = 9119
+        }
+        defer { thirdSystem.shutdown() }
+
+        thirdSystem.join(address: self.localUniqueAddress.address)
+        try assertAssociated(local, withExactly: [self.remoteUniqueAddress, thirdSystem.settings.cluster.uniqueBindAddress])
+
+        local._cluster?.associationRemoteControls.count.shouldEqual(2)
     }
 
     // TODO: once initiated, handshake seem to retry until they succeed, that seems

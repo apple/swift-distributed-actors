@@ -34,6 +34,7 @@ extension ClusterAssociationTests {
                 ("test_association_shouldKeepTryingUntilOtherNodeBindsPort", test_association_shouldKeepTryingUntilOtherNodeBindsPort),
                 ("test_association_shouldNotAssociateWhenRejected", test_association_shouldNotAssociateWhenRejected),
                 ("test_handshake_shouldNotifyOnRejection", test_handshake_shouldNotifyOnRejection),
+                ("test_cachedRemoteControlsWithSameNodeUID_shouldNotOverwriteEachOther", test_cachedRemoteControlsWithSameNodeUID_shouldNotOverwriteEachOther),
            ]
    }
 }
