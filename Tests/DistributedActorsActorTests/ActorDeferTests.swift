@@ -98,7 +98,9 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceived_shouldExecute_afterFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.shared_defer_shouldExecute(deferUntil: .received, whenActor: .failsByFaulting)
+        #endif
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -118,7 +120,9 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilTerminated_shouldExecute_afterFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.shared_defer_shouldExecute(deferUntil: .terminated, whenActor: .failsByFaulting)
+        #endif
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -137,7 +141,9 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilFailed_shouldExecute_afterFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.shared_defer_shouldExecute(deferUntil: .failed, whenActor: .failsByFaulting)
+        #endif
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -156,7 +162,9 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceiveFailed_shouldExecute_afterFault() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         try self.shared_defer_shouldExecute(deferUntil: .receiveFailed, whenActor: .failsByFaulting)
+        #endif
     }
 
 
