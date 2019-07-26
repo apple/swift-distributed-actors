@@ -31,7 +31,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         system.shutdown()
     }
 
-    let nodeAddress = UniqueNodeAddress(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeUID(888888))
+    let nodeAddress = UniqueNodeAddress(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888888))
     lazy var remoteAddress = ActorAddress(node: nodeAddress, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldResolveRemoteDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<DeadLetter> = system.deadLetters
         var address: ActorAddress = ref.address
-        let unknownNode: UniqueNodeAddress = .init(address: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeUID(1211))
+        let unknownNode: UniqueNodeAddress = .init(address: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
         address._location = .remote(unknownNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
@@ -103,7 +103,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     func test_remoteActorRefProvider_shouldResolveRemoteAlreadyDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let unknownNode: UniqueNodeAddress = .init(address: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeUID(1211))
+        let unknownNode: UniqueNodeAddress = .init(address: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
         let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .perpetual)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)

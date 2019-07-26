@@ -359,9 +359,9 @@ struct ProtoUniqueNodeAddress {
   /// Clears the value of `address`. Subsequent reads from it will return its default value.
   mutating func clearAddress() {_uniqueStorage()._address = nil}
 
-  var uid: UInt32 {
-    get {return _storage._uid}
-    set {_uniqueStorage()._uid = newValue}
+  var nid: UInt32 {
+    get {return _storage._nid}
+    set {_uniqueStorage()._nid = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1079,12 +1079,12 @@ extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   static let protoMessageName: String = "UniqueNodeAddress"
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     1: .same(proto: "address"),
-    2: .same(proto: "uid"),
+    2: .same(proto: "nid"),
   ]
 
   fileprivate class _StorageClass {
     var _address: ProtoNodeAddress? = nil
-    var _uid: UInt32 = 0
+    var _nid: UInt32 = 0
 
     static let defaultInstance = _StorageClass()
 
@@ -1092,7 +1092,7 @@ extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
     init(copying source: _StorageClass) {
       _address = source._address
-      _uid = source._uid
+      _nid = source._nid
     }
   }
 
@@ -1109,7 +1109,7 @@ extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       while let fieldNumber = try decoder.nextFieldNumber() {
         switch fieldNumber {
         case 1: try decoder.decodeSingularMessageField(value: &_storage._address)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._uid)
+        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._nid)
         default: break
         }
       }
@@ -1121,8 +1121,8 @@ extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if let v = _storage._address {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
       }
-      if _storage._uid != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._uid, fieldNumber: 2)
+      if _storage._nid != 0 {
+        try visitor.visitSingularUInt32Field(value: _storage._nid, fieldNumber: 2)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -1134,7 +1134,7 @@ extension ProtoUniqueNodeAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._address != rhs_storage._address {return false}
-        if _storage._uid != rhs_storage._uid {return false}
+        if _storage._nid != rhs_storage._nid {return false}
         return true
       }
       if !storagesAreEqual {return false}

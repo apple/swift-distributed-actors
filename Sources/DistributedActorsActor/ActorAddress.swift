@@ -503,19 +503,19 @@ extension NodeAddress: Comparable {
 /// Only once this address has been obtained can a node communicate with actors located on the remote node.
 public struct UniqueNodeAddress: Hashable {
     let address: NodeAddress
-    let nid: NodeUID
+    let nid: NodeID
 
-    public init(address: NodeAddress, nid: NodeUID) {
+    public init(address: NodeAddress, nid: NodeID) {
         precondition(address.port > 0, "port MUST be > 0")
         self.address = address
         self.nid = nid
     }
 
-    public init(`protocol`: String, systemName: String, host: String, port: Int, nid: NodeUID) {
+    public init(`protocol`: String, systemName: String, host: String, port: Int, nid: NodeID) {
         self.init(address: NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
     }
 
-    public init(systemName: String, host: String, port: Int, nid: NodeUID) {
+    public init(systemName: String, host: String, port: Int, nid: NodeID) {
         self.init(protocol: "sact", systemName: systemName, host: host, port: port, nid: nid)
     }
 
@@ -534,7 +534,7 @@ extension UniqueNodeAddress: CustomStringConvertible, CustomDebugStringConvertib
 
 extension UniqueNodeAddress: Comparable {
     public static func ==(lhs: UniqueNodeAddress, rhs: UniqueNodeAddress) -> Bool {
-        // we first compare the UIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
+        // we first compare the NodeIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
         return lhs.nid == rhs.nid && lhs.address == rhs.address
     }
 
@@ -549,7 +549,7 @@ extension UniqueNodeAddress: Comparable {
     }
 }
 
-public struct NodeUID: Hashable {
+public struct NodeID: Hashable {
     let value: UInt32 // TODO redesign / reconsider exact size
 
     public init(_ value: UInt32) {
@@ -557,21 +557,21 @@ public struct NodeUID: Hashable {
     }
 }
 
-extension NodeUID: Comparable {
-    public static func <(lhs: NodeUID, rhs: NodeUID) -> Bool {
+extension NodeID: Comparable {
+    public static func <(lhs: NodeID, rhs: NodeID) -> Bool {
         return lhs.value < rhs.value
     }
 }
 
-extension NodeUID: CustomStringConvertible {
+extension NodeID: CustomStringConvertible {
     public var description: String {
         return "\(value)"
     }
 }
 
-public extension NodeUID {
-    static func random() -> NodeUID {
-        return NodeUID(UInt32.random(in: 1 ... .max))
+public extension NodeID {
+    static func random() -> NodeID {
+        return NodeID(UInt32.random(in: 1 ... .max))
     }
 }
 
