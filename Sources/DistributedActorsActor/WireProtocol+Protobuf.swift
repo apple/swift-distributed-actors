@@ -231,19 +231,19 @@ extension UniqueNodeAddress {
         guard proto.hasAddress else {
             throw WireFormatError.missingField("address")
         }
-        guard proto.uid != 0 else {
+        guard proto.nid != 0 else {
             throw WireFormatError.missingField("uid")
         }
         let address = NodeAddress(proto.address)
-        let uid = NodeUID(proto.uid)
-        self.init(address: address, nid: uid)
+        let nid = NodeID(proto.nid)
+        self.init(address: address, nid: nid)
     }
 }
 
 extension ProtoUniqueNodeAddress {
     init(_ address: UniqueNodeAddress) {
         self.address =  ProtoNodeAddress(address.address)
-        self.uid = address.nid.value
+        self.nid = address.nid.value
     }
 }
 

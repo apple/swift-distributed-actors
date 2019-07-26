@@ -171,7 +171,7 @@ extension Membership {
     /// Returns new membership while removing an existing member, identified by the passed in address.
     ///
     /// If the membership is not aware of this member this is treated as no-op.
-    /// If the membership does contain a member for the NodeAddress, however the UIDs of the UniqueNodeAddresses
+    /// If the membership does contain a member for the NodeAddress, however the NodeIDs of the UniqueNodeAddresses
     /// do not match this code will FAULT.
     func removing(_ address: UniqueNodeAddress) -> Membership {
         var membership = self

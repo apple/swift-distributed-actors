@@ -41,20 +41,20 @@ public struct ClusterSettings {
     /// If set to a non-`nil` value, the system will attempt to bind to the provided address on startup.
     /// Once bound, the system is able to accept incoming connections.
     ///
-    /// Changing the address preserves the systems `Remote.NodeUID`.
+    /// Changing the address preserves the systems `Remote.NodeID`.
     public var bindAddress: NodeAddress
 
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
     public var uniqueBindAddress: UniqueNodeAddress {
-        return UniqueNodeAddress(address: self.bindAddress, nid: self.uid)
+        return UniqueNodeAddress(address: self.bindAddress, nid: self.nid)
     }
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeBackoffStrategy: BackoffStrategy = Backoff.constant(.milliseconds(100))
 
-    /// `NodeUID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
-    public var uid: NodeUID
+    /// `NodeID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
+    public var nid: NodeID
 
     /// If set, all communication with other nodes will be secured using TLS
     public var tls: TLSConfiguration?
@@ -114,7 +114,7 @@ public struct ClusterSettings {
 
     public init(bindAddress: NodeAddress, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
         self.bindAddress = bindAddress
-        self.uid = NodeUID.random()
+        self.nid = NodeID.random()
         self.failureDetector = failureDetector
         self.tls = tls
     }

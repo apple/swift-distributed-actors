@@ -89,7 +89,7 @@ message SystemAck {
 
 message UniqueNodeAddress {
     NodeAddress address = 1;
-    uint32 uid          = 2;
+    uint32 nid          = 2;
 }
 
 message NodeAddress {

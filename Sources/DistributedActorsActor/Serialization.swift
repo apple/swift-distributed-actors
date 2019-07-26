@@ -313,9 +313,9 @@ public struct ActorSerializationContext {
     }
 
     /// Attempts to resolve ("find") an actor reference given its unique path in the current actor tree.
-    /// The located actor is the _exact_ one as identified by the unique path (i.e. matching `path` and `uid`).
+    /// The located actor is the _exact_ one as identified by the unique path (i.e. matching `path` and `incarnation`).
     ///
-    /// If a "new" actor was started on the same `path`, its `uid` would be different, and thus it would not resolve using this method.
+    /// If a "new" actor was started on the same `path`, its `incarnation` would be different, and thus it would not resolve using this method.
     /// This way or resolving exact references is important as otherwise one could end up sending messages to "the wrong one."
     ///
     /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
@@ -394,7 +394,7 @@ public struct SerializationSettings {
     /// as it is not useful to render any address for actors which shall never be reached remotely.
     ///
     /// This is set automatically when modifying the systems cluster settings.
-    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeUID(0))
+    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
