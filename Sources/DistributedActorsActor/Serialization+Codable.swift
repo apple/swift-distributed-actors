@@ -290,7 +290,7 @@ extension UniqueNodeAddress: Codable {
         let host = try container.decode(String.self)
         let port = try container.decode(Int.self)
         self.address = NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port)
-        self.nid = try NodeUID(container.decode(UInt32.self))
+        self.nid = try NodeID(container.decode(UInt32.self))
     }
 }
 

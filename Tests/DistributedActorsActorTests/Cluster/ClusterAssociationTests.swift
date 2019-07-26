@@ -204,7 +204,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Remote control caching
 
-    func test_cachedRemoteControlsWithSameNodeUID_shouldNotOverwriteEachOther() throws {
+    func test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
         setUpBoth()
         remote.join(address: self.localUniqueAddress.address)
 
@@ -212,7 +212,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         let thirdSystem = ActorSystem("ClusterAssociationTests") { settings in
             settings.cluster.enabled = true
-            settings.cluster.uid = self.remote.settings.cluster.uid
+            settings.cluster.nid = self.remote.settings.cluster.nid
             settings.cluster.bindAddress.port = 9119
         }
         defer { thirdSystem.shutdown() }
