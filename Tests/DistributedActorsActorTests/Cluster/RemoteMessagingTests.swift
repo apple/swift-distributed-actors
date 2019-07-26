@@ -243,6 +243,47 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         try probe.expectMessage("response:echo:test")
     }
+
+    func test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages() throws {
+        setUpBoth { settings in
+            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        }
+        remote.join(address: self.localUniqueAddress.address)
+
+        try assertAssociated(local, with: self.remoteUniqueAddress)
+
+        let thirdSystem = ActorSystem("ClusterAssociationTests") { settings in
+            settings.cluster.enabled = true
+            settings.cluster.bindAddress.port = 9119
+            settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
+        }
+        defer { thirdSystem.shutdown() }
+
+        thirdSystem.join(address: self.localUniqueAddress.address)
+        thirdSystem.join(address: self.remoteUniqueAddress.address)
+        try assertAssociated(thirdSystem, withExactly: [self.localUniqueAddress, self.remoteUniqueAddress])
+        let thirdTestKit = ActorTestKit(thirdSystem)
+
+        let localRef: ActorRef<EchoTestMessage> = try local.spawn(.receiveMessage { message in
+            message.respondTo.tell("local:\(message.string)")
+            return .stopped
+        }, name: "Local")
+
+        let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
+
+        let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
+            localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
+            return .stopped
+        }, name: "Remote")
+
+        let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)
+
+        let probeThird = thirdTestKit.spawnTestProbe(expecting: String.self)
+
+        remoteRefThird.tell(EchoTestMessage(string: "test", respondTo: probeThird.ref))
+
+        try probeThird.expectMessage().shouldEqual("local:remote:test")
+    }
 }
 
 struct WrappedString {
