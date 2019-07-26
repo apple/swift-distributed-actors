@@ -287,6 +287,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
         }
@@ -306,6 +307,7 @@ class SerializationTests: XCTestCase {
 
         try p.expectTerminated(senderOfNotSerializableMessage)
         s2.shutdown()
+        #endif
     }
 }
 

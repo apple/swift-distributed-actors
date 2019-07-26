@@ -635,6 +635,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler() throws {
+        #if !SACT_DISABLE_FAULT_TESTING
         let probe = testKit.spawnTestProbe(expecting: WorkerMessages.self)
 
         let faultyWorker = try system.spawn(self.faulty(probe: probe.ref), name: "compositeFailures-1", 
@@ -654,6 +655,7 @@ class SupervisionTests: XCTestCase {
         //        try probe.expectNoTerminationSignal(for: .milliseconds(20))
         faultyWorker.tell(.pleaseDivideByZero)
         try probe.expectTerminated(faultyWorker)
+        #endif
     }
 
     // TODO: we should nail down and spec harder exact semantics of the failure counting, I'd say we do.
