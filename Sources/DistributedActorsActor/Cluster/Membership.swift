@@ -168,7 +168,7 @@ extension Membership {
             ()
         }
     }
-    /// Returns new membership while removing an existing member, idenfitied by the passed in address.
+    /// Returns new membership while removing an existing member, identified by the passed in address.
     ///
     /// If the membership is not aware of this member this is treated as no-op.
     /// If the membership does contain a member for the NodeAddress, however the UIDs of the UniqueNodeAddresses

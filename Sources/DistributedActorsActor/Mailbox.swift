@@ -48,10 +48,10 @@ internal struct Envelope {
 
 internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CSActMailbox>
-    // we keep the path, rather than the entire address since we know it is "us" so it has to be local
-    private let address: ActorAddress
+    // we keep the address, rather than the entire address since we know it is "us" so it has to be local
+    internal let address: ActorAddress
     private weak var shell: ActorShell<Message>?
-    private let deadLetters: ActorRef<DeadLetter>
+    internal let deadLetters: ActorRef<DeadLetter>
 
     // Implementation note: context for closure callbacks used for C-interop
     // They are never mutated, yet have to be `var` since passed to C (need inout semantics)
@@ -63,7 +63,7 @@ internal final class Mailbox<Message> {
 
     // Implementation note: closure callbacks passed to C-mailbox
     private let interpretMessage: SActInterpretMessageCallback
-    private let dropMessage: SActDropMessageCallback
+    private let deadLetterMessage: SActDropMessageCallback
     // Enables supervision to work for faults (and not only errors).
     // If the currently run behavior is wrapped using a supervision interceptor,
     // we store a reference to its Supervisor handler, that we invoke
@@ -104,7 +104,7 @@ internal final class Mailbox<Message> {
 
             return shouldContinue
         }
-        self.dropMessage = { (ctxPtr, msgPtr) in
+        self.deadLetterMessage = { (ctxPtr, msgPtr) in
             defer { msgPtr?.deallocate() }
             let context = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
             do {
@@ -286,12 +286,18 @@ internal final class Mailbox<Message> {
 
     @inlinable
     func sendMessage(envelope: Envelope, file: String, line: UInt) {
+        guard let shell = self.shell else {
+            traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
+            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
+            return
+        }
+
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
                 if case .userMessage(let message) = envelope.payload {
                     messageDescription = "[\(message)]:\(type(of: message))"
-                    try shell?.system.serialization.verifySerializable(message: message as! Message)
+                    try shell.system.serialization.verifySerializable(message: message as! Message)
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " + 
@@ -303,22 +309,18 @@ internal final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<Envelope>.allocate(capacity: 1)
         ptr.initialize(to: envelope)
 
-        func sendAndDropAsDeadLetter(shell: ActorShell<Message>?) {
-            if let shell = shell {
-                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: shell.address,  sentAtFile: file, sentAtLine: line))
-            }
+        func sendAndDropAsDeadLetter() {
+            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
+
             _ = ptr.move()
             ptr.deallocate()
         }
 
         switch cmailbox_send_message(mailbox, ptr) {
         case .needsScheduling:
-            guard let cell = self.shell else {
-                traceLog_Mailbox(self.address.path, "has already stopped, dropping message \(envelope)")
-                return // TODO: drop messages (if we see Closed (terminated, terminating) it means the mailbox has been freed already) -> can't enqueue
-            }
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
-            cell.dispatcher.execute(self._run)
+            shell.dispatcher.execute(self._run)
+
         case .alreadyScheduled:
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), someone scheduled already")
 
@@ -326,13 +328,15 @@ internal final class Mailbox<Message> {
             // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
             //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed 
             //       and we can immediately send things to dead letters then. 
-            sendAndDropAsDeadLetter(shell: self.shell)
+            sendAndDropAsDeadLetter()
+
         case .mailboxClosed:
             traceLog_Mailbox(self.address.path, "is CLOSED, dropping message \(envelope)")
-            sendAndDropAsDeadLetter(shell: self.shell)
+            sendAndDropAsDeadLetter()
+
         case .mailboxFull:
             traceLog_Mailbox(self.address.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter(shell: self.shell) // TODO "Drop" rather than DeadLetter
+            sendAndDropAsDeadLetter() // TODO "Drop" rather than DeadLetter
         }
     }
 
@@ -427,7 +431,7 @@ internal final class Mailbox<Message> {
             &cell, self.handleCrashes,
             &messageClosureContext, &systemMessageClosureContext,
             &deadLetterMessageClosureContext, &deadLetterSystemMessageClosureContext,
-            interpretMessage, dropMessage,
+            interpretMessage, deadLetterMessage,
             // fault handling:
             FaultHandling.getErrorJmpBuf(), 
             &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr, &runPhase)

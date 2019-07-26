@@ -181,21 +181,21 @@ extension ActorRefAdapter {
 
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard context.selectorSegments.first == nil,
-            self.address.incarnation == context.selectorIncarnation else {
-            return context.deadRef
+            self.address.incarnation == context.address.incarnation else {
+            return context.personalDeadLetters
         }
 
         switch self.myself {
         case let myself as ActorRef<Message>:
             return myself
         default:
-            return context.deadRef
+            return context.personalDeadLetters
         }
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil && self.address.incarnation == context.selectorIncarnation else {
-            return context.deadLetters.asAddressable()
+        guard context.selectorSegments.first == nil && self.address.incarnation == context.address.incarnation else {
+            return context.personalDeadLetters.asAddressable()
         }
 
         return self.myself.asAddressable()

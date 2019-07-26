@@ -49,6 +49,7 @@ import XCTest
          testCase(ClusterReceptionistTests.allTests),
          testCase(ConcurrencyHelpersTests.allTests),
          testCase(CustomStringInterpolationTests.allTests),
+         testCase(DeadLetterTests.allTests),
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
          testCase(DispatcherTests.allTests),

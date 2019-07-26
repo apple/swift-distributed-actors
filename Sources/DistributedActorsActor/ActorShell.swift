@@ -742,16 +742,16 @@ extension AbstractActor {
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
-            if myself.address.incarnation == context.selectorIncarnation {
+            if myself.address.incarnation == context.address.incarnation {
                 switch myself {
                 case let myself as ActorRef<Message>:
                     return myself
                 default:
-                    return context.deadRef
+                    return context.personalDeadLetters
                 }
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return context.deadRef
+                return context.personalDeadLetters
             }
         }
 
@@ -761,11 +761,11 @@ extension AbstractActor {
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
-            if self._myselfReceivesSystemMessages.address.incarnation == context.selectorIncarnation {
+            if self._myselfReceivesSystemMessages.address.incarnation == context.address.incarnation {
                 return self.asAddressable
             } else {
                 // the selection was indeed for this path, however we are a different incarnation (or different actor)
-                return context.deadRef.asAddressable()
+                return context.personalDeadLetters.asAddressable()
             }
         }
 

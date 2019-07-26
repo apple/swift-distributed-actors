@@ -39,7 +39,7 @@ public extension ActorRef {
         line: UInt = #line,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Message) -> AskResponse<Answer> {
         guard let system = self._system else {
-            fatalError("`ask` was accessed while system was already terminated")
+            fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }
         let promise = system.eventLoopGroup.next().makePromise(of: type)
 
@@ -134,6 +134,8 @@ private enum AskActor {
         file: String,
         function: String,
         line: UInt) -> Behavior<Event<ResponseType>> {
+        // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
+        // but make dead letters tell us back that our ask will never reply?
         return .setup { context in
             let adapter = context.messageAdapter(for: ResponseType.self, with: { .result($0) })
             let message = makeQuestion(adapter)

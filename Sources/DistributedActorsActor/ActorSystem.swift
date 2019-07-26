@@ -37,10 +37,7 @@ public final class ActorSystem {
     let eventStream = "" // FIXME actual implementation
 
     // initialized during startup
-    private var _deadLetters: ActorRef<DeadLetter>! = nil
-    public var deadLetters: ActorRef<DeadLetter> {
-        return self._deadLetters
-    }
+    internal var _deadLetters: ActorRef<DeadLetter>! = nil
 
     /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
     internal let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
@@ -113,16 +110,6 @@ public final class ActorSystem {
 
         self.settings = settings
 
-        // dead letters init
-        // TODO actually attach dead letters to a parent?
-        let deadLettersPath = try! ActorPath(root: "system") / ActorPathSegment("deadLetters") // TODO actually make child of system
-        var deadLog = Logger(label: "/system/deadLetters", factory: {
-            let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
-            context[metadataKey: "actorSystemAddress"] = .stringConvertible(settings.cluster.uniqueBindAddress)
-            return ActorOriginLogHandler(context)
-        })
-        deadLog.logLevel = settings.defaultLogLevel
-
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         do {
@@ -138,7 +125,18 @@ public final class ActorSystem {
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root
 
-        self._deadLetters = ActorRef(.deadLetters(DeadLetters(deadLog, address: deadLettersPath.makeLocalAddress(incarnation: .perpetual), system: self)))
+        // dead letters init
+        var deadLogger = settings.overrideLogger ?? Logger(label: ActorPath._deadLetters.description, factory: {
+            let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
+            if settings.cluster.enabled {
+                context[metadataKey: "nodeAddress"] = .stringConvertible(settings.cluster.uniqueBindAddress)
+            }
+                context[metadataKey: "nodeName"] = .stringConvertible(name)
+            return ActorOriginLogHandler(context)
+        })
+        deadLogger.logLevel = settings.defaultLogLevel
+
+        self._deadLetters = ActorRef(.deadLetters(.init(deadLogger, address: ActorAddress._deadLetters, system: self)))
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))
@@ -255,7 +253,7 @@ extension ActorSystem: ActorRefFactory {
 
     // Implementation note:
     // `isWellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
-    // to discover the receptionist actors on all nodes in order to replicate state between them. The UID of those actors will be `ActorUID.wellKnown`. This
+    // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
     internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
@@ -361,11 +359,13 @@ extension ActorSystem: _ActorTreeTraversable {
     @usableFromInline
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
-            return context.deadRef
+            return context.personalDeadLetters
         }
+        
         switch selector.value {
         case "system": return self.systemProvider._resolve(context: context)
         case "user":   return self.userProvider._resolve(context: context)
+        case "dead":   return context.personalDeadLetters
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
@@ -373,11 +373,12 @@ extension ActorSystem: _ActorTreeTraversable {
     @usableFromInline
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return self.deadLetters.adapt(from: Any.self).asAddressable()
+            return context.personalDeadLetters.asAddressable()
         }
         switch selector.value {
         case "system": return self.systemProvider._resolveUntyped(context: context)
-        case "user":   return self.userProvider._resolveUntyped(context: context) // TODO not in love with the keep path, maybe always keep it
+        case "user":   return self.userProvider._resolveUntyped(context: context)
+        case "dead":   return context.personalDeadLetters.asAddressable()
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
