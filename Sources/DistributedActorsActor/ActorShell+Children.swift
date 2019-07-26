@@ -91,7 +91,7 @@ public class Children {
     }
 
     /// Imprecise contains function, which only checks for the existence of a child actor by its name,
-    /// without taking into account its incarnation UID.
+    /// without taking into account its incarnation number.
     ///
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
@@ -247,7 +247,7 @@ extension Children: _ActorTreeTraversable {
         case .some(.adapter(let child)):
             return child._resolve(context: context.deeper)
         case .none:
-            return context.deadRef
+            return context.personalDeadLetters
         }
     }
 
@@ -268,7 +268,7 @@ extension Children: _ActorTreeTraversable {
         case .some(.adapter(let child)):
             return child._resolveUntyped(context: context.deeper)
         case .none:
-            return context.deadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable()
         }
     }
 }

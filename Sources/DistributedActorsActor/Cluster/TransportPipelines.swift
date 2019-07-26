@@ -217,7 +217,6 @@ private final class EnvelopeHandler: ChannelDuplexHandler {
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
         let envelope = self.unwrapOutboundIn(data)
-        pprint("ENVELOPE OUT \(String(reflecting: envelope))")
         let protoEnvelope = ProtoEnvelope(envelope)
         do {
             let bytes = try protoEnvelope.serializedByteBuffer(allocator: context.channel.allocator)
@@ -292,9 +291,7 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 ref.sendSystemMessage(message)
             case .success(let message):
                 let resolveContext = ResolveContext<Any>(address: wireEnvelope.recipient, system: self.system)
-                self.log.warning("resolveContext.address     = \(resolveContext.address)")  
                 let ref = self.system._resolveUntyped(context: resolveContext)
-                self.log.warning("resolveContext.address ref = \(ref)")  
                 ref._tellOrDeadLetter(message)
             case .failure(let error):
                 self.log.error("Error: \(error)")

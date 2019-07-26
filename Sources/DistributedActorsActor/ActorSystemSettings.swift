@@ -21,6 +21,10 @@ public struct ActorSystemSettings {
     /// Configure default log level for all `Logger` instances created by the library.
     public var defaultLogLevel: Logger.Level = .info
 
+    /// Optionally override Logger that shall be offered to actors and the system.
+    /// This is used instead of globally configured `Logging.Logger()` factories by the actor system.
+    public var overrideLogger: Logger? = nil
+
     // TODO: hope to remove this once a StdOutLogHandler lands that has formatting support;
     // logs are hard to follow with not consistent order of metadata etc (like system address etc).
     public var useBuiltInFormatter: Bool = true

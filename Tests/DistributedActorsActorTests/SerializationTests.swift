@@ -194,7 +194,7 @@ class SerializationTests: XCTestCase {
             try system.serialization.deserialize(HasStringRef.self, from: bytes)
         }
 
-        "\(back.containedRef.address)".shouldEqual("/system/deadLetters")
+        "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
     }
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
         let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
@@ -209,7 +209,7 @@ class SerializationTests: XCTestCase {
         }
 
         back.containedInterestingRef.tell(InterestingMessage())
-        "\(back.containedInterestingRef.address)".shouldEqual("/system/deadLetters")
+        "\(back.containedInterestingRef.address)".shouldEqual("/dead/user/dead-on-arrival")
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {

@@ -30,7 +30,7 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
         case remote(RemotePersonality<Message>)
         case adapter(AbstractAdapter)
         case guardian(Guardian)
-        case deadLetters(DeadLetters)
+        case deadLetters(DeadLetterOffice)
     }
 
     internal let personality: Personality
@@ -67,7 +67,7 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
         case .guardian(let guardian):
             guardian.trySendUserMessage(message)
         case .deadLetters(let deadLetters):
-            deadLetters.send(message) // drop message directly into dead letters
+            deadLetters.deliver(message, file: file, line: line) // drop message directly into dead letters
         }
     }
 }
@@ -183,20 +183,20 @@ internal extension ActorRef {
         case .guardian(let guardian):
             guardian.sendSystemMessage(message, file: file, line: line)
         case .deadLetters(let dead):
-            dead.sendDeadLetter(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
+            dead.deliver(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
         }
     }
 
     var _deadLetters: ActorRef<DeadLetter> {
         switch self.personality {
         case .cell(let cell):
-            return cell.system!.deadLetters // TODO scary !
+            return cell.mailbox.deadLetters
         case .remote(let remote):
             return remote.deadLetters
         case .adapter(let adapter):
             return adapter.deadLetters
         case .deadLetters(let dead):
-            return ActorRef<DeadLetter>(.adapter(_DeadLetterAdapterPersonality(dead.ref, deadRecipient: self.address)))
+            return self as! ActorRef<DeadLetter>
         case .guardian(let guardian):
             return guardian.deadLetters
         }
@@ -247,26 +247,28 @@ internal extension ActorRef {
 @usableFromInline
 internal final class ActorCell<Message> {
 
-    let address: ActorAddress
-
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
+    weak var _system: ActorSystem?
 
     init(address: ActorAddress, actor: ActorShell<Message>, mailbox: Mailbox<Message>) {
-        self.address = address
+        self._system = actor.system
         self.actor = actor
         self.mailbox = mailbox
     }
 
     var system: ActorSystem? {
-        return self.actor?.system
+        return self._system
     }
 
     var deadLetters: ActorRef<DeadLetter> {
-        return self.actor?.system.deadLetters ?? ActorRef(.deadLetters(.init(Logger(label: "deadLetters(shutting down)"), address: ._localRoot, system: self.system)))
+        return self.mailbox.deadLetters
     }
 
+    var address: ActorAddress {
+        return self.mailbox.address
+    }
 
     @usableFromInline
     func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
@@ -518,7 +520,7 @@ extension Guardian: _ActorTreeTraversable {
         if self.address.name == selector.value {
             return self.children._resolve(context: context.deeper)
         } else {
-            return context.deadRef
+            return context.personalDeadLetters
         }
     }
 
@@ -531,7 +533,7 @@ extension Guardian: _ActorTreeTraversable {
         if self.name == selector.value {
             return self.children._resolveUntyped(context: context.deeper)
         } else {
-            return context.deadLetters.asAddressable()
+            return context.personalDeadLetters.asAddressable()
         }
     }
 }

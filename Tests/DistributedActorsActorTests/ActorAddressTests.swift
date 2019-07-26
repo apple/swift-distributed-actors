@@ -62,6 +62,19 @@ final class ActorAddressTests: XCTestCase {
         rootPath.name.shouldEqual("/")
     }
 
+    func test_path_startsWith() throws {
+        let path = try ActorPath(root: "test").appending("foo").appending("bar")
+        path.starts(with: path).shouldBeTrue() // TODO fixme consistency of matchers, some throw and some not
+        try path.starts(with: path.appending("nope")).shouldBeFalse()
+        try path.starts(with: ActorPath(root: "test").appending("foo").appending("nope")).shouldBeFalse()
+        try path.starts(with: ActorPath(root: "test").appending("nein").appending("bar")).shouldBeFalse()
+        try path.starts(with: ActorPath(root: "test").appending("foo")).shouldBeTrue()
+        try path.starts(with: ActorPath(root: "test")).shouldBeTrue()
+        path.starts(with: ActorPath._root).shouldBeTrue()
+
+        ActorPath._root.starts(with: ActorPath._root).shouldBeTrue()
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Description tests
 
@@ -84,7 +97,7 @@ final class ActorAddressTests: XCTestCase {
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let node = UniqueNodeAddress(systemName: "system", host: "127.0.0.1", port: 1234, uid: NodeUID(11111))
+        let node = UniqueNodeAddress(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeUID(11111))
         let remote = ActorAddress(node: node, path: address.path, incarnation: ActorIncarnation(8888))
 
         String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello#8888")
@@ -113,8 +126,8 @@ final class ActorAddressTests: XCTestCase {
     func test_equalityOf_addressWithDifferentSystemNameOnly() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
 
-        let one = ActorAddress(node: .init(systemName: "one", host: "127.0.0.1", port: 1234, uid: NodeUID(11111)), path: address.path, incarnation: ActorIncarnation(88))
-        let two = ActorAddress(node: .init(systemName: "two", host: "127.0.0.1", port: 1234, uid: NodeUID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let one = ActorAddress(node: .init(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeUID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let two = ActorAddress(node: .init(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeUID(11111)), path: address.path, incarnation: ActorIncarnation(88))
 
         one.shouldNotEqual(two)
     }

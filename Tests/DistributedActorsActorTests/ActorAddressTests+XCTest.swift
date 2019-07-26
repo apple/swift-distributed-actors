@@ -30,6 +30,7 @@ extension ActorAddressTests {
                 ("test_path_shouldRenderNicely", test_path_shouldRenderNicely),
                 ("test_pathName_shouldRenderNicely", test_pathName_shouldRenderNicely),
                 ("test_rootPath_shouldRenderAsExpected", test_rootPath_shouldRenderAsExpected),
+                ("test_path_startsWith", test_path_startsWith),
                 ("test_local_actorAddress_shouldPrintNicely", test_local_actorAddress_shouldPrintNicely),
                 ("test_remote_actorAddress_shouldPrintNicely", test_remote_actorAddress_shouldPrintNicely),
                 ("test_equalityOf_addressWithSameSegmentsButDifferentIncarnation", test_equalityOf_addressWithSameSegmentsButDifferentIncarnation),
