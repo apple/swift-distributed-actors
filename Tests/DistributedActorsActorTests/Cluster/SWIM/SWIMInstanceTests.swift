@@ -391,7 +391,7 @@ final class SWIMInstanceTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Selecting members to ping
 
-    func test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeating() throws {
+    func test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder() throws {
         let swim = SWIM.Instance(.default)
         let memberCount = 10
         var members: Set<ActorRef<SWIM.Message>> = []
@@ -401,14 +401,17 @@ final class SWIMInstanceTests: XCTestCase {
             swim.addMember(p.ref, status: .alive(incarnation: 0))
         }
 
-        var seenMembers: Set<ActorRef<SWIM.Message>> = []
+        var seenMembers: [ActorRef<SWIM.Message>] = []
         for _ in 0..<memberCount {
             guard let member = swim.nextMemberToPing() else {
                 throw testKit.fail("Could not fetch member to ping")
             }
 
-            seenMembers.insert(member).inserted.shouldBeTrue()
+            seenMembers.append(member)
+            members.remove(member).shouldNotBeNil()
         }
+
+        members.shouldBeEmpty()
 
         // should loop around and we should encounter all the same members now
         for _ in 0..<memberCount {
@@ -416,7 +419,7 @@ final class SWIMInstanceTests: XCTestCase {
                 throw testKit.fail("Could not fetch member to ping")
             }
 
-            seenMembers.insert(member).inserted.shouldBeFalse()
+            seenMembers.removeFirst().shouldEqual(member)
         }
     }
 

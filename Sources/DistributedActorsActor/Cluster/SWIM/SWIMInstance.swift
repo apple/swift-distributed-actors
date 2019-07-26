@@ -29,6 +29,10 @@ final class SWIMInstance {
 
     /// Constantly mutated by `nextMemberToPing` in an effort to keep the order in which we ping nodes evenly distributed.
     private var membersToPing: [SWIMMember]
+    private var _membersToPingIndex: Int = 0
+    private var membersToPingIndex: Int {
+        return self._membersToPingIndex
+    }
 
     /// The incarnation number is used to get a sense of ordering of events, so if an `.alive` or `.suspect`
     /// state with a lower incarnation than the one currently known by a node is received, it can be dropped
@@ -84,16 +88,26 @@ final class SWIMInstance {
         }
 
         let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
+        self.members[ref] = member
+
         if maybeExistingMember == nil && notMyself(member) {
             // Newly added members are inserted at a random spot in the list of members
             // to ping, to have a better distribution of messages to this node from all
             // other nodes. If for example all nodes would add it to the end of the list,
             // it would take a longer time until it would be pinged for the first time
             // and also likely receive multiple pings within a very short time frame.
-            self.membersToPing.insert(member, at: Int.random(in: self.membersToPing.startIndex...self.membersToPing.endIndex))
+            let insertIndex = Int.random(in: self.membersToPing.startIndex...self.membersToPing.endIndex)
+            self.membersToPing.insert(member, at: insertIndex)
+            if insertIndex <= self.membersToPingIndex {
+                // If we inserted the new member before the current `membersToPingIndex`,
+                // we need to advance the index to avoid pinging the same member multiple
+                // times in a row. This is especially critical when inserting a larger
+                // number of members, e.g. when the cluster is just being formed, or
+                // on a rolling restart.
+                self.advanceMembersToPingIndex()
+            }
         }
 
-        self.members[ref] = member
         self.addToGossip(member: member)
 
         return .added
@@ -111,22 +125,12 @@ final class SWIMInstance {
     ///   a position that is chosen uniformly at random. On completing a traversal of the entire list,
     ///   rearranges the membership list to a random reordering.
     func nextMemberToPing() -> ActorRef<SWIM.Message>? {
-        if self.members.isEmpty {
-            return nil
-        }
-
-        if self.membersToPing.isEmpty {
-            self.membersToPing = self.members.values
-                .lazy
-                .filter { member in self.notMyself(member) && !member.isDead }
-                .shuffled()
-        }
-
         if self.membersToPing.isEmpty {
             return nil
         }
+        defer { self.advanceMembersToPingIndex() }
 
-        return self.membersToPing.removeFirst().ref
+        return self.membersToPing[self.membersToPingIndex].ref
     }
 
     /// Selects `settings.failureDetector.indirectProbeCount` members to send a `ping-req` to.
@@ -178,6 +182,10 @@ final class SWIMInstance {
 
     func incrementProtocolPeriod() {
         self._protocolPeriod += 1
+    }
+
+    func advanceMembersToPingIndex() {
+        self._membersToPingIndex = (self._membersToPingIndex + 1) % self.membersToPing.count
     }
 
     var protocolPeriod: Int {
