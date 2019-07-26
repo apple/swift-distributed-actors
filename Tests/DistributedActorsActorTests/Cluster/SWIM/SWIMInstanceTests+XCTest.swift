@@ -44,7 +44,7 @@ extension SWIMInstanceTests {
                 ("test_onGossipPayload_myself_withDead", test_onGossipPayload_myself_withDead),
                 ("test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne", test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne),
                 ("test_members_shouldContainAllAddedMembers", test_members_shouldContainAllAddedMembers),
-                ("test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeating", test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeating),
+                ("test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder", test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder),
                 ("test_addMember_shouldNotAddLocalNodeForPinging", test_addMember_shouldNotAddLocalNodeForPinging),
                 ("test_nextMemberToPingRequest", test_nextMemberToPingRequest),
                 ("test_member_shouldReturnTheLastAssignedStatus", test_member_shouldReturnTheLastAssignedStatus),
