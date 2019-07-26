@@ -365,7 +365,7 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
     func resolve(system: ActorSystem, address: ActorAddress) -> AddressableActorRef {
         // Since we don't have the type information here, we can't properly resolve
         // and the only safe thing to do is to return `deadLetters`.
-        return system.deadLetters.asAddressable()
+        return system.personalDeadLetters(type: Any.self, recipient: address).asAddressable()
     }
 }
 

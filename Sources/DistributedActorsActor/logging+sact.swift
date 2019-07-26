@@ -68,9 +68,9 @@ public struct ActorLogger {
         var proxyHandler = ActorOriginLogHandler(context)
         proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
         if context.system.settings.cluster.enabled {
-            proxyHandler.metadata["actorSystemAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
+            proxyHandler.metadata["nodeAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
         } else {
-            proxyHandler.metadata["actorSystemName"] = .string(context.system.name)
+            proxyHandler.metadata["nodeName"] = .string(context.system.name)
         }
 
         var log = Logger(label: "\(context.path)", factory: { _ in proxyHandler })
@@ -83,11 +83,11 @@ public struct ActorLogger {
         // so we need to make such "proxy log handler", that does out actor specific things.
         var proxyHandler = ActorOriginLogHandler(system)
         if system.settings.cluster.enabled {
-            proxyHandler.metadata["actorSystemAddress"] = .lazyStringConvertible { () in
+            proxyHandler.metadata["nodeAddress"] = .lazyStringConvertible { () in
                 system.settings.cluster.bindAddress
             }
         } else {
-            proxyHandler.metadata["actorSystemName"] = .string(system.name)
+            proxyHandler.metadata["nodeName"] = .string(system.name)
         }
 
         var log = Logger(label: identifier ?? system.name, factory: { _ in proxyHandler })
@@ -179,10 +179,10 @@ public struct ActorOriginLogHandler: LogHandler {
             }
 
             let actorSystemIdentity: String
-            if let d = l.effectiveMetadata?.removeValue(forKey: "actorSystemAddress") {
+            if let d = l.effectiveMetadata?.removeValue(forKey: "nodeAddress") {
                 actorSystemIdentity = "[\(d)]"
             } else {
-                if let name = l.effectiveMetadata?.removeValue(forKey: "actorSystemName") {
+                if let name = l.effectiveMetadata?.removeValue(forKey: "nodeName") {
                     actorSystemIdentity = "[\(name)]"
                 } else {
                     actorSystemIdentity = ""

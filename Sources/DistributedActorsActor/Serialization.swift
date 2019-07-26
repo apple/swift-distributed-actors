@@ -45,8 +45,6 @@ public struct Serialization {
 
     private let log: Logger
 
-    private let deadLetters: ActorRef<DeadLetter>
-
     private let allocator = ByteBufferAllocator()
 
     // MARK: Built-in serializers
@@ -63,11 +61,10 @@ public struct Serialization {
             return ActorOriginLogHandler(context)
         })
         // TODO: Dry up setting this metadata
-        log[metadataKey: "actorSystemAddress"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
+        log[metadataKey: "nodeAddress"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
         log.logLevel = systemSettings.defaultLogLevel
         self.log = log
 
-        self.deadLetters = system.deadLetters
         let context = ActorSerializationContext(
             log: log,
             localNodeAddress: settings.localNodeAddress,
@@ -324,16 +321,14 @@ public struct ActorSerializationContext {
     /// - Returns: the `ActorRef` for given actor if if exists and is alive in the tree, `nil` otherwise
     public func resolveActorRef<Message>(_ messageType: Message.Type = Message.self, identifiedBy address: ActorAddress) -> ActorRef<Message> {
         let context = ResolveContext<Message>(address: address, system: self.system)
-        let resolved = self.traversable._resolve(context: context)
-        return resolved
+        return self.traversable._resolve(context: context)
     }
 
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
     internal func resolveReceivesSystemMessages(identifiedBy address: ActorAddress) -> AddressableActorRef {
         let context = ResolveContext<Any>(address: address, system: self.system)
-        let resolved = self.traversable._resolveUntyped(context: context)
-        return resolved
+        return self.traversable._resolveUntyped(context: context)
     }
 }
 
@@ -399,7 +394,7 @@ public struct SerializationSettings {
     /// as it is not useful to render any address for actors which shall never be reached remotely.
     ///
     /// This is set automatically when modifying the systems cluster settings.
-    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, uid: NodeUID(0))
+    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeUID(0))
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]

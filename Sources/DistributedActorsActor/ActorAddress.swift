@@ -124,6 +124,7 @@ extension ActorAddress {
     /// Local root (also known as: "/") actor address.
     /// Only to be used by the "/" root "actor"
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
+    internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
 
 }
 
@@ -230,6 +231,16 @@ public struct ActorPath: PathRelationships, Hashable {
         return try self.appending(segment: ActorPathSegment(name))
     }
 
+    /// Creates a new path with `segments` appended
+    public func appending(segments: [ActorPathSegment]) -> ActorPath {
+        var path = self
+        for segment in segments {
+            path.append(segment: segment)
+        }
+        return path
+    }
+
+
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
     public var name: String {
@@ -273,6 +284,11 @@ extension PathRelationships {
     /// Combines the base path with a child segment returning the concatenated path.
     static func /(base: Self, child: ActorPathSegment) -> Self {
         return base.appending(segment: child)
+    }
+
+    /// Checks whether this path starts with the passed in `path`.
+    func starts(with path: ActorPath) -> Bool {
+        return self.segments.starts(with: path.segments)
     }
 
     /// Checks whether this [ActorPath] is a direct descendant of the passed in path.
@@ -438,6 +454,7 @@ internal extension ActorIncarnation {
 // MARK: NodeAddress
 
 public struct NodeAddress: Hashable {
+    // TODO collapse into one String and index into it?
     public let `protocol`: String
     public var systemName: String
     public var host: String
@@ -476,7 +493,7 @@ extension NodeAddress: Comparable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Unique Node Address
 
-/// A _unique_ node address which includes also the node's unique `NodeID` which is used to disambiguate
+/// A _unique_ node address which includes also the node's unique `UID` which is used to disambiguate
 /// multiple incarnations of a system on the same host/port part -- similar to how an `ActorIncarnation`
 /// is used on the per-actor level.
 ///
@@ -494,12 +511,12 @@ public struct UniqueNodeAddress: Hashable {
         self.nid = nid
     }
 
-    public init(`protocol`: String, systemName: String, host: String, port: Int, uid: NodeUID) {
-        self.init(address: NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: uid)
+    public init(`protocol`: String, systemName: String, host: String, port: Int, nid: NodeUID) {
+        self.init(address: NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
     }
 
-    public init(systemName: String, host: String, port: Int, uid: NodeUID) {
-        self.init(protocol: "sact", systemName: systemName, host: host, port: port, uid: uid)
+    public init(systemName: String, host: String, port: Int, nid: NodeUID) {
+        self.init(protocol: "sact", systemName: systemName, host: host, port: port, nid: nid)
     }
 
 }

@@ -89,11 +89,7 @@ extension RemoteActorRefProvider {
 extension RemoteActorRefProvider {
 
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        guard let address = context.address else {
-            preconditionFailure("context.address MUST be set when resolving using remote resolver")
-        }
-
-        switch address._location {
+        switch context.address._location {
         case .local:
             return self.localProvider._resolve(context: context)
         case .remote(let node) where node == self.localNode:
@@ -101,23 +97,19 @@ extension RemoteActorRefProvider {
 
             return self.localProvider._resolve(context: context)
         case .remote:
-            return self.makeRemoteRef(context, remoteAddress: address)
+            return self._resolveAsRemoteRef(context, remoteAddress: context.address)
         }
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard let address = context.address else {
-            preconditionFailure("context.address MUST be set when resolving using remote resolver")
-        }
-
-        if self.localNode == address.node {
+        if self.localNode == context.address.node {
             return self.localProvider._resolveUntyped(context: context)
         } else {
-            return AddressableActorRef(self.makeRemoteRef(context, remoteAddress: address))
+            return AddressableActorRef(self._resolveAsRemoteRef(context, remoteAddress: context.address))
         }
     }
 
-    internal func makeRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> ActorRef<Message> {
+    internal func _resolveAsRemoteRef<Message>(_ context: ResolveContext<Message>, remoteAddress address: ActorAddress) -> ActorRef<Message> {
         return ActorRef(.remote(.init(shell: self.cluster, address: address, system: context.system)))
     }
 }
@@ -240,11 +232,12 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     @usableFromInline
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
-            return context.deadRef // i.e. we resolved a "dead reference" as it points to nothing
+            return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
-        case "system": return self.systemTree._resolve(context: context) // TODO this is a bit hacky... 
-        case "user":   return self.userTree._resolve(context: context) // TODO this is a bit hacky... 
+        case "system": return self.systemTree._resolve(context: context) 
+        case "user":   return self.userTree._resolve(context: context) 
+        case "dead":   return context.personalDeadLetters
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
@@ -252,11 +245,12 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
     @usableFromInline
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
-            return context.deadLetters.asAddressable() // i.e. we resolved a "dead reference" as it points to nothing
+            return context.personalDeadLetters.asAddressable() // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
-        case "system": return self.systemTree._resolveUntyped(context: context) // TODO this is a bit hacky...
-        case "user":   return self.userTree._resolveUntyped(context: context) // TODO this is a bit hacky...
+        case "system": return self.systemTree._resolveUntyped(context: context)
+        case "user":   return self.userTree._resolveUntyped(context: context)
+        case "dead":   return context.personalDeadLetters.asAddressable()
         default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
@@ -315,59 +309,39 @@ internal struct TraversalContext<T> {
 internal struct ResolveContext<Message> {
     /// The "remaining path" of the resolve being performed
     var selectorSegments: ArraySlice<ActorPathSegment>
-    /// The unique ID of an actor which we are trying to resolve
-    var selectorIncarnation: ActorIncarnation
 
-    /// Used only on "outer layer" of a resolve, where an `ActorRefProvider` may decide to fabricate a ref for given address
-    /// based e.g. on the fact that it is a remote one
-    var address: ActorAddress?
+    /// Address that we are trying to resolve.
+    var address: ActorAddress
 
     let system: ActorSystem
 
-    var deadLetters: ActorRef<DeadLetter> {
-        return self.system.deadLetters
-    }
-
-
-    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, actorIncarnation: ActorIncarnation, system: ActorSystem) {
+    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, address: ActorAddress, system: ActorSystem) {
         self.selectorSegments = remainingSelectorSegments
-        self.selectorIncarnation = actorIncarnation
-        self.address = nil
+        self.address = address
         self.system = system
     }
 
     init(address: ActorAddress, system: ActorSystem) {
         self.address = address
         self.selectorSegments = address.path.segments[...]
-        self.selectorIncarnation = address.incarnation
         self.system = system
     }
 
     /// Returns copy of traversal context yet "one level deeper"
-    /// Note that this also drops the `path` if it was present, but retains the `UID` as we may want to resolve a _specific_ ref after all
+    /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all
     var deeper: ResolveContext {
-        return self.deeper(keepAddress: false)
-    }
-
-    func deeper(keepAddress: Bool) -> ResolveContext {
         var deeperSelector = self.selectorSegments
         deeperSelector = deeperSelector.dropFirst()
-        var c = ResolveContext(
+        return ResolveContext(
             remainingSelectorSegments: self.selectorSegments.dropFirst(),
-            actorIncarnation: self.selectorIncarnation,
+            address: self.address,
             system: self.system
         )
-        if keepAddress {
-            c.address = self.address
-        }
-        return c
     }
 
-    /// A "dead ref" is a ref that is well typed for `Message` however actually points to `deadLetters.
-    /// It should be used when a resolve has failed to locate the actor.
-    var deadRef: ActorRef<Message> { // TODO make it a func?
-        // TODO if we never drop the `path` then we could make it /dead/that/path for example
-        return self.deadLetters.adapt(from: Message.self)
+    /// A dead letters reference that is personalized for the context's address, and well  well typed for `Message`.
+    var personalDeadLetters: ActorRef<Message> {
+        return self.system.personalDeadLetters(recipient: self.address)
     }
 
 }

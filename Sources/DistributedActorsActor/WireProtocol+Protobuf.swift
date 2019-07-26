@@ -103,7 +103,7 @@ extension ActorAddress {
         if proto.hasNode {
             self = try ActorAddress(node: UniqueNodeAddress(proto.node), path: path, incarnation: incarnation)
         } else {
-            self = try ActorAddress(path: path, incarnation: incarnation)
+            self = ActorAddress(path: path, incarnation: incarnation)
         }
     }
 }
