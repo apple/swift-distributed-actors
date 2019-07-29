@@ -98,10 +98,6 @@ internal struct SWIMMembershipShell {
                 self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
             }
             self.processGossipPayload(context: context, payload: payload)
-
-        case .getMembershipState(let replyTo): // TODO why is this a remote message? could it be a "testing" one?
-            // NOT tracelogging it on purpose, it is a testing message
-            replyTo.tell(SWIM.MembershipState(membershipStatus: swim._allMembersDict))
         }
     }
 
@@ -113,6 +109,10 @@ internal struct SWIMMembershipShell {
 
         case .join(let node):
             self.handleJoin(context, node: node)
+
+        case .getMembershipState(let replyTo): // TODO could it be a "testing" message?
+            // NOT tracelogging it on purpose, it is a testing message
+            replyTo.tell(SWIM.MembershipState(membershipStatus: swim._allMembersDict))
         }
     }
 

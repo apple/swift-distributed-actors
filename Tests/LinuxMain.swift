@@ -72,6 +72,7 @@ import XCTest
          testCase(SWIMInstanceClusterTests.allTests),
          testCase(SWIMInstanceTests.allTests),
          testCase(SWIMMembershipShellTests.allTests),
+         testCase(SWIMSerializationTests.allTests),
          testCase(SerializationPoolTests.allTests),
          testCase(SerializationTests.allTests),
          testCase(StashBufferTests.allTests),

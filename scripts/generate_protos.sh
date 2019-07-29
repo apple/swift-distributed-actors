@@ -22,10 +22,17 @@ proto_path="$root_path/Protos"
 
 pushd $proto_path >> /dev/null
 
-for p in $(find . -name *.proto); do
-  command="protoc --swift_out=../Sources/Swift Distributed ActorsActor $p"
-  echo $command
-  `$command`
+for p in $(find . -name "*.proto"); do
+    out_dir=$( dirname "$p" )
+    base_name=$( echo basename "$p" | sed "s/.*\///" )
+    out_name="${base_name%.*}.pb.swift"
+    dest_dir="../Sources/Swift Distributed ActorsActor/${out_dir}/Protobuf"
+    dest_file="${dest_dir}/${out_name}"
+    mkdir -p ${dest_dir}
+    command="protoc --swift_out=. ${p}"
+    echo $command
+   `$command`
+    mv "${out_dir}/${out_name}" "${dest_file}"
 done
 
 popd >> /dev/null
@@ -34,10 +41,17 @@ benchmark_proto_path="$root_path/Sources/Swift Distributed ActorsBenchmarks/Benc
 
 pushd $benchmark_proto_path >> /dev/null
 
-for p in $(find . -name *.proto); do
-    command="protoc --swift_out=../ $p"
+for p in $(find . -name "*.proto"); do
+    out_dir=$( dirname "$p" )
+    base_name=$( echo basename "$p" | sed "s/.*\///" )
+    out_name="${base_name%.*}.pb.swift"
+    dest_dir="../${out_dir}/Protobuf"
+    dest_file="${dest_dir}/${out_name}"
+    mkdir -p ${dest_dir}
+    command="protoc --swift_out=. ${p}"
     echo $command
     `$command`
+    mv "${out_dir}/${out_name}" "${dest_file}"
 done
 
 popd >> /dev/null

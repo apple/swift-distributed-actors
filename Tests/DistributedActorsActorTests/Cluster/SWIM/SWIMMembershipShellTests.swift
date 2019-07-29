@@ -358,10 +358,10 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         remoteRef.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
 
         try localTestKit.eventually(within: .seconds(3)) {
-            localRef.tell(.remote(.getMembershipState(replyTo: membershipProbe.ref)))
+            localRef.tell(.local(.getMembershipState(replyTo: membershipProbe.ref)))
             let statusA = try membershipProbe.expectMessage()
 
-            remoteRef.tell(.remote(.getMembershipState(replyTo: membershipProbe.ref)))
+            remoteRef.tell(.local(.getMembershipState(replyTo: membershipProbe.ref)))
             let statusB = try membershipProbe.expectMessage()
 
             guard statusA.membershipStatus.count == 2, statusB.membershipStatus.count == 2 else {
@@ -446,7 +446,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let stateProbe = localTestKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 
         try localTestKit.eventually(within: timeout, file: file, line: line, column: column) {
-            membershipShell.tell(.remote(.getMembershipState(replyTo: stateProbe.ref)))
+            membershipShell.tell(.local(.getMembershipState(replyTo: stateProbe.ref)))
             let membership = try stateProbe.expectMessage()
             pinfo("membership: \(membership.membershipStatus)")
             let otherStatus = membership.membershipStatus[member]
@@ -462,7 +462,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let stateProbe = localTestKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 
         try localTestKit.assertHolds(for: timeout, file: file, line: line, column: column) {
-            membershipShell.tell(.remote(.getMembershipState(replyTo: stateProbe.ref)))
+            membershipShell.tell(.local(.getMembershipState(replyTo: stateProbe.ref)))
             let otherStatus = try stateProbe.expectMessage().membershipStatus[member]
             guard otherStatus == status else {
                 throw localTestKit.error("Expected status [\(status)] for [\(member)], but found \(otherStatus.debugDescription)")

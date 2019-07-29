@@ -118,13 +118,59 @@ extension ProtoActorAddress {
     }
 }
 
+extension ActorAddress: ProtobufRepresentable {
+    typealias ProtobufRepresentation = ProtoActorAddress
+
+    func toProto(context: ActorSerializationContext) -> ProtoActorAddress {
+        var address = ProtoActorAddress()
+        let node = self.node ?? context.localNodeAddress
+        address.node.nid = node.nid.value
+        address.node.address.protocol = node.address.protocol
+        address.node.address.system = node.address.systemName
+        address.node.address.hostname = node.address.host
+        address.node.address.port = UInt32(node.address.port)
+
+        address.path.segments = self.segments.map { $0.value }
+        address.incarnation = self.incarnation.value
+
+        return address
+    }
+
+    init(fromProto proto: ProtoActorAddress, context: ActorSerializationContext) throws {
+        let nodeAddress = NodeAddress(
+            protocol: proto.node.address.protocol,
+            systemName: proto.node.address.system,
+            host: proto.node.address.hostname,
+            port: Int(proto.node.address.port))
+
+        let uniqueNodeAddress = UniqueNodeAddress(address: nodeAddress, nid: NodeID(proto.node.nid))
+
+        // TODO: make Error
+        let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
+
+        self.init(node: uniqueNodeAddress, path: path, incarnation: ActorIncarnation(proto.incarnation))
+    }
+}
+
+extension ActorRef: ProtobufRepresentable {
+    typealias ProtobufRepresentation = ProtoActorAddress
+
+    func toProto(context: ActorSerializationContext) -> ProtoActorAddress {
+        return self.address.toProto(context: context)
+    }
+
+    init(fromProto proto: ProtoActorAddress, context: ActorSerializationContext) throws {
+        self = context.resolveActorRef(Message.self, identifiedBy: try ActorAddress(fromProto: proto, context: context))
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ProtoActorPath
 
 extension ActorPath {
     init(_ proto: ProtoActorPath) throws {
         guard !proto.segments.isEmpty else {
-            throw WireFormatError.emptyRepeatedField("path.segments")
+            throw SerializationError.emptyRepeatedField("path.segments")
         }
 
         self.segments = try proto.segments.map { try ActorPathSegment($0) }
@@ -167,13 +213,13 @@ extension ProtoProtocolVersion {
 extension Wire.HandshakeAccept {
     init(_ proto: ProtoHandshakeAccept) throws {
         guard proto.hasVersion else {
-            throw WireFormatError.missingField("version")
+            throw SerializationError.missingField("version")
         }
         guard proto.hasFrom else {
-            throw WireFormatError.missingField("from")
+            throw SerializationError.missingField("from")
         }
         guard proto.hasOrigin else {
-            throw WireFormatError.missingField("hasOrigin")
+            throw SerializationError.missingField("hasOrigin")
         }
         self.version = .init(proto.version)
         self.from = try .init(proto.from)
@@ -198,13 +244,13 @@ extension ProtoHandshakeAccept {
 extension Wire.HandshakeReject {
     init(_ proto: ProtoHandshakeReject) throws {
         guard proto.hasVersion else {
-            throw WireFormatError.missingField("version")
+            throw SerializationError.missingField("version")
         }
         guard proto.hasFrom else {
-            throw WireFormatError.missingField("from")
+            throw SerializationError.missingField("from")
         }
         guard proto.hasOrigin else {
-            throw WireFormatError.missingField("origin")
+            throw SerializationError.missingField("origin")
         }
 
         self.version = .init(proto.version)
@@ -229,10 +275,10 @@ extension ProtoHandshakeReject {
 extension UniqueNodeAddress {
     init(_ proto: ProtoUniqueNodeAddress) throws {
         guard proto.hasAddress else {
-            throw WireFormatError.missingField("address")
+            throw SerializationError.missingField("address")
         }
         guard proto.nid != 0 else {
-            throw WireFormatError.missingField("uid")
+            throw SerializationError.missingField("uid")
         }
         let address = NodeAddress(proto.address)
         let nid = NodeID(proto.nid)
@@ -274,13 +320,13 @@ extension ProtoNodeAddress {
 extension Wire.HandshakeOffer {
     init(_ proto: ProtoHandshakeOffer) throws {
         guard proto.hasFrom else {
-            throw WireFormatError.missingField("from")
+            throw SerializationError.missingField("from")
         }
         guard proto.hasTo else {
-            throw WireFormatError.missingField("to")
+            throw SerializationError.missingField("to")
         }
         guard proto.hasVersion else {
-            throw WireFormatError.missingField("version")
+            throw SerializationError.missingField("version")
         }
 
         self.from = try UniqueNodeAddress(proto.from)
@@ -301,13 +347,13 @@ extension ProtoHandshakeOffer {
         try proto.merge(serializedData: data)
 
         guard proto.hasVersion else {
-            throw WireFormatError.missingField("version")
+            throw SerializationError.missingField("version")
         }
         guard proto.hasFrom else {
-            throw WireFormatError.missingField("from")
+            throw SerializationError.missingField("from")
         }
         guard proto.hasTo else {
-            throw WireFormatError.missingField("to")
+            throw SerializationError.missingField("to")
         }
 
         self = proto
