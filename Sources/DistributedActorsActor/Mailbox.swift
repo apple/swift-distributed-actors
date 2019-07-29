@@ -286,18 +286,12 @@ internal final class Mailbox<Message> {
 
     @inlinable
     func sendMessage(envelope: Envelope, file: String, line: UInt) {
-        guard let shell = self.shell else {
-            traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
-            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
-            return
-        }
-
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
                 if case .userMessage(let message) = envelope.payload {
                     messageDescription = "[\(message)]:\(type(of: message))"
-                    try shell.system.serialization.verifySerializable(message: message as! Message)
+                    try self.shell?.system.serialization.verifySerializable(message: message as! Message)
                 }
             } catch {
                 fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " + 
@@ -319,6 +313,11 @@ internal final class Mailbox<Message> {
         switch cmailbox_send_message(mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
+            guard let shell = self.shell else {
+                traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
+                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
+                break
+            }
             shell.dispatcher.execute(self._run)
 
         case .alreadyScheduled:
@@ -342,24 +341,25 @@ internal final class Mailbox<Message> {
 
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
-        guard let cell = self.shell else {
-            self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
-            traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system message \(systemMessage)")
-            return
-        }
 
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
         func sendAndDropAsDeadLetter() {
             // TODO should deadLetters be special, since watching it is nonsense?
-            self.deadLetters.tell(DeadLetter(systemMessage, recipient: cell.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+            self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
         }
 
         switch cmailbox_send_system_message(mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), scheduling for execution")
-            cell.dispatcher.execute(self._run)
+            guard let shell = self.shell else {
+                self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
+                traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system message \(systemMessage)")
+                break
+            }
+            shell.dispatcher.execute(self._run)
+
         case .alreadyScheduled:
             traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), someone scheduled already")
             
