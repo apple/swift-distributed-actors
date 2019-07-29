@@ -325,8 +325,6 @@ extension ReceivingHandshakeHandler {
 }
 
 enum WireFormatError: Error {
-    case missingField(String)
-    case emptyRepeatedField(String)
     case notEnoughBytes(expectedAtLeastBytes: Int, hint: String?)
 }
 
