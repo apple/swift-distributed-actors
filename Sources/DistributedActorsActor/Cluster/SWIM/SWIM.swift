@@ -38,9 +38,6 @@ public enum SWIM {
         // TODO target -- address rather than the ref?
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
-        /// FOR TESTING: Expose the entire
-        case getMembershipState(replyTo: ActorRef<MembershipState>) // TODO: do we need this or can we ride on the Observer getting all the state? why as a remote message?
-
         /// Extension: Lifeguard, Local Health Aware Probe
         /// LHAProbe adds a `nack` message to the fault detector protocol,
         /// which is sent in the case of failed indirect probes. This gives the member that
@@ -56,20 +53,22 @@ public enum SWIM {
     /// or indirectly, as a result of a `pingReq` message.
     ///
     /// - parameter pinged: always contains the ref of the member that was the target of the `ping`.
-    internal struct Ack: Codable {
+    internal struct Ack {
         let pinged: ActorRef<Message>
         let incarnation: Incarnation
         let payload: Payload
     }
 
     // TODO: make sure that those are in a "testing" and not just "remote" namespace?
-    internal struct MembershipState: Codable {
+    internal struct MembershipState {
         let membershipStatus: [ActorRef<SWIM.Message>: Status]
     }
 
     internal enum LocalMessage {
         case pingRandomMember
         case join(NodeAddress)
+        /// FOR TESTING: Expose the entire membership state
+        case getMembershipState(replyTo: ActorRef<MembershipState>) // TODO: do we need this or can we ride on the Observer getting all the state?
     }
 
     // TODO: make serializable

@@ -23,7 +23,8 @@ excludes = [
     "Sources/Swift Distributed ActorsActor/sact.pb.swift",
     "Sources/Swift Distributed ActorsBenchmarks/bench.pb.swift",
     "Sources/Swift Distributed ActorsActor/Heap.swift",
-    "Tests/Swift Distributed ActorsActorTests/HeapTests.swift"
+    "Tests/Swift Distributed ActorsActorTests/HeapTests.swift",
+    "Sources/Swift Distributed ActorsActor/Cluster/SWIM/SWIM.pb.swift"
 ]
 
 new_files.each do |file|

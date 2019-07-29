@@ -1,0 +1,67 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "WireProtocol.proto";
+
+message SWIMMessage {
+    oneof request {
+        SWIMPing ping = 1;
+        SWIMPingRequest pingRequest = 2;
+    }
+}
+
+message SWIMPing {
+    SWIMStatus lastKnownStatus = 1;
+    ActorAddress replyTo = 2;
+    SWIMPayload payload = 3;
+}
+
+message SWIMPingRequest {
+    ActorAddress target = 1;
+    SWIMStatus lastKnownStatus = 2;
+    ActorAddress replyTo = 3;
+    SWIMPayload payload = 4;
+}
+
+message SWIMAck {
+    ActorAddress pinged = 1;
+    uint64 incarnation = 2;
+    SWIMPayload payload = 3;
+}
+
+message SWIMStatus {
+    enum Type {
+        ALIVE = 0;
+        SUSPECT = 1;
+        DEAD = 2;
+    }
+
+    Type type = 1;
+    uint64 incarnation = 2;
+}
+
+message SWIMMember {
+    ActorAddress address = 1;
+    SWIMStatus status = 2;
+}
+
+message SWIMPayload {
+    repeated SWIMMember member = 1;
+}
