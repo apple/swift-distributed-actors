@@ -167,6 +167,28 @@ extension ActorAddress: PathRelationships {
     }
 }
 
+/// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
+extension ActorAddress: Comparable {
+    public static func <(lhs: ActorAddress, rhs: ActorAddress) -> Bool {
+        return lhs.node < rhs.node || lhs.path < rhs.path || lhs.incarnation < rhs.incarnation
+    }
+}
+
+extension Optional: Comparable where Wrapped == UniqueNodeAddress {
+    public static func <(lhs: UniqueNodeAddress?, rhs:  UniqueNodeAddress?) -> Bool {
+        switch (lhs, rhs) {
+        case (.some, .none):
+            return false
+        case (.none, .some):
+            return true
+        case (.some(let l), .some(let r)):
+            return l < r
+        case (.none, .none):
+            return false
+        }
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorLocation
 
@@ -267,6 +289,12 @@ extension ActorPath {
     }
     internal func makeRemoteAddress(on node: UniqueNodeAddress, incarnation: ActorIncarnation) -> ActorAddress {
         return .init(node: node, path: self, incarnation: incarnation)
+    }
+}
+
+extension ActorPath: Comparable {
+    public static func <(lhs: ActorPath, rhs: ActorPath) -> Bool {
+        return "\(lhs)" < "\(rhs)"
     }
 }
 
@@ -447,6 +475,12 @@ internal extension ActorIncarnation {
             return nil
         }
         self.init(int)
+    }
+}
+
+extension ActorIncarnation: Comparable {
+    public static func <(lhs: ActorIncarnation, rhs: ActorIncarnation) -> Bool {
+        return lhs.value < rhs.value
     }
 }
 

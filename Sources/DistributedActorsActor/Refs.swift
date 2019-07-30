@@ -195,7 +195,7 @@ internal extension ActorRef {
             return remote.deadLetters
         case .adapter(let adapter):
             return adapter.deadLetters
-        case .deadLetters(let dead):
+        case .deadLetters:
             return self as! ActorRef<DeadLetter>
         case .guardian(let guardian):
             return guardian.deadLetters
