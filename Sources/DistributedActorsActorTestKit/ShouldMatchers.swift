@@ -121,6 +121,23 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     }
 }
 
+public extension TestMatchers where T == String {
+    /// Asserts that `it` contains the `subString`.
+    func toContain(_ subString: String) {
+        if !it.contains(subString) {
+            // fancy printout:
+            var m = "Expected String [\(it)] to contain: ["
+            if isTty { m += "\(ANSIColors.bold.rawValue)" }
+            m += "\(subString)"
+            if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
+            m += "]"
+
+            let msg = self.callSite.detailedMessage(m)
+            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        }
+    }
+}
+
 public extension TestMatchers where T: Comparable {
 
     func toBeLessThan(_ expected: T) {
@@ -206,17 +223,6 @@ extension Equatable {
     }
 }
 
-extension Collection {
-    public func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
-    }
-    public func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
-    }
-}
-
 extension Bool {
     public func shouldBe(_ expected: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -252,6 +258,20 @@ extension Comparable {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Collection `should*` matchers
+
+extension Collection {
+    public func shouldBeEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
+    }
+    public func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
+    }
+}
+
 extension Collection where Element: Equatable {
     public func shouldStartWith<PossiblePrefix>(prefix: PossiblePrefix, file: StaticString = #file, line: UInt = #line, column: UInt = #column)
         where PossiblePrefix: Collection, Element == PossiblePrefix.Element {
@@ -271,7 +291,15 @@ extension Collection where Element: Equatable {
     }
 }
 
-// MARK: free functions
+extension String {
+    public func shouldContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toContain(el)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Free `should*` functions
 
 public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -335,6 +363,7 @@ public func shouldNotHappen(_ message: String, file: StaticString = #file, line:
     return callSiteInfo.error("Should not happen! [\(message)]")
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors and metadata
 
 public enum ShouldMatcherError: Error {

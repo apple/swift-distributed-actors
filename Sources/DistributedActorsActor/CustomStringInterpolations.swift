@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: String Interpolation: _:leftPad:
+
 internal extension String.StringInterpolation {
     mutating func appendInterpolation(_ value: CustomStringConvertible, leftPadTo totalLength: Int) {
         let s = "\(value)"
@@ -19,6 +22,9 @@ internal extension String.StringInterpolation {
         self.appendLiteral("\(pad)\(s)")
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: String Interpolation: reflecting:
 
 internal extension String.StringInterpolation {
     mutating func appendInterpolation(reflecting subject: CustomDebugStringConvertible) {
@@ -28,7 +34,7 @@ internal extension String.StringInterpolation {
 
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Quality of life for printing optional values
+// MARK: String Interpolation: _:orElse:
 
 public extension String.StringInterpolation {
     mutating func appendInterpolation<T>(_ value: Optional<T>, orElse defaultValue: String) {
