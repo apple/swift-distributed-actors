@@ -469,7 +469,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         // TODO: stop all children? depends which style we'll end up with...
         // TODO: the thing is, I think we can express the entire "wait for children to stop" as a behavior, and no need to make it special implementation in the cell
 
-        self.timers.cancelAll()
+        // when terminating, we need to stop all timers, including system timers
+        self.timers._cancelAll(includeSystemTimers: true)
 
         // notifying parent and other watchers has no ordering guarantees with regards to reception,
         // however let's first notify the parent and then all other watchers (even if parent did watch this child
