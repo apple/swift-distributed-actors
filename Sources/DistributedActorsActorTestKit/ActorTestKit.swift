@@ -60,7 +60,7 @@ public struct TestError: Error, Hashable {
 public struct ActorTestKitSettings {
 
     /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
-    var expectationTimeout: TimeAmount = .milliseconds(300)
+    var expectationTimeout: TimeAmount = .seconds(3)
 }
 
 
