@@ -124,7 +124,7 @@ private enum AskActor {
         case timeout
     }
 
-    static let ResponseTimeoutKey: String = "response-timeout"
+    static let ResponseTimeoutKey: TimerKey = TimerKey("response-timeout")
 
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,

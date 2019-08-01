@@ -419,7 +419,7 @@ extension ClusterShell {
             case .scheduleRetryHandshake(let delay):
                 state.log.info("Schedule handshake retry to: [\(initiated.remoteAddress)] delay: [\(delay)]")
                 context.timers.startSingleTimer(
-                    key: "handshake-timer-\(remoteAddress)", 
+                    key: TimerKey("handshake-timer-\(remoteAddress)"), 
                     message: .command(.retryHandshake(initiated)),
                     delay: delay
                 )

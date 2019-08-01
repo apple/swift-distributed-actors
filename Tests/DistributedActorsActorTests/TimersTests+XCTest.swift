@@ -29,6 +29,7 @@ extension TimersTests {
                 ("test_periodicTimer_shouldStopWhenCanceled", test_periodicTimer_shouldStopWhenCanceled),
                 ("test_singleTimer_shouldStopWhenCanceled", test_singleTimer_shouldStopWhenCanceled),
                 ("test_timers_cancelAllShouldStopAllTimers", test_timers_cancelAllShouldStopAllTimers),
+                ("test_timers_cancelAllShouldNotStopSystemTimers", test_timers_cancelAllShouldNotStopSystemTimers),
            ]
    }
 }

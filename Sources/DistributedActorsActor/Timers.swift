@@ -18,7 +18,7 @@ import struct NIO.TimeAmount
 @usableFromInline
 struct Timer<Message> {
     @usableFromInline
-    let key: String
+    let key: TimerKey
     @usableFromInline
     let message: Message?
     @usableFromInline
@@ -31,9 +31,34 @@ struct Timer<Message> {
 
 @usableFromInline
 struct TimerEvent {
-    let key: String // TODO introduce a Key type https://github.com/apple/swift-distributed-actors/issues/269
+    let key: TimerKey
     let generation: Int
     let owner: AddressableActorRef
+}
+
+/// A `TimerKey` is used to identify a timer. It can be stored and re-used.
+///
+/// Example:
+///
+///     let timerKey = TimerKey("my-key")
+///     timers.startPeriodicTimer(key: timerKey, message: "ping", interval: .seconds(1))
+///     // ...
+///     timers.cancelTimer(forKey: timerKey)
+///
+public struct TimerKey: Hashable {
+    private let identifier: AnyHashable
+
+    @usableFromInline
+    let isSystemTimer: Bool
+
+    public init<T: Hashable>(_ identifier: T) {
+        self.init(identifier, isSystemTimer: false)
+    }
+
+    internal init<T: Hashable>(_ identifier: T, isSystemTimer: Bool) {
+        self.identifier = AnyHashable(identifier)
+        self.isSystemTimer = isSystemTimer
+    }
 }
 
 public class Timers<Message> {
@@ -44,7 +69,7 @@ public class Timers<Message> {
     @usableFromInline
     internal let dispatchQueue = DispatchQueue.global()
     @usableFromInline
-    internal var installedTimers: [String: Timer<Message>] = [:]
+    internal var installedTimers: [TimerKey: Timer<Message>] = [:]
     @usableFromInline
     internal unowned var context: ActorContext<Message>
 
@@ -56,9 +81,12 @@ public class Timers<Message> {
     ///
     /// - WARNING: Does NOT cancel `_` prefixed keys. This is currently a workaround for "system timers" which should not be cancelled arbitrarily.
     ///            TODO: This will be replaced by proper timer keys which can express such need eventually.
-    @inlinable
     public func cancelAll() {
-        for key in self.installedTimers.keys where !key.starts(with: "_") { // TODO: represent with "system timer key" type?
+        self._cancelAll(includeSystemTimers: false)
+    }
+
+    internal func _cancelAll(includeSystemTimers: Bool) {
+        for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer { // TODO: represent with "system timer key" type?
             // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
             self.cancelTimer(forKey: key)
         }
@@ -68,7 +96,7 @@ public class Timers<Message> {
     ///
     /// - Parameter key: key of the timer to cancel
     @inlinable
-    public func cancelTimer(forKey key: String) {
+    public func cancelTimer(forKey key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             self.context.log.debug("Cancel timer [\(key)] with generation [\(timer.generation)]")
             timer.handle.cancel()
@@ -82,7 +110,7 @@ public class Timers<Message> {
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingleTimer(key: String, message: Message, delay: TimeAmount) {
+    public func startSingleTimer(key: TimerKey, message: Message, delay: TimeAmount) {
         self.startTimer(key: key, message: message, interval: delay, repeated: false)
     }
 
@@ -93,12 +121,12 @@ public class Timers<Message> {
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodicTimer(key: String, message: Message, interval: TimeAmount) {
+    public func startPeriodicTimer(key: TimerKey, message: Message, interval: TimeAmount) {
         self.startTimer(key: key, message: message, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func startTimer(key: String, message: Message, interval: TimeAmount, repeated: Bool) {
+    internal func startTimer(key: TimerKey, message: Message, interval: TimeAmount, repeated: Bool) {
         self.cancelTimer(forKey: key)
 
         let generation = self.nextTimerGen()
@@ -162,8 +190,8 @@ internal extension Timers {
 
     /// Dangerous version of `_startTimer` which allows scheduling a `.resume` system message (directly!) with a token `T`, after a time `delay`.
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
-    func _startResumeTimer<T>(key: String, delay: TimeAmount, resumeWith token: T) {
-        assert(key.starts(with: "_"), "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
+    func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
+        assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
         self.cancelTimer(forKey: key)
 
         let generation = self.nextTimerGen()

@@ -747,7 +747,7 @@ internal enum SupervisionRestartDelayedBehavior<Message> {
     @usableFromInline
     static func after(delay: TimeAmount, with replacement: Behavior<Message>) -> Behavior<Message> {
         return .setup { context in
-            context.timers._startResumeTimer(key: "_restartBackoff", delay: delay, resumeWith: WakeUp())
+            context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 
             return .suspend { (result: Result<WakeUp, ExecutionError>) in
                 traceLog_Supervision("RESTART BACKOFF TRIGGER")
