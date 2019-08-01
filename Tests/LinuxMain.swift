@@ -77,6 +77,8 @@ import XCTest
          testCase(SerializationTests.allTests),
          testCase(StashBufferTests.allTests),
          testCase(SupervisionTests.allTests),
+         testCase(SystemMessageRedeliveryHandlerTests.allTests),
+         testCase(SystemMessagesRedeliveryTests.allTests),
          testCase(TimeAmountTests.allTests),
          testCase(TimeSpecTests.allTests),
          testCase(TimersTests.allTests),

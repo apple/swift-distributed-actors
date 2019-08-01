@@ -539,7 +539,7 @@ enum SwiftDistributedActorsProtocolError: Error {
 
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Tracelog for Cluster
+// MARK: TraceLog for Cluster
 
 extension ClusterShell {
     /// Optional "dump all messages" logging.

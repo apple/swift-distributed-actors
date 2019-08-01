@@ -35,7 +35,7 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
         let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
-        var remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
+        let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
         let res = swim.onGossipPayload(about: remoteMember)
 
@@ -67,7 +67,7 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
         let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
-        var remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
+        let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
         let res = swim.onGossipPayload(about: remoteMember)
 
