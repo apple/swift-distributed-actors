@@ -48,7 +48,7 @@ extension SWIM.Message: ProtobufRepresentable {
 
     init(fromProto proto: ProtoSWIMMessage, context: ActorSerializationContext) throws {
         guard let request = proto.request else {
-            throw SerializationError.missingField("request")
+            throw SerializationError.missingField("request", type: String(describing: SWIM.Message.self))
         }
 
         switch request {

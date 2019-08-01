@@ -39,6 +39,9 @@ public class Philosopher {
     /// Initial and public state from which a Philosopher starts its life
     private var thinking: Behavior<Philosopher.Message> {
         return .setup { context in
+            context.watch(self.left)
+            context.watch(self.right)
+
             let myselfForFork = context.messageAdapter(for: Fork.Reply.self) { .forkReply($0) }
             context.log.info("I'm thinking...")
             // remember to eat after some time!

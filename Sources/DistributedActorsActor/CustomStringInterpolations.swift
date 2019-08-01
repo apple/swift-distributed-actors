@@ -33,6 +33,13 @@ internal extension String.StringInterpolation {
 }
 
 
+internal extension String.StringInterpolation {
+    mutating func appendInterpolation(lineByLine subject: [Any]) {
+        self.appendLiteral("\n    \(subject.map({"\($0)"}).joined(separator: "\n    "))")
+    }
+}
+
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: String Interpolation: _:orElse:
 

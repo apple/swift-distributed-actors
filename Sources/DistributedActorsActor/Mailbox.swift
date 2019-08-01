@@ -22,7 +22,7 @@ import Logging
 // queue, because additional metatype information was retrieved, therefore
 // we removed it
 internal enum WrappedMessage {
-    case userMessage(Any)
+    case message(Any)
     case closure(() throws -> Void)
 }
 extension WrappedMessage: NoSerializationVerification {}
@@ -160,7 +160,7 @@ internal final class Mailbox<Message> {
             // defer { Mailbox.resetLoggerMetadata(shell, to: oldMetadata) }
 
             switch msg {
-            case .userMessage(let message): 
+            case .message(let message):
                 traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
                 return try shell.interpretMessage(message: message as! Message)
             case .closure(let f):
@@ -197,7 +197,7 @@ internal final class Mailbox<Message> {
             let envelope = envelopePtr.move()
             let wrapped = envelope.payload
             switch wrapped {
-            case .userMessage(let userMessage):
+            case .message(let userMessage):
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
             case .closure(let f):
                 deadLetters.tell(DeadLetter("[\(String(describing: f))]:closure", recipient: address))
@@ -289,7 +289,7 @@ internal final class Mailbox<Message> {
         if self.serializeAllMessages {
             var messageDescription = "[\(envelope.payload)]"
             do {
-                if case .userMessage(let message) = envelope.payload {
+                if case .message(let message) = envelope.payload {
                     messageDescription = "[\(message)]:\(type(of: message))"
                     try self.shell?.system.serialization.verifySerializable(message: message as! Message)
                 }
@@ -654,7 +654,7 @@ private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointe
     let envelope = ptr.assumingMemoryBound(to: Envelope.self).pointee
     switch envelope.payload {
     case .closure: return "closure"
-    case .userMessage(let message): return "[\(message)]:\(Message.self)"
+    case .message(let message): return "[\(message)]:\(Message.self)"
     }
 }
 private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {

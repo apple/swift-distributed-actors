@@ -346,7 +346,7 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
-public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) throws -> T {
+public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) rethrows -> T {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
     do {
         return try block()

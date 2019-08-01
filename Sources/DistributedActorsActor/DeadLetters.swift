@@ -197,7 +197,7 @@ struct DeadLetterOffice {
             recipientString = ""
         }
 
-        if let systemMessage = deadLetter.message as? SystemMessage, self.specialHandled(systemMessage) {
+        if let systemMessage = deadLetter.message as? SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
             return // system message was special handled; no need to log it anymore
         }
 
@@ -209,7 +209,7 @@ struct DeadLetterOffice {
                     """, metadata: metadata, file: file, line: line)
     }
 
-    private func specialHandled(_ message: SystemMessage) -> Bool {
+    private func specialHandled(_ message: SystemMessage, recipient: ActorAddress?) -> Bool {
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
@@ -221,6 +221,11 @@ struct DeadLetterOffice {
             //   - was indeed sent to deadLetters directly, which immediately shall notify terminated; deadLetters is "undead"
             watcher.sendSystemMessage(.terminated(ref: watchee, existenceConfirmed: false))
             return true
+        case .stop:
+            // we special handle some not delivered stop messages, based on the fact that those
+            // are inherently racy in the during actor system shutdown:
+            let ignored = recipient == ActorAddress._cluster
+            return ignored
         default:
             // ignore other messages, no special handling needed
             return false
@@ -232,5 +237,6 @@ extension ActorPath {
 
     internal static let _dead: ActorPath = try! ActorPath(root: "dead")
     internal static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
+    internal static let _cluster: ActorPath = try! ActorPath._system.appending(ClusterShell.name)
 
 }

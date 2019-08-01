@@ -206,7 +206,7 @@ extension ClusteredTwoNodesTestBase {
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
         let remoteNodeAddress = targetSystem.settings.cluster.uniqueBindAddress
 
-        var uniqueRemoteAddress = ActorAddress(node: remoteNodeAddress, path: address.path, incarnation: address.incarnation)
+        let uniqueRemoteAddress = ActorAddress(node: remoteNodeAddress, path: address.path, incarnation: address.incarnation)
         let resolveContext = ResolveContext<M>(address: uniqueRemoteAddress, system: self.local)
         return system._resolve(context: resolveContext)
     }

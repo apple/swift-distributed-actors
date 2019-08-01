@@ -62,7 +62,7 @@ internal final class RemotePersonality<Message> {
         traceLog_Cell("RemoteActorRef(\(self.address)) sendUserMessage: \(message)")
         if let remoteControl = self.remoteControl {
             // TODO optionally carry file/line?
-            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .userMessage(message)), recipient: self.address)
+            remoteControl.sendUserMessage(type: Message.self, envelope: Envelope(payload: .message(message)), recipient: self.address)
         } else {
             self.deadLetters.adapted().tell(message, file: file, line: line)
         }
@@ -71,7 +71,8 @@ internal final class RemotePersonality<Message> {
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         traceLog_Cell("RemoteActorRef(\(self.address)) sendSystemMessage: \(message)")
-        // TODO: make system messages reliable
+        // TODO in case we'd get a new connection the redeliveries must remain... so we always need to poll for the remotecontrol from association?
+        // the association would keep the buffers?
         if let remoteControl = self.remoteControl {
             remoteControl.sendSystemMessage(message, recipient: self.address)
         } else {

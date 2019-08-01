@@ -15,6 +15,7 @@
 import DistributedActorsConcurrencyHelpers
 import Swift Distributed ActorsActor
 import Logging
+import XCTest
 
 /// Testing only utility: Captures all log statements for later inspection.
 ///
@@ -49,6 +50,12 @@ public final class CapturingLogHandler: LogHandler {
         }
     }
 
+    public func printLogs() {
+        for log in self.logs {
+            print("Captured log: [\(log.level)] \(log.message)")
+        }
+    }
+
     public var metadata: Logger.Metadata = [:]
     public var logLevel: Logger.Level {
         get {
@@ -67,4 +74,62 @@ public struct CapturedLogMessage {
     let file: String
     let function: String
     let line: UInt
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Should matchers
+
+
+extension CapturingLogHandler {
+
+    /// Asserts that a message matching the query requirements was captures *already* (without waiting for it to appear)
+    @discardableResult
+    public func shouldContain(prefix: String? = nil,
+                              message: String? = nil,
+                              at level: Logger.Level? = nil,
+                       file: StaticString = #file, line: UInt = #line) throws -> CapturedLogMessage {
+        precondition(prefix != nil || message != nil || level != nil, "At least one query parameter must be not `nil`!")
+
+        let found = self.logs.lazy
+            .filter { log in
+                if let expected = message {
+                    return "\(log.message)" == expected
+                } else {
+                    return true
+                }
+            }.filter { log in
+                if let expected = prefix {
+                    return "\(log.message)".starts(with: expected)
+                } else {
+                    return true
+                }
+            }.filter {
+                log in
+                if let expected = level {
+                    return log.level == expected
+                } else {
+                    return true
+                }
+            }.first
+
+        if let found = found {
+            return found
+        } else {
+            let query = [
+                message.map { "message: \"\($0)\"" },
+                prefix.map { "prefix: \"\($0)\"" },
+                level.map { "level: \"\($0)\"" } ?? ""
+            ].compactMap { $0 }
+            .joined(separator: ", ")
+
+            let message = """
+                          Did not find expected log, matching query: 
+                              [\(query)]
+                          in captured logs: 
+                              \(logs.map({"\($0)"}).joined(separator: "\n    "))\n
+                          at \(file):\(line)
+                          """
+            throw CallSiteError.error(message: message)
+        }
+    }
 }

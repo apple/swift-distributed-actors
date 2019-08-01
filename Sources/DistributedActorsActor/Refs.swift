@@ -273,7 +273,7 @@ internal final class ActorCell<Message> {
     @usableFromInline
     func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
         traceLog_Mailbox(self.address.path, "sendMessage: [\(message)], to: \(self)")
-        self.mailbox.sendMessage(envelope: Envelope(payload: .userMessage(message)), file: file, line: line)
+        self.mailbox.sendMessage(envelope: Envelope(payload: .message(message)), file: file, line: line)
     }
 
     @usableFromInline

@@ -150,7 +150,7 @@ internal struct ReceivesSystemMessagesDecoder {
         let container: SingleValueDecodingContainer = try decoder.singleValueContainer()
         let address: ActorAddress = try container.decode(ActorAddress.self)
 
-        return context.resolveReceivesSystemMessages(identifiedBy: address)
+        return context.resolveAddressableActorRef(identifiedBy: address)
     }
 }
 
@@ -345,14 +345,14 @@ extension SystemMessage: Codable {
             let context = decoder.actorSerializationContext!
             let watcheeAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watchee)
             let watcherAddress = try container.decode(ActorAddress.self, forKey: CodingKeys.watcher)
-            let watchee = context.resolveReceivesSystemMessages(identifiedBy: watcheeAddress)
-            let watcher = context.resolveReceivesSystemMessages(identifiedBy: watcherAddress)
+            let watchee = context.resolveAddressableActorRef(identifiedBy: watcheeAddress)
+            let watcher = context.resolveAddressableActorRef(identifiedBy: watcherAddress)
             self = .watch(watchee: watchee, watcher: watcher)
 
         case Types.terminated:
             let context = decoder.actorSerializationContext!
             let address = try container.decode(ActorAddress.self, forKey: CodingKeys.ref)
-            let ref = context.resolveReceivesSystemMessages(identifiedBy: address)
+            let ref = context.resolveAddressableActorRef(identifiedBy: address)
             let existenceConfirmed = try container.decode(Bool.self, forKey: CodingKeys.existenceConfirmed)
             let addressTerminated = try container.decode(Bool.self, forKey: CodingKeys.addressTerminated)
             self = .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: addressTerminated)

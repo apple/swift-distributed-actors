@@ -121,18 +121,3 @@ public struct SerializationPoolSettings {
         return SerializationPoolSettings(serializationGroups: [])
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: SerializationEnvelope
-
-struct SerializationEnvelope {
-    let message: Any
-    let recipient: ActorAddress
-    let metaType: AnyMetaType
-
-    init<M>(message: M, recipient: ActorAddress) {
-        self.message = message
-        self.recipient = recipient
-        self.metaType = MetaType(M.self)
-    }
-}

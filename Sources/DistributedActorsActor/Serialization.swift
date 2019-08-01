@@ -30,13 +30,19 @@ public struct Serialization {
     public typealias SerializerId = UInt32
     internal typealias MetaTypeKey = AnyHashable
 
-    fileprivate static let SystemMessageSerializerId: SerializerId = 1
-    fileprivate static let StringSerializerId: SerializerId = 2
-    fileprivate static let FullStateRequestSerializerId: SerializerId = 3
-    fileprivate static let ReplicateSerializerId: SerializerId = 4
-    fileprivate static let FullStateSerializerId: SerializerId = 5
-    fileprivate static let SWIMMessageSerializerId: SerializerId = 6
-    fileprivate static let SWIMAckSerializerId: SerializerId = 7
+    // TODO with the new proto serializer... could we register all our types under the proto one?
+
+    // TODO make a namespace called Id so people can put theirs here too
+    internal static let SystemMessageSerializerId: SerializerId         =  1
+    internal static let SystemMessageACKSerializerId: SerializerId      =  2
+    internal static let SystemMessageNACKSerializerId: SerializerId     =  3
+    internal static let SystemMessageEnvelopeSerializerId: SerializerId =  4
+    internal static let StringSerializerId: SerializerId                =  5
+    internal static let FullStateRequestSerializerId: SerializerId      =  6
+    internal static let ReplicateSerializerId: SerializerId             =  7
+    internal static let FullStateSerializerId: SerializerId             =  8
+    internal static let SWIMMessageSerializerId: SerializerId           =  9
+    internal static let SWIMAckSerializerId: SerializerId               = 10
 
     // TODO we may be forced to code-gen these?
     // TODO avoid 2 hops, we can do it in one, and enforce a serializer has an Id
@@ -73,9 +79,12 @@ public struct Serialization {
         )
 
         // register all
-        // FIXME: Implement and use proper system serializer
-        //self.registerSystemSerializer(context, serializer: systemMessageSerializer, for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
+        // TODO change APIs here a bit, it does not read nice
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.SystemMessageACKSerializerId)
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.SystemMessageNACKSerializerId)
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.SystemMessageEnvelopeSerializerId)
+
         self.registerSystemSerializer(context, serializer: stringSerializer, for: String.self, underId: Serialization.StringSerializerId)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.FullStateRequestSerializerId)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.ReplicateSerializerId)
@@ -136,15 +145,19 @@ public struct Serialization {
         }
     }
 
-    // MARK: Internal workings
-    // TODO technically M is known to be Codable... causes some type dance issues tho
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: // MARK: Internal workings
+
     internal func serializerIdFor<M>(message: M) throws -> SerializerId {
         let meta: MetaType<M> = MetaType(M.self)
         // let metaMeta = BoxedHashableAnyMetaType(meta) // TODO we will want to optimize this... no boxings, no wrappings...
         // TODO letting user to implement the Type -> Ser -> apply functions could be a way out
         guard let sid = self.serializerIds[meta.asHashable()] else {
+            #if DEBUG
             CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-            throw SerializationError.noSerializerKeyAvailableFor(type: "\(M.self)")
+            self.debugPrintSerializerTable("No serializer for \(meta) available!")
+            #endif
+            throw SerializationError.noSerializerKeyAvailableFor(type: String(reflecting: M.self))
         }
         return sid
     }
@@ -158,8 +171,8 @@ public struct Serialization {
         return self.serializerIds[metaType.asHashable()]
     }
 
-    internal func debugPrintSerializerTable() {
-        var p = ""
+    internal func debugPrintSerializerTable(_ message: String = "") {
+        var p = "\(message)\n"
         for (key, id) in self.serializerIds {
             p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
         }
@@ -325,7 +338,7 @@ public struct ActorSerializationContext {
 
     // TODO: since users may need to deserialize such, we may have to make not `internal` the ReceivesSystemMessages types?
     /// Similar to `resolveActorRef` but for `ReceivesSystemMessages`
-    internal func resolveReceivesSystemMessages(identifiedBy address: ActorAddress) -> AddressableActorRef {
+    internal func resolveAddressableActorRef(identifiedBy address: ActorAddress) -> AddressableActorRef {
         let context = ResolveContext<Any>(address: address, system: self.system)
         return self.traversable._resolveUntyped(context: context)
     }
@@ -460,7 +473,7 @@ extension Serializer: AnySerializer {
 
     func trySerialize(_ message: Any) throws -> ByteBuffer {
         guard let _message = message as? T else {
-            throw SerializationError.wrongSerializer(type: "\(T.self)") // FIXME: add more context
+            throw SerializationError.incompatibleSerializer(value: "\(message)", serializer: "\(self)")
         }
 
         return try self.serialize(message: _message)
@@ -548,11 +561,13 @@ enum SerializationError: Error {
     case noSerializerKeyAvailableFor(type: String)
     case noSerializerRegisteredFor(type: String)
     case notAbleToDeserialize(type: String)
-    case wrongSerializer(type: String)
+    case incompatibleSerializer(value: String, serializer: String)
     // --- format errors ---
-    case missingField(String)
+    case missingField(String, type: String)
     case emptyRepeatedField(String)
     case unknownEnumValue(Int)
+    // --- illegal errors ---
+    case mayNeverBeSerialized(type: String)
 }
 
 // MARK: MetaTypes so we can store Type -> Serializer mappings
@@ -583,22 +598,23 @@ extension MetaType: CustomStringConvertible {
 }
 
 protocol AnyMetaType {
-    func unsafeUnwrapAs<M>(_ type: M.Type) -> MetaType<M>
-
     // TODO slightly worried that we will do asHashable on each message send... consider the "hardcore all things" mode
     func asHashable() -> AnyHashable
+
+    /// Performs equality check of the underlying meta type object identifiers.
+    func `is`(_ other: AnyMetaType) -> Bool
 }
 
 extension MetaType: AnyMetaType {
 
-    // FIXME should throw
-    func unsafeUnwrapAs<M>(_ type: M.Type) -> MetaType<M> {
-        return self as! MetaType<M>
-    }
-
     func asHashable() -> AnyHashable {
         return AnyHashable(self)
     }
+
+    func `is`(_ other: AnyMetaType) -> Bool {
+        return self.asHashable() == other.asHashable()
+    }
+
 }
 
 internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
@@ -622,6 +638,10 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
 
     func unsafeUnwrapAs<M>(_ type: M.Type) -> MetaType<M> {
         fatalError("unsafeUnwrapAs(_:) has not been implemented")
+    }
+
+    func `is`(_ other: AnyMetaType) -> Bool {
+        return self.meta.asHashable() == other.asHashable()
     }
 }
 
