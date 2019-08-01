@@ -14,6 +14,8 @@
 
 internal enum ClusterReceptionist {
 
+    static let syncKey = TimerKey("sync")
+
     struct Replicate: Receptionist.Message, Codable {
         let key: AnyRegistrationKey
         let address: ActorAddress
@@ -40,7 +42,7 @@ internal enum ClusterReceptionist {
                 return $0
             }
 
-            context.timers.startPeriodicTimer(key: "sync", message: ClusterReceptionist.Sync(), interval: syncInterval)
+            context.timers.startPeriodicTimer(key: syncKey, message: ClusterReceptionist.Sync(), interval: syncInterval)
 
             return .receiveMessage {
                 switch $0 {

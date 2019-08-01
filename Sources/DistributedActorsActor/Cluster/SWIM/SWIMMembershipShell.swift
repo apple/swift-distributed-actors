@@ -371,7 +371,7 @@ extension SWIMMembershipShell {
         return try! ActorPath._system.appending(SWIMMembershipShell.name).makeRemoteAddress(on: node, incarnation: .perpetual)
     }
 
-    static let periodicPingKey = "swim/periodic-ping"
+    static let periodicPingKey = TimerKey("swim/periodic-ping")
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
