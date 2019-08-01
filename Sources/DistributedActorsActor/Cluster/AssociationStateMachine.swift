@@ -41,14 +41,12 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
         let log: Logger
 
         // Mutable since we may need to reconnect and swap for a different channel?
-        var channel: Channel // TODO this may need to go away?
+        var channel: Channel
 
         /// The address of this node, that was offered to the remote side for this association
         /// This matters in case we have multiple "self" addresses; e.g. we bind to one address, but expose another because NAT
         let selfAddress: UniqueNodeAddress
         var remoteAddress: UniqueNodeAddress
-
-        // let heartbeatStuff
 
         init(fromCompleted handshake: HandshakeStateMachine.CompletedState, log: Logger, over channel: Channel) {
             self.log = log
@@ -77,8 +75,7 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 //   - they enqueue to a local queue form which messages shall be pulled into the pipeline
 internal struct AssociationRemoteControl {
 
-    private let channel: Channel // FIXME nope, some other way
-    private let removeThis_allocator = NIO.ByteBufferAllocator() // FIXME: just a hack (https://github.com/apple/swift-distributed-actors/issues/597)
+    private let channel: Channel
     let remoteAddress: UniqueNodeAddress
 
     init(channel: Channel, remoteAddress: UniqueNodeAddress) {
@@ -87,15 +84,11 @@ internal struct AssociationRemoteControl {
     }
 
     func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress) {
-        switch envelope.payload {
-        case .userMessage(let message):
-            channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message as! Message, recipient: recipient)), promise: nil)
-        case .closure:
-            fatalError("Tried to send a closure to a remote actor. This should never happen and is a bug.")
-        }
+        let transportEnvelope = TransportEnvelope(envelope: envelope, underlyingMessageType: type, recipient: recipient)
+        self.channel.writeAndFlush(NIOAny(transportEnvelope), promise: nil)
     }
 
     func sendSystemMessage(_ message: SystemMessage, recipient: ActorAddress) {
-        channel.writeAndFlush(NIOAny(SerializationEnvelope(message: message, recipient: recipient)), promise: nil)
+        self.channel.writeAndFlush(NIOAny(TransportEnvelope(systemMessage: message, recipient: recipient)), promise: nil)
     }
 }

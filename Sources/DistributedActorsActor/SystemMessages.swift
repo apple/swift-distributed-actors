@@ -16,12 +16,34 @@
 /// Messages sent only internally by the `ActorSystem` and actor internals.
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
-/// System messages get preferential processing treatment as well as re-delivery in face of remote communication.
+/// ## Local processing
+/// System messages are *guaranteed* to never be silently dropped by an actor and at the worst
+/// will be drained to `/dead/letters` when the actor terminates or is already dead when such message
+/// arrives at the actor. Correctness of mechanisms such as death watch and similar depend on this,
+/// thus the guarantees extend even over network, using the following:
+///
+/// ## Delivery guarantees
+/// System messages enjoy preferential treatment over normal ("user") messages due to their importance
+/// on overall system correctness, and thus are: buffered, acknowledged and redelivered upon lack of acknowledgement
+/// to their destination nodes. They are also guaranteed to be emitted on the remote system in the exact same order
+/// as they have been sent into the transport pipelines on the sending side, which may matter for `watch -> unwatch -> kill`
+/// or similar message patterns.
+///
+/// ## Implications of importance to system availability
+/// If system messages are not able to be delivered over a long period of time and the redelivery buffer is about to
+/// overflow; the system will forcefully and *undeniably* kill the association (connection) with the offending node.
+/// This is because system correctness with regards to deathwatches will no longer be able to be guaranteed with missing
+/// system messages, thus the only safe option is to kill the entire connection and mark the offending node as `down`
+/// in the cluster membership.
+///
+/// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`
 @usableFromInline
 internal enum SystemMessage: Equatable {
 
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
+    ///
+    /// This message MUST NOT be sent over-the-wire.
     case start
 
     /// Notifies an actor that it is being watched by the `from` actor
@@ -63,7 +85,7 @@ internal enum SystemMessage: Equatable {
     ///     thus establishing the guarantee that the tombstone will be the last message. This is achieved by first marking the
     ///     mailbox as terminating, and then sending the tombstone. Any system messages which were sent before the status change are fine,
     ///     and any which are sent after will be immediately be sent to the dead letters actor, where they will be logged.
-    case tombstone 
+    case tombstone
 }
 
 internal extension SystemMessage {
@@ -81,17 +103,6 @@ internal extension SystemMessage {
     }
 }
 
-// TODO document where this is intended to be used; supervision and suspension? should we separate the two?
-public struct ExecutionError: Error {
-    let underlying: Error
-
-    func extractUnderlying<ErrorType: Error>(as type: ErrorType.Type) -> ErrorType? {
-        return self.underlying as? ErrorType
-    }
-}
-
-// Implementation notes:
-// Need to implement Equatable manually since we have associated values
 extension SystemMessage {
     public static func ==(lhs: SystemMessage, rhs: SystemMessage) -> Bool {
         switch (lhs, rhs) {
@@ -123,5 +134,22 @@ extension SystemMessage {
              (.addressTerminated, _):
             return false
         }
+    }
+}
+
+extension SystemMessage {
+    internal static let metaType: MetaType<SystemMessage> = MetaType(SystemMessage.self)
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Errors
+
+
+// TODO document where this is intended to be used; supervision and suspension? should we separate the two?
+public struct ExecutionError: Error {
+    let underlying: Error
+
+    func extractUnderlying<ErrorType: Error>(as type: ErrorType.Type) -> ErrorType? {
+        return self.underlying as? ErrorType
     }
 }

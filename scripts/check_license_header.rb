@@ -13,7 +13,7 @@ header_start = %{//===----------------------------------------------------------
 // This source file is part of the Swift Distributed Actors open source project
 //
 }
-
+diff master --name-only | while IFS= read line; do sed -i .bak 's/2018 Apple Inc./2019 Apple Inc./g' $line; done
 violations = []
 
 excludes = [

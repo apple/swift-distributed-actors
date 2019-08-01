@@ -220,7 +220,7 @@ internal enum ClusterReceptionist {
             let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
             let address = ClusterReceptionist.setNodeAddress(register._addressableActorRef.address, localAddress: context.system.settings.cluster.uniqueBindAddress)
 
-            let envelope: Envelope = Envelope(payload: .userMessage(Replicate(key: register._key.boxed, address: address)))
+            let envelope: Envelope = Envelope(payload: .message(Replicate(key: register._key.boxed, address: address)))
             remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: envelope, recipient: remoteReceptionistAddress)
         }
     }
@@ -234,7 +234,7 @@ internal enum ClusterReceptionist {
 
         for remoteControl in remoteControls {
             let remoteReceptionist = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
-            let envelope  = Envelope(payload: .userMessage(ClusterReceptionist.FullStateRequest(replyTo: myself)))
+            let envelope  = Envelope(payload: .message(ClusterReceptionist.FullStateRequest(replyTo: myself)))
 
             remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: envelope, recipient: remoteReceptionist)
         }

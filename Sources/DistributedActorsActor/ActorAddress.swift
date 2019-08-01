@@ -125,6 +125,7 @@ extension ActorAddress {
     /// Only to be used by the "/" root "actor"
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
+    internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .perpetual)
 
 }
 

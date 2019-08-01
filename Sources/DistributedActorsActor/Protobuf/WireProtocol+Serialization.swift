@@ -17,44 +17,6 @@ import NIO
 import struct Foundation.Data // TODO would refer to not go "through" Data as our target always is ByteBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: // MARK: Serialization with ByteBuf
-
-extension SwiftProtobuf.Message {
-
-    // FIXME: Avoid the copying, needs SwiftProtobuf changes
-    /// Returns a `ByteBuffer` value containing the Protocol Buffer binary format serialization of the message.
-    ///
-    /// - Warning: Currently it is forced to perform an additional copy internally (so we double allocate the needed amount of space).
-    ///
-    /// - Parameters:
-    ///   - partial: If `false` (the default), this method will check
-    ///     `Message.isInitialized` before encoding to verify that all required
-    ///     fields are present. If any are missing, this method throws
-    ///     `BinaryEncodingError.missingRequiredFields`.
-    /// - Returns: A `ByteBuffer` value containing the binary serialization of the message.
-    /// - Throws: `BinaryEncodingError` if encoding fails.
-    func serializedByteBuffer(allocator allocate: ByteBufferAllocator, partial: Bool = false) throws -> ByteBuffer {
-         let data = try self.serializedData(partial: partial)
-         // let data = try self.jsonString().data(using: .utf8)! // TODO allow a "debug mode with json payloads?"
-
-        var buffer = allocate.buffer(capacity: data.count)
-        buffer.writeBytes(data)
-
-        return buffer
-    }
-
-    /// Initializes the message from a `ByteBuffer` while trying to avoid copying its contents
-    init(bytes: inout ByteBuffer) throws {
-        self.init()
-        let bytesCount = bytes.readableBytes
-        try bytes.withUnsafeMutableReadableBytes {
-            // we are getting the pointer from a ByteBuffer, so it should be valid and force unwrap should be fine
-            try self.merge(serializedData: Data(bytesNoCopy: $0.baseAddress!, count: bytesCount, deallocator: .none))
-        }
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ProtoEnvelope
 
 enum WireEnvelopeError: Error {
@@ -213,13 +175,13 @@ extension ProtoProtocolVersion {
 extension Wire.HandshakeAccept {
     init(_ proto: ProtoHandshakeAccept) throws {
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version")
+            throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeAccept.self))
         }
         guard proto.hasFrom else {
-            throw SerializationError.missingField("from")
+            throw SerializationError.missingField("from", type: String(describing: Wire.HandshakeAccept.self))
         }
         guard proto.hasOrigin else {
-            throw SerializationError.missingField("hasOrigin")
+            throw SerializationError.missingField("hasOrigin", type: String(describing: Wire.HandshakeAccept.self))
         }
         self.version = .init(proto.version)
         self.from = try .init(proto.from)
@@ -244,13 +206,13 @@ extension ProtoHandshakeAccept {
 extension Wire.HandshakeReject {
     init(_ proto: ProtoHandshakeReject) throws {
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version")
+            throw SerializationError.missingField("version", type: String(describing: Wire.HandshakeReject.self))
         }
         guard proto.hasFrom else {
-            throw SerializationError.missingField("from")
+            throw SerializationError.missingField("from", type: String(describing: Wire.HandshakeReject.self))
         }
         guard proto.hasOrigin else {
-            throw SerializationError.missingField("origin")
+            throw SerializationError.missingField("origin", type: String(describing: Wire.HandshakeReject.self))
         }
 
         self.version = .init(proto.version)
@@ -275,10 +237,10 @@ extension ProtoHandshakeReject {
 extension UniqueNodeAddress {
     init(_ proto: ProtoUniqueNodeAddress) throws {
         guard proto.hasAddress else {
-            throw SerializationError.missingField("address")
+            throw SerializationError.missingField("address", type: String(describing: UniqueNodeAddress.self))
         }
         guard proto.nid != 0 else {
-            throw SerializationError.missingField("uid")
+            throw SerializationError.missingField("uid", type: String(describing: UniqueNodeAddress.self))
         }
         let address = NodeAddress(proto.address)
         let nid = NodeID(proto.nid)
@@ -318,15 +280,15 @@ extension ProtoNodeAddress {
 // MARK: HandshakeOffer
 
 extension Wire.HandshakeOffer {
-    init(_ proto: ProtoHandshakeOffer) throws {
+    init(fromProto proto: ProtoHandshakeOffer) throws {
         guard proto.hasFrom else {
-            throw SerializationError.missingField("from")
+            throw SerializationError.missingField("from", type: String(reflecting: Wire.HandshakeOffer.self))
         }
         guard proto.hasTo else {
-            throw SerializationError.missingField("to")
+            throw SerializationError.missingField("to", type: String(reflecting: Wire.HandshakeOffer.self))
         }
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version")
+            throw SerializationError.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self))
         }
 
         self.from = try UniqueNodeAddress(proto.from)
@@ -347,13 +309,13 @@ extension ProtoHandshakeOffer {
         try proto.merge(serializedData: data)
 
         guard proto.hasVersion else {
-            throw SerializationError.missingField("version")
+            throw SerializationError.missingField("version", type: String(reflecting: Wire.HandshakeOffer.self))
         }
         guard proto.hasFrom else {
-            throw SerializationError.missingField("from")
+            throw SerializationError.missingField("from", type: String(reflecting: Wire.HandshakeOffer.self))
         }
         guard proto.hasTo else {
-            throw SerializationError.missingField("to")
+            throw SerializationError.missingField("to", type: String(reflecting: Wire.HandshakeOffer.self))
         }
 
         self = proto

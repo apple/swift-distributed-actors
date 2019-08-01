@@ -1,0 +1,63 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "WireProtocol.proto";
+
+// === System Message --------------------------------------------------------------
+
+message SystemMessage {
+    oneof payload {
+        SystemMessage_Watch      watch      = 1;
+        SystemMessage_Unwatch    unwatch    = 2;
+        SystemMessage_Terminated terminated = 3;
+    }
+}
+
+message SystemMessage_Watch {
+    ActorAddress watchee = 1;
+    ActorAddress watcher = 2;
+}
+
+message SystemMessage_Unwatch {
+    ActorAddress watchee = 1;
+    ActorAddress watcher = 2;
+}
+
+message SystemMessage_Terminated {
+    ActorAddress ref        = 1;
+    bool existenceConfirmed = 2;
+    bool addressTerminated  = 3;
+}
+
+// === Redelivery --------------------------------------------------------------
+
+message SystemMessageACK {
+    uint64 sequenceNr = 1;
+}
+
+message SystemMessageNACK {
+    uint64 sequenceNr = 1;
+    // repeated missingSequenceNrs
+}
+
+message SystemMessageEnvelope {
+    uint64 sequenceNr     = 1;
+    SystemMessage message = 2;
+}

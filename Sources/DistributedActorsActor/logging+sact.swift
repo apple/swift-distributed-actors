@@ -321,3 +321,21 @@ internal class LazyMetadataBox: CustomStringConvertible {
         return "\(self.value)"
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Logger extensions
+
+extension Logger {
+
+    /// Allows passing in a `Logger.Level?` and not log if it was `nil`.
+    @inlinable
+    public func log(level: Logger.Level?,
+                    _ message: @autoclosure () -> Logger.Message,
+                    metadata: @autoclosure () -> Logger.Metadata? = nil,
+                    file: String = #file, function: String = #function, line: UInt = #line) {
+        if let level = level {
+            self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)
+        }
+    }
+
+}

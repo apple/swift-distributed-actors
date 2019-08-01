@@ -241,7 +241,7 @@ extension ClusterShellState {
                 // we "lost", the other node will send the accept; when it does, the will complete the future.
                 return .abortDueToConcurrentHandshake
             }
-        case .wasOfferedHandshake(let offered):
+        case .wasOfferedHandshake:
             // suspicious but but not wrong, so we were offered before, and now are being offered again?
             // Situations:
             // - it could be that the remote re-sent their offer before it received our accept?
@@ -250,9 +250,9 @@ extension ClusterShellState {
 
         // --- these are never stored ----
         case .inFlight(let inFlight):
-            fatalError("inFlight state should never have been stored as handshake state; This is likely a bug, please open an issue.")
+            fatalError("inFlight state [\(inFlight)] should never have been stored as handshake state; This is likely a bug, please open an issue.")
         case .completed(let completed):
-            fatalError("completed state should never have been stored as handshake state; This is likely a bug, please open an issue.")
+            fatalError("completed state [\(completed)] should never have been stored as handshake state; This is likely a bug, please open an issue.")
         }
     }
     enum OnIncomingHandshakeOfferDirective {
