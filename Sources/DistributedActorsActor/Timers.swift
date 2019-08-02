@@ -88,7 +88,7 @@ public class Timers<Message> {
     internal func _cancelAll(includeSystemTimers: Bool) {
         for key in self.installedTimers.keys where includeSystemTimers || !key.isSystemTimer { // TODO: represent with "system timer key" type?
             // TODO: the reason the `_` keys are not cancelled is because we want to cancel timers in _restartPrepare but we need "our restart timer" to remain
-            self.cancelTimer(forKey: key)
+            self.cancel(for: key)
         }
     }
 
@@ -96,7 +96,7 @@ public class Timers<Message> {
     ///
     /// - Parameter key: key of the timer to cancel
     @inlinable
-    public func cancelTimer(forKey key: TimerKey) {
+    public func cancel(for key: TimerKey) {
         if let timer = self.installedTimers.removeValue(forKey: key) {
             self.context.log.debug("Cancel timer [\(key)] with generation [\(timer.generation)]")
             timer.handle.cancel()
@@ -110,8 +110,8 @@ public class Timers<Message> {
     ///   - message: the message that will be sent to `myself`
     ///   - delay: the delay after which the message will be sent
     @inlinable
-    public func startSingleTimer(key: TimerKey, message: Message, delay: TimeAmount) {
-        self.startTimer(key: key, message: message, interval: delay, repeated: false)
+    public func startSingle(key: TimerKey, message: Message, delay: TimeAmount) {
+        self.start(key: key, message: message, interval: delay, repeated: false)
     }
 
     /// Starts a timer that will periodically send the given message to `myself`.
@@ -121,13 +121,13 @@ public class Timers<Message> {
     ///   - message: the message that will be sent to `myself`
     ///   - interval: the interval with which the message will be sent
     @inlinable
-    public func startPeriodicTimer(key: TimerKey, message: Message, interval: TimeAmount) {
-        self.startTimer(key: key, message: message, interval: interval, repeated: true)
+    public func startPeriodic(key: TimerKey, message: Message, interval: TimeAmount) {
+        self.start(key: key, message: message, interval: interval, repeated: true)
     }
 
     @usableFromInline
-    internal func startTimer(key: TimerKey, message: Message, interval: TimeAmount, repeated: Bool) {
-        self.cancelTimer(forKey: key)
+    internal func start(key: TimerKey, message: Message, interval: TimeAmount, repeated: Bool) {
+        self.cancel(for: key)
 
         let generation = self.nextTimerGen()
         let event = TimerEvent(key: key, generation: generation, owner: self.context.myself.asAddressable())
@@ -171,7 +171,7 @@ public class Timers<Message> {
                     }
 
                     if !timer.repeated {
-                        self.cancelTimer(forKey: timer.key)
+                        self.cancel(for: timer.key)
                     }
                 }
             }
@@ -192,7 +192,7 @@ internal extension Timers {
     /// This can be used e.g. to implement restarting an actor after a backoff delay.
     func _startResumeTimer<T>(key: TimerKey, delay: TimeAmount, resumeWith token: T) {
         assert(key.isSystemTimer, "_startResumeTimer MUST ONLY be used by system internal tasks, and keys MUST be `_` prefixed. Key was: \(key)")
-        self.cancelTimer(forKey: key)
+        self.cancel(for: key)
 
         let generation = self.nextTimerGen()
 

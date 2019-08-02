@@ -45,7 +45,7 @@ public class Philosopher {
             let myselfForFork = context.messageAdapter(for: Fork.Reply.self) { .forkReply($0) }
             context.log.info("I'm thinking...")
             // remember to eat after some time!
-            context.timers.startSingleTimer(key: TimerKey("eat"), message: .eat, delay: .seconds(1))
+            context.timers.startSingle(key: TimerKey("eat"), message: .eat, delay: .seconds(1))
 
             return .receiveMessage { msg in
                 switch msg {
@@ -130,7 +130,7 @@ public class Philosopher {
             context.log.info("Setup eating, I have: \(uniquePath: self.left) and \(uniquePath: self.right)")
 
             // simulate that eating takes time; once done, notify myself to become thinking again
-            context.timers.startSingleTimer(key: TimerKey("think"), message: .think, delay: .milliseconds(200))
+            context.timers.startSingle(key: TimerKey("think"), message: .think, delay: .milliseconds(200))
 
             return .receiveMessage { // TODO: `receiveExactly` would be nice here
                 switch $0 {
