@@ -35,7 +35,7 @@ class TimersTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
-            context.timers.startSingleTimer(key: TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
+            context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
             return .receiveMessage { message in
                 p.tell(message)
                 return .same
@@ -52,7 +52,7 @@ class TimersTests: XCTestCase {
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
-            context.timers.startPeriodicTimer(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 i += 1
                 p.tell(message)
@@ -77,13 +77,13 @@ class TimersTests: XCTestCase {
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
-            context.timers.startPeriodicTimer(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 i += 1
                 p.tell(message)
 
                 if i >= 5 {
-                    context.timers.cancelTimer(forKey: TimerKey("message"))
+                    context.timers.cancel(for: TimerKey("message"))
                 }
                 return .same
             }
@@ -104,9 +104,9 @@ class TimersTests: XCTestCase {
             // amount of time, so the timer is triggered and sends the message.
             // Because we cancel the timer in the same run, the message should
             // not be processed and the probe should not receive a message.
-            context.timers.startSingleTimer(key: TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
+            context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .nanoseconds(0))
             Swift Distributed ActorsActor.Thread.sleep(.milliseconds(10))
-            context.timers.cancelTimer(forKey: TimerKey("message"))
+            context.timers.cancel(for: TimerKey("message"))
             return .receiveMessage { message in
                 p.tell(message)
                 return .same
@@ -121,9 +121,9 @@ class TimersTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
-            context.timers.startPeriodicTimer(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
-            context.timers.startPeriodicTimer(key: TimerKey("message2"), message: "fromTimer2", interval: .milliseconds(50))
-            context.timers.startPeriodicTimer(key: TimerKey("message3"), message: "fromTimer3", interval: .milliseconds(50))
+            context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: TimerKey("message2"), message: "fromTimer2", interval: .milliseconds(50))
+            context.timers.startPeriodic(key: TimerKey("message3"), message: "fromTimer3", interval: .milliseconds(50))
             return .receiveMessage { message in
                 p.tell(message)
                 context.timers.cancelAll()
@@ -140,7 +140,7 @@ class TimersTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
-            context.timers.startPeriodicTimer(key: TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))
+            context.timers.startPeriodic(key: TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))
             return .receiveMessage { message in
                 p.tell(message)
                 context.timers.cancelAll()

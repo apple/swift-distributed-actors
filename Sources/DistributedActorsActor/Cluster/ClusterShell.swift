@@ -418,7 +418,7 @@ extension ClusterShell {
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
                 state.log.info("Schedule handshake retry to: [\(initiated.remoteAddress)] delay: [\(delay)]")
-                context.timers.startSingleTimer(
+                context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteAddress)"), 
                     message: .command(.retryHandshake(initiated)),
                     delay: delay
