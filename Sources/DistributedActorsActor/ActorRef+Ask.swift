@@ -142,7 +142,7 @@ private enum AskActor {
             ref.tell(message, file: file, line: line)
 
             if !timeout.isEffectivelyInfinite {
-                context.timers.startSingleTimer(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
+                context.timers.startSingle(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
             }
 
             return .receiveMessage {

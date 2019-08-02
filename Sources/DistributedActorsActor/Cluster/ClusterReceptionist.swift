@@ -42,7 +42,7 @@ internal enum ClusterReceptionist {
                 return $0
             }
 
-            context.timers.startPeriodicTimer(key: syncKey, message: ClusterReceptionist.Sync(), interval: syncInterval)
+            context.timers.startPeriodic(key: syncKey, message: ClusterReceptionist.Sync(), interval: syncInterval)
 
             return .receiveMessage {
                 switch $0 {

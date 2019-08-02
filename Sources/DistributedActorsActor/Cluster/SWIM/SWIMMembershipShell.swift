@@ -43,7 +43,7 @@ internal struct SWIMMembershipShell {
         return .setup { context in
 
             let probeInterval = self.swim.settings.gossip.probeInterval
-            context.timers.startPeriodicTimer(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), interval: probeInterval)
+            context.timers.startPeriodic(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), interval: probeInterval)
 
             self.swim.addMyself(context.myself)
 
