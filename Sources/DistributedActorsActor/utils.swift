@@ -89,7 +89,8 @@ public func pinfo(_ message: String, file: StaticString = #file, line: UInt = #l
 
 internal func _hackyPThreadThreadId() -> String {
     #if os(macOS)
-    let threadId = pthread_mach_thread_np(pthread_self())
+    var threadId: UInt64 = 0
+    _ = pthread_threadid_np(nil, &threadId)
     #else
     let threadId = pthread_self(); // TODO: since pthread_threadid_np not available, how to get an id?
     #endif
