@@ -31,6 +31,11 @@ class TimersTests: XCTestCase {
         self.system.shutdown()
     }
 
+    func test_timerKey_shouldPrintNicely() {
+        TimerKey("Hello").description.shouldEqual("TimerKey(Hello)")
+        TimerKey("Hello", isSystemTimer: true).description.shouldEqual("TimerKey(Hello, isSystemTimer: true)")
+    }
+
     func test_startSingleTimer_shouldSendSingleMessage() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
