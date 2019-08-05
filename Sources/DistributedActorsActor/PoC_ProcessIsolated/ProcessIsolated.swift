@@ -119,7 +119,7 @@ public class ProcessIsolated {
                 funSpawnServantProcess: funSpawnServantProcess,
                 funKillServantProcess: funKillServantProcess
             )
-            self.processCommander = try! system._spawnSystemActor(processCommander.behavior, name: ProcessCommander.name, perpetual: true)
+            self.processCommander = try! system._spawnSystemActor(processCommander.behavior, name: ProcessCommander.naming, perpetual: true)
         } else {
             // on servant node
             guard let joinNodeString = KnownServantParameters.masterNode.extractFirst(arguments) else {
@@ -310,7 +310,8 @@ extension ProcessIsolated {
                 case .restartImmediately:
                     system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
                     self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args)
-                case .restartBackoff(let delay):
+                case .restartBackoff:
+                    // TODO implement backoff for process isolated
                     fatalError("\(messagePrefix): BACKOFF NOT IMPLEMENTED YET")
                 }
             }

@@ -68,7 +68,7 @@ class ParentChildActorTests: XCTestCase {
             case .stop: return .stop
             case let .spawnChild(behavior, name):
                 do {
-                    let kid = try context.spawn(behavior, name: name)
+                    let kid = try context.spawn(behavior, name: .unique(name))
                     if notifyWhenChildStops {
                         context.watch(kid)
                     }
@@ -78,7 +78,7 @@ class ParentChildActorTests: XCTestCase {
                 } // bubble up others
             case .spawnAnonymousChild(let behavior):
                 do {
-                    let kid = try context.spawnAnonymous(behavior)
+                    let kid = try context.spawn(behavior, name: .anonymous)
                     if notifyWhenChildStops {
                         context.watch(kid)
                     }
@@ -131,7 +131,7 @@ class ParentChildActorTests: XCTestCase {
                     throw ChildError.whoops
                 case let .spawnChild(behavior, name):
                     do {
-                        let kid = try context.spawn(behavior, name: name)
+                        let kid = try context.spawn(behavior, name: .unique(name))
                         if notifyWhenChildStops {
                             context.watch(kid)
                         }
@@ -253,7 +253,7 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("stop")
 
-        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: AddressableActorRef(/user/testProbe")
+        try p.expectMessage().shouldStartWith(prefix: "Errored:attemptedStoppingNonChildActor(ref: AddressableActorRef(/user/$testProbe")
         try p.expectTerminated(parent)
     }
 
@@ -283,7 +283,7 @@ class ParentChildActorTests: XCTestCase {
         let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p1")
         let p2: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p2")
 
-        let parent: ActorRef<String> = try system.spawnAnonymous(.receive { (context, msg) in
+        let parent: ActorRef<String> = try system.spawn(.receive { (context, msg) in
             switch msg {
             case "spawn":
                 let refA: ActorRef<ChildProtocol> = try context.spawn(.setup { context in
@@ -302,7 +302,8 @@ class ParentChildActorTests: XCTestCase {
             default:
                 return .ignore
             }
-        })
+            }, name: .anonymous
+        )
 
         p.watch(parent)
         parent.tell("spawn")
@@ -457,13 +458,13 @@ class ParentChildActorTests: XCTestCase {
             return .same
         }
 
-        let parent = try system.spawnAnonymous(parentBehavior.receiveSignal { (_, signal) in
+        let parent = try system.spawn(parentBehavior.receiveSignal { (_, signal) in
             if case let terminated as Signals.Terminated = signal {
                 p.tell(.childStopped(name: terminated.address.name))
             }
 
             return .same
-        })
+        }, name: .anonymous)
 
         parent.tell("spawn")
 

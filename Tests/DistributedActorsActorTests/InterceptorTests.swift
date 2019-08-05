@@ -178,7 +178,7 @@ class InterceptorTests: XCTestCase {
 
         let interceptedBahvior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
 
-        let ref = try system.spawnAnonymous(interceptedBahvior)
+        let ref = try system.spawn(interceptedBahvior, name: .anonymous)
         p.watch(ref)
         ref.tell("test")
 

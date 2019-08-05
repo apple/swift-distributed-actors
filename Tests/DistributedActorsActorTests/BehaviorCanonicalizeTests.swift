@@ -125,7 +125,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             }.orElse(behavior)
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
         p.watch(ref)
         try p.expectTerminated(ref)
     }
@@ -203,7 +203,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             return .same
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
         p.watch(ref)
 
         ref.tell("test")
@@ -221,7 +221,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
         p.watch(ref)
 
         ref.tell("test")
@@ -237,7 +237,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             return .same
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
 
         p.watch(ref)
 

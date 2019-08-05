@@ -35,18 +35,20 @@ class ReceptionistTests: XCTestCase {
         let probe: ActorTestProbe<String> = testKit.spawnTestProbe()
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawnAnonymous(
+        let refA: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 probe.tell("forwardedA:\(message)")
                 return .same
-            }
+            },
+            name: .anonymous
         )
 
-        let refB: ActorRef<String> = try system.spawnAnonymous(
+        let refB: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 probe.tell("forwardedB:\(message)")
                 return .same
-            }
+            },
+            name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -69,10 +71,10 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn(LocalReceptionist.behavior, name: "receptionist")
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawnAnonymous(
+        let ref: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .same
-            }
+            }, name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -91,10 +93,10 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn(LocalReceptionist.behavior, name: "receptionist")
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawnAnonymous(
+        let ref: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .same
-            }
+            }, name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -113,10 +115,11 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn(LocalReceptionist.behavior, name: "receptionist")
         let probe: ActorTestProbe<Receptionist.Registered<String>> = testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawnAnonymous(
+        let ref: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .same
-            }
+            },
+            name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -133,10 +136,11 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn(LocalReceptionist.behavior, name: "receptionist")
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawnAnonymous(
+        let ref: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .stop
-            }
+            },
+            name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -160,16 +164,18 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn(LocalReceptionist.behavior, name: "receptionist")
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawnAnonymous(
+        let refA: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .same
-            }
+            },
+            name: .anonymous
         )
 
-        let refB: ActorRef<String> = try system.spawnAnonymous(
+        let refB: ActorRef<String> = try system.spawn(
             .receiveMessage { message in
                 return .stop
-            }
+            },
+            name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")

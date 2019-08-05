@@ -15,6 +15,7 @@
 /// EXPERIMENTAL.
 // Master (Process) and Commander (Actor): The Far Side of the World
 public struct ProcessCommander {
+    public static let naming: ActorNaming = "processCommander"
     public static let name: String = "processCommander"
 
     public enum Command {
@@ -79,6 +80,7 @@ public struct ProcessCommander {
 // MARK: Address
 
 extension ActorAddress {
+
     static func ofProcessMaster(on node: UniqueNode) -> ActorAddress {
         return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .perpetual)
     }

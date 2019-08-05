@@ -38,7 +38,7 @@ internal enum ClusterReceptionist {
 
             // FIXME: this one's pretty bad. When using context.myself instead, we get serialization errors,
             // because the meta key will be `ReceptionistMessage` and it can't find the correct serializer.
-            let replicateAdapter = context.messageAdapter(ClusterReceptionist.FullState.self) {
+            let replicateAdapter = context.messageAdapter(from: ClusterReceptionist.FullState.self) {
                 return $0
             }
 
@@ -185,7 +185,7 @@ internal enum ClusterReceptionist {
             }
         }
 
-        _ = try context.spawnAnonymous(behavior)
+        _ = try context.spawn(behavior, name: .anonymous)
     }
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey,

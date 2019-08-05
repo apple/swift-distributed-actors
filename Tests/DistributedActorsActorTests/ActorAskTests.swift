@@ -41,7 +41,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -55,7 +55,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -71,7 +71,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 

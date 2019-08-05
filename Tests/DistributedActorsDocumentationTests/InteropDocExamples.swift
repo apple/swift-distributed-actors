@@ -39,7 +39,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         // tag::asyncOp_sendResult_dispatch[]
-        let ref: ActorRef<Messages> = try system.spawnAnonymous(behavior) // <1>
+        let ref: ActorRef<Messages> = try system.spawn(behavior, name: .anonymous) // <1>
 
         DispatchQueue.global().async { // <2>
             let result = someComputation() // <3>
@@ -87,7 +87,7 @@ class InteropDocExamples: XCTestCase {
             return .same
         }
         // end::asyncOp_sendResult_insideActor[]
-        let ref = try system.spawnAnonymous(behavior)
+        let ref = try system.spawn(behavior, name: .anonymous)
 
         // tag::asyncOp_sendResult_insideActor_external_api[]
         ref.tell(.result("foo"))

@@ -171,7 +171,7 @@ class ActorLeakingTests: XCTestCase {
             } else {
                 for _ in 1...childCount {
                     let b: Behavior<String> = .receiveMessage { msg in return .same }
-                    _ = try context.spawnAnonymous(b)
+                    try context.spawn(.anonymous, b)
                 }
                 return .same
             }
@@ -235,7 +235,7 @@ class ActorLeakingTests: XCTestCase {
             lock.lock()
             return .stop
         }
-        let ref = try system.spawnAnonymous(behavior, props: Props().withMailbox(MailboxProps.default(capacity: 1)))
+        let ref = try system.spawn(behavior, name: .anonymous, props: Props().withMailbox(MailboxProps.default(capacity: 1)))
 
         // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
         ref.tell(LeakTestMessage(nil))

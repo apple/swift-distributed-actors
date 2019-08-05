@@ -70,14 +70,14 @@ extension ActorRef: ReceivesQuestions {
         let promise = system.eventLoopGroup.next().makePromise(of: type)
 
         // TODO: implement special actor ref instead of using real actor
-        _ = try! system.spawnAnonymous(AskActor.behavior(
+        _ = try! system.spawn(AskActor.behavior(
             promise,
             ref: self,
             makeQuestion: makeQuestion,
             timeout: timeout,
             file: file,
             function: function,
-            line: line))
+            line: line), name: .ask)
 
         return AskResponse(nioFuture: promise.futureResult)
     }
@@ -163,7 +163,7 @@ private enum AskActor {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
         return .setup { context in
-            let adapter = context.messageAdapter(ResponseType.self, with: { .result($0) })
+            let adapter = context.messageAdapter(from: ResponseType.self, with: { .result($0) })
             let message = makeQuestion(adapter)
             ref.tell(message, file: file, line: line)
 
