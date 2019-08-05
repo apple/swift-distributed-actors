@@ -49,7 +49,7 @@ class DispatcherTests: XCTestCase {
             return .same
         }
 
-        let w = try system.spawnAnonymous(behavior, props: .withDispatcher(.nio(self.group.next())))
+        let w = try system.spawn(behavior, name: .anonymous, props: .withDispatcher(.nio(self.group.next())))
         w.tell("Hello")
 
         let received: String = try p.expectMessage()
@@ -68,7 +68,7 @@ class DispatcherTests: XCTestCase {
             return .same
         }
 
-        let w = try system.spawnAnonymous(behavior, props: .withDispatcher(.nio(self.group)))
+        let w = try system.spawn(behavior, name: .anonymous, props: .withDispatcher(.nio(self.group)))
         w.tell("Hello")
 
         let received: String = try p.expectMessage()

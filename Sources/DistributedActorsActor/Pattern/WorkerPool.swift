@@ -66,22 +66,22 @@ public class WorkerPool<Message> {
     // TODO how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO round robin or what strategy?
     // TODO ActorName
-    static public func spawn(_ system: ActorSystem, select selector: WorkerPool<Message>.Selector, name: String) throws -> WorkerPoolRef<Message> {
+    static public func spawn(_ system: ActorSystem, select selector: WorkerPool<Message>.Selector, name naming: ActorNaming) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
         try settings.validate()
-        let ref = try system.spawn(WorkerPool(settings: settings).initial(), name: name)
+        let ref = try system.spawn(WorkerPool(settings: settings).initial(), name: naming)
         return .init(ref: ref)
     }
 
     // TODO actor name
     // TODO mirror whichever API the other spawn is
-    static public func spawn<ParentMessage>(_ context: ActorContext<ParentMessage>, select selector: WorkerPool<Message>.Selector, name: String) throws -> WorkerPoolRef<Message> {
+    static public func spawn<ParentMessage>(_ context: ActorContext<ParentMessage>, select selector: WorkerPool<Message>.Selector, name naming: ActorNaming) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
-        let ref = try context.spawn(WorkerPool(settings: settings).initial(), name: name)
+        let ref = try context.spawn(WorkerPool(settings: settings).initial(), name: naming)
         return .init(ref: ref)
     }
 }
@@ -100,7 +100,7 @@ internal extension WorkerPool {
             case .dynamic(let key):
                 context.system.receptionist.subscribe(
                     key: key,
-                    subscriber: context.messageAdapter(Receptionist.Listing<Message>.self) { listing in
+                    subscriber: context.messageAdapter(from: Receptionist.Listing<Message>.self) { listing in
                         context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                         return .listing(listing)
                     })

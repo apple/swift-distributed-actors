@@ -35,7 +35,7 @@ extension ActorSystem {
     /// Internal utility to create "known remote ref" on known target system.
     /// Real applications should never do this, and instead rely on the `Receptionist` to discover references.
     func _resolveKnownRemote<Message>(_ ref: ActorRef<Message>, onRemoteSystem remote: ActorSystem) -> ActorRef<Message> {
-        guard let clusterShell = self._cluster else {
+        guard self._cluster != nil else {
             fatalError("system must be clustered to allow resolving a remote ref.")
         }
         let remoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)

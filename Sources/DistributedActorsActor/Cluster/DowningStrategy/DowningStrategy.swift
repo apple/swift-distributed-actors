@@ -54,7 +54,7 @@ internal enum DowningStrategyMessage {
 internal struct DowningStrategyShell<Strategy: DowningStrategy> {
     typealias Message = DowningStrategyMessage
 
-    var name: String = "downingStrategy"
+    var naming: ActorNaming = "downingStrategy"
 
     let strategy: Strategy
 

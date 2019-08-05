@@ -237,6 +237,6 @@ extension ActorPath {
 
     internal static let _dead: ActorPath = try! ActorPath(root: "dead")
     internal static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
-    internal static let _cluster: ActorPath = try! ActorPath._system.appending(ClusterShell.name)
+    internal static let _cluster: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
 
 }

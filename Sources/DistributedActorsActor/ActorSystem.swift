@@ -31,8 +31,15 @@ public final class ActorSystem {
     // initialized during startup
     internal var _deadLetters: ActorRef<DeadLetter>! = nil
 
-    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
-    internal let anonymousNames = AtomicAnonymousNamesGenerator(prefix: "$") // TODO: make the $ a constant TODO: where
+//    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
+    // TODO avoid the lock...
+    internal var _namingContext = ActorNamingContext()
+    internal let namingLock = Lock()
+    internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
+        return try self.namingLock.withLock {
+            return try block(&self._namingContext)
+        }
+    }
 
     private let dispatcher: InternalMessageDispatcher
 
@@ -203,7 +210,7 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func shutdown() {
         self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        self._cluster?.shutdown()
+        self._cluster?.shutdown() // FIXME: send message to shut down
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
@@ -244,7 +251,7 @@ public protocol ActorRefFactory {
     /// Spawn an actor with the given behavior, name and props.
     ///
     /// - Returns: `ActorRef` for the spawned actor.
-    func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
+    func spawn<Message>(_ behavior: Behavior<Message>, name: ActorNaming, props: Props) throws -> ActorRef<Message>
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -256,25 +263,12 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
-    public func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        guard !name.starts(with: "$") else {
-            // only system and anonymous actors are allowed have names beginning with "$"
-            throw ActorPathError.illegalLeadingSpecialCharacter(name: name, illegal: "$")
-        }
-
-        return try self._spawnUserActor(behavior, name: name, props: props)
+    public func spawn<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnUserActor(behavior, name: naming, props: props)
     }
 
-    // Implementation note:
-    // It is important to have the anonymous one have a "long discouraging name", we want actors to be well named,
-    // and developers should only opt into anonymous ones when they are aware that they do so and indeed that's what they want.
-    // This is why there should not be default parameter values for actor names
-    public func spawnAnonymous<Message>(_ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnUserActor(behavior, name: self.anonymousNames.nextName(), props: props)
-    }
-
-    internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.userProvider, behavior, name: name, props: props)
+    internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.userProvider, behavior, name: naming, props: props)
     }
 
     // Implementation note:
@@ -282,19 +276,25 @@ extension ActorSystem: ActorRefFactory {
     // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name: String, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.systemProvider, behavior, name: name, props: props, isWellKnown: perpetual)
+    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
     // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
-    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name: String, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
+    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
 
-        let address: ActorAddress = try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
-        // FIXME: reserve the name, atomically
+        // TODO lock inside provider, not here
+        let address: ActorAddress = try self.withNamingContext { namingContext in
+            let name = naming.makeName(&namingContext)
+
+            return try provider.rootAddress.makeChildAddress(name: name, incarnation: incarnation)
+            // FIXME: reserve the name, atomically
+            // provider.reserveName(name) -> ActorAddress
+        }
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
@@ -409,4 +409,8 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
+}
+
+public enum ActorSystemError: Error {
+    case shuttingDown(String)
 }

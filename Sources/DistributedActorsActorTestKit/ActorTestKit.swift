@@ -30,8 +30,8 @@ final public class ActorTestKit {
     internal let system: ActorSystem
 
     private let spawnProbesLock = Lock()
-
-    private let testProbeNames = AtomicAnonymousNamesGenerator(prefix: "testProbe-")
+    /// Access should be protected by `spawnProbesLock`, in order to guarantee unique names.
+    private var _namingContext = ActorNamingContext()
 
     public let settings: ActorTestKitSettings
 
@@ -71,11 +71,18 @@ public extension ActorTestKit {
 
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     // TODO rename expecting to "receiving"? -- ktoso
-    func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
+    func spawnTestProbe<M>(name naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
+        // we want to use our own sequence number for the naming here, so we make it here rather than let the
+        // system use its own sequence number -- which should only be in use for the user actors.
+        let name: String
+        if let naming = naming {
+            name = naming.makeName(&self._namingContext)
+        } else {
+            name = ActorTestProbe<M>.naming.makeName(&self._namingContext)
+        }
 
-        let name = maybeName ?? testProbeNames.nextName()
         return ActorTestProbe(spawn: { probeBehavior in
 
             // TODO: allow configuring dispatcher for the probe or always use the calling thread one
@@ -84,8 +91,8 @@ public extension ActorTestKit {
             testProbeProps.dispatcher = .callingThread
             #endif
 
-            return try system.spawn(probeBehavior, name: name, props: testProbeProps)
-        }, settings: self.settings, file: file, line: line)
+            return try system.spawn(probeBehavior, name: .init(unchecked: .unique(name)), props: testProbeProps)
+        }, settings: self.settings)
     }
 }
 
@@ -282,15 +289,11 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+    override func spawn<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props) throws -> ActorRef<M> {
+    override func spawnWatched<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
-        fatalError("Failed: \(MockActorContextError())")
-    }
-
-    override func spawnWatchedAnonymous<M>(_ behavior: Behavior<M>, props: Props) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
 

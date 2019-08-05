@@ -201,10 +201,10 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
         let _: ActorRef<Never> = try local.spawn(.setup { context in
-                let child: ActorRef<String> = try context.spawnAnonymous(.receiveMessage { message in
+                let child: ActorRef<String> = try context.spawn(.receiveMessage { message in
                     probe.tell("response:\(message)")
                     return .same
-                })
+                }, name: .anonymous)
 
                 remoteRef.tell(EchoTestMessage(string: "test", respondTo: child))
 
@@ -233,7 +233,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
         let remoteRef = self.resolveRef(local, type: EchoTestMessage.self, address: refOnRemoteSystem.address, on: remote)
 
         let _: ActorRef<WrappedString> = try local.spawn(.setup { context in
-            let adaptedRef = context.messageAdapter(String.self) { WrappedString(string: $0) }
+            let adaptedRef = context.messageAdapter(from: String.self) { WrappedString(string: $0) }
             remoteRef.tell(EchoTestMessage(string: "test", respondTo: adaptedRef))
             return .receiveMessage { message in
                 probe.tell("response:\(message.string)")

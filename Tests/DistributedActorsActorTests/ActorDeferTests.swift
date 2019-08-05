@@ -60,7 +60,7 @@ class ActorDeferTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = self.receiveDeferBehavior(p.ref, deferUntil: deferUntil, whenActor: reaction)
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("hello")
 
         try p.expectMessage("message:hello")
@@ -73,7 +73,7 @@ class ActorDeferTests: XCTestCase {
         let p = testKit.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = self.receiveDeferBehavior(p.ref, deferUntil: deferUntil, whenActor: reaction)
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("hello")
 
         try p.expectMessage("message:hello")
@@ -190,7 +190,7 @@ class ActorDeferTests: XCTestCase {
             return .same
         }
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("first")
         worker.tell("second")
 
@@ -239,7 +239,7 @@ class ActorDeferTests: XCTestCase {
             }
         }
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("hello")
 
         try p.expectMessage("first:hello")
@@ -292,7 +292,7 @@ class ActorDeferTests: XCTestCase {
             }
         }
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("hello")
 
         try p.expectMessage("first:hello")
@@ -347,7 +347,7 @@ class ActorDeferTests: XCTestCase {
             return .stop
         }
 
-        let worker = try system.spawnAnonymous(b)
+        let worker = try system.spawn(b, name: .anonymous)
         worker.tell("hello")
 
         try p.expectMessages(count: 5).shouldEqual(["message:hello", "C", "NEST", "B", "A"])
@@ -365,7 +365,7 @@ class ActorDeferTests: XCTestCase {
             return .same
         }
 
-        _ = try system.spawnAnonymous(b)
+        _ = try system.spawn(b, name: .anonymous)
 
         try p.expectMessage("A")
     }

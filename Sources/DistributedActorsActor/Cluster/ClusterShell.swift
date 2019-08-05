@@ -25,7 +25,7 @@ import DistributedActorsConcurrencyHelpers
 ///
 /// It keeps the `Membership` instance that can be seen the source of truth for any membership based decisions.
 internal class ClusterShell {
-    static let name = "cluster"
+    internal static let naming = ActorNaming.unique("cluster")
     public typealias Ref = ActorRef<ClusterShell.Message>
 
     // ~~~~~~ HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,19 +134,21 @@ internal class ClusterShell {
         // TODO concurrency... lock the ref as others may read it?
         self._ref = try system._spawnSystemActor(
             self.bind(),
-            name: ClusterShell.name,
+            name: ClusterShell.naming,
             props: self.props,
             perpetual: true)
         
         return self.ref
     }
 
-    func shutdown(waitingAtMost timeout: TimeAmount = .seconds(3)) {
+    func shutdown(waitingAtMost timeout: TimeAmount = .seconds(3)) -> Behavior<Message> {
         let receptacle = BlockingReceptacle<Void>()
-        self.ref.tell(.command(.unbind(receptacle)))
+        self.ref.tell(.command(.shutdown(receptacle)))
         // TODO: actually stop all event loops?
         // TODO: once/if in a cluster we should attempt to leave nicely; the command would be more than "unbind" I suppose
         receptacle.wait(atMost: timeout)
+
+        return .stop
     }
 
     // Due to lack of Union Types, we have to emulate them
@@ -168,8 +170,7 @@ internal class ClusterShell {
         case reachabilityChanged(UniqueNode, MemberReachability)
 
         case downCommand(Node)
-        case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
-    }
+    } 
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO better type here
         case currentMembership(ActorRef<Membership>)
@@ -212,6 +213,10 @@ extension ClusterShell {
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
         return .setup { context in
+            // TODO: Use real config
+            let swimBehavior = SWIMMembershipShell(settings: .default, clusterRef: context.myself).behavior
+            self._swimRef = try context.system._spawnSystemActor(swimBehavior, name: SWIMMembershipShell.naming, perpetual: true)
+
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
 
@@ -221,7 +226,7 @@ extension ClusterShell {
             switch clusterSettings.downingStrategy {
             case .noop:
                 let shell = DowningStrategyShell(NoopDowningStrategy())
-                self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
+                self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.naming)
             case .timeout(let settings):
                 let shell = DowningStrategyShell(TimeoutBasedDowningStrategy(settings, selfNode: context.system.settings.cluster.uniqueBindNode))
                 self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
@@ -266,9 +271,14 @@ extension ClusterShell {
                 return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
+            case .shutdown(let receptacle):
+                return self.shutdown() // FIXME pass receptacle
 
             case .reachabilityChanged(let node, let reachability):
                 return self.onReachabilityChange(context, state: state, node: node, reachability: reachability)
+//                self._swimRef.tell(.local(.confirmDead(node)))
+//                self._downingStrategyRef.tell(.clusterEvent(.membership(.memberDown(member))))
+//                return .same
 
             case .unbind(let receptacle):
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
@@ -697,6 +707,33 @@ extension ClusterShell {
                 return "RECV(from:\(from))"
             }
         }
+    }
+
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorSystem extensions
+
+extension ActorSystem {
+
+    internal var clusterShell: ActorRef<ClusterShell.Message> {
+        return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
+    }
+
+    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
+    public func join(node: Node) {
+        self.clusterShell.tell(.command(.join(node)))
+    }
+
+    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
+    public func _dumpAssociations() {
+        let ref: ActorRef<Set<UniqueNode>> = try! self.spawn(.receive { context, nodes in
+            let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
+            context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
+            return .stop
+        }, name: .anonymous)
+        self.clusterShell.tell(.query(.associatedNodes(ref)))
     }
 
 }
