@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 internal final class PollingParentMonitoringFailureDetector {
-    public static let name: String = "processFailureDetector"
+    public static let name: ActorNaming = "processFailureDetector"
     public enum Message {
         case checkOnParent
     }

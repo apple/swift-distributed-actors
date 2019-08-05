@@ -72,8 +72,8 @@ class ActorSystemTests: XCTestCase {
             return .same
         }
 
-        let ref1 = try system2.spawnAnonymous(echoBehavior)
-        let ref2 = try system2.spawnAnonymous(echoBehavior)
+        let ref1 = try system2.spawn(echoBehavior, name: .anonymous)
+        let ref2 = try system2.spawn(echoBehavior, name: .anonymous)
 
         p.watch(ref1)
         p.watch(ref2)
@@ -96,7 +96,7 @@ class ActorSystemTests: XCTestCase {
             return .same
         }
 
-        let selfSender = try system2.spawnAnonymous(echoBehavior)
+        let selfSender = try system2.spawn(echoBehavior, name: .anonymous)
 
         p.watch(selfSender)
 

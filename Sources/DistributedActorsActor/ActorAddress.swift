@@ -64,6 +64,8 @@ public struct ActorAddress: Equatable, Hashable {
         }
     }
 
+    // TODO: public var identity: ActorIdentity = Path + Name
+
     /// Underlying path representation, not attached to a specific Actor instance.
     public var path: ActorPath
 
@@ -208,7 +210,7 @@ internal enum ActorLocation: Hashable {
 /// - not start with `$` (those names are reserved for Swift Distributed Actors internal system actors)
 /// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`
 ///
-/// - Example: `/user/master/worker`
+/// - Example: `/user/lightbulbMaster/lightbulb-2012`
 public struct ActorPath: PathRelationships, Hashable {
 
     // TODO instead back with a String and keep a pos to index quickly into the name for Substring?
@@ -251,6 +253,13 @@ public struct ActorPath: PathRelationships, Hashable {
     }
     /// Creates a new path with `segment` appended
     public func appending(_ name: String) throws -> ActorPath {
+        return try self.appending(segment: ActorPathSegment(name))
+    }
+    /// Creates a new path with a known-to-be-unique naming appended, otherwise faults
+    internal func appendingKnownUnique(_ unique: ActorNaming) throws -> ActorPath {
+        guard case .unique(let name) = unique.naming else {
+            fatalError("Expected known-to-be-unique ActorNaming in this unsafe call; Was: \(unique)")
+        }
         return try self.appending(segment: ActorPathSegment(name))
     }
 
@@ -359,7 +368,6 @@ public struct ActorPathSegment: Hashable {
     let value: String
 
     public init(_ name: String) throws {
-        // TODO: may want to separate validation out, in case we create it from "known safe" strings
         try ActorPathSegment.validatePathSegment(name)
         self.value = name
     }
@@ -388,12 +396,12 @@ public struct ActorPathSegment: Hashable {
         for c in name {
             let f = c.unicodeScalars.first
 
-            if (f?.isASCII ?? false) && isValidASCII(f!) {
-                pos += 1
-                continue
-            } else {
+            guard (f?.isASCII ?? false) && isValidASCII(f!) else {
+                // TODO: used to be but too much hassle: throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
+
                 throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
             }
+            pos += 1
         }
     }
 }
@@ -408,7 +416,6 @@ extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertibl
 }
 
 private struct ValidActorPathSymbols {
-    // TODO: I suspect having those as numeric constants may be better for perf?
     static let a: UnicodeScalar = "a"
     static let z: UnicodeScalar = "z"
     static let A: UnicodeScalar = "A"
@@ -417,6 +424,11 @@ private struct ValidActorPathSymbols {
     static let nine: UnicodeScalar = "9"
 
     static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';".unicodeScalars
+}
+
+struct ActorName {
+    let name: String
+    let incarnation: UInt32
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

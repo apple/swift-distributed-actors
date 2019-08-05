@@ -39,6 +39,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     let _props: Props
 
+    var namingContext: ActorNamingContext
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Basic ActorContext capabilities
 
@@ -142,6 +144,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?
             self._deathWatch = DeathWatch(failureDetectorRef: system.deadLetters.adapted())
         }
+        
+        self.namingContext = ActorNamingContext()
 
         #if SACT_TESTS_LEAKS
         // We deliberately only count user actors here, because the number of
@@ -540,26 +544,19 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         }
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Spawn implementations
 
-    public override func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
-        return try self._spawn(behavior, name: name, props: props)
+    public override func spawn<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props) throws -> ActorRef<M> {
+        return try self._spawn(behavior, naming: naming, props: props)
     }
 
-    public override func spawnAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
-        return try self._spawn(behavior, name: self.system.anonymousNames.nextName(), props: props)
-    }
-
-    public override func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
-        return self.watch(try self.spawn(behavior, name: name, props: props))
-    }
-
-    public override func spawnWatchedAnonymous<M>(_ behavior: Behavior<M>, props: Props) throws -> ActorRef<M> {
-        return self.watch(try self.spawnAnonymous(behavior, props: props))
+    public override func spawnWatched<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<M> {
+        return self.watch(try self.spawn(behavior, name: naming, props: props))
     }
 
     public override func stop<M>(child ref: ActorRef<M>) throws {
-        return try self.internal_stop(child: ref)
+        return try self._stop(child: ref)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -584,9 +581,9 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]
 
-    override func messageAdapter<From>(_ type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
-        let name = self.system.anonymousNames.nextName()
+    override func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         do {
+            let name = ActorNaming.adapter.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
             let ref = ActorRefAdapter(self.myself, address: adaptedAddress, converter: adapter)
 
@@ -602,9 +599,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
-        let name = self.system.anonymousNames.nextName()
         do {
-            let adaptedAddress = try self.address.makeChildAddress(name: "\(id.id)-\(name)", incarnation: .random())
+            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
+            let name = naming.makeName(&self.namingContext)
+            let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO actor name to BE the identity
             let ref = SubReceiveAdapter(self.myself, address: adaptedAddress, closure: closure)
 
             self._children.insert(ref) // TODO separate adapters collection?

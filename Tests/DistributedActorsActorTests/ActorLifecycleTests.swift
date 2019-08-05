@@ -67,7 +67,7 @@ class ActorLifecycleTests: XCTestCase {
                 let b: Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
-                let _ = try system.spawn(b, name: illegalName)
+                let _ = try system.spawn(b, name: .unique(illegalName))
             }
             "\(err)".shouldEqual(expectedError)
         }

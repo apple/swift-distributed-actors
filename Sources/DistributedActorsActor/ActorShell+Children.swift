@@ -19,7 +19,7 @@ protocol ChildActorRefFactory: ActorRefFactory {
 
     var children: Children { get set } // lock-protected
 
-    func spawn<Message>(_ behavior: Behavior<Message>, name: String, props: Props) throws -> ActorRef<Message>
+    func spawn<Message>(_ behavior: Behavior<Message>, name: ActorNaming, props: Props) throws -> ActorRef<Message>
     func stop<M>(child ref: ActorRef<M>) throws
 }
 
@@ -321,10 +321,11 @@ extension Children {
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
 
-    internal func _spawn<M>(_ behavior: Behavior<M>, name: String, props: Props) throws -> ActorRef<M> {
+    internal func _spawn<M>(_ behavior: Behavior<M>, naming: ActorNaming, props: Props) throws -> ActorRef<M> {
+        let name = naming.makeName(&self.namingContext)
+
         try behavior.validateAsInitial()
         try validateUniqueName(name) // FIXME reserve name
-        // TODO prefix $ validation (only ok for anonymous)
 
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
 
@@ -362,7 +363,7 @@ extension ActorShell: ChildActorRefFactory {
         return .init(.cell(cell))
     }
 
-    internal func internal_stop<T>(child ref: ActorRef<T>) throws {
+    internal func _stop<T>(child ref: ActorRef<T>) throws {
         guard ref.address.path.isChildPathOf(self.address.path) else {
             if ref.address == self.myself.address {
                 throw ActorContextError.attemptedStoppingMyselfUsingContext(ref: ref.asAddressable())

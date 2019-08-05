@@ -31,6 +31,9 @@ extension ActorTestProbeCommand: NoSerializationVerification {}
 final public class ActorTestProbe<Message> {
 
     public let name: String
+    public static var naming: ActorNaming {
+        return ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
+    }
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>
     internal let internalRef: ActorRef<ProbeCommands>

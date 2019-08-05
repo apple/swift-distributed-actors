@@ -82,7 +82,7 @@ func bench_SpawnChildren(_ actorCount: Int) throws -> Void {
         return .same
     }
 
-    let ref = try system.spawnAnonymous(spawnerBehavior)
+    let ref = try system.spawn(spawnerBehavior, name: .anonymous)
 
     let start = timer.getTime()
 

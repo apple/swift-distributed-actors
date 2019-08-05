@@ -194,25 +194,15 @@ public class ActorContext<Message>: ActorRefFactory {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
-    public func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
-        return undefined()
-    }
-
-    public func spawnAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
+    public func spawn<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<M> {
         return undefined()
     }
 
     /// Spawn a child actor and start watching it to get notified about termination.
     ///
     /// - SeeAlso: `spawn` and `watch`.
-    public func spawnWatched<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {
-        return undefined()
-    }
-
-    /// Spawn a child actor and start watching it to get notified about termination.
-    ///
-    /// - SeeAlso: `spawn` and `watch`.
-    public func spawnWatchedAnonymous<M>(_ behavior: Behavior<M>, props: Props = Props()) throws -> ActorRef<M> {
+    // TODO spawnAndWatch?
+    public func spawnWatched<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<M> {
         return undefined()
     }
 
@@ -385,7 +375,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
     public final func messageAdapter<From>(_ adapter: @escaping (From) -> Message) -> ActorRef<From> {
-        return self.messageAdapter(From.self, with: adapter)
+        return self.messageAdapter(from: From.self, with: adapter)
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
@@ -394,7 +384,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public func messageAdapter<From>(_ type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    public func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         return undefined()
     }
 

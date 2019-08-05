@@ -116,7 +116,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                 return .same
             }
         }
-        let owner = try system.spawnAnonymous(behavior)
+        let owner = try system.spawn(behavior, name: .anonymous)
 
         owner.tell("hello")
         // This callback was overwritten so it shouldn't be invoked

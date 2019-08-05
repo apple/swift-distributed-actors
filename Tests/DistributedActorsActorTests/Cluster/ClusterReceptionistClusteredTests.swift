@@ -28,11 +28,11 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         local.cluster.join(node: remote.cluster.node.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
-        let ref: ActorRef<String> = try local.spawnAnonymous(
+        let ref: ActorRef<String> = try local.spawn(
             .receiveMessage {
                 probe.tell("received:\($0)")
                 return .same
-            }
+            }, name: .anonymous
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -63,12 +63,11 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
-        let ref: ActorRef<String> = try local.spawnAnonymous(
+        let ref: ActorRef<String> = try local.spawn(
             .receiveMessage {
                 probe.tell("received:\($0)")
                 return .same
-            }
-        )
+            }, name: .anonymous)
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -153,8 +152,8 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             return .stop
         }
 
-        let refA: ActorRef<String> = try local.spawnAnonymous(behavior)
-        let refB: ActorRef<String> = try local.spawnAnonymous(behavior)
+        let refA: ActorRef<String> = try local.spawn(behavior, name: .anonymous)
+        let refB: ActorRef<String> = try local.spawn(behavior, name: .anonymous)
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 

@@ -25,7 +25,7 @@
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
-    internal static let name: String = "receptionist" // TODO make an ActorName
+    internal static let name: ActorNaming = .unique("receptionist") // TODO make an ActorName
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
@@ -286,7 +286,7 @@ internal enum LocalReceptionist {
             }
         }
 
-        _ = try context.spawnAnonymous(behavior)
+        _ = try context.spawn(behavior, name: .anonymous)
     }
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {

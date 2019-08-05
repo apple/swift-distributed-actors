@@ -53,7 +53,7 @@ class StashBufferTests: XCTestCase {
             }
         }
 
-        let stasher = try system.spawnAnonymous(behavior)
+        let stasher = try system.spawn(behavior, name: .anonymous)
 
         for i in 0...10 {
             stasher.tell(i)
@@ -117,7 +117,7 @@ class StashBufferTests: XCTestCase {
             }
         }
 
-        let stasher = try system.spawnAnonymous(behavior)
+        let stasher = try system.spawn(behavior, name: .anonymous)
 
         for i in 0...10 {
             stasher.tell(i)
