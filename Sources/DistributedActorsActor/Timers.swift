@@ -60,6 +60,15 @@ public struct TimerKey: Hashable {
         self.isSystemTimer = isSystemTimer
     }
 }
+extension TimerKey: CustomStringConvertible {
+    public var description: String {
+        if self.isSystemTimer {
+            return "TimerKey(\(self.identifier), isSystemTimer: \(self.isSystemTimer))"
+        } else {
+            return "TimerKey(\(self.identifier.base))"
+        }
+    }
+}
 
 public class Timers<Message> {
     @usableFromInline
