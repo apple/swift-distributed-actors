@@ -63,7 +63,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
-        subscribeAddressTerminatedEvents(myself: watcher, address: watchee.address.node)
+        subscribeAddressTerminatedEvents(myself: watcher, node: watchee.address.node)
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
@@ -134,7 +134,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     ///
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
-    public mutating func receiveAddressTerminated(_ terminatedNode: UniqueNodeAddress, myself: ReceivesSystemMessages) {
+    public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: ReceivesSystemMessages) {
         for watched in self.watching where watched.address.node == terminatedNode {
             myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: false, addressTerminated: true), file: #file, line: #line)
         }
@@ -155,12 +155,12 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     // MARK: Managing
 
     // TODO: implement this once we are clustered; a termination of an entire node means termination of all actors on that node
-    private func subscribeAddressTerminatedEvents(myself: ActorRef<Message>, address: UniqueNodeAddress?) {
-        guard let address = address else {
-            return // watched ref is local, no address to watch
+    private func subscribeAddressTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {
+        guard let node = node else {
+            return // watched ref is local, no node to watch
         }
-        // TODO avoid watching when address is my address
-        self.failureDetectorRef.tell(.watchedActor(watcher: AddressableActorRef(myself), remoteAddress: address))
+        // TODO avoid watching when node is my node
+        self.failureDetectorRef.tell(.watchedActor(watcher: AddressableActorRef(myself), remoteNode: node))
     }
 
 }

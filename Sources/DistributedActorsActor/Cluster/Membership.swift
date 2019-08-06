@@ -16,18 +16,18 @@ import Foundation
 
 /// A `Member` is a node that is participating in the cluster which carries `MemberStatus` information.
 ///
-/// Its identity is the underlying `UniqueNodeAddress` of the node.
+/// Its identity is the underlying `UniqueNode` of the member.
 public struct Member: Hashable {
     // A Member's identity is its unique address
-    let address: UniqueNodeAddress
+    let node: UniqueNode
     var status: MemberStatus
 
     public func hash(into hasher: inout Hasher) {
-        self.address.hash(into: &hasher)
+        self.node.hash(into: &hasher)
     }
 
     public static func ==(lhs: Member, rhs: Member) -> Bool {
-        if lhs.address != rhs.address {
+        if lhs.node != rhs.node {
             return false
         }
         return true
@@ -52,14 +52,14 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     // TODO: may want to maintain them separately depending on state perhaps... we'll see
     // it could be then leaking how e.g. SWIM works into here... but perhaps its fine hm
 
-    private var members: [NodeAddress: Member]
+    private var members: [Node: Member]
 
     // TODO ordered set of members would be nice, if we stick to Akka's style of "leader"
 
     public init(members: [Member]) {
         self.members = Dictionary(minimumCapacity: members.count)
         for member in members {
-            self.members[member.address.address] = member
+            self.members[member.node.node] = member
         }
     }
 
@@ -67,11 +67,11 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         self.init(members: members)
     }
 
-    func member(_ address: UniqueNodeAddress) -> Member? {
-        return self.members[address.address]
+    func member(_ node: UniqueNode) -> Member? {
+        return self.members[node.node]
     }
-    func member(_ address: NodeAddress) -> Member? {
-        return self.members[address]
+    func member(_ node: Node) -> Member? {
+        return self.members[node]
     }
 }
 
@@ -79,7 +79,7 @@ extension Membership {
     var prettyDescription: String {
         var res = "Membership: "
         for member in self.members.values {
-            res += "\n   [\(member.address)] STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
+            res += "\n   [\(member.node)] STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
         return res
     }
@@ -96,86 +96,86 @@ extension Membership {
         switch change.toStatus {
         case nil:
             // means a node removal
-            self.remove(change.address)
+            self.remove(change.node)
         case .some(.joining):
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
-            _ = self.join(change.address)
+            _ = self.join(change.node)
         case .some(.alive):
-            _ = self.join(change.address)
+            _ = self.join(change.node)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
             // TODO log state transitions
-            self.mark(change.address, as: status)
+            self.mark(change.node, as: status)
         }
     }
 
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
-    mutating func join(_ address: UniqueNodeAddress) -> MembershipChange {
-        let newMember = Member(address: address, status: .joining)
+    mutating func join(_ node: UniqueNode) -> MembershipChange {
+        let newMember = Member(node: node, status: .joining)
 
-        if let member = self.member(address) {
+        if let member = self.member(node) {
             // we are joining "over" an existing incarnation of a node
 
             // TODO define semantics of "new node joins 'over' existing node" (should cause a removal of old one and termination signals I think)
-            if member.address == address {
+            if member.node == node {
                 // technically we could ignore this... but to be honest, this is VERY WEIRD, so we should make sure it never happens (i.e. even if resends etc, should be filtered out)
                 return fatalErrorBacktrace("WEIRD; same unique address joining again: \(member), members: [\(self)]")
             } else {
-                self.members[address.address] = newMember
-                return .init(previousAddress: member.address, address: address, fromStatus: member.status, toStatus: newMember.status)
+                self.members[node.node] = newMember
+                return .init(previousNode: member.node, node: node, fromStatus: member.status, toStatus: newMember.status)
             }
         } else {
-            // address is normally joining
-            self.members[address.address] = newMember
+            // node is normally joining
+            self.members[node.node] = newMember
             return .init(member: newMember, toStatus: newMember.status)
         }
     }
-    func joining(_ address: UniqueNodeAddress) -> Membership {
+    func joining(_ node: UniqueNode) -> Membership {
         var membership = self
-        _ = membership.join(address)
+        _ = membership.join(node)
         return membership
     }
     
-    /// Marks the `Member` identified by the `address` with the `status`.
+    /// Marks the `Member` identified by the `node` with the `status`.
     ///
-    /// If the membership not aware of this address the update is treated as an no-op.
-    mutating func mark(_ address: UniqueNodeAddress, as status: MemberStatus) {
-        pprint("MARK \(address) as \(status)")
-        if var member = self.member(address) {
+    /// If the membership not aware of this address the update is treated as a no-op.
+    mutating func mark(_ node: UniqueNode, as status: MemberStatus) {
+        pprint("MARK \(node) as \(status)")
+        if var member = self.member(node) {
             member.status = status
-            self.members[member.address.address] = member
+            self.members[member.node.node] = member
         }
     }
     /// Returns new membership while marking an existing member with the specified status.
     ///
-    /// If the membership not aware of this address the update is treated as an no-op.
-    func marking(_ address: UniqueNodeAddress, as status: MemberStatus) -> Membership {
+    /// If the membership not aware of this node the update is treated as a no-op.
+    func marking(_ node: UniqueNode, as status: MemberStatus) -> Membership {
         var membership = self
-        membership.mark(address, as: status)
+        membership.mark(node, as: status)
         return membership
     }
 
     /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a member from the membership.
-    mutating func remove(_ address: UniqueNodeAddress) {
-        if let member = self.members[address.address] {
-            guard member.address == address else {
-                fatalError("Attempted to remove \(member) by address \(address), yet UID did not match!")
+    mutating func remove(_ node: UniqueNode) {
+        if let member = self.members[node.node] {
+            guard member.node == node else {
+                fatalError("Attempted to remove \(member) by address \(node), yet UID did not match!")
             }
-            self.members.removeValue(forKey: address.address)
+            self.members.removeValue(forKey: node.node)
         } else {
             // no member to remove
             ()
         }
     }
-    /// Returns new membership while removing an existing member, identified by the passed in address.
+    /// Returns new membership while removing an existing member, identified by the passed in node.
     ///
     /// If the membership is not aware of this member this is treated as no-op.
-    /// If the membership does contain a member for the NodeAddress, however the NodeIDs of the UniqueNodeAddresses
+    /// If the membership does contain a member for the Node, however the NodeIDs of the UniqueNodes
     /// do not match this code will FAULT.
-    func removing(_ address: UniqueNodeAddress) -> Membership {
+    func removing(_ node: UniqueNode) -> Membership {
         var membership = self
-        membership.remove(address)
+        membership.remove(node)
         return membership
     }
 
@@ -197,20 +197,20 @@ extension Membership {
 
         // iterate over the original member set, and remove from the `to` set any seen members
         for f in from.members.values {
-            if let toMember = to.member(f.address) {
-                to.members.removeValue(forKey: f.address.address)
+            if let toMember = to.member(f.node) {
+                to.members.removeValue(forKey: f.node.node)
                 if f.status != toMember.status {
-                    entries.append(.init(address: f.address, fromStatus: f.status, toStatus: toMember.status))
+                    entries.append(.init(node: f.node, fromStatus: f.status, toStatus: toMember.status))
                 }
             } else {
                 // member is not present `to`, thus it was removed
-                entries.append(.init(address: f.address, fromStatus: f.status, toStatus: nil))
+                entries.append(.init(node: f.node, fromStatus: f.status, toStatus: nil))
             }
         }
 
         // any remaining `to` members, are new members
         for t in to.members.values {
-            entries.append(.init(address: t.address, fromStatus: nil, toStatus: t.status))
+            entries.append(.init(node: t.node, fromStatus: nil, toStatus: t.status))
         }
 
         return MembershipDiff(entries: entries)
@@ -222,40 +222,40 @@ struct MembershipDiff {
     var entries: [MembershipChange] = []
 }
 struct MembershipChange {
-    /// The address which the change concerns.
-    let address: UniqueNodeAddress
+    /// The node which the change concerns.
+    let node: UniqueNode
     /// Only set if the change is a "replace node", which can happen only if a node joins
     /// from the same physical address (host + port), however its UID has changed.
-    let previousAddress: UniqueNodeAddress?
+    let previousNode: UniqueNode?
 
     let fromStatus: MemberStatus?
     let toStatus: MemberStatus?
 
     init(member: Member, toStatus: MemberStatus? = nil) {
-        self.previousAddress = nil
-        self.address = member.address
+        self.previousNode = nil
+        self.node = member.node
         self.fromStatus = member.status
         self.toStatus = toStatus ?? member.status
     }
 
-    init(address: UniqueNodeAddress, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
-        self.previousAddress = nil
-        self.address = address
+    init(node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
+        self.previousNode = nil
+        self.node = node
         self.fromStatus = fromStatus
         self.toStatus = toStatus
     }
-    init(previousAddress: UniqueNodeAddress, address: UniqueNodeAddress, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
-        self.previousAddress = previousAddress
-        self.address = address
+    init(previousNode: UniqueNode, node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
+        self.previousNode = previousNode
+        self.node = node
         self.fromStatus = fromStatus
         self.toStatus = toStatus
     }
 
-    /// Is a "replace" operation, meaning a new address with different UID has replaced a previousAddress.
-    /// This can happen upon a service reboot, with stable address -- the new node then "replaces" the old one,
+    /// Is a "replace" operation, meaning a new node with different UID has replaced a previousNode.
+    /// This can happen upon a service reboot, with stable network address -- the new node then "replaces" the old one,
     /// and the old node shall be removed from the cluster as a result of this.
     var isReplace: Bool {
-        return self.previousAddress != nil
+        return self.previousNode != nil
     }
 
     var isDownOrRemoval: Bool {
@@ -288,7 +288,7 @@ extension MembershipDiff: CustomDebugStringConvertible {
 }
 extension MembershipChange: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "\(self.address) :: " + 
+        return "\(self.node) :: " + 
             "[\(self.fromStatus?.rawValue ?? "unknown", leftPadTo: MemberStatus.maxStrLen)]" + 
             " -> " + 
             "[\(self.toStatus?.rawValue ?? "unknown", leftPadTo: MemberStatus.maxStrLen)]"

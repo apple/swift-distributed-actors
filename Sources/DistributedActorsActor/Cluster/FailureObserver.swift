@@ -21,10 +21,10 @@ internal protocol FailureObserver {
 
     // TODO evolve this type a lot along with implementing a real failure detector
 
-    /// Called when the `watcher` watches a remote actor which resides on the `remoteAddress`.
-    /// A failure detector may have to start monitoring this address using some internal mechanism,
-    /// in order to be able to signal the watcher in case the address terminates (e.g. the node crashes).
-    func onWatchedActor(by watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress)
+    /// Called when the `watcher` watches a remote actor which resides on the `remoteNode`.
+    /// A failure detector may have to start monitoring this node using some internal mechanism,
+    /// in order to be able to signal the watcher in case the node terminates (e.g. the node crashes).
+    func onWatchedActor(by watcher: AddressableActorRef, remoteNode: UniqueNode)
 
     /// Called when the cluster membership changes.
     ///
@@ -36,19 +36,19 @@ internal protocol FailureObserver {
 
 /// Context passed to failure detectors.
 ///
-/// Gives access to address and other data which the failure detector may need to perform its task.
+/// Gives access to node and other data which the failure detector may need to perform its task.
 internal struct FailureDetectorContext { // TODO: Eventually to become public
 
     internal var log: Logger
 
-    let address: UniqueNodeAddress
+    let node: UniqueNode
 
     init(_ system: ActorSystem) {
         guard system.settings.cluster.enabled else {
             fatalError("Illegal attempt to create FailureDetectorContext while remoting is NOT enabled! " + 
                 "Failure detectors are not necessary in local only systems, thus a failure detector should never be created.")
         }
-        self.address = system.settings.cluster.uniqueBindAddress
+        self.node = system.settings.cluster.uniqueBindAddress
         self.log = system.log // TODO better logger (named better, we can fix this when we start the actor, there swap for the actors one?)
     }
 }
@@ -57,7 +57,7 @@ internal struct FailureDetectorContext { // TODO: Eventually to become public
 /// By default, the `FailureDetectorShell` handles these messages by interpreting them with an underlying `FailureDetector`,
 /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
 internal enum FailureDetectorProtocol {
-    case watchedActor(watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress)
+    case watchedActor(watcher: AddressableActorRef, remoteNode: UniqueNode)
     case membershipSnapshot(Membership)
     case membershipChange(MembershipChange)
 }
@@ -72,8 +72,8 @@ internal enum FailureDetectorShell {
             let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
 
             switch message {
-            case .watchedActor(let watcher, let remoteAddress):
-                _ = observer.onWatchedActor(by: watcher, remoteAddress: remoteAddress) // TODO return and interpret directives
+            case .watchedActor(let watcher, let remoteNode):
+                _ = observer.onWatchedActor(by: watcher, remoteNode: remoteNode) // TODO return and interpret directives
 
             case .membershipSnapshot(let membership):
                 let diff = Membership.diff(from: lastMembership, to: membership)

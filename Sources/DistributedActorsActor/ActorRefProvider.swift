@@ -43,7 +43,7 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
 
 // TODO consider if we need abstraction / does it cost us?
 internal struct RemoteActorRefProvider: _ActorRefProvider {
-    private let localNode: UniqueNodeAddress
+    private let localNode: UniqueNode
     private let localProvider: LocalActorRefProvider
 
     let cluster: ClusterShell

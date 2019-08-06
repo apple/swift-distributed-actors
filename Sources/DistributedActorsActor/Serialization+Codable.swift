@@ -168,7 +168,7 @@ extension ActorAddress: Codable {
                 throw ActorCoding.CodingError.missingActorSerializationContext(ActorAddress.self, details: "While encoding [\(self)] from [\(encoder)]")
             }
 
-            try container.encode(context.localNodeAddress, forKey: ActorCoding.CodingKeys.node)
+            try container.encode(context.localNode, forKey: ActorCoding.CodingKeys.node)
         }
 
         try container.encode(self.path, forKey: ActorCoding.CodingKeys.path)
@@ -177,7 +177,7 @@ extension ActorAddress: Codable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: ActorCoding.CodingKeys.self)
-        let node = try container.decode(UniqueNodeAddress.self, forKey: ActorCoding.CodingKeys.node)
+        let node = try container.decode(UniqueNode.self, forKey: ActorCoding.CodingKeys.node)
         let path = try container.decode(ActorPath.self, forKey: ActorCoding.CodingKeys.path)
         let incarnation = try container.decode(UInt32.self, forKey: ActorCoding.CodingKeys.incarnation)
 
@@ -249,7 +249,7 @@ extension ActorIncarnation: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Codable Node Address
 
-extension NodeAddress: Codable {
+extension Node: Codable {
     // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
@@ -269,17 +269,17 @@ extension NodeAddress: Codable {
         self.port = try container.decode(Int.self)
     }
 }
-extension UniqueNodeAddress: Codable {
+extension UniqueNode: Codable {
     // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
-        try container.encode(self.address.protocol)
+        try container.encode(self.node.protocol)
         // ://
-        try container.encode(self.address.systemName)
+        try container.encode(self.node.systemName)
         // @
-        try container.encode(self.address.host)
+        try container.encode(self.node.host)
         // :
-        try container.encode(self.address.port)
+        try container.encode(self.node.port)
         // #
         try container.encode(self.nid.value)
     }
@@ -289,7 +289,7 @@ extension UniqueNodeAddress: Codable {
         let systemName = try container.decode(String.self)
         let host = try container.decode(String.self)
         let port = try container.decode(Int.self)
-        self.address = NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port)
+        self.node = Node(protocol: `protocol`, systemName: systemName, host: host, port: port)
         self.nid = try NodeID(container.decode(UInt32.self))
     }
 }

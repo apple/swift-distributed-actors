@@ -122,7 +122,7 @@ internal enum ClusterReceptionist {
             var addresses: [ActorAddress] = []
             addresses.reserveCapacity(values.count)
             for ref in values {
-                let path = ClusterReceptionist.setNodeAddress(ref.address, localAddress: context.system.settings.cluster.uniqueBindAddress)
+                let path = ClusterReceptionist.setNode(ref.address, localNode: context.system.settings.cluster.uniqueBindAddress)
                 addresses.append(path)
             }
             registrations[key] = addresses
@@ -217,8 +217,8 @@ internal enum ClusterReceptionist {
         // TODO: should we rather resolve the targets and send to them via actor refs? Manually creating envelopes may be hard to marry with context propagation
         // TODO: this will be reimplemented to use CRDTs anyway so perhaps not worth changing now
         for remoteControl in remoteControls {
-            let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
-            let address = ClusterReceptionist.setNodeAddress(register._addressableActorRef.address, localAddress: context.system.settings.cluster.uniqueBindAddress)
+            let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteNode)
+            let address = ClusterReceptionist.setNode(register._addressableActorRef.address, localNode: context.system.settings.cluster.uniqueBindAddress)
 
             let envelope: Envelope = Envelope(payload: .message(Replicate(key: register._key.boxed, address: address)))
             remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: envelope, recipient: remoteReceptionistAddress)
@@ -233,22 +233,22 @@ internal enum ClusterReceptionist {
         }
 
         for remoteControl in remoteControls {
-            let remoteReceptionist = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteAddress)
+            let remoteReceptionist = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteNode)
             let envelope  = Envelope(payload: .message(ClusterReceptionist.FullStateRequest(replyTo: myself)))
 
             remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: envelope, recipient: remoteReceptionist)
         }
     }
 
-    private static func setNodeAddress(_ address: ActorAddress, localAddress: UniqueNodeAddress) -> ActorAddress {
+    private static func setNode(_ address: ActorAddress, localNode: UniqueNode) -> ActorAddress {
         var address = address
         if address.node == nil {
-            address._location = .remote(localAddress)
+            address._location = .remote(localNode)
         }
         return address
     }
 
-    private static func makeRemoteAddress(on node: UniqueNodeAddress) -> ActorAddress {
+    private static func makeRemoteAddress(on node: UniqueNode) -> ActorAddress {
         return try! .init(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")]), incarnation: .perpetual)
     }
 }

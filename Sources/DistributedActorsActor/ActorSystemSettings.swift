@@ -33,7 +33,7 @@ public struct ActorSystemSettings {
     public var serialization: SerializationSettings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
-            self.serialization.localNodeAddress = self.cluster.uniqueBindAddress
+            self.serialization.localNode = self.cluster.uniqueBindAddress
         }
     }
 

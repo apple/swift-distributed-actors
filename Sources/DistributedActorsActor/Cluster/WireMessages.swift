@@ -42,8 +42,8 @@ internal enum Wire {
     internal struct HandshakeOffer: WireMessage {
         internal var version: Version
 
-        internal var from: UniqueNodeAddress
-        internal var to: NodeAddress
+        internal var from: UniqueNode
+        internal var to: Node
     }
 
     internal enum HandshakeResponse: WireMessage {
@@ -63,14 +63,14 @@ internal enum Wire {
         internal let version: Version
         // TODO: Maybe offeringToSpeakAtVersion or something like that?
 
-        internal let from: UniqueNodeAddress
+        internal let from: UniqueNode
 
         /// In order to avoid confusion with from/to, we name the `origin` the node which an offer was sent "from",
         /// and we now reply to this handshake to it. This value is carried so the origin can confirm it indeed was
         /// intended for it, and not a previous incarnation of a system on the same network address.
-        internal let origin: UniqueNodeAddress
+        internal let origin: UniqueNode
 
-        init(version: Version, from: UniqueNodeAddress, origin: UniqueNodeAddress) {
+        init(version: Version, from: UniqueNode, origin: UniqueNode) {
             self.version = version
             self.from = from
             self.origin = origin
@@ -82,11 +82,11 @@ internal enum Wire {
         internal let version: Version
         internal let reason: String
 
-        /// not an UniqueNodeAddress, so we can't proceed into establishing an association - even by accident
-        internal let from: NodeAddress
-        internal let origin: UniqueNodeAddress
+        /// not a UniqueNode, so we can't proceed into establishing an association - even by accident
+        internal let from: Node
+        internal let origin: UniqueNode
 
-        init(version: Wire.Version, from: NodeAddress, origin: UniqueNodeAddress, reason: String) {
+        init(version: Wire.Version, from: Node, origin: UniqueNode, reason: String) {
             self.version = version
             self.from = from
             self.origin = origin

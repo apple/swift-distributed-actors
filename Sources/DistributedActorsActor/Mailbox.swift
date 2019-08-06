@@ -48,7 +48,6 @@ internal struct Envelope {
 
 internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CSActMailbox>
-    // we keep the address, rather than the entire address since we know it is "us" so it has to be local
     internal let address: ActorAddress
     private weak var shell: ActorShell<Message>?
     internal let deadLetters: ActorRef<DeadLetter>

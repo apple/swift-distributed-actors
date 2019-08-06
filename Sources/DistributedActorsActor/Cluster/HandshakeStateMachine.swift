@@ -69,8 +69,8 @@ internal struct HandshakeStateMachine {
             return self.settings.protocolVersion
         }
 
-        let remoteAddress: NodeAddress
-        let localAddress: UniqueNodeAddress
+        let remoteNode: Node
+        let localNode: UniqueNode
         let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
 
         /// Channel which was established when we initiated the handshake (outgoing connection),
@@ -81,20 +81,20 @@ internal struct HandshakeStateMachine {
 
         // TODO counter for how many times to retry associating (timeouts)
 
-        init(settings: ClusterSettings, localAddress: UniqueNodeAddress, connectTo remoteAddress: NodeAddress,
+        init(settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node,
              whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
              ) {
-            precondition(localAddress.address != remoteAddress, "MUST NOT attempt connecting to own bind address. Address: \(remoteAddress)")
+            precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy
-            self.localAddress = localAddress
-            self.remoteAddress = remoteAddress
+            self.localNode = localNode
+            self.remoteNode = remoteNode
             self.whenCompleted = whenCompleted
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
             // TODO maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
-            return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localAddress, to: self.remoteAddress)
+            return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
         }
 
         mutating func onHandshakeTimeout() -> HandshakeStateMachine.RetryDirective {
@@ -141,8 +141,8 @@ internal struct HandshakeStateMachine {
         private let state: ReadOnlyClusterState
 
         let offer: Wire.HandshakeOffer
-        var boundAddress: UniqueNodeAddress {
-            return self.state.localAddress
+        var boundAddress: UniqueNode {
+            return self.state.localNode
         }
         var protocolVersion: Swift Distributed ActorsActor.Version {
             return state.settings.protocolVersion
@@ -158,16 +158,16 @@ internal struct HandshakeStateMachine {
 
         // do not call directly, rather obtain the completed state via negotiate()
         func _acceptAndMakeCompletedState() -> CompletedState {
-            let completed = CompletedState(fromReceived: self, remoteAddress: offer.from)
+            let completed = CompletedState(fromReceived: self, remoteNode: offer.from)
             self.whenCompleted?.succeed(.accept(completed.makeAccept()))
             return completed
         }
 
         func negotiate() -> HandshakeStateMachine.NegotiateDirective {
-            guard self.boundAddress.address == self.offer.to else {
-                let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfAddress: self.boundAddress)
+            guard self.boundAddress.node == self.offer.to else {
+                let error = HandshakeError.targetHandshakeAddressMismatch(self.offer, selfNode: self.boundAddress)
 
-                let rejectedState = RejectedState(fromReceived: self, remoteAddress: self.offer.from, error: error)
+                let rejectedState = RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error)
                 self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
                 return .rejectHandshake(rejectedState)
             }
@@ -198,7 +198,7 @@ internal struct HandshakeStateMachine {
                 let error = HandshakeError.incompatibleProtocolVersion(
                     local: self.protocolVersion, remote: self.offer.version,
                     reason: "Major version mismatch!")
-                return .rejectHandshake(RejectedState(fromReceived: self, remoteAddress: self.offer.from, error: error))
+                return .rejectHandshake(RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error))
             }
 
             return accept
@@ -212,52 +212,52 @@ internal struct HandshakeStateMachine {
     /// This state is used to unlock creating an Association.
     internal struct CompletedState {
         let protocolVersion: Version
-        var remoteAddress: UniqueNodeAddress
-        var localAddress: UniqueNodeAddress
+        var remoteNode: UniqueNode
+        var localNode: UniqueNode
         let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
         // let unique association ID?
 
         // State Transition used by Client Side of initial Handshake.
         //
-        // Since the client is the one who initiates the handshake, once it receives an Accept containing the remote unique address
+        // Since the client is the one who initiates the handshake, once it receives an Accept containing the remote unique node
         // it may immediately transition to the completed state.
-        init(fromInitiated state: InitiatedState, remoteAddress: UniqueNodeAddress) {
-            precondition(state.localAddress != remoteAddress, "Node [\(state.localAddress)] attempted to create association with itself.")
+        init(fromInitiated state: InitiatedState, remoteNode: UniqueNode) {
+            precondition(state.localNode != remoteNode, "Node [\(state.localNode)] attempted to create association with itself.")
             self.protocolVersion = state.protocolVersion
-            self.remoteAddress = remoteAddress
-            self.localAddress = state.localAddress
+            self.remoteNode = remoteNode
+            self.localNode = state.localNode
             self.whenCompleted = state.whenCompleted
         }
 
         // State Transition used by Server Side on accepting a received Handshake.
-        init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress) {
-            precondition(state.boundAddress != remoteAddress, "Node [\(state.boundAddress)] attempted to create association with itself.")
+        init(fromReceived state: HandshakeReceivedState, remoteNode: UniqueNode) {
+            precondition(state.boundAddress != remoteNode, "Node [\(state.boundAddress)] attempted to create association with itself.")
             self.protocolVersion = state.protocolVersion
-            self.remoteAddress = remoteAddress
-            self.localAddress = state.boundAddress
+            self.remoteNode = remoteNode
+            self.localNode = state.boundAddress
             self.whenCompleted = state.whenCompleted
         }
 
         func makeAccept() -> Wire.HandshakeAccept {
-            return .init(version: self.protocolVersion, from: self.localAddress, origin: self.remoteAddress)
+            return .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode)
         }
     }
 
     internal struct RejectedState {
         let protocolVersion: Version
-        let localAddress: NodeAddress
-        let remoteAddress: UniqueNodeAddress
+        let localNode: Node
+        let remoteNode: UniqueNode
         let error: HandshakeError
 
-        init(fromReceived state: HandshakeReceivedState, remoteAddress: UniqueNodeAddress, error: HandshakeError) {
+        init(fromReceived state: HandshakeReceivedState, remoteNode: UniqueNode, error: HandshakeError) {
             self.protocolVersion = state.protocolVersion
-            self.localAddress = state.boundAddress.address
-            self.remoteAddress = remoteAddress
+            self.localNode = state.boundAddress.node
+            self.remoteNode = remoteNode
             self.error = error
         }
 
         func makeReject() -> Wire.HandshakeReject {
-            return .init(version: self.protocolVersion, from: self.localAddress, origin: remoteAddress, reason: "\(self.error)")
+            return .init(version: self.protocolVersion, from: self.localNode, origin: remoteNode, reason: "\(self.error)")
         }
     }
 
@@ -288,12 +288,12 @@ enum HandshakeError: Error {
     /// Could mean that the sending side sent the accept twice?
     case acceptAttemptForNotInProgressHandshake(HandshakeStateMachine.CompletedState)
 
-    /// The node at which the handshake arrived does not recognize the "to" address of the handshake.
+    /// The node at which the handshake arrived does not recognize the "to" node of the handshake.
     /// This may be a configuration issue (due to bind address and NAT mixups), or a routing issue
     /// where the handshake was received at "the wrong node".
     ///
-    /// The UID part of the `NodeAddress` does not matter for this check, but is included here for debugging purposes.
-    case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfAddress: UniqueNodeAddress)
+    /// The UID part of the `Node` does not matter for this check, but is included here for debugging purposes.
+    case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfNode: UniqueNode)
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
     case incompatibleProtocolVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version, reason: String?)

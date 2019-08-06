@@ -32,7 +32,7 @@ struct DistributedDiningPhilosophers {
     /// Enable networking on this node, and select which port it should bind to.
     private func configureClustering(_ settings: inout ActorSystemSettings, port: Int) {
         settings.cluster.enabled = true
-        settings.cluster.bindAddress.port = port
+        settings.cluster.bindPort = port
     }
 
     func run(`for` time: TimeAmount) throws {
@@ -52,9 +52,9 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ started 3 actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.join(address: systemB.settings.cluster.bindAddress)
-        systemA.join(address: systemC.settings.cluster.bindAddress)
-        systemC.join(address: systemB.settings.cluster.bindAddress)
+        systemA.join(node: systemB.settings.cluster.node)
+        systemA.join(node: systemC.settings.cluster.node)
+        systemC.join(node: systemB.settings.cluster.node)
 
         Thread.sleep(.seconds(2))
 

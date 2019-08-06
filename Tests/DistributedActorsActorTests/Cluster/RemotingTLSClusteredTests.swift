@@ -208,7 +208,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }
@@ -219,7 +219,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
 
         setUpLocal { settings in
-            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -229,7 +229,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         setUpRemote { settings in
-            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -240,12 +240,12 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         let testKit = ActorTestKit(local)
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         sleep(2)
 
         do {
-            let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNodeAddress>.self)
+            let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
             local.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
             remote.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
@@ -253,7 +253,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         do {
-            let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNodeAddress>.self)
+            let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
             local.clusterShell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.clusterShell.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
@@ -266,7 +266,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
         setUpLocal { settings in
-            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -276,7 +276,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         }
 
         setUpRemote { settings in
-            settings.cluster.bindAddress.host = "127.0.0.1"
+            settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -285,7 +285,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }
@@ -325,7 +325,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             }
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
     }

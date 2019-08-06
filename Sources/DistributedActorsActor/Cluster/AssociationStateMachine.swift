@@ -22,7 +22,7 @@ import Logging
 ///
 /// All interactions with a remote node MUST be driven through an association, as otherwise one might write to a node
 /// that would not acknowledge any of our messages. This is important for example if a remote node is terminated,
-/// and another node is brought up on the exact same network `NodeAddress` -- thus the need to keep a `UniqueNodeAddress` of
+/// and another node is brought up on the exact same network `Node` -- thus the need to keep a `UniqueNode` of
 /// both "sides" of an association -- we want to inform a remote node about our identity, and want to confirm if the remote
 /// sending side of an association remains the "same exact node", or if it is a new instance on the same address.
 ///
@@ -45,18 +45,18 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 
         /// The address of this node, that was offered to the remote side for this association
         /// This matters in case we have multiple "self" addresses; e.g. we bind to one address, but expose another because NAT
-        let selfAddress: UniqueNodeAddress
-        var remoteAddress: UniqueNodeAddress
+        let selfNode: UniqueNode
+        var remoteNode: UniqueNode
 
         init(fromCompleted handshake: HandshakeStateMachine.CompletedState, log: Logger, over channel: Channel) {
             self.log = log
-            self.remoteAddress = handshake.remoteAddress
-            self.selfAddress = handshake.localAddress
+            self.remoteNode = handshake.remoteNode
+            self.selfNode = handshake.localNode
             self.channel = channel
         }
 
         func makeRemoteControl() -> AssociationRemoteControl {
-            return AssociationRemoteControl(channel: self.channel, remoteAddress: self.remoteAddress)
+            return AssociationRemoteControl(channel: self.channel, remoteNode: self.remoteNode)
             // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
         }
     }
@@ -76,11 +76,11 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 internal struct AssociationRemoteControl {
 
     private let channel: Channel
-    let remoteAddress: UniqueNodeAddress
+    let remoteNode: UniqueNode
 
-    init(channel: Channel, remoteAddress: UniqueNodeAddress) {
+    init(channel: Channel, remoteNode: UniqueNode) {
         self.channel = channel
-        self.remoteAddress = remoteAddress
+        self.remoteNode = remoteNode
     }
 
     func sendUserMessage<Message>(type: Message.Type, envelope: Envelope, recipient: ActorAddress) {

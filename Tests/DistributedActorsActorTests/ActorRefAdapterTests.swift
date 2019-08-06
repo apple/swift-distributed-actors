@@ -59,8 +59,8 @@ class ActorRefAdapterTests: XCTestCase {
     func test_adaptedRef_overNetwork_shouldConvertMessages() throws {
         let systemOne = ActorSystem("One-RemoteActorRefAdapterTests") { settings in
             settings.cluster.enabled = true
-            settings.cluster.bindAddress.host = "127.0.0.1"
-            settings.cluster.bindAddress.port = 1881
+            settings.cluster.node.host = "127.0.0.1"
+            settings.cluster.node.port = 1881
         }
         defer { systemOne.shutdown() }
         let firstTestKit = ActorTestKit(systemOne)
@@ -69,12 +69,12 @@ class ActorRefAdapterTests: XCTestCase {
 
         let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in 
             settings.cluster.enabled = true
-            settings.cluster.bindAddress.host = "127.0.0.1"
-            settings.cluster.bindAddress.port = 1991
+            settings.cluster.node.host = "127.0.0.1"
+            settings.cluster.node.port = 1991
         }
         defer { systemTwo.shutdown() }
 
-        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.bindAddress, replyTo: nil))) // TODO nicer API
+        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.node, replyTo: nil))) // TODO nicer API
 
         sleep(2)
 

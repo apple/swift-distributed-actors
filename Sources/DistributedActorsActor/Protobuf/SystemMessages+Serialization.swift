@@ -97,7 +97,7 @@ extension SystemMessage: ProtobufRepresentable {
 
         case .start:
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.start")
-        case .addressTerminated:
+        case .nodeTerminated:
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.addressTerminated")
         case .childTerminated:
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.childTerminated")

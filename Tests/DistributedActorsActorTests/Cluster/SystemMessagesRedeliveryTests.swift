@@ -170,13 +170,13 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         settings.redeliveryBatchSize = 3
         let outbound = OutboundSystemMessageRedelivery(settings: settings)
 
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 111, nid: .random())), recipient: ._deadLetters) // 1
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 222, nid: .random())), recipient: ._deadLetters) // 2
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 333, nid: .random())), recipient: ._deadLetters) // 3
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 444, nid: .random())), recipient: ._deadLetters) // 4
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 555, nid: .random())), recipient: ._deadLetters) // 5
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 666, nid: .random())), recipient: ._deadLetters) // 6
-        _ = outbound.offer(.addressTerminated(.init(systemName: "S", host: "127.0.0.1", port: 777, nid: .random())), recipient: ._deadLetters) // 7
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 111, nid: .random())), recipient: ._deadLetters) // 1
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 222, nid: .random())), recipient: ._deadLetters) // 2
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 333, nid: .random())), recipient: ._deadLetters) // 3
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 444, nid: .random())), recipient: ._deadLetters) // 4
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 555, nid: .random())), recipient: ._deadLetters) // 5
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 666, nid: .random())), recipient: ._deadLetters) // 6
+        _ = outbound.offer(.nodeTerminated(.init(systemName: "S", host: "127.0.0.1", port: 777, nid: .random())), recipient: ._deadLetters) // 7
         // none are ACKed
 
         switch outbound.onRedeliveryTick() {
