@@ -29,19 +29,19 @@ internal final class ManualFailureObserver: FailureObserver {
     private var membership: Membership = .empty
 
     /// Members which have been removed
-    private var systemTombstones: Set<UniqueNodeAddress> = .init()
+    private var systemTombstones: Set<UniqueNode> = .init()
 
-    private var remoteWatchers: [UniqueNodeAddress: Set<AddressableActorRef>] = [:]
+    private var remoteWatchers: [UniqueNode: Set<AddressableActorRef>] = [:]
 
     init(context: FailureDetectorContext) {
         self.context = context
     }
 
-    func onWatchedActor(by watcher: AddressableActorRef, remoteAddress: UniqueNodeAddress) {
-        guard !self.systemTombstones.contains(remoteAddress) else {
+    func onWatchedActor(by watcher: AddressableActorRef, remoteNode: UniqueNode) {
+        guard !self.systemTombstones.contains(remoteNode) else {
             // the system the watcher is attempting to watch has terminated before the watch has been processed,
             // thus we have to immediately reply with a termination system message, as otherwise it would never receive one
-            watcher.sendSystemMessage(.addressTerminated(remoteAddress))
+            watcher.sendSystemMessage(.nodeTerminated(remoteNode))
             return
         }
 
@@ -49,16 +49,16 @@ internal final class ManualFailureObserver: FailureObserver {
             // a failure detector must never register non-local actors, it would not make much sense,
             // as they should have their own local failure detectors on their own systems.
             // If we reach this it is most likely a bug in the library itself.
-            let err = ManualFailureDetectorError.watcherActorWasNotLocal(watcherAddress: watcher.address, localAddress: context.address)
+            let err = ManualFailureDetectorError.watcherActorWasNotLocal(watcherAddress: watcher.address, localNode: context.node)
             return fatalErrorBacktrace("Attempted registering non-local actor with manual failure detector: \(err)")
         }
 
-        // if we did active monitoring, this would be a point in time to perhaps start monitoring an address if we never did so far?
-        log.debug("Actor [\(watcher)] watched an actor on: [\(remoteAddress)]")
+        // if we did active monitoring, this would be a point in time to perhaps start monitoring a node if we never did so far?
+        log.debug("Actor [\(watcher)] watched an actor on: [\(remoteNode)]")
 
-        var existingWatchers = self.remoteWatchers[remoteAddress] ?? []
+        var existingWatchers = self.remoteWatchers[remoteNode] ?? []
         existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
-        self.remoteWatchers[remoteAddress] = existingWatchers
+        self.remoteWatchers[remoteNode] = existingWatchers
     }
 
 
@@ -74,11 +74,11 @@ internal final class ManualFailureObserver: FailureObserver {
     }
 
     func handleAddressDown(_ change: MembershipChange) {
-        let terminatedAddress = change.address
+        let terminatedAddress = change.node
         if let watchers = self.remoteWatchers[terminatedAddress] {
             for ref in watchers {
                 // we notify each actor that was watching this remote address
-                ref.sendSystemMessage(.addressTerminated(terminatedAddress)) // TODO implement as directive returning rather than side effecting
+                ref.sendSystemMessage(.nodeTerminated(terminatedAddress)) // TODO implement as directive returning rather than side effecting
             }
         }
         self.systemTombstones.insert(terminatedAddress)
@@ -86,6 +86,6 @@ internal final class ManualFailureObserver: FailureObserver {
 }
 
 public enum ManualFailureDetectorError: Error {
-    case attemptedToFailUnknownAddress(Membership, UniqueNodeAddress)
-    case watcherActorWasNotLocal(watcherAddress: ActorAddress, localAddress: UniqueNodeAddress?)
+    case attemptedToFailUnknownAddress(Membership, UniqueNode)
+    case watcherActorWasNotLocal(watcherAddress: ActorAddress, localNode: UniqueNode?)
 }

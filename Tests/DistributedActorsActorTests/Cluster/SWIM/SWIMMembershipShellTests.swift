@@ -36,8 +36,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldPingRandomMember() throws {
         setUpBoth()
 
-        local.join(address: remoteUniqueAddress.address)
-        try assertAssociated(local, with: remoteUniqueAddress)
+        local.join(node: remoteUniqueNode.node)
+        try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: String.self)
 
@@ -87,8 +87,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested() throws {
         setUpBoth()
 
-        local.join(address: remoteUniqueAddress.address)
-        try assertAssociated(local, with: remoteUniqueAddress)
+        local.join(node: remoteUniqueNode.node)
+        try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
@@ -166,8 +166,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout() throws {
         setUpBoth()
 
-        local.join(address: remoteUniqueAddress.address)
-        try assertAssociated(local, with: remoteUniqueAddress)
+        local.join(node: remoteUniqueNode.node)
+        try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
@@ -213,9 +213,9 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldSendGossipInAck() throws {
         setUpBoth()
 
-        local.join(address: remoteUniqueAddress.address)
-        try assertAssociated(local, with: remoteUniqueAddress)
-        try assertAssociated(remote, with: localUniqueAddress)
+        local.join(node: remoteUniqueNode.node)
+        try assertAssociated(local, with: remoteUniqueNode)
+        try assertAssociated(remote, with: localUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Ack.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
@@ -233,7 +233,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
             members.count.shouldEqual(2)
             members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
             // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
-            // so we want to expect a full (with address) ref here:
+            // so we want to expect a full (with node) ref here:
             members.shouldContain(SWIM.Member(ref: remote._resolveKnownRemote(swimRef, onRemoteSystem: local), status: .alive(incarnation: 0), protocolPeriod: 0))
         case .none:
             throw p.error("Expected gossip, but got `.none`")
@@ -243,8 +243,8 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldSendGossipInPing_() throws {
         setUpBoth()
 
-        local.join(address: remoteUniqueAddress.address)
-        try assertAssociated(local, with: remoteUniqueAddress)
+        local.join(node: remoteUniqueNode.node)
+        try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
@@ -389,7 +389,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
         let remoteSwim = try remote._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, perpetual: true)
         let localSwim = try local._spawnSystemActor(SWIMMembershipShell(settings: .default).behavior, name: SWIMMembershipShell.name, perpetual: true)
 
-        localSwim.tell(.local(.join(remoteUniqueAddress.address)))
+        localSwim.tell(.local(.join(remoteUniqueNode.node)))
 
         let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
         try awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))

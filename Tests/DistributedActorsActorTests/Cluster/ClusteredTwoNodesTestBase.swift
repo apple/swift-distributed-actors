@@ -60,13 +60,13 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
         return "\(type(of: self))"
     }
 
-    lazy var localUniqueAddress: UniqueNodeAddress = self.local.settings.cluster.uniqueBindAddress
-    lazy var remoteUniqueAddress: UniqueNodeAddress = self.remote.settings.cluster.uniqueBindAddress
+    lazy var localUniqueNode: UniqueNode = self.local.settings.cluster.uniqueBindAddress
+    lazy var remoteUniqueNode: UniqueNode = self.remote.settings.cluster.uniqueBindAddress
 
     func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._local = ActorSystem(systemName) { settings in
             settings.cluster.enabled = true
-            settings.cluster.bindAddress.port = self.localPort
+            settings.cluster.node.port = self.localPort
             modifySettings?(&settings)
         }
 
@@ -76,7 +76,7 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
     func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._remote = ActorSystem(systemName) { settings in
             settings.cluster.enabled = true
-            settings.cluster.bindAddress.port = self.remotePort
+            settings.cluster.node.port = self.remotePort
             modifySettings?(&settings)
         }
 
@@ -98,7 +98,7 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
     }
 
     func joinNodes(node: ActorSystem, with other: ActorSystem) throws {
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(node, with: other.settings.cluster.uniqueBindAddress)
         try assertAssociated(other, with: node.settings.cluster.uniqueBindAddress)
@@ -111,17 +111,17 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
 
 extension ClusteredTwoNodesTestBase {
 
-    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains the `address`.
-    func assertAssociated(_ system: ActorSystem, with address: UniqueNodeAddress,
+    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains the `node`.
+    func assertAssociated(_ system: ActorSystem, with node: UniqueNode,
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                           verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        try self.assertAssociated(system, withExactly: [address], timeout: timeout, interval: interval,
+        try self.assertAssociated(system, withExactly: [node], timeout: timeout, interval: interval,
                                   verbose: verbose, file: file, line: line, column: column)
     }
 
-    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains exactly the passed in `addresses`.
-    /// No "extra" addresses may be part of the
-    func assertAssociated(_ system: ActorSystem, withExactly addresses: [UniqueNodeAddress],
+    /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains exactly the passed in `nodes`.
+    /// No "extra" nodes may be part of the cluster
+    func assertAssociated(_ system: ActorSystem, withExactly nodes: [UniqueNode],
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                           verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
@@ -135,7 +135,7 @@ extension ClusteredTwoNodesTestBase {
             testKit = ActorTestKit(system)
         }
 
-        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: Set<UniqueNodeAddress>.self)
+        let probe = testKit.spawnTestProbe(name: "assertAssociated-probe", expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(1), file: file, line: line, column: column) {
@@ -145,20 +145,20 @@ extension ClusteredTwoNodesTestBase {
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
-                pprint("        Expected nodes: \(String(reflecting: addresses))")
+                pprint("        Expected nodes: \(String(reflecting: nodes))")
             }
 
 
             var diff = Set(associatedNodes)
-            diff.formSymmetricDifference(addresses)
+            diff.formSymmetricDifference(nodes)
             guard diff.isEmpty else {
-                throw TestError("[\(system)] did not associate the expected nodes: [\(addresses)]. " + 
-                    "Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: addresses), diff: \(reflecting: diff). ")
+                throw TestError("[\(system)] did not associate the expected nodes: [\(nodes)]. " + 
+                    "Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: nodes), diff: \(reflecting: diff). ")
             }
         }
     }
 
-    func assertNotAssociated(system: ActorSystem, expectAssociatedAddress address: UniqueNodeAddress,
+    func assertNotAssociated(system: ActorSystem, expectAssociatedNode node: UniqueNode,
                              timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                              verbose: Bool = false) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
@@ -172,7 +172,7 @@ extension ClusteredTwoNodesTestBase {
             testKit = ActorTestKit(system)
         }
 
-        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: Set<UniqueNodeAddress>.self)
+        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
@@ -180,11 +180,11 @@ extension ClusteredTwoNodesTestBase {
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
-                pprint("     Not expected node: \(String(reflecting: address))")
+                pprint("     Not expected node: \(String(reflecting: node))")
             }
 
-            if associatedNodes.contains(address) {
-                throw TestError("[\(system)] unexpectedly associated with node: [\(address)]")
+            if associatedNodes.contains(node) {
+                throw TestError("[\(system)] unexpectedly associated with node: [\(node)]")
             }
         }
     }
@@ -204,10 +204,10 @@ extension ClusteredTwoNodesTestBase {
     func resolveRef<M>(on system: ActorSystem, type: M.Type, address: ActorAddress, targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNodeAddress = targetSystem.settings.cluster.uniqueBindAddress
+        let remoteNode = targetSystem.settings.cluster.uniqueBindAddress
 
-        let uniqueRemoteAddress = ActorAddress(node: remoteNodeAddress, path: address.path, incarnation: address.incarnation)
-        let resolveContext = ResolveContext<M>(address: uniqueRemoteAddress, system: self.local)
+        let uniqueRemoteNode = ActorAddress(node: remoteNode, path: address.path, incarnation: address.incarnation)
+        let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: self.local)
         return system._resolve(context: resolveContext)
     }
 }

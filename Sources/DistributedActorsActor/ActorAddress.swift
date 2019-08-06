@@ -53,7 +53,7 @@ public struct ActorAddress: Equatable, Hashable {
 
     /// Returns a remote node's address if the address points to a remote actor,
     /// or `nil` if the referred to actor is local to the system the address was obtained from.
-    public var node: UniqueNodeAddress? {
+    public var node: UniqueNode? {
         get {
             switch self._location {
             case .local:
@@ -88,7 +88,7 @@ public struct ActorAddress: Equatable, Hashable {
     /// Creates an actor address referring to an address on a _remote_ `node`.
     ///
     /// Usually NOT intended to be used directly in user code, but rather obtained from the serialization infrastructure.
-    public init(node: UniqueNodeAddress, path: ActorPath, incarnation: ActorIncarnation) {
+    public init(node: UniqueNode, path: ActorPath, incarnation: ActorIncarnation) {
         self._location = .remote(node)
         self.path = path
         self.incarnation = incarnation
@@ -175,8 +175,8 @@ extension ActorAddress: Comparable {
     }
 }
 
-extension Optional: Comparable where Wrapped == UniqueNodeAddress {
-    public static func <(lhs: UniqueNodeAddress?, rhs:  UniqueNodeAddress?) -> Bool {
+extension Optional: Comparable where Wrapped == UniqueNode {
+    public static func <(lhs: UniqueNode?, rhs:  UniqueNode?) -> Bool {
         switch (lhs, rhs) {
         case (.some, .none):
             return false
@@ -196,7 +196,7 @@ extension Optional: Comparable where Wrapped == UniqueNodeAddress {
 @usableFromInline
 internal enum ActorLocation: Hashable {
     case local
-    case remote(UniqueNodeAddress)
+    case remote(UniqueNode)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -288,7 +288,7 @@ extension ActorPath {
     internal func makeLocalAddress(incarnation: ActorIncarnation) -> ActorAddress {
         return .init(path: self, incarnation: incarnation)
     }
-    internal func makeRemoteAddress(on node: UniqueNodeAddress, incarnation: ActorIncarnation) -> ActorAddress {
+    internal func makeRemoteAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
         return .init(node: node, path: self, incarnation: incarnation)
     }
 }
@@ -486,9 +486,9 @@ extension ActorIncarnation: Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: NodeAddress
+// MARK: Node
 
-public struct NodeAddress: Hashable {
+public struct Node: Hashable {
     // TODO collapse into one String and index into it?
     public let `protocol`: String
     public var systemName: String
@@ -508,7 +508,7 @@ public struct NodeAddress: Hashable {
     }
 }
 
-extension NodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
+extension Node: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         return "\(self.`protocol`)://\(self.systemName)@\(self.host):\(self.port)"
     }
@@ -517,18 +517,18 @@ extension NodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
     }
 }
 
-extension NodeAddress: Comparable {
-    // Silly but good enough comparison for deciding "who is lower address"
+extension Node: Comparable {
+    // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func <(lhs: NodeAddress, rhs: NodeAddress) -> Bool {
+    public static func <(lhs: Node, rhs: Node) -> Bool {
         return "\(lhs)" < "\(rhs)"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Unique Node Address
+// MARK: UniqueNode
 
-/// A _unique_ node address which includes also the node's unique `UID` which is used to disambiguate
+/// A _unique_ node which includes also the node's unique `UID` which is used to disambiguate
 /// multiple incarnations of a system on the same host/port part -- similar to how an `ActorIncarnation`
 /// is used on the per-actor level.
 ///
@@ -536,18 +536,18 @@ extension NodeAddress: Comparable {
 /// The unique address of a remote node can only be obtained by performing the handshake with it.
 /// Once the remote node accepts our handshake, it offers the other node its unique address.
 /// Only once this address has been obtained can a node communicate with actors located on the remote node.
-public struct UniqueNodeAddress: Hashable {
-    let address: NodeAddress
+public struct UniqueNode: Hashable {
+    let node: Node
     let nid: NodeID
 
-    public init(address: NodeAddress, nid: NodeID) {
-        precondition(address.port > 0, "port MUST be > 0")
-        self.address = address
+    public init(node: Node, nid: NodeID) {
+        precondition(node.port > 0, "port MUST be > 0")
+        self.node = node
         self.nid = nid
     }
 
     public init(`protocol`: String, systemName: String, host: String, port: Int, nid: NodeID) {
-        self.init(address: NodeAddress(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
+        self.init(node: Node(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
     }
 
     public init(systemName: String, host: String, port: Int, nid: NodeID) {
@@ -556,30 +556,30 @@ public struct UniqueNodeAddress: Hashable {
 
 }
 
-extension UniqueNodeAddress: CustomStringConvertible, CustomDebugStringConvertible {
+extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.address)"
+        return "\(self.node)"
     }
     public var debugDescription: String {
         // TODO this somewhat abuses userinfo's password to carry the system UID... double check how we want to render
-        let a = self.address
+        let a = self.node
         return "\(a.protocol)://\(a.systemName):\(self.nid)@\(a.host):\(a.port)"
     }
 }
 
-extension UniqueNodeAddress: Comparable {
-    public static func ==(lhs: UniqueNodeAddress, rhs: UniqueNodeAddress) -> Bool {
+extension UniqueNode: Comparable {
+    public static func ==(lhs: UniqueNode, rhs: UniqueNode) -> Bool {
         // we first compare the NodeIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
-        return lhs.nid == rhs.nid && lhs.address == rhs.address
+        return lhs.nid == rhs.nid && lhs.node == rhs.node
     }
 
-    // Silly but good enough comparison for deciding "who is lower address"
+    // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func <(lhs: UniqueNodeAddress, rhs: UniqueNodeAddress) -> Bool {
-        if lhs.address == rhs.address {
+    public static func <(lhs: UniqueNode, rhs: UniqueNode) -> Bool {
+        if lhs.node == rhs.node {
             return lhs.nid < rhs.nid
         } else {
-            return lhs.address < rhs.address
+            return lhs.node < rhs.node
         }
     }
 }

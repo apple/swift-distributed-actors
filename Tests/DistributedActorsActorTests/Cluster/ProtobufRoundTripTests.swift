@@ -27,8 +27,8 @@ final class ProtobufRoundTripTests: XCTestCase {
     }
 
     let allocator = ByteBufferAllocator()
-    let nodeAddress = UniqueNodeAddress(address: NodeAddress(systemName: "system", host: "127.0.0.1", port: 8888), nid: .random())
-    let otherNodeAddress = UniqueNodeAddress(address: NodeAddress(systemName: "system", host: "888.0.0.1", port: 9999), nid: .random())
+    let node = UniqueNode(node: Node(systemName: "system", host: "127.0.0.1", port: 8888), nid: .random())
+    let otherNode = UniqueNode(node: Node(systemName: "system", host: "888.0.0.1", port: 9999), nid: .random())
 
     let localActorAddress = try! ActorAddress(path: ActorPath._user.appending("hello"), incarnation: .random())
 
@@ -50,7 +50,7 @@ final class ProtobufRoundTripTests: XCTestCase {
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        try check(Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), from: nodeAddress, to: nodeAddress.address),
+        try check(Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), from: node, to: node.node),
             toProto: ProtoHandshakeOffer.init,
             fromProto: Wire.HandshakeOffer.init)
     }

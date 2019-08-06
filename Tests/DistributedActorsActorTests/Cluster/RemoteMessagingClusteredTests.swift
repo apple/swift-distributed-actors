@@ -37,7 +37,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
             }, name: "remoteAcquaintance2")
 
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -71,7 +71,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
             }, name: "remoteAcquaintance2")
 
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -98,7 +98,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
             }, name: "remoteAcquaintance")
 
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -123,7 +123,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
             }, name: "remoteAcquaintance")
 
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -172,7 +172,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
                 return .same
             }, name: "remoteAcquaintance")
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -194,7 +194,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
                 return .same
             }, name: "remoteAcquaintance")
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -226,7 +226,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
             return .same
         }, name: "remoteAcquaintance")
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueAddress.address, replyTo: nil))) // TODO nicer API
+        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
         try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
 
@@ -248,20 +248,20 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         setUpBoth { settings in
             settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
-        remote.join(address: self.localUniqueAddress.address)
+        remote.join(node: self.localUniqueNode.node)
 
-        try assertAssociated(local, with: self.remoteUniqueAddress)
+        try assertAssociated(local, with: self.remoteUniqueNode)
 
         let thirdSystem = ActorSystem("ClusterAssociationTests") { settings in
             settings.cluster.enabled = true
-            settings.cluster.bindAddress.port = 9119
+            settings.cluster.bindPort = 9119
             settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
         defer { thirdSystem.shutdown() }
 
-        thirdSystem.join(address: self.localUniqueAddress.address)
-        thirdSystem.join(address: self.remoteUniqueAddress.address)
-        try assertAssociated(thirdSystem, withExactly: [self.localUniqueAddress, self.remoteUniqueAddress])
+        thirdSystem.join(node: self.localUniqueNode.node)
+        thirdSystem.join(node: self.remoteUniqueNode.node)
+        try assertAssociated(thirdSystem, withExactly: [self.localUniqueNode, self.remoteUniqueNode])
         let thirdTestKit = ActorTestKit(thirdSystem)
 
         let localRef: ActorRef<EchoTestMessage> = try local.spawn(.receiveMessage { message in

@@ -75,7 +75,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
             self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
-        case .addressTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
+        case .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
             () // ignore all other messages // TODO: why?
         }
     }

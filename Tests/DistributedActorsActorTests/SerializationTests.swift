@@ -91,7 +91,7 @@ class SerializationTests: XCTestCase {
             let decoder = JSONDecoder()
 
             let context = ActorSerializationContext(log: self.system.log,
-                localNodeAddress: self.system.settings.cluster.uniqueBindAddress,
+                localNode: self.system.settings.cluster.uniqueBindAddress,
                 system: self.system,
                 traversable: self.system)
 
@@ -164,8 +164,8 @@ class SerializationTests: XCTestCase {
         serializedFormat.contains("sact").shouldBeTrue()
         serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindAddress.nid)").shouldBeTrue()
         serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
-        serializedFormat.contains("\(ClusterSettings.Default.host)").shouldBeTrue()
-        serializedFormat.contains("\(ClusterSettings.Default.port)").shouldBeTrue()
+        serializedFormat.contains("\(ClusterSettings.Default.bindHost)").shouldBeTrue()
+        serializedFormat.contains("\(ClusterSettings.Default.bindPort)").shouldBeTrue()
 
         let back: HasStringRef = try shouldNotThrow {
             try remoteCapableSystem.serialization.deserialize(HasStringRef.self, from: bytes)

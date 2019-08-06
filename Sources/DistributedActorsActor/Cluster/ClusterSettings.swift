@@ -23,37 +23,53 @@ public struct ClusterSettings {
 
     public enum Default {
         public static let systemName: String = "ActorSystem"
-        public static let host: String = "localhost"
-        public static let port: Int = 7337
+        public static let bindHost: String = "localhost"
+        public static let bindPort: Int = 7337
         public static let failureDetector: FailureDetectorSettings = .manual
     }
 
     public static var `default`: ClusterSettings {
-        let defaultBindAddress: NodeAddress = .init(systemName: Default.systemName, host: Default.host, port: Default.port)
+        let defaultNode = Node(systemName: Default.systemName, host: Default.bindHost, port: Default.bindPort)
         let failureDetector = Default.failureDetector
-        return ClusterSettings(bindAddress: defaultBindAddress, failureDetector: failureDetector)
+        return ClusterSettings(node: defaultNode, failureDetector: failureDetector)
     }
 
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
 
-    /// If set to a non-`nil` value, the system will attempt to bind to the provided address on startup.
-    /// Once bound, the system is able to accept incoming connections.
-    ///
-    /// Changing the address preserves the systems `Remote.NodeID`.
-    public var bindAddress: NodeAddress
+    /// Hostname used to accept incoming connections from other nodes
+    public var bindHost: String {
+        set {
+            self.node.host = newValue
+        }
+        get {
+            return self.node.host
+        }
+    }
+
+    /// Port used to accept incoming connections from other nodes
+    public var bindPort: Int {
+        set {
+            self.node.port = newValue
+        }
+        get {
+            return self.node.port
+        }
+    }
+
+    public var node: Node
 
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
-    public var uniqueBindAddress: UniqueNodeAddress {
-        return UniqueNodeAddress(address: self.bindAddress, nid: self.nid)
+    public var uniqueBindAddress: UniqueNode {
+        return UniqueNode(node: self.node, nid: self.nid)
     }
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeBackoffStrategy: BackoffStrategy = Backoff.constant(.milliseconds(100))
 
-    /// `NodeID` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
+    /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var nid: NodeID
 
     /// If set, all communication with other nodes will be secured using TLS
@@ -61,7 +77,7 @@ public struct ClusterSettings {
 
     public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
 
-    /// `ProtocolVersion` to be used when exposing `UniqueNodeAddress` for node configured by using these settings.
+    /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var protocolVersion: Swift Distributed ActorsActor.Version {
         return self._protocolVersion
     }
@@ -112,8 +128,8 @@ public struct ClusterSettings {
     var traceLogLevel: Logger.Level? = nil
     #endif
 
-    public init(bindAddress: NodeAddress, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
-        self.bindAddress = bindAddress
+    public init(node: Node, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
+        self.node = node
         self.nid = NodeID.random()
         self.failureDetector = failureDetector
         self.tls = tls

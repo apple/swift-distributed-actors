@@ -31,7 +31,7 @@ internal class ClusterShell {
 
     /// Used by remote actor refs to obtain associations
     /// - Protected by: `_associationsLock`
-    private var _associationsRegistry: [UniqueNodeAddress: AssociationRemoteControl]
+    private var _associationsRegistry: [UniqueNode: AssociationRemoteControl]
 
     // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
     // any earlier access to the pool is a bug (in our library) and must be treated as such.
@@ -43,9 +43,9 @@ internal class ClusterShell {
         return pool
     }
 
-    internal func associationRemoteControl(with nodeAddress: UniqueNodeAddress) -> AssociationRemoteControl? {
+    internal func associationRemoteControl(with node: UniqueNode) -> AssociationRemoteControl? {
         return self._associationsLock.withLock {
-            self._associationsRegistry[nodeAddress]
+            self._associationsRegistry[node]
         }
     }
 
@@ -61,7 +61,7 @@ internal class ClusterShell {
     private func cacheAssociationRemoteControl(_ associationState: AssociationStateMachine.AssociatedState) {
         self._associationsLock.withLockVoid {
             // TODO or association ID rather than the remote id?
-            self._associationsRegistry[associationState.remoteAddress] = associationState.makeRemoteControl()
+            self._associationsRegistry[associationState.remoteNode] = associationState.makeRemoteControl()
         }
     }
     
@@ -148,28 +148,28 @@ internal class ClusterShell {
     }
     // this is basically our API internally for this system
     enum CommandMessage: NoSerializationVerification {
-        case handshakeWith(NodeAddress, replyTo: ActorRef<HandshakeResult>?)
+        case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
         case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
     } 
     enum QueryMessage: NoSerializationVerification {
-        case associatedNodes(ActorRef<Set<UniqueNodeAddress>>) // TODO better type here
-        // TODO: case subscribeAssociations(ActorRef<[UniqueNodeAddress]>) // to receive events about it one by one
+        case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO better type here
+        // TODO: case subscribeAssociations(ActorRef<[UniqueNode]>) // to receive events about it one by one
     }
     internal enum InboundMessage {
         case handshakeOffer(Wire.HandshakeOffer, channel: Channel, replyTo: EventLoopPromise<Wire.HandshakeResponse>)
         case handshakeAccepted(Wire.HandshakeAccept, channel: Channel)
         case handshakeRejected(Wire.HandshakeReject)
-        case handshakeFailed(NodeAddress, Error) // TODO remove?
+        case handshakeFailed(Node, Error) // TODO remove?
     }
 
     /// TODO reformulate as Wire.accept / reject?
     internal enum HandshakeResult: Equatable {
-        case success(UniqueNodeAddress)
+        case success(UniqueNode)
         case failure(HandshakeConnectionError)
     }
     struct HandshakeConnectionError: Error, Equatable { // TODO merge with HandshakeError?
-        let address: NodeAddress
+        let node: Node
         let message: String
     }
 
@@ -267,18 +267,18 @@ extension ClusterShell {
 
 // Implements: Handshake init
 extension ClusterShell {
-    /// Initiate an outgoing handshake to the `address`
+    /// Initiate an outgoing handshake to the `remoteNode`
     ///
     /// Handshakes are currently not performed concurrently but one by one.
-    internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
+    internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
         var state = state
 
-        if let existingAssociation = state.association(with: remoteAddress) {
+        if let existingAssociation = state.association(with: remoteNode) {
             // TODO we maybe could want to attempt and drop the other "old" one?
-            state.log.warning("Attempted associating with already associated node: [\(remoteAddress)], existing association: [\(existingAssociation)]")
+            state.log.warning("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
             switch existingAssociation {
             case .associated(let associationState):
-                replyTo?.tell(.success(associationState.remoteAddress))
+                replyTo?.tell(.success(associationState.remoteNode))
             }
             return .same
         }
@@ -289,21 +289,21 @@ extension ClusterShell {
             case .success(.accept(let accept)):
                 /// we need to switch here, since we MAY have been attached to an ongoing handshake which may have been initiated
                 /// in either direction // TODO check if this is really needed.
-                let associatedRemoteAddress: UniqueNodeAddress
-                if accept.from.address == remoteAddress {
-                    associatedRemoteAddress = accept.from
+                let associatedRemoteNode: UniqueNode
+                if accept.from.node == remoteNode {
+                    associatedRemoteNode = accept.from
                 } else {
-                    associatedRemoteAddress = accept.origin
+                    associatedRemoteNode = accept.origin
                 }
-                replyTo?.tell(.success(associatedRemoteAddress))
+                replyTo?.tell(.success(associatedRemoteNode))
             case .success(.reject(let reject)):
-                replyTo?.tell(.failure(HandshakeConnectionError(address: remoteAddress, message: reject.reason)))
+                replyTo?.tell(.failure(HandshakeConnectionError(node: remoteNode, message: reject.reason)))
             case .failure(let error):
-                replyTo?.tell(HandshakeResult.failure(.init(address: remoteAddress, message: "\(error)")))
+                replyTo?.tell(HandshakeResult.failure(.init(node: remoteNode, message: "\(error)")))
             }
         }
 
-        let handshakeState = state.registerHandshake(with: remoteAddress, whenCompleted: whenHandshakeComplete)
+        let handshakeState = state.registerHandshake(with: remoteNode, whenCompleted: whenHandshakeComplete)
         // we MUST register the intention of shaking hands with remoteAddress before obtaining the connection,
         // in order to let the fsm handle any retry decisions in face of connection failures et al.
 
@@ -322,14 +322,14 @@ extension ClusterShell {
     func connectSendHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState, initiated: HandshakeStateMachine.InitiatedState) -> Behavior<Message> {
         var state = state
 
-        state.log.info("Extending handshake offer to \(initiated.remoteAddress))") // TODO log retry stats?
+        state.log.info("Extending handshake offer to \(initiated.remoteNode))") // TODO log retry stats?
         let offer: Wire.HandshakeOffer = initiated.makeOffer()
-        self.tracelog(context, .send(to: initiated.remoteAddress), message: offer)
+        self.tracelog(context, .send(to: initiated.remoteNode), message: offer)
 
         let outboundChanElf: EventLoopFuture<Channel> = self.bootstrapClientSide(
             system: context.system,
             shell: context.myself,
-            targetAddress: initiated.remoteAddress,
+            targetNode: initiated.remoteNode,
             handshakeOffer: offer,
             settings: state.settings,
             serializationPool: self.serializationPool
@@ -341,7 +341,7 @@ extension ClusterShell {
                 return self.ready(state: state.onHandshakeChannelConnected(initiated: initiated, channel: chan))
 
             case .failure(let error):
-                return self.onOutboundConnectionError(context, state, with: initiated.remoteAddress, error: error)
+                return self.onOutboundConnectionError(context, state, with: initiated.remoteNode, error: error)
             }
         }
     }
@@ -367,7 +367,7 @@ extension ClusterShell {
                 self.cacheAssociationRemoteControl(association)
 
                 let accept = completedHandshake.makeAccept()
-                self.tracelog(context, .send(to: offer.from.address), message: accept)
+                self.tracelog(context, .send(to: offer.from.node), message: accept)
                 promise.succeed(.accept(accept))
 
                 return self.ready(state: state)
@@ -378,7 +378,7 @@ extension ClusterShell {
                 // note that we should NOT abort the channel here since we still want to send back the rejection.
 
                 let reject: Wire.HandshakeReject = rejectedHandshake.makeReject()
-                self.tracelog(context, .send(to: offer.from.address), message: reject)
+                self.tracelog(context, .send(to: offer.from.node), message: reject)
                 promise.succeed(.reject(reject))
 
                 return self.ready(state: state)
@@ -386,7 +386,7 @@ extension ClusterShell {
         case .abortDueToConcurrentHandshake:
             // concurrent handshake and we should abort
             let error = HandshakeConnectionError(
-                address: offer.from.address,
+                node: offer.from.node,
                 message: """
                          Terminating this connection, as there is a concurrently established connection with same host [\(offer.from)] \
                          which will be used to complete the handshake.
@@ -404,11 +404,11 @@ extension ClusterShell {
 // MARK: Failures to obtain connections
 extension ClusterShell {
 
-    func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteAddress: NodeAddress, error: Error) -> Behavior<Message> {
+    func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
         var state = state
-        state.log.warning("Failed await for outbound channel to \(remoteAddress); Error was: \(error)")
+        state.log.warning("Failed await for outbound channel to \(remoteNode); Error was: \(error)")
 
-        guard let handshakeState = state.handshakeInProgress(with: remoteAddress) else {
+        guard let handshakeState = state.handshakeInProgress(with: remoteNode) else {
             state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.") // TODO meh or fail hard
             return .ignore
         }
@@ -417,15 +417,15 @@ extension ClusterShell {
         case .initiated(var initiated):
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
-                state.log.info("Schedule handshake retry to: [\(initiated.remoteAddress)] delay: [\(delay)]")
+                state.log.info("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
                 context.timers.startSingle(
-                    key: TimerKey("handshake-timer-\(remoteAddress)"), 
+                    key: TimerKey("handshake-timer-\(remoteNode)"), 
                     message: .command(.retryHandshake(initiated)),
                     delay: delay
                 )
             case .giveUpOnHandshake:
-                if let hsmState = state.abortOutgoingHandshake(with: remoteAddress) {
-                    self.notifyHandshakeFailure(state: hsmState, address: remoteAddress, error: error)
+                if let hsmState = state.abortOutgoingHandshake(with: remoteNode) {
+                    self.notifyHandshakeFailure(state: hsmState, node: remoteNode, error: error)
                 }
             }
 
@@ -459,7 +459,7 @@ extension ClusterShell {
 
         let association = state.associate(completed, channel: channel)
 
-        state.log.debug("[Cluster] Associated with: \(completed.remoteAddress).")
+        state.log.debug("[Cluster] Associated with: \(completed.remoteNode).")
         self.cacheAssociationRemoteControl(association)
 
         completed.whenCompleted?.succeed(.accept(completed.makeAccept()))
@@ -473,32 +473,32 @@ extension ClusterShell {
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
 
         if let hsmState = state.abortOutgoingHandshake(with: reject.from) {
-            notifyHandshakeFailure(state: hsmState, address: reject.from, error: HandshakeConnectionError(address: reject.from, message: reject.reason))
+            notifyHandshakeFailure(state: hsmState, node: reject.from, error: HandshakeConnectionError(node: reject.from, message: reject.reason))
         }
 
         return self.ready(state: state)
     }
 
-    private func onHandshakeFailed(_ state: ClusterShellState, with address: NodeAddress, error: Error) -> Behavior<Message> {
+    private func onHandshakeFailed(_ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
         var state = state
 
-        state.log.error("Handshake error while connecting [\(address)]: \(error)")
-        if let hsmState = state.abortOutgoingHandshake(with: address) {
-            self.notifyHandshakeFailure(state: hsmState, address: address, error: error)
+        state.log.error("Handshake error while connecting [\(node)]: \(error)")
+        if let hsmState = state.abortOutgoingHandshake(with: node) {
+            self.notifyHandshakeFailure(state: hsmState, node: node, error: error)
         }
 
         return self.ready(state: state)
     }
 
 
-    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, address: NodeAddress, error: Error) {
+    private func notifyHandshakeFailure(state: HandshakeStateMachine.State, node: Node, error: Error) {
         switch state {
         case .initiated(let initiated):
-            initiated.whenCompleted?.fail(HandshakeConnectionError(address: address, message: "\(error)"))
+            initiated.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
         case .wasOfferedHandshake(let offered):
-            offered.whenCompleted?.fail(HandshakeConnectionError(address: address, message: "\(error)"))
+            offered.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
         case .completed(let completed):
-            completed.whenCompleted?.fail(HandshakeConnectionError(address: address, message: "\(error)"))
+            completed.whenCompleted?.fail(HandshakeConnectionError(node: node, message: "\(error)"))
         case .inFlight:
             preconditionFailure("An in-flight marker state should never be stored, yet was encountered in \(#function)")
         }
@@ -511,7 +511,7 @@ extension ClusterShell {
 extension ClusterShell {
 
     fileprivate func unbind(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
-        let addrDesc = "\(state.settings.uniqueBindAddress.address.host):\(state.settings.uniqueBindAddress.address.port)"
+        let addrDesc = "\(state.settings.uniqueBindAddress.node.host):\(state.settings.uniqueBindAddress.node.port)"
         return context.awaitResult(of: state.channel.close(mode: .all), timeout: .seconds(3)) { // TODO hardcoded timeout
             switch $0 {
             case .success:
@@ -555,9 +555,9 @@ extension ClusterShell {
     }
 
     internal enum TraceLogType: CustomStringConvertible {
-        case send(to: NodeAddress)
-        case receive(from: NodeAddress)
-        case receiveUnique(from: UniqueNodeAddress)
+        case send(to: Node)
+        case receive(from: Node)
+        case receiveUnique(from: UniqueNode)
 
         var description: String {
             switch self {
@@ -583,18 +583,18 @@ extension ActorSystem {
         return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
     }
 
-    public func join(address: NodeAddress) {
-        self.join(address: address, replyTo: nil)
+    public func join(node: Node) {
+        self.join(node: node, replyTo: nil)
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
-    internal func join(address: NodeAddress, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
-        self.clusterShell.tell(.command(.handshakeWith(address, replyTo: replyTo)))
+    internal func join(node: Node, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
+        self.clusterShell.tell(.command(.handshakeWith(node, replyTo: replyTo)))
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
     public func _dumpAssociations() {
-        let ref: ActorRef<Set<UniqueNodeAddress>> = try! self.spawnAnonymous(.receive { context, nodes in
+        let ref: ActorRef<Set<UniqueNode>> = try! self.spawnAnonymous(.receive { context, nodes in
             let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
             context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
             return .stopped

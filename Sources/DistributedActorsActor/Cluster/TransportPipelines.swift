@@ -98,12 +98,12 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
 
     private let log: Logger
     private let cluster: ClusterShell.Ref
-    private let localAddress: UniqueNodeAddress
+    private let localNode: UniqueNode
 
-    init(log: Logger, cluster: ClusterShell.Ref, localAddress: UniqueNodeAddress) {
+    init(log: Logger, cluster: ClusterShell.Ref, localNode: UniqueNode) {
         self.log = log
         self.cluster = cluster
-        self.localAddress = localAddress
+        self.localNode = localNode
     }
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -466,7 +466,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
         case .giveUpAndSeverTies:
             // FIXME implement this once we have the Kill or Down command on cluster shell
-            // cluster.tell(Down(that address))
+            // cluster.tell(Down(that node))
             fatalError("TODO; kill the connection notify the membership!!!!")
         }
     }
@@ -634,7 +634,7 @@ extension ClusterShell {
 
     // TODO: abstract into `Transport`?
 
-    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNodeAddress, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
@@ -674,7 +674,7 @@ extension ClusterShell {
                     ("magic validator", ProtocolMagicBytesValidator()),
                     ("framing writer", LengthFieldPrepender(lengthFieldLength: .four, lengthFieldEndianness: .big)),
                     ("framing reader", ByteToMessageHandler(Framing(lengthFieldLength: .four, lengthFieldEndianness: .big))),
-                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localAddress: bindAddress)),
+                    ("receiving handshake handler", ReceivingHandshakeHandler(log: log, cluster: shell, localNode: bindAddress)),
                     // ("bytes dumper", DumpRawBytesDebugHandler(role: .server, log: log)), // FIXME only include for debug -DSACT_TRACE_NIO things?
                     ("wire envelope handler", WireEnvelopeHandler(log: log)),
                     ("serialization handler", SerializationHandler(log: log, serializationPool: serializationPool)),
@@ -694,10 +694,10 @@ extension ClusterShell {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        return bootstrap.bind(host: bindAddress.address.host, port: Int(bindAddress.address.port)) // TODO separate setup from using it
+        return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO separate setup from using it
     }
 
-    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetAddress: NodeAddress, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
+    internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         // TODO: Implement "setup" inside settings, so that parts of bootstrap can be done there, e.g. by end users without digging into remoting internals
@@ -711,7 +711,7 @@ extension ClusterShell {
                     do {
                         let targetHost: String?
                         if tlsConfig.certificateVerification == .fullVerification {
-                            targetHost = targetAddress.host
+                            targetHost = targetNode.host
                         } else {
                             targetHost = nil
                         }
@@ -750,7 +750,7 @@ extension ClusterShell {
                 return self.addChannelHandlers(channelHandlers, to: channel.pipeline)
             }
 
-        return bootstrap.connect(host: targetAddress.host, port: Int(targetAddress.port)) // TODO separate setup from using it
+        return bootstrap.connect(host: targetNode.host, port: Int(targetNode.port)) // TODO separate setup from using it
     }
 
     private func addChannelHandlers(_ handlers: [(String?, ChannelHandler)], to pipeline: ChannelPipeline) -> EventLoopFuture<Void> {

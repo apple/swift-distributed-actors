@@ -53,17 +53,17 @@ class FailureDetectorTests: ClusteredTwoNodesTestBase {
             }
         }, name: "local")
 
-        // --- manually trigger failure detector for remote address ---
+        // --- manually trigger failure detector for remote node ---
 
         let failureDetector: FailureDetectorShell.Ref = try getLocalFailureDetector(p: p)
 
         // FIXME: this should be done automatically upon association
-        let localMember = Member(address: self.localUniqueAddress, status: .alive)
-        let remoteMember = Member(address: self.remoteUniqueAddress, status: .alive)
+        let localMember = Member(node: self.localUniqueNode, status: .alive)
+        let remoteMember = Member(node: self.remoteUniqueNode, status: .alive)
         failureDetector.tell(.membershipSnapshot([localMember, remoteMember])) // join all members
 
         // down the remote node
-        let downRemoteChange = MembershipChange(address: self.remoteUniqueAddress, fromStatus: MemberStatus.alive, toStatus: MemberStatus.down)
+        let downRemoteChange = MembershipChange(node: self.remoteUniqueNode, fromStatus: MemberStatus.alive, toStatus: MemberStatus.down)
         failureDetector.tell(.membershipChange(downRemoteChange))
 
         // --- should cause termination of all remote actors, observed by the local actor ---

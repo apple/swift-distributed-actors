@@ -30,7 +30,7 @@ internal protocol ReadOnlyClusterState {
     var backoffStrategy: BackoffStrategy { get }
 
     /// Unique address of the current node.
-    var localAddress: UniqueNodeAddress { get }
+    var localNode: UniqueNode { get }
     var settings: ClusterSettings { get }
 }
 
@@ -42,7 +42,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     public var log: Logger
     public let settings: ClusterSettings
 
-    public let localAddress: UniqueNodeAddress
+    public let localNode: UniqueNode
     public let channel: Channel
 
     public let eventLoopGroup: EventLoopGroup
@@ -53,8 +53,8 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     public let allocator: ByteBufferAllocator
 
-    private var _handshakes: [NodeAddress: HandshakeStateMachine.State] = [:]
-    private var _associations: [NodeAddress: AssociationStateMachine.State] = [:]
+    private var _handshakes: [Node: HandshakeStateMachine.State] = [:]
+    private var _associations: [Node: AssociationStateMachine.State] = [:]
 
     // TODO somehow protect / sync associations and membership view?
     // TODO this may move... not sure yet who should "own" the membership; we'll see once we do membership provider or however we call it then
@@ -65,23 +65,23 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
-        self.localAddress = settings.uniqueBindAddress
+        self.localNode = settings.uniqueBindAddress
 
         self.channel = channel
 
         self.log = log
     }
 
-    func association(with address: NodeAddress) -> AssociationStateMachine.State? {
-        return self._associations[address]
+    func association(with node: Node) -> AssociationStateMachine.State? {
+        return self._associations[node]
     }
 
-    func associatedAddresses() -> Set<UniqueNodeAddress> {
-        var set: Set<UniqueNodeAddress> = .init(minimumCapacity: self._associations.count)
+    func associatedAddresses() -> Set<UniqueNode> {
+        var set: Set<UniqueNode> = .init(minimumCapacity: self._associations.count)
 
         for asm in self._associations.values {
             switch asm {
-            case .associated(let state): set.insert(state.remoteAddress)
+            case .associated(let state): set.insert(state.remoteNode)
             }
         }
 
@@ -100,8 +100,8 @@ extension ClusterShellState {
     ///
     /// This MAY return `inFlight`, in which case it means someone already initiated a handshake with given node,
     /// and we should _do nothing_ and trust that our `whenCompleted` will be notified when the already in-flight handshake completes.
-    mutating func registerHandshake(with remoteAddress: NodeAddress, whenCompleted: EventLoopPromise<Wire.HandshakeResponse>) -> HandshakeStateMachine.State {
-        if let handshakeState = self.handshakeInProgress(with: remoteAddress) {
+    mutating func registerHandshake(with remoteNode: Node, whenCompleted: EventLoopPromise<Wire.HandshakeResponse>) -> HandshakeStateMachine.State {
+        if let handshakeState = self.handshakeInProgress(with: remoteNode) {
             switch handshakeState {
             case .initiated(let state):
                 state.whenCompleted?.futureResult.cascade(to: whenCompleted)
@@ -110,33 +110,33 @@ extension ClusterShellState {
             case .wasOfferedHandshake(let state):
                 state.whenCompleted?.futureResult.cascade(to: whenCompleted)
             case .inFlight:
-                fatalError("An inFlight may never be stored, yet seemingly was! Offending state: \(self) for node \(remoteAddress)")
+                fatalError("An inFlight may never be stored, yet seemingly was! Offending state: \(self) for node \(remoteNode)")
             }
 
             return .inFlight(HandshakeStateMachine.InFlightState(state: self, whenCompleted: whenCompleted))
         }
 
-        if let existingAssociation = self.association(with: remoteAddress) {
-            fatalError("Beginning new handshake to [\(reflecting: remoteAddress)], with already existing association: \(existingAssociation). Could this be a bug?")
+        if let existingAssociation = self.association(with: remoteNode) {
+            fatalError("Beginning new handshake to [\(reflecting: remoteNode)], with already existing association: \(existingAssociation). Could this be a bug?")
         }
 
         let initiated = HandshakeStateMachine.InitiatedState(
             settings: self.settings,
-            localAddress: self.localAddress,
-            connectTo: remoteAddress,
+            localNode: self.localNode,
+            connectTo: remoteNode,
             whenCompleted: whenCompleted
         )
         let handshakeState = HandshakeStateMachine.State.initiated(initiated)
-        self._handshakes[remoteAddress] = handshakeState
+        self._handshakes[remoteNode] = handshakeState
         return handshakeState
     }
 
     mutating func onHandshakeChannelConnected(initiated: HandshakeStateMachine.InitiatedState, channel: Channel) -> ClusterShellState {
         #if DEBUG
-        let handshakeInProgress: HandshakeStateMachine.State? = self.handshakeInProgress(with: initiated.remoteAddress)
+        let handshakeInProgress: HandshakeStateMachine.State? = self.handshakeInProgress(with: initiated.remoteNode)
 
         if case let .some(.initiated(existingInitiated)) = handshakeInProgress {
-            if existingInitiated.remoteAddress != initiated.remoteAddress {
+            if existingInitiated.remoteNode != initiated.remoteNode {
                 fatalError("""
                            onHandshakeChannelConnected MUST be called with the existing ongoing initiated
                            handshake! Existing: \(existingInitiated), passed in: \(initiated).
@@ -151,12 +151,12 @@ extension ClusterShellState {
         var initiated = initiated
         initiated.onChannelConnected(channel: channel)
 
-        self._handshakes[initiated.remoteAddress] = .initiated(initiated)
+        self._handshakes[initiated.remoteNode] = .initiated(initiated)
         return self
     }
 
-    func handshakeInProgress(with address: NodeAddress) -> HandshakeStateMachine.State? {
-        return self._handshakes[address]
+    func handshakeInProgress(with node: Node) -> HandshakeStateMachine.State? {
+        return self._handshakes[node]
     }
 
     /// Abort a handshake, clearing any of its state as well as closing the passed in channel
@@ -164,8 +164,8 @@ extension ClusterShellState {
     ///
     /// - Faults: when called in wrong state of an ongoing handshake
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
-    mutating func abortOutgoingHandshake(with address: NodeAddress) -> HandshakeStateMachine.State? {
-        guard let state = self._handshakes.removeValue(forKey: address) else {
+    mutating func abortOutgoingHandshake(with node: Node) -> HandshakeStateMachine.State? {
+        guard let state = self._handshakes.removeValue(forKey: node) else {
             return nil
         }
 
@@ -186,7 +186,7 @@ extension ClusterShellState {
 
     /// Abort an incoming handshake channel;
     /// As there may be a concurrent negotiation ongoing on another (outgoing) connection, we do NOT remove the handshake
-    /// by address from the _handshakes.
+    /// by node from the _handshakes.
     ///
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
     mutating func abortIncomingHandshake(offer: Wire.HandshakeOffer, channel: Channel) {
@@ -202,7 +202,7 @@ extension ClusterShellState {
     ///
     ///   L initiates connection to R; R initiates connection to L;
     ///   Both nodes store an `initiated` state for the handshake; both will receive the others offer;
-    ///   We need to perform a tie-break to see which one should actually "drive" this connecting: we pick the "lower address".
+    ///   We need to perform a tie-break to see which one should actually "drive" this connecting: we pick the "lower node".
     ///
     ///   Upon tie-break the nodes follow these two roles:
     ///     Winner: Keeps the outgoing connection, negotiates and replies accept/reject on the "incoming" connection from the remote node.
@@ -212,25 +212,25 @@ extension ClusterShellState {
         func negotiate(promise: EventLoopPromise<Wire.HandshakeResponse>? = nil) -> OnIncomingHandshakeOfferDirective {
             let promise = promise ?? self.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
             let fsm = HandshakeStateMachine.HandshakeReceivedState(state: self, offer: offer, whenCompleted: promise)
-            self._handshakes[offer.from.address] = .wasOfferedHandshake(fsm)
+            self._handshakes[offer.from.node] = .wasOfferedHandshake(fsm)
             return .negotiate(fsm)
         }
 
-        guard let inProgress = self._handshakes[offer.from.address] else {
+        guard let inProgress = self._handshakes[offer.from.node] else {
             // no other concurrent handshakes in progress; good, this is happy path, so we simply continue our negotiation
             return negotiate()
         }
 
         switch inProgress {
         case .initiated(let initiated):
-            /// order on addresses is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
-            let tieBreakWinner = initiated.localAddress < offer.from
+            /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
+            let tieBreakWinner = initiated.localNode < offer.from
             self.log.warning("""
-                             Concurrently initiated handshakes from nodes [\(initiated.localAddress)](local) and [\(offer.from)](remote) \
+                             Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.from)](remote) \
                              detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
                              """)
             if tieBreakWinner {
-                if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.address) {
+                if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.node) {
                     self.log.info("Aborted handshake, as concurrently negotiating another one with same node already; Aborted handshake: \(abortedHandshake)")
                 }
 
@@ -263,10 +263,10 @@ extension ClusterShellState {
     }
 
     mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? { // TODO return directives to act on
-        if let inProgressHandshake = self._handshakes[accept.from.address] {
+        if let inProgressHandshake = self._handshakes[accept.from.node] {
             switch inProgressHandshake {
             case .initiated(let hsm):
-                let completed = HandshakeStateMachine.CompletedState(fromInitiated: hsm, remoteAddress: accept.from)
+                let completed = HandshakeStateMachine.CompletedState(fromInitiated: hsm, remoteNode: accept.from)
                 return completed
             case .wasOfferedHandshake:
                 // TODO model the states to express this can not happen // there is a client side state machine and a server side one
@@ -287,7 +287,7 @@ extension ClusterShellState {
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
     /// Stores an `Association` for the newly established association;
     mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.AssociatedState {
-        guard self._handshakes.removeValue(forKey: handshake.remoteAddress.address) != nil else {
+        guard self._handshakes.removeValue(forKey: handshake.remoteNode.node) != nil else {
             fatalError("Can not complete a handshake which was not in progress!")
             // TODO perhaps we instead just warn and ignore this; since it should be harmless
         }
@@ -300,12 +300,12 @@ extension ClusterShellState {
         // TODO: Membership should drive all decisions about "allowed to join" etc, and the replacement decisions as well.
 
         func storeAssociation() {
-            self._associations[handshake.remoteAddress.address] = state
+            self._associations[handshake.remoteNode.node] = state
         }
 
-        let change = self.membership.join(handshake.remoteAddress)
+        let change = self.membership.join(handshake.remoteNode)
         if change.isReplace {
-            switch self.association(with: handshake.remoteAddress.address) {
+            switch self.association(with: handshake.remoteNode.node) {
             case .some(.associated(let associated)):
                 // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
                 // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.

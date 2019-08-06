@@ -62,7 +62,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         try! shouldNotThrow() { try self.channel.pipeline.addHandler(self.readRecorder).wait() }
         /// writes go this way: ^^^
 
-        self.remoteControl = AssociationRemoteControl(channel: channel, remoteAddress: .init(address: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
+        self.remoteControl = AssociationRemoteControl(channel: channel, remoteNode: .init(node: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
     }
 
     override func tearDown() {
