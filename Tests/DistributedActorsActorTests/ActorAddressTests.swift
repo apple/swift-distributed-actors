@@ -97,7 +97,7 @@ final class ActorAddressTests: XCTestCase {
 
     func test_remote_actorAddress_shouldPrintNicely() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let node = UniqueNodeAddress(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeID(11111))
+        let node = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeID(11111))
         let remote = ActorAddress(node: node, path: address.path, incarnation: ActorIncarnation(8888))
 
         String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello#8888")

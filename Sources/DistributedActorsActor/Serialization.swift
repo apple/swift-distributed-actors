@@ -67,13 +67,13 @@ public struct Serialization {
             return ActorOriginLogHandler(context)
         })
         // TODO: Dry up setting this metadata
-        log[metadataKey: "nodeAddress"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
+        log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
         log.logLevel = systemSettings.defaultLogLevel
         self.log = log
 
         let context = ActorSerializationContext(
             log: log,
-            localNodeAddress: settings.localNodeAddress,
+            localNode: settings.localNode,
             system: system,
             traversable: traversable
         )
@@ -312,14 +312,14 @@ public struct ActorSerializationContext {
     private let traversable: _ActorTreeTraversable
 
     /// Address to be included in serialized actor refs if they are local references.
-    public let localNodeAddress: UniqueNodeAddress
+    public let localNode: UniqueNode
 
     internal init(log: Logger,
-                  localNodeAddress: UniqueNodeAddress,
+                  localNode: UniqueNode,
                   system: ActorSystem,
                   traversable: _ActorTreeTraversable) {
         self.log = log
-        self.localNodeAddress = localNodeAddress
+        self.localNode = localNode
         self.system = system
         self.traversable = traversable
     }
@@ -399,14 +399,14 @@ public struct SerializationSettings {
     /// Use this option to test that all messages you expected to
     public var allMessages: Bool = false
 
-    /// Address to be included in actor addresses when serializing them.
-    /// By default this should be equal to the exposed node address of the actor system.
+    /// `UniqueNode` to be included in actor addresses when serializing them.
+    /// By default this should be equal to the exposed node of the actor system.
     /// 
     /// If clustering is not configured on this node, this value SHOULD be `nil`,
     /// as it is not useful to render any address for actors which shall never be reached remotely.
     ///
     /// This is set automatically when modifying the systems cluster settings.
-    public var localNodeAddress: UniqueNodeAddress = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
+    public var localNode: UniqueNode = .init(systemName: "<ActorSystem>", host: "127.0.0.1", port: 7337, nid: NodeID(0))
 
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
@@ -692,7 +692,7 @@ internal class SystemMessageSerializer: Serializer<SystemMessage> {
         case .childTerminated:
             fatalError("Not implemented yet") // FIXME: implement me
 
-        case .addressTerminated:
+        case .nodeTerminated:
             return fatalErrorBacktrace("not implemented yet") // and should not really be, this message must only be sent locally
 
         case .tombstone:

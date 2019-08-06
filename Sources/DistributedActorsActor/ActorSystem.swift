@@ -93,11 +93,11 @@ public final class ActorSystem {
         self.name = name
 
         var settings = ActorSystemSettings()
-        settings.cluster.bindAddress.systemName = name
+        settings.cluster.node.systemName = name
         configureSettings(&settings)
         if settings.cluster.enabled {
-            precondition(settings.cluster.bindAddress.systemName == name,
-                "Configured name [\(name)] did not match name configured for cluster \(settings.cluster.bindAddress)! " + 
+            precondition(settings.cluster.node.systemName == name,
+                "Configured name [\(name)] did not match name configured for cluster \(settings.cluster.node)! " + 
                 "Both names MUST match in order to avoid confusion.")
         }
 
@@ -129,7 +129,7 @@ public final class ActorSystem {
         var deadLogger = settings.overrideLogger ?? Logger(label: ActorPath._deadLetters.description, factory: {
             let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
             if settings.cluster.enabled {
-                context[metadataKey: "nodeAddress"] = .stringConvertible(settings.cluster.uniqueBindAddress)
+                context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindAddress)
             }
                 context[metadataKey: "nodeName"] = .stringConvertible(name)
             return ActorOriginLogHandler(context)

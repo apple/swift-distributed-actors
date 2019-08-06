@@ -90,7 +90,7 @@ internal struct SWIMMembershipShell {
             self.tracelog(context, .receive, message: message)
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
             if !self.swim.isMember(target) {
-                self.ensureConnected(context, remoteAddress: target.address.node?.address) { _ in
+                self.ensureConnected(context, remoteNode: target.address.node?.node) { _ in
                     self.swim.addMember(target, status: lastKnownStatus) // TODO push into SWIM?
                     self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                 }
@@ -252,13 +252,13 @@ internal struct SWIMMembershipShell {
         self.swim.incrementProtocolPeriod()
     }
 
-    func handleJoin(_ context: ActorContext<SWIM.Message>, node: NodeAddress) {
-        self.ensureConnected(context, remoteAddress: node) { uniqueNode in
+    func handleJoin(_ context: ActorContext<SWIM.Message>, node: Node) {
+        self.ensureConnected(context, remoteNode: node) { uniqueNode in
             guard let uniqueNode = uniqueNode else {
                 fatalError("This is guaranteed to run with an unique node address")
             }
 
-            assert(uniqueNode.address == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
+            assert(uniqueNode.node == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
             self.sendFirstRemotePing(context, on: uniqueNode)
         }
     }
@@ -294,7 +294,7 @@ internal struct SWIMMembershipShell {
                     ()
                 case .connect(let address, let continueAddingMember):
                     // ensuring a connection is asynchronous, but executes callback in actor context
-                    self.ensureConnected(context, remoteAddress: address) { uniqueAddress in
+                    self.ensureConnected(context, remoteNode: address) { uniqueAddress in
                         // it COULD happen that we kick off connecting to a node based on this connection
                         // TODO test for this
                         if let uniqueRemoteAddress = uniqueAddress {
@@ -324,25 +324,25 @@ internal struct SWIMMembershipShell {
         }
     }
 
-    func ensureConnected(_ context: ActorContext<SWIM.Message>, remoteAddress address: NodeAddress?, onSuccess: @escaping (UniqueNodeAddress?) -> Void) {
+    func ensureConnected(_ context: ActorContext<SWIM.Message>, remoteNode: Node?, onSuccess: @escaping (UniqueNode?) -> Void) {
         // this is a local node, so we don't need to connect first
-        guard let remoteAddress = address else {
+        guard let remoteNode = remoteNode else {
             onSuccess(nil)
             return
         }
 
         // FIXME: use reasonable timeout, depends on https://github.com/apple/swift-distributed-actors/issues/724
         let handshakeResultAnswer = context.system.clusterShell.ask(for: ClusterShell.HandshakeResult.self, timeout: .seconds(3)) {
-            .command(.handshakeWith(remoteAddress, replyTo: $0))
+            .command(.handshakeWith(remoteNode, replyTo: $0))
         }
         context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in
             switch handshakeResultResult {
             case .success(.success(let remoteUniqueAddress)):
                 onSuccess(remoteUniqueAddress)
             case .success(.failure):
-                context.log.warning("Failed to connect to remote node [\(remoteAddress)]")
+                context.log.warning("Failed to connect to remote node [\(remoteNode)]")
             case .failure:
-                context.log.warning("Connecting to remote node [\(remoteAddress)] timed out")
+                context.log.warning("Connecting to remote node [\(remoteNode)] timed out")
             }
 
             return .same
@@ -350,7 +350,7 @@ internal struct SWIMMembershipShell {
     }
 
     /// This is effectively joining the SWIM membership of the other member.
-    func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on node: UniqueNodeAddress) {
+    func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on node: UniqueNode) {
         let remoteSwimAddress = SWIMMembershipShell.address(on: node)
 
         pprint("String(reflecting: remoteSwimAddress) = \(String(reflecting: remoteSwimAddress))")
@@ -367,7 +367,7 @@ internal struct SWIMMembershipShell {
 extension SWIMMembershipShell {
     static let name: String = "membership-swim" // TODO String -> ActorName
 
-    static func address(on node: UniqueNodeAddress) -> ActorAddress {
+    static func address(on node: UniqueNode) -> ActorAddress {
         return try! ActorPath._system.appending(SWIMMembershipShell.name).makeRemoteAddress(on: node, incarnation: .perpetual)
     }
 

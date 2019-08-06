@@ -64,8 +64,8 @@ internal enum SystemMessage: Equatable {
 
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
-    /// `Signals.Terminated` messages, for every watched actor which was residing on the (now terminated) address.
-    case addressTerminated(UniqueNodeAddress) // TODO: more additional info?
+    /// `Signals.Terminated` messages, for every watched actor which was residing on the (now terminated) node.
+    case nodeTerminated(UniqueNode) // TODO: more additional info?
 
     /// Sent by parent to child actor to stop it
     case stop
@@ -116,7 +116,7 @@ extension SystemMessage {
             return lRef.address == rRef.address && lExisted == rExisted && lAddrTerminated == rAddrTerminated
         case let (.childTerminated(lPath), .childTerminated(rPath)):
             return lPath.address == rPath.address
-        case let (.addressTerminated(lAddress), .addressTerminated(rAddress)):
+        case let (.nodeTerminated(lAddress), .nodeTerminated(rAddress)):
             return lAddress == rAddress
 
         case (.tombstone, .tombstone): return true
@@ -131,7 +131,7 @@ extension SystemMessage {
              (.childTerminated, _),
              (.stop, _),
              (.resume, _),
-             (.addressTerminated, _):
+             (.nodeTerminated, _):
             return false
         }
     }

@@ -32,16 +32,16 @@ Handshake, initiated by "client-side"
 - allocate WIP association (not ready yet)
 - store handshake in progress
 - send `HandshakeOffer`
-  - contains this nodes `UniqueNodeAddress`,
+  - contains this nodes `UniqueNode`,
   - and `Address` of target
 
 "Server-side"
 - accept connection and receive `HandshakeOffer`
 - validate and allocate `Association`, the association is complete on this end already
-  - an Association is "ready" when it has both `UniqueNodeAddresses`
+  - an Association is "ready" when it has both `UniqueNode`
     - TODO: Assign an UID to an association as well to easier identify it, when we send data in envelopes
 - send back `HandshakeAccept` with
-  - own `UniqueNodeAddress`
+  - own `UniqueNode`
 
 
 Data formats:

@@ -68,7 +68,7 @@ public struct ActorLogger {
         var proxyHandler = ActorOriginLogHandler(context)
         proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
         if context.system.settings.cluster.enabled {
-            proxyHandler.metadata["nodeAddress"] = .string("\(context.system.settings.cluster.bindAddress)")
+            proxyHandler.metadata["node"] = .string("\(context.system.settings.cluster.node)")
         } else {
             proxyHandler.metadata["nodeName"] = .string(context.system.name)
         }
@@ -83,8 +83,8 @@ public struct ActorLogger {
         // so we need to make such "proxy log handler", that does out actor specific things.
         var proxyHandler = ActorOriginLogHandler(system)
         if system.settings.cluster.enabled {
-            proxyHandler.metadata["nodeAddress"] = .lazyStringConvertible { () in
-                system.settings.cluster.bindAddress
+            proxyHandler.metadata["node"] = .lazyStringConvertible { () in
+                system.settings.cluster.node
             }
         } else {
             proxyHandler.metadata["nodeName"] = .string(system.name)
@@ -179,7 +179,7 @@ public struct ActorOriginLogHandler: LogHandler {
             }
 
             let actorSystemIdentity: String
-            if let d = l.effectiveMetadata?.removeValue(forKey: "nodeAddress") {
+            if let d = l.effectiveMetadata?.removeValue(forKey: "node") {
                 actorSystemIdentity = "[\(d)]"
             } else {
                 if let name = l.effectiveMetadata?.removeValue(forKey: "nodeName") {

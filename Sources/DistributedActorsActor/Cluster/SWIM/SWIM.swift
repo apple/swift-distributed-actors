@@ -35,7 +35,7 @@ public enum SWIM {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
         /// Ping Request -- requests a SWIM probe
         ///
-        // TODO target -- address rather than the ref?
+        // TODO target -- node rather than the ref?
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
         /// Extension: Lifeguard, Local Health Aware Probe
@@ -66,7 +66,7 @@ public enum SWIM {
 
     internal enum LocalMessage {
         case pingRandomMember
-        case join(NodeAddress)
+        case join(Node)
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>) // TODO: do we need this or can we ride on the Observer getting all the state?
     }

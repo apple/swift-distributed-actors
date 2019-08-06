@@ -30,8 +30,8 @@ class ClusterDocExamples: XCTestCase {
             // system will bind by default on `localhost:7337`
         }
 
-        let otherNodeAddress = NodeAddress(systemName: "ClusterJoining", host: "localhost", port: 8228)
-        system.join(address: otherNodeAddress) // TODO not final API // <2>
+        let otherNode = Node(systemName: "ClusterJoining", host: "localhost", port: 8228)
+        system.join(node: otherNode) // TODO not final API // <2>
         // TODO provide a proper API for this; perhaps system.tell(.cluster(.join)) or similar ?
 
         // end::joining[]

@@ -382,8 +382,8 @@ extension SWIM.Instance {
                 case .ignoredDueToOlderStatus(let currentStatus):
                     return .ignored(warning: "Ignoring gossip about member [\(member)] due to older status, incoming: [\(member.status)], current: [\(currentStatus)]")
                 }
-            } else if let remoteMemberAddress = member.ref.address.node?.address {
-                return .connect(address: remoteMemberAddress, onceConnected: { _ in
+            } else if let remoteMemberNode = member.ref.address.node?.node {
+                return .connect(node: remoteMemberNode, onceConnected: { _ in
                     self.addMember(member.ref, status: member.status)
                 })
             } else {
@@ -404,7 +404,7 @@ extension SWIM.Instance {
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
         // TODO: OR! actually we add them right away, and if they don't reply to our probing we'd declare them down...? A bit weird hm...
-        case connect(address: NodeAddress, onceConnected: (UniqueNodeAddress) -> ())
+        case connect(node: Node, onceConnected: (UniqueNode) -> ())
         case selfDeterminedDead
     }
 }

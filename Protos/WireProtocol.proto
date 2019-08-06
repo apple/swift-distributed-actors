@@ -22,8 +22,8 @@ option swift_prefix = "Proto";
 
 message HandshakeOffer {
     ProtocolVersion version = 1;
-    UniqueNodeAddress from  = 2;
-    NodeAddress to          = 3;
+    UniqueNode from         = 2;
+    Node to                 = 3;
     // In the future we may want to add additional information
     // about certain capabilities here. E.g. when a node supports
     // faster transport like InfiniBand and the likes, so we can
@@ -39,17 +39,17 @@ message HandshakeResponse {
 }
 
 message HandshakeAccept {
-    ProtocolVersion version  = 1;
-    UniqueNodeAddress origin = 2;
-    UniqueNodeAddress from   = 3;
+    ProtocolVersion version = 1;
+    UniqueNode origin       = 2;
+    UniqueNode from         = 3;
 }
 
 message HandshakeReject {
-    ProtocolVersion version  = 1;
-    UniqueNodeAddress origin = 2;
-    // In the reject case this is an `Address` instead of a `UniqueNodeAddress`,
+    ProtocolVersion version = 1;
+    UniqueNode origin       = 2;
+    // In the reject case this is an `Node` instead of a `UniqueNode`,
     // to explicitly prevent this from forming an association.
-    NodeAddress from         = 3;
+    Node from                = 3;
     string reason            = 4;
 }
 
@@ -66,14 +66,14 @@ message Envelope {
 // by the receiving node.
 message SystemEnvelope {
     uint64 sequenceNr       = 1;
-    UniqueNodeAddress from  = 2;
+    UniqueNode from         = 2;
 
     uint32 serializerId     = 3;
     bytes payload           = 4;
 }
 
 message ActorAddress {
-    UniqueNodeAddress node = 1; // TODO oneof { senderNode | recipientNode | node }
+    UniqueNode node        = 1; // TODO oneof { senderNode | recipientNode | node }
     ActorPath path         = 2;
     uint32 incarnation     = 3;
 }
@@ -83,16 +83,16 @@ message ActorPath {
 }
 
 message SystemAck {
-    uint64 sequenceNr      = 1;
-    UniqueNodeAddress from = 2;
+    uint64 sequenceNr   = 1;
+    UniqueNode from     = 2;
 }
 
-message UniqueNodeAddress {
-    NodeAddress address = 1;
-    uint32 nid          = 2;
+message UniqueNode {
+    Node node   = 1;
+    uint32 nid  = 2;
 }
 
-message NodeAddress {
+message Node {
     string protocol = 1;
     string system   = 2;
     string hostname = 3;

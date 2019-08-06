@@ -306,8 +306,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         case let .childTerminated(ref):
             let terminated = Signals.ChildTerminated(address: ref.address, error: nil) // TODO what about the errors
             try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
-        case let .addressTerminated(remoteAddress):
-            self.interpretAddressTerminated(remoteAddress)
+        case let .nodeTerminated(remoteNode):
+            self.interpretNodeTerminated(remoteNode)
 
         case .stop:
             try self.interpretStop()
@@ -645,17 +645,17 @@ extension ActorShell {
         }
     }
 
-    /// Interpret incoming .addressTerminated system message.
+    /// Interpret incoming .nodeTerminated system message.
     ///
     /// Results in signaling `Terminated` for all of the locally watched actors on the (now terminated) node.
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
-    @inlinable internal func interpretAddressTerminated(_ terminatedAddress: UniqueNodeAddress) {
+    @inlinable internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
         #if SACT_TRACE_ACTOR_SHELL
         log.info("Received address terminated: \(deadRef)")
         #endif
 
-        self.deathWatch.receiveAddressTerminated(terminatedAddress, myself: self.asAddressable)
+        self.deathWatch.receiveNodeTerminated(terminatedNode, myself: self.asAddressable)
     }
 
     @inlinable internal func interpretStop() throws {
