@@ -81,14 +81,14 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     }
 
     @usableFromInline
-    func sendUserMessage(_ message: From) {
-        self.target.tell(converter(message))
+    func _sendUserMessage(_ message: From, file: String, line: UInt) {
+        self.target.tell(converter(message), file: file, line: line)
     }
 
     @usableFromInline
     func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
         if let message = message as? From {
-            self.sendUserMessage(message)
+            self._sendUserMessage(message, file: file, line: line)
         } else {
             if let directMessage = message as? To {
                 fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " + 

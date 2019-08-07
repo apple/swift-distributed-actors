@@ -22,7 +22,7 @@ import SwiftDistributedActorsActorTestKit
 final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
-    var logCaptureHandler: CapturingLogHandler!
+    var logCaptureHandler: LogCapture!
 
     var handler: SystemMessageRedeliveryHandler!
 
@@ -38,7 +38,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     let serEnvelope = TransportEnvelope(systemMessage: .start, recipient: ActorAddress._deadLetters)
 
     override func setUp() {
-        self.logCaptureHandler = CapturingLogHandler()
+        self.logCaptureHandler = LogCapture()
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = Logger(label: "mock", self.logCaptureHandler)
         }
