@@ -20,12 +20,12 @@ import SwiftDistributedActorsActorTestKit
 final class DeadLetterTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
-    var logCaptureHandler: CapturingLogHandler!
+    var logCaptureHandler: LogCapture!
 
     override func setUp() {
-        self.logCaptureHandler = CapturingLogHandler()
+        self.logCaptureHandler = LogCapture()
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.overrideLogger = Logger(label: "mock", self.logCaptureHandler)
+            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: "mock")
         }
         self.testKit = ActorTestKit(system)
     }

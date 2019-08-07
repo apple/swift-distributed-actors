@@ -212,4 +212,46 @@ class ActorRefAdapterTests: XCTestCase {
         try probe.expectMessage("received:adapter-0:test")
     }
 
+    func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {
+        let logCaptureHandler = LogCapture()
+        let system = ActorSystem("\(type(of: self))-2") { settings in 
+            settings.overrideLogger = logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
+        }
+        defer { system.shutdown() }
+
+        let probe = testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+
+        let behavior: Behavior<LifecycleTestMessage> = .setup { context in
+            return .receiveMessage {
+                switch $0 {
+                case .createAdapter(let replyTo):
+                    replyTo.tell(context.messageAdapter { .message("adapter:\($0)") })
+                    return .stopped
+                default:
+                    return .stopped
+                }
+            }
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        probe.watch(ref)
+
+        ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
+        let adaptedRef = try receiveRefProbe.expectMessage()
+
+        // the owner has terminated
+        try probe.expectTerminated(ref)
+
+
+        // thus sending to the adapter results in a dead letter
+        adaptedRef.tell("whoops")
+        let expectedLine = #line - 1
+        let expectedFile = #file
+
+        try logCaptureHandler.shouldContain(
+            message: "*was not delivered to [*", at: .info, 
+            expectedFile: expectedFile, expectedLine: expectedLine)
+    }
+
 }
