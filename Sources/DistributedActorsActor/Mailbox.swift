@@ -48,6 +48,7 @@ internal struct Envelope {
 
 internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CSActMailbox>
+
     internal let address: ActorAddress
     private weak var shell: ActorShell<Message>?
     internal let deadLetters: ActorRef<DeadLetter>
@@ -74,6 +75,13 @@ internal final class Mailbox<Message> {
     private var _run: () -> Void = {}
 
     init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+        #if SACT_TESTS_LEAKS
+        if shell.address.segments.first?.value == "user" {
+            _ = shell._system.userMailboxInitCounter.add(1)
+        }
+        #endif
+
+
         self.mailbox = cmailbox_create(capacity, maxRunLength)
         self.shell = shell
         self.address = shell.address
@@ -270,15 +278,22 @@ internal final class Mailbox<Message> {
                 return renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
             })
 
+        // cache `run`, seems to give performance benefit
         self._run = self.run
     }
 
     deinit {
         // TODO: maybe we can free the queues themselfes earlier, and only keep the status marker somehow?
         // TODO: if Closed we know we'll never allow an enqueue ever again after all // FIXME: hard to pull off with the CMailbox...
-        
+
+        #if SACT_TESTS_LEAKS
+
+        if self.address.segments.first?.value == "user" {
+            _ = self.deadLetters._system!.userMailboxInitCounter.sub(1)
+        }
+        #endif
+
         // TODO: assert that no system messages in queue
-        
         traceLog_Mailbox(self.address.path, "Mailbox deinit")
         cmailbox_destroy(mailbox)
     }
@@ -486,6 +501,11 @@ internal final class Mailbox<Message> {
             traceLog_Mailbox(self.address.path, "interpret CLOSE")
             self.sendSystemTombstone() // Rest in Peace
         case .closed:
+            // Meaning that the tombstone was processed and this mailbox will never again run any messages.
+            // Its actor and shell will be released, and the mailbox should also deinit; in order to vacillate this,
+            // we need to clean up any self references that we may still be holding (as we had to pass them to C).
+            self.onTombstoneProcessedClosed()
+
             traceLog_Mailbox(self.address.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
         }
     }
@@ -500,6 +520,15 @@ internal final class Mailbox<Message> {
     func setClosed() {
         cmailbox_set_closed(self.mailbox)
         traceLog_Mailbox(self.address.path, "<<< SET_CLOSED >>>")
+    }
+
+    func onTombstoneProcessedClosed() {
+        self._run = {}
+        self.messageClosureContext = nil
+        self.systemMessageClosureContext = nil
+        self.deadLetterMessageClosureContext = nil
+        self.deadLetterSystemMessageClosureContext = nil
+        self.invokeSupervisionClosureContext = nil
     }
 }
 

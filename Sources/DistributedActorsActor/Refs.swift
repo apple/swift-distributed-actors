@@ -241,9 +241,20 @@ internal extension ActorRef {
     }
 }
 
-/// An "cell" containing the real actor as well as its mailbox.
+/// A "cell" containing the real actor as well as its mailbox.
 ///
 /// Outside interactions with the actor in the cell are only permitted by sending it messages via the mailbox.
+///
+/// ### De-initialization
+///
+/// The order in which deinit's happen to the behaviors, shell, cell and mailbox are all well defined,
+/// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
+/// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
+/// by the cell, as it may result in message sends to dead letters which the mailbox handles
+
+// TODO: maybe we should do weak var to mailbox here, would it be a perf hit? now the mailbox has a weak ref to the shell, so the shell is released,
+// but mailbox not since we keep it here, so the mailbox directs to dead letters; could we rather upon shell being released send to _system.deadLetters
+// right here, and avoid the mailbox from sticking around so long?
 @usableFromInline
 internal final class ActorCell<Message> {
 
