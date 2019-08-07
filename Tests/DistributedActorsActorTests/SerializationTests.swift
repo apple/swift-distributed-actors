@@ -181,7 +181,7 @@ class SerializationTests: XCTestCase {
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let p = testKit.spawnTestProbe(expecting: Never.self)
-        let stoppedRef: ActorRef<String> = try system.spawn(.stopped, name: "dead-on-arrival")
+        let stoppedRef: ActorRef<String> = try system.spawn(.stop, name: "dead-on-arrival")
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
@@ -197,7 +197,7 @@ class SerializationTests: XCTestCase {
         "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
     }
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stopped, name: "dead-on-arrival") // stopped
+        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stop, name: "dead-on-arrival") // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let bytes = try shouldNotThrow {

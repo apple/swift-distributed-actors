@@ -135,7 +135,7 @@ class ReceptionistTests: XCTestCase {
 
         let ref: ActorRef<String> = try system.spawnAnonymous(
             .receiveMessage { message in
-                return .stopped
+                return .stop
             }
         )
 
@@ -168,7 +168,7 @@ class ReceptionistTests: XCTestCase {
 
         let refB: ActorRef<String> = try system.spawnAnonymous(
             .receiveMessage { message in
-                return .stopped
+                return .stop
             }
         )
 

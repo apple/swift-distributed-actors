@@ -46,7 +46,7 @@ class ActorLeakingTests: XCTestCase {
         #if SACT_TESTS_LEAKS
 
         let stopsOnAnyMessage: Behavior<String> = .receiveMessage { msg in
-            return .stopped
+            return .stop
         }
 
         var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "printer")
@@ -86,7 +86,7 @@ class ActorLeakingTests: XCTestCase {
 
         let spawnsNChildren: Behavior<Int> = .receive { context, childCount in
             if childCount == 0 {
-                return .stopped
+                return .stop
             } else {
                 for _ in 1...childCount {
                     let b: Behavior<String> = .receiveMessage { msg in return .same }
@@ -152,7 +152,7 @@ class ActorLeakingTests: XCTestCase {
         lock.lock()
         let behavior: Behavior<LeakTestMessage> = .receiveMessage { _ in
             lock.lock()
-            return .stopped
+            return .stop
         }
         let ref = try system.spawnAnonymous(behavior, props: Props().withMailbox(MailboxProps.default(capacity: 1)))
 

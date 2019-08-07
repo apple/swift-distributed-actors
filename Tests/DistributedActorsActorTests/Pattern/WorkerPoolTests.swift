@@ -89,7 +89,7 @@ final class WorkerPoolTests: XCTestCase {
 
                 return .receive { context, work in
                     if work == "stop" {
-                        return .stopped
+                        return .stop
                     }
                     p.tell("work:\(work) at \(context.path.name)")
                     return .same

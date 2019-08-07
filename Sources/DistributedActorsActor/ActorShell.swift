@@ -83,7 +83,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     // We always have a supervisor in place, even if it is just the ".stop" one.
     @usableFromInline internal let supervisor: Supervisor<Message>
-    // TODO: we can likely optimize not having to call "through" supervisor if we are .stopped anyway
+    // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Defer
@@ -239,7 +239,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// next behavior (as returned by user code, which the message was applied to).
     ///
     /// Warning: Mutates the cell's behavior.
-    /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stopped`
+    /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
     func interpretMessage(message: Message) throws -> SActActorRunResult {
         #if SACT_TRACE_ACTOR_SHELL
@@ -349,7 +349,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
-        case .stopped:   return self.children.nonEmpty
+        case .stop:   return self.children.nonEmpty
         default:         return true
         }
     }
@@ -371,7 +371,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
     internal func fail(_ error: Error) {
         self._myCell.mailbox.setFailed()
-        self.behavior = self.behavior.makeFailed(cause: .error(error))
+        self.behavior = self.behavior.fail(cause: .error(error))
         // TODO: we could handle here "wait for children to terminate"
 
         // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
@@ -394,7 +394,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         log.error("Actor crashing, reason: [\(cause)]:\(type(of: cause)). \(crashHandlingExplanation)")
 
-        self.behavior = self.behavior.makeFailed(cause: .fault(cause))
+        self.behavior = self.behavior.fail(cause: .fault(cause))
     }
 
     /// Used by supervision, from failure recovery.
@@ -431,7 +431,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Encapsulates logic that has to always be triggered on a state transition to specific behaviors
     /// Always invoke `becomeNext` rather than assigning to `self.behavior` manually.
     ///
-    /// Returns: `true` if next behavior is .stopped and appropriate actions will be taken
+    /// Returns: `true` if next behavior is .stop and appropriate actions will be taken
     @inlinable
     internal func becomeNext(behavior next: Behavior<Message>) throws {
         // TODO: handling "unhandled" would be good here... though I think type wise this won't fly, since we care about signal too
@@ -497,8 +497,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // become stopped, if not already
         switch self.behavior.underlying {
-        case .stopped: () // already marked as stopped
-        default: self.behavior = .stopped
+        case .stop: () // already marked as stopped
+        default: self.behavior = .stop
         }
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myAddress)) has completely terminated, and will never act again.")
@@ -521,7 +521,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     func invokePendingDeferredClosuresWhileTerminating() {
         do {
             switch self.behavior.underlying {
-            case .stopped(_, let reason):
+            case .stop(_, let reason):
                 switch reason {
                 case .failure:
                     try self.deferred.invokeAllAfterFailing()
@@ -531,7 +531,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             case .failed:
                 try self.deferred.invokeAllAfterFailing()
             default:
-                fatalError("Potential bug. Should only be invoked on .stopped / .failed")
+                fatalError("Potential bug. Should only be invoked on .stop / .failed")
             }
         } catch {
             self.log.error("Invoking context.deferred closures threw: \(error), remaining closures will NOT be invoked. Proceeding with termination.")
@@ -621,7 +621,7 @@ extension ActorShell {
     /// Interpret incoming .terminated system message
     ///
     /// Mutates actor cell behavior.
-    /// May cause actor to terminate upon error or returning .stopped etc from `.signalHandling` user code.
+    /// May cause actor to terminate upon error or returning .stop etc from `.signalHandling` user code.
     @inlinable internal func interpretTerminatedSignal(who deadRef: AddressableActorRef, terminated: Signals.Terminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         log.info("Received terminated: \(deadRef)")
@@ -660,7 +660,7 @@ extension ActorShell {
 
     @inlinable internal func interpretStop() throws {
         children.stopAll()
-        try self.becomeNext(behavior: .stopped(reason: .stopByParent))
+        try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
     @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {

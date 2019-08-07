@@ -103,7 +103,7 @@ class InterceptorTests: XCTestCase {
             } else {
                 behavior = .receiveMessage { msg in
                     p.tell("received:\(msg)")
-                    return .stopped
+                    return .stop
                 }
             }
 
@@ -130,12 +130,12 @@ class InterceptorTests: XCTestCase {
 
         let spawnSomeStoppers: Behavior<String> = .setup { context in
             let one: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
-                return .stopped
+                return .stop
             }, name: "stopperOne")
             one.tell("stop")
 
             let two: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
-                return .stopped
+                return .stop
             }, name: "stopperTwo")
             two.tell("stop")
 
@@ -171,7 +171,7 @@ class InterceptorTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .receiveMessage { _ in
-            return .stopped { _ in
+            return .stop { _ in
                 p.tell("postStop")
             }
         }

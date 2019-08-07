@@ -21,7 +21,7 @@ This is not fleshed out, we should chat about it.
 - mailbox run - processing system messages and messages of a mailbox, by taking the messages and applying reductions over the behavior of an actor
 - run length - the maximum amount of messages to be processed during one run, this allows for fairness in the system
 
-- stop -- stop by returning `.stopped`
+- stop -- stop by returning `.stop`
 - terminate -- internally "actor is really done", this is a system message
 
 - dropped - message dropped due to mailbox overflow or other "i don't care" action

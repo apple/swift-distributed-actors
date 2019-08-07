@@ -52,7 +52,7 @@ class ActorSystemTests: XCTestCase {
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
         let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
-        let ref: ActorRef<String> = try system.spawn(.stopped, name: "test")
+        let ref: ActorRef<String> = try system.spawn(.stop, name: "test")
 
         p.watch(ref)
         try p.expectTerminated(ref)

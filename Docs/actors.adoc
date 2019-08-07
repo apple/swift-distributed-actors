@@ -301,7 +301,7 @@ transitions. Note that in normal situations, i.e. without faulty behaviors, the 
 image::actor_lifecycle.png[Actor Lifecycle]
 
 1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing it to execute all nested `.setup` behaviors.
-2. Stop Myself: An actor may decide to stop itself by returning an api:Behavior[struct,alias='Behavior.stopped'], causing it to transition to `Stopped`.
+2. Stop Myself: An actor may decide to stop itself by returning an api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
     See also <<Stopping the Current Actor (Myself)>>.
 3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
     Such stop signal _cannot_ be ignored by the child, and will take effect as soon as it is received by the child. See also <<Stopping Child Actors>>.
@@ -355,7 +355,7 @@ An actor can be stopped either by its own decision to do so, a failure occurring
 
 While an actor is running there exist only two ways in which it may decide end up _stopping itself_, either by:
 
-- **stopping** – returning a api:Behavior[struct,alias='Behavior.stopped'] as the next behavior.
+- **stopping** – returning a api:Behavior[struct,alias='Behavior.stop'] as the next behavior.
 - **crashing** – by throwing an `Error` or causing a fault.
 ** in which case <<supervision>> will handle the failure and determine what to do about it; by default stopping the actor.
 
@@ -366,7 +366,7 @@ To see this in a more realistic example let's have a look at the following snipp
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
 ----
 <1> We invoke some business logic that does not have to be aware of the actor details at all.
-<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct,alias='Behavior.stopped'].
+<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct,alias='Behavior.stop'].
 
 This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
 As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in its lifecycle.
@@ -378,13 +378,13 @@ In practice such snippets would often be extracted into their own functions or e
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_refactored]
 ----
 
-Note that returning `.stopped` also _guarantees_ that no further messages will be processed after the stopped behavior
-has been returned. You may also use the `.stopped(postStop:)` overloads to perform cleanup operations, or even store your
+Note that returning `.stop` also _guarantees_ that no further messages will be processed after the stopped behavior
+has been returned. You may also use the `.stop(postStop:)` overloads to perform cleanup operations, or even store your
 own "stopped" that would perform some cleanup logic if there was a need to do the similar cleanup for various actors in
 your system.
 
 NOTE: It is NOT possible to stop yourself by calling the `context.stop(child:)` function to stop `myself`.
-      This is to not encourage another way of doing the same thing, and make stopping easier to track -- as it should always result from a `return .stopped` or a failure. This makes analyzing existing code bases simpler, as there are only the two cases to look for.
+      This is to not encourage another way of doing the same thing, and make stopping easier to track -- as it should always result from a `return .stop` or a failure. This makes analyzing existing code bases simpler, as there are only the two cases to look for.
 
 ==== Stopping Child Actors
 
@@ -403,15 +403,15 @@ Bear in mind though that this stopping operation, by virtue of being a message s
 
 For a given actor, the following is guaranteed:
 
-- if an actor returns the `.stopped` behavior, no further messages will be delivered to its message (or signal) receive blocks,
+- if an actor returns the `.stop` behavior, no further messages will be delivered to its message (or signal) receive blocks,
   - with the single exception of the :api:Signals[enum,alias='Signals.PostStop'] which is delivered once the actor has stopped and before it has completely Terminated.
 - if any other actors have been watching this actor, they will be informed about its termination using `.terminated` messages.
 
 Internal guarantees:
 
-- if the `.stopped` behavior is returned during handling system messages, no further user messages shall be processed.
+- if the `.stop` behavior is returned during handling system messages, no further user messages shall be processed.
 - all pending (system) already enqueued to the actors mailboxes messages SHOULD be drained to dead letters or dropped.
-- once the `.stopped` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
+- once the `.stop` behavior is returned the actor should immediately be treated as `TERMINATING` yet it is not yet `CLOSED` (dead),
   - during the time between `TERMINATING` and `CLOSED` the actor performs shut down logic, such as notifying the parent actor or any watchers about its death.
   - all incoming messages, which hit an "at-least-TERMINATING" actor shall be immediately be DROPPED, without being enqueued at all. This is to avoid waking up the actor infinitely.
 - resources (e.g. the held behavior) shall only be released once the CLOSED state has been reached.

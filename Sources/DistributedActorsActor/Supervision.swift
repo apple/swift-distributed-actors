@@ -475,11 +475,11 @@ internal class Supervisor<Message> {
             do {
                 switch directive {
                 case .stop:
-                    return .stopped(reason: .failure(.error(error)))
+                    return .stop(reason: .failure(.error(error)))
 
                 case .escalate(let failure):
                     // TODO this is not really escalating (yet)
-                    return .stopped(reason: .failure(failure))
+                    return .stop(reason: .failure(failure))
 
                 case .restartImmediately(let replacement):
                     try context._downcastUnsafe._restartPrepare()
