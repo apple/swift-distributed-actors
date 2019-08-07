@@ -35,6 +35,7 @@ import XCTest
          testCase(ActorLifecycleTests.allTests),
          testCase(ActorLoggingTests.allTests),
          testCase(ActorRefAdapterTests.allTests),
+         testCase(ActorSubReceiveTests.allTests),
          testCase(ActorSystemTests.allTests),
          testCase(ActorTestKitTests.allTests),
          testCase(ActorTestProbeTests.allTests),

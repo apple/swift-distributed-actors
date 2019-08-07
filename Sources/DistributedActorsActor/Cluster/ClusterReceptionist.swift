@@ -38,7 +38,7 @@ internal enum ClusterReceptionist {
 
             // FIXME: this one's pretty bad. When using context.myself instead, we get serialization errors,
             // because the meta key will be `ReceptionistMessage` and it can't find the correct serializer.
-            let replicateAdapter = context.messageAdapter(for: ClusterReceptionist.FullState.self) {
+            let replicateAdapter = context.messageAdapter(ClusterReceptionist.FullState.self) {
                 return $0
             }
 

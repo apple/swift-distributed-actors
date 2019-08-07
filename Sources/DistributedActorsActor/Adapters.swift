@@ -250,3 +250,173 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
         return self.deadLetters.asAddressable()
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: SubReceiveAdapter
+
+internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
+    private let target: ActorRef<OwnerMessage>
+    private let closure: (Message) throws -> Void
+    private let adapterAddress: ActorAddress
+    private var watchers: Set<AddressableActorRef>?
+    private let lock = Mutex()
+
+    var address: ActorAddress {
+        return self.adapterAddress
+    }
+    let deadLetters: ActorRef<DeadLetter>
+
+    init(_ ref: ActorRef<OwnerMessage>, address: ActorAddress, closure: @escaping (Message) throws -> Void) {
+        self.target = ref
+        self.adapterAddress = address
+        self.closure = closure
+        self.watchers = []
+
+        // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
+        // thus we should be able to reach a real dead letters instance by going through the target ref.
+        self.deadLetters = self.target._deadLetters
+    }
+
+    private var myself: ActorRef<Message> {
+        return ActorRef(.adapter(self))
+    }
+
+    var system: ActorSystem? {
+        return self.target._system
+    }
+
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        switch message {
+        case .watch(let watchee, let watcher):
+            self.addWatcher(watchee: watchee, watcher: watcher)
+        case .unwatch(let watchee, let watcher):
+            self.removeWatcher(watchee: watchee, watcher: watcher)
+        case .terminated(let ref, _, _):
+            self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
+        case .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
+            () // ignore all other messages // TODO: why?
+        }
+    }
+
+    @usableFromInline
+    func _sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+        self.target._unsafeUnwrapCell.sendClosure(file: file, line: line) { [closure = self.closure] in
+            try closure(message)
+        }
+    }
+
+    @usableFromInline
+    func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+        if let message = message as? Message {
+            self._sendUserMessage(message, file: file, line: line)
+        } else {
+            if let directMessage = message as? OwnerMessage {
+                fatalError("trySendUserMessage on subReceive \(self.myself) was attempted with `To = \(OwnerMessage.self)` message [\(directMessage)], " +
+                    "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(Message.self)`.")
+            } else {
+                traceLog_Mailbox(self.address.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
+                return // TODO: "drop" the message
+            }
+        }
+    }
+
+    private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
+        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal watch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+
+        self.lock.synchronized {
+            guard self.watchers != nil else {
+                self.sendTerminated(watcher)
+                return
+            }
+
+            guard !self.watchers!.contains(watcher) else {
+                return
+            }
+
+            self.watchers?.insert(watcher)
+            self.watch(watcher)
+        }
+    }
+
+    private func removeWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
+        assert(watchee.address == self.adapterAddress && watcher.address != self.adapterAddress, "Illegal unwatch received. Watchee: [\(watchee)], watcher: [\(watcher)]")
+
+        self.lock.synchronized {
+            guard self.watchers != nil else {
+                return
+            }
+
+            self.watchers!.remove(watcher)
+        }
+    }
+
+    private func watch(_ watchee: AddressableActorRef) {
+        watchee.sendSystemMessage(.watch(watchee: watchee, watcher: self.myself.asAddressable()))
+    }
+
+    private func unwatch(_ watchee: AddressableActorRef) {
+        watchee.sendSystemMessage(.unwatch(watchee: watchee, watcher: self.myself.asAddressable()))
+    }
+
+    private func sendTerminated(_ ref: AddressableActorRef) {
+        ref.sendSystemMessage(.terminated(ref: self.myself.asAddressable(), existenceConfirmed: true, addressTerminated: false))
+    }
+
+    func stop() {
+        var localWatchers: Set<AddressableActorRef> = []
+        self.lock.synchronized {
+            guard self.watchers != nil else {
+                return
+            }
+
+            localWatchers = self.watchers!
+            self.watchers = nil
+        }
+
+        for watcher in localWatchers {
+            self.unwatch(watcher)
+            self.sendTerminated(watcher)
+        }
+    }
+}
+
+extension SubReceiveAdapter {
+    @inlinable
+    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+        var c = context.deeper
+        switch visit(context, self.myself.asAddressable()) {
+        case .continue:
+            ()
+        case .accumulateSingle(let t):
+            c.accumulated.append(t)
+        case .accumulateMany(let ts):
+            c.accumulated.append(contentsOf: ts)
+        case .abort(let err):
+            return .failed(err)
+        }
+
+        return c.result
+    }
+
+    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        guard context.selectorSegments.first == nil,
+            self.address.incarnation == context.address.incarnation else {
+                return context.personalDeadLetters
+        }
+
+        switch self.myself {
+        case let myself as ActorRef<Message>:
+            return myself
+        default:
+            return context.personalDeadLetters
+        }
+    }
+
+    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+        guard context.selectorSegments.first == nil && self.address.incarnation == context.address.incarnation else {
+            return context.personalDeadLetters.asAddressable()
+        }
+
+        return self.myself.asAddressable()
+    }
+}
