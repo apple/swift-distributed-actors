@@ -105,7 +105,7 @@ class ActorRefAdapterTests: XCTestCase {
         let behavior: Behavior<Int> = .setup { context in
             probe.tell(context.messageAdapter { _ in 0 })
             return .receiveMessage { _ in
-                return .stopped
+                return .stop
             }
         }
 
@@ -142,7 +142,7 @@ class ActorRefAdapterTests: XCTestCase {
                     replyTo.tell(context.messageAdapter { .message("\($0)") })
                     return .same
                 case .stop:
-                    return .stopped
+                    return .stop
                 case .message(let string):
                     probe.tell("received:\(string)")
                     return .same

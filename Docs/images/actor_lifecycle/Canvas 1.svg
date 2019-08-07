@@ -177,7 +177,7 @@
         <rect x="705.8244" y="127.31384" width="244.57898" height="48.435104" fill="white"/>
         <text transform="translate(710.8244 132.31384)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="43.39105" y="16"> </tspan>
-          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" y="16">return .stopped</tspan>
+          <tspan font-family="Source Code Pro" font-size="16" font-weight="400" fill="black" y="16">return .stop</tspan>
           <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="400" fill="black" x="54.0298" y="35">stopping </tspan>
           <tspan font-family="Helvetica Neue" font-size="15" font-style="italic" font-weight="700" fill="black" y="35">myself </tspan>
           <tspan font-family="Zapf Dingbats" font-size="16" font-weight="400" fill="black" y="35">❷</tspan>

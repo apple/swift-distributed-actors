@@ -63,7 +63,7 @@ class TimersTests: XCTestCase {
                 p.tell(message)
 
                 if i >= 5 {
-                    return .stopped
+                    return .stop
                 } else {
                     return .same
                 }

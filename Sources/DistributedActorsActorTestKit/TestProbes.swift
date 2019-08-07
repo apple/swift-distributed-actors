@@ -97,7 +97,7 @@ final public class ActorTestProbe<Message> {
                 return .same
 
             case .stopCommand:
-                return .stopped
+                return .stop
             }
         }.receiveSignal { (context, signal) in
             traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")

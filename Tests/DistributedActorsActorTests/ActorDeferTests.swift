@@ -49,7 +49,7 @@ class ActorDeferTests: XCTestCase {
 
             switch reaction {
             case .staysSame:       return .same
-            case .stops:           return .stopped
+            case .stops:           return .stop
             case .failsByThrowing: throw TestError("Failing on purpose")
             case .failsByFaulting: fatalError("Failing on purpose")
             }
@@ -251,7 +251,7 @@ class ActorDeferTests: XCTestCase {
         // .received must trigger immediately, same as a Swift defer would
         try p.expectMessage("defer:second-received-4")
 
-        // lifecycle bound ones trigger in reverse order thanks to .stopped now
+        // lifecycle bound ones trigger in reverse order thanks to .stop now
         try p.expectMessage("defer:second-terminated-6")
         try p.expectMessage("defer:second-failed-5")
         try p.expectMessage("defer:first-terminated-3")
@@ -288,7 +288,7 @@ class ActorDeferTests: XCTestCase {
                     p.tell("defer:second-terminated-6")
                 }
 
-                return .stopped
+                return .stop
             }
         }
 
@@ -304,7 +304,7 @@ class ActorDeferTests: XCTestCase {
         // .received must trigger immediately, same as a Swift defer would
         try p.expectMessage("defer:second-received-4")
 
-        // lifecycle bound ones trigger in reverse order thanks to .stopped now
+        // lifecycle bound ones trigger in reverse order thanks to .stop now
         try p.expectMessage("defer:second-terminated-6")
         // should not trigger, was not a failure: defer:second-failed-5
         try p.expectMessage("defer:first-terminated-3")
@@ -344,7 +344,7 @@ class ActorDeferTests: XCTestCase {
                 p.tell("C")
             }
             p.tell("message:\(string)")
-            return .stopped
+            return .stop
         }
 
         let worker = try system.spawnAnonymous(b)

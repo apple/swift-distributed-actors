@@ -87,7 +87,7 @@ class StashBufferTests: XCTestCase {
             return try stash.unstashAll(context: context, behavior: .setup { _ in
                 .receiveMessage { message in
                     p.tell(message)
-                    return .stopped
+                    return .stop
                 }
             })
         }, name: "unstashIntoSetup")

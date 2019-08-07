@@ -392,7 +392,7 @@ extension ActorShell: ChildActorRefFactory {
 public enum ActorContextError: Error {
     /// It is illegal to `context.stop(context.myself)` as it would result in potentially unexpected behavior,
     /// as the actor would continue running until it receives the stop message. Rather, to stop the current actor
-    /// it should return `Behavior.stopped` from its receive block, which will cause it to immediately stop processing
+    /// it should return `Behavior.stop` from its receive block, which will cause it to immediately stop processing
     /// any further messages.
     case attemptedStoppingMyselfUsingContext(ref: AddressableActorRef)
     /// Only the parent actor is allowed to stop its children. This is to avoid mistakes in which one part of the system

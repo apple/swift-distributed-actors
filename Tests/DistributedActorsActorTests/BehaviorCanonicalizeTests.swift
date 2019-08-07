@@ -68,7 +68,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
                 } else {
                     return .receiveMessage { msg in
                         p.tell("received:\(msg)")
-                        return .stopped
+                        return .stop
                     }
                 }
             }
@@ -195,7 +195,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
-            .stopped
+            .stop
         }.receiveSignal { _, signal in
             if signal is Signals.PostStop {
                 p.tell("postStop")
@@ -216,7 +216,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
-            return .stopped { _ in
+            return .stop { _ in
                 p.tell("postStop")
             }
         }

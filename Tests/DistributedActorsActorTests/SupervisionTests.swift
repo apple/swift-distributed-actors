@@ -972,7 +972,7 @@ class SupervisionTests: XCTestCase {
 
         let behavior: Behavior<String> = .receiveMessage { msg in
             p.tell("crashing:\(msg)")
-            return .stopped { _ in
+            return .stop { _ in
                 throw FaultyError.boom(message: "test")
             }
         }
