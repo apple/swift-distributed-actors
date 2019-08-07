@@ -381,15 +381,72 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter defined per type. Creating a new adapter will
     /// replace an existing adapter.
+    ///
+    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `ActorRef` terminates as well.
     public final func messageAdapter<From>(_ adapter: @escaping (From) -> Message) -> ActorRef<From> {
-        return self.messageAdapter(for: From.self, with: adapter)
+        return self.messageAdapter(From.self, with: adapter)
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter defined per type. Creating a new adapter will
     /// replace an existing adapter.
-    public func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    ///
+    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    public func messageAdapter<From>(_ type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         return undefined()
+    }
+
+    /// Creates an `ActorRef` that can receive messages of the specified type, but executed in the same
+    /// context as the actor owning it, meaning that it is safe to close over mutable state internal to the
+    /// surrounding actor and modify it.
+    ///
+    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    ///
+    /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
+    /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
+    /// the new behavior.
+    func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+        return undefined()
+    }
+
+    /// Creates an `ActorRef` that can receive messages of the specified type, but executed in the same
+    /// context as the actor owning it, meaning that it is safe to close over mutable state internal to the
+    /// surrounding actor and modify it.
+    ///
+    /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
+    /// that when the owning actor terminates, this `ActorRef` terminates as well.
+    ///
+    /// There can only be one `subReceive` per type. When installing a new `subReceive`
+    /// with an existing type, it replaces the old one. All references will remain valid and point to
+    /// the new behavior.
+    func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+        return self.subReceive(SubReceiveId(for: type), type, closure)
+    }
+}
+
+// Used to identify a `subReceive`
+public struct SubReceiveId {
+    public let id: String
+
+    public init<T>(for type: T.Type) {
+        self.id = String(reflecting: type)
+    }
+
+    public init(_ id: String) {
+        self.id = id
+    }
+
+    public init<T>(for type: T.Type, id: String) {
+        self.id = "\(String(reflecting: type))-\(id)"
+    }
+}
+
+extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+    public init(stringLiteral value: String) {
+        self.init(value)
     }
 }
 

@@ -77,7 +77,7 @@ internal extension WorkerPool {
             case .dynamic(let key):
                 context.system.receptionist.subscribe(
                     key: key,
-                    subscriber: context.messageAdapter(for: Receptionist.Listing<Message>.self) { listing in
+                    subscriber: context.messageAdapter(Receptionist.Listing<Message>.self) { listing in
                         context.log.debug("Got listing for \(self.selector): \(listing)")
                         return .listing(listing)
                     })
