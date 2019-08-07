@@ -127,7 +127,7 @@ private final class LifecycleDeinitClassBehavior: ClassBehavior<LifecycleDeinitA
 
     override func receive(context: ActorContext<LifecycleDeinitActorMessage>, message: LifecycleDeinitActorMessage) -> Behavior<LifecycleDeinitActorMessage> {
         self.probe.tell("receive:\(message)")
-        return .stopped
+        return .stop
     }
 
     override func receiveSignal(context: ActorContext<LifecycleDeinitActorMessage>, signal: Signal) -> Behavior<LifecycleDeinitActorMessage> {

@@ -217,7 +217,7 @@ fileprivate func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch
             } else {
                 latch.countDown()
                 context.log.info("Stop.")
-                return .stopped // note that this will likely lead to dead letters
+                return .stop // note that this will likely lead to dead letters
             }
         }
     }

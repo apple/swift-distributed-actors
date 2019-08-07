@@ -179,7 +179,7 @@ internal enum ClusterReceptionist {
             return .receiveSignal { _, signal in
                 if let signal = signal as? Signals.Terminated, signal.address == ref.address {
                     terminatedCallback()
-                    return .stopped
+                    return .stop
                 }
                 return .ignore
             }

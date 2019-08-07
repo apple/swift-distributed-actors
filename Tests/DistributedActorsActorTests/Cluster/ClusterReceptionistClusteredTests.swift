@@ -150,7 +150,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         let remoteLookupProbe = remoteTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
-            return .stopped
+            return .stop
         }
 
         let refA: ActorRef<String> = try local.spawnAnonymous(behavior)

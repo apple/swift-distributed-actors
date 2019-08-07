@@ -266,14 +266,14 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         let localRef: ActorRef<EchoTestMessage> = try local.spawn(.receiveMessage { message in
             message.respondTo.tell("local:\(message.string)")
-            return .stopped
+            return .stop
         }, name: "Local")
 
         let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
 
         let remoteRef: ActorRef<EchoTestMessage> = try remote.spawn(.receiveMessage { message in
             localRefRemote.tell(EchoTestMessage(string: "remote:\(message.string)", respondTo: message.respondTo))
-            return .stopped
+            return .stop
         }, name: "Remote")
 
         let remoteRefThird = thirdSystem._resolveKnownRemote(remoteRef, onRemoteSystem: remote)

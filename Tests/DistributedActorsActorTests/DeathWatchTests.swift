@@ -44,7 +44,7 @@ class DeathWatchTests: XCTestCase {
             switch message {
             case .stop:
                 probe?.tell("I (\(context.path.name)) will now stop")
-                return .stopped
+                return .stop
             }
         }
     }
@@ -81,7 +81,7 @@ class DeathWatchTests: XCTestCase {
         stoppableRef.tell(.stop) // should result in dead letter
 
         try p.expectMessage("I (stopMePlz1) will now stop")
-        // since the first message results in the actor becoming .stopped
+        // since the first message results in the actor becoming .stop
         // it should not be able to forward any new messages after the first one:
         try p.expectNoMessage(for: .milliseconds(100))
 
@@ -216,7 +216,7 @@ class DeathWatchTests: XCTestCase {
     func test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "alreadyDeadWatcherProbe")
 
-        let alreadyDead: ActorRef<String> = try system.spawn(.stopped, name: "alreadyDead")
+        let alreadyDead: ActorRef<String> = try system.spawn(.stop, name: "alreadyDead")
 
         p.watch(alreadyDead)
         try p.expectTerminated(alreadyDead)
@@ -245,7 +245,7 @@ class DeathWatchTests: XCTestCase {
         let juliet = try system.spawn(Behavior<JulietMessage>.receiveMessage { message in
             switch message {
             case .takePoison:
-                return .stopped // "kill myself" // TODO: throw
+                return .stop // "kill myself" // TODO: throw
             }
         }, name: "juliet")
 

@@ -65,7 +65,7 @@ class ParentChildActorTests: XCTestCase {
     func parentBehavior(probe: ParentChildProbeRef, notifyWhenChildStops: Bool = false) -> Behavior<ParentProtocol> {
         return Behavior<ParentProtocol>.receive { context, message in
             switch message {
-            case .stop: return .stopped
+            case .stop: return .stop
             case let .spawnChild(behavior, name):
                 do {
                     let kid = try context.spawn(behavior, name: name)
@@ -449,7 +449,7 @@ class ParentChildActorTests: XCTestCase {
         let parentBehavior: Behavior<String> = .receive { context, message in
             switch message {
             case "spawn":
-                let childRef: ChildRef = try context.spawnWatched(.stopped, name: "child")
+                let childRef: ChildRef = try context.spawnWatched(.stop, name: "child")
                 p.tell(.spawned(child: childRef))
             default:
                 ()

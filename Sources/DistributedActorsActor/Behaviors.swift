@@ -113,17 +113,17 @@ extension Behavior {
     /// will be used to handle the `PostStop` signal after the actor has stopped. This allows users to use
     /// the same signal handler (chain) to process all events.
     ///
-    /// - SeeAlso: `stopped(_:)` and `stopped(postStop:) overloads for adding cleanup code to be executed upon receipt of PostStop signal.
-    public static var stopped: Behavior<Message> {
-        return Behavior.stopped(postStop: nil, reason: .stopMyself)
+    /// - SeeAlso: `stop(_:)` and `stop(postStop:) overloads for adding cleanup code to be executed upon receipt of PostStop signal.
+    public static var stop: Behavior<Message> {
+        return Behavior.stop(postStop: nil, reason: .stopMyself)
     }
 
     /// A stopped behavior signifies that the actor will cease processing messages (they will be drained to dead letters),
     /// and the actor itself will stop. Return this behavior to stop your actors. This is a convenience overload that
     /// allows users to specify a closure that will only be called on receipt of `PostStop` and therefore does not
     /// need to get the signal passed in. It also does not need to return a new behavior, as the actor is already stopping.
-    public static func stopped(_ postStop: @escaping (ActorContext<Message>) throws -> ()) -> Behavior<Message> {
-        return Behavior.stopped(postStop: Behavior.receiveSignal { context, signal in
+    public static func stop(_ postStop: @escaping (ActorContext<Message>) throws -> ()) -> Behavior<Message> {
+        return Behavior.stop(postStop: Behavior.receiveSignal { context, signal in
             if signal is Signals.PostStop {
                 try postStop(context)
             }
@@ -136,8 +136,8 @@ extension Behavior {
     /// set, it will be used to handle the `PostStop` signal after the actor has stopped. Otherwise the last
     /// assigned behavior will be used. This allows users to use the same signal handler (chain) to process
     /// all events.
-    public static func stopped(postStop: Behavior<Message>) -> Behavior<Message> {
-        return Behavior(underlying: .stopped(postStop: postStop, reason: .stopMyself))
+    public static func stop(postStop: Behavior<Message>) -> Behavior<Message> {
+        return Behavior(underlying: .stop(postStop: postStop, reason: .stopMyself))
     }
 
 }
@@ -174,7 +174,7 @@ extension Behavior {
     ///         return .unhandled
     ///     }
     ///     if terminated.address.name == "Juliet" {
-    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
     ///     }
@@ -202,7 +202,7 @@ extension Behavior {
     ///         return .unhandled
     ///     }
     ///     if terminated.address.name == "Juliet" {
-    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
     ///     }
@@ -224,7 +224,7 @@ extension Behavior {
     /// ```
     /// let withSignalHandling = behavior.receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
     ///     if terminated.address.name == "Juliet" {
-    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
     ///     }
@@ -251,7 +251,7 @@ extension Behavior {
     /// ```
     /// return .receiveSpecificSignal(Signals.Terminated.self) { context, terminated in
     ///     if terminated.address.name == "Juliet" {
-    ///         return .stopped // if Juliet died, we end ourselves as well
+    ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
     ///         return .ignore
     ///     }
@@ -307,10 +307,10 @@ internal extension Behavior {
         return Behavior(underlying: .suspended(previousBehavior: previousBehavior, handler: handler))
     }
 
-    /// Creates internal representation of stopped behavior, see `stopped(_:)` for public api.
+    /// Creates internal representation of stopped behavior, see `stop(_:)` for public api.
     @usableFromInline
-    static func stopped(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
-        return Behavior(underlying: .stopped(postStop: postStop, reason: reason))
+    static func stop(postStop: Behavior<Message>? = nil, reason: StopReason) -> Behavior<Message> {
+        return Behavior(underlying: .stop(postStop: postStop, reason: reason))
     }
 
     /// Internal way of expressing a failed actor, retains the behavior that has failed internally.
@@ -318,7 +318,7 @@ internal extension Behavior {
     /// - parameters
     ///   - error: cause of the actor's failing.
     @usableFromInline
-    func makeFailed(cause: Supervision.Failure) -> Behavior<Message> {
+    func fail(cause: Supervision.Failure) -> Behavior<Message> {
         return Behavior(underlying: _Behavior<Message>.failed(behavior: self, cause: cause))
     }
 }
@@ -333,7 +333,7 @@ internal enum _Behavior<Message> {
 
     case `class`(ClassBehavior<Message>)
 
-    indirect case stopped(postStop: Behavior<Message>?, reason: StopReason)
+    indirect case stop(postStop: Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: Behavior<Message>, cause: Supervision.Failure)
 
     indirect case signalHandling(handleMessage: Behavior<Message>,
@@ -352,7 +352,7 @@ internal enum _Behavior<Message> {
 
 @usableFromInline
 internal enum StopReason {
-    /// the actor decided to stop and returned Behavior.stopped
+    /// the actor decided to stop and returned Behavior.stop
     case stopMyself
     /// a stop was requested by the parent, i.e. `context.stop(ref)`
     case stopByParent
@@ -489,8 +489,8 @@ extension Interceptor {
 
         let started = try behavior.start(context: context)
 
-        if case .stopped(.some(let postStop), let reason) = started.underlying {
-            return .stopped(postStop: deduplicate0(postStop), reason: reason)
+        if case .stop(.some(let postStop), let reason) = started.underlying {
+            return .stop(postStop: deduplicate0(postStop), reason: reason)
         } else if started.isUnhandled || started.isSame || started.isTerminal || started.isSuspend {
             return started
         } else {
@@ -525,7 +525,7 @@ public extension Behavior {
 
         case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
 
-        case .stopped:           fatalError("Illegal attempt to interpret message with .stopped behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .stop:           fatalError("Illegal attempt to interpret message with .stop behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
         case .failed:            fatalError("Illegal attempt to interpret message with .failed behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
 
         case .suspend:
@@ -541,9 +541,9 @@ public extension Behavior {
         // This switch does not use a `default:` clause on purpose!
         // This is to enforce having to consider consider how a signal should be interpreted if a new behavior case is added.
         switch self.underlying {
-        case .stopped(let postStop, let reason):
+        case .stop(let postStop, let reason):
             if let postStop = postStop {
-                return try .stopped(postStop: postStop.interpretSignal(context: context, signal: signal), reason: reason)
+                return try .stop(postStop: postStop.interpretSignal(context: context, signal: signal), reason: reason)
             } else {
                 return .same
             }
@@ -656,16 +656,16 @@ internal extension Behavior {
         }
     }
 
-    /// Shorthand for checking if the `Behavior` is `.stopped` or `.failed`.
+    /// Shorthand for checking if the `Behavior` is `.stop` or `.failed`.
     @inlinable
     var isTerminal: Bool {
         switch self.underlying {
-        case .stopped, .failed: return true
+        case .stop, .failed: return true
         default:       return false
         }
     }
 
-    /// Shorthand for checking if the `Behavior` is NOT `.stopped` or `.failed`.
+    /// Shorthand for checking if the `Behavior` is NOT `.stop` or `.failed`.
     @inlinable
     var isStillAlive: Bool {
         return !self.isTerminal
@@ -743,8 +743,8 @@ internal extension Behavior {
                 case .unhandled:                    return base
                 case .class:                        return canonical
 
-                case .stopped(.none, let reason): return .stopped(postStop: base, reason: reason)
-                case .stopped(.some, _):          return canonical
+                case .stop(.none, let reason): return .stop(postStop: base, reason: reason)
+                case .stop(.some, _):          return canonical
                 case .failed:                     return canonical
 
                 case .orElse(let first, let second):
@@ -831,7 +831,7 @@ internal extension Behavior {
         switch self.underlying {
         case .intercept(let behavior, _):       return behavior.existsInStack(predicate)
         case let .orElse(first, second):        return first.existsInStack(predicate) || second.existsInStack(predicate)
-        case let .stopped(.some(postStop), _):  return postStop.existsInStack(predicate)
+        case let .stop(.some(postStop), _):  return postStop.existsInStack(predicate)
         default:                                return false
         }
     }

@@ -46,7 +46,7 @@ class BehaviorTests: XCTestCase {
         let message = "EHLO"
         let _: ActorRef<String> = try system.spawnAnonymous(.setup { context in
             p.tell(message)
-            return .stopped
+            return .stop
         })
 
         try p.expectMessage(message)
@@ -88,7 +88,7 @@ class BehaviorTests: XCTestCase {
         func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
             if at == n {
                 return .setup { context in
-                    return .stopped
+                    return .stop
                 }
             } else {
                 return .receive { context, message in
@@ -161,7 +161,7 @@ class BehaviorTests: XCTestCase {
         }
 
         override public func receive(context: ActorContext<String>, message: String) throws -> Behavior<String> {
-            _ = try context.spawnWatchedAnonymous(Behavior<String>.stopped)
+            _ = try context.spawnWatchedAnonymous(Behavior<String>.stop)
             return .same
         }
 
@@ -212,11 +212,11 @@ class BehaviorTests: XCTestCase {
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
         let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe(name: "probe-specificSignal-1")
         let _: ActorRef<String> = try system.spawnAnonymous(.setup { context in
-            let _: ActorRef<Never> = try context.spawnWatchedAnonymous(.stopped)
+            let _: ActorRef<Never> = try context.spawnWatchedAnonymous(.stop)
 
             return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                 p.tell(terminated)
-                return .stopped
+                return .stop
             }
         })
 
@@ -227,10 +227,10 @@ class BehaviorTests: XCTestCase {
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "probe-specificSignal-2")
         let ref: ActorRef<String> = try system.spawnAnonymous(Behavior<String>.receiveMessage({ message in
-            return .stopped
+            return .stop
         }).receiveSpecificSignal(Signals.PostStop.self) { _, postStop in
             p.tell("got:\(postStop)")
-            return .stopped
+            return .stop
         }
         )
         ref.tell("please stop")
@@ -385,7 +385,7 @@ class BehaviorTests: XCTestCase {
     func test_stoppedWithPostStop_shouldTriggerPostStopCallback() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<Never> = .stopped { _ in
+        let behavior: Behavior<Never> = .stop { _ in
             p.tell("postStop")
         }
 
@@ -397,7 +397,7 @@ class BehaviorTests: XCTestCase {
     func test_stoppedWithPostStopThrows_shouldTerminate() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
-        let behavior: Behavior<Never> = .stopped(postStop: .signalHandling(handleMessage: .ignore) { _, signal in
+        let behavior: Behavior<Never> = .stop(postStop: .signalHandling(handleMessage: .ignore) { _, signal in
             p.tell("postStop")
             throw TestError("Boom")
         })
@@ -419,7 +419,7 @@ class BehaviorTests: XCTestCase {
                 // actually being executed in the context of the actor. After
                 // calling the closure, it will check if the actor is still
                 // supposed to run and if it's not, it will be stopped.
-                context.myself._unsafeUnwrapCell.actor?.behavior = .stopped
+                context.myself._unsafeUnwrapCell.actor?.behavior = .stop
                 p.tell("fromCallback:\(msg)")
             }
 
@@ -447,7 +447,7 @@ class BehaviorTests: XCTestCase {
                 return context.myself
             })
 
-            return .stopped
+            return .stop
         }
 
         let ref = try system.spawn(behavior, name: "myselfStillValidAfterStopped")
@@ -875,7 +875,7 @@ class BehaviorTests: XCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            _ = try context.spawnWatched(Behavior<String>.stopped, name: "child")
+            _ = try context.spawnWatched(Behavior<String>.stop, name: "child")
             return .suspend { (msg: Result<Int, ExecutionError>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -914,7 +914,7 @@ class BehaviorTests: XCTestCase {
 
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
-            _ = try context.spawnWatched(Behavior<String>.stopped, name: "child")
+            _ = try context.spawnWatched(Behavior<String>.stop, name: "child")
             return .suspend { (msg: Result<Int, ExecutionError>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
@@ -923,7 +923,7 @@ class BehaviorTests: XCTestCase {
                 return .same
             }
         }.receiveSignal { context, signal in
-            return .stopped
+            return .stop
         }
 
         let ref = try system.spawn(behavior, name: "parent")

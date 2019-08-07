@@ -38,7 +38,7 @@ final class ActorAskTests: XCTestCase {
     func test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout() throws {
         let behavior: Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received")
-            return .stopped
+            return .stop
         }
 
         let ref = try system.spawnAnonymous(behavior)
@@ -52,7 +52,7 @@ final class ActorAskTests: XCTestCase {
 
     func test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout() throws {
         let behavior: Behavior<TestMessage> = .receiveMessage { _ in
-            return .stopped
+            return .stop
         }
 
         let ref = try system.spawnAnonymous(behavior)
@@ -68,7 +68,7 @@ final class ActorAskTests: XCTestCase {
         let behavior: Behavior<TestMessage> = .receiveMessage {
             $0.replyTo.tell("received:1")
             $0.replyTo.tell("received:2")
-            return .stopped
+            return .stop
         }
 
         let ref = try system.spawnAnonymous(behavior)
@@ -89,7 +89,7 @@ final class ActorAskTests: XCTestCase {
 
         let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
             message.replyTo.tell("Hello there")
-            return .stopped
+            return .stop
         }, name: "greeterAskReply")
 
         let _: ActorRef<Never> = try system.spawn(.setup { context in
@@ -97,7 +97,7 @@ final class ActorAskTests: XCTestCase {
 
             return context.awaitResultThrowing(of: askResult, timeout: .seconds(1)) { greeting in
                 p.tell(greeting)
-                return .stopped
+                return .stop
             }
         }, name: "awaitOnAskResult")
 
@@ -109,7 +109,7 @@ final class ActorAskTests: XCTestCase {
 
         let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
             message.replyTo.tell("Hello there")
-            return .stopped
+            return .stop
         }, name: "greeterAskReply")
 
         let _: ActorRef<Never> = try system.spawn(.setup { context in
@@ -152,7 +152,7 @@ final class ActorAskTests: XCTestCase {
                 case .success:
                     p.tell("no timeout...")
                 }
-                return .stopped
+                return .stop
             }
         }, name: "onResultAsync")
 

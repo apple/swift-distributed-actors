@@ -87,7 +87,7 @@ fileprivate func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behav
             ringStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
             q.enqueue(0) // done
             // pprint("DONE RING SEND. \(time(nil))")
-            return .stopped
+            return .stop
         default:
             // context.log.info("Send \(Token(msg.payload - 1)) \(context.myself.path.name) >>> \(next.path.name)")
             next.tell(Token(msg.payload - 1))

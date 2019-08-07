@@ -118,7 +118,7 @@ class ActorDocExamples: XCTestCase {
 
             // and then...
             switch data {
-            case .endOfFile: return .stopped // <2>
+            case .endOfFile: return .stop // <2>
             default:         return .same
             }
         }
@@ -135,7 +135,7 @@ class ActorDocExamples: XCTestCase {
         // tag::stop_myself_refactored[]
         private func stopForTerminal(_ data: LineByLineData) -> Behavior<String> {
             switch data {
-            case .endOfFile: return .stopped
+            case .endOfFile: return .stop
             default:         return .same
             }
         }
@@ -253,7 +253,7 @@ class ActorDocExamples: XCTestCase {
 
             return .same // (a)
             // or
-            return .stopped // (b)
+            return .stop // (b)
             // or
             throw TestError("Whoops!") // (c)
             // or
@@ -312,12 +312,12 @@ class ActorDocExamples: XCTestCase {
                 }
 
             func greeted() -> Behavior<Never> {
-                return .stopped
+                return .stop
             }
 
             return context.awaitResultThrowing(of: response, timeout: timeout) { (greeting: String) in // <2>
                 context.log.info("I've been greeted: \(greeting)")
-                return .stopped // <3>
+                return .stop // <3>
             }
         }
 

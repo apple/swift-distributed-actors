@@ -280,7 +280,7 @@ internal enum LocalReceptionist {
             return .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                 if terminated.address == ref.address {
                     terminatedCallback()
-                    return .stopped
+                    return .stop
                 }
                 return .ignore
             }

@@ -160,7 +160,7 @@ private enum AskActor {
                     completable.succeed(message)
                 }
 
-                return .stopped
+                return .stop
             }
         }
     }

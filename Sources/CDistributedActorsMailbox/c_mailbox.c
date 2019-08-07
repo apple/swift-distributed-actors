@@ -439,7 +439,7 @@ SActMailboxRunResult cmailbox_run(
 
         // issue directives to mailbox ---------------------------------------------------------------------------------
         if (run_result == SActActorRunResult_shouldStop) {
-            // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stopped),
+            // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
             print_debug_status(mailbox, "terminating, notifying swift mailbox...");
             return SActMailboxRunResult_Close;

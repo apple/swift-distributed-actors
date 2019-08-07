@@ -518,7 +518,7 @@ extension ClusterShell {
                 context.log.info("Unbound server socket [\(addrDesc)].")
                 signalOnceUnbound.offerOnce(())
                 self.serializationPool.shutdown()
-                return .stopped
+                return .stop
             case .failure(let err):
                 context.log.warning("Failed while unbinding server socket [\(addrDesc)]. Error: \(err)")
                 signalOnceUnbound.offerOnce(())
@@ -597,7 +597,7 @@ extension ActorSystem {
         let ref: ActorRef<Set<UniqueNode>> = try! self.spawnAnonymous(.receive { context, nodes in
             let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
             context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
-            return .stopped
+            return .stop
         })
         self.clusterShell.tell(.query(.associatedNodes(ref)))
     }
