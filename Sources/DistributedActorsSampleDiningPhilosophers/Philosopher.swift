@@ -42,7 +42,7 @@ public class Philosopher {
             context.watch(self.left)
             context.watch(self.right)
 
-            let myselfForFork = context.messageAdapter(for: Fork.Reply.self) { .forkReply($0) }
+            let myselfForFork = context.messageAdapter(Fork.Reply.self) { .forkReply($0) }
             context.log.info("I'm thinking...")
             // remember to eat after some time!
             context.timers.startSingle(key: TimerKey("eat"), message: .eat, delay: .seconds(1))

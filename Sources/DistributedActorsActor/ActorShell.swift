@@ -582,7 +582,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]
 
-    override func messageAdapter<From>(for type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    override func messageAdapter<From>(_ type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
         let name = self.system.anonymousNames.nextName()
         do {
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
@@ -596,6 +596,23 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
                        generated for them using sequential names. Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)? 
                        Error: \(error)
                        """)
+        }
+    }
+
+    override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+        let name = self.system.anonymousNames.nextName()
+        do {
+            let adaptedAddress = try self.address.makeChildAddress(name: "\(id.id)-\(name)", incarnation: .random())
+            let ref = SubReceiveAdapter(self.myself, address: adaptedAddress, closure: closure)
+
+            self._children.insert(ref) // TODO separate adapters collection?
+            return .init(.adapter(ref))
+        } catch {
+            fatalError("""
+                Failed while creating a sub receive with id [\(id.id)] and type [\(type)]. This should never happen, since sub receives have unique names
+                generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+                Error: \(error)
+                """)
         }
     }
 }
