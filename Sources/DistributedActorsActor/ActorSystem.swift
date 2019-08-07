@@ -83,6 +83,7 @@ public final class ActorSystem {
 
     #if SACT_TESTS_LEAKS
     let userCellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
+    let userMailboxInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
     #endif
 
     /// Creates a named ActorSystem

@@ -81,6 +81,45 @@ class ActorLeakingTests: XCTestCase {
         #endif
     }
 
+    func test_spawn_stop_shouldNotLeakMailbox() throws {
+        #if SACT_TESTS_LEAKS
+        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { msg in
+            return .stop
+        }
+
+        var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "stopsOnAnyMessage")
+
+        let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.system.userMailboxInitCounter.load()
+            if counter != 1 {
+                throw NotEnoughActorsAlive(expected: 1, current: counter)
+            } else {
+                return counter
+            }
+        }
+
+        ref?.tell("please stop")
+        ref = nil
+
+        let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+            let counter = self.system.userMailboxInitCounter.load()
+            if counter != 0 {
+                throw TooManyActorsAlive(expected: 0, current: counter)
+            } else {
+                return counter
+            }
+        }
+
+        afterStartMailboxCount.shouldEqual(1)
+        afterStopMailboxCount.shouldEqual(0)
+
+        #else
+        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
+        return ()
+        #endif
+    }
+
+
     func test_parentWithChildrenStopping_shouldNotLeakActors() throws {
         #if SACT_TESTS_LEAKS
 
@@ -90,7 +129,7 @@ class ActorLeakingTests: XCTestCase {
             } else {
                 for _ in 1...childCount {
                     let b: Behavior<String> = .receiveMessage { msg in return .same }
-                    try context.spawnAnonymous(b)
+                    _ = try context.spawnAnonymous(b)
                 }
                 return .same
             }
