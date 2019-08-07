@@ -227,9 +227,9 @@ class ActorRefAdapterTests: XCTestCase {
                 switch $0 {
                 case .createAdapter(let replyTo):
                     replyTo.tell(context.messageAdapter { .message("adapter:\($0)") })
-                    return .stopped
+                    return .stop
                 default:
-                    return .stopped
+                    return .stop
                 }
             }
         }
