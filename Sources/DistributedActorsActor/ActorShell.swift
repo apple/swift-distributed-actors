@@ -491,7 +491,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             self.log.error("Exception in postStop. Supervision will NOT be applied. Error \(error)")
         }
 
-        // TODO validate all the nulling out; can we null out the cell itself?
+        // TODO validate all the niling out; can we null out the cell itself?
         self._deathWatch = nil
         self.messageAdapters = [:]
 
