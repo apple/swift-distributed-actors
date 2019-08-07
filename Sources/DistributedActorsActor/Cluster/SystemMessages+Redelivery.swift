@@ -346,7 +346,7 @@ public struct OutboundSystemMessageRedeliverySettings {
 
     /// When enabled, logs all outbound messages using the tracelog facility.
     /// Logs lines will be marked with: [tracelog:sys-msg-redelivery]
-    let tracelogLevel: Logger.Level? = .error
+    let tracelogLevel: Logger.Level? = nil
 
     /// Configures the interval at which system messages will be re-delivered if no acknowledgement
     /// is received for them within that timeout.
@@ -381,6 +381,6 @@ public struct InboundSystemMessageRedeliverySettings {
 
     /// When enabled, logs all outbound messages using the tracelog facility.
     /// Logs lines will be marked with: [tracelog:sys-msg-redelivery]
-    let tracelogLevel: Logger.Level? = .error
+    let tracelogLevel: Logger.Level? = nil
 
 }
