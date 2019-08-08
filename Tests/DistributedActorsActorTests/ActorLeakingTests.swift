@@ -81,6 +81,48 @@ class ActorLeakingTests: XCTestCase {
         #endif
     }
 
+    func test_spawn_stop_shouldNotLeakActorThatCloseOverContext() throws {
+        #if SACT_TESTS_LEAKS
+
+        let stopsOnAnyMessage: Behavior<String> = .setup { context in
+            .receiveMessage { msg in
+                context.log.debug("just so we actually close over context ;)")
+                return .stop
+            }
+        }
+
+        var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "printer")
+
+        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+            let counter = self.system.userCellInitCounter.load()
+            if counter != 1 {
+                throw NotEnoughActorsAlive(expected: 1, current: counter)
+            } else {
+                return counter
+            }
+        }
+
+        ref?.tell("please stop")
+        ref = nil
+
+        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+            let counter = self.system.userCellInitCounter.load()
+            if counter != 0 {
+                throw TooManyActorsAlive(expected: 0, current: counter)
+            } else {
+                return counter
+            }
+        }
+
+        afterStartActorCount.shouldEqual(1)
+        afterStopActorCount.shouldEqual(0)
+
+        #else
+        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
+        return ()
+        #endif
+    }
+
     func test_spawn_stop_shouldNotLeakMailbox() throws {
         #if SACT_TESTS_LEAKS
         let stopsOnAnyMessage: Behavior<String> = .receiveMessage { msg in
