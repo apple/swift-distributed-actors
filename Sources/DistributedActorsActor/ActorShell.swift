@@ -497,8 +497,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // become stopped, if not already
         switch self.behavior.underlying {
-        case .stop: () // already marked as stopped
-        default: self.behavior = .stop
+        case .stop(_, let reason):
+            self.behavior = .stop(reason: reason)
+        default:
+            self.behavior = .stop
         }
 
         traceLog_Cell("CLOSED DEAD: \(String(describing: myAddress)) has completely terminated, and will never act again.")
