@@ -18,12 +18,12 @@
 /// Uniquely identifies an Actor within a (potentially clustered) Actor System.
 /// Most of the time, using an `ActorRef` is the right thing for identifying actors however, as it also allows sending messages.
 ///
-/// # Identity
+/// ## Identity
 /// The address is the source of truth with regards to referring to a _specific_ actor in the system.
 /// This is in contrast to an `ActorPath` which can be thought of as paths in a filesystem, however without any uniqueness
 /// or identity guarantees about the files those paths point to.
 ///
-/// # Lifecycle
+/// ## Lifecycle
 /// Note, that an ActorAddress is a pure value, and as such does not "participate" in an actors lifecycle;
 /// Thus, it may represent an address of an actor that has already terminated, so attempts to locate (resolve)
 /// an `ActorRef` for this address may result with a reference to dead letters (meaning, that the actor this address
@@ -36,7 +36,7 @@
 /// and when implementing custom serializers the `ActorSerializationContext` should be used to access the node address
 /// to include while serializing the address.
 ///
-/// # Format
+/// ## Format
 /// The address consists of the following parts:
 ///
 /// ```
