@@ -58,6 +58,8 @@ internal final class ManualFailureObserver: FailureObserver {
 
         var existingWatchers = self.remoteWatchers[remoteNode] ?? []
         existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
+
+        // pprint("existingWatchers = \(existingWatchers)")
         self.remoteWatchers[remoteNode] = existingWatchers
     }
 
@@ -73,9 +75,19 @@ internal final class ManualFailureObserver: FailureObserver {
         }
     }
 
+    // THIS is a placeholder for a more real IMPL
+    func forceDown(_ node: Node) {
+        guard let uniqueNode = self.remoteWatchers.keys.first(where: { $0.node == node }) else {
+            return
+        }
+        
+        self.handleAddressDown(MembershipChange(node: uniqueNode, fromStatus: nil, toStatus: .down))
+    }
+
     func handleAddressDown(_ change: MembershipChange) {
         let terminatedAddress = change.node
         if let watchers = self.remoteWatchers[terminatedAddress] {
+
             for ref in watchers {
                 // we notify each actor that was watching this remote address
                 ref.sendSystemMessage(.nodeTerminated(terminatedAddress)) // TODO implement as directive returning rather than side effecting

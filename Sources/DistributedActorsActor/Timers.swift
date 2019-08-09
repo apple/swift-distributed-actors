@@ -59,6 +59,7 @@ public struct TimerKey: Hashable {
         self.identifier = AnyHashable(identifier)
         self.isSystemTimer = isSystemTimer
     }
+
 }
 extension TimerKey: CustomStringConvertible {
     public var description: String {
@@ -67,6 +68,12 @@ extension TimerKey: CustomStringConvertible {
         } else {
             return "TimerKey(\(self.identifier.base))"
         }
+    }
+}
+
+extension TimerKey: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
+    public init(stringLiteral value: StringLiteralType) {
+        self.init(value)
     }
 }
 

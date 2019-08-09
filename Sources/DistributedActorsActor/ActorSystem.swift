@@ -90,17 +90,15 @@ public final class ActorSystem {
     /// The name is useful for debugging cross system communication
     ///
     /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
-    public init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
-        self.name = name
-
+    public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         var settings = ActorSystemSettings()
         settings.cluster.node.systemName = name
         configureSettings(&settings)
-        if settings.cluster.enabled {
-            precondition(settings.cluster.node.systemName == name,
-                "Configured name [\(name)] did not match name configured for cluster \(settings.cluster.node)! " + 
-                "Both names MUST match in order to avoid confusion.")
-        }
+        self.init(settings: settings)
+    }
+    public init(settings: ActorSystemSettings) {
+        var settings = settings
+        self.name = settings.cluster.node.systemName
 
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
