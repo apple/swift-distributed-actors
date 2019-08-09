@@ -33,7 +33,7 @@ services:
 
   integration-tests:
     <<: *common
-    command: /bin/bash -cl "./scripts/integration_tests.sh"
+    command: /bin/bash -cl "./scripts/integration_tests.rb"
 
   test:
     <<: *common

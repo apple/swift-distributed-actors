@@ -648,7 +648,10 @@ extension ActorShell {
 
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
-            log.warning("Actor not known, but [\(terminated)] received for it. Ignoring.")
+            log.trace("""
+                      Actor not known, but [\(terminated)] received for it. This may mean we received node terminated earlier, \
+                      and already have removed the actor from our death watch. 
+                      """)
             return
         }
 

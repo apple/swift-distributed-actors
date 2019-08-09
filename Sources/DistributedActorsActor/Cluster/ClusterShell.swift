@@ -160,6 +160,8 @@ internal class ClusterShell {
         case join(Node)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
         case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
+        
+        case down(Node)
     } 
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO better type here
@@ -265,6 +267,10 @@ extension ClusterShell {
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
             case .unbind(let receptacle):
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
+            case .down(let node):
+                state.log.info("Received [.down(\(node))] command, will unconditionally DOWN specified node.")
+                self.failureDetectorRef.tell(.forceDown(node))
+                return .same
             }
         }
 

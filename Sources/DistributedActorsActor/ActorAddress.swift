@@ -561,7 +561,6 @@ extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
         return "\(self.node)"
     }
     public var debugDescription: String {
-        // TODO this somewhat abuses userinfo's password to carry the system UID... double check how we want to render
         let a = self.node
         return "\(a.protocol)://\(a.systemName):\(self.nid)@\(a.host):\(a.port)"
     }
