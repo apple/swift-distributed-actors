@@ -82,8 +82,9 @@ public final class ActorSystem {
     internal let eventLoopGroup: MultiThreadedEventLoopGroup
 
     #if SACT_TESTS_LEAKS
-    let userCellInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
-    let userMailboxInitCounter: Atomic<Int> = Atomic<Int>(value: 0)
+    static let actorSystemInitCounter: Atomic<Int> = Atomic(value: 0)
+    let userCellInitCounter: Atomic<Int> = Atomic(value: 0)
+    let userMailboxInitCounter: Atomic<Int> = Atomic(value: 0)
     #endif
 
     /// Creates a named ActorSystem
@@ -169,6 +170,10 @@ public final class ActorSystem {
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, perpetual: true)
 
+        #if SACT_TESTS_LEAKS
+        ActorSystem.actorSystemInitCounter.add(1)
+        #endif
+
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             _ = try self._cluster?.start(system: self) // only spawns when cluster is initialized
@@ -179,6 +184,12 @@ public final class ActorSystem {
 
     public convenience init() {
         self.init("ActorSystem")
+    }
+
+    deinit {
+        #if SACT_TESTS_LEAKS
+        ActorSystem.actorSystemInitCounter.sub(1)
+        #endif
     }
 
 
@@ -196,6 +207,8 @@ public final class ActorSystem {
         self.dispatcher.shutdown()
         try! self.eventLoopGroup.syncShutdownGracefully()
         self.serialization = nil
+        self._cluster = nil
+        self._receptionist = self.deadLetters.adapted()
     }
 }
 

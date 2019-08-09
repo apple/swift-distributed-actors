@@ -247,4 +247,20 @@ class ActorLeakingTests: XCTestCase {
         lock.unlock()
         #endif // SACT_TESTS_LEAKS
     }
+
+    func test_actorSystem_shouldNotLeak() {
+        #if SACT_TESTS_LEAKS
+        let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
+
+        for _ in 1 ... 5 {
+            let system = ActorSystem("Test")
+            system.shutdown()
+        }
+
+        ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
+        #else
+        pnote("Skipping leak test \(#function), it will only be executed if -DSACT_TESTS_LEAKS is enabled.")
+        return ()
+        #endif
+    }
 }
