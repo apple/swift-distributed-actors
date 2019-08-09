@@ -60,7 +60,7 @@ fi
 
 # run jazzy
 if ! command -v jazzy > /dev/null; then
-  gem install jazzy --no-ri --no-rdoc
+  gem install jazzy --no-document
 fi
 
 if [[ "$(jazzy --version)" != "jazzy version: 0.10.0" ]]; then

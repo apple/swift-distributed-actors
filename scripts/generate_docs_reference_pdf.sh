@@ -30,7 +30,7 @@ echo "Project version: ${version}"
 
 # run asciidoctor
 if ! command -v asciidoctor-pdf > /dev/null; then
-  gem install asciidoctor --no-ri --no-rdoc
+  gem install asciidoctor --no-document
   gem install asciidoctor-pdf --pre
 fi
 

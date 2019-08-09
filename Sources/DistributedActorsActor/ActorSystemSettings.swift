@@ -18,6 +18,10 @@ import class Foundation.ProcessInfo
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
 
+    public static var `default`: ActorSystemSettings {
+        return .init()
+    }
+
     /// Configure default log level for all `Logger` instances created by the library.
     public var defaultLogLevel: Logger.Level = .info // TODO maybe remove this? should be up to logging library to configure for us as well
 

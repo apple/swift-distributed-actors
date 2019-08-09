@@ -30,7 +30,7 @@ echo "Project version: ${version}"
 
 # run asciidoctor
 if ! command -v asciidoctor > /dev/null; then
-  gem install asciidoctor --no-ri --no-rdoc -v 1.5.8
+  gem install asciidoctor --no-document -v 1.5.8
   gem install asciidoctor-diagram -v 1.5.8
 fi
 

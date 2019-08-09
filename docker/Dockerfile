@@ -56,13 +56,13 @@ RUN [ -n "$skip_ruby_from_ppa" ] || apt-add-repository -y ppa:brightbox/ruby-ng
 RUN [ -n "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby2.4 ruby2.4-dev; }
 RUN [ -z "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby ruby-dev; }
 RUN apt-get update && apt-get install -y libsqlite3-dev
-RUN gem install jazzy --no-ri --no-rdoc
+RUN gem install jazzy --no-document
 
 # install java as generating diagrams for reference docs needs java
 RUN apt install -y default-jre
 
 # asciidoctor for reference documentation
-RUN gem install asciidoctor --no-ri --no-rdoc
+RUN gem install asciidoctor --no-document
 RUN gem install pygments.rb -v 0.6.3
 RUN gem install asciidoctor-diagram
 

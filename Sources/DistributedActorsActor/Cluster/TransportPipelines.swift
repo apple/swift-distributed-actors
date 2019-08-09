@@ -21,6 +21,7 @@ import class NIOExtras.LengthFieldPrepender
 import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
 import SwiftProtobuf
 import Logging
+import Foundation
 
 typealias Framing = LengthFieldBasedFrameDecoder
 

@@ -32,6 +32,8 @@ internal protocol FailureObserver {
     /// left the cluster.
     func onMembershipChanged(_ change: MembershipChange)
 
+    func forceDown(_ node: Node)
+
 }
 
 /// Context passed to failure detectors.
@@ -60,6 +62,7 @@ internal enum FailureDetectorProtocol {
     case watchedActor(watcher: AddressableActorRef, remoteNode: UniqueNode)
     case membershipSnapshot(Membership)
     case membershipChange(MembershipChange)
+    case forceDown(Node)
 }
 
 internal enum FailureDetectorShell {
@@ -83,6 +86,8 @@ internal enum FailureDetectorShell {
                 }
             case  .membershipChange(let change):
                 _ = observer.onMembershipChanged(change) // TODO return and interpret directives
+            case .forceDown(let node):
+                _ = observer.forceDown(node)
             }
             return .same
 
