@@ -134,10 +134,10 @@ extension ActorSystem {
 /// Dead references on the other hand have never, and will never be valid, meaning it is useful to distinguish them for debugging and logging purposes,
 /// but not for anything more -- users shall assume that their communication is correct and only debug why a dead reference appeared if it indeed does happen.
 @usableFromInline
-struct DeadLetterOffice {
+final class DeadLetterOffice {
     let _address: ActorAddress
     let log: Logger
-    let system: ActorSystem?
+    weak var system: ActorSystem?
 
     init(_ log: Logger, address: ActorAddress, system: ActorSystem?) {
         self.log = log

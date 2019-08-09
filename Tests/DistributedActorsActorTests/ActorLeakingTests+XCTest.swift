@@ -29,6 +29,7 @@ extension ActorLeakingTests {
                 ("test_spawn_stop_shouldNotLeakMailbox", test_spawn_stop_shouldNotLeakMailbox),
                 ("test_parentWithChildrenStopping_shouldNotLeakActors", test_parentWithChildrenStopping_shouldNotLeakActors),
                 ("test_droppedMessages_shouldNotLeak", test_droppedMessages_shouldNotLeak),
+                ("test_actorSystem_shouldNotLeak", test_actorSystem_shouldNotLeak),
            ]
    }
 }
