@@ -330,6 +330,18 @@ extension ActorTestProbe where Message: Equatable {
         }
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Clearing buffered messages (for expectations)
+
+    public func clearMessages() {
+        do {
+            while try self.maybeExpectMessage() != nil {
+                () // dropping messages
+            }
+        } catch {
+            () // no messages in queue; i.e. nothing to clear; we're good
+        }
+    }
 }
 
 // MARK: TestProbes can ReceivesMessages
