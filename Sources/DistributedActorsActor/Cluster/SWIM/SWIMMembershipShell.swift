@@ -20,18 +20,18 @@ import Logging
 internal struct SWIMMembershipShell {
 
     let swim: SWIM.Instance
-    let observer: FailureObserver?
+    let clusterRef: ClusterShell.Ref
 
     var settings: SWIM.Settings {
         return self.swim.settings
     }
 
-    internal init(_ swim: SWIM.Instance, observer: FailureObserver? = nil) {
+    internal init(_ swim: SWIM.Instance, clusterRef: ClusterShell.Ref) {
         self.swim = swim
-        self.observer = observer
+        self.clusterRef = clusterRef
     }
-    internal init(settings: SWIM.Settings, observer: FailureObserver? = nil) {
-        self.init(SWIM.Instance(settings), observer: observer)
+    internal init(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) {
+        self.init(SWIM.Instance(settings), clusterRef: clusterRef)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -110,6 +110,23 @@ internal struct SWIMMembershipShell {
         case .join(let node):
             self.handleJoin(context, node: node)
 
+        case .confirmDead(let address):
+            if let member = self.swim.member(for: address) {
+                // We are diverging from the SWIM paper here in that we store the `.dead` state, instead
+                // of removing the node from the member list. We do that in order to prevent dead nodes
+                // from being re-added to the cluster.
+                // TODO: add time of death to the status
+                switch self.swim.mark(member.ref, as: .dead) {
+                case .applied:
+                    // TODO marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
+                    context.log.warning("Marked [\(member)] as dead. Was marked suspect in protocol period [\(member.protocolPeriod)], current period [\(swim.protocolPeriod)].")
+                // TODO: add tracelog about marking a node dead here?
+                case .ignoredDueToOlderStatus:
+                    // TODO make sure a fatal error in SWIM.Shell causes a system shutdown?
+                    fatalError("Marking [\(member)] as dead failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
+                }
+            }
+
         case .getMembershipState(let replyTo): // TODO could it be a "testing" message?
             // NOT tracelogging it on purpose, it is a testing message
             replyTo.tell(SWIM.MembershipState(membershipStatus: swim._allMembersDict))
@@ -155,7 +172,7 @@ internal struct SWIMMembershipShell {
         guard !membersToPingRequest.isEmpty else {
             // no nodes available to ping, so we have to assume the node suspect right away
             if let lastIncarnation = lastKnownStatus.incarnation {
-                context.log.info("No members to ping-req through, marking [\(toPing)] immediately as [.suspect].")
+                context.log.info("No members to ping-req through, marking [\(toPing)] immediately as [.suspect]. Members: [\(self.swim._allMembersDict)]")
                 self.swim.mark(toPing, as: .suspect(incarnation: lastIncarnation))
                 return
             } else {
@@ -268,18 +285,15 @@ internal struct SWIMMembershipShell {
         // FIXME: use decaying timeout as proposed in lifeguard paper
         let timeoutPeriods = (self.swim.protocolPeriod - self.swim.settings.failureDetector.suspicionTimeoutPeriodsMax)
         for member in self.swim.suspects where member.protocolPeriod <= timeoutPeriods {
-            // We are diverging from teh SWIM paper here in that we store the `.dead` state, instead
-            // of removing the node from the member list. We do that in order to prevent dead nodes
-            // from being re-added to the cluster.
-            // TODO: add time of death to the status
-            switch self.swim.mark(member.ref, as: .dead) {
-            case .applied:
-                // TODO marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
-                context.log.warning("Marked [\(member)] as dead. Was marked suspect in protocol period [\(member.protocolPeriod)], current period [\(swim.protocolPeriod)].")
-                // TODO: add tracelog about marking a node dead here?
-            case .ignoredDueToOlderStatus:
-                // TODO make sure a fatal error in SWIM.Shell causes a system shutdown?
-                fatalError("Marking [\(member)] as dead failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
+            if let node = member.ref.address.node {
+                if let incarnation = member.status.incarnation {
+                    self.swim.mark(member.ref, as: .unreachable(incarnation: incarnation))
+                }
+                // if unreachable or dead, we don't need to notify the clusterRef
+                if member.status.isUnreachable || member.status.isDead {
+                    continue
+                }
+                self.clusterRef.tell(.command(.markUnreachable(node)))
             }
         }
     }
@@ -327,6 +341,12 @@ internal struct SWIMMembershipShell {
     func ensureConnected(_ context: ActorContext<SWIM.Message>, remoteNode: Node?, onSuccess: @escaping (UniqueNode?) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteNode = remoteNode else {
+            onSuccess(nil)
+            return
+        }
+
+        guard remoteNode != context.system.settings.cluster.node else {
+            // TODO: handle old incarnations of self properly?
             onSuccess(nil)
             return
         }

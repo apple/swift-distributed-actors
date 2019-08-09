@@ -100,7 +100,7 @@ extension Membership {
         case .some(.joining):
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
             _ = self.join(change.node)
-        case .some(.alive):
+        case .some(.up):
             _ = self.join(change.node)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
@@ -263,10 +263,11 @@ struct MembershipChange {
             // we explicitly list the decisions we make here, to be explicit about them:
             switch to {
             case .joining: return false
-            case .alive:   return false
-            case .suspect: return false
+            case .up:   return false
             case .leaving: return false
+            case .exiting: return true
             case .down:    return true
+            case .removed: return true
             }
         } else {
             // it was removed; has no `to` status
@@ -299,10 +300,11 @@ extension MembershipChange: CustomDebugStringConvertible {
 
 public enum MemberStatus: String {
     case joining
-    case alive // TODO `up` or `alive`?
-    case suspect // TODO `unreachable` or `suspect`?
+    case up
     case leaving
+    case exiting
     case down
+    case removed
 
     public static let maxStrLen = 7 // hardcoded
 }

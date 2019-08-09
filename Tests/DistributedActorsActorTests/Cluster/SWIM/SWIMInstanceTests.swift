@@ -19,10 +19,12 @@ import SwiftDistributedActorsActorTestKit
 final class SWIMInstanceTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
+    var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!
 
     override func setUp() {
         system = ActorSystem(String(describing: type(of: self)))
         testKit = ActorTestKit(system)
+        clusterTestProbe = testKit.spawnTestProbe()
     }
 
     override func tearDown() {
@@ -257,7 +259,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         let myselfMember = swim.member(for: myself)!
 
@@ -277,7 +279,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
         myselfMember.status = .suspect(incarnation: currentIncarnation)
@@ -298,7 +300,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         var currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -314,10 +316,10 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(let warning) where warning != nil:
+        case .applied(nil):
             ()
         default:
-            throw testKit.fail("Expected `.none(message)`, got \(res)")
+            throw testKit.fail("Expected `.applied(nil)`, got \(res)")
         }
     }
 
@@ -325,7 +327,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -345,7 +347,7 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onGossipPayload_myself_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let myself = try system.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
         myselfMember.status = .dead

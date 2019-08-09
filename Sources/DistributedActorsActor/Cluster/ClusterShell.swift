@@ -33,6 +33,11 @@ internal class ClusterShell {
     /// - Protected by: `_associationsLock`
     private var _associationsRegistry: [UniqueNode: AssociationRemoteControl]
 
+    private var _swimRef: ActorRef<SWIM.Message>!
+
+    // FIXME: use event stream to publish events instead of direct communication
+    private var _downingStrategyRef: ActorRef<DowningStrategyMessage>!
+
     // `_serializationPool` is only used when `start()` is invoked, and there it is set immediately as well
     // any earlier access to the pool is a bug (in our library) and must be treated as such.
     private var _serializationPool: SerializationPool? = nil
@@ -148,7 +153,11 @@ internal class ClusterShell {
     }
     // this is basically our API internally for this system
     enum CommandMessage: NoSerializationVerification {
+        case down(UniqueNode)
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
+        case markUnreachable(UniqueNode)
+        case markReachable(UniqueNode)
+        case join(Node)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
         case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
     } 
@@ -193,8 +202,21 @@ extension ClusterShell {
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
         return .setup { context in
+            // TODO: Use real config
+            let swimBehavior = SWIMMembershipShell(settings: .default, clusterRef: context.myself).behavior
+            self._swimRef = try context.system._spawnSystemActor(swimBehavior, name: SWIMMembershipShell.name, perpetual: true)
+
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindAddress
+
+            switch clusterSettings.downingStrategy {
+            case .noop:
+                let shell = DowningStrategyShell(NoopDowningStrategy())
+                self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
+            case .timeout(let settings):
+                let shell = DowningStrategyShell(TimeoutBasedDowningStrategy(settings, selfNode: context.system.settings.cluster.uniqueBindAddress))
+                self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
+            }
 
             // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(uniqueBindAddress)]")
@@ -220,6 +242,23 @@ extension ClusterShell {
     private func ready(state: ClusterShellState) -> Behavior<Message> {
         func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             switch command {
+            case .down(let node):
+                let member = Member(node: node, status: .up)
+                self._swimRef.tell(.local(.confirmDead(node)))
+                self._downingStrategyRef.tell(.clusterEvent(.membership(.memberDown(member))))
+                return .same
+            case .markUnreachable(let node):
+                // FIXME: keep track of memberships
+                let member = Member(node: node, status: .up)
+                self._downingStrategyRef.tell(.clusterEvent(.reachability(.memberUnreachable(member))))
+                return .same // FIXME publish unreachable event
+            case .markReachable(let node):
+                let member = Member(node: node, status: .up)
+                self._downingStrategyRef.tell(.clusterEvent(.reachability(.memberReachable(member))))
+                return .same
+            case .join(let node):
+                self._swimRef.tell(.local(.join(node)))
+                return .same
             case .handshakeWith(let remoteAddress, let replyTo):
                 return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .retryHandshake(let initiated):
@@ -583,13 +622,9 @@ extension ActorSystem {
         return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
     }
 
-    public func join(node: Node) {
-        self.join(node: node, replyTo: nil)
-    }
-
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
-    internal func join(node: Node, replyTo: ActorRef<ClusterShell.HandshakeResult>?) {
-        self.clusterShell.tell(.command(.handshakeWith(node, replyTo: replyTo)))
+    public func join(node: Node) {
+        self.clusterShell.tell(.command(.join(node)))
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
