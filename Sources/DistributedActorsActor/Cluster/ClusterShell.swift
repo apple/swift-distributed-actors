@@ -153,16 +153,18 @@ internal class ClusterShell {
     }
     // this is basically our API internally for this system
     enum CommandMessage: NoSerializationVerification {
-        case down(UniqueNode)
+        case join(Node)
+
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
+        case retryHandshake(HandshakeStateMachine.InitiatedState)
+
         case markUnreachable(UniqueNode)
         case markReachable(UniqueNode)
-        case join(Node)
-        case retryHandshake(HandshakeStateMachine.InitiatedState)
+
+        // TODO ensure it is possible to Down a node by an operator typing "cluster down host:port" without knowing the NID
+        case down(UniqueNode)
         case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
-        
-        case down(Node)
-    } 
+    }
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO better type here
         // TODO: case subscribeAssociations(ActorRef<[UniqueNode]>) // to receive events about it one by one
