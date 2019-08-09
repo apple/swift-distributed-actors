@@ -62,7 +62,7 @@ internal enum FailureDetectorProtocol {
     case watchedActor(watcher: AddressableActorRef, remoteNode: UniqueNode)
     case membershipSnapshot(Membership)
     case membershipChange(MembershipChange)
-    case forceDown(Node)
+    case forceDown(UniqueNode)
 }
 
 internal enum FailureDetectorShell {
@@ -87,7 +87,7 @@ internal enum FailureDetectorShell {
             case  .membershipChange(let change):
                 _ = observer.onMembershipChanged(change) // TODO return and interpret directives
             case .forceDown(let node):
-                _ = observer.forceDown(node)
+                _ = observer.forceDown(node.node)
             }
             return .same
 
