@@ -58,12 +58,12 @@ class FailureDetectorTests: ClusteredTwoNodesTestBase {
         let failureDetector: FailureDetectorShell.Ref = try getLocalFailureDetector(p: p)
 
         // FIXME: this should be done automatically upon association
-        let localMember = Member(node: self.localUniqueNode, status: .alive)
-        let remoteMember = Member(node: self.remoteUniqueNode, status: .alive)
+        let localMember = Member(node: self.localUniqueNode, status: .up)
+        let remoteMember = Member(node: self.remoteUniqueNode, status: .up)
         failureDetector.tell(.membershipSnapshot([localMember, remoteMember])) // join all members
 
         // down the remote node
-        let downRemoteChange = MembershipChange(node: self.remoteUniqueNode, fromStatus: MemberStatus.alive, toStatus: MemberStatus.down)
+        let downRemoteChange = MembershipChange(node: self.remoteUniqueNode, fromStatus: MemberStatus.up, toStatus: MemberStatus.down)
         failureDetector.tell(.membershipChange(downRemoteChange))
 
         // --- should cause termination of all remote actors, observed by the local actor ---

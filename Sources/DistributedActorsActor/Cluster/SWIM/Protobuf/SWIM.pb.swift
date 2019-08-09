@@ -210,7 +210,8 @@ struct ProtoSWIMStatus {
     typealias RawValue = Int
     case alive // = 0
     case suspect // = 1
-    case dead // = 2
+    case unreachable // = 2
+    case dead // = 3
     case UNRECOGNIZED(Int)
 
     init() {
@@ -221,7 +222,8 @@ struct ProtoSWIMStatus {
       switch rawValue {
       case 0: self = .alive
       case 1: self = .suspect
-      case 2: self = .dead
+      case 2: self = .unreachable
+      case 3: self = .dead
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
@@ -230,7 +232,8 @@ struct ProtoSWIMStatus {
       switch self {
       case .alive: return 0
       case .suspect: return 1
-      case .dead: return 2
+      case .unreachable: return 2
+      case .dead: return 3
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -247,6 +250,7 @@ extension ProtoSWIMStatus.TypeEnum: CaseIterable {
   static var allCases: [ProtoSWIMStatus.TypeEnum] = [
     .alive,
     .suspect,
+    .unreachable,
     .dead,
   ]
 }
@@ -656,7 +660,8 @@ extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "ALIVE"),
     1: .same(proto: "SUSPECT"),
-    2: .same(proto: "DEAD"),
+    2: .same(proto: "UNREACHABLE"),
+    3: .same(proto: "DEAD"),
   ]
 }
 

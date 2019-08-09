@@ -82,6 +82,7 @@ import XCTest
          testCase(SystemMessagesRedeliveryTests.allTests),
          testCase(TimeAmountTests.allTests),
          testCase(TimeSpecTests.allTests),
+         testCase(TimeoutBasedDowningInstanceTests.allTests),
          testCase(TimersTests.allTests),
          testCase(TraversalTests.allTests),
          testCase(UniqueNodeTests.allTests),

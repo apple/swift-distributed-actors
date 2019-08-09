@@ -79,6 +79,9 @@ extension SWIM.Status: ProtobufRepresentable {
         case .suspect(let incarnation):
             proto.type = .suspect
             proto.incarnation = incarnation
+        case .unreachable(let incarnation):
+            proto.type = .unreachable
+            proto.incarnation = incarnation
         case .dead:
             proto.type = .dead
             proto.incarnation = 0
@@ -93,6 +96,8 @@ extension SWIM.Status: ProtobufRepresentable {
             self = .alive(incarnation: proto.incarnation)
         case .suspect:
             self = .suspect(incarnation: proto.incarnation)
+        case .unreachable:
+            self = .unreachable(incarnation: proto.incarnation)
         case .dead:
             self = .dead
         case .UNRECOGNIZED(let num):

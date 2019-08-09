@@ -31,7 +31,7 @@ extension SWIMMembershipShellTests {
                 ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing),
                 ("test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing", test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing),
                 ("test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout),
-                ("test_swim_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsDeadAfterConfiguredSuspicionTimeout),
+                ("test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed", test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed),
                 ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
                 ("test_swim_shouldSendGossipInPing_", test_swim_shouldSendGossipInPing_),
                 ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),

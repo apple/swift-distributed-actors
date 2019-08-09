@@ -18,10 +18,10 @@ import XCTest
 
 final class MembershipTests: XCTestCase {
 
-    let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .alive)
-    let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .alive)
-    let thirdMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .alive)
-    let newMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .alive)
+    let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+    let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+    let thirdMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
+    let newMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
     lazy var initialMembership: Membership = [
         firstMember, secondMember, thirdMember
@@ -34,15 +34,15 @@ final class MembershipTests: XCTestCase {
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt() {
-        let changed = initialMembership.marking(firstMember.node, as: .suspect)
+        let changed = initialMembership.marking(firstMember.node, as: .exiting)
 
         let diff = Membership.diff(from: initialMembership, to: changed)
 
         diff.entries.count.shouldEqual(1)
         let diffEntry = diff.entries.first!
         diffEntry.node.shouldEqual(firstMember.node)
-        diffEntry.fromStatus?.shouldEqual(.alive)
-        diffEntry.toStatus?.shouldEqual(.suspect)
+        diffEntry.fromStatus?.shouldEqual(.up)
+        diffEntry.toStatus?.shouldEqual(.exiting)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberRemoved() {
@@ -53,7 +53,7 @@ final class MembershipTests: XCTestCase {
         diff.entries.count.shouldEqual(1)
         let diffEntry = diff.entries.first!
         diffEntry.node.shouldEqual(firstMember.node)
-        diffEntry.fromStatus?.shouldEqual(.alive)
+        diffEntry.fromStatus?.shouldEqual(.up)
         diffEntry.toStatus.shouldBeNil()
     }
     func test_membershipDiff_shouldIncludeEntry_whenMemberAdded() {

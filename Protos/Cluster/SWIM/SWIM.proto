@@ -50,7 +50,8 @@ message SWIMStatus {
     enum Type {
         ALIVE = 0;
         SUSPECT = 1;
-        DEAD = 2;
+        UNREACHABLE = 2;
+        DEAD = 3;
     }
 
     Type type = 1;

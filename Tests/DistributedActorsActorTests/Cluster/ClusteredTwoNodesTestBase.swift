@@ -63,7 +63,7 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
     lazy var localUniqueNode: UniqueNode = self.local.settings.cluster.uniqueBindAddress
     lazy var remoteUniqueNode: UniqueNode = self.remote.settings.cluster.uniqueBindAddress
 
-    func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
+    open func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._local = ActorSystem(systemName) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.localPort
@@ -73,7 +73,7 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
         self._localTestKit = ActorTestKit(self.local)
     }
 
-    func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
+    open func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._remote = ActorSystem(systemName) { settings in
             settings.cluster.enabled = true
             settings.cluster.node.port = self.remotePort
