@@ -67,6 +67,7 @@ public enum SWIM {
     internal enum LocalMessage {
         case pingRandomMember
         case join(Node)
+        case confirmDead(UniqueNode)
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>) // TODO: do we need this or can we ride on the Observer getting all the state?
     }
@@ -82,6 +83,7 @@ public enum SWIM {
     internal enum Status: Hashable {
         case alive(incarnation: Incarnation)
         case suspect(incarnation: Incarnation)
+        case unreachable(incarnation: Incarnation)
         case dead
     }
 
@@ -98,9 +100,19 @@ extension SWIM.Status: Comparable {
             return selfIncarnation < rhsIncarnation
         case (.alive(let selfIncarnation), .suspect(let rhsIncarnation)):
             return selfIncarnation <= rhsIncarnation
+        case (.alive(let selfIncarnation), .unreachable(let rhsIncarnation)):
+            return selfIncarnation <= rhsIncarnation
         case (.suspect(let selfIncarnation), .suspect(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
         case (.suspect(let selfIncarnation), .alive(let rhsIncarnation)):
+            return selfIncarnation < rhsIncarnation
+        case (.suspect(let selfIncarnation), .unreachable(let rhsIncarnation)):
+            return selfIncarnation <= rhsIncarnation
+        case (.unreachable(let selfIncarnation), .alive(let rhsIncarnation)):
+            return selfIncarnation < rhsIncarnation
+        case (.unreachable(let selfIncarnation), .suspect(let rhsIncarnation)):
+            return selfIncarnation < rhsIncarnation
+        case (.unreachable(let selfIncarnation), .unreachable(let rhsIncarnation)):
             return selfIncarnation < rhsIncarnation
         case (.dead, _):
             return false
@@ -119,6 +131,8 @@ extension SWIM.Status {
             return incarnation
         case .suspect(let incarnation):
             return incarnation
+        case .unreachable(let incarnation):
+            return incarnation
         case .dead:
             return nil
         }
@@ -128,7 +142,7 @@ extension SWIM.Status {
         switch self {
         case .alive:
             return true
-        case .suspect, .dead:
+        case .suspect, .unreachable, .dead:
             return false
         }
     }
@@ -137,7 +151,16 @@ extension SWIM.Status {
         switch self {
         case .suspect:
             return true
-        case .alive, .dead:
+        case .alive, .unreachable, .dead:
+            return false
+        }
+    }
+
+    var isUnreachable: Bool {
+        switch self {
+        case .unreachable:
+            return true
+        case .alive, .suspect, .dead:
             return false
         }
     }
@@ -146,7 +169,7 @@ extension SWIM.Status {
         switch self {
         case .dead:
             return true
-        case .alive, .suspect:
+        case .alive, .unreachable, .suspect:
             return false
         }
     }

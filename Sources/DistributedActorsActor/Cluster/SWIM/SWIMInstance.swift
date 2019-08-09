@@ -138,8 +138,12 @@ final class SWIMInstance {
         func notTarget(_ ref: ActorRef<SWIM.Message>) -> Bool {
             return ref.address != target.address
         }
-        let candidates = self.membersToPing
-            .filter { notTarget($0.ref) && notMyself($0.ref) }
+        func isReachable(_ status: SWIM.Status) -> Bool {
+            return status.isAlive || status.isSuspect
+        }
+        let candidates = self.members
+            .values
+            .filter { notTarget($0.ref) && notMyself($0.ref) && isReachable($0.status) }
             .shuffled()
 
         return candidates.prefix(self.settings.failureDetector.indirectProbeCount)
@@ -173,6 +177,10 @@ final class SWIMInstance {
         self.members[ref] = member
         self.addToGossip(member: member)
 
+        if status.isDead {
+            self.removeFromMembersToPing(member)
+        }
+
         return .applied(previousStatus: previousStatusOption)
     }
     enum MarkResult: Equatable {
@@ -186,6 +194,19 @@ final class SWIMInstance {
 
     func advanceMembersToPingIndex() {
         self._membersToPingIndex = (self._membersToPingIndex + 1) % self.membersToPing.count
+    }
+
+    func removeFromMembersToPing(_ member: SWIM.Member) {
+        if let index = self.membersToPing.firstIndex(where: { $0.ref == member.ref }) {
+            self.membersToPing.remove(at: index)
+            if index < self.membersToPingIndex {
+                self._membersToPingIndex -= 1
+            }
+
+            if self.membersToPingIndex >= self.membersToPing.count {
+                self._membersToPingIndex = self.membersToPing.startIndex
+            }
+        }
     }
 
     var protocolPeriod: Int {
@@ -202,6 +223,11 @@ final class SWIMInstance {
 
     func member(for ref: ActorRef<SWIM.Message>) -> SWIM.Member? {
         return self.members[ref]
+    }
+
+    func member(for node: UniqueNode) -> SWIM.Member? {
+        // FIXME: a bit hacky because we get UniqueNodeAddress from cluster for downing
+        return self.members.first(where: { $0.key.address.node == node })?.value
     }
 
     var memberCount: Int {
@@ -326,6 +352,8 @@ extension SWIM.Instance {
                 }
             case .suspect:
                 return .alreadySuspect
+            case .unreachable:
+                return .alreadyUnreachable
             case .dead:
                 return .alreadyDead
             }
@@ -346,6 +374,7 @@ extension SWIM.Instance {
         case unknownMember
         case newlySuspect
         case alreadySuspect
+        case alreadyUnreachable
         case alreadyDead
         case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
     }
@@ -362,14 +391,29 @@ extension SWIM.Instance {
                 // the incremented incarnation
                 if suspectedInIncarnation == self.incarnation {
                     self._incarnation += 1
-                    return .applied(warning: nil)
-                } else {
+                } else if suspectedInIncarnation > self.incarnation {
                     let warning = """
                                   Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
                                   which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
                                   """
                     return .applied(warning: warning)
                 }
+                return .applied(warning: nil)
+
+            case .unreachable(let unreachableInIncarnation):
+                // someone suspected us, so we need to increment our
+                // incarnation number to spread our alive status with
+                // the incremented incarnation
+                if unreachableInIncarnation == self.incarnation {
+                    self._incarnation += 1
+                } else if unreachableInIncarnation > self.incarnation {
+                    let warning = """
+                    Received gossip about self with incarnation number [\(unreachableInIncarnation)] > current incarnation [\(self._incarnation)], \
+                    which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                    """
+                    return .applied(warning: warning)
+                }
+                return .applied(warning: nil)
 
             case .dead:
                 return .selfDeterminedDead

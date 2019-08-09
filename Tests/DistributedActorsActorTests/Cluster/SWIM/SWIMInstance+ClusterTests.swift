@@ -19,6 +19,19 @@ import SwiftDistributedActorsActorTestKit
 /// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
 final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
+    var localClusterProbe: ActorTestProbe<ClusterShell.Message>!
+    var remoteClusterProbe: ActorTestProbe<ClusterShell.Message>!
+
+    override func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
+        super.setUpLocal(modifySettings)
+        self.localClusterProbe = self.localTestKit.spawnTestProbe()
+    }
+
+    override func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
+        super.setUpRemote(modifySettings)
+        self.remoteClusterProbe = self.remoteTestKit.spawnTestProbe()
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: handling gossip about the receiving node
 
@@ -28,19 +41,18 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
         let swim = SWIM.Instance(.default)
 
-        let myself = try local.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try local.spawn(SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
-        var myselfMember = swim.member(for: myself)!
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
+        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready, name: "SWIM")
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
         let res = swim.onGossipPayload(about: remoteMember)
 
         switch res {
-        case .connect(let address, let onceConnected):
+        case .connect(_, let onceConnected):
             swim.memberCount.shouldEqual(1) // the new member should not yet be added until we can confirm we are able to connect
 
             // we act as if we connected successfully
@@ -60,19 +72,19 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
         let swim = SWIM.Instance(.default)
 
-        let myself = try local.spawn(SWIM.Shell(swim).ready, name: "SWIM")
+        let myself = try local.spawn(SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
         _ = swim.member(for: myself)!
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default)).ready, name: "SWIM")
+        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready, name: "SWIM")
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
         let res = swim.onGossipPayload(about: remoteMember)
 
         switch res {
-        case .connect(let address, let onceConnected):
+        case .connect:
             // and we never trigger onceConnected ... thus the member is never added
             swim.memberCount.shouldEqual(1)
 

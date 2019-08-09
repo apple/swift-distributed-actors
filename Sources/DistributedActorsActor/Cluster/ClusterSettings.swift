@@ -102,7 +102,7 @@ public struct ClusterSettings {
             return ManualFailureObserver(context: context)
         case .swim(let settings):
             let observer = ManualFailureObserver(context: context) // TODO not sure if this one or another one, but we want to call into it when SWIM decides a node should die etc.
-            let _ = try system._spawnSystemActor(SWIMMembershipShell(settings: settings, observer: observer).behavior, name: SWIMMembershipShell.name, perpetual: true)
+
             fatalError("MISSING OBSERVER IMPL TO WORK WITH SWIM")
         }
     }
@@ -128,6 +128,8 @@ public struct ClusterSettings {
     var traceLogLevel: Logger.Level? = nil
     #endif
 
+    public var downingStrategy: DowningStrategySettings = .noop
+
     public init(node: Node, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
         self.node = node
         self.nid = NodeID.random()
@@ -140,4 +142,9 @@ public enum FailureDetectorSettings {
     case manual
     case swim(SWIM.Settings)
     // case instance(FailureDetector) // TODO: once we decide to allow users implementing their own
+}
+
+public enum DowningStrategySettings {
+    case noop
+    case timeout(TimeoutBasedDowningStrategySettings)
 }
