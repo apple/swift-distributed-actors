@@ -366,8 +366,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.tracelog(.outbound, message: redeliveryEnvelope)
             context.writeAndFlush(self.wrapOutboundOut(redeliveryEnvelope), promise: promise)
         case .bufferOverflowMustAbortAssociation:
-            // FIXME: self.association kill the connection and ban the node forever, we dropped too many msgs!
-            return TODO("Implement me")
+            if let node = transportEnvelope.recipient.node {
+                // TODO: use ClusterControl once implemented
+                self.cluster.tell(.command(.down(node)))
+            }
         }
     }
 
