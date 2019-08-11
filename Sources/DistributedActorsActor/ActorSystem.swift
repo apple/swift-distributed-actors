@@ -63,8 +63,12 @@ public final class ActorSystem {
     public var receptionist: ActorRef<Receptionist.Message> {
         return self._receptionist
     }
-
     private var _receptionist: ActorRef<Receptionist.Message>! = nil
+
+    internal var replicator: ActorRef<CRDT.ReplicationProtocol> {
+        return self._replicator
+    }
+    private var _replicator: ActorRef<CRDT.ReplicationProtocol>! = nil
 
     // MARK: Cluster
 
@@ -169,6 +173,8 @@ public final class ActorSystem {
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, perpetual: true)
+
+        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.behavior(), name: CRDT.Replicator.name, perpetual: true)
 
         #if SACT_TESTS_LEAKS
         ActorSystem.actorSystemInitCounter.add(1)
