@@ -74,24 +74,27 @@ class TraversalTests: XCTestCase {
     }
 
     func test_traverse_shouldTraverseAllActors() throws {
-        var seen: [String] = []
+        var seen: Set<String> = []
 
         self.system._traverseAllVoid { context, ref in
             if ref.address.name != "traversalProbe" {
-                seen.append(ref.address.name)
+                seen.insert(ref.address.name)
             }
             return .continue
         }
 
-        seen.shouldContain("user")
-        seen.shouldContain("system")
-        seen.shouldContain("hello")
-        seen.shouldContain("world")
-        seen.shouldContain("other")
-        seen.shouldContain("inner-1")
-        seen.shouldContain("inner-2")
-        seen.shouldContain("inner-3")
-        seen.count.shouldEqual(9)
+        seen.shouldEqual([
+            "system", 
+            "receptionist", 
+            "replicator", 
+            "user", 
+            "other", 
+            "inner-1",
+            "inner-2",
+            "inner-3",
+            "hello", 
+            "world",
+        ])
     }
 
     func test_traverse_shouldAllowImplementingCollect() {
