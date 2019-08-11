@@ -12,24 +12,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension CRDT {
-    public struct GCounter: DeltaCRDT, NamedCRDT {
-        public let replicaId: ReplicaId
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: GCounter as pure CRDT
 
-        let id: Identity
+extension CRDT {
+    public struct GCounter: NamedDeltaCRDT {
+        public typealias Delta = GCounterDelta
+
+        public let replicaId: ReplicaId
 
         // State is a dictionary of replicas and the counter values they've observed.
         var state: [ReplicaId: Int]
 
-        var delta: Delta?
+        public var delta: Delta?
 
         var value: Int {
-            return state.values.reduce(0, +)
+            return self.state.values.reduce(0, +)
         }
 
-        init(replicaId: ReplicaId, id: Identity, state: [ReplicaId: Int] = [:], delta: Delta? = nil) {
+        init(replicaId: ReplicaId, state: [ReplicaId: Int] = [:], delta: Delta? = nil) {
             self.replicaId = replicaId
-            self.id = id
             self.state = state
             self.delta = delta
         }
@@ -46,120 +48,71 @@ extension CRDT {
             }
 
             // Update state
-            state[replicaId] = newCount
+            self.state[replicaId] = newCount
 
             // Update/create delta
-            switch delta {
+            switch self.delta {
             case .some(var delta):
                 delta.state[replicaId] = newCount
             case .none:
-                delta = Delta(state: [replicaId: newCount])
+                self.delta = Delta(state: [replicaId: newCount])
             }
         }
 
         // To merge delta into state, call `mergeDelta`.
-        mutating public func merge(other: GCounter) -> GCounter {
-            state.merge(other.state, uniquingKeysWith: max)
-            return self
+        mutating public func merge(other: GCounter) {
+            self.state.merge(other.state, uniquingKeysWith: max)
+            self.resetDelta()
         }
 
-        mutating public func mergeDelta(_ delta: Delta) -> GCounter {
-            state.merge(delta.state, uniquingKeysWith: max)
-            return self
+        mutating public func mergeDelta(_ delta: Delta) {
+            self.state.merge(delta.state, uniquingKeysWith: max)
+            self.resetDelta()
         }
 
-        mutating public func resetDelta() -> GCounter {
-            delta = nil
-            return self
+        mutating public func resetDelta() {
+            self.delta = nil
+        }
+    }
+
+    public struct GCounterDelta: CvRDT {
+        // State is a dictionary of replicas and their counter values.
+        var state: [ReplicaId: Int]
+
+        init(state: [ReplicaId: Int] = [:]) {
+            self.state = state
         }
 
-        // TODO: delete?
-        public func delta(other: GCounter) -> Delta {
-            // Compute delta across all replicas, not just self's.
-            // This is because a replicator-owned instance might include changes from multiple
-            // local actors (i.e., there are multiple local `ActorOwned`s for the same `GCounter`).
-            // Each actor has a different `ReplicaId`, including the replicator itself, so when we compute
-            // the delta to send to remote replicators, we need to look at all replicas.
-            var replicaIds = Set<ReplicaId>(state.keys)
-            replicaIds.formUnion(other.state.keys)
-
-            var deltaState = Dictionary<ReplicaId, Int>(minimumCapacity: replicaIds.count)
-
-            for replicaId in replicaIds {
-                let (thisCount, otherCount) = (state[replicaId], other.state[replicaId])
-
-                switch (thisCount, otherCount) {
-                case (.some(let thisCount), .some(let otherCount)) where thisCount == otherCount:
-                    // No change, exclude from delta
-                    continue
-                case (.some(let thisCount), .some(let otherCount)):
-                    deltaState[replicaId] = max(thisCount, otherCount)
-                case (.some(let thisCount), .none):
-                    deltaState[replicaId] = thisCount
-                case (.none, .some(let otherCount)):
-                    deltaState[replicaId] = otherCount
-                case (.none, .none):
-                    // Hmm, if neither self.state nor other.state has value then this key shouldn't exist
-                    continue
-                }
-            }
-
-            return Delta(state: deltaState)
-        }
-
-        public struct Delta: CvRDT {
-            // State is a dictionary of replicas and their counter values.
-            var state: [ReplicaId: Int]
-
-            init(state: [ReplicaId: Int] = [:]) {
-                self.state = state
-            }
-
-            mutating public func merge(other: Delta) -> Delta {
-                state.merge(other.state, uniquingKeysWith: max)
-                return self
-            }
+        mutating public func merge(other: GCounterDelta) {
+            self.state.merge(other.state, uniquingKeysWith: max)
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorOwned GCounter
 
 extension CRDT.ActorOwned where DataType == CRDT.GCounter {
     public var lastObservedValue: Int {
         return self.data.value
     }
 
-    mutating public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency) -> CRDT.Result<DataType> {
-        // perform write locally
+    public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        // Increment locally
         self.data.increment(by: amount)
-
-        return self.owner.write(self.data, consistency: consistency)
-
-        // effectively something like this most likely (types may become weird internally):
-        //   (or maybe first get the delta and only send the delta to replicator?)
-        //
-        // let answer = self.owner.replicator.ask(for: CRDT.AnyWriteResult.self) { replyTo in
-        //    CRDT.WriteRequest(self.datatype, consistency: consistency)
-        // }
-        // return CRDT.WriteResult(answer)
-        //
-        // (the returning like that there some type flattening to be done here since we'd get `Answer<CRDT.WriteResult<Self>>`)
-    }
-
-    public func read(atConsistency consistency: CRDT.OperationConsistency) -> CRDT.Result<DataType> {
-        fatalError("read to be implemented")
-        // TODO: handle consistency
-        // if local: just return
-        // if querying: self.owner.replicator.ask ... similar to the write
-
-        // return .init()
+        // Generic write which includes calling the replicator
+        return self.write(consistency: consistency, timeout: timeout)
     }
 }
 
 extension CRDT.GCounter {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.GCounter> {
-        return .init(owner: owner, data: CRDT.GCounter(replicaId: .actorAddress(owner.address), id: CRDT.Identity(id)))
+        return CRDT.ActorOwned<CRDT.GCounter>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.GCounter(replicaId: .actorAddress(owner.address)))
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Aliases
 // TODO: find better home for these type aliases
+
 typealias GrowOnlyCounter = CRDT.GCounter
