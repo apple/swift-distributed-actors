@@ -36,6 +36,7 @@ extension ParentChildActorTests {
                 ("test_watchedChild_shouldProduceInSingleTerminatedSignal", test_watchedChild_shouldProduceInSingleTerminatedSignal),
                 ("test_spawnWatched_shouldSpawnAWatchedActor", test_spawnWatched_shouldSpawnAWatchedActor),
                 ("test_stopParent_shouldWaitForChildrenToStop", test_stopParent_shouldWaitForChildrenToStop),
+                ("test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren", test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren),
            ]
    }
 }

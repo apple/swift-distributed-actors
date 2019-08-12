@@ -492,4 +492,37 @@ class ParentChildActorTests: XCTestCase {
 
         try p.expectTerminatedInAnyOrder([parent.asAddressable(), childRef.asAddressable(), grandchildRef.asAddressable()])
     }
+
+    func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {
+        let p: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "p")
+        let childCount = 100
+
+        let parent: ActorRef<String> = try system.spawnAnonymous(.receive { (context, msg) in
+            switch msg {
+            case "spawn":
+                for count in 1 ... childCount {
+                    let behavior: Behavior<Never> = .receiveMessage { _ in
+                        return .ignore
+                    }
+                    let ref: ActorRef<Never> = try context.spawn(behavior.receiveSignal { _, signal in
+                        if signal is Signals.PostStop {
+                            p.tell(count)
+                        }
+
+                        return .same
+                    }, name: "child")
+                    try context.stop(child: ref)
+                }
+
+                return .same
+            default:
+                return .ignore
+            }
+        })
+
+        parent.tell("spawn")
+
+        let messages = try p.expectMessages(count: childCount)
+        messages.sorted().shouldEqual((1 ... childCount).sorted())
+    }
 }

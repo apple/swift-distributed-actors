@@ -39,7 +39,7 @@ public class Children {
     typealias Name = String // TODO ActorName
 
     private var container: [Name: Child]
-    private var stopping: [ActorPath: AbstractActor]
+    private var stopping: [ActorAddress: AbstractActor]
     // **CAUTION**: All access to `container` or `stopping` must be protected by `rwLock`
     private let rwLock: ReadWriteLock
 
@@ -128,7 +128,7 @@ public class Children {
             case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
                 return self.container.removeValue(forKey: address.name) != nil
             default:
-                return self.stopping.removeValue(forKey: address.path) != nil
+                return self.stopping.removeValue(forKey: address) != nil
             }
         }
     }
@@ -152,7 +152,7 @@ public class Children {
     internal func _markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
         switch self.container.removeValue(forKey: address.name) {
         case .some(.cell(let child)) where child.asAddressable.address.incarnation == address.incarnation:
-            self.stopping[address.path] = child
+            self.stopping[address] = child
             return true
         case .some(.adapter(let child)) where child.address.incarnation == address.incarnation:
             // adapters don't have to be stopped as they are not real actors, so removing is sufficient
