@@ -47,7 +47,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(10))
     }
@@ -70,7 +70,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
@@ -94,7 +94,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
@@ -118,7 +118,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
@@ -136,7 +136,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromTimer")
         try p.expectNoMessage(for: .milliseconds(100))
     }
@@ -153,7 +153,7 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")
         try p.expectMessage("fromSystemTimer")

@@ -185,7 +185,7 @@ internal enum ClusterReceptionist {
             }
         }
 
-        _ = try context.spawn(behavior, name: .anonymous)
+        _ = try context.spawn(.anonymous, behavior)
     }
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey,

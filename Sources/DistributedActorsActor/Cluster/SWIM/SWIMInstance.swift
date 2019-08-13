@@ -55,7 +55,7 @@ final class SWIMInstance {
     // be declared `.dead` after not receiving an `.alive` for approx. 3 seconds.
     private var _protocolPeriod: Int = 0
 
-    // We need to store the path to the owning SWIMMembershipShell to avoid adding it to the `membersToPing` list
+    // We need to store the path to the owning SWIMShell to avoid adding it to the `membersToPing` list
     // private var myRemoteAddress: ActorAddress? = nil
     private var myShellMyself: ActorRef<SWIM.Message>? = nil
     private var myShellAddress: ActorAddress? {

@@ -69,7 +69,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     // MARK: resolve deadLetters
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let ref: ActorRef<String> = try system.spawn(.stop, name: "ignoresStrings")
+        let ref: ActorRef<String> = try system.spawn("ignoresStrings", (.stop))
         var address: ActorAddress = ref.address
         address._location = .remote(system.settings.cluster.uniqueBindNode)
 

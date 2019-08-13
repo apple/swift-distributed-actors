@@ -46,7 +46,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
 
     func test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
 
@@ -72,7 +72,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let writeP = testKit.spawnTestProbe(expecting: LocalWriteResult.self)
         let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
@@ -115,7 +115,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
         let deleteP = testKit.spawnTestProbe(expecting: LocalDeleteResult.self)
@@ -149,7 +149,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let writeP = testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
         let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
@@ -191,7 +191,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let writeP = testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
         let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
@@ -233,7 +233,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners() throws {
-        let replicatorRef = try system.spawn(replicatorBehavior(), name: "replicator")
+                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
         let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
         let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
         let deleteP = testKit.spawnTestProbe(expecting: RemoteDeleteResult.self)

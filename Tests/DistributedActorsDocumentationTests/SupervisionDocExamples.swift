@@ -31,8 +31,11 @@ class SupervisionDocExamples {
             .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
-        let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
-            props: props) // <3>
+        let greeterRef = try context.spawn(
+            "greeter",
+            props: props, // <3>
+            greeterBehavior
+        )
         // end::supervise_props[]
         _ = greeterRef
     }
@@ -42,8 +45,9 @@ class SupervisionDocExamples {
         let context: ActorContext<String> = undefined()
 
         // tag::supervise_inline[]
-        let greeterRef = try context.spawn(greeterBehavior, name: "greeter",
-            props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1)))) // <1>
+        let greeterRef = try context.spawn("greeter", 
+            props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
+            greeterBehavior)
         // end::supervise_inline[]
         _ = greeterRef
     }
@@ -70,8 +74,11 @@ class SupervisionDocExamples {
         // tag::supervise_full_usage[]
         let friends = ["Alice", "Bob", "Caplin"]
 
-        let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior(friends: friends), name: "greeter",
-            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
+        let greeterRef: ActorRef<String> = try system.spawn(
+            "greeter",
+            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+            greeterBehavior(friends: friends)
+        )
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!
@@ -105,8 +112,10 @@ class SupervisionDocExamples {
             "Caplin": "Cucumbers"
         ]
 
-        let greeterRef = try system.spawn(favouriteFruitBehavior(whoLikesWhat), name: "favFruit",
-            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))))
+        let greeterRef = try system.spawn("favFruit",
+            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+            favouriteFruitBehavior(whoLikesWhat)
+        )
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!
@@ -133,10 +142,12 @@ class SupervisionDocExamples {
             }
         }
 
-        let thrower = try system.spawn(throwerBehavior, name: "thrower",
+        let thrower = try system.spawn(
+            "thrower",
             props: Props()
-                .addingSupervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self) // <2>
+                .addingSupervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self), // <2>
                 // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
+            throwerBehavior
         )
         // Starting...
 

@@ -41,7 +41,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous)
+        let ref = try system.spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -55,7 +55,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous)
+        let ref = try system.spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .seconds(1)) { TestMessage(replyTo: $0) }
 
@@ -71,7 +71,7 @@ final class ActorAskTests: XCTestCase {
             return .stop
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous)
+        let ref = try system.spawn(.anonymous, behavior)
 
         let response = ref.ask(for: String.self, timeout: .milliseconds(1)) { TestMessage(replyTo: $0) }
 
@@ -87,19 +87,19 @@ final class ActorAskTests: XCTestCase {
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn("greeterAskReply", .receiveMessage { message in
             message.replyTo.tell("Hello there")
             return .stop
-        }, name: "greeterAskReply")
+            })
 
-        let _: ActorRef<Never> = try system.spawn(.setup { context in
+        let _: ActorRef<Never> = try system.spawn("awaitOnAskResult", .setup { context in
             let askResult = greeter.ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
 
             return context.awaitResultThrowing(of: askResult, timeout: .seconds(1)) { greeting in
                 p.tell(greeting)
                 return .stop
             }
-        }, name: "awaitOnAskResult")
+        })
 
         try p.expectMessage("Hello there")
     }
@@ -107,12 +107,13 @@ final class ActorAskTests: XCTestCase {
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in
-            message.replyTo.tell("Hello there")
-            return .stop
-        }, name: "greeterAskReply")
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn("greeterAskReply",
+            .receiveMessage { message in
+                message.replyTo.tell("Hello there")
+                return .stop
+            })
 
-        let _: ActorRef<Never> = try system.spawn(.setup { context in
+        let _: ActorRef<Never> = try system.spawn("askingAndOnResultAsyncThrowing", .setup { context in
             let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in
                 AnswerMePlease(replyTo: replyTo)
             }
@@ -125,7 +126,7 @@ final class ActorAskTests: XCTestCase {
             // TODO: cannot become .ignore since that results in "become .same in .setup"
             // See also https://github.com/apple/swift-distributed-actors/issues/746
             return .receiveMessage { _ in .same }
-        }, name: "askingAndOnResultAsyncThrowing")
+        })
 
         try p.expectMessage("Hello there", within: .seconds(3))
     }
@@ -139,9 +140,9 @@ final class ActorAskTests: XCTestCase {
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let void: ActorRef<AnswerMePlease> = try system.spawn(.receiveMessage { message in .same }, name: "theVoid")
+        let void: ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { message in .same }))
 
-        let _: ActorRef<Never> = try system.spawn(.setup { context in
+        let _: ActorRef<Never> = try system.spawn("onResultAsync", .setup { context in
             let askResult = void
                 .ask(for: String.self, timeout: .seconds(1)) { AnswerMePlease(replyTo: $0) }
 
@@ -154,7 +155,7 @@ final class ActorAskTests: XCTestCase {
                 }
                 return .stop
             }
-        }, name: "onResultAsync")
+        })
 
         var msg = "ExecutionError(underlying: "
         msg += "Swift Distributed ActorsActor.TimeoutError("

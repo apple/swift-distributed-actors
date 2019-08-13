@@ -90,7 +90,7 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeterRef: ActorRef<String> = try system.spawn(greeterBehavior, name: "greeter") // <3>
+        let greeterRef: ActorRef<String> = try system.spawn("greeter", (greeterBehavior)) // <3>
         // end::spawn[]
 
         // tag::tell_1[]
@@ -176,8 +176,9 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        let worker = try system.spawn(behavior, name: "worker", 
-            props: .withDispatcher(.default)
+        let worker = try system.spawn("worker", 
+            props: .dispatcher(.default),
+            behavior
         )
         // end::props_inline[]
         _ = worker // silence not-used warning
@@ -278,7 +279,7 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeter = try system.spawn(greeterBehavior, name: "greeter")
+        let greeter = try system.spawn("greeter", (greeterBehavior))
 
         let response = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
             Hello(name: "Anne", replyTo: replyTo) // <2>
@@ -301,7 +302,7 @@ class ActorDocExamples: XCTestCase {
             message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
-        let greeter = try system.spawn(greeterBehavior, name: "greeter")
+        let greeter = try system.spawn("greeter", (greeterBehavior))
 
         let caplinBehavior: Behavior<Never> = .setup { context in
             let timeout: TimeAmount = .seconds(1)
@@ -321,7 +322,7 @@ class ActorDocExamples: XCTestCase {
             }
         }
 
-        _ = try system.spawn(caplinBehavior, name: "caplin")
+        _ = try system.spawn("caplin", (caplinBehavior))
         // end::ask_inside[]
     }
 
@@ -357,13 +358,13 @@ struct ExampleWorker {
         context.log.info("Work, work!")
         return .same
     }
-    internal static var props: Props = Props().withDispatcher(.pinnedThread)
+    internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
 enum WorkerMessages {}
 
 func run(system: ActorSystem) throws {
-    let (b, props) = ExampleWorker.suggested
-    _ = try system.spawn(b, name: "heavy-worker", props: props)
+    let (b, props) = ExampleWorker.suggested // TODO replace with class/Shell pattern?
+    _ = try system.spawn("heavy-worker", props: props, b)
 }
 
 // end::suggested_props_pattern[]

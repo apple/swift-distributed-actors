@@ -38,7 +38,7 @@ class ActorLifecycleTests: XCTestCase {
 
         let ex = shouldThrow {
             let sameBehavior: Behavior<String> = .same
-            let _ = try self.system.spawn(sameBehavior, name: "same")
+            let _ = try self.system.spawn("same", (sameBehavior))
         }
 
         "\(ex)".shouldEqual("""
@@ -55,7 +55,7 @@ class ActorLifecycleTests: XCTestCase {
 
         let ex = shouldThrow {
             let unhandledBehavior: Behavior<String> = .unhandled
-            let _ = try system.spawn(unhandledBehavior, name: "unhandled")
+            let _ = try system.spawn("unhandled", (unhandledBehavior))
         }
 
         "\(ex)".shouldEqual("notAllowedAsInitial(Swift Distributed ActorsActor.Behavior<Swift.String>.unhandled)")
@@ -67,7 +67,7 @@ class ActorLifecycleTests: XCTestCase {
                 let b: Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
-                let _ = try system.spawn(b, name: .unique(illegalName))
+                let _ = try system.spawn(.unique(illegalName), b)
             }
             "\(err)".shouldEqual(expectedError)
         }
@@ -97,7 +97,7 @@ class ActorLifecycleTests: XCTestCase {
     func test_stopping_shouldDeinitTheBehavior() throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")
         let chattyAboutLifecycle =
-            try system.spawn(.class { LifecycleDeinitClassBehavior(p.ref) }, name: "deinitLifecycleActor")
+            try system.spawn("deinitLifecycleActor", .class { LifecycleDeinitClassBehavior(p.ref) })
 
         chattyAboutLifecycle.tell(.stop)
 

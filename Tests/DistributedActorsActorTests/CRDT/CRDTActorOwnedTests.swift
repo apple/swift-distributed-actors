@@ -116,7 +116,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                 return .same
             }
         }
-        let owner = try system.spawn(behavior, name: .anonymous)
+        let owner = try system.spawn(.anonymous, behavior)
 
         owner.tell("hello")
         // This callback was overwritten so it shouldn't be invoked
@@ -131,17 +131,17 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         // g1 has two owners
         let g1Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let g1Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref), name: "gcounter1-owner1")
+        let g1Owner1 = try system.spawn("gcounter1-owner1", actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
         let g1Owner1IntP = testKit.spawnTestProbe(expecting: Int.self)
         let g1Owner1BoolP = testKit.spawnTestProbe(expecting: Bool.self)
 
         let g1Owner2EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let g1Owner2 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref), name: "gcounter1-owner2")
+        let g1Owner2 = try system.spawn("gcounter1-owner2", actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
         let g1Owner2IntP = testKit.spawnTestProbe(expecting: Int.self)
 
         // g2 has one owner
         let g2Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let g2Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g2, oep: g2Owner1EventP.ref), name: "gcounter2-owner1")
+        let g2Owner1 = try system.spawn("gcounter2-owner1", actorOwnedGCounterBehavior(id: g2, oep: g2Owner1EventP.ref))
         let g2Owner1IntP = testKit.spawnTestProbe(expecting: Int.self)
 
         // g1 not incremented yet
@@ -180,12 +180,12 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         // g1 has two owners
         let g1Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let g1Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref), name: "gcounter1-owner1")
+        let g1Owner1 = try system.spawn("gcounter1-owner1", actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
         let g1Owner1VoidP = testKit.spawnTestProbe(expecting: Void.self)
         let g1Owner1StatusP = testKit.spawnTestProbe(expecting: CRDT.Status.self)
 
         let g1Owner2EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let g1Owner2 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref), name: "gcounter1-owner2")
+        let g1Owner2 = try system.spawn("gcounter1-owner2", actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
         let g1Owner2StatusP = testKit.spawnTestProbe(expecting: CRDT.Status.self)
 
         // Should be .active

@@ -43,7 +43,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        _ = try! system.spawn(behavior, name: .anonymous)
+        _ = try! system.spawn(.anonymous, behavior)
 
         let adapted = try refProbe.expectMessage()
 
@@ -86,7 +86,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        _ = try! systemTwo.spawn(behavior, name: "target")
+        _ = try! systemTwo.spawn("target", behavior)
 
         let adapted: ActorRef<Int> = try refProbe.expectMessage()
 
@@ -109,7 +109,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(behavior, name: .anonymous)
+        _ = try system.spawn(.anonymous, behavior)
 
         let adaptedRef = try probe.expectMessage()
 
@@ -150,7 +150,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous, props: .addingSupervision(strategy: strategy))
+        let ref = try system.spawn(.anonymous, props: .addingSupervision(strategy: strategy), behavior)
 
         ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
         let adaptedRef = try receiveRefProbe.expectMessage()
@@ -193,7 +193,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous, props: .addingSupervision(strategy: strategy))
+        let ref = try system.spawn(.anonymous, props: .addingSupervision(strategy: strategy), behavior)
 
         ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))
         let adaptedRef = try receiveRefProbe.expectMessage()
@@ -234,7 +234,7 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn(behavior, name: .anonymous)
+        let ref = try system.spawn(.anonymous, behavior)
         probe.watch(ref)
 
         ref.tell(.createAdapter(replyTo: receiveRefProbe.ref))

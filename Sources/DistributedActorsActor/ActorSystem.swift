@@ -172,12 +172,12 @@ public final class ActorSystem {
         self._receptionist = deadLetters.adapted()
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        self._receptionist = try! self._spawnSystemActor(receptionistBehavior, name: Receptionist.name, perpetual: true)
+        self._receptionist = try! self._spawnSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
 
-        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.Shell(settings: .default).behavior, name: CRDT.Replicator.name, perpetual: true)
+        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
 
         #if SACT_TESTS_LEAKS
-        ActorSystem.actorSystemInitCounter.add(1)
+        _ = ActorSystem.actorSystemInitCounter.add(1)
         #endif
 
         do {
@@ -197,7 +197,7 @@ public final class ActorSystem {
 
     deinit {
         #if SACT_TESTS_LEAKS
-        ActorSystem.actorSystemInitCounter.sub(1)
+        _ = ActorSystem.actorSystemInitCounter.sub(1)
         #endif
     }
 
@@ -210,11 +210,13 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func shutdown() {
         self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        self._cluster?.shutdown() // FIXME: send message to shut down
+        let receptacle = BlockingReceptacle<Void>()
+        self.cluster._shell.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
         try! self.eventLoopGroup.syncShutdownGracefully()
+        receptacle.wait(atMost: .milliseconds(100)) // FIXME configure
         self.serialization = nil
         self._cluster = nil
         self._receptionist = self.deadLetters.adapted()
@@ -248,10 +250,20 @@ extension ActorSystem: CustomStringConvertible {
 /// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
 public protocol ActorRefFactory {
 
-    /// Spawn an actor with the given behavior, name and props.
+    /// Spawn an actor with the given `name`, optional `props` and `behavior`.
+    ///
+    /// ### Naming
+    /// `ActorNaming` is used to determine the actors real name upon spawning;
+    /// A name can be sequentially (or otherwise) assigned based on the owning naming context (i.e. `ActorContext` or `ActorSystem`).
     ///
     /// - Returns: `ActorRef` for the spawned actor.
-    func spawn<Message>(_ behavior: Behavior<Message>, name: ActorNaming, props: Props) throws -> ActorRef<Message>
+    func spawn<Message>(_ naming: ActorNaming, of type: Message.Type, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
+}
+
+extension ActorRefFactory {
+    func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        return try self.spawn(naming, of: Message.self, props: props, behavior)
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -263,11 +275,11 @@ extension ActorSystem: ActorRefFactory {
     ///
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
-    public func spawn<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnUserActor(behavior, name: naming, props: props)
+    public func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        return try self._spawnUserActor(naming, behavior, props: props)
     }
 
-    internal func _spawnUserActor<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<Message> {
+    internal func _spawnUserActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
         return try self._spawnActor(using: self.userProvider, behavior, name: naming, props: props)
     }
 
@@ -276,12 +288,12 @@ extension ActorSystem: ActorRefFactory {
     // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
+    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
         return try self._spawnActor(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
-    // spawnInternal is used by spawnAnonymous and others, which are privileged and may start with "$"
+    // spawnInternal is used by `spawn(.anonymous)` and others, which are privileged and may start with "$"
     internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 

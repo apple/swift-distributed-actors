@@ -49,7 +49,7 @@ class ActorLeakingTests: XCTestCase {
             return .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "printer")
+        var ref: ActorRef<String>? = try system.spawn("printer", (stopsOnAnyMessage))
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -91,7 +91,7 @@ class ActorLeakingTests: XCTestCase {
             }
         }
 
-        var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "printer")
+        var ref: ActorRef<String>? = try system.spawn("printer", (stopsOnAnyMessage))
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -129,7 +129,7 @@ class ActorLeakingTests: XCTestCase {
             return .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn(stopsOnAnyMessage, name: "stopsOnAnyMessage")
+        var ref: ActorRef<String>? = try system.spawn("stopsOnAnyMessage", (stopsOnAnyMessage))
 
         let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
@@ -177,7 +177,7 @@ class ActorLeakingTests: XCTestCase {
             }
         }
 
-        var ref: ActorRef<Int>? = try system.spawn(spawnsNChildren, name: "printer")
+        var ref: ActorRef<Int>? = try system.spawn("printer", (spawnsNChildren))
 
         let expectedParentCount = 1
         let expectedChildrenCount = 3
@@ -235,7 +235,7 @@ class ActorLeakingTests: XCTestCase {
             lock.lock()
             return .stop
         }
-        let ref = try system.spawn(behavior, name: .anonymous, props: Props().withMailbox(MailboxProps.default(capacity: 1)))
+        let ref = try system.spawn(.anonymous, props: Props().mailbox(MailboxProps.default(capacity: 1)), behavior)
 
         // this will cause the actor to block and fill the mailbox, so the next message should be dropped and deallocated
         ref.tell(LeakTestMessage(nil))

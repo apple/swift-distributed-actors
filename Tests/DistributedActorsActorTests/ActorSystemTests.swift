@@ -34,10 +34,10 @@ class ActorSystemTests: XCTestCase {
     }
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
-        let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+        let _: ActorRef<String> = try system.spawn("test", .ignore)
 
         let error = shouldThrow {
-            let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+            let _: ActorRef<String> = try system.spawn("test", .ignore)
         }
 
         guard case let ActorContextError.duplicateActorPath(path) = error else {
@@ -52,7 +52,7 @@ class ActorSystemTests: XCTestCase {
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
         let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
-        let ref: ActorRef<String> = try system.spawn(.stop, name: "test")
+        let ref: ActorRef<String> = try system.spawn("test", (.stop))
 
         p.watch(ref)
         try p.expectTerminated(ref)
@@ -60,7 +60,7 @@ class ActorSystemTests: XCTestCase {
         // since spawning on top level is racy for the names replacements;
         // we try a few times, and if it eventually succeeds things are correct -- it should succeed only once though
         try testKit.eventually(within: .milliseconds(500)) {
-            let _: ActorRef<String> = try system.spawn(.ignore, name: "test")
+            let _: ActorRef<String> = try system.spawn("test", (.ignore))
         }
     }
 
@@ -72,8 +72,8 @@ class ActorSystemTests: XCTestCase {
             return .same
         }
 
-        let ref1 = try system2.spawn(echoBehavior, name: .anonymous)
-        let ref2 = try system2.spawn(echoBehavior, name: .anonymous)
+        let ref1 = try system2.spawn(.anonymous, echoBehavior)
+        let ref2 = try system2.spawn(.anonymous, echoBehavior)
 
         p.watch(ref1)
         p.watch(ref2)
@@ -96,7 +96,7 @@ class ActorSystemTests: XCTestCase {
             return .same
         }
 
-        let selfSender = try system2.spawn(echoBehavior, name: .anonymous)
+        let selfSender = try system2.spawn(.anonymous, echoBehavior)
 
         p.watch(selfSender)
 
