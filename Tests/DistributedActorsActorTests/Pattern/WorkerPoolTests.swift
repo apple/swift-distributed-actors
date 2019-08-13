@@ -49,11 +49,11 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(worker(p: pA), name: "worker-a")
-        _ = try system.spawn(worker(p: pB), name: "worker-b")
-        _ = try system.spawn(worker(p: pC), name: "worker-c")
+        _ = try system.spawn("worker-a", (worker(p: pA)))
+        _ = try system.spawn("worker-b", (worker(p: pB)))
+        _ = try system.spawn("worker-c", (worker(p: pC)))
 
-        let workers = try WorkerPool.spawn(self.system, select: .dynamic(workerKey), name: "workers")
+        let workers = try WorkerPool.spawn(self.system, "workers", select: .dynamic(workerKey))
 
         workers.tell("a")
         workers.tell("b")
@@ -97,14 +97,14 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        let workerA = try system.spawn(worker(p: pA), name: "worker-a")
+        let workerA = try system.spawn("worker-a", worker(p: pA))
         pA.watch(workerA)
-        let workerB = try system.spawn(worker(p: pB), name: "worker-b")
+        let workerB = try system.spawn("worker-b", worker(p: pB))
         pB.watch(workerB)
-        let workerC = try system.spawn(worker(p: pC), name: "worker-c")
+        let workerC = try system.spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(system, select: .dynamic(workerKey), name: "workersMayDie")
+        let workers = try WorkerPool.spawn(system, "workersMayDie", select: .dynamic(workerKey))
 
         // since the workers joining the pool is still technically always a bit racy with the dynamic selection,
         // we try a few times to send a message and see it delivered at each worker. This would not be the case with a static selector.
@@ -157,10 +157,10 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        let workerA = try system.spawn(worker(p: pA), name: "worker-a")
-        let workerB = try system.spawn(worker(p: pB), name: "worker-b")
+        let workerA = try system.spawn("worker-a", worker(p: pA))
+        let workerB = try system.spawn("worker-b", worker(p: pB))
 
-        let workers = try WorkerPool.spawn(system, select: .static([workerA, workerB]), name: "questioningTheWorkers")
+        let workers = try WorkerPool.spawn(system, "questioningTheWorkers", select: .static([workerA, workerB]))
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
         let answerA: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "AAA", replyTo: $0) }
@@ -201,14 +201,14 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        let workerA = try system.spawn(worker(p: pA), name: "worker-a")
+        let workerA = try system.spawn("worker-a", (worker(p: pA)))
         pA.watch(workerA)
-        let workerB = try system.spawn(worker(p: pB), name: "worker-b")
+        let workerB = try system.spawn("worker-b", (worker(p: pB)))
         pB.watch(workerB)
-        let workerC = try system.spawn(worker(p: pC), name: "worker-c")
+        let workerC = try system.spawn("worker-c", (worker(p: pC)))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(system, select: .static([workerA, workerB, workerC]), name: "staticWorkersMayDie")
+        let workers = try WorkerPool.spawn(system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
         pW.watch(workers._ref)
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
@@ -251,7 +251,7 @@ final class WorkerPoolTests: XCTestCase {
 
     func test_workerPool_static_throwOnEmptyInitialSet() throws {
         let error = shouldThrow() {
-            let _: WorkerPoolRef <Never> = try WorkerPool.spawn(system, select: .static([]), name: "wrongConfigPool")
+            let _: WorkerPoolRef <Never> = try WorkerPool.spawn(system, "wrongConfigPool", select: .static([]))
         }
 
         "\(error)".shouldContain("Illegal empty collection passed to `.static` worker pool")

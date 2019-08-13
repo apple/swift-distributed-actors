@@ -90,7 +90,7 @@ extension Behavior {
     /// ```
     /// .setup { context in
     ///     // e.g. spawn worker on startup:
-    ///     let worker = try context.spawn(workerBehavior, name: "worker")
+    ///     let worker = try context.spawn("worker", (workerBehavior))
     ///
     ///     // it is safe to mutate actor "enclosed" state created e.g. during setup:
     ///     var workRequestsCounter = 0

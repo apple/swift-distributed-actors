@@ -75,9 +75,9 @@ class InterceptorTests: XCTestCase {
             return .same
         }
 
-        let ref: ActorRef<String> = try system.spawn(
-            .intercept(behavior: forwardToProbe, with: interceptor),
-            name: "theWallsHaveEars")
+        let ref: ActorRef<String> = try system.spawn("theWallsHaveEars",
+            .intercept(behavior: forwardToProbe, with: interceptor)
+        )
 
         for i in 0...10 {
             ref.tell("hello:\(i)")
@@ -110,9 +110,9 @@ class InterceptorTests: XCTestCase {
             return .intercept(behavior: behavior, with: makeStringsLouderInterceptor)
         }
 
-        let ref: ActorRef<String> = try system.spawn(
-            interceptionInceptionBehavior(currentDepth: 0, stopAt: 100),
-            name: "theWallsHaveEars")
+        let ref: ActorRef<String> = try system.spawn("theWallsHaveEars",
+            interceptionInceptionBehavior(currentDepth: 0, stopAt: 100)
+        )
 
         ref.tell("hello")
 
@@ -129,22 +129,23 @@ class InterceptorTests: XCTestCase {
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
         let spawnSomeStoppers: Behavior<String> = .setup { context in
-            let one: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
-                return .stop
-            }, name: "stopperOne")
+            let one: ActorRef<String> = try context.spawnWatch("stopperOne",
+                .receiveMessage { msg in
+                    return .stop
+                })
             one.tell("stop")
 
-            let two: ActorRef<String> = try context.spawnWatched(.receiveMessage { msg in
+            let two: ActorRef<String> = try context.spawnWatch("stopperTwo", .receiveMessage { msg in
                 return .stop
-            }, name: "stopperTwo")
+            })
             two.tell("stop")
 
             return .same
         }
 
-        let _: ActorRef<String> = try system.spawn(
-            .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals),
-            name: "theWallsHaveEarsForTermination")
+        let _: ActorRef<String> = try system.spawn("theWallsHaveEarsForTermination",
+            .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
+        )
 
         // either of the two child actors can cause the death pact, depending on which one was scheduled first,
         // so we have to check that the message we get is from one of them and afterwards we should not receive
@@ -176,9 +177,9 @@ class InterceptorTests: XCTestCase {
             }
         }
 
-        let interceptedBahvior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
+        let interceptedBehavior: Behavior<String> = .intercept(behavior: behavior, with: SignalToStringInterceptor(p))
 
-        let ref = try system.spawn(interceptedBahvior, name: .anonymous)
+        let ref = try system.spawn(.anonymous, interceptedBehavior)
         p.watch(ref)
         ref.tell("test")
 

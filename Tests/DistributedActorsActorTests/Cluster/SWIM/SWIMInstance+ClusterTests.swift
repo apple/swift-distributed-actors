@@ -44,11 +44,11 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
 
         let swim = SWIM.Instance(.default)
 
-        let myself = try local.spawn(SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready, name: "SWIM")
+        let myself = try local.spawn("SWIM", SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready)
         swim.addMyself(myself)
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready, name: "SWIM")
+        let other = try remote.spawn("SWIM", SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready)
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 
@@ -76,12 +76,12 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
 
         let swim = SWIM.Instance(.default)
 
-        let myself = try local.spawn(SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready, name: "SWIM")
+        let myself = try local.spawn("SWIM", SWIM.Shell(swim, clusterRef: localClusterProbe.ref).ready)
         swim.addMyself(myself)
         _ = swim.member(for: myself)!
         swim.memberCount.shouldEqual(1)
 
-        let other = try remote.spawn(SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready, name: "SWIM")
+        let other = try remote.spawn("SWIM", SWIM.Shell(SWIM.Instance(.default), clusterRef: remoteClusterProbe.ref).ready)
         let remoteShell = local._resolveKnownRemote(other, onRemoteSystem: remote)
         let remoteMember = SWIM.Member(ref: remoteShell, status: .alive(incarnation: 0), protocolPeriod: 0)
 

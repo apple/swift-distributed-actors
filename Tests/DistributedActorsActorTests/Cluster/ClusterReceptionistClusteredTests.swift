@@ -28,11 +28,11 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         local.cluster.join(node: remote.cluster.node.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
-        let ref: ActorRef<String> = try local.spawn(
+        let ref: ActorRef<String> = try local.spawn(.anonymous,
             .receiveMessage {
                 probe.tell("received:\($0)")
                 return .same
-            }, name: .anonymous
+            }
         )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
@@ -63,11 +63,11 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
-        let ref: ActorRef<String> = try local.spawn(
+        let ref: ActorRef<String> = try local.spawn(.anonymous,
             .receiveMessage {
                 probe.tell("received:\($0)")
                 return .same
-            }, name: .anonymous)
+            })
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -104,10 +104,10 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             return .same
         }
 
-        let refA: ActorRef<String> = try local.spawn(behavior, name: "refA")
-        let refB: ActorRef<String> = try local.spawn(behavior, name: "refB")
-        let refC: ActorRef<String> = try remote.spawn(behavior, name: "refC")
-        let refD: ActorRef<String> = try remote.spawn(behavior, name: "refD")
+        let refA: ActorRef<String> = try local.spawn("refA", behavior)
+        let refB: ActorRef<String> = try local.spawn("refB", behavior)
+        let refC: ActorRef<String> = try remote.spawn("refC", behavior)
+        let refD: ActorRef<String> = try remote.spawn("refD", behavior)
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -152,8 +152,8 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             return .stop
         }
 
-        let refA: ActorRef<String> = try local.spawn(behavior, name: .anonymous)
-        let refB: ActorRef<String> = try local.spawn(behavior, name: .anonymous)
+        let refA: ActorRef<String> = try local.spawn(.anonymous, behavior)
+        let refB: ActorRef<String> = try local.spawn(.anonymous, behavior)
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 

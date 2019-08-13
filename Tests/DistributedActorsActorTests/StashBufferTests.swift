@@ -53,7 +53,7 @@ class StashBufferTests: XCTestCase {
             }
         }
 
-        let stasher = try system.spawn(behavior, name: .anonymous)
+        let stasher = try system.spawn(.anonymous, behavior)
 
         for i in 0...10 {
             stasher.tell(i)
@@ -80,7 +80,7 @@ class StashBufferTests: XCTestCase {
     func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
         let p = testKit.spawnTestProbe(expecting: Int.self)
 
-        _ = try system.spawn(Behavior<Int>.setup { context in
+        _ = try system.spawn("unstashIntoSetup", Behavior<Int>.setup { context in
             let stash = StashBuffer<Int>(capacity: 2)
             try stash.stash(message: 1)
 
@@ -90,7 +90,7 @@ class StashBufferTests: XCTestCase {
                     return .stop
                 }
             })
-        }, name: "unstashIntoSetup")
+        })
 
         try p.expectMessage(1)
     }
@@ -117,7 +117,7 @@ class StashBufferTests: XCTestCase {
             }
         }
 
-        let stasher = try system.spawn(behavior, name: .anonymous)
+        let stasher = try system.spawn(.anonymous, behavior)
 
         for i in 0...10 {
             stasher.tell(i)

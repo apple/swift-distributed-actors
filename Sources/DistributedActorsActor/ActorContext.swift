@@ -159,7 +159,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///     context.watch(someRef)
     ///
     ///     // watch a child actor immediately when spawning it, (entering a death pact with it)
-    ///     let child = try context.watch(context.spawn(behavior, name: "child"))
+    ///     let child = try context.watch(context.spawn("child", (behavior)))
     ///
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
@@ -194,15 +194,14 @@ public class ActorContext<Message>: ActorRefFactory {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
-    public func spawn<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<M> {
+    public func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
         return undefined()
     }
 
     /// Spawn a child actor and start watching it to get notified about termination.
     ///
     /// - SeeAlso: `spawn` and `watch`.
-    // TODO spawnAndWatch?
-    public func spawnWatched<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props = Props()) throws -> ActorRef<M> {
+    public func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
         return undefined()
     }
 
@@ -233,6 +232,9 @@ public class ActorContext<Message>: ActorRefFactory {
     public func stop<M>(child ref: ActorRef<M>) throws {
         return undefined()
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor Suspension Mechanisms
 
     /// :nodoc: Not intended to be used by end users.
     ///
@@ -367,6 +369,9 @@ public class ActorContext<Message>: ActorRefFactory {
             }
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Message Adapters & Sub-Receive
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
     /// function. There can only be one adapter defined per type. Creating a new adapter will

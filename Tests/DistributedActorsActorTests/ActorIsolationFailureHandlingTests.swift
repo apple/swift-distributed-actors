@@ -65,7 +65,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         return .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
-                let worker = try context.spawn(self.faultyWorkerBehavior(probe: pw), name: "faultyWorker")
+                let worker = try context.spawn("faultyWorker", (self.faultyWorkerBehavior(probe: pw)))
                 pm.tell(.spawned(child: worker))
             default:
                 pm.tell(.echoing(message: message))
@@ -78,8 +78,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-1")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-1")
 
-        let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
-            name: "healthyMaster")
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
@@ -108,8 +107,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-2")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-2")
 
-        let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
-            name: "healthyMaster")
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
@@ -157,8 +155,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-3")
         let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
-        let healthyMaster: ActorRef<String> = try system.spawn(healthyMasterBehavior(pm: pm.ref, pw: pw.ref),
-            name: "healthyMaster")
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)

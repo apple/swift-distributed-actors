@@ -53,9 +53,9 @@ final class DeadLetterTests: XCTestCase {
     // MARK: ActorSystem integrated tests
 
     func test_sendingToTerminatedActor_shouldResultInDeadLetter() throws {
-        let ref: ActorRef<String> = try self.system.spawn(.receiveMessage { _ in
+        let ref: ActorRef<String> = try self.system.spawn("ludwig", .receiveMessage { _ in
             .stop
-        }, name: "ludwig")
+        })
         let p = self.testKit.spawnTestProbe(expecting: Never.self)
 
         p.watch(ref)
@@ -69,9 +69,9 @@ final class DeadLetterTests: XCTestCase {
     }
 
     func test_askingTerminatedActor_shouldResultInDeadLetter() throws {
-        let ref: ActorRef<String> = try self.system.spawn(.receiveMessage { _ in
+        let ref: ActorRef<String> = try self.system.spawn("ludwig", .receiveMessage { _ in
             .stop
-        }, name: "ludwig")
+        })
         let p = self.testKit.spawnTestProbe(expecting: Never.self)
 
         p.watch(ref)

@@ -99,14 +99,14 @@ fileprivate func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behav
 fileprivate var loopEntryPoint: ActorRef<Token>! = nil
 
 fileprivate func initLoop(m messages: Int, n actors: Int) {
-    loopEntryPoint = try! system.spawn(.setup { context in
+    loopEntryPoint = try! system.spawn("a0", .setup { context in
         // TIME spawning
         // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")
         spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
         var loopRef = context.myself
         for i in (1...actors).reversed() {
-            loopRef = try context.spawn(loopMember(id: i, next: loopRef, msg: Token(messages)), name: "a\(actors - i)")
+            loopRef = try context.spawn("a\(actors - i)", (loopMember(id: i, next: loopRef, msg: Token(messages))))
             // context.log.info("SPAWNed \(loopRef.path.name)...")
         }
         // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
@@ -121,7 +121,7 @@ fileprivate func initLoop(m messages: Int, n actors: Int) {
             // END TIME spawning
             return loopMember(id: 1, next: loopRef, msg: m)
         }
-    }, name: "a0")
+    })
 
 }
 

@@ -38,9 +38,9 @@ let workersKey = Receptionist.RegistrationKey(String.self, id: "workers")
 // though one can ensure to only run if in a process of a given role:
 try isolated.run(on: .master) {
 
-    let pool = try WorkerPool.spawn(isolated.system, select: .dynamic(workersKey), name: "worker-pool")
+    let pool = try WorkerPool.spawn(isolated.system, "workerPool", select: .dynamic(workersKey))
 
-    let _: ActorRef<String> = try isolated.system.spawn(.setup { context in
+    let _: ActorRef<String> = try isolated.system.spawn("pingSource", .setup { context in
 
         context.timers.startPeriodic(key: TimerKey("ping"), message: "ping", interval: .seconds(1))
 
@@ -49,7 +49,7 @@ try isolated.run(on: .master) {
             return .same
         }
 
-    }, name: "pingSource")
+    })
 
     // should we allow anyone to issue this, or only on master? we could `runOnMaster { control` etc
     isolated.spawnServantProcess(supervision: .restart(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
@@ -60,7 +60,7 @@ try isolated.run(on: .master) {
 // We only spawn workers on the servant nodes
 try isolated.run(on: .servant) {
     for i in 1...5 {
-        let _: ActorRef<String> = try isolated.system.spawn(.setup { context in
+        let _: ActorRef<String> = try isolated.system.spawn(.prefixed(with: "worker"), .setup { context in
             context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
             context.system.receptionist.register(context.myself, key: workersKey)
 
@@ -68,7 +68,7 @@ try isolated.run(on: .servant) {
                 context.log.info("Handled: \(message)")
                 return .same
             }
-        }, name: "worker-\(i)")
+        })
     }
 }
 

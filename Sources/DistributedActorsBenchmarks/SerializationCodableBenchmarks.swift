@@ -76,7 +76,7 @@ struct MessageWithRef: Codable {
 var message_withRef: MessageWithRef!
 
 private func setUpActorRef() {
-    let ref: ActorRef<String> = try! system.spawn(.ignore, name: "someActor")
+    let ref: ActorRef<String> = try! system.spawn("someActor", (.ignore))
     message_withRef = MessageWithRef(number: 1337, name: "kappa", reference: ref)
 }
 

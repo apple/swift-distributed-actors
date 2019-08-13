@@ -44,7 +44,7 @@ private func tearDown() {
 // -------
 
 func setUp_visitSingleRef() {
-    let _: ActorRef<Never> = try! system.spawn(.ignore, name: "top")
+    let _: ActorRef<Never> = try! system.spawn("top", (.ignore))
 }
 func bench_visitSingleRef(n: Int) {
 //    system._traverse { ref in () }
@@ -60,12 +60,12 @@ func setUp_visit_depth_10_total_10() {
             }
         } else {
             return Behavior<Never>.setup { context in
-                _ = try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
+                _ = try context.spawn("a\(n)", (spawnDeeper(stillMore: n - 1)))
                 return .receiveMessage { _ in .same }
             }
         }
     }
-    _ = try! system.spawn(spawnDeeper(stillMore: 10), name: "top")
+    _ = try! system.spawn("top", (spawnDeeper(stillMore: 10)))
 }
 func bench_visit(n: Int) {
 //    system._traverse { ref in () }
@@ -79,10 +79,10 @@ func setUp_visit_depth_1000_total_1000() {
             }
         } else {
             return Behavior<Never>.setup { context in
-                _ = try context.spawn(spawnDeeper(stillMore: n - 1), name: "a\(n)")
+                _ = try context.spawn("a\(n)", (spawnDeeper(stillMore: n - 1)))
                 return .receiveMessage { _ in .same }
             }
         }
     }
-    _ = try! system.spawn(spawnDeeper(stillMore: 1000), name: "top")
+    _ = try! system.spawn("top", (spawnDeeper(stillMore: 1000)))
 }
