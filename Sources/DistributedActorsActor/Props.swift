@@ -14,6 +14,9 @@
 
 import NIO
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Props
+
 /// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///
 /// `Props` can easily changed in-line using the fluent APIs provided.
@@ -44,19 +47,20 @@ public struct Props {
 
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Dispatcher Props
 
 // TODO: likely better as class hierarchy, by we'll see...
 
 public extension Props {
     /// Creates a new `Props` with default values, and overrides the `dispatcher` with the provided one.
-    static func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+    static func dispatcher(_ dispatcher: DispatcherProps) -> Props {
         var props = Props()
         props.dispatcher = dispatcher
         return props
     }
     /// Creates copy of this `Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
-    func withDispatcher(_ dispatcher: DispatcherProps) -> Props {
+    func dispatcher(_ dispatcher: DispatcherProps) -> Props {
         var props = self
         props.dispatcher = dispatcher
         return props
@@ -101,17 +105,18 @@ public enum DispatcherProps {
     case callingThread
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Mailbox Props
 
 extension Props {
     /// Creates a new `Props` with default values, and overrides the `mailbox` with the provided one.
-    public static func withMailbox(_ mailbox: MailboxProps) -> Props {
+    public static func mailbox(_ mailbox: MailboxProps) -> Props {
         var props = Props()
         props.mailbox = mailbox
         return props
     }
     /// Creates copy of this `Props` changing the `mailbox` props.
-    public func withMailbox(_ mailbox: MailboxProps) -> Props {
+    public func mailbox(_ mailbox: MailboxProps) -> Props {
         var props = self
         props.mailbox = mailbox
         return props

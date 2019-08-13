@@ -70,7 +70,6 @@ public struct ActorTestKitSettings {
 public extension ActorTestKit {
 
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    // TODO rename expecting to "receiving"? -- ktoso
     func spawnTestProbe<M>(name naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
@@ -91,7 +90,7 @@ public extension ActorTestKit {
             testProbeProps.dispatcher = .callingThread
             #endif
 
-            return try system.spawn(probeBehavior, name: .init(unchecked: .unique(name)), props: testProbeProps)
+            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
         }, settings: self.settings)
     }
 }
@@ -289,11 +288,10 @@ final class MockActorContext<Message>: ActorContext<Message> {
         fatalError("Failed: \(MockActorContextError())")
     }
 
-    override func spawn<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props) throws -> ActorRef<M> {
-    override func spawnWatched<M>(_ behavior: Behavior<M>, name naming: ActorNaming, props: Props) throws -> ActorRef<M> {
+    override func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
-
+    override func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
 

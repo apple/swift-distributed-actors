@@ -65,23 +65,12 @@ public class WorkerPool<Message> {
 
     // TODO how can we move the spawn somewhere else so we don't have to pass in the system or context?
     // TODO round robin or what strategy?
-    // TODO ActorName
-    static public func spawn(_ system: ActorSystem, select selector: WorkerPool<Message>.Selector, name naming: ActorNaming) throws -> WorkerPoolRef<Message> {
+    static public func spawn(_ factory: ActorRefFactory, _ naming: ActorNaming, select selector: WorkerPool<Message>.Selector) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
-        try settings.validate()
-        let ref = try system.spawn(WorkerPool(settings: settings).initial(), name: naming)
-        return .init(ref: ref)
-    }
-
-    // TODO actor name
-    // TODO mirror whichever API the other spawn is
-    static public func spawn<ParentMessage>(_ context: ActorContext<ParentMessage>, select selector: WorkerPool<Message>.Selector, name naming: ActorNaming) throws -> WorkerPoolRef<Message> {
-        // TODO: pass in settings rather than create them here
-        let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
-
-        let ref = try context.spawn(WorkerPool(settings: settings).initial(), name: naming)
+        let pool: WorkerPool<Message> = WorkerPool(settings: settings)
+        let ref = try factory.spawn(naming, props: Props(), pool.initial())
         return .init(ref: ref)
     }
 }

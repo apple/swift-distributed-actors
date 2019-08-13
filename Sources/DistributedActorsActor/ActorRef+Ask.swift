@@ -70,14 +70,14 @@ extension ActorRef: ReceivesQuestions {
         let promise = system.eventLoopGroup.next().makePromise(of: type)
 
         // TODO: implement special actor ref instead of using real actor
-        _ = try! system.spawn(AskActor.behavior(
+        _ = try! system.spawn(.ask, AskActor.behavior(
             promise,
             ref: self,
             makeQuestion: makeQuestion,
             timeout: timeout,
             file: file,
             function: function,
-            line: line), name: .ask)
+            line: line))
 
         return AskResponse(nioFuture: promise.futureResult)
     }

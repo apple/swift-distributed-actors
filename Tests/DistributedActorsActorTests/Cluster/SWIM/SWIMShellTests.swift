@@ -17,7 +17,7 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-final class SWIMMembershipShellTests: ClusteredNodesTestBase {
+final class SWIMShellTests: ClusteredNodesTestBase {
 
     var localClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var remoteClusterProbe: ActorTestProbe<ClusterShell.Message>!
@@ -38,7 +38,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         let local = setUpLocal()
         let p = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
 
-        let ref = try local.spawn(swimBehavior(members: [], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [], clusterRef: localClusterProbe.ref))
 
         ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
@@ -71,12 +71,12 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
             }
         }
 
-        let refA = try remote.spawn(behavior(postFix: "A"), name: "SWIM-A")
+        let refA = try remote.spawn("SWIM-A", behavior(postFix: "A"))
         let remoteRefA = local._resolveKnownRemote(refA, onRemoteSystem: remote)
-        let refB = try remote.spawn(behavior(postFix: "B"), name: "SWIM-B")
+        let refB = try remote.spawn("SWIM-B", behavior(postFix: "B"))
         let remoteRefB = local._resolveKnownRemote(refB, onRemoteSystem: remote)
 
-        let ref = try local.spawn(swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: localClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
         ref.tell(.local(.pingRandomMember))
@@ -90,7 +90,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         let memberProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
 
-        let ref = try local.spawn(swimBehavior(members: [memberProbe.ref], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [memberProbe.ref], clusterRef: localClusterProbe.ref))
 
         ref.tell(.remote(.pingReq(target: memberProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
 
@@ -111,7 +111,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
 
-        let ref = try local.spawn(swimBehavior(members: [remoteProbeRef], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [remoteProbeRef], clusterRef: localClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -125,14 +125,14 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefA")
-        let refB = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefB")
+        let refA = try local.spawn("SWIMRefA", forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try local.spawn("SWIMRefB", forwardingSWIMBehavior(forwardTo: probe.ref))
 
         let behavior = swimBehavior(members: [refA, refB], clusterRef: localClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let ref = try local.spawn(behavior, name: "SWIM")
+        let ref = try local.spawn("SWIM", behavior)
 
         ref.tell(.local(.pingRandomMember))
 
@@ -155,14 +155,14 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefA")
-        let refB = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIMRefB")
+        let refA = try local.spawn("SWIMRefA", forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try local.spawn("SWIMRefB", forwardingSWIMBehavior(forwardTo: probe.ref))
 
         let behavior = swimBehavior(members: [refA, refB], clusterRef: localClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let ref = try local.spawn(behavior, name: "SWIM")
+        let ref = try local.spawn("SWIM", behavior)
 
         ref.tell(.local(.pingRandomMember))
 
@@ -190,7 +190,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
 
         let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
-        let ref = try local.spawn(swimBehavior(members: [remoteProbeRef], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [remoteProbeRef], clusterRef: localClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -215,7 +215,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
 
         let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
         let remoteMemberRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
-        let ref = try local.spawn(swimBehavior(members: [remoteMemberRef], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [remoteMemberRef], clusterRef: localClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -256,7 +256,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         let memberProbe = self.testKit(remote).spawnTestProbe(name: "RemoteSWIM", expecting: SWIM.Message.self)
         let remoteMemberRef = local._resolveKnownRemote(memberProbe.ref, onRemoteSystem: remote)
 
-        let swimRef = try local.spawn(swimBehavior(members: [remoteMemberRef], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let swimRef = try local.spawn("SWIM", swimBehavior(members: [remoteMemberRef], clusterRef: localClusterProbe.ref))
 
         swimRef.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: remoteProbeRef, payload: .none)))
 
@@ -287,7 +287,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let swimRef = try local.spawn(behavior, name: "SWIM")
+        let swimRef = try local.spawn("SWIM", behavior)
         let remoteSwimRef = remote._resolveKnownRemote(swimRef, onRemoteSystem: local)
 
         swimRef.tell(.local(.pingRandomMember))
@@ -309,14 +309,14 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
 
         let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIM-A")
-        let refB = try local.spawn(forwardingSWIMBehavior(forwardTo: probe.ref), name: "SWIM-B")
+        let refA = try local.spawn("SWIM-A", forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try local.spawn("SWIM-B", forwardingSWIMBehavior(forwardTo: probe.ref))
 
         let behavior = swimBehavior(members: [refA, refB], clusterRef: localClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let swimRef = try local.spawn(behavior, name: "SWIM")
+        let swimRef = try local.spawn("SWIM", behavior)
 
         swimRef.tell(.local(.pingRandomMember))
 
@@ -347,7 +347,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         let p = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
         let memberProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self)
 
-        let ref = try local.spawn(swimBehavior(members: [memberProbe.ref], clusterRef: localClusterProbe.ref), name: "SWIM")
+        let ref = try local.spawn("SWIM", swimBehavior(members: [memberProbe.ref], clusterRef: localClusterProbe.ref))
 
         for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage {
             ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
@@ -386,8 +386,8 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         var settings: SWIMSettings = .default
         settings.failureDetector.probeInterval = .milliseconds(50)
 
-        let localRef = try local.spawn(SWIM.Shell(SWIM.Instance(settings), clusterRef: localClusterProbe.ref).behavior, name: "SWIM-A")
-        let remoteRef = try remote.spawn(SWIM.Shell(SWIM.Instance(settings), clusterRef: remoteClusterProbe.ref).behavior, name: "SWIM-B")
+        let localRef = try local.spawn("SWIM-A", SWIM.Shell(SWIM.Instance(settings), clusterRef: localClusterProbe.ref).behavior)
+        let remoteRef = try remote.spawn("SWIM-B", SWIM.Shell(SWIM.Instance(settings), clusterRef: remoteClusterProbe.ref).behavior)
 
         let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
 
@@ -419,7 +419,7 @@ final class SWIMMembershipShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func test_SWIMMembershipShell_shouldBeAbleToJoinACluster() throws {
+    func test_SWIMShell_shouldBeAbleToJoinACluster() throws {
         let local = setUpLocal()
         let remote = setUpRemote()
 

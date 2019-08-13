@@ -208,18 +208,9 @@ extension ClusteredNodesTestBase {
     func assertNotAssociated(system: ActorSystem, expectAssociatedNode node: UniqueNode,
                              timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                              verbose: Bool = false) throws {
-        // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
-        // FIXME: this can be removed once https://github.com/apple/swift-distributed-actors/issues/458 lands
-        let testKit: ActorTestKit
-//        if system  == self.local {
-//            testKit = self.testKit(local)
-//        } else if system == self.remote {
-//            testKit = self.testKit(remote)
-//        } else {
-            testKit = ActorTestKit(system)
-//        }
+        let testKit: ActorTestKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe(name: "assertNotAssociated-probe", expecting: Set<UniqueNode>.self)
+        let probe = testKit.spawnTestProbe(name: .prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.cluster._shell.tell(.query(.associatedNodes(probe.ref)))

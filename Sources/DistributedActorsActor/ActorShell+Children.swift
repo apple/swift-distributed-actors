@@ -19,7 +19,7 @@ protocol ChildActorRefFactory: ActorRefFactory {
 
     var children: Children { get set } // lock-protected
 
-    func spawn<Message>(_ behavior: Behavior<Message>, name: ActorNaming, props: Props) throws -> ActorRef<Message>
+    func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
     func stop<M>(child ref: ActorRef<M>) throws
 }
 
@@ -36,7 +36,7 @@ public class Children {
 
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
-    typealias Name = String // TODO ActorName
+    typealias Name = String // TODO ActorName // TODO still?
 
     private var container: [Name: Child]
     private var stopping: [ActorAddress: AbstractActor]

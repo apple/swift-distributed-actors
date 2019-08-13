@@ -259,7 +259,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
         swim.addMyself(myself)
         let myselfMember = swim.member(for: myself)!
 
@@ -279,7 +279,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
         myselfMember.status = .suspect(incarnation: currentIncarnation)
@@ -300,7 +300,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         var currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -327,7 +327,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -347,7 +347,7 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onGossipPayload_myself_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
         swim.addMyself(myself)
 
         var myselfMember = swim.member(for: myself)!
@@ -365,10 +365,10 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onGossipPayload_other_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready)
         swim.addMyself(myself)
 
-        let other = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM-B")
+        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready)
         swim.addMember(other, status: .alive(incarnation: 0))
 
         var otherMember = swim.member(for: other)!

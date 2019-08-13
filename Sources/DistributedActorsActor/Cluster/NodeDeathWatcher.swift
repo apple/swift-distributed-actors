@@ -119,7 +119,7 @@ internal protocol NodeDeathWatcher {
 enum NodeDeathWatcherShell {
     typealias Ref = ActorRef<Message>
 
-    static var name: String {
+    static var naming: ActorNaming {
         return "nodeDeathWatcher" // TODO: String -> ActorNaming
     }
 

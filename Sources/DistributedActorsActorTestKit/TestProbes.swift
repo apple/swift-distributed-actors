@@ -32,6 +32,7 @@ final public class ActorTestProbe<Message> {
 
     public let name: String
     public static var naming: ActorNaming {
+        // has to be computed property since: static stored properties are not supported in generic types
         return ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
     }
 

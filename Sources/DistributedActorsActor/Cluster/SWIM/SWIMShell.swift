@@ -421,7 +421,7 @@ internal struct SWIMShell {
 
 extension SWIMShell {
     static let name: String = "swim" // TODO String -> ActorName
-    static let naming: ActorNaming = .unique(SWIMMembershipShell.name)
+    static let naming: ActorNaming = .unique(SWIMShell.name)
 
     static func address(on node: UniqueNode) -> ActorAddress {
         return try! ActorPath._system.appending(SWIMShell.name).makeRemoteAddress(on: node, incarnation: .perpetual)

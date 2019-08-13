@@ -44,7 +44,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn(supervisorBehavior(), name: "supervisor")
+                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
             }
         },
         tearDownFunction: tearDown
@@ -55,7 +55,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn(supervisorBehavior(), name: "supervisor")
+                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
             }
         },
         tearDownFunction: tearDown
@@ -66,7 +66,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn(supervisorBehavior(), name: "supervisor")
+                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
             }
         },
         tearDownFunction: tearDown
@@ -77,7 +77,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn(supervisorBehavior(), name: "supervisor")
+                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
             }
         },
         tearDownFunction: tearDown
@@ -173,8 +173,8 @@ fileprivate func startPingPongActorPairs(
     let startSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
     actors.reserveCapacity(numPairs)
     for i in 0..<numPairs {
-        let ping = try context.spawn(pingPongBehavior, name: "ping-\(i)")
-        let pong = try context.spawn(pingPongBehavior, name: "pong-\(i)")
+        let ping = try context.spawn("ping-\(i)", (pingPongBehavior))
+        let pong = try context.spawn("pong-\(i)", (pingPongBehavior))
         let actorPair = (ping, pong)
         actors.append(actorPair)
     }

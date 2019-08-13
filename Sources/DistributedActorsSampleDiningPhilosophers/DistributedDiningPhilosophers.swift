@@ -61,18 +61,18 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:
-        let fork1: Fork.Ref = try systemA.spawn(Fork.behavior, name: "fork-1")
-        let fork2: Fork.Ref = try systemB.spawn(Fork.behavior, name: "fork-2")
-        let fork3: Fork.Ref = try systemB.spawn(Fork.behavior, name: "fork-3")
-        let fork4: Fork.Ref = try systemC.spawn(Fork.behavior, name: "fork-4")
-        let fork5: Fork.Ref = try systemC.spawn(Fork.behavior, name: "fork-5")
+        let fork1: Fork.Ref = try systemA.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork2: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork3: Fork.Ref = try systemB.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork4: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
+        let fork5: Fork.Ref = try systemC.spawn(.prefixed(with: "fork"), Fork.behavior)
 
         // 5 philosophers, sitting in a circle, with the forks between them:
-        _ = try systemA.spawn(Philosopher(left: fork5, right: fork1).behavior, name: "Konrad")
-        _ = try systemB.spawn(Philosopher(left: fork1, right: fork2).behavior, name: "Dario")
-        _ = try systemB.spawn(Philosopher(left: fork2, right: fork3).behavior, name: "Johannes")
-        _ = try systemC.spawn(Philosopher(left: fork3, right: fork4).behavior, name: "Cory")
-        _ = try systemC.spawn(Philosopher(left: fork4, right: fork5).behavior, name: "Norman")
+        _ = try systemA.spawn("Konrad", Philosopher(left: fork5, right: fork1).behavior)
+        _ = try systemB.spawn("Dario", Philosopher(left: fork1, right: fork2).behavior)
+        _ = try systemB.spawn("Johannes", Philosopher(left: fork2, right: fork3).behavior)
+        _ = try systemC.spawn("Cory", Philosopher(left: fork3, right: fork4).behavior)
+        _ = try systemC.spawn("Norman", Philosopher(left: fork4, right: fork5).behavior)
 
         Thread.sleep(time)
     }

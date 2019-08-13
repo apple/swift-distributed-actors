@@ -72,7 +72,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_serialize_actorAddress_shouldDemandContext() throws {
-        let err = try shouldThrow() {
+        let err = shouldThrow() {
             let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
             let encoder = JSONEncoder()
@@ -115,10 +115,10 @@ class SerializationTests: XCTestCase {
     func test_serialize_actorRef_inMessage() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try system.spawn(.receiveMessage { message in
+        let ref: ActorRef<String> = try system.spawn("hello", .receiveMessage { message in
             p.tell("got:\(message)")
             return .same
-        }, name: "hello")
+        })
         let hasRef = HasStringRef(containedRef: ref)
 
         pinfo("Before serialize: \(hasRef)")
@@ -148,10 +148,10 @@ class SerializationTests: XCTestCase {
         let testKit = ActorTestKit(remoteCapableSystem)
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let ref: ActorRef<String> = try remoteCapableSystem.spawn(.receiveMessage { message in
+        let ref: ActorRef<String> = try remoteCapableSystem.spawn("hello", .receiveMessage { message in
             p.tell("got:\(message)")
             return .same
-        }, name: "hello")
+        })
 
         let hasRef = HasStringRef(containedRef: ref)
 
@@ -182,7 +182,7 @@ class SerializationTests: XCTestCase {
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
         let p = testKit.spawnTestProbe(expecting: Never.self)
-        let stoppedRef: ActorRef<String> = try system.spawn(.stop, name: "dead-on-arrival")
+        let stoppedRef: ActorRef<String> = try system.spawn("dead-on-arrival", (.stop))
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
@@ -198,7 +198,7 @@ class SerializationTests: XCTestCase {
         "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
     }
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn(.stop, name: "dead-on-arrival") // stopped
+        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", (.stop)) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let bytes = try shouldNotThrow {
@@ -229,9 +229,9 @@ class SerializationTests: XCTestCase {
     func test_serialize_receivesSystemMessages_inMessage() throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let watchMe: ActorRef<String> = try system.spawn(.ignore, name: "watchMe")
+        let watchMe: ActorRef<String> = try system.spawn("watchMe", (.ignore))
 
-        let ref: ActorRef<String> = try system.spawn(.setup { context in
+        let ref: ActorRef<String> = try system.spawn("shouldGetSystemMessage", .setup { context in
             context.watch(watchMe)
             return .receiveSignal{ _, signal in
                 switch signal {
@@ -242,7 +242,7 @@ class SerializationTests: XCTestCase {
                 }
                 return .same
             }
-        }, name: "shouldGetSystemMessage")
+        })
 
         let sysRef = ref.asAddressable()
 
@@ -273,10 +273,10 @@ class SerializationTests: XCTestCase {
 
         do {
             let p = testKit.spawnTestProbe(name: "p1", expecting: String.self)
-            let echo: ActorRef<String> = try s2.spawn(.receiveMessage { msg in
+            let echo: ActorRef<String> = try s2.spawn("echo", .receiveMessage { msg in
                 p.ref.tell("echo:\(msg)")
                 return .same
-            }, name: "echo")
+            })
 
             echo.tell("hi!") // is a built-in serializable message
             try p.expectMessage("echo:hi!")
@@ -296,12 +296,12 @@ class SerializationTests: XCTestCase {
         let testKit2 = ActorTestKit(s2)
         let p = testKit2.spawnTestProbe(expecting: NotSerializable.self)
 
-        let recipient: ActorRef<NotSerializable> = try s2.spawn(.ignore, name: "recipient")
+        let recipient: ActorRef<NotSerializable> = try s2.spawn("recipient", .ignore)
 
-        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn(.receiveMessage { context in
+        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn("expected-to-fault-due-to-serialization-check", .receiveMessage { context in
             recipient.tell(NotSerializable("\(#file):\(#line)"))
             return .same
-        }, name: "expected-to-fault-due-to-serialization-check")
+        })
 
         p.watch(senderOfNotSerializableMessage)
         senderOfNotSerializableMessage.tell("send it now!")

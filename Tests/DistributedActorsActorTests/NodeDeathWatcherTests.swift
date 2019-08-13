@@ -29,10 +29,10 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
 
         try self.joinNodes(node: first, with: second)
 
-        let refOnRemote1: ActorRef<String> = try second.spawn(.ignore, name: "remote-1")
+        let refOnRemote1: ActorRef<String> = try second.spawn("remote-1", .ignore)
         let refOnFirstToRemote1 = first._resolve(ref: refOnRemote1, onSystem: second)
 
-        let refOnRemote2: ActorRef<String> = try second.spawn(.ignore, name: "remote-2")
+        let refOnRemote2: ActorRef<String> = try second.spawn("remote-2", .ignore)
         let refOnFirstToRemote2 = first._resolve(ref: refOnRemote2, onSystem: second)
 
         let testKit = ActorTestKit(first)
@@ -40,7 +40,7 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
 
         // --- prepare actor on [first], which watches remote actors ---
 
-        _ = try first.spawn(Behavior<String>.setup { context in
+        _ = try first.spawn("watcher1", Behavior<String>.setup { context in
             context.watch(refOnFirstToRemote1)
             context.watch(refOnFirstToRemote2)
 
@@ -52,7 +52,7 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
                 p.ref.tell(terminated)
                 return .same
             }
-        }, name: "watcher1")
+        })
 
         first.cluster.down(node: second.cluster.node)
 

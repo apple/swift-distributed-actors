@@ -49,7 +49,7 @@ class ActorLoggingTests: XCTestCase {
         let p = testKit.spawnTestProbe(name: "p", expecting: String.self)
         let r = testKit.spawnTestProbe(name: "r", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(.setup { context in
+        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
             context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
                 r.ref.tell(.instance)
@@ -63,7 +63,7 @@ class ActorLoggingTests: XCTestCase {
                 p.ref.tell("Got: \(message)")
                 return .same
             }
-        }, name: "myName")
+        })
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
@@ -74,7 +74,7 @@ class ActorLoggingTests: XCTestCase {
         let p = testKit.spawnTestProbe(name: "p2", expecting: String.self)
         let r = testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(.setup { context in
+        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
             context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
                 r.ref.tell(.instance)
@@ -89,7 +89,7 @@ class ActorLoggingTests: XCTestCase {
                 p.ref.tell("Got: \(message)")
                 return .same
             }
-        }, name: "myName")
+        })
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")
@@ -100,7 +100,7 @@ class ActorLoggingTests: XCTestCase {
         let p = testKit.spawnTestProbe(name: "p2", expecting: String.self)
         let r = testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
 
-        let ref: ActorRef<String> = try system.spawn(.setup { context in
+        let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
             context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
                 r.ref.tell(.instance)
@@ -115,7 +115,7 @@ class ActorLoggingTests: XCTestCase {
                 p.ref.tell("Got: \(message)")
                 return .same
             }
-        }, name: "myName")
+        })
 
         ref.tell("Hello world")
         try p.expectMessage("Got: Hello world")

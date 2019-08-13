@@ -44,19 +44,19 @@ class TraversalTests: XCTestCase {
             return .receiveMessage { _ in .same }
         }
 
-        let _: ActorRef<String> = try! self.system.spawn(.setup { context in
+        let _: ActorRef<String> = try! self.system.spawn("hello", .setup { context in
             probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "world")
+            let _: ActorRef<Void> = try context.spawn("world", (tellProbeWhenReady))
             return .receiveMessage { _ in .same }
-        }, name: "hello")
+        })
 
-        let _: ActorRef<String> = try! self.system.spawn(.setup { context in
+        let _: ActorRef<String> = try! self.system.spawn("other", .setup { context in
             probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-1")
-            let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-2")
-            let _: ActorRef<Void> = try context.spawn(tellProbeWhenReady, name: "inner-3")
+            let _: ActorRef<Void> = try context.spawn("inner-1", (tellProbeWhenReady))
+            let _: ActorRef<Void> = try context.spawn("inner-2", (tellProbeWhenReady))
+            let _: ActorRef<Void> = try context.spawn("inner-3", (tellProbeWhenReady))
             return .receiveMessage { _ in .same }
-        }, name: "other")
+        })
 
         // once we get all ready messages here, we know the tree is "ready" and the tests which perform assertions on it can run
         _ = try! probe.expectMessages(count: 6)

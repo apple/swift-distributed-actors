@@ -29,7 +29,7 @@ extension ReceptionistTests {
                 ("test_receptionist_shouldNotRegisterTheSameRefTwice", test_receptionist_shouldNotRegisterTheSameRefTwice),
                 ("test_receptionist_shouldReplyWithRegistered", test_receptionist_shouldReplyWithRegistered),
                 ("test_receptionist_shouldUnregisterTerminatedRefs", test_receptionist_shouldUnregisterTerminatedRefs),
-                ("test_receptionist_shouldContinouslySendUpdatesForSubscriptions", test_receptionist_shouldContinouslySendUpdatesForSubscriptions),
+                ("test_receptionist_shouldContinuouslySendUpdatesForSubscriptions", test_receptionist_shouldContinuouslySendUpdatesForSubscriptions),
            ]
    }
 }

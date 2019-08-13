@@ -349,10 +349,10 @@ func main() {
     let crasher = (crashTests[CommandLine.arguments.suffix(from: 1).first ?? "help"] ?? help)
 
     if CommandLine.arguments.count > 1 && CommandLine.arguments.suffix(from: 2).first == "actor" {
-        let ref: ActorRef<String> = try! system.spawn(.receiveMessage { _ in
+        let ref: ActorRef<String> = try! system.spawn("crasher", .receiveMessage { _ in
             crasher() // wrap crasher in actor and "let it crash!"
             return .same
-        }, name: "crasher")
+        })
         ref.tell("let it crash: \(CommandLine.arguments.dropFirst().joined(separator: " "))")
 
         sleep(3)

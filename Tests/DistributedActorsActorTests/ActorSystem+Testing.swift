@@ -38,7 +38,10 @@ extension ActorSystem {
         guard self._cluster != nil else {
             fatalError("system must be clustered to allow resolving a remote ref.")
         }
+        guard let shell = self._cluster else {
+            fatalError("system._cluster shell must be available, was the resolve invoked too early (before system startup completed)?")
+        }
         let remoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
-        return ActorRef(.remote(RemotePersonality(shell: clusterShell, address: remoteAddress, system: self)))
+        return ActorRef(.remote(RemotePersonality(shell: shell, address: remoteAddress, system: self)))
     }
 }

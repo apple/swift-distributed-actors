@@ -14,7 +14,7 @@
 
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
 /// message to all subscribers. An actor can subscribe to the events by sending a `.subscribe` message
-/// and unsunscribe by sending `.unsubsribe`. Subscribers will be watched and unsubscribes in case
+/// and unsubscribe by sending `.unsubscribe`. Subscribers will be watched and unsubscribes in case
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
@@ -22,7 +22,7 @@ public struct EventStream<Event> {
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
-        self.ref = try system.spawn(EventStreamShell.behavior(type), name: "eventStream-\(name)")
+        self.ref = try system.spawn(.unique(name), EventStreamShell.behavior(type))
     }
 
     internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {

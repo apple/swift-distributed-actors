@@ -119,7 +119,7 @@ public class ProcessIsolated {
                 funSpawnServantProcess: funSpawnServantProcess,
                 funKillServantProcess: funKillServantProcess
             )
-            self.processCommander = try! system._spawnSystemActor(processCommander.behavior, name: ProcessCommander.naming, perpetual: true)
+            self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, perpetual: true)
         } else {
             // on servant node
             guard let joinNodeString = KnownServantParameters.masterNode.extractFirst(arguments) else {
@@ -129,10 +129,12 @@ public class ProcessIsolated {
 
             system.cluster.join(node: uniqueMasterNode.node)
 
-            self.parentProcessFailureDetector = try! system._spawnSystemActor(PollingParentMonitoringFailureDetector(
-                parentNode: uniqueMasterNode,
-                parentPID: POSIXProcessUtils.getParentPID()
-            ).behavior, name: PollingParentMonitoringFailureDetector.name)
+            self.parentProcessFailureDetector = try! system._spawnSystemActor(PollingParentMonitoringFailureDetector.name,
+                PollingParentMonitoringFailureDetector(
+                    parentNode: uniqueMasterNode,
+                    parentPID: POSIXProcessUtils.getParentPID()
+                ).behavior
+            )
 
             let resolveContext = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: uniqueMasterNode), system: system)
             self.processCommander = system._resolve(context: resolveContext)

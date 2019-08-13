@@ -44,7 +44,7 @@ class ActorSubReceiveTests: XCTestCase {
             return .unhandled
         }
 
-        _ = try system.spawn(behavior, name: "test-parent")
+        _ = try system.spawn("test-parent", (behavior))
 
         let subRef = try refProbe.expectMessage()
 
@@ -79,7 +79,7 @@ class ActorSubReceiveTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn(behavior, name: "test-parent")
+        let ref = try system.spawn("test-parent", behavior)
 
         let subRef = try refProbe.expectMessage()
 
@@ -109,7 +109,7 @@ class ActorSubReceiveTests: XCTestCase {
             return .unhandled
         }
 
-        _ = try system.spawn(behavior, name: "test-parent")
+        _ = try system.spawn("test-parent", behavior)
 
         let subRef = try refProbe.expectMessage()
 
@@ -134,7 +134,7 @@ class ActorSubReceiveTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn(behavior, name: "test-parent")
+        let ref = try system.spawn("test-parent", behavior)
 
         let subRef = try refProbe.expectMessage()
 
@@ -158,7 +158,7 @@ class ActorSubReceiveTests: XCTestCase {
             return .unhandled
         }
 
-        _ = try system.spawn(behavior, name: "test", props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(5))))
+        _ = try system.spawn("test", props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
 
         let subRef = try refProbe.expectMessage()
 
