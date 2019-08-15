@@ -226,10 +226,8 @@ extension CRDT.Replicator {
         // MARK: Notify owners
 
         private func notifyOwnersOnUpdate(_ context: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
-            if let owners = self.replicator.getOwners(for: id) {
+            if let owners = self.replicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data.underlying)
-                self.tracelog(context, .notify(owners), message: message)
-
                 for owner in owners {
                     owner.tell(message)
                 }
@@ -237,12 +235,9 @@ extension CRDT.Replicator {
         }
 
         private func notifyOwnersOnDelete(_ context: ActorContext<Message>, _ id: Identity) {
-            if let owners = self.replicator.getOwners(for: id) {
-                let message: OwnerMessage = .deleted
-                self.tracelog(context, .notify(owners), message: message)
-
+            if let owners = self.replicator.owners(for: id) {
                 for owner in owners {
-                    owner.tell(message)
+                    owner.tell(.deleted)
                 }
             }
         }
@@ -268,14 +263,11 @@ extension CRDT.Replicator.Shell {
 
     internal enum TraceLogType: CustomStringConvertible {
         case receive
-        case notify(_ owners: Set<ActorRef<OwnerMessage>>)
 
         var description: String {
             switch self {
             case .receive:
                 return "RECV"
-            case .notify(let owners):
-                return "NOTF(owners:\(owners))"
             }
         }
     }
