@@ -58,6 +58,7 @@ import XCTest
          testCase(DeadlineTests.allTests),
          testCase(DeathWatchTests.allTests),
          testCase(DispatcherTests.allTests),
+         testCase(EventStreamTests.allTests),
          testCase(FailureDetectorTests.allTests),
          testCase(FixedThreadPoolTests.allTests),
          testCase(HeapTests.allTests),
