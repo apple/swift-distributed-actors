@@ -41,7 +41,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let id = CRDT.Identity("test-data")
 
         // Ensure CRDT has no owner
-        replicator.getOwners(for: id).shouldBeNil()
+        replicator.owners(for: id).shouldBeNil()
 
         // Register owner
         guard case .registered = replicator.registerOwner(dataId: id, owner: ownerP.ref) else {
@@ -49,7 +49,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         }
 
         // `owner` should be added after `registerOwner` call
-        let owners = replicator.getOwners(for: id)
+        let owners = replicator.owners(for: id)
         owners.shouldNotBeNil()
         owners?.shouldContain(ownerP.ref)
     }
