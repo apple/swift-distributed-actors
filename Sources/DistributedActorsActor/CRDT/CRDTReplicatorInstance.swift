@@ -40,14 +40,15 @@ extension CRDT.Replicator {
         }
 
         func registerOwner(dataId: Identity, owner: ActorRef<OwnerMessage>) -> RegisterOwnerDirective {
-            var ownersForId = self.owners[dataId, default: Set<ActorRef<OwnerMessage>>()]
+            // Avoid copy-on-write: remove entry from dictionary before mutating
+            var ownersForId = self.owners.removeValue(forKey: dataId) ?? Set<ActorRef<OwnerMessage>>()
             ownersForId.insert(owner)
             self.owners[dataId] = ownersForId
 
             return .registered
         }
 
-        func getOwners(for dataId: Identity) -> Set<ActorRef<OwnerMessage>>? {
+        func owners(for dataId: Identity) -> Set<ActorRef<OwnerMessage>>? {
             return self.owners[dataId]
         }
 
