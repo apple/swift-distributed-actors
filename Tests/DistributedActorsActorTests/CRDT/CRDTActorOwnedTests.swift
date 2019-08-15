@@ -98,17 +98,17 @@ final class CRDTActorOwnedTests: XCTestCase {
     }
 
     func test_actorOwned_theLastWrittenOnUpdateCallbackWins() throws {
-        let ownerEventPa = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let ownerEventPb = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let ownerEventPA = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let ownerEventPB = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
 
         let behavior: Behavior<String> = .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: "test-gcounter")
             g.onUpdate { _, _ in
-                ownerEventPa.tell(.ownerDefinedOnUpdate)
+                ownerEventPA.tell(.ownerDefinedOnUpdate)
             }
             // Overwrites the callback above
             g.onUpdate { _, _ in
-                ownerEventPb.tell(.ownerDefinedOnUpdate)
+                ownerEventPB.tell(.ownerDefinedOnUpdate)
             }
 
             return .receiveMessage { _ in
@@ -116,62 +116,96 @@ final class CRDTActorOwnedTests: XCTestCase {
                 return .same
             }
         }
-        let a = try system.spawnAnonymous(behavior)
+        let owner = try system.spawnAnonymous(behavior)
 
-        a.tell("hello")
+        owner.tell("hello")
         // This callback was overwritten so it shouldn't be invoked
-        try ownerEventPa.expectNoMessage(for: .milliseconds(100))
+        try ownerEventPA.expectNoMessage(for: .milliseconds(100))
         // The "winner"
-        try ownerEventPb.expectMessage(.ownerDefinedOnUpdate)
+        try ownerEventPB.expectMessage(.ownerDefinedOnUpdate)
     }
 
-    func test_actorOwnedGCounter_shouldBeIncremented_shouldResetDelta_shouldNotifyOthers() throws {
+    func test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers() throws {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
-        // a1 and a2 own g1
-        let a1OwnerEventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let a1 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: a1OwnerEventP.ref), name: "GCounterTestActor1")
-        let a1P = testKit.spawnTestProbe(expecting: Int.self)
-        let a1HasDeltaP = testKit.spawnTestProbe(expecting: Bool.self)
+        // g1 has two owners
+        let g1Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref), name: "gcounter1-owner1")
+        let g1Owner1IntP = testKit.spawnTestProbe(expecting: Int.self)
+        let g1Owner1BoolP = testKit.spawnTestProbe(expecting: Bool.self)
 
-        let a2OwnerEventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let a2 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: a2OwnerEventP.ref), name: "GCounterTestActor2")
-        let a2P = testKit.spawnTestProbe(expecting: Int.self)
+        let g1Owner2EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner2 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref), name: "gcounter1-owner2")
+        let g1Owner2IntP = testKit.spawnTestProbe(expecting: Int.self)
 
-        // a3 owns g2
-        let a3OwnerEventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let a3 = try system.spawn(actorOwnedGCounterBehavior(id: g2, oep: a3OwnerEventP.ref), name: "GCounterTestActor3")
-        let a3P = testKit.spawnTestProbe(expecting: Int.self)
+        // g2 has one owner
+        let g2Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g2Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g2, oep: g2Owner1EventP.ref), name: "gcounter2-owner1")
+        let g2Owner1IntP = testKit.spawnTestProbe(expecting: Int.self)
 
         // g1 not incremented yet
-        a1.tell(.lastObservedValue(replyTo: a1P.ref))
-        try a1P.expectMessage(0)
+        g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
+        try g1Owner1IntP.expectMessage(0)
 
         // Implement g1 and the latest value should be returned
-        a1.tell(.increment(amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: a1P.ref))
-        try a1P.expectMessage(3)
+        g1Owner1.tell(.increment(amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1IntP.ref))
+        try g1Owner1IntP.expectMessage(3)
 
-        // a1's local g1 value should be up-to-date
-        a1.tell(.lastObservedValue(replyTo: a1P.ref))
-        try a1P.expectMessage(3)
+        // g1 owner1's local value should be up-to-date
+        g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
+        try g1Owner1IntP.expectMessage(3)
 
-        // a1's g1.delta should be reset
-        a1.tell(.hasDelta(replyTo: a1HasDeltaP.ref))
-        try a1HasDeltaP.expectMessage(false)
+        // owner1's g1.delta should be reset
+        g1Owner1.tell(.hasDelta(replyTo: g1Owner1BoolP.ref))
+        try g1Owner1BoolP.expectMessage(false)
 
-        // a1 should receive events about g1 updates even if it triggered the action
-        try a1OwnerEventP.expectMessage(.ownerDefinedOnUpdate)
+        // owner1 should be notified even if it triggered the action
+        try g1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
 
-        // a2 should receive events about g1 updates, which means it should have up-to-date value too
-        try a2OwnerEventP.expectMessage(.ownerDefinedOnUpdate)
-        a2.tell(.lastObservedValue(replyTo: a2P.ref))
-        try a2P.expectMessage(3)
+        // owner2 should be notified about g1 updates, which means it should have up-to-date value too
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
+        g1Owner2.tell(.lastObservedValue(replyTo: g1Owner2IntP.ref))
+        try g1Owner2IntP.expectMessage(3)
 
         // g2 hasn't been mutated
-        a3.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: a3P.ref))
-        try a3P.expectMessage(0)
-        // As a result a3 should not have received any events yet
-        try a3OwnerEventP.expectNoMessage(for: .milliseconds(100))
+        g2Owner1.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: g2Owner1IntP.ref))
+        try g2Owner1IntP.expectMessage(0)
+        // As a result owner should not have received any events
+        try g2Owner1EventP.expectNoMessage(for: .milliseconds(100))
+    }
+
+    func test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus() throws {
+        let g1 = "gcounter-1"
+
+        // g1 has two owners
+        let g1Owner1EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner1 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref), name: "gcounter1-owner1")
+        let g1Owner1VoidP = testKit.spawnTestProbe(expecting: Void.self)
+        let g1Owner1StatusP = testKit.spawnTestProbe(expecting: CRDT.Status.self)
+
+        let g1Owner2EventP = testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner2 = try system.spawn(actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref), name: "gcounter1-owner2")
+        let g1Owner2StatusP = testKit.spawnTestProbe(expecting: CRDT.Status.self)
+
+        // Should be .active
+        g1Owner2.tell(.status(replyTo: g1Owner2StatusP.ref))
+        try g1Owner2StatusP.expectMessage(.active)
+
+        // owner1 makes call to delete g1
+        g1Owner1.tell(.delete(consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1VoidP.ref))
+
+        // owner1 should be notified even if it triggered the action
+        try g1Owner1EventP.expectMessage(.ownerDefinedOnDelete)
+
+        // owner2 should be notified as well
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnDelete)
+        // And change status to .deleted
+        g1Owner2.tell(.status(replyTo: g1Owner2StatusP.ref))
+        try g1Owner2StatusP.expectMessage(.deleted)
+
+        // owner1's g1 status should also be .deleted
+        g1Owner1.tell(.status(replyTo: g1Owner1StatusP.ref))
+        try g1Owner1StatusP.expectMessage(.deleted)
     }
 }

@@ -24,6 +24,7 @@ extension CRDTCoreTypeTests {
 
    static var allTests : [(String, (CRDTCoreTypeTests) -> () throws -> Void)] {
       return [
+                ("test_GCounter_incrementShouldUpdateDelta", test_GCounter_incrementShouldUpdateDelta),
                 ("test_GCounter_mergeMutates", test_GCounter_mergeMutates),
                 ("test_GCounter_mergingDoesNotMutate", test_GCounter_mergingDoesNotMutate),
                 ("test_GCounter_mergeDeltaMutates", test_GCounter_mergeDeltaMutates),

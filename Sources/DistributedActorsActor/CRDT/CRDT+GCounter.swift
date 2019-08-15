@@ -54,6 +54,7 @@ extension CRDT {
             switch self.delta {
             case .some(var delta):
                 delta.state[replicaId] = newCount
+                self.delta = delta
             case .none:
                 self.delta = Delta(state: [replicaId: newCount])
             }

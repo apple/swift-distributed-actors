@@ -23,6 +23,22 @@ final class CRDTCoreTypeTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: GCounter tests
 
+    func test_GCounter_incrementShouldUpdateDelta() throws {
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+
+        g1.increment(by: 1)
+        // delta should not be nil after increment
+        g1.delta.shouldNotBeNil()
+        g1.delta!.state[g1.replicaId].shouldNotBeNil()
+        g1.delta!.state[g1.replicaId]!.shouldEqual(1)
+
+        g1.increment(by: 10)
+        g1.delta.shouldNotBeNil()
+        g1.delta!.state[g1.replicaId].shouldNotBeNil()
+        // delta value for the replica should be updated
+        g1.delta!.state[g1.replicaId]!.shouldEqual(11) // 1 + 10
+    }
+
     func test_GCounter_mergeMutates() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
         g1.increment(by: 1)
