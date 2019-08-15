@@ -210,7 +210,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
     }
 
     func test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
@@ -287,7 +287,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() throws {
@@ -327,7 +327,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
     }
 
 }

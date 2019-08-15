@@ -145,6 +145,46 @@ final class WorkerPoolTests: XCTestCase {
         try pA.expectNoMessage(for: .milliseconds(50))
     }
 
+    func test_workerPool_ask() throws {
+        let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
+        let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
+        let pW: ActorTestProbe<WorkerPoolQuestion> = testKit.spawnTestProbe(name: "pW")
+
+        func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
+            return .receive { context, work in
+                p.tell("work:\(work.id) at \(context.path.name)")
+                return .same
+            }
+        }
+
+        let workerA = try system.spawn(worker(p: pA), name: "worker-a")
+        let workerB = try system.spawn(worker(p: pB), name: "worker-b")
+
+        let workers = try WorkerPool.spawn(system, select: .static([workerA, workerB]), name: "questioningTheWorkers")
+
+        // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
+        let answerA: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "AAA", replyTo: $0) }
+        let answerB: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "BBB", replyTo: $0) }
+
+        try self.testKit.eventually(within: .seconds(1)) {
+            answerA.nioFuture.onComplete { res in
+                pA.tell("\(res)")
+            }
+        }
+        try self.testKit.eventually(within: .seconds(1)) {
+            answerB.nioFuture.onComplete { res in
+                pB.tell("\(res)")
+            }
+        }
+
+        try pA.expectMessage("work:AAA at \(workerA.path.name)")
+        try pB.expectMessage("work:BBB at \(workerB.path.name)")
+    }
+    struct WorkerPoolQuestion {
+        let id: String
+        let replyTo: ActorRef<String>
+    }
+
     func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
         let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
         let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
@@ -208,6 +248,7 @@ final class WorkerPoolTests: XCTestCase {
         try pW.expectTerminated(workers._ref)
 
     }
+
     func test_workerPool_static_throwOnEmptyInitialSet() throws {
         let error = shouldThrow() {
             let _: WorkerPoolRef <Never> = try WorkerPool.spawn(system, select: .static([]), name: "wrongConfigPool")

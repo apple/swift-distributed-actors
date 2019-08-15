@@ -52,9 +52,9 @@ struct DistributedDiningPhilosophers {
         print("~~~~~~~ started 3 actor systems ~~~~~~~")
 
         // TODO: Joining to be simplified by having "seed nodes" (that a node should join)
-        systemA.join(node: systemB.settings.cluster.node)
-        systemA.join(node: systemC.settings.cluster.node)
-        systemC.join(node: systemB.settings.cluster.node)
+        systemA.cluster.join(node: systemB.settings.cluster.node)
+        systemA.cluster.join(node: systemC.settings.cluster.node)
+        systemC.cluster.join(node: systemB.settings.cluster.node)
 
         Thread.sleep(.seconds(2))
 

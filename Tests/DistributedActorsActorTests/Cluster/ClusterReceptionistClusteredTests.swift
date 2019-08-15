@@ -26,7 +26,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         let lookupProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let ref: ActorRef<String> = try local.spawnAnonymous(
             .receiveMessage {
@@ -80,7 +80,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         _ = try registeredProbe.expectMessage()
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let listing = try lookupProbe.expectMessage()
         listing.refs.count.shouldEqual(1)
@@ -131,7 +131,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         _ = try remoteLookupProbe.expectMessage()
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let localListing = try localLookupProbe.expectMessage()
         localListing.refs.count.shouldEqual(4)
@@ -168,7 +168,7 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         _ = try remoteLookupProbe.expectMessage()
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let remoteListing = try remoteLookupProbe.expectMessage()
         remoteListing.refs.count.shouldEqual(2)

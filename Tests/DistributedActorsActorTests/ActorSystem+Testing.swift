@@ -26,7 +26,7 @@ extension ActorSystem {
     func _resolve<Message>(ref: ActorRef<Message>, onSystem remoteSystem: ActorSystem) -> ActorRef<Message> {
         assertBacktrace(ref.address.isLocal, "Expecting passed in `ref` to not have an address defined (yet), as this is what we are going to do in this function.")
 
-        var remoteAddress = ActorAddress(node: remoteSystem.settings.cluster.uniqueBindAddress, path: ref.path, incarnation: ref.address.incarnation)
+        var remoteAddress = ActorAddress(node: remoteSystem.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
 
         let resolveContext = ResolveContext<Message>(address: remoteAddress, system: self)
         return self._resolve(context: resolveContext)
@@ -38,7 +38,7 @@ extension ActorSystem {
         guard let clusterShell = self._cluster else {
             fatalError("system must be clustered to allow resolving a remote ref.")
         }
-        let remoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindAddress, path: ref.path, incarnation: ref.address.incarnation)
+        let remoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
         return ActorRef(.remote(RemotePersonality(shell: self._cluster!, address: remoteAddress, system: self)))
     }
 }

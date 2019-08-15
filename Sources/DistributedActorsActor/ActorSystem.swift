@@ -133,7 +133,7 @@ public final class ActorSystem {
         var deadLogger = settings.overrideLogger ?? Logger(label: ActorPath._deadLetters.description, factory: {
             let context = LoggingContext(identifier: $0, useBuiltInFormatter: settings.useBuiltInFormatter, dispatcher: nil)
             if settings.cluster.enabled {
-                context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindAddress)
+                context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
             }
                 context[metadataKey: "nodeName"] = .stringConvertible(name)
             return ActorOriginLogHandler(context)

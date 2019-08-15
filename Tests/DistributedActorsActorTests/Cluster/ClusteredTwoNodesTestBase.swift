@@ -60,8 +60,8 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
         return "\(type(of: self))"
     }
 
-    lazy var localUniqueNode: UniqueNode = self.local.settings.cluster.uniqueBindAddress
-    lazy var remoteUniqueNode: UniqueNode = self.remote.settings.cluster.uniqueBindAddress
+    lazy var localUniqueNode: UniqueNode = self.local.settings.cluster.uniqueBindNode
+    lazy var remoteUniqueNode: UniqueNode = self.remote.settings.cluster.uniqueBindNode
 
     open func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
         self._local = ActorSystem(systemName) { settings in
@@ -100,8 +100,8 @@ open class ClusteredTwoNodesTestBase: XCTestCase {
     func joinNodes(node: ActorSystem, with other: ActorSystem) throws {
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(node, with: other.settings.cluster.uniqueBindAddress)
-        try assertAssociated(other, with: node.settings.cluster.uniqueBindAddress)
+        try assertAssociated(node, with: other.settings.cluster.uniqueBindNode)
+        try assertAssociated(other, with: node.settings.cluster.uniqueBindNode)
     }
 
 }
@@ -143,7 +143,7 @@ extension ClusteredTwoNodesTestBase {
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 
             if verbose {
-                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
+                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
                 pprint("        Expected nodes: \(String(reflecting: nodes))")
             }
@@ -178,7 +178,7 @@ extension ClusteredTwoNodesTestBase {
             system.clusterShell.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage() // TODO use interval here
             if verbose {
-                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindAddress))")
+                pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
                 pprint("     Not expected node: \(String(reflecting: node))")
             }
@@ -204,7 +204,7 @@ extension ClusteredTwoNodesTestBase {
     func resolveRef<M>(on system: ActorSystem, type: M.Type, address: ActorAddress, targetSystem: ActorSystem) -> ActorRef<M> {
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let remoteNode = targetSystem.settings.cluster.uniqueBindAddress
+        let remoteNode = targetSystem.settings.cluster.uniqueBindNode
 
         let uniqueRemoteNode = ActorAddress(node: remoteNode, path: address.path, incarnation: address.incarnation)
         let resolveContext = ResolveContext<M>(address: uniqueRemoteNode, system: self.local)

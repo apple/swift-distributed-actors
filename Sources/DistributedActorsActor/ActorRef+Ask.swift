@@ -16,9 +16,37 @@ import struct NIO.EventLoopPromise
 import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorRef + ask
+// MARK: Receives Questions
 
-public extension ActorRef {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ask capability is marked by ReceivesQuestions
+public protocol ReceivesQuestions: Codable {
+    associatedtype Question
+
+    /// Useful counterpart of ActorRef.tell but dedicated to request-response interactions.
+    /// Allows for asking an actor for a reply without having to be an actor.
+    ///
+    /// In order to facilitate this behavior, an ephemeral ActorRef created by this call has to be included in the
+    /// "question" message; Replying to this ref will complete the AskResponse returned by this method.
+    ///
+    /// The ephemeral ActorRef can only receive a single response
+    /// and will be invalid afterwards. The AskResponse will be failed with a
+    /// TimeoutError if no response is received within the specified timeout.
+    ///
+    /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state.
+    ///            It may be executed concurrently with regards to the current context.
+    func ask<Answer>(
+        for type: Answer.Type,
+        timeout: TimeAmount,
+        file: String, function: String, line: UInt,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer>
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorRef + ask
+extension ActorRef: ReceivesQuestions {
+    public typealias Question = Message
+
     /// Useful counterpart of ActorRef.tell but dedicated to request-response interactions.
     /// Allows for asking an actor for a reply without having to be an actor.
     ///
@@ -31,13 +59,11 @@ public extension ActorRef {
     ///
     /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state. 
     ///            It may be executed concurrently with regards to the current context.
-    func ask<Answer>(
+    public func ask<Answer>(
         for type: Answer.Type,
         timeout: TimeAmount,
-        file: String = #file,
-        function: String = #function,
-        line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Message) -> AskResponse<Answer> {
+        file: String = #file, function: String = #function, line: UInt = #line,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer> {
         guard let system = self._system else {
             fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }

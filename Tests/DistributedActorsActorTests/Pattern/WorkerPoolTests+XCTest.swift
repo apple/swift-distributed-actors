@@ -26,6 +26,7 @@ extension WorkerPoolTests {
       return [
                 ("test_workerPool_registerNewlyStartedActors", test_workerPool_registerNewlyStartedActors),
                 ("test_workerPool_dynamic_removeDeadActors", test_workerPool_dynamic_removeDeadActors),
+                ("test_workerPool_ask", test_workerPool_ask),
                 ("test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers", test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers),
                 ("test_workerPool_static_throwOnEmptyInitialSet", test_workerPool_static_throwOnEmptyInitialSet),
            ]

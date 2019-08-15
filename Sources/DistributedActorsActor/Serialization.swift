@@ -44,14 +44,13 @@ public struct Serialization {
     internal static let SWIMMessageSerializerId: SerializerId           =  9
     internal static let SWIMAckSerializerId: SerializerId               = 10
 
-    // TODO we may be forced to code-gen these?
     // TODO avoid 2 hops, we can do it in one, and enforce a serializer has an Id
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
 
     private let log: Logger
 
-    private let allocator = ByteBufferAllocator()
+    private let allocator: ByteBufferAllocator
 
     // MARK: Built-in serializers
     @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
@@ -59,6 +58,8 @@ public struct Serialization {
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem, traversable: _ActorTreeTraversable) { // TODO should take the top level actors
         let settings = systemSettings.serialization
+
+        self.allocator = settings.allocator
         self.systemMessageSerializer = SystemMessageSerializer(allocator)
         self.stringSerializer = StringSerializer(allocator)
 
@@ -67,7 +68,7 @@ public struct Serialization {
             return ActorOriginLogHandler(context)
         })
         // TODO: Dry up setting this metadata
-        log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindAddress)
+        log[metadataKey: "node"] = .stringConvertible(systemSettings.cluster.uniqueBindNode)
         log.logLevel = systemSettings.defaultLogLevel
         self.log = log
 
@@ -75,6 +76,7 @@ public struct Serialization {
             log: log,
             localNode: settings.localNode,
             system: system,
+            allocator: allocator,
             traversable: traversable
         )
 
@@ -155,9 +157,9 @@ public struct Serialization {
         guard let sid = self.serializerIds[meta.asHashable()] else {
             #if DEBUG
             CSwift Distributed ActorsMailbox.sact_dump_backtrace()
-            self.debugPrintSerializerTable("No serializer for \(meta) available!")
+            self.debugPrintSerializerTable(header: "No serializer for \(meta) available!")
             #endif
-            throw SerializationError.noSerializerKeyAvailableFor(type: String(reflecting: M.self))
+            throw SerializationError.noSerializerKeyAvailableFor(hint: String(reflecting: M.self))
         }
         return sid
     }
@@ -171,8 +173,8 @@ public struct Serialization {
         return self.serializerIds[metaType.asHashable()]
     }
 
-    internal func debugPrintSerializerTable(_ message: String = "") {
-        var p = "\(message)\n"
+    internal func debugPrintSerializerTable(header: String = "") {
+        var p = "\(header)\n"
         for (key, id) in self.serializerIds {
             p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
         }
@@ -199,12 +201,12 @@ extension Serialization {
         default:
             guard let serializerId = self.serializerIdFor(type: M.self) else {
                 self.debugPrintSerializerTable()
-                throw SerializationError.noSerializerRegisteredFor(type: "\(M.self)")
+                throw SerializationError.noSerializerRegisteredFor(hint: String(reflecting: M.self))
             }
             guard let serializer = self.serializers[serializerId] else {
                 self.debugPrintSerializerTable()
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
-                throw SerializationError.noSerializerRegisteredFor(type: "\(M.self)")
+                throw SerializationError.noSerializerRegisteredFor(hint: "\(M.self)")
             }
             bytes = try serializer.unsafeAsSerializerOf(M.self).serialize(message: message)
         }
@@ -215,13 +217,13 @@ extension Serialization {
 
     internal func serialize(message: Any, metaType: AnyMetaType) throws -> (SerializerId, ByteBuffer) {
         guard let serializerId = self.serializerIdFor(metaType: metaType) else {
-            self.debugPrintSerializerTable()
-            throw SerializationError.noSerializerRegisteredFor(type: "\(metaType)")
+            self.debugPrintSerializerTable(header: "Unable to find serializer for meta type \(metaType), message type: \(String(reflecting: type(of: message)))")
+            throw SerializationError.noSerializerRegisteredFor(message: message, meta: metaType)
         }
         guard let serializer = self.serializers[serializerId] else {
-            self.debugPrintSerializerTable()
+            self.debugPrintSerializerTable(header: "Unable to find serializer for meta type \(metaType), message type: \(String(reflecting: type(of: message)))")
             traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
-            throw SerializationError.noSerializerRegisteredFor(type: "\(metaType)")
+            throw SerializationError.noSerializerRegisteredFor(message: message, meta: metaType)
         }
 
         let bytes: ByteBuffer = try serializer.trySerialize(message)
@@ -236,11 +238,11 @@ extension Serialization {
         } else {
             guard let serializerId = self.serializerIdFor(type: type) else {
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers)")
-                throw SerializationError.noSerializerKeyAvailableFor(type: "\(type)")
+                throw SerializationError.noSerializerKeyAvailableFor(hint: String(reflecting: type))
             }
             guard let serializer = self.serializers[serializerId] else {
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
-                throw SerializationError.noSerializerKeyAvailableFor(type: "\(type)")
+                throw SerializationError.noSerializerRegisteredFor(hint: String(reflecting: M.self))
             }
 
             // TODO make sure the users can't mess up more bytes than we offered them (read limit?)
@@ -258,7 +260,7 @@ extension Serialization {
         //} else {
             guard let serializer = self.serializers[serializerId] else {
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
-                throw SerializationError.noSerializerKeyAvailableFor(type: "Id: \(serializerId)")
+                throw SerializationError.noSerializerKeyAvailableFor(hint: "serializerId:\(serializerId)")
             }
 
             // TODO make sure the users can't mess up more bytes than we offered them (read limit?)
@@ -311,16 +313,21 @@ public struct ActorSerializationContext {
 
     private let traversable: _ActorTreeTraversable
 
+    /// Shared among serializers allocator for purposes of (de-)serializing messages.
+    public let allocator: ByteBufferAllocator
+
     /// Address to be included in serialized actor refs if they are local references.
     public let localNode: UniqueNode
 
     internal init(log: Logger,
                   localNode: UniqueNode,
                   system: ActorSystem,
+                  allocator: ByteBufferAllocator,
                   traversable: _ActorTreeTraversable) {
         self.log = log
         self.localNode = localNode
         self.system = system
+        self.allocator = allocator
         self.traversable = traversable
     }
 
@@ -411,8 +418,8 @@ public struct SerializationSettings {
     internal var userSerializerIds: [Serialization.MetaTypeKey: Serialization.SerializerId] = [:]
     internal var userSerializers: [Serialization.SerializerId: AnySerializer] = [:]
 
-    // FIXME should not be here!
-    private let allocator = ByteBufferAllocator()
+    // FIXME should not be here! // figure out where to allocate it
+    internal let allocator = ByteBufferAllocator()
 
     public mutating func register<T>(_ makeSerializer: (ByteBufferAllocator) -> Serializer<T>, for type: T.Type, underId id: Serialization.SerializerId) {
         self.userSerializerIds[MetaType(type).asHashable()] = id
@@ -425,11 +432,11 @@ public struct SerializationSettings {
         let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
 
         if let alreadyRegisteredId = self.userSerializerIds[metaTypeKey] {
-            let err = SerializationError.alreadyDefined(type: "\(type)", serializerId: alreadyRegisteredId, serializer: nil)
+            let err = SerializationError.alreadyDefined(type: type, serializerId: alreadyRegisteredId, serializer: nil)
             fatalError("Fatal serialization configuration error: \(err)")
         }
         if let alreadyRegisteredSerializer = self.userSerializers[id] {
-            let err = SerializationError.alreadyDefined(type: "\(type)", serializerId: id, serializer: alreadyRegisteredSerializer)
+            let err = SerializationError.alreadyDefined(type: type, serializerId: id, serializer: alreadyRegisteredSerializer)
             fatalError("Fatal serialization configuration error: \(err)")
         }
 
@@ -473,7 +480,11 @@ extension Serializer: AnySerializer {
 
     func trySerialize(_ message: Any) throws -> ByteBuffer {
         guard let _message = message as? T else {
-            throw SerializationError.incompatibleSerializer(value: "\(message)", serializer: "\(self)")
+            throw SerializationError.wrongSerializer(
+                hint: """
+                      Attempted to serialize message type [\(String(reflecting: type(of: message)))] \
+                      as [\(String(reflecting: T.self))], which do not match!
+                      """)
         }
 
         return try self.serialize(message: _message)
@@ -556,18 +567,30 @@ internal struct BoxedAnySerializer: AnySerializer {
 
 enum SerializationError: Error {
     // --- registration errors ---
-    case alreadyDefined(type: String, serializerId: Serialization.SerializerId, serializer: AnySerializer?)
+    case alreadyDefined(hint: String, serializerId: Serialization.SerializerId, serializer: AnySerializer?)
+
     // --- lookup errors ---
-    case noSerializerKeyAvailableFor(type: String)
-    case noSerializerRegisteredFor(type: String)
-    case notAbleToDeserialize(type: String)
-    case incompatibleSerializer(value: String, serializer: String)
+    case noSerializerKeyAvailableFor(hint: String)
+    case noSerializerRegisteredFor(hint: String)
+    case notAbleToDeserialize(hint: String)
+    case wrongSerializer(hint: String)
+
     // --- format errors ---
     case missingField(String, type: String)
     case emptyRepeatedField(String)
+
     case unknownEnumValue(Int)
+
     // --- illegal errors ---
     case mayNeverBeSerialized(type: String)
+
+    static func alreadyDefined<T: Codable>(type: T.Type, serializerId: Serialization.SerializerId, serializer: AnySerializer?) -> SerializationError {
+        return .alreadyDefined(hint: String(reflecting: type), serializerId: serializerId, serializer: serializer)
+    }
+
+    static func noSerializerRegisteredFor(message: Any, meta: AnyMetaType) -> SerializationError {
+        return .noSerializerKeyAvailableFor(hint: "\(String(reflecting: type(of: message))), using meta type key: \(meta)")
+    }
 }
 
 // MARK: MetaTypes so we can store Type -> Serializer mappings
@@ -732,7 +755,7 @@ internal class StringSerializer: Serializer<String> {
 
     override func deserialize(bytes: ByteBuffer) throws -> String {
         guard let s = bytes.getString(at: 0, length: bytes.readableBytes) else {
-            throw SerializationError.notAbleToDeserialize(type: "\(String.self)") // FIXME some info about payload size?
+            throw SerializationError.notAbleToDeserialize(hint: String(reflecting: String.self))
         }
         return s
     }
