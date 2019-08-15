@@ -46,7 +46,7 @@ extension AnyStateBasedCRDT where Self: CvRDT {
     ///   This should normally never happen, although it might in case somehow a tombstone of a CRDT is forgotten
     ///   and a different type of CRDT is replicated under the same identity.
     internal mutating func tryMerge(other: Self) throws {
-        guard self.metaType.asHashable() == other.metaType.asHashable() else {
+        guard other.metaType.is(self.metaType) else {
             throw AnyStateBasedCRDTError.incompatibleTypesMergeAttempted(self, other: other)
         }
 
@@ -146,7 +146,7 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
     ///
     /// - Throws: when invoked with mismatching concrete delta type.
     internal mutating func tryMergeDelta(_ delta: Delta) throws {
-        guard self.deltaMetaType.asHashable() == delta.metaType.asHashable() else {
+        guard delta.metaType.is(self.deltaMetaType) else {
             throw AnyStateBasedCRDTError.incompatibleDeltaTypeMergeAttempted(self, delta: delta)
         }
 

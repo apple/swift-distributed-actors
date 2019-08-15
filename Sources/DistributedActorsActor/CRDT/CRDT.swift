@@ -119,6 +119,16 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor-owned CRDT
 
+// Each owned-CRDT has an owner (e.g., actor) and a "pure" CRDT (e.g., `CRDT.GCounter`). The owner has a reference to
+// the local replicator, who is responsible for replicating pure CRDTs and/or their deltas to replicator on remote nodes.
+//  - Pure CRDT has no knowledge of the replicator or owner.
+//  - Owned-CRDT only knows about the single pure CRDT that it owns. It communicates with the local replicator.
+//  - A pure CRDT may have more than one owner. i.e., multiple owned-CRDTs might be associated with the same pure CRDT.
+//  - Replicator knows about *all* of the pure CRDTs through gossiping and operation consistency requirements. It
+//    also keeps track of each pure CRDT's owners. It distributes CRDT changes received from remote peers to local
+//    owned-CRDTs by sending them notifications. This means an owned-CRDT should always have an up-to-date copy of the
+//    pure CRDT automatically ("active" owned-CRDT).
+
 public enum CRDT {
     public enum Status {
         case active
@@ -143,17 +153,17 @@ public enum CRDT {
 
         private let delegate: ActorOwnedDelegate<DataType>
 
-        typealias RegisterResult = CRDT.ReplicationProtocol.OwnerCommand.RegisterResult
-        typealias WriteResult = CRDT.ReplicationProtocol.OwnerCommand.WriteResult
-        typealias ReadResult = CRDT.ReplicationProtocol.OwnerCommand.ReadResult
-        typealias DeleteResult = CRDT.ReplicationProtocol.OwnerCommand.DeleteResult
+        typealias RegisterResult = CRDT.Replicator.LocalCommand.RegisterResult
+        typealias WriteResult = CRDT.Replicator.LocalCommand.WriteResult
+        typealias ReadResult = CRDT.Replicator.LocalCommand.ReadResult
+        typealias DeleteResult = CRDT.Replicator.LocalCommand.DeleteResult
 
         public init<Message>(ownerContext: ActorContext<Message>, id: CRDT.Identity, data: DataType, delegate: ActorOwnedDelegate<DataType> = ActorOwnedDelegate<DataType>()) {
             self.id = id
             self.data = data
             self.delegate = delegate
 
-            let subReceive = ownerContext.subReceive(SubReceiveId(id.id), ReplicatedDataOwnerProtocol.self) { message in
+            let subReceive = ownerContext.subReceive(SubReceiveId(id.id), CRDT.Replication.DataOwnerMessage.self) { message in
                 switch message {
                 case .updated(let data):
                     guard let data = data as? DataType else {
@@ -169,7 +179,7 @@ public enum CRDT {
 
             // Register as owner of the CRDT with local replicator
             _ = replicator.ask(for: RegisterResult.self, timeout: .milliseconds(100)) { replyTo in
-                .ownerCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: replyTo))
+                .localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: replyTo))
             }
         }
 
@@ -179,7 +189,7 @@ public enum CRDT {
             let id = self.id
             let data = self.data
             let askResponse = owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
-                .ownerCommand(.write(id: id, data: data.asAnyStateBasedCRDT, consistency: consistency, ownerRef: self.owner.subReceive, replyTo: replyTo))
+                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, replyTo: replyTo))
             }
             // TODO: concurrency here is not safe (https://github.com/apple/swift-distributed-actors/pull/870#discussion_r2003206)
             return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
@@ -196,7 +206,7 @@ public enum CRDT {
         public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
             let id = self.id
             let askResponse = owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
-                .ownerCommand(.read(id: id, consistency: consistency, ownerRef: self.owner.subReceive, replyTo: replyTo))
+                .localCommand(.read(id, consistency: consistency, replyTo: replyTo))
             }
             return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
                 switch response {
@@ -215,7 +225,7 @@ public enum CRDT {
         public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<Void> {
             let id = self.id
             let askResponse = owner.replicator.ask(for: DeleteResult.self, timeout: timeout) { replyTo in
-                .ownerCommand(.delete(id: id, consistency: consistency, ownerRef: self.owner.subReceive, replyTo: replyTo))
+                .localCommand(.delete(id, consistency: consistency, replyTo: replyTo))
             }
             return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> Void in
                 switch response {
@@ -229,8 +239,8 @@ public enum CRDT {
         }
 
         internal struct AnyOwnerCell<DataType: CvRDT> {
-            let subReceive: ActorRef<ReplicatedDataOwnerProtocol>
-            let replicator: ActorRef<ReplicationProtocol>
+            let subReceive: ActorRef<CRDT.Replication.DataOwnerMessage>
+            let replicator: ActorRef<CRDT.Replicator.Message>
         }
 
         public struct Result<DataType>: AsyncResult {
@@ -371,42 +381,3 @@ extension CRDT.ReplicaId: Comparable {
         }
     }
 }
-
-// TODO: active vs. passive owned-CRDT (start of thread: https://github.com/apple/swift-distributed-actors/pull/787/files#r1949368)
-// Owned-CRDT has an owner (e.g., actor) and a "pure" CRDT (e.g., `CRDT.GCounter`). The owner has a reference
-// to the local replicator, who is responsible for replicating pure CRDTs and/or their deltas to replicator on remote
-// nodes.
-//    - Each replicator knows about *all* of the pure CRDTs through gossiping.
-//    - Owned-CRDT only knows the single pure CRDT that it owns.
-//    - Pure CRDT has no knowledge of replicator or owner (actor).
-//
-// *** For delta-CRDT, a mutation updates both state and delta. ***
-//
-// When an owned-CRDT is mutated (e.g., incrementing a counter), it updates the pure CRDT that it encloses then tells
-// the owner's [local] replicator about the changes. If the pure CRDT is a delta-CRDT, only the delta would
-// be replicated. Otherwise, the entire pure CRDT would be replicated.
-// When a remote replicator receives the update, it applies the change to its copy of the pure CRDT. How the change gets
-// propagated to owned-CRDTs that are local to the replicator depends on whether they are active or passive.
-//    - Replicator sends updates to active owned-CRDT automatically. i.e., the pure CRDT of an owned-CRDT gets updated
-//      asynchronously, automatically. The current thinking is this is how we will provide feature similar to Akka's
-//      ddata "subscribe".
-//    - Replicator does NOT send update to passive owned-CRDT. Owned-CRDT needs to pull/read the latest pure CRDT from
-//      the replicator.
-//
-// Consider an `Owned<GCounter>`'s increment method is called:
-// 1. `Owned<GCounter>` [local]: call gcounter.increment(); this updates pure CRDT's state and delta.
-// 2. `Owned<GCounter>` [local]: call owner.replicator(owned.pureCRDT); replicator will distribute the update according to the consistency level.
-// 3. `Replicator` [local]: update its pure CRDT's state by calling local.mergeDelta(owned.delta).
-// 4. `Replicator` [local]: update its pure CRDT's delta by calling local.delta.merge(owned.delta) (?)
-// 5. `Replicator` [local]: send owned.delta to remote replicators based on consistency level.
-// 6. `Replicator` [local]: send "write success" response to `Owned<GCounter>`.
-// 7. `Replicator` [local]: find other `Owned<GCounter>`s associated with this pure CRDT and push them the updated pure CRDT. owned.merge(updatedCrdt)?
-// 8. `Replicator` [remote]: update its pure CRDT's state by calling local.mergeDelta(incoming) (or local.merge(incoming) if not delta-CRDT).
-// 9. `Replicator` [remote]: find local `Owned<GCounter>`s associated with this pure CRDT and push them the updated pure CRDT. owned.merge(updatedCrdt)?
-// 10. `Owned<GCounter>` [local]: on "write success" call gcounter.resetDelta(); this signifies replicator has applied the change locally. TODO: worry about concurrent write?
-
-// Gossip
-// 1. `Replicator` [local]: for delta-CRDT send delta, otherwise send whole CRDT.
-// 2. `Replicator` [remote]: update its pure CRDT's state by calling local.merge(incoming) or local.mergeDelta(incoming).
-// 3. `Replicator` [remote]: find local `Owned<GCounter>`s associated with this pure CRDT and push them the updated pure CRDT. owned.merge(updatedCrdt)?
-// 4. `Replicator` [local]: after gossiping, call local.resetDelta(). TODO: worry about concurrent write?
