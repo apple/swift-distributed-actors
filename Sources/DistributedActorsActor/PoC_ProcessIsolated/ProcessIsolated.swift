@@ -95,7 +95,7 @@ public class ProcessIsolated {
 
         system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parent pid: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
 
-        self.control = IsolatedControl(system: system, roles: [role], masterNode: system.settings.cluster.uniqueBindAddress)
+        self.control = IsolatedControl(system: system, roles: [role], masterNode: system.settings.cluster.uniqueBindNode)
         self.system = system
 
         self._lastAssignedServantPort = system.settings.cluster.node.port
@@ -127,7 +127,7 @@ public class ProcessIsolated {
             }
             let uniqueMasterNode = UniqueNode.parse(joinNodeString)
 
-            system.join(node: uniqueMasterNode.node)
+            system.cluster.join(node: uniqueMasterNode.node)
 
             self.parentProcessFailureDetector = try! system._spawnSystemActor(PollingParentMonitoringFailureDetector(
                 parentNode: uniqueMasterNode,
@@ -353,7 +353,7 @@ extension ProcessIsolated {
             args.append(command)
             args.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
             args.append(KnownServantParameters.port.render(value: "\(port)"))
-            args.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindAddress)))
+            args.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
             args.append(contentsOf: args)
 
             do {

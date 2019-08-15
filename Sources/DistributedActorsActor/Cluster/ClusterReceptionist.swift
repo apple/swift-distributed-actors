@@ -122,7 +122,7 @@ internal enum ClusterReceptionist {
             var addresses: [ActorAddress] = []
             addresses.reserveCapacity(values.count)
             for ref in values {
-                let path = ClusterReceptionist.setNode(ref.address, localNode: context.system.settings.cluster.uniqueBindAddress)
+                let path = ClusterReceptionist.setNode(ref.address, localNode: context.system.settings.cluster.uniqueBindNode)
                 addresses.append(path)
             }
             registrations[key] = addresses
@@ -218,7 +218,7 @@ internal enum ClusterReceptionist {
         // TODO: this will be reimplemented to use CRDTs anyway so perhaps not worth changing now
         for remoteControl in remoteControls {
             let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteNode)
-            let address = ClusterReceptionist.setNode(register._addressableActorRef.address, localNode: context.system.settings.cluster.uniqueBindAddress)
+            let address = ClusterReceptionist.setNode(register._addressableActorRef.address, localNode: context.system.settings.cluster.uniqueBindNode)
 
             let envelope: Envelope = Envelope(payload: .message(Replicate(key: register._key.boxed, address: address)))
             remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: envelope, recipient: remoteReceptionistAddress)

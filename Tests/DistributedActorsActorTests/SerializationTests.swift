@@ -91,8 +91,9 @@ class SerializationTests: XCTestCase {
             let decoder = JSONDecoder()
 
             let context = ActorSerializationContext(log: self.system.log,
-                localNode: self.system.settings.cluster.uniqueBindAddress,
+                localNode: self.system.settings.cluster.uniqueBindNode,
                 system: self.system,
+                allocator: ByteBufferAllocator(),
                 traversable: self.system)
 
             encoder.userInfo[.actorSerializationContext] = context
@@ -162,7 +163,7 @@ class SerializationTests: XCTestCase {
         let serializedFormat: String = bytes.stringDebugDescription()
         pinfo("serialized ref: \(serializedFormat)")
         serializedFormat.contains("sact").shouldBeTrue()
-        serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindAddress.nid)").shouldBeTrue()
+        serializedFormat.contains("\(remoteCapableSystem.settings.cluster.uniqueBindNode.nid)").shouldBeTrue()
         serializedFormat.contains(remoteCapableSystem.name).shouldBeTrue() // automatically picked up name from system
         serializedFormat.contains("\(ClusterSettings.Default.bindHost)").shouldBeTrue()
         serializedFormat.contains("\(ClusterSettings.Default.bindPort)").shouldBeTrue()

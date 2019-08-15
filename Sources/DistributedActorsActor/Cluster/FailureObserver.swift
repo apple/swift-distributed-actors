@@ -50,7 +50,7 @@ internal struct FailureDetectorContext { // TODO: Eventually to become public
             fatalError("Illegal attempt to create FailureDetectorContext while remoting is NOT enabled! " + 
                 "Failure detectors are not necessary in local only systems, thus a failure detector should never be created.")
         }
-        self.node = system.settings.cluster.uniqueBindAddress
+        self.node = system.settings.cluster.uniqueBindNode
         self.log = system.log // TODO better logger (named better, we can fix this when we start the actor, there swap for the actors one?)
     }
 }

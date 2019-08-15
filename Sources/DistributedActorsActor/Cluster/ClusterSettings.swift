@@ -62,7 +62,7 @@ public struct ClusterSettings {
 
     // Reflects the bindAddress however carries an uniquely assigned UID.
     // The UID remains the same throughout updates of the `bindAddress` field.
-    public var uniqueBindAddress: UniqueNode {
+    public var uniqueBindNode: UniqueNode {
         return UniqueNode(node: self.node, nid: self.nid)
     }
 

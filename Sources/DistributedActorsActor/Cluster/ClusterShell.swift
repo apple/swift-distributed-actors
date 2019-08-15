@@ -211,14 +211,14 @@ extension ClusterShell {
             self._swimRef = try context.system._spawnSystemActor(swimBehavior, name: SWIMMembershipShell.name, perpetual: true)
 
             let clusterSettings = context.system.settings.cluster
-            let uniqueBindAddress = clusterSettings.uniqueBindAddress
+            let uniqueBindAddress = clusterSettings.uniqueBindNode
 
             switch clusterSettings.downingStrategy {
             case .noop:
                 let shell = DowningStrategyShell(NoopDowningStrategy())
                 self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
             case .timeout(let settings):
-                let shell = DowningStrategyShell(TimeoutBasedDowningStrategy(settings, selfNode: context.system.settings.cluster.uniqueBindAddress))
+                let shell = DowningStrategyShell(TimeoutBasedDowningStrategy(settings, selfNode: context.system.settings.cluster.uniqueBindNode))
                 self._downingStrategyRef = try context.spawn(shell.behavior, name: shell.name)
             }
 
@@ -558,7 +558,7 @@ extension ClusterShell {
 extension ClusterShell {
 
     fileprivate func unbind(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
-        let addrDesc = "\(state.settings.uniqueBindAddress.node.host):\(state.settings.uniqueBindAddress.node.port)"
+        let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
         return context.awaitResult(of: state.channel.close(mode: .all), timeout: .seconds(3)) { // TODO hardcoded timeout
             switch $0 {
             case .success:
@@ -619,31 +619,3 @@ extension ClusterShell {
     }
 
 }
-
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSystem extensions
-
-extension ActorSystem {
-
-    internal var clusterShell: ActorRef<ClusterShell.Message> {
-        return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
-    }
-
-    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func join(node: Node) {
-        self.clusterShell.tell(.command(.join(node)))
-    }
-
-    // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func _dumpAssociations() {
-        let ref: ActorRef<Set<UniqueNode>> = try! self.spawnAnonymous(.receive { context, nodes in
-            let stringlyNodes = nodes.map({ String(reflecting: $0) }).joined(separator: "\n     ")
-            context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
-            return .stop
-        })
-        self.clusterShell.tell(.query(.associatedNodes(ref)))
-    }
-
-}
-

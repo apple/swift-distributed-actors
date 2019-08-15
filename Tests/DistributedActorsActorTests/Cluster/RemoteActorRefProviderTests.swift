@@ -71,7 +71,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<String> = try system.spawn(.stop, name: "ignoresStrings")
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindAddress)
+        address._location = .remote(system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<Int>(address: address, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
@@ -82,7 +82,7 @@ class RemoteActorRefProviderTests: XCTestCase {
     func test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
         let ref: ActorRef<DeadLetter> = system.deadLetters
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindAddress)
+        address._location = .remote(system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
@@ -116,7 +116,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         let ref: ActorRef<String> = system.deadLetters.adapt(from: String.self)
 
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindAddress)
+        address._location = .remote(system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<String>(address: address, system: system)
         let resolvedRef = system._resolve(context: resolveContext)
