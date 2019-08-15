@@ -65,7 +65,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
-        self.localNode = settings.uniqueBindAddress
+        self.localNode = settings.uniqueBindNode
 
         self.channel = channel
 

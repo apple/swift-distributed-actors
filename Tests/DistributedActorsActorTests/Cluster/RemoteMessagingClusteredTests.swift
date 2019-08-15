@@ -39,7 +39,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -73,7 +73,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .succeed))
@@ -100,7 +100,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: refOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failEncoding))
@@ -125,7 +125,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let nonCodableResolvedRef = self.resolveRemoteRef(on: self.local, type: SerializationTestMessage.self, address: nonCodableRefOnRemoteSystem.address)
         nonCodableResolvedRef.tell(SerializationTestMessage(serializationBehavior: .failDecoding))
@@ -174,7 +174,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
         remoteRef.tell(EchoTestMessage(string: "test", respondTo: localRef))
@@ -196,7 +196,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
 
@@ -228,7 +228,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         let remoteRef = self.resolveRemoteRef(on: self.local, type: EchoTestMessage.self, address: refOnRemoteSystem.address)
 
@@ -248,7 +248,7 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         setUpBoth { settings in
             settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
-        remote.join(node: self.localUniqueNode.node)
+        remote.cluster.join(node: self.localUniqueNode.node)
 
         try assertAssociated(local, with: self.remoteUniqueNode)
 
@@ -259,8 +259,8 @@ class RemotingMessagingTests: ClusteredTwoNodesTestBase {
         }
         defer { thirdSystem.shutdown() }
 
-        thirdSystem.join(node: self.localUniqueNode.node)
-        thirdSystem.join(node: self.remoteUniqueNode.node)
+        thirdSystem.cluster.join(node: self.localUniqueNode.node)
+        thirdSystem.cluster.join(node: self.remoteUniqueNode.node)
         try assertAssociated(thirdSystem, withExactly: [self.localUniqueNode, self.remoteUniqueNode])
         let thirdTestKit = ActorTestKit(thirdSystem)
 

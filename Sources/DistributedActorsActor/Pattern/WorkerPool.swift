@@ -214,6 +214,8 @@ internal extension WorkerPool {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Worker Pool Ref
 
 public struct WorkerPoolRef<Message>: ReceivesMessages {
     @usableFromInline
@@ -228,8 +230,27 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
         self._ref.tell(.forward(message), file: file, line: line)
     }
 
-    // other query methods
+    public var address: ActorAddress {
+        return self._ref.address
+    }
 
+    public var path: ActorPath {
+        return self.address.path
+    }
+
+}
+
+extension WorkerPoolRef: ReceivesQuestions {
+    public typealias Question = Message
+
+    public func ask<Answer>(for type: Answer.Type,
+                            timeout: TimeAmount,
+                            file: String = #file, function: String = #function, line: UInt = #line,
+                            _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer> {
+        return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
+            .forward(makeQuestion(replyTo))
+        }
+    }
 }
 
 @usableFromInline

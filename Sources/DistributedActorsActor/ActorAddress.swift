@@ -537,8 +537,8 @@ extension Node: Comparable {
 /// Once the remote node accepts our handshake, it offers the other node its unique address.
 /// Only once this address has been obtained can a node communicate with actors located on the remote node.
 public struct UniqueNode: Hashable {
-    let node: Node
-    let nid: NodeID
+    public let node: Node
+    public let nid: NodeID
 
     public init(node: Node, nid: NodeID) {
         precondition(node.port > 0, "port MUST be > 0")

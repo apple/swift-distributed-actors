@@ -75,7 +75,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         self.setUpRemote() // new system, same exact node, however new UID
         let replacementRemote = self.remote
-        let replacementUniqueAddress = replacementRemote.settings.cluster.uniqueBindAddress
+        let replacementUniqueAddress = replacementRemote.settings.cluster.uniqueBindNode
 
         // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
         // instance (oldRemote) on the same node; It should accept this new handshake, and ban the previous node.
@@ -100,11 +100,11 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
         local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let uniqueRemoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindAddress, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
+        let uniqueRemoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
         // to then obtain a remote ref ON the `system`, meaning that the node within uniqueRemoteAddress is a remote one
         let resolveContext = ResolveContext<String>(address: uniqueRemoteAddress, system: self.local)
         let resolvedRef = local._resolve(context: resolveContext)
@@ -132,8 +132,8 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
-        try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(remote, with: local.settings.cluster.uniqueBindNode)
     }
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing() throws {
@@ -149,8 +149,8 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindAddress)
-        try assertAssociated(remote, with: local.settings.cluster.uniqueBindAddress)
+        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(remote, with: local.settings.cluster.uniqueBindNode)
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -206,7 +206,7 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
 
     func test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
         setUpBoth()
-        remote.join(node: self.localUniqueNode.node)
+        remote.cluster.join(node: self.localUniqueNode.node)
 
         try assertAssociated(local, with: self.remoteUniqueNode)
 
@@ -217,8 +217,8 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         }
         defer { thirdSystem.shutdown() }
 
-        thirdSystem.join(node: self.localUniqueNode.node)
-        try assertAssociated(local, withExactly: [self.remoteUniqueNode, thirdSystem.settings.cluster.uniqueBindAddress])
+        thirdSystem.cluster.join(node: self.localUniqueNode.node)
+        try assertAssociated(local, withExactly: [self.remoteUniqueNode, thirdSystem.settings.cluster.uniqueBindNode])
 
         local._cluster?.associationRemoteControls.count.shouldEqual(2)
     }

@@ -49,7 +49,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldPingRandomMember() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: String.self)
@@ -100,7 +100,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
@@ -179,7 +179,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
@@ -202,7 +202,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
         try assertAssociated(remote, with: localUniqueNode)
 
@@ -238,7 +238,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldSendGossipInAck() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
         try assertAssociated(remote, with: localUniqueNode)
 
@@ -268,7 +268,7 @@ final class SWIMMembershipShellTests: ClusteredTwoNodesTestBase {
     func test_swim_shouldSendGossipInPing_() throws {
         setUpBoth()
 
-        local.join(node: remoteUniqueNode.node)
+        local.cluster.join(node: remoteUniqueNode.node)
         try assertAssociated(local, with: remoteUniqueNode)
 
         let p = remoteTestKit.spawnTestProbe(expecting: SWIM.Message.self)
