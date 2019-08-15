@@ -324,6 +324,28 @@ class ActorDocExamples: XCTestCase {
         _ = try system.spawn(caplinBehavior, name: "caplin")
         // end::ask_inside[]
     }
+
+    func example_eventStream() throws {
+        let system = ActorSystem("System")
+
+        let ref: ActorRef<Event>! = nil
+
+        // tag::eventStream[]
+        enum Event {
+            case eventOne
+            case eventTwo
+        }
+
+        let stream = try system.spawn(EventStream.behavior(Event.self), name: "eventStream") // <1>
+
+        stream.tell(.subscribe(ref)) // <2>
+
+        stream.tell(.publish(.eventOne)) // <3>
+        stream.tell(.publish(.eventTwo))
+
+        stream.tell(.unsubscribe(ref)) // <4>
+        // end::eventStream[]
+    }
 }
 
 // tag::suggested_props_pattern[]

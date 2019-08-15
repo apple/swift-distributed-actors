@@ -651,6 +651,21 @@ This will lead to growth of the mailbox and can cause significant delays in mess
 used with caution and only when absolutely necessary and with reasonably small timeouts to avoid problems caused by unresponsive
 services.
 
+=== EventStream
+
+An `EventStream` allows actors to subscribe to events published by one or more other actors.
+It is meant for local usage only and does not buffer or redeliver events.
+
+Usage:
+
+[source]
+----
+include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=eventStream]
+----
+<1> Create an `EventStream` that publishes events of type `Event`
+<2> Subscribe `ref` to receive events from the stream
+<3> Publish on event to all subscribers
+<4> Unsubscribe `ref` from the event stream
 
 === Where to go from here?
 
