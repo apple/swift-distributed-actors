@@ -43,10 +43,6 @@
 #include "include/survive_crash_support.h"
 #include "include/crash_support.h"
 
-void sact_complain_and_pause_thread(void* ctx);
-/** Return current (p)Thread ID */
-int sact_my_tid();
-
 typedef enum {
     UNSET = 0,
     SETTING = 1,
@@ -98,6 +94,13 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
         #ifdef SACT_TRACE_CRASH
         fprintf(stderr, "[SACT_TRACE_CRASH][thread:%d] Thread is not executing an actor. Applying default signal handling.\n", sact_my_tid());
         #endif
+
+        // Only print backtrace when we are on APPLE platform, or running
+        // a release build. On Linux in debug mode a backtrace will
+        // already be printed by the runtime
+        #if !defined(DEBUG) || defined(__APPLE__)
+        sact_dump_backtrace();
+        #endif
         signal(sig, SIG_DFL);
         kill(getpid(), sig);
         return;
@@ -117,37 +120,6 @@ static void sact_sighandler(int sig, siginfo_t* siginfo, void* data) {
 
     // we are jumping back to the mailbox to properly handle the crash and kill the actor
     siglongjmp(error_jmp_buf, 1);
-}
-
-// TODO(ktoso): This is not currently used as we jump to fault handling rather than halting a thread
-void block_thread() {
-    fprintf(stderr, "[ERROR][SACT_CRASH][thread:%d] Blocking thread forever to prevent progressing into undefined behavior. "
-           "Process remains alive.\n", sact_my_tid());
-
-    int fd[2] = { -1, -1 };
-
-    pipe(fd);
-    for (;;) {
-        char buf;
-        read(fd[0], &buf, 1);
-    }
-}
-
-void sact_kill_pthread_self() {
-    // kill myself, to prevent any damage, actor will be rescheduled with .failed state and die
-    pthread_exit(NULL);
-}
-
-__attribute__((noinline))
-void sact_complain_and_pause_thread(void* ctx) {
-    /* manually align the stack to a 16 byte boundary. Please someone
-     * knowledgeable tell me what the __attribute__ to do that is ;). */
-    __asm__("subq $15, %%rsp\n"
-            "movq $0xfffffffffff0, %%rsi\n"
-            "andq %%rsi, %%rsp\n" ::: "sp", "si", "cc", "memory");
-
-    block_thread();
-    // kill_pthread_self(); // terminates entire process
 }
 
 void sact_enable_fault_handling() {
@@ -209,15 +181,4 @@ int sact_install_swift_crash_handler() {
     }
 
     return 0;
-}
-
-int sact_my_tid() {
-#ifdef __APPLE__
-    int thread_id = pthread_mach_thread_np(pthread_self());
-    return thread_id;
-#else
-    // on linux
-    pthread_t thread_id = pthread_self();
-    return thread_id;
-#endif
 }
