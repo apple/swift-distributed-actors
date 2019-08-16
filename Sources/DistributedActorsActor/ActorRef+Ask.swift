@@ -150,7 +150,7 @@ private enum AskActor {
         case timeout
     }
 
-    static let ResponseTimeoutKey: TimerKey = TimerKey("response-timeout")
+    static let askTimeoutKey: TimerKey = TimerKey("ask/timeout")
 
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,
@@ -168,7 +168,7 @@ private enum AskActor {
             ref.tell(message, file: file, line: line)
 
             if !timeout.isEffectivelyInfinite {
-                context.timers.startSingle(key: ResponseTimeoutKey, message: .timeout, delay: timeout)
+                context.timers.startSingle(key: askTimeoutKey, message: .timeout, delay: timeout)
             }
 
             return .receiveMessage {

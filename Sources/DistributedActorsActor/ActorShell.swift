@@ -39,7 +39,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     let _props: Props
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Basic ActorContext capabilities
 
     private let _dispatcher: MessageDispatcher
@@ -69,7 +69,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.myself.asAddressable()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Timers
 
     override public var timers: Timers<Message> {
@@ -78,14 +78,14 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     lazy var _timers: Timers<Message> = Timers(context: self)
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Fault handling infrastructure
 
     // We always have a supervisor in place, even if it is just the ".stop" one.
     @usableFromInline internal let supervisor: Supervisor<Message>
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Defer
 
     @usableFromInline
@@ -136,7 +136,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        if let failureDetectorRef = system._cluster?._failureDetectorRef {
+        if let failureDetectorRef = system._cluster?._nodeDeathWatcher {
             self._deathWatch = DeathWatch(failureDetectorRef: failureDetectorRef)
         } else {
             // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?
@@ -300,8 +300,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         case let .unwatch(_, watcher):
             self.interpretSystemUnwatch(watcher: watcher)
 
-        case let .terminated(ref, existenceConfirmed, _):
-            let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed)
+        case .terminated(let ref, let existenceConfirmed, let nodeTerminated):
+            let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
         case let .childTerminated(ref):
             let terminated = Signals.ChildTerminated(address: ref.address, error: nil) // TODO what about the errors
@@ -649,7 +649,7 @@ extension ActorShell {
         guard self.deathWatch.receiveTerminated(terminated) else {
             // it is not an actor we currently watch, thus we should not take actions nor deliver the signal to the user
             log.trace("""
-                      Actor not known, but [\(terminated)] received for it. This may mean we received node terminated earlier, \
+                      Actor not known to [\(self.path)], but [\(terminated)] received for it. This may mean we received node terminated earlier, \
                       and already have removed the actor from our death watch. 
                       """)
             return
@@ -674,7 +674,7 @@ extension ActorShell {
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
     @inlinable internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
         #if SACT_TRACE_ACTOR_SHELL
-        log.info("Received address terminated: \(deadRef)")
+        log.info("Received address terminated: \(terminatedNode)")
         #endif
 
         self.deathWatch.receiveNodeTerminated(terminatedNode, myself: self.asAddressable)

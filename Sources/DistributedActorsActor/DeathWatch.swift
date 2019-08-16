@@ -22,7 +22,7 @@ import Dispatch
 /// It allows actors to watch other actors for termination, and also takes into account clustering lifecycle information,
 /// e.g. if a node is declared `down` all actors on given node are assumed to have terminated, causing the appropriate `Terminated` signals.
 ///
-/// An `ActorCell` owns a death watch instance and is responsible of managing all calls to it.
+/// An `ActorShell` owns a death watch instance and is responsible of managing all calls to it.
 //
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
@@ -32,9 +32,9 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     private var watching = Set<AddressableActorRef>()
     private var watchedBy = Set<AddressableActorRef>()
 
-    private var failureDetectorRef: FailureDetectorShell.Ref
+    private var failureDetectorRef: NodeDeathWatcherShell.Ref
 
-    init(failureDetectorRef: FailureDetectorShell.Ref) {
+    init(failureDetectorRef: NodeDeathWatcherShell.Ref) {
         self.failureDetectorRef = failureDetectorRef
     }
 
@@ -63,7 +63,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
-        subscribeAddressTerminatedEvents(myself: watcher, node: watchee.address.node)
+        subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
@@ -135,12 +135,16 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     /// Does NOT immediately handle these `Terminated` signals, they are treated as any other normal signal would,
     /// such that the user can have a chance to handle and react to them.
     public mutating func receiveNodeTerminated(_ terminatedNode: UniqueNode, myself: ReceivesSystemMessages) {
-        for watched in self.watching where watched.address.node == terminatedNode {
-            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: false, addressTerminated: true), file: #file, line: #line)
+        for watched: AddressableActorRef in self.watching where watched.address.node == terminatedNode {
+            // we KNOW an actor existed if it is local and not resolved as /dead; otherwise it may have existed
+            // for a remote ref we don't know for sure if it existed
+            let existenceConfirmed = watched.refType.isLocal && !watched.address.path.starts(with: ._dead)
+            myself.sendSystemMessage(.terminated(ref: watched, existenceConfirmed: existenceConfirmed, addressTerminated: true), file: #file, line: #line)
         }
     }
 
-    // MARK: termination tasks
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Myself termination
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
         traceLog_DeathWatch("[\(myself)] notifyWatchers that we are terminating. Watchers: \(self.watchedBy)...")
@@ -151,16 +155,13 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Managing
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Node termination
 
-    // TODO: implement this once we are clustered; a termination of an entire node means termination of all actors on that node
-    private func subscribeAddressTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {
-        guard let node = node else {
-            return // watched ref is local, no node to watch
+    private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {
+        if let remoteNode = node {
+            self.failureDetectorRef.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: remoteNode))
         }
-        // TODO avoid watching when node is my node
-        self.failureDetectorRef.tell(.watchedActor(watcher: AddressableActorRef(myself), remoteNode: node))
     }
 
 }

@@ -34,10 +34,11 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 
     enum State {
         case associated(AssociatedState)
+        // case leaving // so we can receive that another node saw us as DOWN
         // case disassociated(DisassociatedState) // basically a tombstone
     }
 
-    struct AssociatedState {
+    struct AssociatedState: CustomStringConvertible {
         let log: Logger
 
         // Mutable since we may need to reconnect and swap for a different channel?
@@ -58,6 +59,10 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
         func makeRemoteControl() -> AssociationRemoteControl {
             return AssociationRemoteControl(channel: self.channel, remoteNode: self.remoteNode)
             // TODO: RemoteControl should mimic what the ClusterShell does when it sends messages; we want to push
+        }
+
+        var description: String {
+            return "AssociatedState(channel: \(channel), selfNode: \(selfNode), remoteNode: \(remoteNode))"
         }
     }
 }

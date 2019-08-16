@@ -228,6 +228,7 @@ extension ProtoHandshakeReject {
         self.version = .init(reject.version)
         self.from = .init(reject.from)
         self.origin = .init(reject.origin)
+        self.reason = reject.reason
     }
 }
 

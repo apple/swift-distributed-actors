@@ -4,6 +4,33 @@
 Swift Distributed Actors implements a variant of the https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf[SWIM Membership Protocol]
 with https://arxiv.org/abs/1707.00788[Lifeguard extensions] for its low-level membership and failure detection.
 
+=== Terminology
+
+While the SWIM paper uses words consistently within its own context, we find that some of the terminology used
+can be confusing in the context of actors and presence of other higher level membership (such as the cluster provides).
+
+We therefore apply the following name mappings:
+
+- the paper's `confirm` message is represented by `SWIM.MemberStatus.dead` in distributed actors
+
+=== Modifications
+
+- Introduction of an `.unreachable` status, that is ordered after `.suspect` and before `.dead`
+  - this is because the decision to move an unreachable node to `.dead` status is a large and important decision,
+    in which user code may want to participate, e.g. by attempting "shoot the other node in the head" or other patterns,
+    before triggering the `.dead` status, after which no further communication with given node will ever be possible anymore.
+
+- Preservation of `dead` information --- ???
+  - the original paper does not keep in memory information about dead nodes, it only gossips the information that a member
+    is now dead, but does not keep tombstones for later reference
+
+- Layered membership mechanisms
+  - Distributed Actors use SWIM as their primary distributed failure detector, however by itself, SWIM does not provide some
+    stronger guarantees about "do all other nodes know that I'm alive" which can be useful to build more predictable systems.
+  - Such higher level membership is provided by the Cluster, and built on top of the SWIM provided member liveness.
+  - Decoupling the `Membership` from SWIM itself, also allows Distributed Actors to obtain their membership information by other means,
+    such as static configuration, or external service discovery services, completely relying on those systems to provide the liveness checks.
+
 === Membership
 
 SWIM provides a weakly consistent view on the process group membership. Membership in this context

@@ -198,7 +198,7 @@ extension Optional {
 
     public func shouldNotBeNil(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let msg = callSite.detailedMessage("Expected not nil")
+        let msg = callSite.detailedMessage("Expected not nil, got [\(String(describing: self))]")
         XCTAssertNotNil(self, msg, file: callSite.file, line: callSite.line)
     }
 }

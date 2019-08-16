@@ -329,7 +329,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     typealias InboundOut = TransportEnvelope
 
     private let log: Logger
-    private let cluster: ClusterShell.Ref
+    private let clusterShell: ClusterShell.Ref
 
     internal let outboundSystemMessages: OutboundSystemMessageRedelivery
     internal let inboundSystemMessages: InboundSystemMessages
@@ -339,7 +339,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
     init(log: Logger, cluster: ClusterShell.Ref, outbound: OutboundSystemMessageRedelivery, inbound: InboundSystemMessages) {
         self.log = log
-        self.cluster = cluster
+        self.clusterShell = cluster
 
         self.outboundSystemMessages = outbound
         self.inboundSystemMessages = inbound
@@ -347,7 +347,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         self.redeliveryScheduled = nil
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Outbound
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -370,12 +370,12 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         case .bufferOverflowMustAbortAssociation:
             if let node = transportEnvelope.recipient.node {
                 // TODO: use ClusterControl once implemented
-                self.cluster.tell(.command(.down(node)))
+                self.clusterShell.tell(.command(.downCommand(node.node)))
             }
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Inbound
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -490,6 +490,9 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: tracelog: System Redelivery [tracelog:sys-msg-redelivery]
 
 extension SystemMessageRedeliveryHandler {
 

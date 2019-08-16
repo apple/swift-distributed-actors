@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
+
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
 ///
 /// Namespace containing message types used to implement the SWIM protocol.
@@ -19,13 +21,15 @@
 /// > As you swim lazily through the milieu,
 /// > The secrets of the world will infect you.
 ///
-/// - SeeAlso: https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf
+/// - SeeAlso: <a href="https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf">Scalable Weakly-consistent Infection-style Process Group Membership Protocol</a>
+/// - SeeAlso: <a href="https://arxiv.org/abs/1707.00788">Lifeguard: Local Health Awareness for More Accurate Failure Detection</a>
 final class SWIMInstance {
 
     let settings: SWIM.Settings
 
     /// Main members storage, map to values to obtain current members.
     private var members: [ActorRef<SWIM.Message>: SWIMMember]
+    //    private var members: [UniqueNode: SWIMMember] // FIXME: this really should talk about nodes, not the members in the keys
 
     /// Constantly mutated by `nextMemberToPing` in an effort to keep the order in which we ping nodes evenly distributed.
     private var membersToPing: [SWIMMember]
@@ -57,6 +61,7 @@ final class SWIMInstance {
     private var myShellAddress: ActorAddress? {
         return self.myShellMyself?.address
     }
+    private var myNode: UniqueNode? = nil
 
     private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
@@ -69,14 +74,11 @@ final class SWIMInstance {
         self.membersToPing = []
     }
 
-    func addMyself(_ ref: ActorRef<SWIM.Message>) {
+    // FIXME: only reason myNode is optional is tests where we test from actors all on the same node
+    func addMyself(_ ref: ActorRef<SWIM.Message>, node myNode: UniqueNode? = nil) {
         self.myShellMyself = ref
+        self.myNode = myNode
         self.addMember(ref, status: .alive(incarnation: 0))
-    }
-
-    enum AddMemberDirective {
-        case added
-        case newerMemberAlreadyPresent(SWIM.Member)
     }
 
     @discardableResult
@@ -87,6 +89,7 @@ final class SWIMInstance {
             return .newerMemberAlreadyPresent(existingMember)
         }
 
+        // FIXME: store with node as key, not ref
         let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
         self.members[ref] = member
 
@@ -111,6 +114,10 @@ final class SWIMInstance {
         self.addToGossip(member: member)
 
         return .added
+    }
+    enum AddMemberDirective {
+        case added
+        case newerMemberAlreadyPresent(SWIM.Member)
     }
 
     /// Implements the round-robin yet shuffled member to probe selection as proposed in the SWIM paper.
@@ -166,8 +173,9 @@ final class SWIMInstance {
     }
 
     @discardableResult
-    func mark(_ ref: ActorRef<SWIM.Message>, as status: SWIM.Status) -> MarkResult {
+    func mark(_ ref: ActorRef<SWIM.Message>, as status: SWIM.Status) -> MarkedDirective {
         let previousStatusOption = self.status(of: ref)
+
         if let previousStatus = previousStatusOption, previousStatus.supersedes(status) {
             // we already have a newer status for this member
             return .ignoredDueToOlderStatus(currentStatus: previousStatus)
@@ -180,10 +188,10 @@ final class SWIMInstance {
         if status.isDead {
             self.removeFromMembersToPing(member)
         }
-
+        
         return .applied(previousStatus: previousStatusOption)
     }
-    enum MarkResult: Equatable {
+    enum MarkedDirective: Equatable {
         case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
         case applied(previousStatus: SWIM.Status?)
     }
@@ -226,16 +234,16 @@ final class SWIMInstance {
     }
 
     func member(for node: UniqueNode) -> SWIM.Member? {
-        // FIXME: a bit hacky because we get UniqueNodeAddress from cluster for downing
-        return self.members.first(where: { $0.key.address.node == node })?.value
+        if self.myNode == node {
+            return self.member(for: self.myShellMyself!)
+        }
+
+        return self.members.first(where: { (key, _) in key.address.node == node })?.value
     }
 
+    /// Counts non-dead members.
     var memberCount: Int {
-        return self.members.count
-    }
-
-    var memberRefs: [ActorRef<SWIM.Message>] {
-        return Array(self.members.keys)
+        return self.members.filter { !$0.value.isDead }.count
     }
 
     // for testing; used to implement the data for the testing message in the shell: .getMembershipState
@@ -270,17 +278,17 @@ final class SWIMInstance {
             return .none
         }
 
-        var gossips: [SWIM.Gossip] = []
-        gossips.reserveCapacity(min(self.settings.gossip.maxGossipCountPerMessage, self._messagesToGossip.count) )
-        while gossips.count < self.settings.gossip.maxNumberOfMessages,
+        var gossipMessages: [SWIM.Gossip] = []
+        gossipMessages.reserveCapacity(min(self.settings.gossip.maxGossipCountPerMessage, self._messagesToGossip.count) )
+        while gossipMessages.count < self.settings.gossip.maxNumberOfMessages,
               let gossip = self._messagesToGossip.removeRoot() {
-            gossips.append(gossip)
+            gossipMessages.append(gossip)
         }
 
         var members: [SWIM.Member] = []
-        members.reserveCapacity(gossips.count)
+        members.reserveCapacity(gossipMessages.count)
 
-        for var gossip in gossips {
+        for var gossip in gossipMessages {
             members.append(gossip.member)
             gossip.numberOfTimesGossiped += 1
             if gossip.numberOfTimesGossiped < self.settings.gossip.maxGossipCountPerMessage {
@@ -384,21 +392,22 @@ extension SWIM.Instance {
             switch member.status {
             case .alive:
                 // as long as other nodes see us as alive, we're happy
-                return .applied(warning: nil)
+                return .applied
             case .suspect(let suspectedInIncarnation):
-                // someone suspected us, so we need to increment our
-                // incarnation number to spread our alive status with
+                // someone suspected us, so we need to increment our incarnation number to spread our alive status with
                 // the incremented incarnation
                 if suspectedInIncarnation == self.incarnation {
                     self._incarnation += 1
                 } else if suspectedInIncarnation > self.incarnation {
-                    let warning = """
-                                  Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
-                                  which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                                  """
-                    return .applied(warning: warning)
+                    return .applied(
+                        level: .warning,
+                        message: """
+                                 Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
+                                 which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                                 """
+                    )
                 }
-                return .applied(warning: nil)
+                return .applied
 
             case .unreachable(let unreachableInIncarnation):
                 // someone suspected us, so we need to increment our
@@ -407,49 +416,74 @@ extension SWIM.Instance {
                 if unreachableInIncarnation == self.incarnation {
                     self._incarnation += 1
                 } else if unreachableInIncarnation > self.incarnation {
-                    let warning = """
-                    Received gossip about self with incarnation number [\(unreachableInIncarnation)] > current incarnation [\(self._incarnation)], \
-                    which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                    """
-                    return .applied(warning: warning)
+                    return .applied(
+                        level: .warning,
+                        message: """
+                                 Received gossip about self with incarnation number [\(unreachableInIncarnation)] > current incarnation [\(self._incarnation)], \
+                                 which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                                 """
+                    )
                 }
-                return .applied(warning: nil)
+
+                return .applied
 
             case .dead:
-                return .selfDeterminedDead
+                return .confirmedDead(member: member)
             }
         } else {
             if self.isMember(member.ref) {
                 switch self.mark(member.ref, as: member.status) {
                 case .applied:
-                    return .applied(warning: nil)
+                    if member.status.isDead {
+                        return .confirmedDead(member: member)
+                    } else {
+                        return .applied
+                    }
                 case .ignoredDueToOlderStatus(let currentStatus):
-                    return .ignored(warning: "Ignoring gossip about member [\(member)] due to older status, incoming: [\(member.status)], current: [\(currentStatus)]")
+                    return .ignored(
+                        level: .debug,
+                        message: "Ignoring gossip about member [\(member)] due to older status, incoming: [\(member.status)], current: [\(currentStatus)]"
+                    )
                 }
             } else if let remoteMemberNode = member.ref.address.node?.node {
+                // TODO store that we're now handshaking with it already?
                 return .connect(node: remoteMemberNode, onceConnected: { _ in
                     self.addMember(member.ref, status: member.status)
                 })
             } else {
-                return .ignored(warning: """
-                                         Received gossip about node which is neither myself or a remote node (i.e. address is not present)\
-                                         which is highly unexpected and may indicate a configuration or networking issue. Ignoring gossip about this member. \
-                                         Member: \(member), SWIM.Instance state: \(String(reflecting: self))
-                                         """)
+                return .ignored(
+                    level: .warning,
+                    message: """
+                             Received gossip about node which is neither myself or a remote node (i.e. address is not present)\
+                             which is highly unexpected and may indicate a configuration or networking issue. Ignoring gossip about this member. \
+                             Member: \(member), SWIM.Instance state: \(String(reflecting: self))
+                             """
+                )
             }
         }
     }
     enum OnGossipPayloadDirective {
-        case applied(warning: String?)
+        case applied(level: Logger.Level?, message: Logger.Message?)
         /// Ignoring a gossip update is perfectly fine: it may be "too old" or other reasons
-        case ignored(warning: String?)
+        case ignored(level: Logger.Level?, message: Logger.Message?)
         /// It can happen that a gossip payload informs us about a node that we have not heard about before,
         /// and do not have a connection to it either (e.g. we joined only seed nodes, and more nodes joined them later
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
-        // TODO: OR! actually we add them right away, and if they don't reply to our probing we'd declare them down...? A bit weird hm...
         case connect(node: Node, onceConnected: (UniqueNode) -> ())
-        case selfDeterminedDead
+        /// Meaning the node is now marked `DEAD`.
+        /// SWIM will continue to gossip about the dead node for a while.
+        /// We should also notify the high-level membership that the node shall be considered `DOWN`.
+        case confirmedDead(member: SWIM.Member)
+    }
+}
+
+extension SWIMInstance.OnGossipPayloadDirective {
+    static var applied: SWIMInstance.OnGossipPayloadDirective {
+        return .applied(level: nil, message: nil)
+    }
+    static var ignored: SWIMInstance.OnGossipPayloadDirective {
+        return .ignored(level: nil, message: nil)
     }
 }
 
@@ -476,37 +510,6 @@ extension SWIM.Instance: CustomDebugStringConvertible {
                    _messagesToGossip: \(_messagesToGossip)
                )
                """
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: SWIM Member
-
-struct SWIMMember: Hashable {
-    /// Each (SWIM) cluster member is running a `probe` actor which we interact with when gossiping the SWIM messages.
-    let ref: ActorRef<SWIM.Message> // TODO better name for `ref` is it a `probeRef` (sounds right?) or `swimmerRef` (meh)?
-
-    var status: SWIM.Status
-
-    // Period in which protocol period was this state set
-    var protocolPeriod: Int
-
-    init(ref: ActorRef<SWIM.Message>, status: SWIM.Status, protocolPeriod: Int) {
-        self.ref = ref
-        self.status = status
-        self.protocolPeriod = protocolPeriod
-    }
-
-    var isAlive: Bool {
-        return self.status.isAlive
-    }
-
-    var isSuspect: Bool {
-        return self.status.isSuspect
-    }
-
-    var isDead: Bool {
-        return self.status.isDead
     }
 }
 

@@ -19,7 +19,7 @@ import Logging
 /// - Warning:
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
-public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A ActorRefFactory
+public class ActorContext<Message>: ActorRefFactory {
 
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
@@ -191,7 +191,7 @@ public class ActorContext<Message>: ActorRefFactory { // FIXME should IS-A Actor
         return undefined()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Child actor management
 
     public func spawn<M>(_ behavior: Behavior<M>, name: String, props: Props = Props()) throws -> ActorRef<M> {

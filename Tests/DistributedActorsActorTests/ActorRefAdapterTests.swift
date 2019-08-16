@@ -74,7 +74,7 @@ class ActorRefAdapterTests: XCTestCase {
         }
         defer { systemTwo.shutdown() }
 
-        systemOne.clusterShell.tell(.command(.handshakeWith(systemTwo.settings.cluster.node, replyTo: nil))) // TODO nicer API
+        systemOne.cluster.join(node: systemTwo.settings.cluster.node)
 
         sleep(2)
 

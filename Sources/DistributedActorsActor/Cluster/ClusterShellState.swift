@@ -30,7 +30,7 @@ internal protocol ReadOnlyClusterState {
     var backoffStrategy: BackoffStrategy { get }
 
     /// Unique address of the current node.
-    var localNode: UniqueNode { get }
+    var selfNode: UniqueNode { get }
     var settings: ClusterSettings { get }
 }
 
@@ -42,7 +42,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     public var log: Logger
     public let settings: ClusterSettings
 
-    public let localNode: UniqueNode
+    public let selfNode: UniqueNode
     public let channel: Channel
 
     public let eventLoopGroup: EventLoopGroup
@@ -56,20 +56,23 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     private var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: AssociationStateMachine.State] = [:]
 
-    // TODO somehow protect / sync associations and membership view?
-    // TODO this may move... not sure yet who should "own" the membership; we'll see once we do membership provider or however we call it then
-    private var membership: Membership = .empty
-
+    // TODO make private
+    internal var _membership: Membership
 
     init(settings: ClusterSettings, channel: Channel, log: Logger) {
+        self.log = log
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
-        self.localNode = settings.uniqueBindNode
+
+        self.selfNode = settings.uniqueBindNode
+
+        // TODO: we currently automatically proceed to UP right away, has to be done in more consistent manner in future
+        self._membership = Membership.empty
+            .joining(settings.uniqueBindNode)
+            .marking(settings.uniqueBindNode, as: .up)
 
         self.channel = channel
-
-        self.log = log
     }
 
     func association(with node: Node) -> AssociationStateMachine.State? {
@@ -91,6 +94,10 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         return self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
             return hsm
         }
+    }
+
+    var membership: Membership {
+        return self._membership
     }
 }
 
@@ -122,7 +129,7 @@ extension ClusterShellState {
 
         let initiated = HandshakeStateMachine.InitiatedState(
             settings: self.settings,
-            localNode: self.localNode,
+            localNode: self.selfNode,
             connectTo: remoteNode,
             whenCompleted: whenCompleted
         )
@@ -295,15 +302,15 @@ extension ClusterShellState {
         let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
         let state: AssociationStateMachine.State = .associated(asm)
 
-        // TODO store and update membership inside here?
-        // TODO: this is not so nice, since we now have membership kind of in two places, we should make this somehow nicer...
-        // TODO: Membership should drive all decisions about "allowed to join" etc, and the replacement decisions as well.
-
         func storeAssociation() {
             self._associations[handshake.remoteNode.node] = state
+
+            // TODO; we currently automatically move to UP; this should be done with more coordination
+            self._membership = self._membership.joining(handshake.remoteNode)
+            self._membership.mark(handshake.remoteNode, as: .up)
         }
 
-        let change = self.membership.join(handshake.remoteNode)
+        let change = self._membership.join(handshake.remoteNode)
         if change.isReplace {
             switch self.association(with: handshake.remoteNode.node) {
             case .some(.associated(let associated)):
@@ -322,4 +329,53 @@ extension ClusterShellState {
         return asm
     }
 
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Membership
+
+extension ClusterShellState {
+
+    /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
+    //    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
+    mutating func onMembershipChange(_ node: Node, toStatus: MemberStatus) -> MembershipChange? {
+        guard let member = self.membership.member(node) else {
+            return nil // no such member
+        }
+
+        switch toStatus {
+        case .joining:
+            fatalError("A change on an existing Member (\(member)) can't do TO [.joining]")
+        case .up:
+            return self._membership.mark(member.node, as: .up)
+        case .down:
+            return self._membership.mark(member.node, as: .down)
+        case .leaving:
+            return self._membership.mark(member.node, as: .leaving)
+        case .removed:
+            return self._membership.mark(member.node, as: .removed)
+        }
+    }
+
+    /// - Returns: the changed member if a the change was a transition (unreachable -> reachable, or back),
+    ///            or `nil` if the reachability is the same as already known by the membership.
+    mutating func onMemberReachabilityChange(_ node: UniqueNode, toReachability: MemberReachability) -> Member? {
+        return self._membership.mark(node, reachability: toReachability)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ClusterShellState + Logging
+
+extension ClusterShellState {
+    var metadata: Logger.Metadata {
+        return [
+
+            "membership/count": "\(String(describing: self._membership.count))"
+        ]
+    }
+
+    func logMembership() {
+        self.log.info("MEMBERSHIP:::: \(self._membership.prettyDescription(label: self.selfNode.node.systemName))")
+    }
 }
