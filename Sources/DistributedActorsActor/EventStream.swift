@@ -18,8 +18,32 @@
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public enum EventStream {
-    public enum Message<Event> {
+public struct EventStream<Event> {
+    internal let ref: ActorRef<EventStreamShell.Message<Event>>
+
+    public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
+        self.ref = try system.spawn(EventStreamShell.behavior(type), name: "eventStream-\(name)")
+    }
+
+    internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
+        self.ref = ref
+    }
+
+    public func subscribe(_ ref: ActorRef<Event>) {
+        self.ref.tell(.subscribe(ref))
+    }
+
+    public func unsubscribe(_ ref: ActorRef<Event>) {
+        self.ref.tell(.unsubscribe(ref))
+    }
+
+    public func publish(_ event: Event) {
+        self.ref.tell(.publish(event))
+    }
+}
+
+internal enum EventStreamShell {
+    enum Message<Event> {
         /// Subscribe to receive events
         case subscribe(ActorRef<Event>)
         /// Unsubscribe from receiving events
@@ -28,7 +52,7 @@ public enum EventStream {
         case publish(Event)
     }
 
-    public static func behavior<Event>(_ type: Event.Type) -> Behavior<Message<Event>> {
+    static func behavior<Event>(_ type: Event.Type) -> Behavior<Message<Event>> {
         return .setup { context in
             var subscribers: [ActorAddress: ActorRef<Event>] = [:]
 

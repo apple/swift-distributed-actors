@@ -21,10 +21,12 @@ import Logging
 public struct ClusterControl {
     private let clusterShell: ClusterShell.Ref
     private let settings: ClusterSettings
+    public let events: EventStream<ClusterEvent>
 
-    init(_ settings: ClusterSettings, clusterShell: ClusterShell.Ref) {
+    init(_ settings: ClusterSettings, clusterShell: ClusterShell.Ref, eventStream: EventStream<ClusterEvent>) {
         self.settings = settings
         self.clusterShell = clusterShell
+        self.events = eventStream
     }
 
     public func join(host: String, port: Int) {
@@ -42,11 +44,15 @@ public struct ClusterControl {
 extension ActorSystem {
 
     public var cluster: ClusterControl {
-        return .init(self.settings.cluster, clusterShell: self.clusterShell)
+        return .init(self.settings.cluster, clusterShell: self.clusterShell, eventStream: self.clusterEventStream)
     }
 
     internal var clusterShell: ActorRef<ClusterShell.Message> {
         return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
+    }
+
+    internal var clusterEventStream: EventStream<ClusterEvent> {
+        return self._clusterEventStream ?? EventStream(ref: self.deadLetters.adapted())
     }
 
     // TODO not sure how to best expose, but for now this is better than having to make all internal messages public.

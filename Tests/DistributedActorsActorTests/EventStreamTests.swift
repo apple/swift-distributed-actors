@@ -31,13 +31,13 @@ final class EventStreamTests: XCTestCase {
         let p2 = testKit.spawnTestProbe(expecting: String.self)
         let p3 = testKit.spawnTestProbe(expecting: String.self)
 
-        let eventStream = try system.spawn(EventStream.behavior(String.self), name: "StringEventStream")
+        let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
-        eventStream.tell(.subscribe(p1.ref))
-        eventStream.tell(.subscribe(p2.ref))
-        eventStream.tell(.subscribe(p3.ref))
+        eventStream.subscribe(p1.ref)
+        eventStream.subscribe(p2.ref)
+        eventStream.subscribe(p3.ref)
 
-        eventStream.tell(.publish("test"))
+        eventStream.publish("test")
 
         try p1.expectMessage("test")
         try p2.expectMessage("test")
@@ -49,22 +49,22 @@ final class EventStreamTests: XCTestCase {
         let p2 = testKit.spawnTestProbe(expecting: String.self)
         let p3 = testKit.spawnTestProbe(expecting: String.self)
 
-        let eventStream = try system.spawn(EventStream.behavior(String.self), name: "StringEventStream")
+        let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
-        eventStream.tell(.subscribe(p1.ref))
-        eventStream.tell(.subscribe(p2.ref))
-        eventStream.tell(.subscribe(p3.ref))
+        eventStream.subscribe(p1.ref)
+        eventStream.subscribe(p2.ref)
+        eventStream.subscribe(p3.ref)
 
-        eventStream.tell(.publish("test"))
+        eventStream.publish("test")
 
         try p1.expectMessage("test")
         try p2.expectMessage("test")
         try p3.expectMessage("test")
 
-        eventStream.tell(.unsubscribe(p1.ref))
-        eventStream.tell(.unsubscribe(p2.ref))
+        eventStream.unsubscribe(p1.ref)
+        eventStream.unsubscribe(p2.ref)
 
-        eventStream.tell(.publish("test2"))
+        eventStream.publish("test2")
 
         try p3.expectMessage("test2")
         try p1.expectNoMessage(for: .milliseconds(100))
@@ -76,13 +76,13 @@ final class EventStreamTests: XCTestCase {
         let p2 = testKit.spawnTestProbe(expecting: String.self)
         let p3 = testKit.spawnTestProbe(expecting: String.self)
 
-        let eventStream = try system.spawn(EventStream.behavior(String.self), name: "StringEventStream")
+        let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
-        eventStream.tell(.subscribe(p1.ref))
-        eventStream.tell(.subscribe(p2.ref))
-        eventStream.tell(.subscribe(p3.ref))
+        eventStream.subscribe(p1.ref)
+        eventStream.subscribe(p2.ref)
+        eventStream.subscribe(p3.ref)
 
-        eventStream.tell(.publish("test"))
+        eventStream.publish("test")
 
         try p1.expectMessage("test")
         try p2.expectMessage("test")
@@ -92,10 +92,10 @@ final class EventStreamTests: XCTestCase {
         // because we still need to verify that we don't receive any more messages after that
         //
         // TODO: is there a less hacky way to do this?
-        eventStream.sendSystemMessage(.terminated(ref: p1.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
-        eventStream.sendSystemMessage(.terminated(ref: p2.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
+        eventStream.ref.sendSystemMessage(.terminated(ref: p1.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
+        eventStream.ref.sendSystemMessage(.terminated(ref: p2.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
 
-        eventStream.tell(.publish("test2"))
+        eventStream.publish("test2")
 
         try p3.expectMessage("test2")
         try p1.expectNoMessage(for: .milliseconds(100))

@@ -74,6 +74,7 @@ public final class ActorSystem {
 
     // initialized during startup
     internal var _cluster: ClusterShell? = nil
+    internal var _clusterEventStream: EventStream<ClusterEvent>? = nil
 
     // MARK: Logging
 
@@ -182,7 +183,10 @@ public final class ActorSystem {
 
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
-            _ = try self._cluster?.start(system: self) // only spawns when cluster is initialized
+            if let cluster = self._cluster {
+                self._clusterEventStream = try! EventStream(self, name: "clusterEvents")
+                _ = try cluster.start(system: self, eventStream: self.clusterEventStream) // only spawns when cluster is initialized
+            }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
         }

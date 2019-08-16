@@ -35,6 +35,8 @@ internal class ClusterShell {
 
     private var _swimRef: ActorRef<SWIM.Message>!
 
+    private var _eventStream: EventStream<ClusterEvent>!
+
     // FIXME: use event stream to publish events instead of direct communication
     private var _downingStrategyRef: ActorRef<DowningStrategyMessage>!
 
@@ -115,7 +117,7 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further remoting work
-    internal func start(system: ActorSystem) throws -> ClusterShell.Ref {
+    internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> ClusterShell.Ref {
         self._serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
         // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
@@ -123,6 +125,8 @@ internal class ClusterShell {
         self._failureDetectorRef = try system._spawnSystemActor(
             FailureDetectorShell.behavior(driving: failureDetector),
             name: "failureDetector")
+
+        self._eventStream = eventStream
 
         // TODO concurrency... lock the ref as others may read it?
         self._ref = try system._spawnSystemActor(
@@ -249,16 +253,16 @@ extension ClusterShell {
             case .down(let node):
                 let member = Member(node: node, status: .up)
                 self._swimRef.tell(.local(.confirmDead(node)))
-                self._downingStrategyRef.tell(.clusterEvent(.membership(.memberDown(member))))
+                self._eventStream.publish(.membership(.memberDown(member)))
                 return .same
             case .markUnreachable(let node):
                 // FIXME: keep track of memberships
                 let member = Member(node: node, status: .up)
-                self._downingStrategyRef.tell(.clusterEvent(.reachability(.memberUnreachable(member))))
+                self._eventStream.publish(.reachability(.memberUnreachable(member)))
                 return .same // FIXME publish unreachable event
             case .markReachable(let node):
                 let member = Member(node: node, status: .up)
-                self._downingStrategyRef.tell(.clusterEvent(.reachability(.memberReachable(member))))
+                self._eventStream.publish(.reachability(.memberReachable(member)))
                 return .same
             case .join(let node):
                 self._swimRef.tell(.local(.join(node)))
@@ -269,7 +273,7 @@ extension ClusterShell {
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
             case .unbind(let receptacle):
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
-            case .down(let node):
+            case .down(let node): // FIXME: this case is already handled above
                 state.log.info("Received [.down(\(node))] command, will unconditionally DOWN specified node.")
                 self.failureDetectorRef.tell(.forceDown(node))
                 return .same
