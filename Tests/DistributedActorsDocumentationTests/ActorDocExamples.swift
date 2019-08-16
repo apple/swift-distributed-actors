@@ -336,14 +336,14 @@ class ActorDocExamples: XCTestCase {
             case eventTwo
         }
 
-        let stream = try system.spawn(EventStream.behavior(Event.self), name: "eventStream") // <1>
+        let stream = try EventStream(system, name: "events", of: Event.self) // <1>
 
-        stream.tell(.subscribe(ref)) // <2>
+        stream.subscribe(ref) // <2>
 
-        stream.tell(.publish(.eventOne)) // <3>
-        stream.tell(.publish(.eventTwo))
+        stream.publish(.eventOne) // <3>
+        stream.publish(.eventTwo)
 
-        stream.tell(.unsubscribe(ref)) // <4>
+        stream.unsubscribe(ref) // <4>
         // end::eventStream[]
     }
 }

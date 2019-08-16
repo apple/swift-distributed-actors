@@ -12,13 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-enum ClusterEvent {
+public enum ClusterEvent {
     case leaderChanged(UniqueNode?)
     case membership(MembershipEvent)
     case reachability(ReachabilityEvent)
 }
 
-enum MembershipEvent {
+public enum MembershipEvent {
     case memberJoining(Member)
     case memberUp(Member)
     case memberLeaving(Member)
@@ -26,7 +26,7 @@ enum MembershipEvent {
     case memberRemoved(Member)
 }
 
-enum ReachabilityEvent {
+public enum ReachabilityEvent {
     case memberReachable(Member)
     case memberUnreachable(Member)
 }
