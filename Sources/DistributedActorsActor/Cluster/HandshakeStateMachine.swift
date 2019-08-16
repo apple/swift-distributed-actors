@@ -142,7 +142,7 @@ internal struct HandshakeStateMachine {
 
         let offer: Wire.HandshakeOffer
         var boundAddress: UniqueNode {
-            return self.state.localNode
+            return self.state.selfNode
         }
         var protocolVersion: Swift Distributed ActorsActor.Version {
             return state.settings.protocolVersion
@@ -196,8 +196,7 @@ internal struct HandshakeStateMachine {
 
             guard local.major == remote.major else {
                 let error = HandshakeError.incompatibleProtocolVersion(
-                    local: self.protocolVersion, remote: self.offer.version,
-                    reason: "Major version mismatch!")
+                    local: self.protocolVersion, remote: self.offer.version)
                 return .rejectHandshake(RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error))
             }
 
@@ -296,6 +295,6 @@ enum HandshakeError: Error {
     case targetHandshakeAddressMismatch(Wire.HandshakeOffer, selfNode: UniqueNode)
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
-    case incompatibleProtocolVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version, reason: String?)
+    case incompatibleProtocolVersion(local: Swift Distributed ActorsActor.Version, remote: Swift Distributed ActorsActor.Version)
 
 }

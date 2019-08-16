@@ -27,7 +27,7 @@ import XCTest
 /// make testing actor based "from the outside" code manageable and pleasant.
 final public class ActorTestKit {
 
-    private let system: ActorSystem
+    internal let system: ActorSystem
 
     private let spawnProbesLock = Lock()
 
@@ -71,7 +71,7 @@ public extension ActorTestKit {
 
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     // TODO rename expecting to "receiving"? -- ktoso
-    func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self) -> ActorTestProbe<M> {
+    func spawnTestProbe<M>(name maybeName: String? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
 
@@ -85,7 +85,7 @@ public extension ActorTestKit {
             #endif
 
             return try system.spawn(probeBehavior, name: name, props: testProbeProps)
-        }, settings: self.settings)
+        }, settings: self.settings, file: file, line: line)
     }
 }
 
@@ -133,7 +133,7 @@ public extension ActorTestKit {
 
         let message = callSite.detailedMessage("""
                                                No result within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                                               Queried \(polledTimes) times. \
+                                               Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
                                                \(lastErrorMessage)
                                                """)
         XCTFail(message, file: callSite.file, line: callSite.line)
@@ -170,7 +170,10 @@ public extension ActorTestKit {
                 try block()
                 usleep(useconds_t(interval.microseconds))
             } catch {
-                let message = callSite.detailedMessage("Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). Queried \(polledTimes) times.")
+                let message = callSite.detailedMessage("""
+                                                       Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+                                                       Queried \(polledTimes) times, within \(timeAmount.prettyDescription).
+                                                       """)
                 XCTFail(message, file: callSite.file, line: callSite.line)
                 throw AssertionHoldsError(message: message)
             }
@@ -309,13 +312,13 @@ final class MockActorContext<Message>: ActorContext<Message> {
 // MARK: Error
 
 extension ActorTestKit {
-    /// Returns an error that can be used when coniditions in tests are not met. This is especially useful in
+    /// Returns an error that can be used when conditions in tests are not met. This is especially useful in
     /// calls to `testKit.eventually`, where a condition is checked multiple times, until it is successful
     /// or times out.
     ///
     /// Examples:
     ///
-    ///     testkit.eventually(within: .seconds(1)) {
+    ///     testKit.eventually(within: .seconds(1)) {
     ///         guard ... else { throw testKit.error("failed to extract expected information") }
     ///     }
     public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {

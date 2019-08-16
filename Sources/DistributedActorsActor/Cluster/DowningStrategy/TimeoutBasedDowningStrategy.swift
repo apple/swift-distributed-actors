@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// The `TimeoutBasedDowningStrategy` marks nodes that have been detected to be unreachable
-/// down after a configurable timeout. Only the node that is currently the currently assigned leader can
-/// make the decision to mark another node as down. Non-leadingnodes will keep track of the nodes they
-/// would have marked down and do so in case they become leader. If a node becomes rechable again
-/// before the timeout expires, it will not be considered for downing anymore.
+/// The `TimeoutBasedDowningStrategy` marks nodes that have been unreachable as `Down` after a configurable timeout.
+///
+/// Only the node that is currently the currently assigned leader can make the decision to mark another node as down.
+/// Non-leading nodes will keep track of the nodes they would have marked down and do so in case they become leader.
+/// If a node becomes reachable again before the timeout expires, it will not be considered for downing anymore.
 internal final class TimeoutBasedDowningStrategy {
     let settings: TimeoutBasedDowningStrategySettings
     let selfNode: UniqueNode
-    var _leader: Bool = false
+    var _leader: Bool = false // TODO keep membership and know if `isLeader(selfNode)`
 
     var isLeader: Bool {
         return self._leader

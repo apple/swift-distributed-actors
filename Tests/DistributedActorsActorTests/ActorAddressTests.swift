@@ -75,7 +75,7 @@ final class ActorAddressTests: XCTestCase {
         ActorPath._root.starts(with: ActorPath._root).shouldBeTrue()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Description tests
 
     func test_local_actorAddress_shouldPrintNicely() throws {

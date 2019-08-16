@@ -23,6 +23,13 @@ public struct AddressableActorRef: Hashable {
     enum RefType {
         case remote
         case local
+
+        var isLocal: Bool {
+            return self == .local
+        }
+        var isRemote: Bool {
+            return self == .remote
+        }
     }
 
     @usableFromInline

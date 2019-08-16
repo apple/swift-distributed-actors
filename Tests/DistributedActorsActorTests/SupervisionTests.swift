@@ -989,7 +989,7 @@ class SupervisionTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
-    func sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy failureMode: FailureMode) throws {
+    func sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy failureMode: FailureMode) throws {
         let p: ActorTestProbe<String> = testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { _ in
@@ -1023,12 +1023,12 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure() throws {
-        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy: .throwing)
+        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .throwing)
     }
 
     func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure() throws {
         #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatcheClosure(failBy: .faulting)
+        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .faulting)
         #endif
     }
 

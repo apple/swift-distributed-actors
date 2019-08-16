@@ -55,14 +55,20 @@ final public class ActorTestProbe<Message> {
     private var lastMessageObserved: Message? = nil
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
-    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings) {
+    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+                  file: StaticString = #file, line: UInt = #line) {
         self.settings = settings
 
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
             signalQueue: self.signalQueue,
             terminationsQueue: self.terminationsQueue)
-        self.internalRef = try! spawn(behavior)
+
+        do {
+            self.internalRef = try spawn(behavior)
+        } catch {
+            fatalError("Failed to spawn test probe!", file: file, line: line)
+        }
 
         self.name = internalRef.address.name
 
@@ -330,7 +336,7 @@ extension ActorTestProbe where Message: Equatable {
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Clearing buffered messages (for expectations)
 
     public func clearMessages() {

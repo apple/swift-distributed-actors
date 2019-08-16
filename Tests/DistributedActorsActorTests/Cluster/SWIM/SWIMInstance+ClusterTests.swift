@@ -17,19 +17,21 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 
 /// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
-final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
+final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
 
     var localClusterProbe: ActorTestProbe<ClusterShell.Message>!
     var remoteClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
-    override func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
-        super.setUpLocal(modifySettings)
-        self.localClusterProbe = self.localTestKit.spawnTestProbe()
+    func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+        let local = super.setUpNode("local", modifySettings)
+        self.localClusterProbe = self.testKit(local).spawnTestProbe()
+        return local
     }
 
-    override func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) {
-        super.setUpRemote(modifySettings)
-        self.remoteClusterProbe = self.remoteTestKit.spawnTestProbe()
+    func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+        let remote = super.setUpNode("remote", modifySettings)
+        self.remoteClusterProbe = self.testKit(remote).spawnTestProbe()
+        return remote
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -37,7 +39,8 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
 
     func test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully() throws {
         // we do not really cluster up the nodes, but need their existence to drive our swim interactions
-        self.setUpBoth()
+        let local = self.setUpLocal()
+        let remote = self.setUpRemote()
 
         let swim = SWIM.Instance(.default)
 
@@ -62,13 +65,14 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
             swim.member(for: remoteShell)!.status.shouldEqual(remoteMember.status)
 
         default:
-            throw self.localTestKit.fail("Should have requested connecting to the new node")
+            throw self.testKit(local).fail("Should have requested connecting to the new node")
         }
     }
 
     func test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember() throws {
         // we do not really cluster up the nodes, but need their existence to drive our swim interactions
-        self.setUpBoth()
+        let local = self.setUpLocal()
+        let remote = self.setUpRemote()
 
         let swim = SWIM.Instance(.default)
 
@@ -89,7 +93,7 @@ final class SWIMInstanceClusterTests: ClusteredTwoNodesTestBase {
             swim.memberCount.shouldEqual(1)
 
         default:
-            throw self.localTestKit.fail("Should have requested connecting to the new node")
+            throw self.testKit(local).fail("Should have requested connecting to the new node")
         }
     }
 

@@ -83,7 +83,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     // NOTE: Most of the re-logic is tested in isolation in `SystemMessagesRedeliveryTests`,
     //      these tests here just make sure we embed it properly in its Shell / Handler.
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: outbound
 
     func test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs() throws {
@@ -100,7 +100,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: inbound
 
     func test_systemMessageRedeliveryHandler_sendACKUponDelivery() throws {
@@ -133,7 +133,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         try self.channel.writeInbound(TransportEnvelope(nack: SystemMessage.NACK(sequenceNr: 2), recipient: ._localRoot))
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Lossy Network
 
     // Note: realistically on reliable transports such as TCP such aggressive dropping is rather unlikely,

@@ -37,7 +37,7 @@ public struct SWIMSettings {
     /// These logs will contain SWIM.Instance metadata, as offered by `SWIM.Instance.metadata`.
     /// All logs will be prefixed using `[tracelog:SWIM]`, for easier grepping and inspecting only logs related to the SWIM instance.
     // TODO how to make this nicely dynamically changeable during runtime
-    #if SACT_TRACE_SWIM
+    #if SACT_TRACELOG_SWIM
     var traceLogLevel: Logger.Level? = .warning
     #else
     var traceLogLevel: Logger.Level? = nil
@@ -60,7 +60,7 @@ public struct SWIMGossipSettings {
     }
 
     /// Interval at which gossip messages should be issued.
-    /// Every `interval` a `fanout` number of gossip messages will be sent.
+    /// Every `interval` a `fanout` number of gossip messages will be sent. // TODO which fanout?
     var probeInterval: TimeAmount = .seconds(1)
 
     // FIXME: investigate size of messages and find good default

@@ -20,7 +20,7 @@ final class CRDTCoreTypeTests: XCTestCase {
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
     let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GCounter tests
 
     func test_GCounter_incrementShouldUpdateDelta() throws {
@@ -109,7 +109,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         g3.delta.shouldBeNil()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: AnyCvRDT tests
 
     func test_AnyCvRDT_canBeUsedToMergeRightTypes() throws {
@@ -174,7 +174,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: AnyDeltaCRDT tests
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT

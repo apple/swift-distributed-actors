@@ -49,8 +49,8 @@ final class SWIMInstanceTests: XCTestCase {
         member.status.shouldEqual(status)
     }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Detecting myself
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Detecting myself
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
         let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
@@ -71,7 +71,7 @@ final class SWIMInstanceTests: XCTestCase {
         swim.notMyself(someone).shouldBeTrue()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking members as various statuses
 
     func test_mark_shouldNotApplyEqualStatus() throws {
@@ -268,7 +268,7 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(let warning) where warning == nil:
+        case .applied(_, let warning) where warning == nil:
             ()
         default:
             throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
@@ -289,7 +289,7 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incarnation.shouldEqual(currentIncarnation + 1)
 
         switch res {
-        case .applied(let warning) where warning == nil:
+        case .applied(_, let warning) where warning == nil:
             ()
         default:
             throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
@@ -316,10 +316,10 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(nil):
+        case .applied(nil, nil):
             ()
         default:
-            throw testKit.fail("Expected `.applied(nil)`, got \(res)")
+            throw testKit.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
         }
     }
 
@@ -337,7 +337,7 @@ final class SWIMInstanceTests: XCTestCase {
         swim.incarnation.shouldEqual(currentIncarnation)
 
         switch res {
-        case .applied(let warning) where warning != nil:
+        case .applied(_, let warning) where warning != nil:
             ()
         default:
             throw testKit.fail("Expected `.none(message)`, got \(res)")
@@ -349,18 +349,40 @@ final class SWIMInstanceTests: XCTestCase {
 
         let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
         swim.addMyself(myself)
+
         var myselfMember = swim.member(for: myself)!
         myselfMember.status = .dead
-
         let res = swim.onGossipPayload(about: myselfMember)
 
         switch res {
-        case .selfDeterminedDead:
-            ()
+        case .confirmedDead(let member):
+            member.shouldEqual(myselfMember)
         default:
-            throw testKit.fail("Expected `.shutdown`, got \(res)")
+            throw testKit.fail("Expected `.confirmedDead`, got \(res)")
         }
     }
+
+    func test_onGossipPayload_other_withDead() throws {
+        let swim = SWIM.Instance(.default)
+
+        let myself = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM")
+        swim.addMyself(myself)
+
+        let other = try system.spawn(SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready, name: "SWIM-B")
+        swim.addMember(other, status: .alive(incarnation: 0))
+
+        var otherMember = swim.member(for: other)!
+        otherMember.status = .dead
+        let res = swim.onGossipPayload(about: otherMember)
+
+        switch res {
+        case .confirmedDead(let member):
+            member.shouldEqual(otherMember)
+        default:
+            throw testKit.fail("Expected `.confirmedDead`, got \(res)")
+        }
+    }
+
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: increment-ing counters
@@ -509,6 +531,30 @@ final class SWIMInstanceTests: XCTestCase {
         _ = swim.mark(p2, as: .suspect(incarnation: 0))
         _ = swim.mark(p1, as: .alive(incarnation: 1))
         validateSuspects(swim, expected: [p2, p3])
+    }
+
+    func test_memberCount_shouldNotCountDeadMembers() {
+        let swim = SWIM.Instance(.default)
+
+        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+
+        let aliveAtZero = SWIM.Status.alive(incarnation: 0)
+        swim.addMember(p1, status: aliveAtZero)
+        swim.addMember(p2, status: aliveAtZero)
+        swim.addMember(p3, status: aliveAtZero)
+        swim.memberCount.shouldEqual(3)
+
+        swim.mark(p1, as: .dead)
+        swim.memberCount.shouldEqual(2)
+
+        swim.mark(p2, as: .unreachable(incarnation: 19))
+        swim.memberCount.shouldEqual(2) // unreachable is still "part of the membership" as far as we are concerned
+
+        swim.mark(p2, as: .dead)
+        swim.memberCount.shouldEqual(1) // dead is not part of membership
+
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

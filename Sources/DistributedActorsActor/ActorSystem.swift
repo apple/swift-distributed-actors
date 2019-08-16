@@ -25,16 +25,8 @@ import NIO
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
 public final class ActorSystem {
-    // TODO: think about if we need ActorSystem to IS-A ActorRef; in Typed we did so, but it complicated the understanding of it to users...
-    // it has upsides though, it is then possible to expose additional async APIs on it, without doing any weird things
-    // creating an actor them becomes much simpler; it becomes an `ask` and we can avoid locks then (!)
 
     public let name: String
-
-    // Implementation note:
-    // First thing we need to start is the event stream, since is is what powers our logging infrastructure // TODO: ;-)
-    // so without it we could not log anything.
-    let eventStream = "" // FIXME actual implementation
 
     // initialized during startup
     internal var _deadLetters: ActorRef<DeadLetter>! = nil
@@ -185,7 +177,7 @@ public final class ActorSystem {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
                 self._clusterEventStream = try! EventStream(self, name: "clusterEvents")
-                _ = try cluster.start(system: self, eventStream: self.clusterEventStream) // only spawns when cluster is initialized
+                _ = try cluster.start(system: self, eventStream: self.clusterEvents) // only spawns when cluster is initialized
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
@@ -225,6 +217,18 @@ public final class ActorSystem {
 extension ActorSystem: Equatable {
     public static func ==(lhs: ActorSystem, rhs: ActorSystem) -> Bool {
         return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+    }
+}
+
+extension ActorSystem: CustomStringConvertible {
+    public var description: String {
+        var res = "ActorSystem("
+        res.append(self.name)
+        if self.settings.cluster.enabled {
+            res.append(", \(self.cluster.node)")
+        }
+        res.append(")")
+        return res
     }
 }
 

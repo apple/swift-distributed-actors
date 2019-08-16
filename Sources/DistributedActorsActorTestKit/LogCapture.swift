@@ -26,12 +26,15 @@ public final class LogCapture: LogHandler {
     var _logs: [CapturedLogMessage] = []
     let lock = ConcurrencyHelpers.Lock()
 
+    var label: String = ""
+
     public var metadata: Logger.Metadata = [:]
 
     public init() {
     }
 
     public func makeLogger(label: String) -> Logger {
+        self.label = label
         return Logger(label: label, self)
     }
 
@@ -67,7 +70,7 @@ extension LogCapture {
 
     public func printLogs() {
         for log in self.logs {
-            print("Captured log: [\(log.level)] \(log.message)")
+            print("Captured log [\(self.label)]: [\(log.level)] \(log.message)")
         }
     }
 
