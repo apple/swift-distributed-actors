@@ -48,7 +48,6 @@ internal enum DowningStrategyDirective {
 }
 
 internal enum DowningStrategyMessage {
-    case clusterEvent(ClusterEvent)
     case timeout(Member)
 }
 
@@ -65,10 +64,13 @@ internal struct DowningStrategyShell<Strategy: DowningStrategy> {
 
     var behavior: Behavior<Message> {
         return .setup { context in
+            let clusterEventSubRef = context.subReceive(ClusterEvent.self) { event in
+                self.receiveClusterEvent(context, event: event)
+            }
+            context.system.cluster.events.subscribe(clusterEventSubRef)
+
             return .receiveMessage { message in
                 switch message {
-                case .clusterEvent(let clusterEvent):
-                    self.receiveClusterEvent(context, event: clusterEvent)
                 case .timeout(let member):
                     context.log.debug("Received timeout for [\(member)]")
                     switch self.strategy.onTimeout(member) {
