@@ -17,97 +17,100 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
+final class ClusterAssociationTests: ClusteredNodesTestBase {
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Happy path, accept association
 
     func test_boundServer_shouldAcceptAssociate() throws {
-        self.setUpBoth()
+        let (local, remote) = self.setUpPair()
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, with: self.remoteUniqueNode)
-        try assertAssociated(remote, with: self.localUniqueNode)
+        try assertAssociated(local, withExactly: remote.cluster.node)
+        try assertAssociated(remote, withExactly: local.cluster.node)
     }
 
     func test_handshake_shouldNotifyOnSuccess() throws {
-        self.setUpBoth()
-        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let (local, remote) = self.setUpPair()
+        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
-        try assertAssociated(local, with: self.remoteUniqueNode)
-        try assertAssociated(remote, with: self.localUniqueNode)
+        try assertAssociated(local, withExactly: remote.cluster.node)
+        try assertAssociated(remote, withExactly: local.cluster.node)
 
-        try p.expectMessage(.success(self.remoteUniqueNode), within: .seconds(3))
+        try p.expectMessage(.success(remote.cluster.node), within: .seconds(3))
     }
 
     func test_handshake_shouldNotifySuccessWhenAlreadyConnected() throws {
-        self.setUpBoth()
-        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let (local, remote) = self.setUpPair()
+        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
-        try assertAssociated(local, with: self.remoteUniqueNode)
-        try assertAssociated(remote, with: self.localUniqueNode)
+        try assertAssociated(local, withExactly: remote.cluster.node)
+        try assertAssociated(remote, withExactly: local.cluster.node)
 
-        try p.expectMessage(.success(self.remoteUniqueNode))
+        try p.expectMessage(.success(remote.cluster.node))
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
-        try p.expectMessage(.success(self.remoteUniqueNode))
+        try p.expectMessage(.success(remote.cluster.node))
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
-        self.setUpBoth()
+        let (local, remote) = self.setUpPair()
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        let remoteName = remote.cluster.node.node.systemName
+        let remotePort = remote.cluster.node.port
 
-        try assertAssociated(self.local, with: self.remoteUniqueNode)
-        try assertAssociated(self.remote, with: self.localUniqueNode)
+        local.cluster.join(node: remote.cluster.node.node)
 
-        let oldRemote = self.remote
+        try assertAssociated(local, withExactly: remote.cluster.node)
+        try assertAssociated(remote, withExactly: local.cluster.node)
+
+        let oldRemote = remote
         oldRemote.shutdown() // kill remote node
 
-        self.setUpRemote() // new system, same exact node, however new UID
-        let replacementRemote = self.remote
+        let replacementRemote = self.setUpNode(remoteName) { settings in
+            settings.cluster.bindPort = remotePort
+        }
         let replacementUniqueAddress = replacementRemote.settings.cluster.uniqueBindNode
 
         // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
         // instance (oldRemote) on the same node; It should accept this new handshake, and ban the previous node.
-        replacementRemote.clusterShell.tell(.command(.handshakeWith(self.localUniqueNode.node, replyTo: nil))) // TODO nicer API
+        replacementRemote.cluster.join(node: local.cluster.node.node)
 
         // verify we are associated only with the appropriate nodes now;
         //
         // old node should have been removed from membership, by new one on same node "taking over"
         // note that connections to old node should also been severed // TODO cover this in a test
-        try assertAssociated(self.local, withExactly: [replacementUniqueAddress])
-        try assertAssociated(self.remote, withExactly: [self.localUniqueNode])
+        try assertAssociated(local, withExactly: [replacementUniqueAddress])
+        try assertAssociated(replacementRemote, withExactly: [local.cluster.node])
     }
 
     func test_association_shouldAllowSendingToRemoteReference() throws {
-        self.setUpBoth()
+        let (local, remote) = self.setUpPair()
 
-        let probeOnRemote = remoteTestKit.spawnTestProbe(expecting: String.self)
+        let probeOnRemote = self.testKit(remote).spawnTestProbe(expecting: String.self)
         let refOnRemoteSystem: ActorRef<String> = try remote.spawn(.receiveMessage { message in
             probeOnRemote.tell("forwarded:\(message)")
             return .same
         }, name: "remoteAcquaintance")
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         // DO NOT TRY THIS AT HOME; we do this since we have no receptionist which could offer us references
         // first we manually construct the "right remote path", DO NOT ABUSE THIS IN REAL CODE (please) :-)
-        let uniqueRemoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
+        let uniqueRemoteAddress = ActorAddress(node: remote.cluster.node, path: refOnRemoteSystem.path, incarnation: refOnRemoteSystem.address.incarnation)
         // to then obtain a remote ref ON the `system`, meaning that the node within uniqueRemoteAddress is a remote one
-        let resolveContext = ResolveContext<String>(address: uniqueRemoteAddress, system: self.local)
-        let resolvedRef = local._resolve(context: resolveContext)
+        let resolvedRef = self.resolveRef(local, type: String.self, address: uniqueRemoteAddress, on: remote)
         // the resolved ref is a local resource on the `system` and points via the right association to the remote actor
         // inside system `remote`. Sending messages to a ref constructed like this will make the messages go over remoting.
         resolvedRef.tell("HELLO")
@@ -115,126 +118,133 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         try probeOnRemote.expectMessage("forwarded:HELLO")
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Concurrently initiated handshakes to same node should both get completed
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
-        self.setUpBoth()
+        let (local, remote) = self.setUpPair()
 
-        let p7337 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-        let p8228 = remoteTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p7337 = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p8228 = self.testKit(remote).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: p7337.ref)))
-        remote.clusterShell.tell(.command(.handshakeWith(localUniqueNode.node, replyTo: p8228.ref)))
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        remote.cluster._shell.tell(.command(.handshakeWith(local.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
-        try assertAssociated(remote, with: local.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(remote, withExactly: local.settings.cluster.uniqueBindNode)
     }
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_outgoing_outgoing() throws {
-        self.setUpBoth()
+        let (local, remote) = setUpPair()
 
-        let p7337 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
-        let p8228 = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p7337 = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p8228 = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
         // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: p7337.ref)))
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: p8228.ref)))
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
-        try assertAssociated(remote, with: local.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(remote, withExactly: local.settings.cluster.uniqueBindNode)
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Retry associations
 
     func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
-        setUpLocal()
-        // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
-        let remoteAddress = Node(systemName: local.name, host: "localhost", port: self.remotePort)
-        local.clusterShell.tell(.command(.handshakeWith(remoteAddress, replyTo: nil))) // TODO nicer API
-        sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
-        setUpRemote()
+        let local = setUpNode("local")
 
-        try assertAssociated(local, with: self.remoteUniqueNode)
-        try assertAssociated(remote, with: self.localUniqueNode)
+        let remotePort = local.cluster.node.node.port + 10
+        // remote is NOT started, but we already ask local to handshake with the remote one (which will fail, though the node should keep trying)
+        let remoteNode = Node(systemName: "remote", host: "localhost", port: remotePort)
+
+        local.cluster.join(node: remoteNode)
+        sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
+
+        let remote = setUpNode("remote") { settings in 
+            settings.cluster.bindPort = remotePort
+        }
+
+        try assertAssociated(local, withExactly: remote.cluster.node)
+        try assertAssociated(remote, withExactly: local.cluster.node)
     }
 
     func test_association_shouldNotAssociateWhenRejected() throws {
-        setUpLocal {
-            $0.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
+        let local = self.setUpNode("local") { settings in
+            settings.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
         }
-        setUpRemote()
+        let remote = self.setUpNode("remote")
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertNotAssociated(system: local, expectAssociatedNode: self.remoteUniqueNode)
-        try assertNotAssociated(system: remote, expectAssociatedNode: self.localUniqueNode)
+        try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
+        try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
     }
 
     func test_handshake_shouldNotifyOnRejection() throws {
-        setUpLocal {
+        let local = self.setUpNode("local") {
             $0.cluster._protocolVersion.major += 1 // handshake will be rejected on major version difference
         }
-        setUpRemote()
+        let remote = self.setUpNode("remote")
 
-        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.clusterShell.tell(.command(.handshakeWith(self.remoteUniqueNode.node, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
-        try assertNotAssociated(system: local, expectAssociatedNode: self.remoteUniqueNode)
-        try assertNotAssociated(system: remote, expectAssociatedNode: self.localUniqueNode)
+        try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
+        try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
 
         switch try p.expectMessage() {
-        case ClusterShell.HandshakeResult.failure:
+        case ClusterShell.HandshakeResult.failure(let err):
+            "\(err)".shouldContain("incompatibleProtocolVersion(local:")
             () // ok
         default:
             throw p.error()
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Remote control caching
 
     func test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
-        setUpBoth()
-        remote.cluster.join(node: self.localUniqueNode.node)
+        let (local, remote) = setUpPair()
+        remote.cluster.join(node: local.cluster.node.node)
 
-        try assertAssociated(local, with: self.remoteUniqueNode)
+        try assertAssociated(local, withExactly: remote.cluster.node)
 
         let thirdSystem = ActorSystem("ClusterAssociationTests") { settings in
             settings.cluster.enabled = true
-            settings.cluster.nid = self.remote.settings.cluster.nid
+            settings.cluster.nid = remote.settings.cluster.nid
             settings.cluster.node.port = 9119
         }
         defer { thirdSystem.shutdown() }
 
-        thirdSystem.cluster.join(node: self.localUniqueNode.node)
-        try assertAssociated(local, withExactly: [self.remoteUniqueNode, thirdSystem.settings.cluster.uniqueBindNode])
+        thirdSystem.cluster.join(node: local.cluster.node.node)
+        try assertAssociated(local, withExactly: [remote.cluster.node, thirdSystem.settings.cluster.uniqueBindNode])
 
         local._cluster?.associationRemoteControls.count.shouldEqual(2)
     }
 
-    // TODO: once initiated, handshake seem to retry until they succeed, that seems
+    // FIXME: once initiated, handshake seem to retry until they succeed, that seems
     //      like a problem and should be fixed. This test should be re-enabled,
     //      once https://github.com/apple/swift-distributed-actors/issues/724 (handshakes should not retry forever) is resolved
     func disabled_test_handshake_shouldNotifyOnConnectionFailure() throws {
-        setUpLocal()
+        let local = setUpNode("local")
 
-        let p = localTestKit.spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
+        let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        var address = self.localUniqueNode.node
-        address.port = address.port + 10
+        var node = local.cluster.node.node
+        node.port = node.port + 10
 
-        local.clusterShell.tell(.command(.handshakeWith(address, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO nicer API
 
         switch try p.expectMessage(within: .seconds(1)) {
         case ClusterShell.HandshakeResult.failure:
@@ -242,5 +252,49 @@ final class ClusterAssociationTests: ClusteredTwoNodesTestBase {
         default:
             throw p.error()
         }
+    }
+
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Change membership on Down detected
+
+    func test_down_self_shouldChangeMembershipSelfToBeDown() throws {
+        let (local, remote) = setUpPair()
+        remote.cluster.join(node: local.cluster.node.node)
+        try assertAssociated(local, withExactly: remote.cluster.node)
+
+        local.cluster.down(node: local.cluster.node.node)
+
+        let localProbe = self.testKit(local).spawnTestProbe(expecting: Membership.self)
+
+        // we we down local on local, it should become down there:
+        try self.testKit(local).eventually(within: .seconds(3)) {
+            local.cluster._shell.tell(.query(.currentMembership(localProbe.ref)))
+            let localMembership = try localProbe.expectMessage()
+
+            guard let selfMember = localMembership.member(local.cluster.node.node) else {
+                throw self.testKit(remote).error("No self member in membership! Wanted: \(local.cluster.node)", line: #line - 1)
+            }
+            guard selfMember.status == .down else {
+                throw self.testKit(local).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
+            }
+
+            // and the local node should also propagate the Down information to the remote node
+            // although this may be a best effort since the local can just shut down if it wanted to,
+            // this scenario assumes a graceful leave though:
+
+            remote.cluster._shell.tell(.query(.currentMembership(localProbe.ref)))
+            let remoteMembership = try localProbe.expectMessage()
+
+            guard let localMemberObservedOnRemote = remoteMembership.member(local.cluster.node.node) else {
+                throw Boom("\(remote) does not know about the \(local.cluster.node) at all...!")
+            }
+
+            guard localMemberObservedOnRemote.status == .down else {
+                throw self.testKit(remote).error("Wanted to see \(local.cluster.node) as DOWN on \(remote), but was still: \(localMemberObservedOnRemote)", line: #line - 1)
+            }
+        }
+
+        // and the remote node should also notice
     }
 }

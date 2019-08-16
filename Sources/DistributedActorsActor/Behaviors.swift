@@ -525,8 +525,8 @@ public extension Behavior {
 
         case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
 
-        case .stop:           fatalError("Illegal attempt to interpret message with .stop behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
-        case .failed:            fatalError("Illegal attempt to interpret message with .failed behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .stop:   fatalError("Illegal attempt to interpret message with .stop behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
+        case .failed: fatalError("Illegal attempt to interpret message with .failed behavior! Actor should not be acting anymore. Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
 
         case .suspend:
             fatalError("Illegal to attempt to interpret message with .suspend behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)

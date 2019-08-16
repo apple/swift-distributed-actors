@@ -14,7 +14,7 @@
 
 internal enum ClusterReceptionist {
 
-    static let syncKey = TimerKey("sync")
+    static let syncKey = TimerKey("receptionist/sync")
 
     struct Replicate: Receptionist.Message, Codable {
         let key: AnyRegistrationKey

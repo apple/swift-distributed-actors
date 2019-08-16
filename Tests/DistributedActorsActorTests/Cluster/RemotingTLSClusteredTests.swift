@@ -18,7 +18,7 @@ import XCTest
 import SwiftDistributedActorsActorTestKit
 import NIOSSL
 
-class RemotingTLSTests: ClusteredTwoNodesTestBase {
+class RemotingTLSTests: ClusteredNodesTestBase {
 
     let testCert1 = """
 -----BEGIN CERTIFICATE-----
@@ -190,7 +190,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource2: NIOSSLCertificateSource = .certificate(testCertificate2)
         let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey2.utf8CString), format: .pem))
 
-        setUpLocal { settings in
+        let local = self.setUpNode("local") { settings in
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource1],
                 privateKey: testKeySource1,
@@ -199,7 +199,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        setUpRemote { settings in
+        let remote = setUpNode("remote") { settings in
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource2],
                 privateKey: testKeySource2,
@@ -208,9 +208,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
 
     func test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
@@ -218,7 +218,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
 
-        setUpLocal { settings in
+        let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
@@ -228,7 +228,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        setUpRemote { settings in
+        let remote = setUpNode("remote") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
@@ -240,22 +240,22 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
 
         let testKit = ActorTestKit(local)
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
         sleep(2)
 
         do {
             let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
-            local.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
-            remote.clusterShell.tell(.query(.associatedNodes(pSystem.ref)))
+            local.cluster._shell.tell(.query(.associatedNodes(pSystem.ref)))
+            remote.cluster._shell.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }
 
         do {
             let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
-            local.clusterShell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
-            remote.clusterShell.tell(.query(.associatedNodes(pRemote.ref)))
+            local.cluster._shell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
+            remote.cluster._shell.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }
@@ -265,7 +265,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificate = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
-        setUpLocal { settings in
+        let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
@@ -275,7 +275,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        setUpRemote { settings in
+        let remote = setUpNode("remote") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
@@ -285,9 +285,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             )
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase() throws {
@@ -301,7 +301,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
         let testCertificate = try NIOSSLCertificate(buffer: [Int8](passordProtectedCert.utf8CString), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
-        setUpLocal { settings in
+        let local = self.setUpNode("local") { settings in
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -313,7 +313,7 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             }
         }
 
-        setUpRemote { settings in
+        let remote = setUpNode("remote") { settings in
             settings.cluster.tls = TLSConfiguration.forServer(
                 certificateChain: [testCertificateSource],
                 privateKey: testKey,
@@ -325,9 +325,9 @@ P5YJu6MpVM9IQSbvvUJDpWQDIDGEMgmtCS4OeQU6eBrLycbaaACVfl2CM+uZS9a9
             }
         }
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil))) // TODO nicer API
+        local.cluster.join(node: remote.cluster.node.node)
 
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
     }
 
 }

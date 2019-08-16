@@ -25,13 +25,11 @@ public struct ClusterSettings {
         public static let systemName: String = "ActorSystem"
         public static let bindHost: String = "localhost"
         public static let bindPort: Int = 7337
-        public static let failureDetector: FailureDetectorSettings = .manual
     }
 
     public static var `default`: ClusterSettings {
         let defaultNode = Node(systemName: Default.systemName, host: Default.bindHost, port: Default.bindPort)
-        let failureDetector = Default.failureDetector
-        return ClusterSettings(node: defaultNode, failureDetector: failureDetector)
+        return ClusterSettings(node: defaultNode)
     }
 
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
@@ -88,25 +86,6 @@ public struct ClusterSettings {
     // TODO do we need to separate server and client sides? Sounds like a reasonable thing to do.
     public var eventLoopGroup: EventLoopGroup? = nil
 
-    /// Configure what failure detector to use.
-    // TODO: Since it MAY have specific requirements on other settings... we may want to allow it to run a validation after creation?
-    public var failureDetector: FailureDetectorSettings
-
-    /// Create FailureObserver and Detector instances and actors.
-    /// - throws: when name of being spawned failure detector actor is already taken -- which should never happen.
-    internal func makeFailureDetector(system: ActorSystem) throws -> FailureObserver {
-        let context = FailureDetectorContext(system)
-
-        switch self.failureDetector {
-        case .manual:
-            return ManualFailureObserver(context: context)
-        case .swim(let settings):
-            let observer = ManualFailureObserver(context: context) // TODO not sure if this one or another one, but we want to call into it when SWIM decides a node should die etc.
-
-            fatalError("MISSING OBSERVER IMPL TO WORK WITH SWIM")
-        }
-    }
-
     // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
     /// Interval with which the receptionists will sync their state with the other nodes.
     public var receptionistSyncInterval: TimeAmount = .seconds(5)
@@ -120,6 +99,20 @@ public struct ClusterSettings {
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Cluster membership and failure detection
+
+    public var downingStrategy: DowningStrategySettings = .noop
+
+    /// Configures the SWIM failure failure detector.
+    public var swim: SWIM.Settings = .default
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Logging
+
+    /// If enabled, logs membership changes (including the entire membership table from the perspective of the current node).
+    public var logMembershipChanges: Logger.Level? = .info
+
     /// When enabled traces _all_ incoming and outgoing cluster (e.g. handshake) protocol communication (remote messages).
     /// All logs will be prefixed using `[tracelog:cluster]`, for easier grepping.
     #if SACT_TRACE_CLUSTER
@@ -128,20 +121,11 @@ public struct ClusterSettings {
     var traceLogLevel: Logger.Level? = nil
     #endif
 
-    public var downingStrategy: DowningStrategySettings = .noop
-
-    public init(node: Node, failureDetector: FailureDetectorSettings, tls: TLSConfiguration? = nil) {
+    public init(node: Node, tls: TLSConfiguration? = nil) {
         self.node = node
         self.nid = NodeID.random()
-        self.failureDetector = failureDetector
         self.tls = tls
     }
-}
-
-public enum FailureDetectorSettings {
-    case manual
-    case swim(SWIM.Settings)
-    // case instance(FailureDetector) // TODO: once we decide to allow users implementing their own
 }
 
 public enum DowningStrategySettings {

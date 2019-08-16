@@ -17,16 +17,16 @@ import XCTest
 @testable import Swift Distributed ActorsActor
 import SwiftDistributedActorsActorTestKit
 
-class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
+class ClusterReceptionistTests: ClusteredNodesTestBase {
     func test_clusterReceptionist_shouldReplicateRegistrations() throws {
-        setUpBoth()
+        let (local, remote) = setUpPair()
 
-        let probe = localTestKit.spawnTestProbe(expecting: String.self)
-        let registeredProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let lookupProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        local.cluster.join(node: remote.cluster.node.node)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let ref: ActorRef<String> = try local.spawnAnonymous(
             .receiveMessage {
@@ -55,13 +55,13 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
     }
 
     func test_clusterReceptionist_shouldSyncPeriodically() throws {
-        setUpBoth {
+        let (local, remote) = setUpPair {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let probe = localTestKit.spawnTestProbe(expecting: String.self)
-        let registeredProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let lookupProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let ref: ActorRef<String> = try local.spawnAnonymous(
             .receiveMessage {
@@ -79,8 +79,8 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         local.receptionist.tell(Receptionist.Register(ref, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        local.cluster.join(node: remote.cluster.node.node)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let listing = try lookupProbe.expectMessage()
         listing.refs.count.shouldEqual(1)
@@ -93,13 +93,13 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
     }
 
     func test_clusterReceptionist_shouldMergeEntriesOnSync() throws {
-        setUpBoth {
+        let (local, remote) = setUpPair {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = localTestKit.spawnTestProbe(name: "registeredProbe", expecting: Receptionist.Registered<String>.self)
-        let localLookupProbe = localTestKit.spawnTestProbe(name: "localLookupProbe", expecting: Receptionist.Listing<String>.self)
-        let remoteLookupProbe = remoteTestKit.spawnTestProbe(name: "remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(name: "registeredProbe", expecting: Receptionist.Registered<String>.self)
+        let localLookupProbe = self.testKit(local).spawnTestProbe(name: "localLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let remoteLookupProbe = self.testKit(remote).spawnTestProbe(name: "remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             return .same
@@ -130,8 +130,8 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        local.cluster.join(node: remote.cluster.node.node)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let localListing = try localLookupProbe.expectMessage()
         localListing.refs.count.shouldEqual(4)
@@ -142,12 +142,12 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
 
     // TODO: remote watches are not yet implemented, so this does not work yet. Re-enable once https://github.com/apple/swift-distributed-actors/issues/609 is resolved
     func disabled_clusterReceptionist_shouldRemoveRemoteRefsWhenNodeDies() throws {
-        setUpBoth {
+        let (local, remote) = setUpPair {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = localTestKit.spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let remoteLookupProbe = remoteTestKit.spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let remoteLookupProbe = self.testKit(remote).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             return .stop
@@ -167,8 +167,8 @@ class ClusterReceptionistTests: ClusteredTwoNodesTestBase {
         remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: remoteLookupProbe.ref))
         _ = try remoteLookupProbe.expectMessage()
 
-        local.clusterShell.tell(.command(.handshakeWith(remoteUniqueNode.node, replyTo: nil)))
-        try assertAssociated(local, with: remote.settings.cluster.uniqueBindNode)
+        local.cluster.join(node: remote.cluster.node.node)
+        try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let remoteListing = try remoteLookupProbe.expectMessage()
         remoteListing.refs.count.shouldEqual(2)

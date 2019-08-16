@@ -107,7 +107,7 @@ public class ProcessIsolated {
             let funKillServantProcess: (Int) -> () = { (pid: Int)  in
                 self.lock.withLockVoid {
                     if let servant = self._servants[pid] {
-                        self.system.clusterShell.tell(.command(.down(servant.node)))
+                        self.system.cluster._shell.tell(.command(.downCommand(servant.node.node)))
                         self._servants.removeValue(forKey: pid)
                     }
                 }
@@ -293,7 +293,7 @@ extension ProcessIsolated {
                 }
 
                 // always DOWN the node that we know has terminated
-                self.system.clusterShell.tell(.command(.down(servant.node)))
+                self.system.cluster.down(node: servant.node)
 
                 // if we have a restart supervision logic, we should apply it.
                 guard var restartLogic = servant.restartLogic else {

@@ -32,7 +32,7 @@ final class ProtobufRoundTripTests: XCTestCase {
 
     let localActorAddress = try! ActorAddress(path: ActorPath._user.appending("hello"), incarnation: .random())
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Core actor types
     func test_roundTrip_ActorAddress() throws {
         try check(self.localActorAddress,
@@ -46,7 +46,7 @@ final class ProtobufRoundTripTests: XCTestCase {
             fromProto: ActorPath.init)
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {

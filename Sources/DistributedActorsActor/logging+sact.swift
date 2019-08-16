@@ -65,6 +65,10 @@ public class LoggingContext {
 
 public struct ActorLogger {
     static func make<T>(context: ActorContext<T>) -> Logger {
+        if let overrideLogger = context.system.settings.overrideLogger {
+            return overrideLogger
+        }
+
         var proxyHandler = ActorOriginLogHandler(context)
         proxyHandler.metadata["actorPath"] = .lazyStringConvertible { [weak context = context] in context?.path.description ?? "INVALID" }
         if context.system.settings.cluster.enabled {

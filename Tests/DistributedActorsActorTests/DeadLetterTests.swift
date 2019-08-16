@@ -34,7 +34,7 @@ final class DeadLetterTests: XCTestCase {
         self.system.shutdown()
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
@@ -49,7 +49,7 @@ final class DeadLetterTests: XCTestCase {
         try self.awaitLogContaining(text: "/user/someone")
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ActorSystem integrated tests
 
     func test_sendingToTerminatedActor_shouldResultInDeadLetter() throws {

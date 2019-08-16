@@ -253,7 +253,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         inbound.onDelivery(self.msg(seqNr: 3)).shouldEqual(.accept(ack(3)))
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialization
 
     func test_redelivery_systemMessage_serialization() throws {

@@ -58,10 +58,6 @@ struct DistributedDiningPhilosophers {
 
         Thread.sleep(.seconds(2))
 
-        systemA._dumpAssociations()
-        systemB._dumpAssociations()
-        systemC._dumpAssociations()
-
         print("~~~~~~~ systems joined each other ~~~~~~~")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:

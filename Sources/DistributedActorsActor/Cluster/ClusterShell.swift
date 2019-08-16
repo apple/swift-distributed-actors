@@ -18,7 +18,12 @@ import DistributedActorsConcurrencyHelpers
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal Shell responsible for all clustering (i.e. connection management) state.
 
-/// The network shell "drives" all internal state machines of the remoting subsystem.
+/// The cluster shell "drives" all internal state machines of the cluster subsystem.
+///
+/// It is responsible for managing the underlying (re-)connections by extending and accepting/rejecting handshakes,
+/// as well as orchestrating any high-level membership changes, e.g. by interacting with a failure detector and other gossip mechanisms.
+///
+/// It keeps the `Membership` instance that can be seen the source of truth for any membership based decisions.
 internal class ClusterShell {
     static let name = "cluster"
     public typealias Ref = ActorRef<ClusterShell.Message>
@@ -35,7 +40,7 @@ internal class ClusterShell {
 
     private var _swimRef: ActorRef<SWIM.Message>!
 
-    private var _eventStream: EventStream<ClusterEvent>!
+    private var _events: EventStream<ClusterEvent>!
 
     // FIXME: use event stream to publish events instead of direct communication
     private var _downingStrategyRef: ActorRef<DowningStrategyMessage>!
@@ -75,7 +80,7 @@ internal class ClusterShell {
     // TODO `dead` associations could be moved on to a smaller map, like an optimized Int Set or something, to keep less space
     // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
 
     private var _ref: ClusterShell.Ref?
@@ -88,17 +93,17 @@ internal class ClusterShell {
         return it
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Failure Detector
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Node-Death Watcher
 
     // Implementation notes: The `_failureDetectorRef` has to remain internally accessible.
     // This is in order to solve a chicken-and-egg problem that we face during spawning of
     // the first system actor that is the *failure detector* so it cannot reach to the systems
-    // value before it started... // TODO see if we indeed shall guarantee that this is the first actor?
-    var _failureDetectorRef: FailureDetectorShell.Ref?
-    var failureDetectorRef: FailureDetectorShell.Ref {
-        guard let it = self._failureDetectorRef else {
-            return fatalErrorBacktrace("Accessing ClusterShell.failureDetector failed, was nil! This should never happen as access should only happen after start() was invoked.")
+    // value before it started...
+    var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
+    var nodeDeathWatcher: NodeDeathWatcherShell.Ref {
+        guard let it = self._nodeDeathWatcher else {
+            return fatalErrorBacktrace("Accessing ClusterShell.nodeDeathWatcher failed, was nil! This should never happen as access should only happen after start() was invoked.")
         }
         return it
     }
@@ -113,20 +118,18 @@ internal class ClusterShell {
         //
         // TODO see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
-        self._failureDetectorRef = nil
+        self._nodeDeathWatcher = nil
     }
 
-    /// Actually starts the shell which kicks off binding to a port, and all further remoting work
+    /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> ClusterShell.Ref {
         self._serializationPool = try SerializationPool.init(settings: .default, serialization: system.serialization)
 
-        // TODO maybe a bit inverted... maybe create it inside the failure detector actor?
-        let failureDetector = try system.settings.cluster.makeFailureDetector(system: system)
-        self._failureDetectorRef = try system._spawnSystemActor(
-            FailureDetectorShell.behavior(driving: failureDetector),
-            name: "failureDetector")
+        self._nodeDeathWatcher = try system._spawnSystemActor(
+            NodeDeathWatcherShell.behavior(),
+            name: NodeDeathWatcherShell.name, perpetual: true)
 
-        self._eventStream = eventStream
+        self._events = eventStream
 
         // TODO concurrency... lock the ref as others may read it?
         self._ref = try system._spawnSystemActor(
@@ -162,15 +165,14 @@ internal class ClusterShell {
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
         case retryHandshake(HandshakeStateMachine.InitiatedState)
 
-        case markUnreachable(UniqueNode)
-        case markReachable(UniqueNode)
+        case reachabilityChanged(UniqueNode, MemberReachability)
 
-        // TODO ensure it is possible to Down a node by an operator typing "cluster down host:port" without knowing the NID
-        case down(UniqueNode)
+        case downCommand(Node)
         case unbind(BlockingReceptacle<Void>) // TODO could be NIO future
     }
     enum QueryMessage: NoSerializationVerification {
         case associatedNodes(ActorRef<Set<UniqueNode>>) // TODO better type here
+        case currentMembership(ActorRef<Membership>)
         // TODO: case subscribeAssociations(ActorRef<[UniqueNode]>) // to receive events about it one by one
     }
     internal enum InboundMessage {
@@ -210,12 +212,11 @@ extension ClusterShell {
     /// Once bound proceeds to `ready` state, where it remains to accept or initiate new handshakes.
     private func bind() -> Behavior<Message> {
         return .setup { context in
-            // TODO: Use real config
-            let swimBehavior = SWIMMembershipShell(settings: .default, clusterRef: context.myself).behavior
-            self._swimRef = try context.system._spawnSystemActor(swimBehavior, name: SWIMMembershipShell.name, perpetual: true)
-
             let clusterSettings = context.system.settings.cluster
             let uniqueBindAddress = clusterSettings.uniqueBindNode
+
+            let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
+            self._swimRef = try context.system._spawnSystemActor(swimBehavior, name: SWIMShell.name, perpetual: true)
 
             switch clusterSettings.downingStrategy {
             case .noop:
@@ -229,7 +230,13 @@ extension ClusterShell {
             // FIXME: all the ordering dance with creating of state and the address...
             context.log.info("Binding to: [\(uniqueBindAddress)]")
 
-            let chanElf = self.bootstrapServerSide(system: context.system, shell: context.myself, bindAddress: uniqueBindAddress, settings: clusterSettings, serializationPool: self.serializationPool)
+            let chanElf = self.bootstrapServerSide(
+                system: context.system,
+                shell: context.myself,
+                bindAddress: uniqueBindAddress,
+                settings: clusterSettings,
+                serializationPool: self.serializationPool
+            )
 
             // TODO: configurable bind timeout?
 
@@ -249,34 +256,25 @@ extension ClusterShell {
     /// Serves as main "driver" for handshake and association state machines.
     private func ready(state: ClusterShellState) -> Behavior<Message> {
         func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
+            state.tracelog(.inbound, message: command)
+
             switch command {
-            case .down(let node):
-                let member = Member(node: node, status: .up)
-                self._swimRef.tell(.local(.confirmDead(node)))
-                self._eventStream.publish(.membership(.memberDown(member)))
-                return .same
-            case .markUnreachable(let node):
-                // FIXME: keep track of memberships
-                let member = Member(node: node, status: .up)
-                self._eventStream.publish(.reachability(.memberUnreachable(member)))
-                return .same // FIXME publish unreachable event
-            case .markReachable(let node):
-                let member = Member(node: node, status: .up)
-                self._eventStream.publish(.reachability(.memberReachable(member)))
-                return .same
             case .join(let node):
-                self._swimRef.tell(.local(.join(node)))
-                return .same
+                return self.onJoin(context, state: state, joining: node)
+
             case .handshakeWith(let remoteAddress, let replyTo):
                 return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
+
+            case .reachabilityChanged(let node, let reachability):
+                return self.onReachabilityChange(context, state: state, node: node, reachability: reachability)
+
             case .unbind(let receptacle):
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
-            case .down(let node): // FIXME: this case is already handled above
-                state.log.info("Received [.down(\(node))] command, will unconditionally DOWN specified node.")
-                self.failureDetectorRef.tell(.forceDown(node))
-                return .same
+
+            case .downCommand(let node):
+                return self.onDownCommand(context, state: state, down: node)
             }
         }
 
@@ -284,6 +282,9 @@ extension ClusterShell {
             switch query {
             case .associatedNodes(let replyTo):
                 replyTo.tell(state.associatedAddresses()) // TODO: we'll want to put this into some nicer message wrapper?
+                return .same
+            case .currentMembership(let replyTo):
+                replyTo.tell(state.membership)
                 return .same
             }
         }
@@ -316,7 +317,8 @@ extension ClusterShell {
     }
 }
 
-// Implements: Handshake init
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Handshake init
 extension ClusterShell {
     /// Initiate an outgoing handshake to the `remoteNode`
     ///
@@ -414,6 +416,7 @@ extension ClusterShell {
             switch hsm.negotiate() {
             case .acceptAndAssociate(let completedHandshake):
                 state.log.info("Accept association with \(offer.from)!")
+
                 let association = state.associate(completedHandshake, channel: channel)
                 self.cacheAssociationRemoteControl(association)
 
@@ -424,7 +427,7 @@ extension ClusterShell {
                 return self.ready(state: state)
 
             case .rejectHandshake(let rejectedHandshake):
-                state.log.warning("Rejecting handshake from \(offer.from)! Error: \(rejectedHandshake.error)")
+                state.log.warning("Rejecting handshake from \(offer.from), error: [\(rejectedHandshake.error)]:\(type(of: rejectedHandshake.error))")
 
                 // note that we should NOT abort the channel here since we still want to send back the rejection.
 
@@ -453,6 +456,7 @@ extension ClusterShell {
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Failures to obtain connections
+
 extension ClusterShell {
 
     func onOutboundConnectionError(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, error: Error) -> Behavior<Message> {
@@ -509,9 +513,8 @@ extension ClusterShell {
         }
 
         let association = state.associate(completed, channel: channel)
-
-        state.log.debug("[Cluster] Associated with: \(completed.remoteNode).")
         self.cacheAssociationRemoteControl(association)
+        state.log.debug("Associated with: \(completed.remoteNode). Membership: \(state.membership)")
 
         completed.whenCompleted?.succeed(.accept(completed.makeAccept()))
 
@@ -522,6 +525,8 @@ extension ClusterShell {
         var state = state
 
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
+
+        // TODO back off intensely, give up after some attempts?
 
         if let hsmState = state.abortOutgoingHandshake(with: reject.from) {
             notifyHandshakeFailure(state: hsmState, node: reject.from, error: HandshakeConnectionError(node: reject.from, message: reject.reason))
@@ -577,6 +582,78 @@ extension ClusterShell {
                 throw err
             }
         }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Handling cluster membership changes
+
+extension ClusterShell {
+
+    /// Joining needs to inform SWIM about the new member; it in turn will ensure we associate with it, and inform us when it can be moved to joining/up
+    func onJoin(_ context: ActorContext<Message>, state: ClusterShellState, joining node: Node) -> Behavior<Message> {
+        self._swimRef.tell(.local(.monitor(node)))
+        return .same
+    }
+
+    func onReachabilityChange(_ context: ActorContext<Message>, state: ClusterShellState,
+                              node: UniqueNode, reachability: MemberReachability) -> Behavior<Message> {
+        var state = state
+
+        if let changedMember = state.onMemberReachabilityChange(node, toReachability: reachability) {
+            switch reachability {
+            case .unreachable:
+                self._events.publish(.reachability(.memberUnreachable(changedMember)))
+            case .reachable:
+                self._events.publish(.reachability(.memberReachable(changedMember)))
+            }
+            return ready(state: state)
+        } else {
+            return .same
+        }
+    }
+
+    func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, down node: Node) -> Behavior<Message> {
+        var state = state
+
+        if let change = state.onMembershipChange(node, toStatus: .down) {
+           self.nodeDeathWatcher.tell(.forceDown(change.node))
+
+           if let logChangeLevel = state.settings.logMembershipChanges {
+               context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change), membership: \(state.membership)")
+           }
+        }
+
+        guard node != state.selfNode.node else {
+            // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
+
+            self._swimRef.tell(.local(.confirmDead(state.selfNode)))
+
+            context.log.warning("Self node was determined [DOWN].")
+
+            return self.ready(state: state)
+        }
+
+        // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Down(other node);
+
+        guard let association = state.association(with: node) else {
+            context.log.debug("Received Down command for not associated node [\(node)], ignoring.")
+            return .ignore
+        }
+
+        // TODO push more logic into the State (Instance/Shell style)
+
+        switch association {
+        case .associated(let associated):
+            self._swimRef.tell(.local(.confirmDead(associated.remoteNode)))
+            state.log.info("Marked node [\(associated.remoteNode)] as: DOWN")
+        // case tombstone ???
+        }
+
+
+        return self.ready(state: state)
     }
 }
 

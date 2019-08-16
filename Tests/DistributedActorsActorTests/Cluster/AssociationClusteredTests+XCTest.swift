@@ -35,6 +35,7 @@ extension ClusterAssociationTests {
                 ("test_association_shouldNotAssociateWhenRejected", test_association_shouldNotAssociateWhenRejected),
                 ("test_handshake_shouldNotifyOnRejection", test_handshake_shouldNotifyOnRejection),
                 ("test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther", test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther),
+                ("test_down_self_shouldChangeMembershipSelfToBeDown", test_down_self_shouldChangeMembershipSelfToBeDown),
            ]
    }
 }

@@ -39,6 +39,6 @@ extension ActorSystem {
             fatalError("system must be clustered to allow resolving a remote ref.")
         }
         let remoteAddress = ActorAddress(node: remote.settings.cluster.uniqueBindNode, path: ref.path, incarnation: ref.address.incarnation)
-        return ActorRef(.remote(RemotePersonality(shell: self._cluster!, address: remoteAddress, system: self)))
+        return ActorRef(.remote(RemotePersonality(shell: clusterShell, address: remoteAddress, system: self)))
     }
 }

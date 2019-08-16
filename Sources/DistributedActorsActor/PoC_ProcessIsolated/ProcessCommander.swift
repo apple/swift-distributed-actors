@@ -62,7 +62,7 @@ public struct ProcessCommander {
 //
 //                    if let node = node {
 //                        system.log.warning("Servant process died [\(res)], node: [\(node)]; Issuing a forced DOWN command.")
-//                        self.system.clusterShell.tell(.command(.down(node.node)))
+//                        self.system.cluster._shell.tell(.command(.down(node.node)))
 //                    }
 //
 //                    // TODO spawn replacement configurable

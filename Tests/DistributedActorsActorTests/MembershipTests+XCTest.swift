@@ -24,6 +24,10 @@ extension MembershipTests {
 
    static var allTests : [(String, (MembershipTests) -> () throws -> Void)] {
       return [
+                ("test_status_ordering", test_status_ordering),
+                ("test_members_listing", test_members_listing),
+                ("test_mark_shouldOnlyProceedForwardInStatuses", test_mark_shouldOnlyProceedForwardInStatuses),
+                ("test_mark_reachability", test_mark_reachability),
                 ("test_membershipDiff_beEmpty_whenNothingChangedForIt", test_membershipDiff_beEmpty_whenNothingChangedForIt),
                 ("test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt", test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt),
                 ("test_membershipDiff_shouldIncludeEntry_whenMemberRemoved", test_membershipDiff_shouldIncludeEntry_whenMemberRemoved),

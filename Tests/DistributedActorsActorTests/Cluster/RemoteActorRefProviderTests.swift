@@ -65,7 +65,7 @@ class RemoteActorRefProviderTests: XCTestCase {
         // about actor refs; and that it happens to have a remote address is the detail to focus on, not the underlying type.
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: resolve deadLetters
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {

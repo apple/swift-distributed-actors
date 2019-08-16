@@ -14,13 +14,40 @@
 
 import Foundation
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster Member
+
 /// A `Member` is a node that is participating in the cluster which carries `MemberStatus` information.
 ///
-/// Its identity is the underlying `UniqueNode` of the member.
+/// Its identity is the underlying `UniqueNode`.
 public struct Member: Hashable {
-    // A Member's identity is its unique address
+    /// Unique node of this cluster member.
     let node: UniqueNode
+    /// Cluster membership status of this member, signifying the logical state it resides in the membership.
+    /// Note, that a node that is reachable may still become `.down`, e.g. by issuing a manual `cluster.down(node:)` command or similar.
     var status: MemberStatus
+    /// Reachability signifies the failure detectors assessment about this members "reachability" i.e. if it is responding to health checks or not.
+    var reachability: MemberReachability
+
+    public init(node: UniqueNode, status: MemberStatus) {
+        self.node = node
+        self.status = status
+        self.reachability = .reachable
+    }
+
+    var asUnreachable: Member {
+        var res = self
+        res.reachability = .unreachable
+        return res
+    }
+    var asReachable: Member {
+        var res = self
+        res.reachability = .reachable
+        return res
+    }
+}
+
+extension Member {
 
     public func hash(into hasher: inout Hasher) {
         self.node.hash(into: &hasher)
@@ -33,6 +60,15 @@ public struct Member: Hashable {
         return true
     }
 }
+
+extension Member: CustomStringConvertible {
+    public var description: String {
+        return "Member(\(node), status: \(status), reachability: \(reachability))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Cluster Membership
 
 /// Membership represents the ordered set of members of this cluster.
 ///
@@ -52,14 +88,18 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     // TODO: may want to maintain them separately depending on state perhaps... we'll see
     // it could be then leaking how e.g. SWIM works into here... but perhaps its fine hm
 
-    private var members: [Node: Member]
+    private var _members: [Node: Member]
+
+    // /// The `membership.log` is an optional feature that maintains the list of `n` last membership changes,
+    // /// which can be used to observe and debug membership transitions.
+    // private var log: [MembershipChange] = [] // TODO implement keeping the membership log
 
     // TODO ordered set of members would be nice, if we stick to Akka's style of "leader"
 
     public init(members: [Member]) {
-        self.members = Dictionary(minimumCapacity: members.count)
+        self._members = Dictionary(minimumCapacity: members.count)
         for member in members {
-            self.members[member.node.node] = member
+            self._members[member.node.node] = member
         }
     }
 
@@ -67,21 +107,47 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         self.init(members: members)
     }
 
+    /// A leader is the "lowest" (sorted) address of all REACHABLE nodes.
+    ///
+    /// ### Leaders in partitions
+    /// There CAN be multiple leaders in the same cluster, in face of cluster partitions,
+    /// where certain parts of the cluster mark other groups as unreachable.
+    ///
+    /// Certain actions can only be performed by the "leader" of a group.
+    func leader() -> Member? {
+        return self._members.values
+            .lazy
+            .filter { $0.status == .up }
+            .filter { $0.reachability == .reachable }
+            .first
+    }
+
     func member(_ node: UniqueNode) -> Member? {
-        return self.members[node.node]
+        return self._members[node.node]
     }
     func member(_ node: Node) -> Member? {
-        return self.members[node]
+        return self._members[node]
+    }
+    
+    func count(atLeast status: MemberStatus) -> Int {
+        return self._members.values.filter { $0.status <= status }.count
+    }
+
+    func members(atLeast status: MemberStatus) -> [Member] {
+        return self._members.values.filter { $0.status <= status }
     }
 }
 
-extension Membership {
-    var prettyDescription: String {
-        var res = "Membership: "
-        for member in self.members.values {
+extension Membership: CustomStringConvertible {
+    public func prettyDescription(label: String) -> String {
+        var res = "Membership [\(label)]:"
+        for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
             res += "\n   [\(member.node)] STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
         return res
+    }
+    public var description: String {
+        return "Membership(\(self._members.values))"
     }
 }
 
@@ -91,21 +157,21 @@ extension Membership {
 extension Membership {
 
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
-    mutating func apply(_ change: MembershipChange) {
+    mutating func apply(_ change: MembershipChange) -> MembershipChange? {
         // TODO could do more validation and we should make sure what transitions we allow and which don't
         switch change.toStatus {
         case nil:
             // means a node removal
-            self.remove(change.node)
+            return self.remove(change.node)
         case .some(.joining):
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
-            _ = self.join(change.node)
+            return self.join(change.node)
         case .some(.up):
-            _ = self.join(change.node)
+            return self.join(change.node)
             // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
             // TODO log state transitions
-            self.mark(change.node, as: status)
+            return self.mark(change.node, as: status)
         }
     }
 
@@ -116,18 +182,11 @@ extension Membership {
 
         if let member = self.member(node) {
             // we are joining "over" an existing incarnation of a node
-
-            // TODO define semantics of "new node joins 'over' existing node" (should cause a removal of old one and termination signals I think)
-            if member.node == node {
-                // technically we could ignore this... but to be honest, this is VERY WEIRD, so we should make sure it never happens (i.e. even if resends etc, should be filtered out)
-                return fatalErrorBacktrace("WEIRD; same unique address joining again: \(member), members: [\(self)]")
-            } else {
-                self.members[node.node] = newMember
-                return .init(previousNode: member.node, node: node, fromStatus: member.status, toStatus: newMember.status)
-            }
+            self._members[node.node] = newMember
+            return .init(previousNode: member.node, node: node, fromStatus: member.status, toStatus: newMember.status)
         } else {
             // node is normally joining
-            self.members[node.node] = newMember
+            self._members[node.node] = newMember
             return .init(member: newMember, toStatus: newMember.status)
         }
     }
@@ -140,42 +199,72 @@ extension Membership {
     /// Marks the `Member` identified by the `node` with the `status`.
     ///
     /// If the membership not aware of this address the update is treated as a no-op.
-    mutating func mark(_ node: UniqueNode, as status: MemberStatus) {
-        pprint("MARK \(node) as \(status)")
-        if var member = self.member(node) {
-            member.status = status
-            self.members[member.node.node] = member
+    mutating func mark(_ node: UniqueNode, as status: MemberStatus) -> MembershipChange? {
+        guard let member = self.member(node) else {
+            return nil // unknown member, no change
         }
+
+        guard member.status < status else {
+            // this would be a "move backwards" which we do not do; membership only moves forward
+            return nil
+        }
+
+        var updated = member
+        updated.status = status
+        self._members[member.node.node] = updated
+
+        return MembershipChange(member: member, toStatus: status)
     }
     /// Returns new membership while marking an existing member with the specified status.
     ///
     /// If the membership not aware of this node the update is treated as a no-op.
     func marking(_ node: UniqueNode, as status: MemberStatus) -> Membership {
         var membership = self
-        membership.mark(node, as: status)
+        _ = membership.mark(node, as: status)
         return membership
     }
 
-    /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a member from the membership.
-    mutating func remove(_ node: UniqueNode) {
-        if let member = self.members[node.node] {
-            guard member.node == node else {
-                fatalError("Attempted to remove \(member) by address \(node), yet UID did not match!")
-            }
-            self.members.removeValue(forKey: node.node)
+    /// Mark node with passed in `reachability`
+    ///
+    /// - Returns: the changed member if the reachability was different than the previously stored one.
+    mutating func mark(_ node: UniqueNode, reachability: MemberReachability) -> Member? {
+        guard var member = self._members.removeValue(forKey: node.node) else {
+            // no such member
+            return nil
+        }
+
+        if member.reachability == reachability {
+            // no change
+            self._members[node.node] = member
+            return nil
         } else {
-            // no member to remove
-            ()
+            // change reachability and return it
+            member.reachability = reachability
+            self._members[node.node] = member
+            return member
         }
     }
-    /// Returns new membership while removing an existing member, identified by the passed in node.
+
+    /// REMOVES (as in, completely, without leaving even a tombstone or `down` marker) a `Member` from the `Membership`.
     ///
     /// If the membership is not aware of this member this is treated as no-op.
     /// If the membership does contain a member for the Node, however the NodeIDs of the UniqueNodes
     /// do not match this code will FAULT.
+    mutating func remove(_ node: UniqueNode) -> MembershipChange? {
+        if let member = self._members[node.node] {
+            guard member.node == node else {
+                fatalError("Attempted to remove \(member) by address \(node), yet UID did not match!")
+            }
+            self._members.removeValue(forKey: node.node)
+            return .init(member: member, toStatus: .removed)
+        } else {
+            return nil // no member to remove
+        }
+    }
+    /// Returns new membership while removing an existing member, identified by the passed in node.
     func removing(_ node: UniqueNode) -> Membership {
         var membership = self
-        membership.remove(node)
+        _ = membership.remove(node)
         return membership
     }
 
@@ -190,27 +279,27 @@ extension Membership {
     /// The diff includes any member state changes, as well as
     static func diff(from: Membership, to: Membership) -> MembershipDiff {
         var entries: [MembershipChange] = []
-        entries.reserveCapacity(max(from.members.count, to.members.count))
+        entries.reserveCapacity(max(from._members.count, to._members.count))
 
         // TODO: can likely be optimized more
         var to = to
 
         // iterate over the original member set, and remove from the `to` set any seen members
-        for f in from.members.values {
-            if let toMember = to.member(f.node) {
-                to.members.removeValue(forKey: f.node.node)
-                if f.status != toMember.status {
-                    entries.append(.init(node: f.node, fromStatus: f.status, toStatus: toMember.status))
+        for member in from._members.values {
+            if let toMember = to.member(member.node) {
+                to._members.removeValue(forKey: member.node.node)
+                if member.status != toMember.status {
+                    entries.append(.init(node: member.node, fromStatus: member.status, toStatus: toMember.status))
                 }
             } else {
                 // member is not present `to`, thus it was removed
-                entries.append(.init(node: f.node, fromStatus: f.status, toStatus: nil))
+                entries.append(.init(node: member.node, fromStatus: member.status, toStatus: nil))
             }
         }
 
         // any remaining `to` members, are new members
-        for t in to.members.values {
-            entries.append(.init(node: t.node, fromStatus: nil, toStatus: t.status))
+        for member in to._members.values {
+            entries.append(.init(node: member.node, fromStatus: nil, toStatus: member.status))
         }
 
         return MembershipDiff(entries: entries)
@@ -221,7 +310,7 @@ extension Membership {
 struct MembershipDiff {
     var entries: [MembershipChange] = []
 }
-struct MembershipChange {
+struct MembershipChange: Equatable {
     /// The node which the change concerns.
     let node: UniqueNode
     /// Only set if the change is a "replace node", which can happen only if a node joins
@@ -251,6 +340,15 @@ struct MembershipChange {
         self.toStatus = toStatus
     }
 
+    /// Current member that is part of the membership after this change
+    var member: Member? {
+        if let status = self.toStatus {
+            return .init(node: self.node, status: status)
+        } else {
+            return nil // no toStatus == removed
+        }
+    }
+
     /// Is a "replace" operation, meaning a new node with different UID has replaced a previousNode.
     /// This can happen upon a service reboot, with stable network address -- the new node then "replaces" the old one,
     /// and the old node shall be removed from the cluster as a result of this.
@@ -263,9 +361,8 @@ struct MembershipChange {
             // we explicitly list the decisions we make here, to be explicit about them:
             switch to {
             case .joining: return false
-            case .up:   return false
+            case .up:      return false
             case .leaving: return false
-            case .exiting: return true
             case .down:    return true
             case .removed: return true
             }
@@ -298,13 +395,53 @@ extension MembershipChange: CustomDebugStringConvertible {
 
 // TODO: MembershipSet?
 
-public enum MemberStatus: String {
+public enum MemberStatus: String, Comparable {
     case joining
     case up
-    case leaving
-    case exiting
     case down
+    case leaving
     case removed
 
     public static let maxStrLen = 7 // hardcoded
+}
+
+extension MemberStatus {
+    public static func < (lhs: MemberStatus, rhs: MemberStatus) -> Bool {
+        switch lhs {
+        case .joining:
+            return rhs != .joining
+        case .up:
+            return rhs == .down || rhs == .leaving || rhs == .removed
+        case .down:
+            return rhs == .leaving || rhs == .removed
+        case .leaving:
+            return rhs == .removed
+        case .removed:
+            return false
+        }
+    }
+}
+
+extension MemberStatus {
+    var isJoining: Bool {
+        return self == .joining
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Reachability
+
+/// Reachability indicates a failure detectors assessment of the member node's reachability,
+/// i.e. whether or not the node is responding to health check messages.
+///
+/// Unlike `MemberStatus` (which may only move "forward"), reachability may flip back and forth between `.reachable`
+/// and `.unreachable` states multiple times during the lifetime of a member.
+///
+/// - SeeAlso: `SWIM` for a distributed failure detector implementation which may issue unreachable events.
+public enum MemberReachability {
+    /// The member is reachable and responding to failure detector probing properly.
+    case reachable
+    /// Failure detector has determined this node as not reachable.
+    /// It may be a candidate to be downed.
+    case unreachable
 }

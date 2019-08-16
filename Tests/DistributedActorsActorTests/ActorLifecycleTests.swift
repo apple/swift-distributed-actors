@@ -83,12 +83,12 @@ class ActorLifecycleTests: XCTestCase {
                                                          illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
                                                          """)
         try check(illegalName: "カピバラ", expectedError: """
-                                                      illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-                                                      """) // ka-pi-ba-ra
+                                                         illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
+                                                         """) // ka-pi-ba-ra
     }
 
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
-        pnote("NOT IMPLEMENTED YET")
+        pnote("NOT IMPLEMENTED YET") // FIXME: implement me please
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
