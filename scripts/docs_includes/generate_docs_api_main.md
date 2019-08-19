@@ -2,7 +2,7 @@
 
 <small>Version $version</small>
 
-Welcome to the API documentation of Swift Distributed Actors Actors!
+Welcome to the API documentation of Swift Distributed Actors!
 
 
 This style of documentation is relatively raw and intended for quick lookups while working with actors. <br/>
@@ -29,7 +29,7 @@ Supervision related types:
 ## Reference Documentation
 
 See also the [Reference Documentation](../../../reference/$version/index.html), which provides a more guided way towards
-learning to build distributed and concurrent systems using Swift Distributed Actors Actors.
+learning to build distributed and concurrent systems using Swift Distributed Actors.
 
 
 

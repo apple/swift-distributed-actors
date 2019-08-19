@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 extension Philosopher.Message {
 

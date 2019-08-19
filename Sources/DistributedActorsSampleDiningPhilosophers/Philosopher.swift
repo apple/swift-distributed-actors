@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 public class Philosopher {
     public typealias Ref = ActorRef<Message>

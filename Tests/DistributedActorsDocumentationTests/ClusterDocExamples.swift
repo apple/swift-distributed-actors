@@ -14,12 +14,12 @@
 
 // tag::imports[]
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 // end::imports[]
 
 import XCTest
-@testable import SwiftDistributedActorsActorTestKit
+@testable import DistributedActorsTestKit
 
 class ClusterDocExamples: XCTestCase {
 

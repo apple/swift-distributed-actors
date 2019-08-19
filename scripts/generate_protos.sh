@@ -26,7 +26,7 @@ for p in $(find . -name "*.proto"); do
     out_dir=$( dirname "$p" )
     base_name=$( echo basename "$p" | sed "s/.*\///" )
     out_name="${base_name%.*}.pb.swift"
-    dest_dir="../Sources/Swift Distributed ActorsActor/${out_dir}/Protobuf"
+    dest_dir="../Sources/DistributedActors/${out_dir}/Protobuf"
     dest_file="${dest_dir}/${out_name}"
     mkdir -p ${dest_dir}
     command="protoc --swift_out=. ${p}"
@@ -37,7 +37,7 @@ done
 
 popd >> /dev/null
 
-benchmark_proto_path="$root_path/Sources/Swift Distributed ActorsBenchmarks/BenchmarkProtos"
+benchmark_proto_path="$root_path/Sources/DistributedActorsBenchmarks/BenchmarkProtos"
 
 pushd $benchmark_proto_path >> /dev/null
 

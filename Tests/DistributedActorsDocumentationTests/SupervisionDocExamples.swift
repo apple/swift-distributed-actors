@@ -14,7 +14,7 @@
 
 // tag::imports[]
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 // end::imports[]
 

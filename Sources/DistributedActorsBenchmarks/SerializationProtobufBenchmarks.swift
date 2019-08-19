@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import Swift Distributed ActorsActor
+import DistributedActors
 import SwiftBenchmarkTools
 import SwiftProtobuf
 

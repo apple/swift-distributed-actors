@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
+@testable import DistributedActorsTestKit
 import Dispatch
 import NIO
 import XCTest
-@testable import SwiftDistributedActorsActorTestKit
 
 class InteropDocExamples: XCTestCase {
 
@@ -98,7 +98,7 @@ class InteropDocExamples: XCTestCase {
 
         struct User {}
         struct Cache<Key, Value> {
-            init(cacheDuration: Swift Distributed ActorsActor.TimeAmount) {}
+            init(cacheDuration: DistributedActors.TimeAmount) {}
 
             func lookup(_ key: Key) -> Value? {
                 return nil

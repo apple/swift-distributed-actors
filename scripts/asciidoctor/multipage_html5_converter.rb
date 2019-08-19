@@ -1,5 +1,19 @@
 # coding: utf-8
 
+##===----------------------------------------------------------------------===##
+##
+## This source file is part of the Swift Distributed Actors open source project
+##
+## Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+## Licensed under Apache License v2.0
+##
+## See LICENSE.txt for license information
+## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+##
+## SPDX-License-Identifier: Apache-2.0
+##
+##===----------------------------------------------------------------------===##
+##
 ## MIT Licensed extension from https://github.com/asciidoctor/asciidoctor-extensions-lab/pull/96
 ## https://github.com/asciidoctor/asciidoctor-extensions-lab/blob/a7c942985ff662d0de17cb97bfc89dfd257084f6/LICENSE.adoc
 

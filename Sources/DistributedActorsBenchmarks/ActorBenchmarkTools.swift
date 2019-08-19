@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Swift Distributed ActorsActor
+@testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 
@@ -45,10 +45,10 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
         return receptacle.wait(atMost: .seconds(10))!
     }
 
-    func timeSinceUnlocked() -> Swift Distributed ActorsActor.TimeAmount? {
+    func timeSinceUnlocked() -> DistributedActors.TimeAmount? {
         let time = Int64(SwiftBenchmarkTools.Timer().getTimeAsInt()) - Int64(self.startTime.load())
         if time > 0 {
-            return Swift Distributed ActorsActor.TimeAmount.nanoseconds(Int(time))
+            return DistributedActors.TimeAmount.nanoseconds(Int(time))
         } else {
             return nil
         }

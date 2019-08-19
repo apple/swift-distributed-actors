@@ -19,7 +19,7 @@ import Darwin.C
 import Glibc
 #endif
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 let isolated = ProcessIsolated { boot in
     // create actor system (for each process this will run a new since this is the beginning of the program)
