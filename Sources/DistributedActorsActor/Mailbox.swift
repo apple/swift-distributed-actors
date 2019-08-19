@@ -23,7 +23,7 @@ import Logging
 // we removed it
 internal enum WrappedMessage {
     case message(Any)
-    case closure(() throws -> Void)
+    case closure(ActorClosureCarry)
 }
 extension WrappedMessage: NoSerializationVerification {}
 
@@ -44,6 +44,41 @@ internal struct Envelope {
     // and don't need to do any magic around it
 
     // TODO: let trace: TraceMetadata
+}
+
+/// Can carry a closure for later execution on specific actor context.
+@usableFromInline
+internal struct ActorClosureCarry {
+    @usableFromInline
+    class _Storage {
+        @usableFromInline
+        let function: () throws -> Void
+        @usableFromInline
+        let location: String
+
+        @usableFromInline
+        init(function: @escaping () throws -> Void, location: String) {
+            self.function = function
+            self.location = location
+        }
+    }
+
+    let _storage: _Storage
+
+    @usableFromInline
+    init(function: @escaping () throws -> Void, location: String) {
+        self._storage = .init(function: function, location: location)
+    }
+
+    @usableFromInline
+    var function: () throws -> Void {
+        return self._storage.function
+    }
+
+    @usableFromInline
+    var location: String {
+        return self._storage.location
+    }
 }
 
 internal final class Mailbox<Message> {
@@ -170,9 +205,9 @@ internal final class Mailbox<Message> {
             case .message(let message):
                 traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
                 return try shell.interpretMessage(message: message as! Message)
-            case .closure(let f):
-                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: f))")
-                return try shell.interpretClosure(f)
+            case .closure(let closure):
+                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: closure.function)) defined at \(closure.location)")
+                return try shell.interpretClosure(closure)
             }
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
@@ -206,8 +241,8 @@ internal final class Mailbox<Message> {
             switch wrapped {
             case .message(let userMessage):
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
-            case .closure(let f):
-                deadLetters.tell(DeadLetter("[\(String(describing: f))]:closure", recipient: address))
+            case .closure(let carry):
+                deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.location)", recipient: address))
             }
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: {

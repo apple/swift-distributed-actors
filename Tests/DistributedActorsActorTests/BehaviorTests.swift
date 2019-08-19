@@ -435,6 +435,38 @@ class BehaviorTests: XCTestCase {
         try p.expectTerminated(ref)
     }
 
+    func test_makeAsynchronousCallback_shouldPrintNicelyIfThrewInsideClosure() throws {
+        let capture = LogCapture()
+        let system = ActorSystem("CallbackCrash") { settings in
+            settings.overrideLogger = .some(capture.makeLogger(label: "mock")) 
+        }
+        defer {
+            system.shutdown()
+        }
+
+        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+
+        let mockLine = 77777
+
+        let behavior: Behavior<String> = .receive { context, msg in
+            let cb = context.makeAsynchronousCallback(line: UInt(mockLine), {
+                throw Boom("Oh no, what a boom!")
+            })
+
+            cb.invoke(())
+            return .same
+        }
+
+        let ref = try system.spawnAnonymous(behavior)
+        p.watch(ref)
+
+        ref.tell("test")
+        try p.expectTerminated(ref)
+
+        try capture.shouldContain(message: "*Boom while interpreting [closure defined at*")
+        try capture.shouldContain(message: "*BehaviorTests.swift:\(mockLine)*")
+    }
+
     enum ContextClosureMessage {
         case context(() -> ActorRef<String>)
     }
@@ -537,6 +569,10 @@ class BehaviorTests: XCTestCase {
     }
 
     struct Boom: Error {
+        let message: String
+        init(_ message: String = "") {
+            self.message = message
+        }
     }
 
     func test_suspendedActor_shouldBeUnsuspendedOnFailedResumeSystemMessage() throws {
