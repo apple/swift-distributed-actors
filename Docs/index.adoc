@@ -1,4 +1,4 @@
-:toc-title: Swift Distributed Actors Actors
+:toc-title: Swift Distributed Actors
 :toc:
 :toc: left
 ifndef::host-github[:ext-relative: {outfilesuffix}]
@@ -44,11 +44,11 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 
 
 :dir_sact_doc_tests:    ../Tests/Swift Distributed ActorsDocumentationTests
-:dir_sact_actor:        ../Sources/Swift Distributed ActorsActor
-:dir_sact_actor_tests:  ../Tests/Swift Distributed ActorsActorTests
+:dir_sact_actor:        ../Sources/DistributedActors
+:dir_sact_actor_tests:  ../Tests/DistributedActorsTests
 
 
-= Swift Distributed Actors Actors Reference Guide
+= Swift Distributed Actors Reference Guide
 
 ++++
 <!--
@@ -85,7 +85,7 @@ and scale out easily whenever the need arises.
 
 <<actors, Actors>> are entities with identity which communicate using messages. The same semantics are used for local
 and remote actors, which unifies distributed and "local" development, allowing for fast development cycles and one shared
-mental model for how a system communicates. Swift Distributed Actors actors are type-safe and able to handle various serialization mechanisms
+mental model for how a system communicates. Swift Distributed Actors are type-safe and able to handle various serialization mechanisms
 transparently, so you can focus on developing business logic, without serialization boilerplate getting in the way.
 
 ++++
@@ -101,7 +101,7 @@ Swift Distributed Actors's failure detection and handling mechanisms embrace the
 mechanisms for building fault tolerant systems on top of this core observation. They also allow <<failure_isolation, isolating failures>> within
 a single actor rather than faulting the entire hosting process, as is normally the case with Swift applications.
 
-Swift Distributed Actors Actors are strongly inspired by real-world battle tested implementations of distributed actor systems,
+Swift Distributed Actors are strongly inspired by real-world battle tested implementations of distributed actor systems,
 such as https://akka.io[Akka] and https://www.erlang.org[Erlang].
 
 Swift Distributed Actors's transport layer is implemented on top of https://github.com/apple/swift-nio[Swift NIO].

@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 struct DiningPhilosophers {
     func run(`for` time: TimeAmount) throws {

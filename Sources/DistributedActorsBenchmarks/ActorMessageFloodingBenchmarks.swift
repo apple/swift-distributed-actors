@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 
-@testable import Swift Distributed ActorsActor
+@testable import DistributedActors
 import SwiftBenchmarkTools
 import DistributedActorsConcurrencyHelpers
 

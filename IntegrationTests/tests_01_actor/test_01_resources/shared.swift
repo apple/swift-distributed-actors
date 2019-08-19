@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import Swift Distributed ActorsActor
+import DistributedActors
 
 // Just consume the argument.
 // It's important that this function is in another module than the tests

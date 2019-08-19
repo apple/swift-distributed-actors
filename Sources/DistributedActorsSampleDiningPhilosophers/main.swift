@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import Swift Distributed ActorsActor
+import DistributedActors
 
 /*
  * Swift Distributed Actors implementation of the classic "Dining Philosophers" problem.
@@ -29,7 +29,7 @@ import Swift Distributed ActorsActor
 print("===-----------------------------------------------------===")
 print("|            Dining Philosophers Sample App               |")
 print("|                                                         |")
-print("| USAGE: swift run Swift Distributed ActorsSampleDiningPhilosophers [dist] |")
+print("| USAGE: swift run DistributedActorsSampleDiningPhilosophers [dist] |")
 print("===-----------------------------------------------------===")
 
 switch CommandLine.arguments.dropFirst().first {

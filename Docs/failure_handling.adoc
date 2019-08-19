@@ -109,11 +109,11 @@ The above snippet would yield the following log output (with logLevel set to `IN
 ----
 [INFO][main.swift:35][/user/greeter#113950253] Hello Alice!
 [WARN][main.swift:31][/user/greeter#113950253] Overreacting to Boom!... Letting it crash!
-[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures)
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(DistributedActors.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures)
 [WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Restarting.
 [INFO][main.swift:35][/user/greeter#113950253] Hello Bob!
 [WARN][main.swift:31][/user/greeter#113950253] Overreacting to Boom Boom!... Letting it crash!
-[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 299442569266554), canHandle: AllFailures)
+[WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Actor has THROWN [doesNotLike(name: "Boom Boom!")]:GreeterError while interpreting message, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(DistributedActors.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 299442569266554), canHandle: AllFailures)
 [WARN][Supervision.swift:264][/user/greeter#113950253] Supervision: Restarting.
 [INFO][main.swift:35][/user/greeter#113950253] Hello Caplin!
 ----
@@ -178,7 +178,7 @@ WARNING: **WARNING:** The following shows the output of the "hacky signal handle
 ----
 [INFO][main.swift:31][/user/favFruit#2041854707] Alice likes [Apples]!
 Fatal error: Unexpectedly found nil while unwrapping an Optional value
-[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom!]:String':
+[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(DistributedActors.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 0, restartsPeriodDeadline: 0), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom!]:String':
 0   Swift Distributed ActorsBenchmarks            0x000000010eb0a9a4 sact_get_backtrace + 52
 1   Swift Distributed ActorsBenchmarks            0x000000010eb0aec8 sact_sighandler + 88
 2   libsystem_platform.dylib            0x00007fff5a7d5b3d _sigtramp + 29
@@ -190,7 +190,7 @@ Fatal error: Unexpectedly found nil while unwrapping an Optional value
 [WARN][ActorCell.swift:323][/user/favFruit#2041854707] Restarting.
 [INFO][main.swift:31][/user/favFruit#2041854707] Bob likes [Bananas]!
 Fatal error: Unexpectedly found nil while unwrapping an Optional value
-[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(Swift Distributed ActorsActor.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 312506020116583), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom Boom!]:String':
+[WARN][Mailbox.swift:179][/user/favFruit#2041854707] Supervision: Actor has FAULTED [fault(Actor faulted while processing message '[Boom Boom!]:String', with backtrace)]:Failure while interpreting MailboxRunPhase.processingUserMessages, handling with RestartingSupervisor(initialBehavior: receive((Function)), strategy: RestartDecisionLogic(maxRestarts: 5, within: Optional(DistributedActors.TimeAmount(nanoseconds: 1000000000)), restartsWithinCurrentPeriod: 1, restartsPeriodDeadline: 312506020116583), canHandle: AllFailures); Failure details: fault(Actor faulted while processing message '[Boom Boom!]:String':
 0   Swift Distributed ActorsBenchmarks            0x000000010eb0a9a4 sact_get_backtrace + 52
 1   Swift Distributed ActorsBenchmarks            0x000000010eb0aec8 sact_sighandler + 88
 2   libsystem_platform.dylib            0x00007fff5a7d5b3d _sigtramp + 29
@@ -370,9 +370,9 @@ Swift applies name mangling to function names, and due to that raw backtraces ma
 4   libswiftCore.dylib                  0x000000010f105e63 $Ss18_fatalErrorMessage__4file4line5flagss5NeverOs12StaticStringV_A2HSus6UInt32VtF + 19
 5   Swift Distributed ActorsBenchmarks            0x000000010ece8188 $S24Swift Distributed ActorsBenchmarks22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_ + 328
 6   Swift Distributed ActorsBenchmarks            0x000000010ece870d $S24Swift Distributed ActorsBenchmarks22favouriteFruitBehaviory0A5Actor0F0OySSGSDyS2SGFAfC0G7ContextCySSG_SStcfU_TA + 13
-7   Swift Distributed ActorsBenchmarks            0x000000010ece8553 $S12Swift Distributed ActorsActor0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TR + 51
-8   Swift Distributed ActorsBenchmarks            0x000000010ece876b $S12Swift Distributed ActorsActor0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TRTA + 27
-9   Swift Distributed ActorsBenchmarks            0x000000010ec8bf44 $S12Swift Distributed ActorsActor8BehaviorO16interpretMessage7context7message4file4lineACyxGAA0B7ContextCyxG_xs12StaticStringVSutKF + 916
+7   Swift Distributed ActorsBenchmarks            0x000000010ece8553 $S12DistributedActors0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TR + 51
+8   Swift Distributed ActorsBenchmarks            0x000000010ece876b $S12DistributedActors0B7ContextCySSGSSAA8BehaviorOySSGs5Error_pIegggozo_ADSSAGsAH_pIeggnozo_TRTA + 27
+9   Swift Distributed ActorsBenchmarks            0x000000010ec8bf44 $S12DistributedActors8BehaviorO16interpretMessage7context7message4file4lineACyxGAA0B7ContextCyxG_xs12StaticStringVSutKF + 916
 ----
 
 #TODO: Can we offer this in some nicer way?#
@@ -391,10 +391,10 @@ $ pbpaste  | ./scripts/sact_backtrace_demangle
 2	libsystem_platform.dylib	0x00007fff5a7d5b3d	 demangled:_sigtramp + 29
 3	libsystem_malloc.dylib	0x00007fff5a79b4a4	 demangled:tiny_malloc_from_free_list + 445
 4	libswiftCore.dylib	0x000000010f105e63	 demangled:Swift._fatalErrorMessage(_: Swift.StaticString, _: Swift.StaticString, file: Swift.StaticString, line: Swift.UInt, flags: Swift.UInt32) -> Swift.Never + 19
-5	Swift Distributed ActorsBenchmarks	0x000000010ece8188	 demangled:closure #1 (Swift Distributed ActorsActor.ActorContext<Swift.String>, Swift.String) -> Swift Distributed ActorsActor.Behavior<Swift.String> in Swift Distributed ActorsBenchmarks.favouriteFruitBehavior([Swift.String : Swift.String]) -> Swift Distributed ActorsActor.Behavior<Swift.String> + 328
-6	Swift Distributed ActorsBenchmarks	0x000000010ece870d	 demangled:partial apply forwarder for closure #1 (Swift Distributed ActorsActor.ActorContext<Swift.String>, Swift.String) -> Swift Distributed ActorsActor.Behavior<Swift.String> in Swift Distributed ActorsBenchmarks.favouriteFruitBehavior([Swift.String : Swift.String]) -> Swift Distributed ActorsActor.Behavior<Swift.String> + 13
-7	Swift Distributed ActorsBenchmarks	0x000000010ece8553	 demangled:reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) + 51
-8	Swift Distributed ActorsBenchmarks	0x000000010ece876b	 demangled:partial apply forwarder for reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed Swift Distributed ActorsActor.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned Swift Distributed ActorsActor.Behavior<Swift.String>, @error @owned Swift.Error) + 27
+5	Swift Distributed ActorsBenchmarks	0x000000010ece8188	 demangled:closure #1 (DistributedActors.ActorContext<Swift.String>, Swift.String) -> DistributedActors.Behavior<Swift.String> in Swift Distributed ActorsBenchmarks.favouriteFruitBehavior([Swift.String : Swift.String]) -> DistributedActors.Behavior<Swift.String> + 328
+6	Swift Distributed ActorsBenchmarks	0x000000010ece870d	 demangled:partial apply forwarder for closure #1 (DistributedActors.ActorContext<Swift.String>, Swift.String) -> DistributedActors.Behavior<Swift.String> in Swift Distributed ActorsBenchmarks.favouriteFruitBehavior([Swift.String : Swift.String]) -> DistributedActors.Behavior<Swift.String> + 13
+7	Swift Distributed ActorsBenchmarks	0x000000010ece8553	 demangled:reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed DistributedActors.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned DistributedActors.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed DistributedActors.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned DistributedActors.Behavior<Swift.String>, @error @owned Swift.Error) + 51
+8	Swift Distributed ActorsBenchmarks	0x000000010ece876b	 demangled:partial apply forwarder for reabstraction thunk helper from @escaping @callee_guaranteed (@guaranteed DistributedActors.ActorContext<Swift.String>, @guaranteed Swift.String) -> (@owned DistributedActors.Behavior<Swift.String>, @error @owned Swift.Error) to @escaping @callee_guaranteed (@guaranteed DistributedActors.ActorContext<Swift.String>, @in_guaranteed Swift.String) -> (@owned DistributedActors.Behavior<Swift.String>, @error @owned Swift.Error) + 27
 ----
 
 [[death_watch]]

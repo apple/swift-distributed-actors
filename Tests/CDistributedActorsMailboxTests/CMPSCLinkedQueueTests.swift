@@ -14,7 +14,7 @@
 
 import Foundation
 import XCTest
-import CSwiftDistributedActorsMailbox
+import CDistributedActorsMailbox
 
 class CMPSCLinkedQueueTests: XCTestCase {
 

@@ -7,7 +7,7 @@
 > published by Carl Hewitt in 1973, but since gained popularity thanks to numerous implementations of the model.
 
 
-Welcome to Swift Distributed Actors Actors, a _type-safe_ implementation of the Actor Model for Swift.
+Welcome to Swift Distributed Actors, a _type-safe_ implementation of the Actor Model for Swift.
 
 === Thinking in Actors
 
@@ -431,7 +431,7 @@ apply special handling to the actor once it is started.
 
 TIP: "Props" are what an theater actor may use during a performance. For example, a skull would be a classic example of
      a "prop" used while performing the William Shakespeare's Hamlet Act III, scene 1, saying _"To be, or not to be, that is the question: [...]."_
-     In the same sense, api:Props[struct] for Swift Distributed Actors actors are accompanying objects/settings, which help the actor perform its duties.
+     In the same sense, api:Props[struct] for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 
 Props can be defined once and used for starting any number of actors (as they are effectively only immutable "settings").
 You can change props by using by mutating the value type
