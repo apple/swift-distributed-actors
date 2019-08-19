@@ -49,14 +49,14 @@ services:
 
   bench:
     <<: *common
-    command: /bin/bash -cl "swift run Swift Distributed ActorsBenchmarks"
+    command: /bin/bash -cl "swift run DistributedActorsBenchmarks"
 
   sample-crash:
     <<: *common
-    command: /bin/bash -cl "swift run Swift Distributed ActorsSampleLetItCrash div-by-0"
+    command: /bin/bash -cl "swift run DistributedActorsSampleLetItCrash div-by-0"
   sample-crash-actor:
     <<: *common
-    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' Swift Distributed ActorsSampleLetItCrash div-by-0 actor"
+    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' DistributedActorsSampleLetItCrash div-by-0 actor"
 
   bash:
     <<: *common

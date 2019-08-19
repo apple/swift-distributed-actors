@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 
 func run(identifier: String) {
     measure(identifier: identifier) {

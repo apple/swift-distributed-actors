@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 import XCTest
 import NIOSSL
-@testable import SwiftDistributedActorsActorTestKit
+@testable import DistributedActorsTestKit
 
 class ClusteringDocExamples: XCTestCase {
     func example_config_tls() throws {

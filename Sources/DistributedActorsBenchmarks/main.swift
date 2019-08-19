@@ -13,12 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 
-import Swift Distributed ActorsActor
+import DistributedActors
 import SwiftBenchmarkTools
 
 assert({
     print("=================================================================")
-    print("=   !!  YOU ARE RUNNING Swift Distributed ActorsBenchmarks IN DEBUG MODE  !!     =")
+    print("=   !!  YOU ARE RUNNING DistributedActorsBenchmarks IN DEBUG MODE  !!     =")
     print("= When running on the command line, use: `swift run -c release` =")
     print("=================================================================")
     return true

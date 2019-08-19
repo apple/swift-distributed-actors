@@ -1,3 +1,17 @@
+##===----------------------------------------------------------------------===##
+##
+## This source file is part of the Swift Distributed Actors open source project
+##
+## Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+## Licensed under Apache License v2.0
+##
+## See LICENSE.txt for license information
+## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+##
+## SPDX-License-Identifier: Apache-2.0
+##
+##===----------------------------------------------------------------------===##
+
 #
 # if you want to use it, put the following in `.git/hooks/pre-commit`:
 #
@@ -18,13 +32,13 @@ violations = []
 
 excludes = [
     "Sources/ConcurrencyHelpers",
-    "Sources/CSwift Distributed ActorsAtomics",
+    "Sources/CDistributedActorsAtomics",
     "Tests/ConcurrencyHelpersTests",
-    "Sources/Swift Distributed ActorsActor/sact.pb.swift",
+    "Sources/DistributedActors/sact.pb.swift",
     "Sources/Swift Distributed ActorsBenchmarks/bench.pb.swift",
-    "Sources/Swift Distributed ActorsActor/Heap.swift",
-    "Tests/Swift Distributed ActorsActorTests/HeapTests.swift",
-    "Sources/Swift Distributed ActorsActor/Cluster/SWIM/SWIM.pb.swift"
+    "Sources/DistributedActors/Heap.swift",
+    "Tests/DistributedActorsTests/HeapTests.swift",
+    "Sources/DistributedActors/Cluster/SWIM/SWIM.pb.swift"
 ]
 
 new_files.each do |file|

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Dispatch
-import Swift Distributed ActorsActor
+import DistributedActors
 
 print("Getting args")
 

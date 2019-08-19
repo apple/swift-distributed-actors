@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 

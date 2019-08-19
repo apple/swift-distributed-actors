@@ -12,17 +12,25 @@ let targets: [PackageDescription.Target] = [
             "NIOFoundationCompat",
             "NIOSSL",
             "Logging",
-            "ConcurrencyHelpers",
+            "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
             "CDistributedActorsRunQueue",
             "SwiftProtobuf"
         ]
     ),
 
+    .target(
+        name: "DistributedActorsSampleProcessIsolated",
+        dependencies: [
+            "DistributedActors"
+        ]
+    ),
+
+    
     /// This target is intended only for use in tests, though we have no way to mark this
     .target(
-        name: "ActorsTestKit",
-        dependencies: ["DistributedActors", "ConcurrencyHelpers"]
+        name: "DistributedActorsTestKit",
+        dependencies: ["DistributedActors", "DistributedActorsConcurrencyHelpers"]
     ),
 
     .target(
@@ -42,37 +50,36 @@ let targets: [PackageDescription.Target] = [
 
     // NOT SUPPORTED transient library until Swift receives Atomics
     .target(
-        name: "ConcurrencyHelpers",
+        name: "DistributedActorsConcurrencyHelpers",
         dependencies: ["CDistributedActorsAtomics"]
     ),
 
     /* test targets */
 
     .testTarget(
-        name: "SwiftDistributedActorsActorTests",
-        dependencies: ["DistributedActors", "ActorsTestKit"]
+        name: "DistributedActorsTests",
+        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     ),
     .testTarget(
-        name: "ActorsTestKitTests",
-        dependencies: ["DistributedActors", "ActorsTestKit"]
+        name: "DistributedActorsTestKitTests",
+        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     ),
 
     .testTarget(
         name: "CDistributedActorsMailboxTests",
-        dependencies: ["CDistributedActorsMailbox", "ActorsTestKit"]
+        dependencies: ["CDistributedActorsMailbox", "DistributedActorsTestKit"]
     ),
 
     .testTarget(
-        name: "ConcurrencyHelpersTests",
-        dependencies: ["ConcurrencyHelpers"]
+        name: "DistributedActorsConcurrencyHelpersTests",
+        dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
     /* --- performance --- */
-    
     .target(
-        name: "ActorsBenchmarks",
+        name: "DistributedActorsBenchmarks",
         dependencies: [
-            "DistributedActors",
+            "DistributedActors", 
             "SwiftBenchmarkTools"
         ]
     ),
@@ -83,27 +90,20 @@ let targets: [PackageDescription.Target] = [
 
     /* --- samples --- */
     .target(
-        name: "ActorsSampleDiningPhilosophers",
+        name: "DistributedActorsSampleDiningPhilosophers",
         dependencies: ["DistributedActors"]
     ),
     .target(
-        name: "ActorsSampleLetItCrash",
+        name: "DistributedActorsSampleLetItCrash",
         dependencies: ["DistributedActors"]
     ),
     .target(
-        name: "ActorsSampleCluster",
+        name: "DistributedActorsSampleCluster",
         dependencies: ["DistributedActors"]
     ),
-    .target(
-        name: "SwiftDistributedActorsSampleProcessIsolated",
-        dependencies: [
-            "DistributedActors"
-        ]
-    ),
-
     /* --- documentation snippets --- */
     .testTarget(
-        name: "ActorsDocumentationTests",
+        name: "DistributedActorsDocumentationTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     )
 ]
@@ -127,42 +127,26 @@ let package = Package(
             name: "DistributedActorsTestKit",
             targets: ["DistributedActorsTestKit"]
         ),
-        .library(
-            name: "CDistributedActorsMailbox",
-            targets: ["CDistributedActorsMailbox"]
-        ),
-        .library(
-            name: "CDistributedActorsRunQueue",
-            targets: ["CDistributedActorsRunQueue"]
-        ),
-        .library(
-            name: "CDistributedActorsAtomics",
-            targets: ["CDistributedActorsAtomics"]
-        ),
-        .library(
-            name: "ConcurrencyHelpers",
-            targets: ["ConcurrencyHelpers"]
-        ),
 
         /* ---  performance --- */
         .executable(
-            name: "ActorsBenchmarks",
-            targets: ["ActorsBenchmarks"]
+            name: "DistributedActorsBenchmarks",
+            targets: ["DistributedActorsBenchmarks"]
         ),
 
         /* ---  samples --- */
 
         .executable(
-            name: "ActorsSampleDiningPhilosophers",
-            targets: ["ActorsSampleDiningPhilosophers"]
+            name: "DistributedActorsSampleDiningPhilosophers",
+            targets: ["DistributedActorsSampleDiningPhilosophers"]
         ),
         .executable(
-            name: "ActorsSampleLetItCrash",
-            targets: ["ActorsSampleLetItCrash"]
+            name: "DistributedActorsSampleLetItCrash",
+            targets: ["DistributedActorsSampleLetItCrash"]
         ),
         .executable(
-            name: "ActorsSampleCluster",
-            targets: ["ActorsSampleCluster"]
+            name: "DistributedActorsSampleCluster",
+            targets: ["DistributedActorsSampleCluster"]
         ),
     ],
 
@@ -172,4 +156,3 @@ let package = Package(
 
     cxxLanguageStandard: .cxx11
 )
-

@@ -103,7 +103,7 @@ While `Codable` is a fine way to serialize data, sometimes it may be necessary t
 operate on `Codable` types. Swift Distributed Actors allows transparently swapping in alternative serialization mechanisms
 using its api:Serialization[struct] layer.
 
-The following sections will show how to use alternative serialization engines to serialize messages sent between Swift Distributed Actors actors.
+The following sections will show how to use alternative serialization engines to serialize messages sent between Swift Distributed Actors.
 
 NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `Codable` types.
 

@@ -1,3 +1,17 @@
+##===----------------------------------------------------------------------===##
+##
+## This source file is part of the Swift Distributed Actors open source project
+##
+## Copyright (c) 2018 Apple Inc. and the Swift Distributed Actors project authors
+## Licensed under Apache License v2.0
+##
+## See LICENSE.txt for license information
+## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+##
+## SPDX-License-Identifier: Apache-2.0
+##
+##===----------------------------------------------------------------------===##
+
 require 'asciidoctor'
 require 'asciidoctor/extensions'
 
@@ -38,7 +52,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
     link = if (api_module = attrs['module'])
       %(api/#{lib_version}/#{api_module}/#{tpe}/#{type_name}.html)
     else
-      %(api/#{lib_version}/Swift Distributed ActorsActor/#{tpe}/#{type_name}.html)
+      %(api/#{lib_version}/DistributedActors/#{tpe}/#{type_name}.html)
     end
 
     text = if (nil != attrs['alias'])

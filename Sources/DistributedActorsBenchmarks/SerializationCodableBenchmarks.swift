@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Swift Distributed ActorsActor
+import DistributedActors
 import SwiftBenchmarkTools
 
 public let SerializationCodableBenchmarks: [BenchmarkInfo] = [

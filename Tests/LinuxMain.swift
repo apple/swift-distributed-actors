@@ -21,10 +21,10 @@ import XCTest
 ///
 
 #if os(Linux) || os(FreeBSD)
-   @testable import CSwiftDistributedActorsMailboxTests
-   @testable import DistributedActorsConcurrencyHelpersTests
-   @testable import SwiftDistributedActorsActorTestKitTests
-   @testable import Swift Distributed ActorsActorTests
+   @testable import CDistributedActorsMailboxTests
+   @testable import ConcurrencyHelpersTests
+   @testable import DistributedActorsTestKitTests
+   @testable import DistributedActorsTests
 
    XCTMain([
          testCase(ActorAddressTests.allTests),

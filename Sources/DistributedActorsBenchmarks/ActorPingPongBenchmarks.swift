@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Swift Distributed ActorsActor
+@testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import SwiftBenchmarkTools
 import Dispatch
@@ -180,7 +180,7 @@ fileprivate func startPingPongActorPairs(
     }
     let doneSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
 
-    print("    Spawning \(numPairs * 2) actors too: \(Swift Distributed ActorsActor.TimeAmount.nanoseconds(Int(doneSpawning - startSpawning)).milliseconds) ms")
+    print("    Spawning \(numPairs * 2) actors too: \(DistributedActors.TimeAmount.nanoseconds(Int(doneSpawning - startSpawning)).milliseconds) ms")
 
     return actors
 }
