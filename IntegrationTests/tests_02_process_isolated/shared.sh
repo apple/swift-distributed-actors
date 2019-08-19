@@ -13,9 +13,10 @@ function await_termination_pid() {
     echo "> Awaiting termination of process ${pid}..."
 
     local spin=1 # spin counter
+    local max_spins=20
     local pid_exists="maybe-exists" # empty if PID not found
 
-    while [[ ${spin} -lt 5 ]] && [[ "${pid_exists}" != "" ]]; do
+    while [[ ${spin} -lt ${max_spins} ]] && [[ "${pid_exists}" != "" ]]; do
         pid_exists=$(pgrep ${app_name} || echo)
 
         if [[ "${pid_exists}" -ne "" ]]; then
@@ -42,9 +43,11 @@ function await_n_processes() {
 
     echo "> WAITING for $wait_procs processes ($wait_app_name) to start..."
 
-    spin=0
-    app_procs=$(pgrep ${wait_app_name} | wc -l)
-    while [[ ${spin} -lt 10 ]] && [[ ${app_procs} -lt ${wait_procs} ]]; do
+    local spin=0
+    local max_spins=20
+    local app_procs=$(pgrep ${wait_app_name} | wc -l)
+
+    while [[ ${spin} -lt ${max_spins} ]] && [[ ${app_procs} -lt ${wait_procs} ]]; do
         echo "> Waiting for ${wait_app_name} processes..."
         pgrep "${wait_app_name}"
 
