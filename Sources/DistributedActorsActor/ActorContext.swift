@@ -255,9 +255,9 @@ public class ActorContext<Message>: ActorRefFactory {
     /// - Parameter callback: the closure that should be executed in this actor's context
     /// - Returns: an `AsynchronousCallback` that is safe to call from outside of this actor
     @usableFromInline
-    internal func makeAsynchronousCallback<T>(_ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
+    internal func makeAsynchronousCallback<T>(file: String = #file, line: UInt = #line, _ callback: @escaping (T) throws -> Void) -> AsynchronousCallback<T> {
         return AsynchronousCallback(callback: callback) { [weak selfRef = self.myself._unsafeUnwrapCell] in
-            selfRef?.sendClosure($0)
+            selfRef?.sendClosure(file: file, line: line, $0)
         }
     }
 

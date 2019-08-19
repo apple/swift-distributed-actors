@@ -293,7 +293,8 @@ internal final class ActorCell<Message> {
     @usableFromInline
     func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
         traceLog_Mailbox(self.address.path, "sendClosure from \(file):\(line) to: \(self)")
-        self.mailbox.sendMessage(envelope: Envelope(payload: .closure(f)), file: file, line: line)
+        let carry = ActorClosureCarry(function: f, location: "\(file):\(line)")
+        self.mailbox.sendMessage(envelope: Envelope(payload: .closure(carry)), file: file, line: line)
     }
 }
 
