@@ -1,6 +1,6 @@
 # this file is not designed to be run directly
 # instead, use the docker-compose.<os>.<swift> files
-# eg docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.41.yaml run test
+# eg docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.yaml run test
 version: "3"
 
 services:
@@ -18,6 +18,10 @@ services:
       - ~/.ssh:/root/.ssh
       - ..:/code
     working_dir: /code
+    environment:
+      - MAX_ALLOCS_ALLOWED_001_actor_address=3
+      - MAX_ALLOCS_ALLOWED_002_actor_spawn_1000=35000
+      - MAX_ALLOCS_ALLOWED_003_actor_spawn_100=3500
 
   sanity:
     <<: *common
@@ -33,7 +37,7 @@ services:
 
   integration-tests:
     <<: *common
-    command: /bin/bash -cl "./scripts/integration_tests.rb"
+    command: /bin/bash -cl "./IntegrationTests/run-tests.sh"
 
   test:
     <<: *common

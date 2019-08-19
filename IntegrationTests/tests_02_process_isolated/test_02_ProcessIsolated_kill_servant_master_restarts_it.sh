@@ -23,12 +23,14 @@ declare -r app_name=Swift Distributed ActorsSampleProcessIsolated
 
 cd ${root_path}
 
-source ${my_path}/utils.sh
+source ${my_path}/shared.sh
 
 _killall ${app_name}
 
 # ====------------------------------------------------------------------------------------------------------------------
-# test_ProcessIsolated: servant process should terminate if master is killed
+# test_ProcessIsolated: killing servant should make it restart
+
+swift build # synchronously ensure built
 
 swift run ${app_name} &
 
@@ -43,11 +45,17 @@ pid_servant=$(ps aux | grep ${app_name} | grep -v grep | grep servant | head -n1
 echo "> PID Master: ${pid_master}"
 echo "> PID Servant: ${pid_servant}"
 
-echo "> KILL MASTER: ${pid_master}"
-kill ${pid_master}
+echo "> KILL Servant: ${pid_servant}"
+kill ${pid_servant}
 
-await_termination_pid ${pid_servant}
+# the 1 servant should die, but be restarted so we'll be back at two processes
+await_n_processes "$app_name" 2
 
+if [[ $(pgrep ${app_name} | wc -l) -ne 2 ]]; then
+    echo "ERROR: Seems like the servant process was not restarted. Processes:"
+    ps aux | grep ${app_name}
+    exit -1
+fi
 
 # === cleanup ----------------------------------------------------------------------------------------------------------
 
