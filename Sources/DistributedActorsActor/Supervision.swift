@@ -357,7 +357,7 @@ internal enum ProcessingAction<Message> {
     case start
     case message(Message)
     case signal(Signal)
-    case closure(() throws -> Void)
+    case closure(ActorClosureCarry)
     case continuation(() throws -> Behavior<Message>)
 }
 
@@ -396,7 +396,7 @@ internal class Supervisor<Message> {
     }
 
     @inlinable
-    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: @escaping () throws -> Void) throws -> Behavior<Message> {
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: ActorClosureCarry) throws -> Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
     }
@@ -423,25 +423,27 @@ internal class Supervisor<Message> {
     final func interpretSupervised0(target: Behavior<Message>, context: ActorContext<Message>, processingAction: ProcessingAction<Message>, nFoldFailureDepth: Int) throws -> Behavior<Message> {
         do {
             switch processingAction {
+            case .start:
+                return try target.start(context: context)
+
             case .message(let message):
                 return try target.interpretMessage(context: context, message: message)
             case .signal(let signal):
                 return try target.interpretSignal(context: context, signal: signal)
-            case .start:
-                return try target.start(context: context)
+
             case .closure(let closure):
-                try closure()
+                try closure.function()
                 return .same
             case .continuation(let continuation):
                 return try continuation()
             }
         } catch {
-            return try self.handleError(context: context, target: target, processingType: processingAction.type, error: error)
+            return try self.handleError(context: context, target: target, processingAction: processingAction, error: error)
         }
     }
 
     @usableFromInline
-    func handleError(context: ActorContext<Message>, target: Behavior<Message>, processingType: ProcessingType, error: Error) throws -> Behavior<Message> {
+    func handleError(context: ActorContext<Message>, target: Behavior<Message>, processingAction: ProcessingAction<Message>, error: Error) throws -> Behavior<Message> {
         var errorToHandle = error
         // The following restart loop exists to support interpreting `PreRestart` and `Start` signal interpretation failures;
         // If the actor fails during restarting, this failure becomes the new failure reason, and we supervise this failure
@@ -462,11 +464,16 @@ internal class Supervisor<Message> {
         }
 
         repeat {
-            context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingType), handling with \(self)")
+            switch processingAction {
+            case .closure(let closure):
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.location)] , handling with \(self)")
+            default:
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self)")
+            }
 
             let directive: Directive
             do {
-                directive = try self.handleFailure(context, target: target, failure: .error(errorToHandle), processingType: processingType)
+                directive = try self.handleFailure(context, target: target, failure: .error(errorToHandle), processingType: processingAction.type)
             } catch {
                 // An error was thrown by our Supervisor logic while handling the failure, this is a bug and thus we crash hard
                 throw Supervision.SupervisionError.illegalDecision("Illegal supervision decision detected.", handledError: errorToHandle, error: error)

@@ -1022,11 +1022,11 @@ class SupervisionTests: XCTestCase {
         try p.expectMessage("crashing:test2")
     }
 
-    func test_supervisor_throws_shouldRestartWhenFailingInDispatcheClosure() throws {
+    func test_supervisor_throws_shouldRestartWhenFailingInDispatchedClosure() throws {
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .throwing)
     }
 
-    func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcheClosure() throws {
+    func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcherClosure() throws {
         #if !SACT_DISABLE_FAULT_TESTING
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .faulting)
         #endif

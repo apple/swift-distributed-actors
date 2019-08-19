@@ -331,7 +331,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretClosure(_ closure: @escaping () throws -> Void) throws -> SActActorRunResult {
+    func interpretClosure(_ closure: ActorClosureCarry) throws -> SActActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
         traceLog_Cell("Applied closure, becoming: \(next)")
