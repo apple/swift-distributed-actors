@@ -214,6 +214,10 @@ public struct ActorPath: PathRelationships, Hashable {
     // TODO instead back with a String and keep a pos to index quickly into the name for Substring?
     public var segments: [ActorPathSegment]
 
+    public init(root: String) throws {
+        try self.init([ActorPathSegment(root)])
+    }
+
     init(_ segments: [ActorPathSegment]) throws {
         guard !segments.isEmpty else {
             throw ActorPathError.illegalEmptyActorPath
@@ -221,11 +225,7 @@ public struct ActorPath: PathRelationships, Hashable {
         self.segments = segments
     }
 
-    init(root: String) throws {
-        try self.init([ActorPathSegment(root)])
-    }
-
-    init(root: ActorPathSegment) throws {
+    internal init(root: ActorPathSegment) throws {
         try self.init([root])
     }
 
@@ -235,16 +235,16 @@ public struct ActorPath: PathRelationships, Hashable {
     }
 
     /// Appends a segment to this actor path
-    mutating func append(segment: ActorPathSegment) {
+    internal mutating func append(segment: ActorPathSegment) {
         self.segments.append(segment)
     }
     /// Appends a segment to this actor path
-    mutating func append(_ segment: String) throws {
+    public mutating func append(_ segment: String) throws {
         try self.segments.append(ActorPathSegment(segment))
     }
 
     /// Creates a new path with `segment` appended
-    public func appending(segment: ActorPathSegment) -> ActorPath {
+    internal func appending(segment: ActorPathSegment) -> ActorPath {
         var path = self
         path.append(segment: segment)
         return path
