@@ -111,7 +111,6 @@ class SerializationTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
@@ -266,7 +265,6 @@ class SerializationTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Serialized messages in actor communication, locally
 
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {

@@ -17,7 +17,6 @@ import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serialization with ByteBuf
 
 extension SwiftProtobuf.Message {

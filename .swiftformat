@@ -11,3 +11,5 @@
 --ifdef no-indent
 
 # rules
+
+--disable blankLinesAroundMark

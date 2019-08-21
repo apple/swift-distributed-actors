@@ -15,7 +15,6 @@
 import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Cluster Member
 
 /// A `Member` is a node that is participating in the cluster which carries `MemberStatus` information.
@@ -69,7 +68,6 @@ extension Member: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Cluster Membership
 
 /// Membership represents the ordered set of members of this cluster.
@@ -156,7 +154,6 @@ extension Membership: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Membership operations, such as joining, leaving, removing
 
 extension Membership {
@@ -277,7 +274,6 @@ extension Membership {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Membership diffing, allowing to notice and react to changes between two membership observations
 
 extension Membership {
@@ -437,7 +433,6 @@ extension MemberStatus {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Reachability
 
 /// Reachability indicates a failure detectors assessment of the member node's reachability,

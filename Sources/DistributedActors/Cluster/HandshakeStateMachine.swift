@@ -15,14 +15,12 @@
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Protocol version
 
 /// Wire Protocol version of this Swift Distributed Actors build.
 public let DistributedActorsProtocolVersion: DistributedActors.Version = Version(reserved: 0, major: 0, minor: 0, patch: 1)
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Constants for Cluster
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
@@ -30,7 +28,6 @@ public let DistributedActorsProtocolVersion: DistributedActors.Version = Version
 internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Handshake State Machine
 
 // "All Handshakes want to become Associations when they grow up." -- unknown
@@ -280,7 +277,6 @@ internal struct HandshakeStateMachine {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Handshake error types
 
 enum HandshakeError: Error {

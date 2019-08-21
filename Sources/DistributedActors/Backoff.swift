@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Backoff Strategy protocol
 
 /// A `BackoffStrategy` abstracts over logic which computes appropriate time amounts to back off at, for a specific call.
@@ -30,7 +29,6 @@ public protocol BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Backoff Strategy implementations
 
 /// Factory for `BackoffStrategy` instances.
@@ -76,7 +74,6 @@ public enum Backoff {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Constant backoff strategy
 
 /// Simple strategy, always yielding the same backoff interval.
@@ -102,7 +99,6 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Exponential backoff strategy
 
 /// Backoff strategy exponentially yielding greater time amounts each time when triggered.
@@ -203,7 +199,6 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Errors
 
 enum BackoffError {

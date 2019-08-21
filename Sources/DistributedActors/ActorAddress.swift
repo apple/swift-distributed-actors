@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorAddress
 
 /// Uniquely identifies an Actor within a (potentially clustered) Actor System.
@@ -190,7 +189,6 @@ extension Optional: Comparable where Wrapped == UniqueNode {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorLocation
 
 @usableFromInline
@@ -200,7 +198,6 @@ internal enum ActorLocation: Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorPath
 
 /// Represents the name and placement within the actor hierarchy of a given actor.
@@ -310,7 +307,6 @@ extension ActorPath: Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Path relationships
 
 protocol PathRelationships {
@@ -361,7 +357,6 @@ extension PathRelationships {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Path segments
 
 /// Represents a single segment (actor name) of an ActorPath.
@@ -434,7 +429,6 @@ struct ActorName {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor Incarnation number
 
 /// Used to uniquely identify a specific "incarnation" of an Actor and therefore provide unique identity to `ActorAddress` and `ActorRef`s.
@@ -501,7 +495,6 @@ extension ActorIncarnation: Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Node
 
 public struct Node: Hashable {
@@ -543,7 +536,6 @@ extension Node: Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: UniqueNode
 
 /// A _unique_ node which includes also the node's unique `UID` which is used to disambiguate
@@ -646,7 +638,6 @@ public extension NodeID {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Path errors
 
 public enum ActorPathError: Error {

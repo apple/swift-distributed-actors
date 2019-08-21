@@ -15,7 +15,6 @@
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor Props
 
 /// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
@@ -47,7 +46,6 @@ public struct Props {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Dispatcher Props
 
 // TODO: likely better as class hierarchy, by we'll see...
@@ -106,7 +104,6 @@ public enum DispatcherProps {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Mailbox Props
 
 extension Props {

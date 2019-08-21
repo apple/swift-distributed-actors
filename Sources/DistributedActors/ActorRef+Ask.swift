@@ -16,11 +16,9 @@ import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Receives Questions
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ask capability is marked by ReceivesQuestions
 
 public protocol ReceivesQuestions: Codable {
@@ -47,7 +45,6 @@ public protocol ReceivesQuestions: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorRef + ask
 
 extension ActorRef: ReceivesQuestions {
@@ -92,7 +89,6 @@ extension ActorRef: ReceivesQuestions {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: AskResponse
 
 /// Asynchronously completed response to an `ask` operation.
@@ -145,7 +141,6 @@ extension AskResponse: AsyncResult {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Ask Actor
 
 /// :nodoc: Used to receive a single response to a message when using `ActorRef.ask`.extension EventLoopFuture: AsyncResult {

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Addressable (but not tell-able) ActorRef
 
 /// Type erased form of `AddressableActorRef` in order to be used as existential type.
@@ -92,7 +91,6 @@ extension AddressableActorRef {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal unsafe methods
 
 extension AddressableActorRef: ReceivesSystemMessages {

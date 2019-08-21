@@ -314,7 +314,6 @@ final class SWIMInstance {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Handling SWIM protocol interactions
 
 extension SWIM.Instance {

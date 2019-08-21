@@ -249,7 +249,6 @@ extension CRDT.Replicator {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal "trace-logging" for debugging purposes
 
 extension CRDT.Replicator.Shell {

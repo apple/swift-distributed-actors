@@ -17,7 +17,6 @@ import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ACK / NACK
 
 extension SystemMessage.ACK: ProtobufRepresentable {
@@ -49,7 +48,6 @@ extension SystemMessage.NACK: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SystemMessageEnvelope
 
 extension SystemMessageEnvelope: ProtobufRepresentable {
@@ -69,7 +67,6 @@ extension SystemMessageEnvelope: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SystemMessage
 
 extension SystemMessage: ProtobufRepresentable {

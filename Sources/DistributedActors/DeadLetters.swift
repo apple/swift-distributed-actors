@@ -15,7 +15,6 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Dead letter
 
 /// A "dead letter" is a message ("letter") that is impossible to deliver to its designated recipient.
@@ -53,7 +52,6 @@ public struct DeadLetter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorSystem.deadLetters
 
 extension ActorSystem {
@@ -89,7 +87,6 @@ extension ActorSystem {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Dead letter office
 
 /// Special actor ref personality, which can handle `DeadLetter`s.

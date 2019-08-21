@@ -17,7 +17,6 @@ import Logging
 import struct NIO.CircularBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Re-Delivery queues
 
 /// Embedded inside a `MessageEnvelope` when pushing through the transport pipeline.
@@ -112,7 +111,6 @@ extension SystemMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Outbound Re-Delivery
 
 internal final class OutboundSystemMessageRedelivery {
@@ -278,7 +276,6 @@ final class OutboundSystemMessageRedeliveryMetrics {}
 struct GiveUpRedeliveringSystemMessagesError: Error {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Inbound
 
 /// Each association has one inbound system message queue.
@@ -346,7 +343,6 @@ extension InboundSystemMessages.InboundSystemMessageArrivalDirective {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Settings
 
 public struct OutboundSystemMessageRedeliverySettings {

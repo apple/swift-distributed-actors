@@ -493,7 +493,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: tracelog: System Redelivery [tracelog:sys-msg-redelivery]
 
 extension SystemMessageRedeliveryHandler {
@@ -635,7 +634,6 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
@@ -802,7 +800,6 @@ internal extension EventLoop {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: TransportEnvelope
 
 /// Mirrors `Envelope` however ensures that the payload is a message; i.e. it cannot be a closure.

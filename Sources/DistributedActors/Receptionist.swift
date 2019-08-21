@@ -184,7 +184,6 @@ public enum Receptionist {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Receptionist ActorRef Extensions
 
 public extension ActorRef where Message == ReceptionistMessage {
@@ -318,7 +317,6 @@ internal enum LocalReceptionist {
 public protocol ReceptionistMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: internal untyped protocols
 
 internal typealias FullyQualifiedTypeName = String

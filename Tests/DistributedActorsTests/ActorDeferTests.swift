@@ -103,7 +103,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: .terminated) {}
 
     func test_defer_untilTerminated_shouldNotExecute_whenStayingSame() throws {
@@ -202,7 +201,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: mix) {}
 
     func test_mixedDefers_shouldExecuteAtRightPointsInTime_failed() throws {

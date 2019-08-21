@@ -202,7 +202,6 @@ extension ActorRefAdapter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: DeadLetterAdapter
 
 /// :nodoc: Not intended to be used by end users.
@@ -251,7 +250,6 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SubReceiveAdapter
 
 internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {

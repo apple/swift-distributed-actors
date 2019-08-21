@@ -98,7 +98,6 @@ internal func _hackyPThreadThreadId() -> String {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed

@@ -17,7 +17,6 @@ import struct Foundation.Date
 import struct NIO.TimeAmount
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: TimeAmount
 
 // TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
@@ -306,7 +305,6 @@ public extension TimeAmount {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Deadline
 
 // TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso

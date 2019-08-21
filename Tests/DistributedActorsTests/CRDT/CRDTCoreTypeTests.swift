@@ -293,7 +293,6 @@ final class CRDTCoreTypeTests: XCTestCase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: CRDT types for testing
 
 // TODO: remove after we implement more CRDTs

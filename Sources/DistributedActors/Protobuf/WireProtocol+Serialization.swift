@@ -17,7 +17,6 @@ import NIO
 import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoEnvelope
 
 enum WireEnvelopeError: Error {
@@ -55,7 +54,6 @@ extension ProtoEnvelope {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoActorAddress
 
 extension ActorAddress {
@@ -130,7 +128,6 @@ extension ActorRef: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoActorPath
 
 extension ActorPath {
@@ -150,7 +147,6 @@ extension ProtoActorPath {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoProtocolVersion
 
 // TODO: conversions are naive here, we'd want to express this more nicely...
@@ -175,7 +171,6 @@ extension ProtoProtocolVersion {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoHandshakeAccept
 
 extension Wire.HandshakeAccept {
@@ -204,7 +199,6 @@ extension ProtoHandshakeAccept {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ProtoHandshakeReject
 
 extension Wire.HandshakeReject {
@@ -236,7 +230,6 @@ extension ProtoHandshakeReject {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: UniqueNode
 
 extension UniqueNode {
@@ -261,7 +254,6 @@ extension ProtoUniqueNode {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Node
 
 extension Node {
@@ -283,7 +275,6 @@ extension ProtoNode {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: HandshakeOffer
 
 extension Wire.HandshakeOffer {

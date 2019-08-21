@@ -323,7 +323,6 @@ internal class LazyMetadataBox: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Logger extensions
 
 extension Logger {
