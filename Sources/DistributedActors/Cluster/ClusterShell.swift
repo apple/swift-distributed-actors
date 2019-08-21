@@ -16,7 +16,6 @@ import DistributedActorsConcurrencyHelpers
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal Shell responsible for all clustering (i.e. connection management) state.
 
 /// The cluster shell "drives" all internal state machines of the cluster subsystem.
@@ -204,7 +203,6 @@ internal class ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Cluster Bootstrap / Binding
 
 extension ClusterShell {
@@ -319,7 +317,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Handshake init
 
 extension ClusterShell {
@@ -403,7 +400,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Incoming Handshake
 
 extension ClusterShell {
@@ -456,7 +452,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Failures to obtain connections
 
 extension ClusterShell {
@@ -498,7 +493,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Incoming Handshake Replies
 
 extension ClusterShell {
@@ -564,7 +558,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Unbind
 
 extension ClusterShell {
@@ -588,7 +581,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Handling cluster membership changes
 
 extension ClusterShell {
@@ -659,7 +651,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Data types
 
 /// Connection errors should result in Disassociating with the offending system.
@@ -668,7 +659,6 @@ enum ActorsProtocolError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: TraceLog for Cluster
 
 extension ClusterShell {
@@ -703,7 +693,6 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorSystem extensions
 
 extension ActorSystem {

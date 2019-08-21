@@ -169,7 +169,6 @@ enum NodeDeathWatcherShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Errors
 
 public enum NodeDeathWatcherError: Error {

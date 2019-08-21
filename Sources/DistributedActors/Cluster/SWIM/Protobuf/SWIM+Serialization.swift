@@ -15,7 +15,6 @@
 import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serialization
 
 extension SWIM.Message: ProtobufRepresentable {

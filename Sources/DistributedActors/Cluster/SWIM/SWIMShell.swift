@@ -435,7 +435,6 @@ extension SWIMShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal "trace-logging" for debugging purposes
 
 internal enum TraceLogType: CustomStringConvertible {

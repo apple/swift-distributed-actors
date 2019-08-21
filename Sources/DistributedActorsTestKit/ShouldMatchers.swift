@@ -260,7 +260,6 @@ extension Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Collection `should*` matchers
 
 extension Collection {
@@ -302,7 +301,6 @@ extension String {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Free `should*` functions
 
 public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) {
@@ -368,7 +366,6 @@ public func shouldNotHappen(_ message: String, file: StaticString = #file, line:
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Errors and metadata
 
 public enum ShouldMatcherError: Error {

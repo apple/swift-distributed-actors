@@ -142,7 +142,6 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handshake timeout causing retries
 
     func test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes() throws {

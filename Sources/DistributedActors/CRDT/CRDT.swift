@@ -15,7 +15,6 @@
 import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Core CRDT protocols
 
 /// Root type for all state-based CRDTs.
@@ -118,7 +117,6 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor-owned CRDT
 
 // Each owned-CRDT has an owner (e.g., actor) and a "pure" CRDT (e.g., `CRDT.GCounter`). The owner has a reference to
@@ -327,7 +325,6 @@ extension CRDT.ActorOwned where DataType: DeltaCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: CRDT.Identity
 
 extension CRDT {
@@ -347,7 +344,6 @@ extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpol
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: CRDT.ReplicaId
 
 extension CRDT {

@@ -15,7 +15,6 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SWIM Settings
 
 public struct SWIMSettings {
@@ -49,7 +48,6 @@ extension SWIM {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Gossip Settings
 
 public struct SWIMGossipSettings {
@@ -70,7 +68,6 @@ public struct SWIMGossipSettings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: FailureDetector Settings
 
 public struct SWIMFailureDetectorSettings {

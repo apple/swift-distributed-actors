@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: String Interpolation: _:leftPad:
 
 internal extension String.StringInterpolation {
@@ -25,7 +24,6 @@ internal extension String.StringInterpolation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: String Interpolation: reflecting:
 
 internal extension String.StringInterpolation {
@@ -41,7 +39,6 @@ internal extension String.StringInterpolation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: String Interpolation: _:orElse:
 
 public extension String.StringInterpolation {
@@ -51,7 +48,6 @@ public extension String.StringInterpolation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor Ref custom interpolations
 
 public extension String.StringInterpolation {

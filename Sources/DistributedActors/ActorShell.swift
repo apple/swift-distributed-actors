@@ -18,7 +18,6 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor internals
 
 /// The shell is responsible for interpreting messages using the current behavior.
@@ -633,7 +632,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal system message / signal handling functions
 
 extension ActorShell {

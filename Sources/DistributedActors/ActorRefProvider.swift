@@ -15,7 +15,6 @@
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: _ActorRefProvider
 
 /// `ActorRefProvider`s are those which both create and resolve actor references.
@@ -37,7 +36,6 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: RemoteActorRefProvider
 
 // TODO: consider if we need abstraction / does it cost us?
@@ -61,7 +59,6 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: RemoteActorRefProvider delegates most tasks to underlying LocalActorRefProvider
 
 extension RemoteActorRefProvider {
@@ -84,7 +81,6 @@ extension RemoteActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
 
 extension RemoteActorRefProvider {
@@ -115,7 +111,6 @@ extension RemoteActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: LocalActorRefProvider
 
 internal struct LocalActorRefProvider: _ActorRefProvider {

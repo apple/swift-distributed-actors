@@ -16,7 +16,6 @@ import Dispatch
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Death watch implementation
 
 /// DeathWatch implements the user facing `watch` and `unwatch` functions.
@@ -168,7 +167,6 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Errors
 
 public enum DeathPactError: Error {

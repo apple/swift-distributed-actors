@@ -189,7 +189,6 @@ public class Children {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Traversal
 
 extension Children: _ActorTreeTraversable {
@@ -315,7 +314,6 @@ extension Children {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal shell operations
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities

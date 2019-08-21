@@ -111,7 +111,6 @@ public final class Mutex {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Blocking Receptacle
 
 /// :nodoc: Not intended to be used by end users.

@@ -18,7 +18,6 @@ import NIOFoundationCompat
 import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorSerializationContext for Encoder & Decoder
 
 extension Decoder {
@@ -67,7 +66,6 @@ public enum ActorCoding {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ActorRef
 
 extension ActorRef {
@@ -89,7 +87,6 @@ extension ActorRef {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ReceivesMessages
 
 extension ReceivesMessages {
@@ -117,7 +114,6 @@ extension ReceivesMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ReceivesSystemMessages
 
 /// Warning: presence of this extension and `ReceivesSystemMessages` being `Codable` does not actually enable users
@@ -151,7 +147,6 @@ internal struct ReceivesSystemMessagesDecoder {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ActorAddress
 
 extension ActorAddress: Codable {
@@ -182,7 +177,6 @@ extension ActorAddress: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ActorPath
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -200,7 +194,6 @@ extension ActorPath: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable ActorPath elements
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -223,7 +216,6 @@ extension ActorPathSegment: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable Incarnation
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -246,7 +238,6 @@ extension ActorIncarnation: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable Node Address
 
 extension Node: Codable {
@@ -298,7 +289,6 @@ extension UniqueNode: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Convenience coding functions
 
 internal extension SingleValueDecodingContainer {
@@ -322,7 +312,6 @@ internal extension UnkeyedDecodingContainer {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Codable SystemMessage
 
 extension SystemMessage: Codable {

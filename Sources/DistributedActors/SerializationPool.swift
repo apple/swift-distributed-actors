@@ -112,7 +112,6 @@ internal final class SerializationPool {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SerializationSettings
 
 public struct SerializationPoolSettings {

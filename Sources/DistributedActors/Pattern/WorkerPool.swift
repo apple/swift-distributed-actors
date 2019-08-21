@@ -205,7 +205,6 @@ internal extension WorkerPool {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Worker Pool Ref
 
 public struct WorkerPoolRef<Message>: ReceivesMessages {
@@ -250,7 +249,6 @@ internal enum WorkerPoolMessage<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: WorkerPool Errors
 
 public enum WorkerPoolError: Error {
@@ -263,7 +261,6 @@ public enum WorkerPoolError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.

@@ -15,7 +15,6 @@
 import struct Logging.Logger
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SWIM Logging Metadata
 
 extension SWIM.Instance {
@@ -31,7 +30,6 @@ extension SWIM.Instance {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Tracelog: SWIM [tracelog:SWIM]
 
 extension SWIMShell {
