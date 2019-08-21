@@ -21,14 +21,12 @@ import XCTest
 ///
 
 extension ActorSystemTests {
-
-   static var allTests : [(String, (ActorSystemTests) -> () throws -> Void)] {
-      return [
-                ("test_system_spawn_shouldThrowOnDuplicateName", test_system_spawn_shouldThrowOnDuplicateName),
-                ("test_system_spawn_shouldNotThrowOnNameReUse", test_system_spawn_shouldNotThrowOnNameReUse),
-                ("test_terminate_shouldStopAllActors", test_terminate_shouldStopAllActors),
-                ("test_terminate_selfSendingActorShouldNotDeadlockSystem", test_terminate_selfSendingActorShouldNotDeadlockSystem),
-           ]
-   }
+    static var allTests: [(String, (ActorSystemTests) -> () throws -> Void)] {
+        return [
+            ("test_system_spawn_shouldThrowOnDuplicateName", test_system_spawn_shouldThrowOnDuplicateName),
+            ("test_system_spawn_shouldNotThrowOnNameReUse", test_system_spawn_shouldNotThrowOnNameReUse),
+            ("test_terminate_shouldStopAllActors", test_terminate_shouldStopAllActors),
+            ("test_terminate_selfSendingActorShouldNotDeadlockSystem", test_terminate_selfSendingActorShouldNotDeadlockSystem),
+        ]
+    }
 }
-

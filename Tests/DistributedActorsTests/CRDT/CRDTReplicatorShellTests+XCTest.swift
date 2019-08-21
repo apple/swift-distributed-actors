@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension CRDTReplicatorShellTests {
-
-   static var allTests : [(String, (CRDTReplicatorShellTests) -> () throws -> Void)] {
-      return [
-                ("test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore", test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore),
-                ("test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
-                ("test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
-                ("test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
-                ("test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
-                ("test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
-           ]
-   }
+    static var allTests: [(String, (CRDTReplicatorShellTests) -> () throws -> Void)] {
+        return [
+            ("test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore", test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore),
+            ("test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
+            ("test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
+            ("test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
+            ("test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
+            ("test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
+        ]
+    }
 }
-

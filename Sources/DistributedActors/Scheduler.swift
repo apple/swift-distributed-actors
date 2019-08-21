@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import Dispatch
+import DistributedActorsConcurrencyHelpers
 
 @usableFromInline
 protocol Cancelable {
@@ -39,12 +39,12 @@ class FlagCancelable: Cancelable {
     private let flag = Atomic<Bool>(value: false)
 
     func cancel() {
-        _ = flag.compareAndExchange(expected: false, desired: true)
+        _ = self.flag.compareAndExchange(expected: false, desired: true)
     }
 
     @usableFromInline
     var isCanceled: Bool {
-        return flag.load()
+        return self.flag.load()
     }
 }
 
@@ -57,7 +57,6 @@ extension DispatchWorkItem: Cancelable {
 
 // TODO: this is mostly only a placeholder impl; we'd need a proper wheel timer most likely
 extension DispatchQueue: Scheduler {
-
     func scheduleOnce(delay: TimeAmount, _ f: @escaping () -> Void) -> Cancelable {
         let workItem = DispatchWorkItem(block: f)
         self.asyncAfter(deadline: .now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(delay.nanoseconds)), execute: workItem)
@@ -65,7 +64,7 @@ extension DispatchQueue: Scheduler {
     }
 
     func scheduleOnce<Message>(delay: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
-        return scheduleOnce(delay: delay) {
+        return self.scheduleOnce(delay: delay) {
             receiver.tell(message)
         }
     }
@@ -74,7 +73,7 @@ extension DispatchQueue: Scheduler {
         let cancellable = FlagCancelable()
 
         func sched() {
-            if (!cancellable.isCanceled) {
+            if !cancellable.isCanceled {
                 let nextDeadline = DispatchTime.now() + Dispatch.DispatchTimeInterval.nanoseconds(Int(interval.nanoseconds))
                 f()
                 self.asyncAfter(deadline: nextDeadline, execute: sched)
@@ -87,9 +86,8 @@ extension DispatchQueue: Scheduler {
     }
 
     func schedule<Message>(initialDelay: TimeAmount, interval: TimeAmount, receiver: ActorRef<Message>, message: Message) -> Cancelable {
-        return schedule(initialDelay: initialDelay, interval: interval) {
+        return self.schedule(initialDelay: initialDelay, interval: interval) {
             receiver.tell(message)
         }
     }
-
 }

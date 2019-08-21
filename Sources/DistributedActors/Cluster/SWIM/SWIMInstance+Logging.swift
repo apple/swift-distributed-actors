@@ -15,22 +15,23 @@
 import struct Logging.Logger
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SWIM Logging Metadata
 
 extension SWIM.Instance {
-
     /// While the SWIM.Instance is not meant to be logging by itself, it does offer metadata for loggers to use.
     var metadata: Logger.Metadata {
         return [
             "swim/protocolPeriod": "\(self.protocolPeriod)",
             "swim/incarnation": "\(self.incarnation)",
             "swim/memberCount": "\(self.memberCount)",
-            "swim/suspectCount": "\(self.suspects.count)"
+            "swim/suspectCount": "\(self.suspects.count)",
         ]
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Tracelog: SWIM [tracelog:SWIM]
 
 extension SWIMShell {
@@ -71,5 +72,4 @@ extension SWIMShell {
             }
         }
     }
-
 }

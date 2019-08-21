@@ -15,7 +15,7 @@
 import CDistributedActorsMailbox
 
 public final class MPSCLinkedQueue<A> {
-    public let q: UnsafeMutablePointer<CSActMPSCLinkedQueue>;
+    public let q: UnsafeMutablePointer<CSActMPSCLinkedQueue>
 
     public init() {
         self.q = c_sact_mpsc_linked_queue_create()
@@ -31,7 +31,7 @@ public final class MPSCLinkedQueue<A> {
     ///
     /// - Parameter item: The item to be added to the queue
     @inlinable
-    public func enqueue(_ item: A) -> Void {
+    public func enqueue(_ item: A) {
         let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
         ptr.initialize(to: item)
         c_sact_mpsc_linked_queue_enqueue(self.q, ptr)

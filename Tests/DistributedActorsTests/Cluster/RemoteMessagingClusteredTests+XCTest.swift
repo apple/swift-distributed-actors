@@ -21,19 +21,17 @@ import XCTest
 ///
 
 extension RemoteMessagingTests {
-
-   static var allTests : [(String, (RemoteMessagingTests) -> () throws -> Void)] {
-      return [
-                ("test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide", test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide),
-                ("test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide),
-                ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide),
-                ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide),
-                ("test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork", test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork),
-                ("test_remoteActors_echo", test_remoteActors_echo),
-                ("test_sendingToNonTopLevelRemoteRef_shouldWork", test_sendingToNonTopLevelRemoteRef_shouldWork),
-                ("test_sendingToRemoteAdaptedRef_shouldWork", test_sendingToRemoteAdaptedRef_shouldWork),
-                ("test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages", test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages),
-           ]
-   }
+    static var allTests: [(String, (RemoteMessagingTests) -> () throws -> Void)] {
+        return [
+            ("test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide", test_association_shouldStayAliveWhenMessageSerializationFailsOnSendingSide),
+            ("test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationFailsOnReceivingSide),
+            ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnSendingSide),
+            ("test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide", test_association_shouldStayAliveWhenMessageSerializationThrowsOnReceivingSide),
+            ("test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork", test_sendingToRefWithAddressWhichIsActuallyLocalAddress_shouldWork),
+            ("test_remoteActors_echo", test_remoteActors_echo),
+            ("test_sendingToNonTopLevelRemoteRef_shouldWork", test_sendingToNonTopLevelRemoteRef_shouldWork),
+            ("test_sendingToRemoteAdaptedRef_shouldWork", test_sendingToRemoteAdaptedRef_shouldWork),
+            ("test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages", test_actorRefsThatWereSentAcrossMultipleNodeHops_shouldBeAbleToReceiveMessages),
+        ]
+    }
 }
-

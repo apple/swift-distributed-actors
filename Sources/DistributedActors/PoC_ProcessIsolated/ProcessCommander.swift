@@ -34,7 +34,6 @@ public struct ProcessCommander {
 
     private var _servants: [Int: ServantProcess] = [:]
 
-
     var behavior: Behavior<Command> {
         return .setup { context in
             context.log.info("Process commander initialized, ready to accept commands.")
@@ -77,10 +76,10 @@ public struct ProcessCommander {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Address
 
 extension ActorAddress {
-
     static func ofProcessMaster(on node: UniqueNode) -> ActorAddress {
         return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .perpetual)
     }

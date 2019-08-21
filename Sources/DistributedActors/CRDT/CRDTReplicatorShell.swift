@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ------------------------------------------------------------------------------------------------------------
+
 // MARK: ReplicatorShell
 
 extension CRDT.Replicator {
@@ -58,6 +59,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Local command
 
         private func receiveLocalCommand(_ context: ActorContext<Message>, command: LocalCommand) {
@@ -157,6 +159,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Remote command
 
         private func receiveRemoteCommand(_ context: ActorContext<Message>, command: RemoteCommand) {
@@ -223,9 +226,10 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Notify owners
 
-        private func notifyOwnersOnUpdate(_ context: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
+        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
             if let owners = self.replicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data.underlying)
                 for owner in owners {
@@ -234,7 +238,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func notifyOwnersOnDelete(_ context: ActorContext<Message>, _ id: Identity) {
+        private func notifyOwnersOnDelete(_: ActorContext<Message>, _ id: Identity) {
             if let owners = self.replicator.owners(for: id) {
                 for owner in owners {
                     owner.tell(.deleted)
@@ -245,6 +249,7 @@ extension CRDT.Replicator {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal "trace-logging" for debugging purposes
 
 extension CRDT.Replicator.Shell {

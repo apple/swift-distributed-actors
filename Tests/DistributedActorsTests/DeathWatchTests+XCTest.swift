@@ -21,18 +21,16 @@ import XCTest
 ///
 
 extension DeathWatchTests {
-
-   static var allTests : [(String, (DeathWatchTests) -> () throws -> Void)] {
-      return [
-                ("test_watch_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_shouldTriggerTerminatedWhenWatchedActorStops),
-                ("test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops),
-                ("test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers", test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers),
-                ("test_minimized_deathPact_shouldTriggerForWatchedActor", test_minimized_deathPact_shouldTriggerForWatchedActor),
-                ("test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives", test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives),
-                ("test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated", test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated),
-                ("test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies", test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies),
-                ("test_sendingToStoppedRef_shouldNotCrash", test_sendingToStoppedRef_shouldNotCrash),
-           ]
-   }
+    static var allTests: [(String, (DeathWatchTests) -> () throws -> Void)] {
+        return [
+            ("test_watch_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_shouldTriggerTerminatedWhenWatchedActorStops),
+            ("test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops", test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops),
+            ("test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers", test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers),
+            ("test_minimized_deathPact_shouldTriggerForWatchedActor", test_minimized_deathPact_shouldTriggerForWatchedActor),
+            ("test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives", test_minimized_deathPact_shouldNotTriggerForActorThatWasWatchedButIsNotAnymoreWhenTerminatedArrives),
+            ("test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated", test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated),
+            ("test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies", test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies),
+            ("test_sendingToStoppedRef_shouldNotCrash", test_sendingToStoppedRef_shouldNotCrash),
+        ]
+    }
 }
-

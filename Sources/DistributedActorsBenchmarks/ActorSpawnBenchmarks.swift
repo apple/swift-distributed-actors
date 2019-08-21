@@ -12,22 +12,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 @testable import DistributedActors
-import SwiftBenchmarkTools
 import DistributedActorsConcurrencyHelpers
+import SwiftBenchmarkTools
 
 public let ActorSpawnBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
         name: "ActorSpawnBenchmarks.bench_SpawnTopLevel",
-        runFunction: { _ in try! bench_SpawnTopLevel(50_000) },
+        runFunction: { _ in try! bench_SpawnTopLevel(50000) },
         tags: [],
         setUpFunction: { setUp() },
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "ActorSpawnBenchmarks.bench_SpawnChildren",
-        runFunction: { _ in try! bench_SpawnChildren(50_000) },
+        runFunction: { _ in try! bench_SpawnChildren(50000) },
         tags: [],
         setUpFunction: { setUp() },
         tearDownFunction: tearDown
@@ -37,17 +36,18 @@ public let ActorSpawnBenchmarks: [BenchmarkInfo] = [
 private func setUp() {
     _system = ActorSystem("ActorSpawnBenchmarks")
 }
+
 private func tearDown() {
     _system = nil
 }
 
-func bench_SpawnTopLevel(_ actorCount: Int) throws -> Void {
+func bench_SpawnTopLevel(_ actorCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
 
     let start = timer.getTime()
 
     for i in 1 ... actorCount {
-        let _: ActorRef<Never> = try system.spawn("test-\(i)", (.ignore))
+        let _: ActorRef<Never> = try system.spawn("test-\(i)", .ignore)
     }
 
     let stop = timer.getTime()
@@ -69,14 +69,14 @@ func bench_SpawnTopLevel(_ actorCount: Int) throws -> Void {
     print("Stopped \(actorCount) top-level actors in \(String(format: "%.3f", shutdownSeconds)) seconds. (\(stopsPerSecond) actors/s)")
 }
 
-func bench_SpawnChildren(_ actorCount: Int) throws -> Void {
+func bench_SpawnChildren(_ actorCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
 
     let latch = CountDownLatch(from: 1)
 
-    let spawnerBehavior: Behavior<String> = .receive { context, _ in
+    let spawnerBehavior: Behavior<String> = .receive { _, _ in
         for i in 1 ... actorCount {
-            let _: ActorRef<Never> = try system.spawn("test-\(i)", (.ignore))
+            let _: ActorRef<Never> = try system.spawn("test-\(i)", .ignore)
         }
         latch.countDown()
         return .same

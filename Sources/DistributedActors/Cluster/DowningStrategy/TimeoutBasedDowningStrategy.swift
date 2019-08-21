@@ -20,7 +20,7 @@
 internal final class TimeoutBasedDowningStrategy {
     let settings: TimeoutBasedDowningStrategySettings
     let selfNode: UniqueNode
-    var _leader: Bool = false // TODO keep membership and know if `isLeader(selfNode)`
+    var _leader: Bool = false // TODO: keep membership and know if `isLeader(selfNode)`
 
     var isLeader: Bool {
         return self._leader
@@ -44,7 +44,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
     func onMemberUnreachable(_ member: Member) -> DowningStrategyDirective.MemberUnreachableDirective {
         self._unreachable.insert(member.node)
 
-        return .startTimer(key: TimerKey(member.node), message: .timeout(member), delay: settings.downUnreachableMembersAfter)
+        return .startTimer(key: TimerKey(member.node), message: .timeout(member), delay: self.settings.downUnreachableMembersAfter)
     }
 
     func onLeaderChange(to: UniqueNode?) -> DowningStrategyDirective.LeaderChangeDirective {

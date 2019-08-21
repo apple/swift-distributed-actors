@@ -21,11 +21,9 @@ import XCTest
 ///
 
 extension TimeAmountTests {
-
-   static var allTests : [(String, (TimeAmountTests) -> () throws -> Void)] {
-      return [
-                ("test_timeAmount_rendersPrettyDurations", test_timeAmount_rendersPrettyDurations),
-           ]
-   }
+    static var allTests: [(String, (TimeAmountTests) -> () throws -> Void)] {
+        return [
+            ("test_timeAmount_rendersPrettyDurations", test_timeAmount_rendersPrettyDurations),
+        ]
+    }
 }
-

@@ -14,23 +14,23 @@
 
 import Foundation
 
-import Foundation
-import XCTest
 import CDistributedActorsMailbox
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class CMailboxTests: XCTestCase {
     func test_MailboxCapacityLimit() {
         let mailbox = cmailbox_create(3, 1)
         defer { cmailbox_destroy(mailbox) }
 
-        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_send_message(mailbox, self.newIntPtr())
         cmailbox_message_count(mailbox).shouldEqual(1)
-        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_send_message(mailbox, self.newIntPtr())
         cmailbox_message_count(mailbox).shouldEqual(2)
-        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_send_message(mailbox, self.newIntPtr())
         cmailbox_message_count(mailbox).shouldEqual(3)
-        cmailbox_send_message(mailbox, newIntPtr())
+        cmailbox_send_message(mailbox, self.newIntPtr())
         cmailbox_message_count(mailbox).shouldEqual(3)
     }
 

@@ -18,7 +18,6 @@ import Logging
 ///
 /// - SeeAlso: `SWIM.Instance` for detailed documentation about the SWIM protocol implementation.
 internal struct SWIMShell {
-
     let swim: SWIM.Instance
     let clusterRef: ClusterShell.Ref
 
@@ -30,11 +29,13 @@ internal struct SWIMShell {
         self.swim = swim
         self.clusterRef = clusterRef
     }
+
     internal init(settings: SWIM.Settings, clusterRef: ClusterShell.Ref) {
         self.init(SWIM.Instance(settings), clusterRef: clusterRef)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Behaviors
 
     /// Initial behavior, kicks off timers and becomes `ready`.
@@ -42,7 +43,7 @@ internal struct SWIMShell {
     var behavior: Behavior<SWIM.Message> {
         return .setup { context in
 
-            // TODO install an .cluster.down(my node) with context.defer in case we crash? Or crash system when this crashes: issue #926
+            // TODO: install an .cluster.down(my node) with context.defer in case we crash? Or crash system when this crashes: issue #926
 
             let probeInterval = self.swim.settings.gossip.probeInterval
             context.timers.startPeriodic(key: SWIM.Shell.periodicPingKey, message: .local(.pingRandomMember), interval: probeInterval)
@@ -76,6 +77,7 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Receiving messages
 
     func receiveRemoteMessage(context: ActorContext<SWIM.Message>, message: SWIM.RemoteMessage) {
@@ -83,7 +85,7 @@ internal struct SWIMShell {
         case .ping(let lastKnownStatus, let replyTo, let payload):
             self.tracelog(context, .receive, message: message)
 
-            switch swim.onPing(lastKnownStatus: lastKnownStatus) {
+            switch self.swim.onPing(lastKnownStatus: lastKnownStatus) {
             case .reply(let ack, let warning):
                 self.tracelog(context, .reply(to: replyTo), message: ack)
                 replyTo.tell(ack)
@@ -103,7 +105,7 @@ internal struct SWIMShell {
 
             if !self.swim.isMember(target) {
                 self.ensureAssociated(context, remoteNode: target.address.node?.node) { _ in
-                    self.swim.addMember(target, status: lastKnownStatus) // TODO push into SWIM?
+                    self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
                     self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                 }
             } else {
@@ -112,7 +114,6 @@ internal struct SWIMShell {
             self.processGossipPayload(context: context, payload: payload)
         }
     }
-
 
     func receiveLocalMessage(context: ActorContext<SWIM.Message>, message: SWIM.LocalMessage) {
         switch message {
@@ -128,6 +129,7 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Sending ping, ping-req and friends
 
     /// - parameter pingReqOrigin: is set only when the ping that this is a reply to was originated as a `pingReq`.
@@ -135,11 +137,12 @@ internal struct SWIMShell {
         context: ActorContext<SWIM.Message>,
         to target: ActorRef<SWIM.Message>,
         lastKnownStatus: SWIM.Status,
-        pingReqOrigin: ActorRef<SWIM.Ack>?) {
-        let payload = swim.makeGossipPayload()
+        pingReqOrigin: ActorRef<SWIM.Ack>?
+    ) {
+        let payload = self.swim.makeGossipPayload()
         context.log.trace("Sending ping to [\(target)] with payload [\(payload)]")
 
-        let response = target.ask(for: SWIM.Ack.self, timeout: swim.settings.failureDetector.pingTimeout) {
+        let response = target.ask(for: SWIM.Ack.self, timeout: self.swim.settings.failureDetector.pingTimeout) {
             let ping = SWIM.RemoteMessage.ping(lastKnownStatus: lastKnownStatus, replyTo: $0, payload: payload)
             self.tracelog(context, .ask(target), message: ping)
             return SWIM.Message.remote(ping)
@@ -158,7 +161,7 @@ internal struct SWIMShell {
             return
         }
 
-        // TODO also push much of this down into SWIM.Instance
+        // TODO: also push much of this down into SWIM.Instance
 
         // select random members to send ping requests to
         let membersToPingRequest = self.swim.membersToPingRequest(target: toPing)
@@ -181,7 +184,7 @@ internal struct SWIMShell {
         let firstSuccess = context.system.eventLoopGroup.next().makePromise(of: SWIM.Ack.self)
         let pingTimeout = self.swim.settings.failureDetector.pingTimeout
         for member in membersToPingRequest {
-            let payload = swim.makeGossipPayload()
+            let payload = self.swim.makeGossipPayload()
 
             context.log.trace("Sending ping request for [\(toPing)] to [\(member)] with payload: \(payload)")
 
@@ -209,7 +212,8 @@ internal struct SWIMShell {
         context: ActorContext<SWIM.Message>,
         result: Result<SWIM.Ack, ExecutionError>,
         pingedMember: ActorRef<SWIM.Message>,
-        pingReqOrigin: ActorRef<SWIM.Ack>?) {
+        pingReqOrigin: ActorRef<SWIM.Ack>?
+    ) {
         self.tracelog(context, .receive(pinged: pingedMember), message: result)
 
         switch result {
@@ -226,7 +230,7 @@ internal struct SWIMShell {
             }
         case .success(let ack):
             context.log.trace("Received ack from [\(ack.pinged)] with incarnation [\(ack.incarnation)] and payload [\(ack.payload)]")
-            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation)) // TODO log ?
+            self.swim.mark(ack.pinged, as: .alive(incarnation: ack.incarnation)) // TODO: log ?
             pingReqOrigin?.tell(ack)
             self.processGossipPayload(context: context, payload: ack.payload)
         }
@@ -234,7 +238,7 @@ internal struct SWIMShell {
 
     func handlePingRequestResult(context: ActorContext<SWIM.Message>, result: Result<SWIM.Ack, ExecutionError>, pingedMember: ActorRef<SWIM.Message>) {
         self.tracelog(context, .receive(pinged: pingedMember), message: result)
-        // TODO do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
+        // TODO: do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
 
         switch self.swim.onPingRequestResponse(result, pingedMember: pingedMember) {
         case .alive(_, let payloadToProcess):
@@ -242,11 +246,12 @@ internal struct SWIMShell {
         case .newlySuspect:
             context.log.debug("Member [\(pingedMember)] marked as suspect")
         default:
-            () // TODO revisit logging more details here
+            () // TODO: revisit logging more details here
         }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handling local messages
 
     func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
@@ -277,7 +282,6 @@ internal struct SWIMShell {
     // TODO: test in isolation
     func handleConfirmDead(_ context: ActorContext<SWIM.Message>, deadNode node: UniqueNode) {
         if let member = self.swim.member(for: node) {
-            
             // It is important to not infinitely loop cluster.down + confirmDead messages;
             // See: `.confirmDead` for more rationale
             if member.isDead {
@@ -294,22 +298,22 @@ internal struct SWIMShell {
             case .applied(let .some(previousState)):
                 if previousState.isSuspect || previousState.isUnreachable {
                     context.log.warning("""
-                                        Marked [\(member)] as DEAD. \
-                                        Was marked \(previousState) in protocol period [\(member.protocolPeriod)], current period [\(swim.protocolPeriod)].
-                                        """)
+                    Marked [\(member)] as DEAD. \
+                    Was marked \(previousState) in protocol period [\(member.protocolPeriod)], current period [\(self.swim.protocolPeriod)].
+                    """)
                 } else {
                     context.log.warning("""
-                                        Marked [\(member)] as DEAD. \
-                                        Node was previously alive, and now forced DEAD. Current period [\(swim.protocolPeriod)].
-                                        """)
+                    Marked [\(member)] as DEAD. \
+                    Node was previously alive, and now forced DEAD. Current period [\(self.swim.protocolPeriod)].
+                    """)
                 }
             case .applied:
-                // TODO marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
+                // TODO: marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
                 context.log.warning("Marked [\(member)] as dead. Node was not previously known to SWIM.")
                 // TODO: add tracelog about marking a node dead here?
 
             case .ignoredDueToOlderStatus:
-                // TODO make sure a fatal error in SWIM.Shell causes a system shutdown?
+                // TODO: make sure a fatal error in SWIM.Shell causes a system shutdown?
                 fatalError("Marking [\(member)] as DEAD failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
             }
         }
@@ -333,7 +337,7 @@ internal struct SWIMShell {
         }
     }
 
-    // TODO since this is applying payload to SWIM... can we do this in SWIM itself rather?
+    // TODO: since this is applying payload to SWIM... can we do this in SWIM itself rather?
     func processGossipPayload(context: ActorContext<SWIM.Message>, payload: SWIM.Payload) {
         switch payload {
         case .membership(let members):
@@ -346,7 +350,7 @@ internal struct SWIMShell {
                     // ensuring a connection is asynchronous, but executes callback in actor context
                     self.ensureAssociated(context, remoteNode: address) { uniqueAddress in
                         // it COULD happen that we kick off connecting to a node based on this connection
-                        // TODO test for this
+                        // TODO: test for this
                         if let uniqueRemoteAddress = uniqueAddress {
                             continueAddingMember(uniqueRemoteAddress)
                             return
@@ -420,7 +424,7 @@ internal struct SWIMShell {
 }
 
 extension SWIMShell {
-    static let name: String = "swim" // TODO String -> ActorName
+    static let name: String = "swim" // TODO: String -> ActorName
     static let naming: ActorNaming = .unique(SWIMShell.name)
 
     static func address(on node: UniqueNode) -> ActorAddress {
@@ -431,6 +435,7 @@ extension SWIMShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal "trace-logging" for debugging purposes
 
 internal enum TraceLogType: CustomStringConvertible {

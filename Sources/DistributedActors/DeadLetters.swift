@@ -15,6 +15,7 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Dead letter
 
 /// A "dead letter" is a message ("letter") that is impossible to deliver to its designated recipient.
@@ -42,7 +43,7 @@ public struct DeadLetter {
     let sentAtFile: String?
     let sentAtLine: UInt?
 
-    // TODO could be under a flag if we do carry the file/line or not?
+    // TODO: could be under a flag if we do carry the file/line or not?
     init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
         self.recipient = recipient
@@ -52,13 +53,13 @@ public struct DeadLetter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorSystem.deadLetters
 
 extension ActorSystem {
-
     /// Dead letters reference dedicated to a specific address.
     public func personalDeadLetters<Message>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
-        // TODO rather could we send messages to self._deadLetters with enough info so it handles properly?
+        // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
         guard recipient.node == self.settings.cluster.uniqueBindNode else {
             /// While it should not realistically happen that a dead letter is obtained for a remote reference,
@@ -85,10 +86,10 @@ extension ActorSystem {
     public var deadLetters: ActorRef<DeadLetter> {
         return self._deadLetters
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Dead letter office
 
 /// Special actor ref personality, which can handle `DeadLetter`s.
@@ -149,6 +150,7 @@ final class DeadLetterOffice {
     var address: ActorAddress {
         return self._address
     }
+
     @usableFromInline
     var path: ActorPath {
         return self._address.path
@@ -174,7 +176,7 @@ final class DeadLetterOffice {
         // all of them to be piped to the exact same logging handler, do not create a new Logging.Logger() here (!)
 
         var metadata: Logger.Metadata = [
-            "deadLetter": "1" // marker, can be used by logging tools to easily capture all dead letter logging 
+            "deadLetter": "1", // marker, can be used by logging tools to easily capture all dead letter logging
             // TODO: could coalesce and bump a counter if many times the same dead letter is logged
         ]
 
@@ -202,11 +204,11 @@ final class DeadLetterOffice {
         }
 
         // in all other cases, we want to log the dead letter:
-        // TODO more metadata (from Envelope)
+        // TODO: more metadata (from Envelope)
         self.log.info("""
-                    Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
-                    \(recipientString).
-                    """, metadata: metadata, file: file, line: line)
+        Dead letter: [\(deadLetter.message)]:\(String(reflecting: type(of: deadLetter.message))) was not delivered \
+        \(recipientString).
+        """, metadata: metadata, file: file, line: line)
     }
 
     private func specialHandled(_ message: SystemMessage, recipient: ActorAddress?) -> Bool {
@@ -214,7 +216,7 @@ final class DeadLetterOffice {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
             traceLog_Mailbox(self.address.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
-            return true // TODO would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
+            return true // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:
             //   - was sent to an actor which has terminated and arrived after the .tombstone, thus was drained to deadLetters
@@ -234,9 +236,7 @@ final class DeadLetterOffice {
 }
 
 extension ActorPath {
-
     internal static let _dead: ActorPath = try! ActorPath(root: "dead")
     internal static let _deadLetters: ActorPath = try! ActorPath._dead.appending("letters")
     internal static let _cluster: ActorPath = try! ActorPath._system.appendingKnownUnique(ClusterShell.naming)
-
 }

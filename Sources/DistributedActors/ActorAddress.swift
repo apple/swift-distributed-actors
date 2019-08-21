@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorAddress
 
 /// Uniquely identifies an Actor within a (potentially clustered) Actor System.
@@ -47,20 +48,17 @@
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
 /// Note that the `ActorIncarnation` is not printed by default in the String representation of a path, yet may be inspected on demand.
 public struct ActorAddress: Equatable, Hashable {
-
     @usableFromInline
     internal var _location: ActorLocation
 
     /// Returns a remote node's address if the address points to a remote actor,
     /// or `nil` if the referred to actor is local to the system the address was obtained from.
     public var node: UniqueNode? {
-        get {
-            switch self._location {
-            case .local:
-                return nil
-            case .remote(let remote):
-                return remote
-            }
+        switch self._location {
+        case .local:
+            return nil
+        case .remote(let remote):
+            return remote
         }
     }
 
@@ -128,11 +126,9 @@ extension ActorAddress {
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
     internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .perpetual)
-
 }
 
 extension ActorAddress {
-
     @inlinable
     internal var isLocal: Bool {
         switch self._location {
@@ -140,6 +136,7 @@ extension ActorAddress {
         default: return false
         }
     }
+
     @inlinable
     internal var isRemote: Bool {
         return !self.isLocal
@@ -172,13 +169,13 @@ extension ActorAddress: PathRelationships {
 
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
-    public static func <(lhs: ActorAddress, rhs: ActorAddress) -> Bool {
+    public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
         return lhs.node < rhs.node || lhs.path < rhs.path || lhs.incarnation < rhs.incarnation
     }
 }
 
 extension Optional: Comparable where Wrapped == UniqueNode {
-    public static func <(lhs: UniqueNode?, rhs:  UniqueNode?) -> Bool {
+    public static func < (lhs: UniqueNode?, rhs: UniqueNode?) -> Bool {
         switch (lhs, rhs) {
         case (.some, .none):
             return false
@@ -193,6 +190,7 @@ extension Optional: Comparable where Wrapped == UniqueNode {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorLocation
 
 @usableFromInline
@@ -202,6 +200,7 @@ internal enum ActorLocation: Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorPath
 
 /// Represents the name and placement within the actor hierarchy of a given actor.
@@ -212,8 +211,7 @@ internal enum ActorLocation: Hashable {
 ///
 /// - Example: `/user/lightbulbMaster/lightbulb-2012`
 public struct ActorPath: PathRelationships, Hashable {
-
-    // TODO instead back with a String and keep a pos to index quickly into the name for Substring?
+    // TODO: instead back with a String and keep a pos to index quickly into the name for Substring?
     public var segments: [ActorPathSegment]
 
     public init(root: String) throws {
@@ -240,6 +238,7 @@ public struct ActorPath: PathRelationships, Hashable {
     internal mutating func append(segment: ActorPathSegment) {
         self.segments.append(segment)
     }
+
     /// Appends a segment to this actor path
     public mutating func append(_ segment: String) throws {
         try self.segments.append(ActorPathSegment(segment))
@@ -251,10 +250,12 @@ public struct ActorPath: PathRelationships, Hashable {
         path.append(segment: segment)
         return path
     }
+
     /// Creates a new path with `segment` appended
     public func appending(_ name: String) throws -> ActorPath {
         return try self.appending(segment: ActorPathSegment(name))
     }
+
     /// Creates a new path with a known-to-be-unique naming appended, otherwise faults
     internal func appendingKnownUnique(_ unique: ActorNaming) throws -> ActorPath {
         guard case .unique(let name) = unique.naming else {
@@ -272,19 +273,18 @@ public struct ActorPath: PathRelationships, Hashable {
         return path
     }
 
-
     /// Returns the name of the actor represented by this path.
     /// This is equal to the last path segments string representation.
     public var name: String {
         // the only path which has no segments is the "root"
-        let lastSegmentName = segments.last?.description ?? "/"
+        let lastSegmentName = self.segments.last?.description ?? "/"
         return "\(lastSegmentName)"
     }
 }
 
 extension ActorPath: CustomStringConvertible {
     public var description: String {
-        let pathSegments: String = self.segments.map({ $0.value }).joined(separator: "/")
+        let pathSegments: String = self.segments.map { $0.value }.joined(separator: "/")
         return "/\(pathSegments)"
     }
 }
@@ -297,18 +297,20 @@ extension ActorPath {
     internal func makeLocalAddress(incarnation: ActorIncarnation) -> ActorAddress {
         return .init(path: self, incarnation: incarnation)
     }
+
     internal func makeRemoteAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
         return .init(node: node, path: self, incarnation: incarnation)
     }
 }
 
 extension ActorPath: Comparable {
-    public static func <(lhs: ActorPath, rhs: ActorPath) -> Bool {
+    public static func < (lhs: ActorPath, rhs: ActorPath) -> Bool {
         return "\(lhs)" < "\(rhs)"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Path relationships
 
 protocol PathRelationships {
@@ -318,9 +320,8 @@ protocol PathRelationships {
 }
 
 extension PathRelationships {
-
     /// Combines the base path with a child segment returning the concatenated path.
-    static func /(base: Self, child: ActorPathSegment) -> Self {
+    static func / (base: Self, child: ActorPathSegment) -> Self {
         return base.appending(segment: child)
     }
 
@@ -357,10 +358,10 @@ extension PathRelationships {
     func makeChildPath(name: String) throws -> ActorPath {
         return try ActorPath(self.segments).appending(name)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Path segments
 
 /// Represents a single segment (actor name) of an ActorPath.
@@ -385,9 +386,9 @@ public struct ActorPathSegment: Hashable {
         // TODO: benchmark
         func isValidASCII(_ scalar: Unicode.Scalar) -> Bool {
             return (scalar >= ValidActorPathSymbols.a && scalar <= ValidActorPathSymbols.z) ||
-            (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
-            (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
-            (ValidActorPathSymbols.extraSymbols.contains(scalar))
+                (scalar >= ValidActorPathSymbols.A && scalar <= ValidActorPathSymbols.Z) ||
+                (scalar >= ValidActorPathSymbols.zero && scalar <= ValidActorPathSymbols.nine) ||
+                ValidActorPathSymbols.extraSymbols.contains(scalar)
         }
 
         // TODO: accept hex and url encoded things as well
@@ -396,7 +397,7 @@ public struct ActorPathSegment: Hashable {
         for c in name {
             let f = c.unicodeScalars.first
 
-            guard (f?.isASCII ?? false) && isValidASCII(f!) else {
+            guard f?.isASCII ?? false, isValidASCII(f!) else {
                 // TODO: used to be but too much hassle: throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
 
                 throw ActorPathError.illegalActorPathElement(name: name, illegal: "\(c)", index: pos)
@@ -410,6 +411,7 @@ extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertibl
     public var description: String {
         return "\(self.value)"
     }
+
     public var debugDescription: String {
         return "\(self.value)"
     }
@@ -432,6 +434,7 @@ struct ActorName {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor Incarnation number
 
 /// Used to uniquely identify a specific "incarnation" of an Actor and therefore provide unique identity to `ActorAddress` and `ActorRef`s.
@@ -476,7 +479,7 @@ public extension ActorIncarnation {
     static let perpetual: ActorIncarnation = ActorIncarnation(0)
 
     static func random() -> ActorIncarnation {
-        return ActorIncarnation(UInt32.random(in: UInt32(1)...UInt32.max))
+        return ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
     }
 }
 
@@ -492,22 +495,23 @@ internal extension ActorIncarnation {
 }
 
 extension ActorIncarnation: Comparable {
-    public static func <(lhs: ActorIncarnation, rhs: ActorIncarnation) -> Bool {
+    public static func < (lhs: ActorIncarnation, rhs: ActorIncarnation) -> Bool {
         return lhs.value < rhs.value
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Node
 
 public struct Node: Hashable {
-    // TODO collapse into one String and index into it?
+    // TODO: collapse into one String and index into it?
     public let `protocol`: String
     public var systemName: String
     public var host: String
     public var port: Int
 
-    public init(`protocol`: String, systemName: String, host: String, port: Int) {
+    public init(protocol: String, systemName: String, host: String, port: Int) {
         precondition(port > 0, "port MUST be > 0")
         self.protocol = `protocol`
         self.systemName = systemName
@@ -522,8 +526,9 @@ public struct Node: Hashable {
 
 extension Node: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
-        return "\(self.`protocol`)://\(self.systemName)@\(self.host):\(self.port)"
+        return "\(self.protocol)://\(self.systemName)@\(self.host):\(self.port)"
     }
+
     public var debugDescription: String {
         return self.description
     }
@@ -532,12 +537,13 @@ extension Node: CustomStringConvertible, CustomDebugStringConvertible {
 extension Node: Comparable {
     // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func <(lhs: Node, rhs: Node) -> Bool {
+    public static func < (lhs: Node, rhs: Node) -> Bool {
         return "\(lhs)" < "\(rhs)"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: UniqueNode
 
 /// A _unique_ node which includes also the node's unique `UID` which is used to disambiguate
@@ -558,7 +564,7 @@ public struct UniqueNode: Hashable {
         self.nid = nid
     }
 
-    public init(`protocol`: String, systemName: String, host: String, port: Int, nid: NodeID) {
+    public init(protocol: String, systemName: String, host: String, port: Int, nid: NodeID) {
         self.init(node: Node(protocol: `protocol`, systemName: systemName, host: host, port: port), nid: nid)
     }
 
@@ -583,13 +589,13 @@ public struct UniqueNode: Hashable {
             return self.node.port
         }
     }
-
 }
 
 extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         return "\(self.node)"
     }
+
     public var debugDescription: String {
         let a = self.node
         return "\(a.protocol)://\(a.systemName):\(self.nid)@\(a.host):\(a.port)"
@@ -597,14 +603,14 @@ extension UniqueNode: CustomStringConvertible, CustomDebugStringConvertible {
 }
 
 extension UniqueNode: Comparable {
-    public static func ==(lhs: UniqueNode, rhs: UniqueNode) -> Bool {
+    public static func == (lhs: UniqueNode, rhs: UniqueNode) -> Bool {
         // we first compare the NodeIDs since they're quicker to compare and for diff systems always would differ, even if on same physical address
         return lhs.nid == rhs.nid && lhs.node == rhs.node
     }
 
     // Silly but good enough comparison for deciding "who is lower node"
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
-    public static func <(lhs: UniqueNode, rhs: UniqueNode) -> Bool {
+    public static func < (lhs: UniqueNode, rhs: UniqueNode) -> Bool {
         if lhs.node == rhs.node {
             return lhs.nid < rhs.nid
         } else {
@@ -614,7 +620,7 @@ extension UniqueNode: Comparable {
 }
 
 public struct NodeID: Hashable {
-    let value: UInt32 // TODO redesign / reconsider exact size
+    let value: UInt32 // TODO: redesign / reconsider exact size
 
     public init(_ value: UInt32) {
         self.value = value
@@ -622,14 +628,14 @@ public struct NodeID: Hashable {
 }
 
 extension NodeID: Comparable {
-    public static func <(lhs: NodeID, rhs: NodeID) -> Bool {
+    public static func < (lhs: NodeID, rhs: NodeID) -> Bool {
         return lhs.value < rhs.value
     }
 }
 
 extension NodeID: CustomStringConvertible {
     public var description: String {
-        return "\(value)"
+        return "\(self.value)"
     }
 }
 
@@ -640,6 +646,7 @@ public extension NodeID {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Path errors
 
 public enum ActorPathError: Error {

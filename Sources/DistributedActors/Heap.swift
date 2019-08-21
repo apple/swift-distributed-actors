@@ -45,17 +45,17 @@ internal struct Heap<T: Equatable> {
 
     // named `PARENT` in CLRS
     private func parentIndex(_ i: Int) -> Int {
-        return (i-1) / 2
+        return (i - 1) / 2
     }
 
     // named `LEFT` in CLRS
     private func leftIndex(_ i: Int) -> Int {
-        return 2*i + 1
+        return 2 * i + 1
     }
 
     // named `RIGHT` in CLRS
     private func rightIndex(_ i: Int) -> Int {
-        return 2*i + 2
+        return 2 * i + 2
     }
 
     // named `MAX-HEAPIFY` in CLRS
@@ -64,13 +64,13 @@ internal struct Heap<T: Equatable> {
         let right = self.rightIndex(index)
 
         var root: Int
-        if left <= (self.storage.count - 1) && self.comparator(storage[left], storage[index]) {
+        if left <= (self.storage.count - 1), self.comparator(self.storage[left], self.storage[index]) {
             root = left
         } else {
             root = index
         }
 
-        if right <= (self.storage.count - 1) && self.comparator(storage[right], storage[root]) {
+        if right <= (self.storage.count - 1), self.comparator(self.storage[right], self.storage[root]) {
             root = right
         }
 
@@ -83,12 +83,12 @@ internal struct Heap<T: Equatable> {
     // named `HEAP-INCREASE-KEY` in CRLS
     private mutating func heapRootify(index: Int, key: T) {
         var index = index
-        if self.comparator(storage[index], key) {
+        if self.comparator(self.storage[index], key) {
             fatalError("New key must be closer to the root than current key")
         }
 
         self.storage[index] = key
-        while index > 0 && self.comparator(self.storage[index], self.storage[self.parentIndex(index)]) {
+        while index > 0, self.comparator(self.storage[index], self.storage[self.parentIndex(index)]) {
             self.storage.swapAt(index, self.parentIndex(index))
             index = self.parentIndex(index)
         }
@@ -97,7 +97,7 @@ internal struct Heap<T: Equatable> {
     public mutating func append(_ value: T) {
         var i = self.storage.count
         self.storage.append(value)
-        while i > 0 && self.comparator(self.storage[i], self.storage[self.parentIndex(i)]) {
+        while i > 0, self.comparator(self.storage[i], self.storage[self.parentIndex(i)]) {
             self.storage.swapAt(i, self.parentIndex(i))
             i = self.parentIndex(i)
         }

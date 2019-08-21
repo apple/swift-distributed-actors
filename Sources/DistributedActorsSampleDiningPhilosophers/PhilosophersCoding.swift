@@ -15,7 +15,6 @@
 import DistributedActors
 
 extension Philosopher.Message {
-
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()
 

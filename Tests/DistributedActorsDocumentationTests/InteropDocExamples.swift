@@ -12,14 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
 import DistributedActors
 @testable import DistributedActorsTestKit
-import Dispatch
 import NIO
 import XCTest
 
 class InteropDocExamples: XCTestCase {
-
     func example_asyncOp_sendResult_dispatch() throws {
         // tag::message_greetings[]
         enum Messages {
@@ -29,9 +28,9 @@ class InteropDocExamples: XCTestCase {
 
         let system = ActorSystem("System")
         defer { system.shutdown() }
-        let behavior: Behavior<Messages> = .receiveMessage { message in
+        let behavior: Behavior<Messages> = .receiveMessage { _ in
             // ...
-            return .same
+            .same
         }
 
         func someComputation() -> String {
@@ -50,9 +49,7 @@ class InteropDocExamples: XCTestCase {
         _ = behavior // avoid not-used warning
     }
 
-
     func example_asyncOp_sendResult_insideActor() throws {
-
         // tag::asyncOp_sendResult_insideActor_enum_Messages[]
         enum Messages {
             case fetchData
@@ -67,7 +64,7 @@ class InteropDocExamples: XCTestCase {
             return "test"
         }
 
-        func fetchDataAsync(_ callback: (String) -> Void) {}
+        func fetchDataAsync(_: (String) -> Void) {}
 
         // tag::asyncOp_sendResult_insideActor[]
         let behavior: Behavior<Messages> = .receive { context, message in
@@ -95,16 +92,15 @@ class InteropDocExamples: XCTestCase {
     }
 
     func example_asyncOp_onResultAsync() throws {
-
         struct User {}
         struct Cache<Key, Value> {
             init(cacheDuration: DistributedActors.TimeAmount) {}
 
-            func lookup(_ key: Key) -> Value? {
+            func lookup(_: Key) -> Value? {
                 return nil
             }
 
-            mutating func insert(_ key: Key, _ value: Value) {}
+            mutating func insert(_: Key, _: Value) {}
         }
 
         // tag::asyncOp_onResultAsync_enum_Messages[]
@@ -123,7 +119,7 @@ class InteropDocExamples: XCTestCase {
         defer { system.shutdown() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
-        func fetchUser(_ name: String) -> EventLoopFuture<User?> {
+        func fetchUser(_: String) -> EventLoopFuture<User?> {
             return eventLoop.makeSucceededFuture(nil)
         }
 
@@ -194,7 +190,7 @@ class InteropDocExamples: XCTestCase {
         func prefixer(prefix: String) -> Behavior<Messages> {
             return .receiveMessage {
                 switch $0 {
-                case let .addPrefix(string, recipient):
+                case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")
                     return .same
                 }
@@ -219,7 +215,7 @@ class InteropDocExamples: XCTestCase {
         func prefixer(prefix: String) -> Behavior<Messages> {
             return .receiveMessage {
                 switch $0 {
-                case let .addPrefix(string, recipient):
+                case .addPrefix(let string, let recipient):
                     recipient.tell("\(prefix): \(string)")
                     return .same
                 }
@@ -230,7 +226,7 @@ class InteropDocExamples: XCTestCase {
         let behavior: Behavior<Messages> = .setup { context in
             let future: EventLoopFuture<String> = fetchDataAsync() // <1>
             return context.awaitResultThrowing(of: future, timeout: .milliseconds(100)) { // <2>
-                return prefixer(prefix: $0)
+                prefixer(prefix: $0)
             }
         }
         // end::asyncOp_awaitResultThrowing[]

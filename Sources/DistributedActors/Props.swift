@@ -15,6 +15,7 @@
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor Props
 
 /// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
@@ -29,7 +30,6 @@ import NIO
 /// Hamlet Act III, scene 1, saying "To be, or not to be, that is the question: [...]." In the same sense,
 /// props for Swift Distributed Actors are accompanying objects/settings, which help the actor perform its duties.
 public struct Props {
-
     public var mailbox: MailboxProps
     public var dispatcher: DispatcherProps
 
@@ -44,10 +44,10 @@ public struct Props {
     public init() {
         self.init(mailbox: .default(), dispatcher: .default, supervision: .init())
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Dispatcher Props
 
 // TODO: likely better as class hierarchy, by we'll see...
@@ -59,6 +59,7 @@ public extension Props {
         props.dispatcher = dispatcher
         return props
     }
+
     /// Creates copy of this `Props` changing the dispatcher props, useful for setting a few options in-line when spawning actors.
     func dispatcher(_ dispatcher: DispatcherProps) -> Props {
         var props = self
@@ -69,9 +70,8 @@ public extension Props {
 
 /// Configuring dispatchers should only be associated with actual research if the change is indeed beneficial.
 /// In the vast majority of cases the default thread pool backed implementation should perform the best for typical workloads.
-// TODO Eventually: probably also best as not enum but a bunch of factories?
+// TODO: Eventually: probably also best as not enum but a bunch of factories?
 public enum DispatcherProps {
-
     /// Lets runtime determine the default dispatcher
     case `default`
 
@@ -87,18 +87,18 @@ public enum DispatcherProps {
     ///
     /// This dispatcher will keep a real dedicated Thread for this actor. This is very rarely something you want,
     // unless designing an actor that is intended to spin without others interrupting it on some resource and may block on it etc.
-    case pinnedThread // TODO implement pinned thread dispatcher
+    case pinnedThread // TODO: implement pinned thread dispatcher
 
     /// WARNING: Use with Caution!
     ///
     /// Allows binding an actor to an `EventLoopGroup` or a specific `EventLoop` itself.
     /// For most actors this should not matter, however it may show some benefit if interacting with many Futures
     /// fired on a specific `EventLoop`, for reasons of "locality" to where the events are fired (when on the same exact event loop).
-    // TODO not extensively tested but should just-work™ since we treat NIO as plain thread pool basically here.
-    // TODO not sure if we'd need this or not in reality, we'll see... executing futures safely would be more interesting perhaps
+    // TODO: not extensively tested but should just-work™ since we treat NIO as plain thread pool basically here.
+    // TODO: not sure if we'd need this or not in reality, we'll see... executing futures safely would be more interesting perhaps
     case nio(NIO.EventLoopGroup)
 
-    // TODO or hide it completely somehow; too dangerous
+    // TODO: or hide it completely somehow; too dangerous
     /// WARNING: Use with Caution!
     ///
     /// Dispatcher which hijacks the calling thread to schedule execution.
@@ -106,6 +106,7 @@ public enum DispatcherProps {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Mailbox Props
 
 extension Props {
@@ -115,6 +116,7 @@ extension Props {
         props.mailbox = mailbox
         return props
     }
+
     /// Creates copy of this `Props` changing the `mailbox` props.
     public func mailbox(_ mailbox: MailboxProps) -> Props {
         var props = self
@@ -130,10 +132,10 @@ public enum MailboxProps {
     static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
         return .default(capacity: capacity, onOverflow: .crash)
     }
-    
+
     var capacity: UInt32 {
         switch self {
-        case let .default(cap, _): return cap
+        case .default(let cap, _): return cap
         }
     }
 }

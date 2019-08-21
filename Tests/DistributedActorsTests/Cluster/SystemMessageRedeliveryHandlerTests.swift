@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
-import NIO
 @testable import DistributedActors
-@testable import Logging
 import DistributedActorsTestKit
+import Foundation
+@testable import Logging
+import NIO
+import XCTest
 
 final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     var system: ActorSystem!
@@ -42,7 +42,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = Logger(label: "mock", self.logCaptureHandler)
         }
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
 
         self.eventLoop = EmbeddedEventLoop()
         self.channel = EmbeddedChannel(loop: self.eventLoop)
@@ -51,18 +51,18 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
 
         let outbound = OutboundSystemMessageRedelivery()
         let inbound = InboundSystemMessages()
-        if printLossyNetworkTestLogs {
-            self.handler = SystemMessageRedeliveryHandler(log: system.log, cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+        if self.printLossyNetworkTestLogs {
+            self.handler = SystemMessageRedeliveryHandler(log: self.system.log, cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         } else {
-            self.handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCaptureHandler), cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
+            self.handler = SystemMessageRedeliveryHandler(log: Logger(label: "mock", self.logCaptureHandler), cluster: self.system.deadLetters.adapted(), outbound: outbound, inbound: inbound)
         }
         /// reads go this way: vvv
-        try! shouldNotThrow() { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
-        try! shouldNotThrow() { try self.channel.pipeline.addHandler(self.handler).wait() }
-        try! shouldNotThrow() { try self.channel.pipeline.addHandler(self.readRecorder).wait() }
+        try! shouldNotThrow { try self.channel.pipeline.addHandler(self.writeRecorder).wait() }
+        try! shouldNotThrow { try self.channel.pipeline.addHandler(self.handler).wait() }
+        try! shouldNotThrow { try self.channel.pipeline.addHandler(self.readRecorder).wait() }
         /// writes go this way: ^^^
 
-        self.remoteControl = AssociationRemoteControl(channel: channel, remoteNode: .init(node: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
+        self.remoteControl = AssociationRemoteControl(channel: self.channel, remoteNode: .init(node: .init(systemName: "sys", host: "127.0.0.1", port: 8228), nid: .random()))
     }
 
     override func tearDown() {
@@ -84,11 +84,12 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     //      these tests here just make sure we embed it properly in its Shell / Handler.
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: outbound
 
     func test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs() throws {
-        for i in 1...5 {
-            remoteControl.sendSystemMessage(.start, recipient: ._deadLetters)
+        for i in 1 ... 5 {
+            self.remoteControl.sendSystemMessage(.start, recipient: ._deadLetters)
             let write = try self.expectWrite()
 
             switch write.storage {
@@ -101,10 +102,11 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: inbound
 
     func test_systemMessageRedeliveryHandler_sendACKUponDelivery() throws {
-        try self.channel.writeInbound(TransportEnvelope(systemMessageEnvelope: SystemMessageEnvelope(sequenceNr: 1, message: .start) , recipient: ._deadLetters))
+        try self.channel.writeInbound(TransportEnvelope(systemMessageEnvelope: SystemMessageEnvelope(sequenceNr: 1, message: .start), recipient: ._deadLetters))
 
         let write: TransportEnvelope = try self.expectWrite()
         "\(write)".shouldContain("ACK(") // silly but effective way to check without many lines of unwrapping
@@ -118,7 +120,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     func test_systemMessageRedeliveryHandler_receiveAnACKFromFuture() throws {
-        try self.channel.writeInbound(TransportEnvelope(ack:SystemMessage.ACK(sequenceNr: 1337), recipient: ._localRoot))
+        try self.channel.writeInbound(TransportEnvelope(ack: SystemMessage.ACK(sequenceNr: 1337), recipient: ._localRoot))
 
         // should log at trace, but generally considered harmless
         try self.logCaptureHandler.shouldContain(prefix: "Received unexpected system message [ACK(1337)]", at: .warning)
@@ -134,6 +136,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Lossy Network
 
     // Note: realistically on reliable transports such as TCP such aggressive dropping is rather unlikely,
@@ -159,15 +162,15 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         lossySettings.label = "    (DROP)    :" // formatting is such specific to align names in printout
         let lossyNetwork = FaultyNetworkSimulatingHandler<TransportEnvelope>(log: system.log, settings: lossySettings)
 
-        try! shouldNotThrow() { try partnerChannel.pipeline.addHandler(partnerWriteRecorder).wait() }
-        try! shouldNotThrow() { try partnerChannel.pipeline.addHandler(lossyNetwork).wait() }
-        try! shouldNotThrow() { try partnerChannel.pipeline.addHandler(handler).wait() }
-        try! shouldNotThrow() { try partnerChannel.pipeline.addHandler(partnerReadRecorder).wait() }
+        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(partnerWriteRecorder).wait() }
+        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(lossyNetwork).wait() }
+        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(handler).wait() }
+        try! shouldNotThrow { try partnerChannel.pipeline.addHandler(partnerReadRecorder).wait() }
 
         var lastDelivered: SystemMessageEnvelope.SequenceNr = 0
 
         let rounds = 20
-        for round in 1...rounds {
+        for round in 1 ... rounds {
             self.remoteControl.sendSystemMessage(.start, recipient: ._deadLetters)
             self.interactInMemory(self.channel, partnerChannel)
             if round % 2 == 0 {
@@ -191,6 +194,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         _ = self.writeRecorder.writes.removeFirst()
         return write
     }
+
     func expectNoWrite(file: StaticString = #file, line: UInt = #line) throws {
         guard self.writeRecorder.writes.isEmpty else {
             throw self.testKit.fail(file: file, line: line)

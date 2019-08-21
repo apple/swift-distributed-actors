@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActorsTestKit
 import Foundation
 import XCTest
-import DistributedActorsTestKit
 
 @testable import DistributedActors
 
@@ -24,15 +24,15 @@ class StashBufferTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_stash_shouldStashMessages() throws {
-        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
             probe.ref.tell(message)
@@ -41,12 +41,12 @@ class StashBufferTests: XCTestCase {
 
         let behavior: Behavior<Int> = .setup { _ in
             let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
-            return .receive { (context, message) in
+            return .receive { context, message in
                 switch message {
                 case 10:
                     return try stash.unstashAll(context: context, behavior: unstashBehavior)
                 default:
-                    //TODO: use `try` once we have supervision and behaviors can throw
+                    // TODO: use `try` once we have supervision and behaviors can throw
                     try! stash.stash(message: message)
                     return .same
                 }
@@ -55,11 +55,11 @@ class StashBufferTests: XCTestCase {
 
         let stasher = try system.spawn(.anonymous, behavior)
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             stasher.tell(i)
         }
 
-        for i in 0...9 {
+        for i in 0 ... 9 {
             try probe.expectMessage(i)
         }
 
@@ -78,9 +78,9 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
-        let p = testKit.spawnTestProbe(expecting: Int.self)
+        let p = self.testKit.spawnTestProbe(expecting: Int.self)
 
-        _ = try system.spawn("unstashIntoSetup", Behavior<Int>.setup { context in
+        _ = try self.system.spawn("unstashIntoSetup", Behavior<Int>.setup { context in
             let stash = StashBuffer<Int>(capacity: 2)
             try stash.stash(message: 1)
 
@@ -96,7 +96,7 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {
-        let probe: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
 
         let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
 
@@ -106,12 +106,12 @@ class StashBufferTests: XCTestCase {
             return .same
         }
 
-        let behavior: Behavior<Int> = .receive { (context, message) in
+        let behavior: Behavior<Int> = .receive { context, message in
             switch message {
             case 10:
                 return try stash.unstashAll(context: context, behavior: unstashBehavior)
             default:
-                //TODO: use `try` once we have supervision and behaviors can throw
+                // TODO: use `try` once we have supervision and behaviors can throw
                 try! stash.stash(message: message)
                 return .same
             }
@@ -119,12 +119,12 @@ class StashBufferTests: XCTestCase {
 
         let stasher = try system.spawn(.anonymous, behavior)
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             stasher.tell(i)
         }
 
         // we are expecting to get each stashed message once
-        for i in 0...9 {
+        for i in 0 ... 9 {
             try probe.expectMessage(i)
         }
 

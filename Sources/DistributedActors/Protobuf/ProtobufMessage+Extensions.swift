@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftProtobuf
-import NIO
 import Foundation
+import NIO
+import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Serialization with ByteBuf
 
 extension SwiftProtobuf.Message {
-
     // FIXME: Avoid the copying, needs SwiftProtobuf changes
     /// Returns a `ByteBuffer` value containing the Protocol Buffer binary format serialization of the message.
     ///

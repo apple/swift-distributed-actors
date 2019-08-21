@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Remote Association State Machine
 
 /// An `Association` represents a bi-directional agreement between two nodes that they are able to communicate with each other.
@@ -27,9 +28,9 @@ import Logging
 /// sending side of an association remains the "same exact node", or if it is a new instance on the same address.
 ///
 /// An `Association` can only be obtained by successfully completing a `HandshakeStateMachine` dance.
-struct AssociationStateMachine { // TODO associations should be as light as possible.
-
+struct AssociationStateMachine { // TODO: associations should be as light as possible.
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Directives
 
     enum State {
@@ -62,12 +63,13 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
         }
 
         var description: String {
-            return "AssociatedState(channel: \(channel), selfNode: \(selfNode), remoteNode: \(remoteNode))"
+            return "AssociatedState(channel: \(self.channel), selfNode: \(self.selfNode), remoteNode: \(self.remoteNode))"
         }
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Control capabilities (exposed to RemoteActorRef)
 
 /// A "Remote Control" offered to actors which wish to perform actions onto an association, e.g. send messages to the remote side.
@@ -79,7 +81,6 @@ struct AssociationStateMachine { // TODO associations should be as light as poss
 // - single remote control, and many writers to it,
 //   - they enqueue to a local queue form which messages shall be pulled into the pipeline
 internal struct AssociationRemoteControl {
-
     private let channel: Channel
     let remoteNode: UniqueNode
 

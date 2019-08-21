@@ -23,6 +23,7 @@ import Glibc
 #endif
 
 // MARK: Ring Benchmark
+
 //
 // Based on Joe Armstrong's task from the Programming Erlang book:
 // > Write a ring benchmark.
@@ -40,14 +41,14 @@ public let RingBenchmarks: [BenchmarkInfo] = [
         runFunction: bench_ring_m100_000_n10_000,
         tags: [],
         setUpFunction: { setUp { () in
-            initLoop(m: 100_000, n: 10_000)
+            initLoop(m: 100_000, n: 10000)
         } },
         tearDownFunction: tearDown
     ),
 ]
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
-    _system = ActorSystem("RingBenchmarks") { settings in
+    _system = ActorSystem("RingBenchmarks") { _ in
 //        settings.logLevel = .error
     }
     postSetUp()
@@ -60,17 +61,17 @@ private func tearDown() {
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-fileprivate let q = LinkedBlockingQueue<Int>()
+private let q = LinkedBlockingQueue<Int>()
 
-fileprivate let spawnStart = Atomic<UInt64>(value: 0)
-fileprivate let spawnStop = Atomic<UInt64>(value: 0)
+private let spawnStart = Atomic<UInt64>(value: 0)
+private let spawnStop = Atomic<UInt64>(value: 0)
 
-fileprivate let ringStart = Atomic<UInt64>(value: 0)
-fileprivate let ringStop = Atomic<UInt64>(value: 0)
+private let ringStart = Atomic<UInt64>(value: 0)
+private let ringStop = Atomic<UInt64>(value: 0)
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-fileprivate struct Token {
+private struct Token {
     let payload: Int
 
     init(_ payload: Int) {
@@ -78,10 +79,10 @@ fileprivate struct Token {
     }
 }
 
-fileprivate let mutex = Mutex()
+private let mutex = Mutex()
 
-fileprivate func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
-    return .receive { context, msg in
+private func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behavior<Token> {
+    return .receive { _, msg in
         switch msg.payload {
         case 1:
             ringStop.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
@@ -96,17 +97,17 @@ fileprivate func loopMember(id: Int, next: ActorRef<Token>, msg: Token) -> Behav
     }
 }
 
-fileprivate var loopEntryPoint: ActorRef<Token>! = nil
+private var loopEntryPoint: ActorRef<Token>!
 
-fileprivate func initLoop(m messages: Int, n actors: Int) {
+private func initLoop(m messages: Int, n actors: Int) {
     loopEntryPoint = try! system.spawn("a0", .setup { context in
         // TIME spawning
         // pprint("START SPAWN... \(SwiftBenchmarkTools.Timer().getTimeAsInt())")
         spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
         var loopRef = context.myself
-        for i in (1...actors).reversed() {
-            loopRef = try context.spawn("a\(actors - i)", (loopMember(id: i, next: loopRef, msg: Token(messages))))
+        for i in (1 ... actors).reversed() {
+            loopRef = try context.spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
             // context.log.info("SPAWNed \(loopRef.path.name)...")
         }
         // pprint("DONE SPAWN... \(SwiftBenchmarkTools.Timer().getTime())")
@@ -122,7 +123,6 @@ fileprivate func initLoop(m messages: Int, n actors: Int) {
             return loopMember(id: 1, next: loopRef, msg: m)
         }
     })
-
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
@@ -135,4 +135,3 @@ func bench_ring_m100_000_n10_000(n: Int) {
     pprint("    Spawning           : \((spawnStop.load() - spawnStart.load()).milliseconds) ms")
     pprint("    Sending around Ring: \((ringStop.load() - ringStart.load()).milliseconds) ms")
 }
-

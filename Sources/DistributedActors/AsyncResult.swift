@@ -32,7 +32,7 @@ public protocol AsyncResult {
     /// - parameter after: defines a timeout after which the result should be considered failed.
     func withTimeout(after timeout: TimeAmount) -> Self
 
-    // TODO func withAlreadyHasTimeout(really: .yes.really) j/k syntax but feature would be good
+    // TODO: func withAlreadyHasTimeout(really: .yes.really) j/k syntax but feature would be good
 }
 
 extension EventLoopFuture: AsyncResult {

@@ -15,6 +15,7 @@
 import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Cluster Member
 
 /// A `Member` is a node that is participating in the cluster which carries `MemberStatus` information.
@@ -40,6 +41,7 @@ public struct Member: Hashable {
         res.reachability = .unreachable
         return res
     }
+
     var asReachable: Member {
         var res = self
         res.reachability = .reachable
@@ -48,12 +50,11 @@ public struct Member: Hashable {
 }
 
 extension Member {
-
     public func hash(into hasher: inout Hasher) {
         self.node.hash(into: &hasher)
     }
 
-    public static func ==(lhs: Member, rhs: Member) -> Bool {
+    public static func == (lhs: Member, rhs: Member) -> Bool {
         if lhs.node != rhs.node {
             return false
         }
@@ -63,11 +64,12 @@ extension Member {
 
 extension Member: CustomStringConvertible {
     public var description: String {
-        return "Member(\(node), status: \(status), reachability: \(reachability))"
+        return "Member(\(self.node), status: \(self.status), reachability: \(self.reachability))"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Cluster Membership
 
 /// Membership represents the ordered set of members of this cluster.
@@ -75,9 +77,9 @@ extension Member: CustomStringConvertible {
 /// Membership changes are driven by nodes joining and leaving the cluster.
 /// Leaving the cluster may be graceful or triggered by a `FailureDetector`.
 ///
-/// TODO: diagram of state transitions for the members
-/// TODO: how does seen table relate to this
-/// TODO: should we not also mark other nodes observations of members in here?
+// TODO: diagram of state transitions for the members
+// TODO: how does seen table relate to this
+// TODO: should we not also mark other nodes observations of members in here?
 public struct Membership: Hashable, ExpressibleByArrayLiteral {
     public typealias ArrayLiteralElement = Member
 
@@ -94,7 +96,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     // /// which can be used to observe and debug membership transitions.
     // private var log: [MembershipChange] = [] // TODO implement keeping the membership log
 
-    // TODO ordered set of members would be nice, if we stick to Akka's style of "leader"
+    // TODO: ordered set of members would be nice, if we stick to Akka's style of "leader"
 
     public init(members: [Member]) {
         self._members = Dictionary(minimumCapacity: members.count)
@@ -125,10 +127,11 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     func member(_ node: UniqueNode) -> Member? {
         return self._members[node.node]
     }
+
     func member(_ node: Node) -> Member? {
         return self._members[node]
     }
-    
+
     func count(atLeast status: MemberStatus) -> Int {
         return self._members.values.filter { $0.status <= status }.count
     }
@@ -146,31 +149,32 @@ extension Membership: CustomStringConvertible {
         }
         return res
     }
+
     public var description: String {
         return "Membership(\(self._members.values))"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Membership operations, such as joining, leaving, removing
 
 extension Membership {
-
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
     mutating func apply(_ change: MembershipChange) -> MembershipChange? {
-        // TODO could do more validation and we should make sure what transitions we allow and which don't
+        // TODO: could do more validation and we should make sure what transitions we allow and which don't
         switch change.toStatus {
         case nil:
             // means a node removal
             return self.remove(change.node)
         case .some(.joining):
-            // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
+            // TODO: not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
             return self.join(change.node)
         case .some(.up):
             return self.join(change.node)
-            // TODO not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
+        // TODO: not really correct I think, though we'll get to this as we design the lifecycle here properly, good enough for test now
         case .some(let status):
-            // TODO log state transitions
+            // TODO: log state transitions
             return self.mark(change.node, as: status)
         }
     }
@@ -190,12 +194,13 @@ extension Membership {
             return .init(member: newMember, toStatus: newMember.status)
         }
     }
+
     func joining(_ node: UniqueNode) -> Membership {
         var membership = self
         _ = membership.join(node)
         return membership
     }
-    
+
     /// Marks the `Member` identified by the `node` with the `status`.
     ///
     /// If the membership not aware of this address the update is treated as a no-op.
@@ -215,6 +220,7 @@ extension Membership {
 
         return MembershipChange(member: member, toStatus: status)
     }
+
     /// Returns new membership while marking an existing member with the specified status.
     ///
     /// If the membership not aware of this node the update is treated as a no-op.
@@ -261,20 +267,20 @@ extension Membership {
             return nil // no member to remove
         }
     }
+
     /// Returns new membership while removing an existing member, identified by the passed in node.
     func removing(_ node: UniqueNode) -> Membership {
         var membership = self
         _ = membership.remove(node)
         return membership
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Membership diffing, allowing to notice and react to changes between two membership observations
 
 extension Membership {
-
     /// Compute a diff between two membership states.
     /// The diff includes any member state changes, as well as
     static func diff(from: Membership, to: Membership) -> MembershipDiff {
@@ -306,10 +312,11 @@ extension Membership {
     }
 }
 
-// TODO maybe conform to Sequence?
+// TODO: maybe conform to Sequence?
 struct MembershipDiff {
     var entries: [MembershipChange] = []
 }
+
 struct MembershipChange: Equatable {
     /// The node which the change concerns.
     let node: UniqueNode
@@ -333,6 +340,7 @@ struct MembershipChange: Equatable {
         self.fromStatus = fromStatus
         self.toStatus = toStatus
     }
+
     init(previousNode: UniqueNode, node: UniqueNode, fromStatus: MemberStatus?, toStatus: MemberStatus?) {
         self.previousNode = previousNode
         self.node = node
@@ -361,9 +369,9 @@ struct MembershipChange: Equatable {
             // we explicitly list the decisions we make here, to be explicit about them:
             switch to {
             case .joining: return false
-            case .up:      return false
+            case .up: return false
             case .leaving: return false
-            case .down:    return true
+            case .down: return true
             case .removed: return true
             }
         } else {
@@ -371,7 +379,6 @@ struct MembershipChange: Equatable {
             return true
         }
     }
-
 }
 
 extension MembershipDiff: CustomDebugStringConvertible {
@@ -384,11 +391,12 @@ extension MembershipDiff: CustomDebugStringConvertible {
         return s
     }
 }
+
 extension MembershipChange: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "\(self.node) :: " + 
-            "[\(self.fromStatus?.rawValue ?? "unknown", leftPadTo: MemberStatus.maxStrLen)]" + 
-            " -> " + 
+        return "\(self.node) :: " +
+            "[\(self.fromStatus?.rawValue ?? "unknown", leftPadTo: MemberStatus.maxStrLen)]" +
+            " -> " +
             "[\(self.toStatus?.rawValue ?? "unknown", leftPadTo: MemberStatus.maxStrLen)]"
     }
 }
@@ -429,6 +437,7 @@ extension MemberStatus {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Reachability
 
 /// Reachability indicates a failure detectors assessment of the member node's reachability,

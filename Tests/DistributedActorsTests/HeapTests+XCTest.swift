@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension HeapTests {
-
-   static var allTests : [(String, (HeapTests) -> () throws -> Void)] {
-      return [
-                ("testSimple", testSimple),
-                ("testSortedDesc", testSortedDesc),
-                ("testSortedAsc", testSortedAsc),
-                ("testSortedCustom", testSortedCustom),
-                ("testAddAndRemoveRandomNumbers", testAddAndRemoveRandomNumbers),
-                ("testRemoveElement", testRemoveElement),
-           ]
-   }
+    static var allTests: [(String, (HeapTests) -> () throws -> Void)] {
+        return [
+            ("testSimple", testSimple),
+            ("testSortedDesc", testSortedDesc),
+            ("testSortedAsc", testSortedAsc),
+            ("testSortedCustom", testSortedCustom),
+            ("testAddAndRemoveRandomNumbers", testAddAndRemoveRandomNumbers),
+            ("testRemoveElement", testRemoveElement),
+        ]
+    }
 }
-

@@ -14,12 +14,11 @@
 
 import DistributedActors
 
-
 func run(identifier: String) {
     let system = ActorSystem("\(identifier)")
 
     measure(identifier: identifier) {
-        // TODO replicate ping pong benchmark here, so we know how much a message send allocates
+        // TODO: replicate ping pong benchmark here, so we know how much a message send allocates
     }
 
     system.shutdown()

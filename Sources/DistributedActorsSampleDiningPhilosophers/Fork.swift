@@ -14,7 +14,6 @@
 
 import DistributedActors
 
-
 public final class Fork {
     public typealias Ref = ActorRef<Fork.Message>
     public typealias SelfBehavior = Behavior<Fork.Message>

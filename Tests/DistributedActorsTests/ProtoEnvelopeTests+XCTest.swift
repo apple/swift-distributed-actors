@@ -21,11 +21,9 @@ import XCTest
 ///
 
 extension ProtoEnvelopeTests {
-
-   static var allTests : [(String, (ProtoEnvelopeTests) -> () throws -> Void)] {
-      return [
-                ("test_init_ProtoEnvelopeZeroCopy", test_init_ProtoEnvelopeZeroCopy),
-           ]
-   }
+    static var allTests: [(String, (ProtoEnvelopeTests) -> () throws -> Void)] {
+        return [
+            ("test_init_ProtoEnvelopeZeroCopy", test_init_ProtoEnvelopeZeroCopy),
+        ]
+    }
 }
-

@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension ActorLeakingTests {
-
-   static var allTests : [(String, (ActorLeakingTests) -> () throws -> Void)] {
-      return [
-                ("test_spawn_stop_shouldNotLeakActors", test_spawn_stop_shouldNotLeakActors),
-                ("test_spawn_stop_shouldNotLeakActorThatCloseOverContext", test_spawn_stop_shouldNotLeakActorThatCloseOverContext),
-                ("test_spawn_stop_shouldNotLeakMailbox", test_spawn_stop_shouldNotLeakMailbox),
-                ("test_parentWithChildrenStopping_shouldNotLeakActors", test_parentWithChildrenStopping_shouldNotLeakActors),
-                ("test_droppedMessages_shouldNotLeak", test_droppedMessages_shouldNotLeak),
-                ("test_actorSystem_shouldNotLeak", test_actorSystem_shouldNotLeak),
-           ]
-   }
+    static var allTests: [(String, (ActorLeakingTests) -> () throws -> Void)] {
+        return [
+            ("test_spawn_stop_shouldNotLeakActors", test_spawn_stop_shouldNotLeakActors),
+            ("test_spawn_stop_shouldNotLeakActorThatCloseOverContext", test_spawn_stop_shouldNotLeakActorThatCloseOverContext),
+            ("test_spawn_stop_shouldNotLeakMailbox", test_spawn_stop_shouldNotLeakMailbox),
+            ("test_parentWithChildrenStopping_shouldNotLeakActors", test_parentWithChildrenStopping_shouldNotLeakActors),
+            ("test_droppedMessages_shouldNotLeak", test_droppedMessages_shouldNotLeak),
+            ("test_actorSystem_shouldNotLeak", test_actorSystem_shouldNotLeak),
+        ]
+    }
 }
-

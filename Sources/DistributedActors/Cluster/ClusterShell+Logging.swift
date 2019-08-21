@@ -12,16 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-import Logging 
 import DistributedActorsConcurrencyHelpers
-
+import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: tracelog: Cluster Shell [tracelog:cluster]
 
 extension ClusterShellState {
-
     /// Optional "dump all messages" logging.
     ///
     /// Enabled with `-DSACT_TRACELOG_CLUSTER`
@@ -35,7 +34,7 @@ extension ClusterShellState {
         case .outbound:
             level = self.settings.traceLogLevel
         case .inbound:
-            level =  self.settings.traceLogLevel
+            level = self.settings.traceLogLevel
         }
         #endif
 

@@ -32,7 +32,9 @@ extension CRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Message protocol for interacting with replicator
+
 extension CRDT {
     internal enum Replicator {
         static let naming: ActorNaming = "replicator"
@@ -93,8 +95,7 @@ extension CRDT {
                 case failed(DeleteError)
             }
 
-            enum DeleteError: Error {
-            }
+            enum DeleteError: Error {}
         }
 
         enum RemoteCommand {
@@ -138,9 +139,9 @@ extension CRDT {
 }
 
 extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
-    public static func ==(lhs: CRDT.Replicator.LocalCommand.RegisterError, rhs: CRDT.Replicator.LocalCommand.RegisterError) -> Bool {
+    public static func == (lhs: CRDT.Replicator.LocalCommand.RegisterError, rhs: CRDT.Replicator.LocalCommand.RegisterError) -> Bool {
         switch (lhs, rhs) {
-        case let (.inputAndStoredDataTypeMismatch(lt), .inputAndStoredDataTypeMismatch(rt)):
+        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
             return lt.asHashable() == rt.asHashable()
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
@@ -151,9 +152,9 @@ extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
 }
 
 extension CRDT.Replicator.LocalCommand.WriteError: Equatable {
-    public static func ==(lhs: CRDT.Replicator.LocalCommand.WriteError, rhs: CRDT.Replicator.LocalCommand.WriteError) -> Bool {
+    public static func == (lhs: CRDT.Replicator.LocalCommand.WriteError, rhs: CRDT.Replicator.LocalCommand.WriteError) -> Bool {
         switch (lhs, rhs) {
-        case let (.inputAndStoredDataTypeMismatch(lt), .inputAndStoredDataTypeMismatch(rt)):
+        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
             return lt.asHashable() == rt.asHashable()
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
@@ -164,15 +165,15 @@ extension CRDT.Replicator.LocalCommand.WriteError: Equatable {
 }
 
 extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
-    public static func ==(lhs: CRDT.Replicator.RemoteCommand.WriteError, rhs: CRDT.Replicator.RemoteCommand.WriteError) -> Bool {
+    public static func == (lhs: CRDT.Replicator.RemoteCommand.WriteError, rhs: CRDT.Replicator.RemoteCommand.WriteError) -> Bool {
         switch (lhs, rhs) {
         case (.missingCRDTForDelta, .missingCRDTForDelta):
             return true
-        case let (.incorrectDeltaType(lt), .incorrectDeltaType(rt)):
+        case (.incorrectDeltaType(let lt), .incorrectDeltaType(let rt)):
             return lt.asHashable() == rt.asHashable()
         case (.cannotWriteDeltaForNonDeltaCRDT, .cannotWriteDeltaForNonDeltaCRDT):
             return true
-        case let (.inputAndStoredDataTypeMismatch(lt), .inputAndStoredDataTypeMismatch(rt)):
+        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
             return lt.asHashable() == rt.asHashable()
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
@@ -183,16 +184,18 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Replicator settings
+
 extension CRDT.Replicator {
     public struct Settings {
         /// When enabled traces _all_ replicator messages.
         /// All logs will be prefixed using `[tracelog:replicator]`, for easier grepping and inspecting only logs related to the replicator.
-        // TODO how to make this nicely dynamically changeable during runtime
+        // TODO: how to make this nicely dynamically changeable during runtime
         #if SACT_TRACE_REPLICATOR
         var traceLogLevel: Logger.Level? = .warning
         #else
-        var traceLogLevel: Logger.Level? = nil
+        var traceLogLevel: Logger.Level?
         #endif
 
         // TODO: gossip settings

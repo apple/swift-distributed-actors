@@ -1,3 +1,5 @@
+@testable import DistributedActors
+import DistributedActorsTestKit
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Swift Distributed Actors open source project
@@ -13,14 +15,11 @@
 //===----------------------------------------------------------------------===//
 //
 import Foundation
-import XCTest
-@testable import DistributedActors
 import NIO
 import NIOFoundationCompat
-import DistributedActorsTestKit
+import XCTest
 
 class SerializationTests: XCTestCase {
-
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -34,7 +33,7 @@ class SerializationTests: XCTestCase {
 
             settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
         }
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -58,6 +57,7 @@ class SerializationTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
 
     func test_serialize_actorPath() throws {
@@ -72,7 +72,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_serialize_actorAddress_shouldDemandContext() throws {
-        let err = shouldThrow() {
+        let err = shouldThrow {
             let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
             let encoder = JSONEncoder()
@@ -80,21 +80,22 @@ class SerializationTests: XCTestCase {
         }
 
         "\(err)".shouldStartWith(prefix: """
-                                         missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
-                                         """)
+        missingActorSerializationContext(DistributedActors.ActorAddress, details: "While encoding [/user/hello]
+        """)
     }
+
     func test_serialize_actorAddress_usingContext() throws {
-        try shouldNotThrow() {
+        try shouldNotThrow {
             let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
             let encoder = JSONEncoder()
             let decoder = JSONDecoder()
 
             let context = ActorSerializationContext(log: self.system.log,
-                localNode: self.system.settings.cluster.uniqueBindNode,
-                system: self.system,
-                allocator: ByteBufferAllocator(),
-                traversable: self.system)
+                                                    localNode: self.system.settings.cluster.uniqueBindNode,
+                                                    system: self.system,
+                                                    allocator: ByteBufferAllocator(),
+                                                    traversable: self.system)
 
             encoder.userInfo[.actorSerializationContext] = context
             decoder.userInfo[.actorSerializationContext] = context
@@ -110,10 +111,11 @@ class SerializationTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
 
         let ref: ActorRef<String> = try system.spawn("hello", .receiveMessage { message in
             p.tell("got:\(message)")
@@ -140,7 +142,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_serialize_actorRef_inMessage_forRemoting() throws {
-        let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings  in
+        let remoteCapableSystem = ActorSystem("RemoteCapableSystem") { settings in
             settings.cluster.enabled = true
 
             settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
@@ -179,10 +181,9 @@ class SerializationTests: XCTestCase {
         try p.expectMessage("got:hello")
     }
 
-
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
-        let p = testKit.spawnTestProbe(expecting: Never.self)
-        let stoppedRef: ActorRef<String> = try system.spawn("dead-on-arrival", (.stop))
+        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let stoppedRef: ActorRef<String> = try system.spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
 
         let hasRef = HasStringRef(containedRef: stoppedRef)
@@ -197,8 +198,9 @@ class SerializationTests: XCTestCase {
 
         "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
     }
+
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
-        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", (.stop)) // stopped
+        let stoppedRef: ActorRef<InterestingMessage> = try system.spawn("dead-on-arrival", .stop) // stopped
         let hasRef = HasInterestingMessageRef(containedInterestingRef: stoppedRef)
 
         let bytes = try shouldNotThrow {
@@ -227,13 +229,13 @@ class SerializationTests: XCTestCase {
     }
 
     func test_serialize_receivesSystemMessages_inMessage() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let watchMe: ActorRef<String> = try system.spawn("watchMe", (.ignore))
+        let watchMe: ActorRef<String> = try system.spawn("watchMe", .ignore)
 
         let ref: ActorRef<String> = try system.spawn("shouldGetSystemMessage", .setup { context in
             context.watch(watchMe)
-            return .receiveSignal{ _, signal in
+            return .receiveSignal { _, signal in
                 switch signal {
                 case let terminated as Signals.Terminated:
                     p.tell("terminated:\(terminated.address.name)")
@@ -263,8 +265,9 @@ class SerializationTests: XCTestCase {
         try p.expectMessage("terminated:watchMe")
     }
 
-     // ==== ------------------------------------------------------------------------------------------------------------
-     // MARK: Serialized messages in actor communication, locally
+    // ==== ------------------------------------------------------------------------------------------------------------
+
+    // MARK: Serialized messages in actor communication, locally
 
     func test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string() throws {
         let s2 = ActorSystem("SerializeMessages") { settings in
@@ -272,7 +275,7 @@ class SerializationTests: XCTestCase {
         }
 
         do {
-            let p = testKit.spawnTestProbe(name: "p1", expecting: String.self)
+            let p = self.testKit.spawnTestProbe(name: "p1", expecting: String.self)
             let echo: ActorRef<String> = try s2.spawn("echo", .receiveMessage { msg in
                 p.ref.tell("echo:\(msg)")
                 return .same
@@ -298,7 +301,7 @@ class SerializationTests: XCTestCase {
 
         let recipient: ActorRef<NotSerializable> = try s2.spawn("recipient", .ignore)
 
-        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn("expected-to-fault-due-to-serialization-check", .receiveMessage { context in
+        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn("expected-to-fault-due-to-serialization-check", .receiveMessage { _ in
             recipient.tell(NotSerializable("\(#file):\(#line)"))
             return .same
         })
@@ -313,6 +316,7 @@ class SerializationTests: XCTestCase {
 }
 
 // MARK: Example types for serialization tests
+
 private protocol Top: Hashable, Codable {
     var path: ActorPath { get }
 }
@@ -325,14 +329,14 @@ private class Mid: Top, Hashable {
     }
 
     var path: ActorPath {
-        return _path
+        return self._path
     }
 
     func hash(into hasher: inout Hasher) {
-        _path.hash(into: &hasher)
+        self._path.hash(into: &hasher)
     }
 
-    static func ==(lhs: Mid, rhs: Mid) -> Bool {
+    static func == (lhs: Mid, rhs: Mid) -> Bool {
         return lhs.path == rhs.path
     }
 }

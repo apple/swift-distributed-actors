@@ -22,7 +22,7 @@ import NIO
 
 // MARK: utilities to convert between TimeAmount and C timespec
 
-fileprivate let NANOS = 1_000_000_000
+private let NANOS = 1_000_000_000
 
 /// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public typealias TimeSpec = timespec
@@ -40,7 +40,7 @@ public extension TimeSpec {
         return time
     }
 
-    static func +(a: timespec, b: timespec) -> timespec {
+    static func + (a: timespec, b: timespec) -> timespec {
         let totalNanos = a.toNanos() + b.toNanos()
         let seconds = totalNanos / NANOS
         var result = timespec()
@@ -55,11 +55,11 @@ public extension TimeSpec {
 }
 
 extension TimeSpec: Comparable {
-    public static func <(lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+    public static func < (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         return lhs.tv_sec < rhs.tv_sec || (lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec < rhs.tv_nsec)
     }
 
-    public static func ==(lhs: TimeSpec, rhs: TimeSpec) -> Bool {
+    public static func == (lhs: TimeSpec, rhs: TimeSpec) -> Bool {
         return lhs.tv_sec == rhs.tv_sec && lhs.tv_nsec == lhs.tv_nsec
     }
 }

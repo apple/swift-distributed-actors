@@ -29,7 +29,7 @@ public final class ConcurrentBlockingQueue<A> {
     public func enqueue(_ f: A) {
         let ptr = UnsafeMutablePointer<A>.allocate(capacity: 1)
         ptr.initialize(to: f)
-        crun_queue_enqueue(self.queue, Int(bitPattern: ptr));
+        crun_queue_enqueue(self.queue, Int(bitPattern: ptr))
     }
 
     public func poll(_ timeout: TimeAmount) -> A? {

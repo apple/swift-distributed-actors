@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension BackoffStrategyTests {
-
-   static var allTests : [(String, (BackoffStrategyTests) -> () throws -> Void)] {
-      return [
-                ("test_constantBackoff_shouldAlwaysYieldSameTimeAmount", test_constantBackoff_shouldAlwaysYieldSameTimeAmount),
-                ("test_constantBackoff_reset_shouldDoNothing", test_constantBackoff_reset_shouldDoNothing),
-                ("test_exponentialBackoff_shouldIncreaseBackoffEachTime", test_exponentialBackoff_shouldIncreaseBackoffEachTime),
-                ("test_exponentialBackoff_shouldAllowDisablingRandomFactor", test_exponentialBackoff_shouldAllowDisablingRandomFactor),
-                ("test_exponentialBackoff_reset_shouldResetBackoffIntervals", test_exponentialBackoff_reset_shouldResetBackoffIntervals),
-                ("test_exponentialBackoff_shouldNotExceedMaximumBackoff", test_exponentialBackoff_shouldNotExceedMaximumBackoff),
-           ]
-   }
+    static var allTests: [(String, (BackoffStrategyTests) -> () throws -> Void)] {
+        return [
+            ("test_constantBackoff_shouldAlwaysYieldSameTimeAmount", test_constantBackoff_shouldAlwaysYieldSameTimeAmount),
+            ("test_constantBackoff_reset_shouldDoNothing", test_constantBackoff_reset_shouldDoNothing),
+            ("test_exponentialBackoff_shouldIncreaseBackoffEachTime", test_exponentialBackoff_shouldIncreaseBackoffEachTime),
+            ("test_exponentialBackoff_shouldAllowDisablingRandomFactor", test_exponentialBackoff_shouldAllowDisablingRandomFactor),
+            ("test_exponentialBackoff_reset_shouldResetBackoffIntervals", test_exponentialBackoff_reset_shouldResetBackoffIntervals),
+            ("test_exponentialBackoff_shouldNotExceedMaximumBackoff", test_exponentialBackoff_shouldNotExceedMaximumBackoff),
+        ]
+    }
 }
-

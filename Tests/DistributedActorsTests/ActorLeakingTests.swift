@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+@testable import DistributedActors
+import DistributedActorsConcurrencyHelpers
+import DistributedActorsTestKit
 import Foundation
 import XCTest
-@testable import DistributedActors
-import DistributedActorsTestKit
-import DistributedActorsConcurrencyHelpers
 
 class ActorLeakingTests: XCTestCase {
     var system: ActorSystem!
@@ -24,7 +24,7 @@ class ActorLeakingTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -37,6 +37,7 @@ class ActorLeakingTests: XCTestCase {
         let expected: Int
         let current: Int
     }
+
     struct TooManyActorsAlive: Error {
         let expected: Int
         let current: Int
@@ -45,11 +46,11 @@ class ActorLeakingTests: XCTestCase {
     func test_spawn_stop_shouldNotLeakActors() throws {
         #if SACT_TESTS_LEAKS
 
-        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { msg in
-            return .stop
+        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
+            .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn("printer", (stopsOnAnyMessage))
+        var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -63,7 +64,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -85,13 +86,13 @@ class ActorLeakingTests: XCTestCase {
         #if SACT_TESTS_LEAKS
 
         let stopsOnAnyMessage: Behavior<String> = .setup { context in
-            .receiveMessage { msg in
+            .receiveMessage { _ in
                 context.log.debug("just so we actually close over context ;)")
                 return .stop
             }
         }
 
-        var ref: ActorRef<String>? = try system.spawn("printer", (stopsOnAnyMessage))
+        var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
         let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
@@ -105,7 +106,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -125,11 +126,11 @@ class ActorLeakingTests: XCTestCase {
 
     func test_spawn_stop_shouldNotLeakMailbox() throws {
         #if SACT_TESTS_LEAKS
-        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { msg in
-            return .stop
+        let stopsOnAnyMessage: Behavior<String> = .receiveMessage { _ in
+            .stop
         }
 
-        var ref: ActorRef<String>? = try system.spawn("stopsOnAnyMessage", (stopsOnAnyMessage))
+        var ref: ActorRef<String>? = try system.spawn("stopsOnAnyMessage", stopsOnAnyMessage)
 
         let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
@@ -143,7 +144,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+        let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -161,7 +162,6 @@ class ActorLeakingTests: XCTestCase {
         #endif
     }
 
-
     func test_parentWithChildrenStopping_shouldNotLeakActors() throws {
         #if SACT_TESTS_LEAKS
 
@@ -169,15 +169,15 @@ class ActorLeakingTests: XCTestCase {
             if childCount == 0 {
                 return .stop
             } else {
-                for _ in 1...childCount {
-                    let b: Behavior<String> = .receiveMessage { msg in return .same }
+                for _ in 1 ... childCount {
+                    let b: Behavior<String> = .receiveMessage { _ in .same }
                     try context.spawn(.anonymous, b)
                 }
                 return .same
             }
         }
 
-        var ref: ActorRef<Int>? = try system.spawn("printer", (spawnsNChildren))
+        var ref: ActorRef<Int>? = try system.spawn("printer", spawnsNChildren)
 
         let expectedParentCount = 1
         let expectedChildrenCount = 3
@@ -197,7 +197,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell(0) // stops the parent actor
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) {() -> Int in
+        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)

@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
+import DistributedActorsTestKit
+import Foundation
 import NIO
 import NIOFoundationCompat
-import DistributedActorsTestKit
+import XCTest
 
 class SerializationPoolTests: XCTestCase {
     struct Test1: Codable {
@@ -72,8 +72,8 @@ class SerializationPoolTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
-    var actorPath1: ActorPath! = nil
-    var actorPath2: ActorPath! = nil
+    var actorPath1: ActorPath!
+    var actorPath2: ActorPath!
 
     var elg: MultiThreadedEventLoopGroup!
     var el: EventLoop!
@@ -84,7 +84,7 @@ class SerializationPoolTests: XCTestCase {
             settings.serialization.registerCodable(for: Test1.self, underId: 1001)
             settings.serialization.registerCodable(for: Test2.self, underId: 1002)
         }
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
         self.elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.el = self.elg.next()
         self.actorPath1 = try! ActorPath([ActorPathSegment("foo"), ActorPathSegment("bar")])
@@ -99,7 +99,7 @@ class SerializationPoolTests: XCTestCase {
     func test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         // We are locking here to validate that the object is being serialized
         // on the calling thread, because only then will it be able to reenter
@@ -108,7 +108,7 @@ class SerializationPoolTests: XCTestCase {
         let test1 = Test1()
         test1.lock.lock()
         defer { test1.lock.unlock() }
-        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -116,14 +116,14 @@ class SerializationPoolTests: XCTestCase {
         let test2 = Test1()
         test2.lock.lock()
         defer { test2.lock.unlock() }
-        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.serialize(message: test2, recipientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
@@ -131,7 +131,7 @@ class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on the same, separate thread, because only then will we not receive
@@ -139,20 +139,20 @@ class SerializationPoolTests: XCTestCase {
         // wait on the `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recipientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectNoMessage(for: .milliseconds(20))
@@ -166,7 +166,7 @@ class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on different, separate threads, because only then will we receive
@@ -174,20 +174,20 @@ class SerializationPoolTests: XCTestCase {
         // when unlocking `test1.lock`
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
 
         let test2 = Test1()
         test2.lock.lock()
-        let promise2: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise2: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
-        serializationPool.serialize(message: test2, recipientPath: actorPath2, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.serialize(message: test2, recipientPath: self.actorPath2, promise: promise2)
 
         test2.lock.unlock()
         try p.expectMessage("p2")
@@ -199,7 +199,7 @@ class SerializationPoolTests: XCTestCase {
     func test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread() throws {
         let serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let json = "{}"
 
         // We are locking here to validate that the object is being deserialized
@@ -209,9 +209,9 @@ class SerializationPoolTests: XCTestCase {
         Test1.deserializerLock.lock()
         defer { Test1.deserializerLock.unlock() }
 
-        var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.writeString( json)
-        let promise1: EventLoopPromise<Test1> = el.makePromise()
+        var buffer1 = self.allocator.buffer(capacity: json.count)
+        buffer1.writeString(json)
+        let promise1: EventLoopPromise<Test1> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -220,23 +220,23 @@ class SerializationPoolTests: XCTestCase {
         Test2.deserializerLock.lock()
         defer { Test2.deserializerLock.unlock() }
 
-        var buffer2 = allocator.buffer(capacity: json.count)
+        var buffer2 = self.allocator.buffer(capacity: json.count)
         buffer2.writeString(json)
-        let promise2: EventLoopPromise<Test2> = el.makePromise()
+        let promise2: EventLoopPromise<Test2> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
         try p.expectMessage("p1")
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
         try p.expectMessage("p2")
     }
 
     func test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence() throws {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1, self.actorPath2]]), serialization: system.serialization)
         defer { serializationPool.shutdown() }
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let json = "{}"
 
         // We are locking here to validate that the objects are being deserialized
@@ -245,9 +245,9 @@ class SerializationPoolTests: XCTestCase {
         // it will still wait on the `Test1.deserializerLock`
         Test1.deserializerLock.lock()
 
-        var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.writeString( json)
-        let promise1: EventLoopPromise<Test1> = el.makePromise()
+        var buffer1 = self.allocator.buffer(capacity: json.count)
+        buffer1.writeString(json)
+        let promise1: EventLoopPromise<Test1> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
@@ -255,15 +255,15 @@ class SerializationPoolTests: XCTestCase {
 
         Test2.deserializerLock.lock()
 
-        var buffer2 = allocator.buffer(capacity: json.count)
+        var buffer2 = self.allocator.buffer(capacity: json.count)
         buffer2.writeString(json)
-        let promise2: EventLoopPromise<Test2> = el.makePromise()
+        let promise2: EventLoopPromise<Test2> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
 
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath1, promise: promise2)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath1, promise: promise2)
 
         Test2.deserializerLock.unlock()
 
@@ -278,7 +278,7 @@ class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1], [self.actorPath2]]), serialization: system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         // We are locking here to validate that the objects are being deserialized
         // on different, separate threads, because only then will we receive
@@ -287,23 +287,23 @@ class SerializationPoolTests: XCTestCase {
         Test1.deserializerLock.lock()
         let json = "{}"
 
-        var buffer1 = allocator.buffer(capacity: json.count)
-        buffer1.writeString( json)
-        let promise1: EventLoopPromise<Test1> = el.makePromise()
+        var buffer1 = self.allocator.buffer(capacity: json.count)
+        buffer1.writeString(json)
+        let promise1: EventLoopPromise<Test1> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
         Test2.deserializerLock.lock()
-        var buffer2 = allocator.buffer(capacity: json.count)
+        var buffer2 = self.allocator.buffer(capacity: json.count)
         buffer2.writeString(json)
-        let promise2: EventLoopPromise<Test2> = el.makePromise()
+        let promise2: EventLoopPromise<Test2> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
-        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: actorPath2, promise: promise2)
+        serializationPool.deserialize(Test1.self, from: buffer1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(Test2.self, from: buffer2, recipientPath: self.actorPath2, promise: promise2)
 
         Test2.deserializerLock.unlock()
         try p.expectMessage("p2")
@@ -316,29 +316,29 @@ class SerializationPoolTests: XCTestCase {
         let serializationPool = try SerializationPool(settings: SerializationPoolSettings(serializationGroups: [[self.actorPath1]]), serialization: system.serialization)
         defer { serializationPool.shutdown() }
 
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         // We are locking here to validate that the objects are being serialized
         // on different, separate threads, than the objects being deserialized
         let test1 = Test1()
         test1.lock.lock()
-        let promise1: EventLoopPromise<ByteBuffer> = el.makePromise()
+        let promise1: EventLoopPromise<ByteBuffer> = self.el.makePromise()
         promise1.futureResult.whenSuccess { _ in
             p.tell("p1")
         }
         Test1.deserializerLock.lock()
         let json = "{}"
 
-        var buffer = allocator.buffer(capacity: json.count)
+        var buffer = self.allocator.buffer(capacity: json.count)
         buffer.writeString(json)
-        let promise2: EventLoopPromise<Test1> = el.makePromise()
+        let promise2: EventLoopPromise<Test1> = self.el.makePromise()
         promise2.futureResult.whenSuccess { _ in
             p.tell("p2")
         }
         promise1.futureResult.whenFailure { print("\($0)") }
 
-        serializationPool.serialize(message: test1, recipientPath: actorPath1, promise: promise1)
-        serializationPool.deserialize(Test1.self, from: buffer, recipientPath: actorPath1, promise: promise2)
+        serializationPool.serialize(message: test1, recipientPath: self.actorPath1, promise: promise1)
+        serializationPool.deserialize(Test1.self, from: buffer, recipientPath: self.actorPath1, promise: promise2)
 
         try p.expectNoMessage(for: .milliseconds(20))
 

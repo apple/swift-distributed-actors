@@ -21,13 +21,11 @@ import XCTest
 ///
 
 extension CRDTActorOwnedTests {
-
-   static var allTests : [(String, (CRDTActorOwnedTests) -> () throws -> Void)] {
-      return [
-                ("test_actorOwned_theLastWrittenOnUpdateCallbackWins", test_actorOwned_theLastWrittenOnUpdateCallbackWins),
-                ("test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers", test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers),
-                ("test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus", test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus),
-           ]
-   }
+    static var allTests: [(String, (CRDTActorOwnedTests) -> () throws -> Void)] {
+        return [
+            ("test_actorOwned_theLastWrittenOnUpdateCallbackWins", test_actorOwned_theLastWrittenOnUpdateCallbackWins),
+            ("test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers", test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers),
+            ("test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus", test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus),
+        ]
+    }
 }
-

@@ -67,9 +67,9 @@ public class Philosopher {
 
     /// A hungry philosopher is waiting to obtain both forks before it can start eating
     private func hungry(myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
-        return .receive { (context, msg) in
+        return .receive { _, msg in
             switch msg {
-            case let .forkReply(.pickedUp(fork)):
+            case .forkReply(.pickedUp(let fork)):
                 let other: Fork.Ref = (fork == self.left) ? self.right : self.left
                 return self.hungryAwaitingFinalFork(inHand: fork, pending: other, myselfForFork: myselfForFork)
 
@@ -79,7 +79,7 @@ public class Philosopher {
                 // in case it would reply with `pickedUp` we want to put it down (sadly), as we will try again some time later.
                 return .receiveMessage {
                     switch $0 {
-                    case let .forkReply(.pickedUp(fork)):
+                    case .forkReply(.pickedUp(let fork)):
                         // sadly we have to put it back, we know we won't succeed this time
                         fork.tell(.putBack(by: myselfForFork))
                         return self.thinking
@@ -100,11 +100,11 @@ public class Philosopher {
     }
 
     private func hungryAwaitingFinalFork(inHand: Fork.Ref, pending: Fork.Ref, myselfForFork: ActorRef<Fork.Reply>) -> Behavior<Philosopher.Message> {
-        return .receive { (context, msg) in
+        return .receive { _, msg in
             switch msg {
             case .forkReply(.pickedUp(pending)):
                 return self.eating(myselfForFork: myselfForFork)
-            case let .forkReply(.pickedUp(fork)):
+            case .forkReply(.pickedUp(let fork)):
                 fatalError("Received fork which I already hold in hand: \(fork), this is wrong!")
 
             case .forkReply(.busy(pending)):
@@ -112,10 +112,10 @@ public class Philosopher {
                 // the Fork we attempted to pick up is already in use (busy), we'll back off and try again
                 inHand.tell(.putBack(by: myselfForFork))
                 return self.thinking
-            case let .forkReply(.busy(fork)):
+            case .forkReply(.busy(let fork)):
                 fatalError("Received fork busy response from an unexpected fork: \(fork)! Already in hand: \(inHand), and pending: \(pending)")
 
-                // Ignore others...
+            // Ignore others...
             case .think: return .ignore // since we'll decide to become thinking ourselves
             case .eat: return .ignore // since we'll decide to become eating ourselves
             }
@@ -144,12 +144,10 @@ public class Philosopher {
                     return .ignore // ignore eat and others, since I'm eating already!
                 }
             }
-
         }
     }
 
     private func forkSideName(_ fork: Fork.Ref) -> String {
         return fork == self.left ? "left" : "right"
     }
-
 }

@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ClusterReceptionistTests: ClusteredNodesTestBase {
     func test_clusterReceptionist_shouldReplicateRegistrations() throws {
@@ -29,11 +29,10 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
         let ref: ActorRef<String> = try local.spawn(.anonymous,
-            .receiveMessage {
-                probe.tell("received:\($0)")
-                return .same
-            }
-        )
+                                                    .receiveMessage {
+                                                        probe.tell("received:\($0)")
+                                                        return .same
+        })
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -64,10 +63,10 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let ref: ActorRef<String> = try local.spawn(.anonymous,
-            .receiveMessage {
-                probe.tell("received:\($0)")
-                return .same
-            })
+                                                    .receiveMessage {
+                                                        probe.tell("received:\($0)")
+                                                        return .same
+        })
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -101,7 +100,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let remoteLookupProbe = self.testKit(remote).spawnTestProbe(name: "remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
-            return .same
+            .same
         }
 
         let refA: ActorRef<String> = try local.spawn("refA", behavior)
@@ -149,7 +148,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let remoteLookupProbe = self.testKit(remote).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
-            return .stop
+            .stop
         }
 
         let refA: ActorRef<String> = try local.spawn(.anonymous, behavior)

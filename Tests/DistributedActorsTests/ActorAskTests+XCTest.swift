@@ -21,18 +21,16 @@ import XCTest
 ///
 
 extension ActorAskTests {
-
-   static var allTests : [(String, (ActorAskTests) -> () throws -> Void)] {
-      return [
-                ("test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout", test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout),
-                ("test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout", test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout),
-                ("test_ask_shouldCompleteWithFirstResponse", test_ask_shouldCompleteWithFirstResponse),
-                ("test_askResult_shouldBePossibleTo_contextAwaitOn", test_askResult_shouldBePossibleTo_contextAwaitOn),
-                ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout),
-                ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout),
-                ("test_askResult_whenContextAwaitedOn_shouldRespectTimeout", test_askResult_whenContextAwaitedOn_shouldRespectTimeout),
-                ("test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters", test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters),
-           ]
-   }
+    static var allTests: [(String, (ActorAskTests) -> () throws -> Void)] {
+        return [
+            ("test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout", test_ask_shouldSucceedIfResponseIsReceivedBeforeTimeout),
+            ("test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout", test_ask_shouldFailIfResponseIsNotReceivedBeforeTimeout),
+            ("test_ask_shouldCompleteWithFirstResponse", test_ask_shouldCompleteWithFirstResponse),
+            ("test_askResult_shouldBePossibleTo_contextAwaitOn", test_askResult_shouldBePossibleTo_contextAwaitOn),
+            ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withNormalTimeout),
+            ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout),
+            ("test_askResult_whenContextAwaitedOn_shouldRespectTimeout", test_askResult_whenContextAwaitedOn_shouldRespectTimeout),
+            ("test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters", test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters),
+        ]
+    }
 }
-

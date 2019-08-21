@@ -17,8 +17,8 @@ import DistributedActorsTestKit
 import XCTest
 
 class BackoffStrategyTests: XCTestCase {
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Constant backoff
 
     func test_constantBackoff_shouldAlwaysYieldSameTimeAmount() {
@@ -38,6 +38,7 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Exponential backoff
 
     func test_exponentialBackoff_shouldIncreaseBackoffEachTime() {
@@ -56,9 +57,9 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldEqual(.milliseconds(100))
         backoff.next()?.shouldEqual(.milliseconds(150))
 
-        backoff.next()?.shouldEqual(.nanoseconds(225000000))
+        backoff.next()?.shouldEqual(.nanoseconds(225_000_000))
 
-        backoff.next()?.shouldEqual(.nanoseconds(337500000))
+        backoff.next()?.shouldEqual(.nanoseconds(337_500_000))
     }
 
     func test_exponentialBackoff_reset_shouldResetBackoffIntervals() {
@@ -79,5 +80,4 @@ class BackoffStrategyTests: XCTestCase {
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
     }
-
 }

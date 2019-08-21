@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 final class LamportClockTests: XCTestCase {
-
     func test_lamportClock_movesOnlyForward() {
         var lClock = LamportClock()
         lClock.time.shouldEqual(0)

@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension MPSCLinkedQueueTests {
-
-   static var allTests : [(String, (MPSCLinkedQueueTests) -> () throws -> Void)] {
-      return [
-                ("testIsEmptyWhenEmpty", testIsEmptyWhenEmpty),
-                ("testIsEmptyWhenNonEmpty", testIsEmptyWhenNonEmpty),
-                ("testNonEmptyWhenEmpty", testNonEmptyWhenEmpty),
-                ("testNonEmptyWhenNonEmpty", testNonEmptyWhenNonEmpty),
-                ("testDequeueWhenEmpty", testDequeueWhenEmpty),
-                ("testEnqueueDequeue", testEnqueueDequeue),
-           ]
-   }
+    static var allTests: [(String, (MPSCLinkedQueueTests) -> () throws -> Void)] {
+        return [
+            ("testIsEmptyWhenEmpty", testIsEmptyWhenEmpty),
+            ("testIsEmptyWhenNonEmpty", testIsEmptyWhenNonEmpty),
+            ("testNonEmptyWhenEmpty", testNonEmptyWhenEmpty),
+            ("testNonEmptyWhenNonEmpty", testNonEmptyWhenNonEmpty),
+            ("testDequeueWhenEmpty", testDequeueWhenEmpty),
+            ("testEnqueueDequeue", testEnqueueDequeue),
+        ]
+    }
 }
-

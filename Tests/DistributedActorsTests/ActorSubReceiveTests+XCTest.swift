@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension ActorSubReceiveTests {
-
-   static var allTests : [(String, (ActorSubReceiveTests) -> () throws -> Void)] {
-      return [
-                ("test_subReceive_shouldBeAbleToReceiveMessages", test_subReceive_shouldBeAbleToReceiveMessages),
-                ("test_subReceive_shouldBeAbleToModifyActorState", test_subReceive_shouldBeAbleToModifyActorState),
-                ("test_subReceive_shouldBeWatchable", test_subReceive_shouldBeWatchable),
-                ("test_subReceive_shouldShareLifetimeWithParent", test_subReceive_shouldShareLifetimeWithParent),
-                ("test_subReceive_shouldTriggerSupervisionOnError", test_subReceive_shouldTriggerSupervisionOnError),
-                ("test_subReceive_shouldTriggerSupervisionOnFault", test_subReceive_shouldTriggerSupervisionOnFault),
-           ]
-   }
+    static var allTests: [(String, (ActorSubReceiveTests) -> () throws -> Void)] {
+        return [
+            ("test_subReceive_shouldBeAbleToReceiveMessages", test_subReceive_shouldBeAbleToReceiveMessages),
+            ("test_subReceive_shouldBeAbleToModifyActorState", test_subReceive_shouldBeAbleToModifyActorState),
+            ("test_subReceive_shouldBeWatchable", test_subReceive_shouldBeWatchable),
+            ("test_subReceive_shouldShareLifetimeWithParent", test_subReceive_shouldShareLifetimeWithParent),
+            ("test_subReceive_shouldTriggerSupervisionOnError", test_subReceive_shouldTriggerSupervisionOnError),
+            ("test_subReceive_shouldTriggerSupervisionOnFault", test_subReceive_shouldTriggerSupervisionOnFault),
+        ]
+    }
 }
-

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import CDistributedActorsMailbox
+import DistributedActorsConcurrencyHelpers
 import Foundation
 import Logging
 
@@ -25,6 +25,7 @@ internal enum WrappedMessage {
     case message(Any)
     case closure(ActorClosureCarry)
 }
+
 extension WrappedMessage: NoSerializationVerification {}
 
 /// Envelopes are used to carry messages with metadata, and are what is enqueued into actor mailboxes.
@@ -116,13 +117,12 @@ internal final class Mailbox<Message> {
         }
         #endif
 
-
         self.mailbox = cmailbox_create(capacity, maxRunLength)
         self.shell = shell
         self.address = shell.address
         self.deadLetters = shell.system.deadLetters
 
-        // TODO not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
+        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         self.serializeAllMessages = shell.system.settings.serialization.allMessages
         self.handleCrashes = shell.system.settings.faultSupervisionMode.isEnabled
 
@@ -146,7 +146,7 @@ internal final class Mailbox<Message> {
 
             return shouldContinue
         }
-        self.deadLetterMessage = { (ctxPtr, msgPtr) in
+        self.deadLetterMessage = { ctxPtr, msgPtr in
             defer { msgPtr?.deallocate() }
             let context = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
             do {
@@ -172,13 +172,11 @@ internal final class Mailbox<Message> {
                         exit(-1)
                     }
                 } else {
-
                     traceLog_Supervision("No crash details...")
                     // no crash details, so we can't invoke supervision; Let it Crash!
                     return .failureTerminate
                 }
             } else {
-
                 traceLog_Supervision("No crash details...")
                 // no crash details, so we can't invoke supervision; Let it Crash!
                 return .failureTerminate
@@ -213,7 +211,7 @@ internal final class Mailbox<Message> {
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
             switch _shell {
             case .some(let cell): cell.fail(error)
-            case .none:           pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
+            case .none: pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
         self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { shellPtr, sysMsgPtr, runPhase in
@@ -234,7 +232,7 @@ internal final class Mailbox<Message> {
         })
 
         self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: {
-                [deadLetters = self.deadLetters, address = self.address] envelopePtr in
+            [deadLetters = self.deadLetters, address = self.address] envelopePtr in
             let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
             let envelope = envelopePtr.move()
             let wrapped = envelope.payload
@@ -246,7 +244,7 @@ internal final class Mailbox<Message> {
             }
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: {
-                [deadLetters = self.deadLetters, address = self.address] sysMsgPtr in
+            [deadLetters = self.deadLetters, address = self.address] sysMsgPtr in
             let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
             let msg = envelopePtr.move()
             deadLetters.tell(DeadLetter(msg, recipient: address))
@@ -263,7 +261,7 @@ internal final class Mailbox<Message> {
 
                 traceLog_Mailbox(self.address.path, "INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
 
-                // TODO improve logging, should include what decision was taken; same for THROWN
+                // TODO: improve logging, should include what decision was taken; same for THROWN
                 shell.log.warning("Supervision: Actor has FAULTED while \("\(runPhase)".split(separator: ".").dropFirst().first!), handling with \(shell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
 
                 let supervisionDirective: SupervisionDirective<Message>
@@ -282,8 +280,8 @@ internal final class Mailbox<Message> {
 
                 case .escalate:
                     // failure escalated "all the way", so decision is to fail, Let it Crash!
-                    // TODO escalate to parent via terminated with the error?
-                    // TODO do we need to crash children explicitly here?
+                    // TODO: escalate to parent via terminated with the error?
+                    // TODO: do we need to crash children explicitly here?
                     return .failureTerminate
 
                 case .restartImmediately(let nextBehavior):
@@ -310,8 +308,9 @@ internal final class Mailbox<Message> {
             },
             describeMessage: { failedMessageRawPtr in
                 // guaranteed to be of our generic Message type, however the context could not close over the generic type
-                return renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
-            })
+                renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
+            }
+        )
 
         // cache `run`, seems to give performance benefit
         self._run = self.run
@@ -343,8 +342,8 @@ internal final class Mailbox<Message> {
                     try self.shell?.system.serialization.verifySerializable(message: message as! Message)
                 }
             } catch {
-                fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " + 
-                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " + 
+                fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
+                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " +
                     "This check was performed since `settings.serialization.allMessages` was enabled.")
             }
         }
@@ -353,18 +352,18 @@ internal final class Mailbox<Message> {
         ptr.initialize(to: envelope)
 
         func sendAndDropAsDeadLetter() {
-            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
+            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
 
             _ = ptr.move()
             ptr.deallocate()
         }
 
-        switch cmailbox_send_message(mailbox, ptr) {
+        switch cmailbox_send_message(self.mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
             guard let shell = self.shell else {
                 traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
-                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address,  sentAtFile: file, sentAtLine: line))
+                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
                 break
             }
             shell.dispatcher.execute(self._run)
@@ -374,8 +373,8 @@ internal final class Mailbox<Message> {
 
         case .mailboxTerminating:
             // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
-            //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed 
-            //       and we can immediately send things to dead letters then. 
+            //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed
+            //       and we can immediately send things to dead letters then.
             sendAndDropAsDeadLetter()
 
         case .mailboxClosed:
@@ -384,22 +383,21 @@ internal final class Mailbox<Message> {
 
         case .mailboxFull:
             traceLog_Mailbox(self.address.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter() // TODO "Drop" rather than DeadLetter
+            sendAndDropAsDeadLetter() // TODO: "Drop" rather than DeadLetter
         }
     }
 
     @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
-
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
         func sendAndDropAsDeadLetter() {
-            // TODO should deadLetters be special, since watching it is nonsense?
+            // TODO: should deadLetters be special, since watching it is nonsense?
             self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
         }
 
-        switch cmailbox_send_system_message(mailbox, ptr) {
+        switch cmailbox_send_system_message(self.mailbox, ptr) {
         case .needsScheduling:
             traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), scheduling for execution")
             guard let shell = self.shell else {
@@ -411,7 +409,7 @@ internal final class Mailbox<Message> {
 
         case .alreadyScheduled:
             traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), someone scheduled already")
-            
+
         case .mailboxTerminating:
             traceLog_Mailbox(self.address.path, "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)")
             sendAndDropAsDeadLetter()
@@ -443,14 +441,13 @@ internal final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
-        switch cmailbox_send_system_tombstone(mailbox, ptr) {
+        switch cmailbox_send_system_tombstone(self.mailbox, ptr) {
         case .mailboxTerminating:
             // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
             cell.dispatcher.execute(self._run)
         default:
             fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
         }
-
     }
 
     @inlinable
@@ -477,13 +474,13 @@ internal final class Mailbox<Message> {
 
         // Run the mailbox:
         let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
-            &cell, self.handleCrashes,
-            &messageClosureContext, &systemMessageClosureContext,
-            &deadLetterMessageClosureContext, &deadLetterSystemMessageClosureContext,
-            interpretMessage, deadLetterMessage,
-            // fault handling:
-            FaultHandling.getErrorJmpBuf(), 
-            &invokeSupervisionClosureContext, invokeSupervision, failedMessagePtr, &runPhase)
+                                                                  &cell, self.handleCrashes,
+                                                                  &self.messageClosureContext, &self.systemMessageClosureContext,
+                                                                  &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
+                                                                  self.interpretMessage, self.deadLetterMessage,
+                                                                  // fault handling:
+                                                                  FaultHandling.getErrorJmpBuf(),
+                                                                  &self.invokeSupervisionClosureContext, self.invokeSupervision, failedMessagePtr, &runPhase)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -503,7 +500,7 @@ internal final class Mailbox<Message> {
             // but in case of a failure that code can not be executed
             failedMessagePtr.deinitialize(count: 1)
             // FIXME: !!! we must know if we should schedule or not after a restart...
-            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME
+            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME:
             cell.dispatcher.execute(self._run)
 
         case .failureTerminate:
@@ -570,12 +567,10 @@ internal final class Mailbox<Message> {
 // MARK: Crash handling functions for Mailbox
 
 extension Mailbox {
-    
-    // TODO rename to "log crash error"?
+    // TODO: rename to "log crash error"?
     private func reportCrashFailCellWithBestPossibleError(shell: ActorShell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: SActMailboxRunPhase) {
-        
         let failure: MessageProcessingFailure
-        
+
         if let crashDetails = FaultHandling.getCrashDetails() {
             if let failedMessageRaw = failedMessagePtr.pointee {
                 defer { failedMessageRaw.deallocate() }
@@ -616,11 +611,12 @@ internal struct MessageProcessingFailure: Error {
 
 extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
     var description: String {
-        return "Actor faulted while processing message '\(messageDescription)', with backtrace"
+        return "Actor faulted while processing message '\(self.messageDescription)', with backtrace"
     }
+
     public var debugDescription: String {
-        let backtraceStr = backtrace.joined(separator: "\n")
-        return "Actor faulted while processing message '\(messageDescription)':\n\(backtraceStr)"
+        let backtraceStr = self.backtrace.joined(separator: "\n")
+        return "Actor faulted while processing message '\(self.messageDescription)':\n\(backtraceStr)"
     }
 }
 
@@ -629,10 +625,10 @@ extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringCo
 /// Wraps context for use in closures passed to C
 private struct InterpretMessageClosureContext {
     private let _exec: (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult
-    private let _fail: (Error) -> ()
+    private let _fail: (Error) -> Void
 
     init(exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult,
-         fail: @escaping (Error) -> ()) {
+         fail: @escaping (Error) -> Void) {
         self._exec = exec
         self._fail = fail
     }
@@ -644,23 +640,25 @@ private struct InterpretMessageClosureContext {
 
     @inlinable
     func fail(error: Error) -> SActActorRunResult {
-        _fail(error) // mutates ActorCell to become failed
+        self._fail(error) // mutates ActorCell to become failed
         return .shouldStop // TODO: cell to decide if to continue later on (supervision); cleanup how we use this return value
     }
 }
+
 /// Wraps context for use in closures passed to C
 private struct DropMessageClosureContext {
-    private let _drop: (UnsafeMutableRawPointer) throws -> ()
+    private let _drop: (UnsafeMutableRawPointer) throws -> Void
 
-    init(drop: @escaping (UnsafeMutableRawPointer) throws -> ()) {
+    init(drop: @escaping (UnsafeMutableRawPointer) throws -> Void) {
         self._drop = drop
     }
 
     @inlinable
-    func drop(with ptr: UnsafeMutableRawPointer) throws -> () {
+    func drop(with ptr: UnsafeMutableRawPointer) throws {
         return try self._drop(ptr)
     }
 }
+
 /// Wraps context for use in closures passed to C
 private struct InvokeSupervisionClosureContext {
     // Implementation note: we wold like to execute the usual handle failure here, but we can't since the passed
@@ -720,6 +718,7 @@ private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointe
     case .message(let message): return "[\(message)]:\(Message.self)"
     }
 }
+
 private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
     let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).pointee
     return "[\(systemMessage)]:\(SystemMessage.self)"

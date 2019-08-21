@@ -12,16 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ActorLoggingTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
-    var exampleSenderPath: ActorPath! = nil
+    var exampleSenderPath: ActorPath!
     let exampleTrace = Trace(
         version: 0,
         traceIdHead: UInt64.max,
@@ -32,7 +32,7 @@ class ActorLoggingTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
 
         self.exampleSenderPath = try! ActorPath(root: "user")
         self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
@@ -46,15 +46,15 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {
-        let p = testKit.spawnTestProbe(name: "p", expecting: String.self)
-        let r = testKit.spawnTestProbe(name: "r", expecting: Rendered.self)
+        let p = self.testKit.spawnTestProbe(name: "p", expecting: String.self)
+        let r = self.testKit.spawnTestProbe(name: "r", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
+            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
                 r.ref.tell(.instance)
                 return self.exampleSenderPath.description
-            })
+            }
             // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
             return .receiveMessage { message in
@@ -71,15 +71,15 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
-        let p = testKit.spawnTestProbe(name: "p2", expecting: String.self)
-        let r = testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
+        let p = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let r = self.testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
+            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
                 r.ref.tell(.instance)
                 return self.exampleSenderPath.description
-            })
+            }
             // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
             return .receiveMessage { message in
@@ -97,15 +97,15 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
-        let p = testKit.spawnTestProbe(name: "p2", expecting: String.self)
-        let r = testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
+        let p = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let r = self.testKit.spawnTestProbe(name: "r2", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
-            context.log[metadataKey: "senderPath"] = .lazyStringConvertible({
+            context.log[metadataKey: "senderPath"] = .lazyStringConvertible {
                 r.ref.tell(.instance)
                 return self.exampleSenderPath.description
-            })
+            }
             // ~~~~ end of (imagine as) set by swift-distributed-actors library internally ~~~~~~
 
             return .receiveMessage { message in
@@ -121,7 +121,6 @@ class ActorLoggingTests: XCTestCase {
         try p.expectMessage("Got: Hello world")
         try r.expectNoMessage(for: .milliseconds(100))
     }
-
 }
 
 struct Trace {

@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 final class NodeDeathWatcherTests: ClusteredNodesTestBase {
-
     func test_nodeDeath_shouldFailAllRefsOnSpecificAddress() throws {
-        let first = self.setUpNode("first") { settings in 
+        let first = self.setUpNode("first") { settings in
             settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
         }
         let second = self.setUpNode("second") { settings in
@@ -44,8 +43,8 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
             context.watch(refOnFirstToRemote1)
             context.watch(refOnFirstToRemote2)
 
-            let recv: Behavior<String> = .receiveMessage { message in
-                return .same
+            let recv: Behavior<String> = .receiveMessage { _ in
+                .same
             }
 
             return recv.receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
@@ -69,5 +68,4 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
         first.cluster.down(node: second.cluster.node)
         try p.expectNoMessage(for: .milliseconds(50))
     }
-
 }

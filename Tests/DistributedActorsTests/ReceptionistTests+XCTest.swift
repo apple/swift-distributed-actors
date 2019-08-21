@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension ReceptionistTests {
-
-   static var allTests : [(String, (ReceptionistTests) -> () throws -> Void)] {
-      return [
-                ("test_receptionist_shouldRespondWithRegisteredRefsForKey", test_receptionist_shouldRespondWithRegisteredRefsForKey),
-                ("test_receptionist_shouldRespondWithEmptyRefForUnknownKey", test_receptionist_shouldRespondWithEmptyRefForUnknownKey),
-                ("test_receptionist_shouldNotRegisterTheSameRefTwice", test_receptionist_shouldNotRegisterTheSameRefTwice),
-                ("test_receptionist_shouldReplyWithRegistered", test_receptionist_shouldReplyWithRegistered),
-                ("test_receptionist_shouldUnregisterTerminatedRefs", test_receptionist_shouldUnregisterTerminatedRefs),
-                ("test_receptionist_shouldContinuouslySendUpdatesForSubscriptions", test_receptionist_shouldContinuouslySendUpdatesForSubscriptions),
-           ]
-   }
+    static var allTests: [(String, (ReceptionistTests) -> () throws -> Void)] {
+        return [
+            ("test_receptionist_shouldRespondWithRegisteredRefsForKey", test_receptionist_shouldRespondWithRegisteredRefsForKey),
+            ("test_receptionist_shouldRespondWithEmptyRefForUnknownKey", test_receptionist_shouldRespondWithEmptyRefForUnknownKey),
+            ("test_receptionist_shouldNotRegisterTheSameRefTwice", test_receptionist_shouldNotRegisterTheSameRefTwice),
+            ("test_receptionist_shouldReplyWithRegistered", test_receptionist_shouldReplyWithRegistered),
+            ("test_receptionist_shouldUnregisterTerminatedRefs", test_receptionist_shouldUnregisterTerminatedRefs),
+            ("test_receptionist_shouldContinuouslySendUpdatesForSubscriptions", test_receptionist_shouldContinuouslySendUpdatesForSubscriptions),
+        ]
+    }
 }
-

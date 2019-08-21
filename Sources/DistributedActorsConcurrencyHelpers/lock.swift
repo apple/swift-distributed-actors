@@ -77,7 +77,7 @@ extension Lock {
 
     // specialise Void return (for performance)
     @inlinable
-    public func withLockVoid(_ body: () throws -> Void) rethrows -> Void {
+    public func withLockVoid(_ body: () throws -> Void) rethrows {
         try self.withLock(body)
     }
 }
@@ -156,7 +156,7 @@ public final class ConditionLock<T: Equatable> {
     public func lock(whenValue wantedValue: T, timeoutSeconds: Double) -> Bool {
         precondition(timeoutSeconds >= 0)
 
-        let nsecPerSec: Int64 = 1000000000
+        let nsecPerSec: Int64 = 1_000_000_000
         self.lock()
         /* the timeout as a (seconds, nano seconds) pair */
         let timeoutNS = Int64(timeoutSeconds * Double(nsecPerSec))
@@ -165,7 +165,7 @@ public final class ConditionLock<T: Equatable> {
         gettimeofday(&curTime, nil)
 
         let allNSecs: Int64 = timeoutNS + Int64(curTime.tv_usec) * 1000
-        var timeoutAbs = timespec(tv_sec: curTime.tv_sec + Int((allNSecs / nsecPerSec)),
+        var timeoutAbs = timespec(tv_sec: curTime.tv_sec + Int(allNSecs / nsecPerSec),
                                   tv_nsec: Int(allNSecs % nsecPerSec))
         assert(timeoutAbs.tv_nsec >= 0 && timeoutAbs.tv_nsec < Int(nsecPerSec))
         assert(timeoutAbs.tv_sec >= curTime.tv_sec)

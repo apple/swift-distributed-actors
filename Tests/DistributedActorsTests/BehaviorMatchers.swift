@@ -12,18 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
-
+import XCTest
 
 /// Internal testing extensions allowing inspecting behavior internals
 internal extension Behavior {
-
     /// Similar to canonicalize but counts the nesting depth, be it in setup calls or interceptors.
     ///
-    /// TODO: Implemented recursively and may stack overflow on insanely deep structures.
-    /// TODO: not all cases are covered, only enough to implement specific tests currently is.
+    // TODO: Implemented recursively and may stack overflow on insanely deep structures.
+    // TODO: not all cases are covered, only enough to implement specific tests currently is.
     func nestingDepth(context: ActorContext<Message>) throws -> Int {
         func nestingDepth0(_ b: Behavior<Message>) throws -> Int {
             switch b.underlying {
@@ -51,8 +49,8 @@ internal extension Behavior {
     ///      intercept(interceptor:DistributedActors.StoppingSupervisor<Swift.String>
     //         receiveMessage((Function))
     //       )
-    /// TODO: Implemented recursively and may stack overflow on insanely deep structures.
-    /// TODO: not all cases are covered, only enough to implement specific tests currently is.
+    // TODO: Implemented recursively and may stack overflow on insanely deep structures.
+    // TODO: not all cases are covered, only enough to implement specific tests currently is.
     func prettyFormat(context: ActorContext<Message>, padWith padding: String = "  ") throws -> String {
         func prettyFormat0(_ b: Behavior<Message>, depth: Int) throws -> String {
             let pad = String(repeating: padding, count: depth)
@@ -75,11 +73,11 @@ internal extension Behavior {
                 return "\(pad)orElse(\n" +
                     (try prettyFormat0(first, depth: depth + 1)) +
                     (try prettyFormat0(second, depth: depth + 1)) +
-                "\(pad))\n"
+                    "\(pad))\n"
             case .suspended(let previousBehavior, _):
                 return "\(pad)suspended(\n" +
                     (try prettyFormat0(previousBehavior, depth: depth + 1)) +
-                "\(pad))\n"
+                    "\(pad))\n"
             case .same, .receive, .receiveMessage, .stop, .failed, .unhandled, .ignore, .class, .suspend:
                 return "\(pad)\(b)\n"
             }

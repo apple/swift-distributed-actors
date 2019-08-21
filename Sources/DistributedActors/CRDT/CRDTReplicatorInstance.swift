@@ -33,6 +33,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Register CRDT owner
 
         enum RegisterOwnerDirective {
@@ -53,6 +54,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Write CRDT
 
         enum WriteDirective {
@@ -106,7 +108,7 @@ extension CRDT.Replicator {
                     }
 
                     stored.merge(other: input)
-                    dataStore[id] = stored
+                    self.dataStore[id] = stored
 
                     return .applied(stored)
                 case var stored as AnyDeltaCRDT:
@@ -121,7 +123,7 @@ extension CRDT.Replicator {
                         // A mutation to delta-CRDT should update both state and delta so `merge` would work as well.
                         stored.merge(other: input)
                     }
-                    dataStore[id] = stored
+                    self.dataStore[id] = stored
 
                     return .applied(stored)
                 default:
@@ -149,7 +151,7 @@ extension CRDT.Replicator {
                     }
 
                     stored.mergeDelta(delta)
-                    dataStore[id] = stored
+                    self.dataStore[id] = stored
 
                     return .applied(stored)
                 default:
@@ -160,6 +162,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Read CRDT
 
         enum ReadDirective {
@@ -176,6 +179,7 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
+
         // MARK: Delete CRDT
 
         enum DeleteDirective {

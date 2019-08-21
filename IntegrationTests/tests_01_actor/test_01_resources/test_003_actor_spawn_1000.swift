@@ -14,13 +14,12 @@
 
 import DistributedActors
 
-
 func run(identifier: String) {
     let system = ActorSystem("\(identifier)")
 
     measure(identifier: identifier) {
         var i = 0
-        for _ in 0..<1000 {
+        for _ in 0 ..< 1000 {
             let _: ActorRef<String> = try! system.spawn(.anonymous, .ignore)
             i += 1
         }

@@ -20,7 +20,7 @@ import Logging
 public class LoggingContext {
     let identifier: String
 
-    // TODO want to eventually not have this; also move to more structured logging perhaps...
+    // TODO: want to eventually not have this; also move to more structured logging perhaps...
     /// If `true` the built-in "pretty" formatter should be used, rather than passing verbatim to underlying `LogHandler`
     let useBuiltInFormatter: Bool
 
@@ -56,7 +56,7 @@ public class LoggingContext {
 
     func effectiveMetadata(overrides: Logger.Metadata?) -> Logger.Metadata {
         if let overs = overrides {
-            return self._storage.merging(overs, uniquingKeysWith: { (l, r) in r })
+            return self._storage.merging(overs, uniquingKeysWith: { _, r in r })
         } else {
             return self._storage
         }
@@ -102,7 +102,6 @@ public struct ActorLogger {
 
 // TODO: implement logging infrastructure - pipe as messages to dedicated logging actor
 public struct ActorOriginLogHandler: LogHandler {
-
     private static func createFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSZ"
@@ -115,7 +114,7 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private let context: LoggingContext
 
-    // TODO would be moved to actual "LoggingActor"
+    // TODO: would be moved to actual "LoggingActor"
     private let formatter: DateFormatter
 
     private var loggingSystemSelectedLogger: Logger
@@ -148,23 +147,21 @@ public struct ActorOriginLogHandler: LogHandler {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
         let logMessage = LogMessage(identifier: self.context.identifier,
-                time: Date(),
-                level: level,
-                message: message,
-                effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO should force lazies
-                file: file,
-                function: function,
-                line: line
-            )
+                                    time: Date(),
+                                    level: level,
+                                    message: message,
+                                    effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO: should force lazies
+                                    file: file,
+                                    function: function,
+                                    line: line)
 
         self.invokeConfiguredLoggingInfra(logMessage)
     }
 
     internal func invokeConfiguredLoggingInfra(_ logMessage: LogMessage) {
-        // TODO here we can either log... or dispatch to actor... or invoke Logging. etc
+        // TODO: here we can either log... or dispatch to actor... or invoke Logging. etc
 
         if self.context.useBuiltInFormatter {
-
             var l = logMessage
 
             // TODO: decide if we want to use those "extract into known place in format" things or not
@@ -196,13 +193,13 @@ public struct ActorOriginLogHandler: LogHandler {
             var msg = ""
 
             // sort metadata to preserve sanity
-            // TODO we should not do this or hide this under an env flag or something?
+            // TODO: we should not do this or hide this under an env flag or something?
             if ProcessInfo.processInfo.environment["SACT_PRETTY_LOG"] != nil {
                 if let meta = l.effectiveMetadata, !meta.isEmpty {
                     let ms = meta
                         .lazy
                         .sorted(by: { $0.key < $1.key })
-                        .map {"\"\($0)\":\($1)"}
+                        .map { "\"\($0)\":\($1)" }
                         .joined(separator: ",")
                     msg += "{\(ms)}" // forces any lazy metadata to be rendered
                 }
@@ -215,14 +212,13 @@ public struct ActorOriginLogHandler: LogHandler {
             msg += "\(actorPathPart)"
             msg += " \(l.message)"
 
-
             self.loggingSystemSelectedLogger.log(level: logMessage.level, Logger.Message(stringLiteral: msg), metadata: l.effectiveMetadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         } else {
-            self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
+            self.loggingSystemSelectedLogger.log(level: logMessage.level, logMessage.message, metadata: self.metadata, file: logMessage.file, function: logMessage.function, line: logMessage.line)
         }
     }
 
-    // TODO hope to remove this one
+    // TODO: hope to remove this one
     public subscript(metadataKey metadataKey: String) -> Logger.Metadata.Value? {
         get {
             return self.context[metadataKey: metadataKey]
@@ -247,7 +243,7 @@ public struct ActorOriginLogHandler: LogHandler {
     // TODO: This seems worse to implement since I can't pass through my "reads of lazy cause rendering"
     public var metadata: Logger.Metadata {
         get {
-            return context.metadata
+            return self.context.metadata
         }
         set {
             self.context.metadata = newValue
@@ -256,16 +252,15 @@ public struct ActorOriginLogHandler: LogHandler {
 
     private func formatLevel(_ level: Logger.Level) -> String {
         switch level {
-        case .trace:     return "[TRACE]" 
-        case .debug:     return "[DEBUG]" 
-        case .info:      return "[INFO]"
-        case .notice:    return "[NOTICE]"
-        case .warning:   return "[WARN]"
-        case .error:     return "[ERROR]"
-        case .critical:  return "[CRITICAL]"
+        case .trace: return "[TRACE]"
+        case .debug: return "[DEBUG]"
+        case .info: return "[INFO]"
+        case .notice: return "[NOTICE]"
+        case .warning: return "[WARN]"
+        case .error: return "[ERROR]"
+        case .critical: return "[CRITICAL]"
         }
     }
-
 }
 
 /// Message carrying all information needed to log a log statement issued by a `Logger`.
@@ -291,8 +286,9 @@ public struct LogMessage {
 extension Optional where Wrapped == Logger.MetadataValue {
     /// Delays rendering of value by boxing it in a `LazyMetadataBox`
     static func lazyStringConvertible(_ makeValue: @escaping () -> CustomStringConvertible) -> Logger.Metadata.Value {
-        return .stringConvertible(LazyMetadataBox({ makeValue() }))
+        return .stringConvertible(LazyMetadataBox { makeValue() })
     }
+
     static func lazyString(_ makeValue: @escaping () -> String) -> Logger.Metadata.Value {
         return self.lazyStringConvertible(makeValue)
     }
@@ -303,7 +299,7 @@ extension Optional where Wrapped == Logger.MetadataValue {
 /// NOT thread-safe, so all access should be guarded some synchronization method, e.g. only access from an Actor.
 internal class LazyMetadataBox: CustomStringConvertible {
     private var lazyValue: (() -> CustomStringConvertible)?
-    private var _value: String? = nil
+    private var _value: String?
 
     public init(_ lazyValue: @escaping () -> CustomStringConvertible) {
         self.lazyValue = lazyValue
@@ -327,10 +323,10 @@ internal class LazyMetadataBox: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Logger extensions
 
 extension Logger {
-
     /// Allows passing in a `Logger.Level?` and not log if it was `nil`.
     @inlinable
     public func log(level: Logger.Level?,
@@ -341,5 +337,4 @@ extension Logger {
             self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)
         }
     }
-
 }

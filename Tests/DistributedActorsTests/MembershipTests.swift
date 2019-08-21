@@ -17,17 +17,17 @@ import DistributedActorsTestKit
 import XCTest
 
 final class MembershipTests: XCTestCase {
-
     let firstMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
     let secondMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
     let thirdMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
     let newMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
     lazy var initialMembership: Membership = [
-        firstMember, secondMember, thirdMember
+        firstMember, secondMember, thirdMember,
     ]
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: status ordering
 
     func test_status_ordering() {
@@ -53,13 +53,14 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: member listing
 
     func test_members_listing() {
         self.initialMembership.members(atLeast: .joining).count.shouldEqual(0)
         self.initialMembership.members(atLeast: .up).count.shouldEqual(3)
-        var changed = initialMembership
-        _ = changed.mark(firstMember.node, as: .down)
+        var changed = self.initialMembership
+        _ = changed.mark(self.firstMember.node, as: .down)
         changed.members(atLeast: .up).count.shouldEqual(2)
         changed.members(atLeast: .down).count.shouldEqual(3)
         changed.members(atLeast: .leaving).count.shouldEqual(3)
@@ -67,6 +68,7 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+
     // MARK: Marking
 
     func test_mark_shouldOnlyProceedForwardInStatuses() {
@@ -105,45 +107,47 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: diff
 
     func test_membershipDiff_beEmpty_whenNothingChangedForIt() {
-        let changed = initialMembership
-        let diff = Membership.diff(from: initialMembership, to: changed)
+        let changed = self.initialMembership
+        let diff = Membership.diff(from: self.initialMembership, to: changed)
         diff.entries.count.shouldEqual(0)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenStatusChangedForIt() {
-        let changed = initialMembership.marking(firstMember.node, as: .leaving)
+        let changed = self.initialMembership.marking(self.firstMember.node, as: .leaving)
 
-        let diff = Membership.diff(from: initialMembership, to: changed)
+        let diff = Membership.diff(from: self.initialMembership, to: changed)
 
         diff.entries.count.shouldEqual(1)
         let diffEntry = diff.entries.first!
-        diffEntry.node.shouldEqual(firstMember.node)
+        diffEntry.node.shouldEqual(self.firstMember.node)
         diffEntry.fromStatus?.shouldEqual(.up)
         diffEntry.toStatus?.shouldEqual(.leaving)
     }
 
     func test_membershipDiff_shouldIncludeEntry_whenMemberRemoved() {
-        let changed = initialMembership.removing(firstMember.node)
+        let changed = self.initialMembership.removing(self.firstMember.node)
 
-        let diff = Membership.diff(from: initialMembership, to: changed)
+        let diff = Membership.diff(from: self.initialMembership, to: changed)
 
         diff.entries.count.shouldEqual(1)
         let diffEntry = diff.entries.first!
-        diffEntry.node.shouldEqual(firstMember.node)
+        diffEntry.node.shouldEqual(self.firstMember.node)
         diffEntry.fromStatus?.shouldEqual(.up)
         diffEntry.toStatus.shouldBeNil()
     }
-    func test_membershipDiff_shouldIncludeEntry_whenMemberAdded() {
-        let changed = initialMembership.joining(newMember.node)
 
-        let diff = Membership.diff(from: initialMembership, to: changed)
+    func test_membershipDiff_shouldIncludeEntry_whenMemberAdded() {
+        let changed = self.initialMembership.joining(self.newMember.node)
+
+        let diff = Membership.diff(from: self.initialMembership, to: changed)
 
         diff.entries.count.shouldEqual(1)
         let diffEntry = diff.entries.first!
-        diffEntry.node.shouldEqual(newMember.node)
+        diffEntry.node.shouldEqual(self.newMember.node)
         diffEntry.fromStatus.shouldBeNil()
         diffEntry.toStatus?.shouldEqual(.joining)
     }

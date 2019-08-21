@@ -21,12 +21,10 @@ import XCTest
 ///
 
 extension DispatcherTests {
-
-   static var allTests : [(String, (DispatcherTests) -> () throws -> Void)] {
-      return [
-                ("test_runOn_nioEventLoop", test_runOn_nioEventLoop),
-                ("test_runOn_nioEventLoopGroup", test_runOn_nioEventLoopGroup),
-           ]
-   }
+    static var allTests: [(String, (DispatcherTests) -> () throws -> Void)] {
+        return [
+            ("test_runOn_nioEventLoop", test_runOn_nioEventLoop),
+            ("test_runOn_nioEventLoopGroup", test_runOn_nioEventLoopGroup),
+        ]
+    }
 }
-

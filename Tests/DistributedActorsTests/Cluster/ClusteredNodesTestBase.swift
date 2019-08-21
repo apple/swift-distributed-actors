@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 open class ClusteredNodesTestBase: XCTestCase {
-
     var _nodes: [ActorSystem] = []
     var _testKits: [ActorTestKit] = []
     var _logCaptures: [LogCapture] = []
@@ -65,7 +64,7 @@ open class ClusteredNodesTestBase: XCTestCase {
         return (first, second)
     }
 
-    override open func tearDown() {
+    open override func tearDown() {
         if self.captureLogs, self.testRun?.failureCount ?? 0 > 0 {
             for node in self._nodes {
                 self.printCapturedLogs(node)
@@ -91,14 +90,13 @@ open class ClusteredNodesTestBase: XCTestCase {
         try assertAssociated(node, withAtLeast: other.settings.cluster.uniqueBindNode)
         try assertAssociated(other, withAtLeast: node.settings.cluster.uniqueBindNode)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Printing information
 
 extension ClusteredNodesTestBase {
-
     func pinfoAllMemberships(testKit: ActorTestKit, file: StaticString = #file, line: UInt = #line) {
         let p = testKit.spawnTestProbe(expecting: Membership.self)
 
@@ -112,21 +110,20 @@ extension ClusteredNodesTestBase {
         p.stop()
 
         pinfo("""
-              \n
-              MEMBERSHIPS === -------------------------------------------------------------------------------------
-              \(infos.joined(separator: "\n\n"))
-              END OF MEMBERSHIPS === ------------------------------------------------------------------------------ 
-              """, file: file, line: line)
+        \n
+        MEMBERSHIPS === -------------------------------------------------------------------------------------
+        \(infos.joined(separator: "\n\n"))
+        END OF MEMBERSHIPS === ------------------------------------------------------------------------------ 
+        """, file: file, line: line)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Logs
 
 extension ClusteredNodesTestBase {
-
     func printCapturedLogs(_ node: ActorSystem) {
-
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
         }
@@ -138,16 +135,17 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Assertions
 
 extension ClusteredNodesTestBase {
-
     func assertAssociated(_ system: ActorSystem, withAtLeast node: UniqueNode,
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                           verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         try self.assertAssociated(system, withAtLeast: [node], timeout: timeout, interval: interval,
                                   verbose: verbose, file: file, line: line, column: column)
     }
+
     func assertAssociated(_ system: ActorSystem, withExactly node: UniqueNode,
                           timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
                           verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -188,9 +186,9 @@ extension ClusteredNodesTestBase {
                 let notYetAssociated = Set(atLeastNodes).subtracting(Set(associatedNodes)) // atLeast set is a sub set of the right one
                 if notYetAssociated.count > 0 {
                     throw TestError("""
-                                    [\(system)] did still not associate \(notYetAssociated). \
-                                    Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: atLeastNodes).
-                                    """)
+                    [\(system)] did still not associate \(notYetAssociated). \
+                    Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: atLeastNodes).
+                    """)
                 }
             }
 
@@ -214,7 +212,7 @@ extension ClusteredNodesTestBase {
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.cluster._shell.tell(.query(.associatedNodes(probe.ref)))
-            let associatedNodes = try probe.expectMessage() // TODO use interval here
+            let associatedNodes = try probe.expectMessage() // TODO: use interval here
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
                 pprint("      Associated nodes: \(associatedNodes.map { String(reflecting: $0) })")
@@ -249,6 +247,7 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
 extension ClusteredNodesTestBase {

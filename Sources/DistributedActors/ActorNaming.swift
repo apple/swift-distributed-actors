@@ -15,10 +15,10 @@
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor Name
 
 extension ActorNaming {
-
     /// Default actor naming strategy; whereas the name MUST be unique under a given path.
     ///
     /// I.e. if a parent actor spawns `.unique(worker)`
@@ -58,7 +58,6 @@ extension ActorNaming {
 }
 
 extension ActorNaming {
-
     /// Special naming scheme applied to `ask` actors.
     internal static var ask: ActorNaming = .init(unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
 
@@ -68,13 +67,13 @@ extension ActorNaming {
 
 /// Used while spawning actors to identify how its name should be created.
 public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
-
     // We keep an internal enum, but do not expose it as we may want to add more naming strategies in the future?
     internal enum _Naming {
         case unique(String)
         // case uniqueNumeric(NumberingScheme)
         case prefixed(prefix: String, suffixScheme: SuffixScheme)
     }
+
     internal enum SuffixScheme {
         /// Scheme optimized for sequential related to each other entities, such as workers, or process identifiers.
         /// resulting in sequential numeric values: `1, 2, 3, ..., 9, 10, 11, 12, ...`
@@ -123,6 +122,7 @@ public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterp
         // https://github.com/google/open-location-code/blob/master/docs/olc_definition.adoc#open-location-code
         // This was to avoid, as far as possible, Open Location Codes being generated that included recognisable words. The selected 20 character set is made up of "23456789CFGHJMPQRVWX".
     }
+
     internal let naming: _Naming
 
     /// Directly create target naming, WITHOUT performing any validation (!),
@@ -130,6 +130,7 @@ public struct ActorNaming: ExpressibleByStringLiteral, ExpressibleByStringInterp
     internal init(unchecked: _Naming) {
         self.naming = unchecked
     }
+
     public init(stringLiteral value: String) {
         self = .unique(value)
     }
@@ -167,7 +168,7 @@ internal struct ActorNamingContext {
 
     init() {
         self.seqNr = 0
-        // TODO we could include node ids or similar if we wanted snowflakes...
+        // TODO: we could include node ids or similar if we wanted snowflakes...
     }
 
     mutating func nextSequenceNr() -> UInt32 {
@@ -177,10 +178,10 @@ internal struct ActorNamingContext {
 }
 
 let zBase32Alphabet: [UnicodeScalar] = [
-    "y", "b", "n", "d", "r", "f", "g", "8", 
-    "e", "j", "k", "m", "c", "p", "q", "x", 
-    "o", "t", "1", "u", "w", "i", "s", "z", 
-    "a", "3", "4", "5", "h", "7", "6", "9"
+    "y", "b", "n", "d", "r", "f", "g", "8",
+    "e", "j", "k", "m", "c", "p", "q", "x",
+    "o", "t", "1", "u", "w", "i", "s", "z",
+    "a", "3", "4", "5", "h", "7", "6", "9",
 ]
 
-fileprivate let zBase32AlphabetMaxIndex: UInt32 = UInt32(zBase32Alphabet.indices.last!)
+private let zBase32AlphabetMaxIndex: UInt32 = UInt32(zBase32Alphabet.indices.last!)

@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActorsTestKit
 import Foundation
 import XCTest
-import DistributedActorsTestKit
 
 @testable import DistributedActors
 
@@ -24,7 +24,7 @@ class TimersTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -37,7 +37,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_startSingleTimer_shouldSendSingleMessage() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
@@ -53,7 +53,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_startPeriodicTimer_shouldSendPeriodicMessage() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
@@ -71,14 +71,14 @@ class TimersTests: XCTestCase {
         }
 
         _ = try system.spawn(.anonymous, behavior)
-        for _ in 0..<5 {
+        for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
     func test_periodicTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
@@ -95,14 +95,14 @@ class TimersTests: XCTestCase {
         }
 
         _ = try system.spawn(.anonymous, behavior)
-        for _ in 0..<5 {
+        for _ in 0 ..< 5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(100))
     }
 
     func test_singleTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior = Behavior<String>.setup { context in
             // We start the timer without delay and then sleep for a short
@@ -118,12 +118,12 @@ class TimersTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn(.anonymous, behavior)
+        _ = try self.system.spawn(.anonymous, behavior)
         try p.expectNoMessage(for: .milliseconds(10))
     }
 
     func test_timers_cancelAllShouldStopAllTimers() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
@@ -142,7 +142,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_timers_cancelAllShouldNotStopSystemTimers() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))

@@ -15,10 +15,10 @@
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SWIM Settings
 
 public struct SWIMSettings {
-
     public static var `default`: SWIMSettings {
         return .init()
     }
@@ -36,25 +36,23 @@ public struct SWIMSettings {
     /// When enabled traces _all_ incoming SWIM protocol communication (remote messages).
     /// These logs will contain SWIM.Instance metadata, as offered by `SWIM.Instance.metadata`.
     /// All logs will be prefixed using `[tracelog:SWIM]`, for easier grepping and inspecting only logs related to the SWIM instance.
-    // TODO how to make this nicely dynamically changeable during runtime
+    // TODO: how to make this nicely dynamically changeable during runtime
     #if SACT_TRACELOG_SWIM
     var traceLogLevel: Logger.Level? = .warning
     #else
-    var traceLogLevel: Logger.Level? = nil
+    var traceLogLevel: Logger.Level?
     #endif
-
 }
 
 extension SWIM {
     public typealias Settings = SWIMSettings
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Gossip Settings
 
 public struct SWIMGossipSettings {
-
     public static var `default`: SWIMGossipSettings {
         return .init()
     }
@@ -72,10 +70,10 @@ public struct SWIMGossipSettings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: FailureDetector Settings
 
 public struct SWIMFailureDetectorSettings {
-
     public static var `default`: SWIMFailureDetectorSettings {
         return .init()
     }

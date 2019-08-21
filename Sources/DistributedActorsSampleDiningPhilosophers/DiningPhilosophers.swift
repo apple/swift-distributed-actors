@@ -15,8 +15,7 @@
 import DistributedActors
 
 struct DiningPhilosophers {
-    func run(`for` time: TimeAmount) throws {
-
+    func run(for time: TimeAmount) throws {
         let system = ActorSystem("Philosophers")
 
         // prepare 5 forks, the resources, that the philosophers will compete for:

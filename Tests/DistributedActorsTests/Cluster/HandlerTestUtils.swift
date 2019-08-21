@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 @testable import DistributedActors
+import NIO
 
 final class ReadRecorder: ChannelInboundHandler {
     typealias InboundIn = TransportEnvelope

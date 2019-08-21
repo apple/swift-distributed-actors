@@ -12,14 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import NIO
+import XCTest
 
 final class ClusterAssociationTests: ClusteredNodesTestBase {
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Happy path, accept association
 
     func test_boundServer_shouldAcceptAssociate() throws {
@@ -60,6 +60,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
@@ -119,6 +120,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Concurrently initiated handshakes to same node should both get completed
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
@@ -157,6 +159,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Retry associations
 
     func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
@@ -169,7 +172,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         local.cluster.join(node: remoteNode)
         sleep(1) // we give it some time to keep failing to connect, so the second node is not yet started
 
-        let remote = setUpNode("remote") { settings in 
+        let remote = setUpNode("remote") { settings in
             settings.cluster.bindPort = remotePort
         }
 
@@ -212,6 +215,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Remote control caching
 
     func test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
@@ -244,7 +248,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         var node = local.cluster.node.node
         node.port = node.port + 10
 
-        local.cluster._shell.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO nicer API
+        local.cluster._shell.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
 
         switch try p.expectMessage(within: .seconds(1)) {
         case ClusterShell.HandshakeResult.failure:
@@ -254,8 +258,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         }
     }
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Change membership on Down detected
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {

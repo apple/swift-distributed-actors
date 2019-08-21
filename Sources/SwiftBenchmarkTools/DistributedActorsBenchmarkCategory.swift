@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-public enum BenchmarkCategory : String {
+public enum BenchmarkCategory: String {
     // Serialization benchmarks
     case serialization
 

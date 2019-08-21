@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 final class SWIMInstanceTests: XCTestCase {
     var system: ActorSystem!
@@ -22,17 +22,17 @@ final class SWIMInstanceTests: XCTestCase {
     var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!
 
     override func setUp() {
-        system = ActorSystem(String(describing: type(of: self)))
-        testKit = ActorTestKit(system)
-        clusterTestProbe = testKit.spawnTestProbe()
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(self.system)
+        self.clusterTestProbe = self.testKit.spawnTestProbe()
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod() {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
         let status: SWIM.Status = .alive(incarnation: 1)
 
@@ -50,10 +50,11 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Detecting myself
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
-        let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -62,8 +63,8 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_notMyself_shouldDetectRandomNotMyselfActor() {
-        let shell = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let someone = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let someone = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -72,83 +73,85 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Marking members as various statuses
 
     func test_mark_shouldNotApplyEqualStatus() throws {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
         swim.incrementProtocolPeriod()
 
-        try validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 1), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 1), shouldSucceed: false)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
     }
 
     func test_mark_shouldApplyNewerStatus() throws {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
 
-        for i in 0...5 {
+        for i in 0 ... 5 {
             swim.incrementProtocolPeriod()
-            try validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: SWIM.Incarnation(i)), shouldSucceed: true)
-            try validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: SWIM.Incarnation(i + 1)), shouldSucceed: true)
+            try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: SWIM.Incarnation(i)), shouldSucceed: true)
+            try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: SWIM.Incarnation(i + 1)), shouldSucceed: true)
         }
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(6)
     }
 
     func test_mark_shouldNotApplyOlderStatus() throws {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
         swim.incrementProtocolPeriod()
 
-        try validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
-        try validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 1), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 0), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 1), shouldSucceed: false)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
     }
 
     func test_mark_shouldApplyDead() throws {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
         swim.incrementProtocolPeriod()
 
-        try validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: true)
+        try self.validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: true)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(1)
     }
 
     func test_mark_shouldNotApplyAnyStatusIfAlreadyDead() throws {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .dead)
         swim.incrementProtocolPeriod()
 
-        try validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 99), shouldSucceed: false)
-        try validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 99), shouldSucceed: false)
-        try validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: 99), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: 99), shouldSucceed: false)
+        try self.validateMark(swim: swim, member: probe.ref, status: .dead, shouldSucceed: false)
 
         swim.member(for: probe.ref)!.protocolPeriod.shouldEqual(0)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: handling ping-req responses
 
     func test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // p3 is suspect already...
         swim.addMyself(p1)
@@ -169,9 +172,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPingRequestResponse_ignoresTooOldRefutations() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(name: "p1", expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(name: "p2", expecting: SWIM.Message.self).ref
-        let p3 = testKit.spawnTestProbe(name: "p3", expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(name: "p1", expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(name: "p2", expecting: SWIM.Message.self).ref
+        let p3 = self.testKit.spawnTestProbe(name: "p3", expecting: SWIM.Message.self).ref
 
         // p3 is suspect already...
         swim.addMyself(p1)
@@ -190,13 +193,14 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: receive a ping and reply to it
 
     func test_onPing_shouldOfferAckMessageWithMyselfReference() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         swim.addMyself(p1)
         swim.addMember(p2, status: .alive(incarnation: 0))
@@ -212,8 +216,8 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // from our perspective, all nodes are alive...
         swim.addMyself(p1)
@@ -234,8 +238,8 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // from our perspective, all nodes are alive...
         swim.addMyself(p1)
@@ -253,13 +257,14 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: handling gossip about the receiving node
 
     func test_onGossipPayload_myself_withAlive() throws {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
         let myselfMember = swim.member(for: myself)!
 
@@ -271,7 +276,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning == nil:
             ()
         default:
-            throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
+            throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
@@ -279,7 +284,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
         myselfMember.status = .suspect(incarnation: currentIncarnation)
@@ -292,7 +297,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning == nil:
             ()
         default:
-            throw testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
+            throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
@@ -300,7 +305,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         var currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -319,7 +324,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(nil, nil):
             ()
         default:
-            throw testKit.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
+            throw self.testKit.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
         }
     }
 
@@ -327,7 +332,7 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let currentIncarnation = swim.incarnation
 
-        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
         var myselfMember = swim.member(for: myself)!
 
@@ -340,14 +345,14 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning != nil:
             ()
         default:
-            throw testKit.fail("Expected `.none(message)`, got \(res)")
+            throw self.testKit.fail("Expected `.none(message)`, got \(res)")
         }
     }
 
     func test_onGossipPayload_myself_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let myself = try system.spawn("SWIM", (SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready))
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
 
         var myselfMember = swim.member(for: myself)!
@@ -358,17 +363,17 @@ final class SWIMInstanceTests: XCTestCase {
         case .confirmedDead(let member):
             member.shouldEqual(myselfMember)
         default:
-            throw testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
         }
     }
 
     func test_onGossipPayload_other_withDead() throws {
         let swim = SWIM.Instance(.default)
 
-        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready)
+        let myself = try system.spawn("SWIM", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMyself(myself)
 
-        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: clusterTestProbe.ref).ready)
+        let other = try system.spawn("SWIM-B", SWIM.Shell(swim, clusterRef: self.clusterTestProbe.ref).ready)
         swim.addMember(other, status: .alive(incarnation: 0))
 
         var otherMember = swim.member(for: other)!
@@ -379,18 +384,18 @@ final class SWIMInstanceTests: XCTestCase {
         case .confirmedDead(let member):
             member.shouldEqual(otherMember)
         default:
-            throw testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
         }
     }
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: increment-ing counters
 
     func test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne() {
         let swim = SWIM.Instance(.default)
 
-        for i in 0..<10 {
+        for i in 0 ..< 10 {
             swim.protocolPeriod.shouldEqual(i)
             swim.incrementProtocolPeriod()
         }
@@ -399,9 +404,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_members_shouldContainAllAddedMembers() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         swim.addMember(p2.ref, status: .alive(incarnation: 0))
@@ -413,22 +418,23 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Selecting members to ping
 
     func test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder() throws {
         let swim = SWIM.Instance(.default)
         let memberCount = 10
         var members: Set<ActorRef<SWIM.Message>> = []
-        for _ in 0..<memberCount {
-            let p = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        for _ in 0 ..< memberCount {
+            let p = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
             members.insert(p.ref)
             swim.addMember(p.ref, status: .alive(incarnation: 0))
         }
 
         var seenMembers: [ActorRef<SWIM.Message>] = []
-        for _ in 0..<memberCount {
+        for _ in 0 ..< memberCount {
             guard let member = swim.nextMemberToPing() else {
-                throw testKit.fail("Could not fetch member to ping")
+                throw self.testKit.fail("Could not fetch member to ping")
             }
 
             seenMembers.append(member)
@@ -438,9 +444,9 @@ final class SWIMInstanceTests: XCTestCase {
         members.shouldBeEmpty()
 
         // should loop around and we should encounter all the same members now
-        for _ in 0..<memberCount {
+        for _ in 0 ..< memberCount {
             guard let member = swim.nextMemberToPing() else {
-                throw testKit.fail("Could not fetch member to ping")
+                throw self.testKit.fail("Could not fetch member to ping")
             }
 
             seenMembers.removeFirst().shouldEqual(member)
@@ -448,7 +454,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_addMember_shouldNotAddLocalNodeForPinging() {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMyself(probe.ref)
@@ -458,11 +464,11 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_nextMemberToPingRequest() {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         swim.addMember(p2.ref, status: .alive(incarnation: 0))
@@ -480,7 +486,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_member_shouldReturnTheLastAssignedStatus() {
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
@@ -491,8 +497,8 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_member_shouldWorkForMyself() {
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default)
 
         swim.addMyself(p1)
@@ -505,14 +511,15 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: (Round up the usual...) Suspects
 
     func test_suspects_shouldContainOnlySuspectedNodes() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
@@ -520,25 +527,25 @@ final class SWIMInstanceTests: XCTestCase {
         swim.addMember(p3, status: aliveAtZero)
         swim.memberCount.shouldEqual(3)
 
-        validateSuspects(swim, expected: [])
+        self.validateSuspects(swim, expected: [])
 
         swim.mark(p1, as: .suspect(incarnation: 0)).shouldEqual(.applied(previousStatus: aliveAtZero))
-        validateSuspects(swim, expected: [p1])
+        self.validateSuspects(swim, expected: [p1])
 
         _ = swim.mark(p3, as: .suspect(incarnation: 0))
-        validateSuspects(swim, expected: [p1, p3])
+        self.validateSuspects(swim, expected: [p1, p3])
 
         _ = swim.mark(p2, as: .suspect(incarnation: 0))
         _ = swim.mark(p1, as: .alive(incarnation: 1))
-        validateSuspects(swim, expected: [p2, p3])
+        self.validateSuspects(swim, expected: [p2, p3])
     }
 
     func test_memberCount_shouldNotCountDeadMembers() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
@@ -554,15 +561,15 @@ final class SWIMInstanceTests: XCTestCase {
 
         swim.mark(p2, as: .dead)
         swim.memberCount.shouldEqual(1) // dead is not part of membership
-
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: makeGossipPayload
 
     func test_makeGossipPayload_shouldReturnNoneIfNothingToGossip() throws {
         let swim = SWIM.Instance(.default)
-        try validateGossip(swim: swim, expected: [])
+        try self.validateGossip(swim: swim, expected: [])
     }
 
     func test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes() throws {
@@ -570,20 +577,20 @@ final class SWIMInstanceTests: XCTestCase {
         settings.gossip.maxGossipCountPerMessage = 2
         let swim = SWIM.Instance(settings)
 
-        let p1 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
-        try validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
 
         swim.addMember(p2.ref, status: .suspect(incarnation: 1))
-        try validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0), .init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0)])
 
         swim.addMember(p3.ref, status: .dead)
-        try validateGossip(swim: swim, expected: [.init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
-        try validateGossip(swim: swim, expected: [.init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
-        try validateGossip(swim: swim, expected: [])
+        try self.validateGossip(swim: swim, expected: [.init(ref: p2.ref, status: .suspect(incarnation: 1), protocolPeriod: 0), .init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: p3.ref, status: .dead, protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [])
     }
 
     func test_makeGossipPayload_shouldResetCounterWhenStatusChanged() throws {
@@ -591,18 +598,19 @@ final class SWIMInstanceTests: XCTestCase {
         settings.gossip.maxGossipCountPerMessage = 2
         let swim = SWIM.Instance(settings)
 
-        let probe = testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
-        try validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
 
         _ = swim.mark(probe.ref, as: .suspect(incarnation: 0))
-        try validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
-        try validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
-        try validateGossip(swim: swim, expected: [])
+        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .suspect(incarnation: 0), protocolPeriod: 0)])
+        try self.validateGossip(swim: swim, expected: [])
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: utility functions
 
     func validateMark(swim: SWIM.Instance, member: ActorRef<SWIM.Message>, status: SWIM.Status, shouldSucceed: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -613,25 +621,25 @@ final class SWIMInstanceTests: XCTestCase {
                 throw self.testKit.fail("Expected `.applied`, got `\(markResult)`", file: file, line: line, column: column)
             }
         } else {
-            guard case .ignoredDueToOlderStatus(_) = markResult else {
+            guard case .ignoredDueToOlderStatus = markResult else {
                 throw self.testKit.fail("Expected `.ignoredDueToOlderStatus`, got `\(markResult)`", file: file, line: line, column: column)
             }
         }
     }
 
     func validateSuspects(_ swim: SWIM.Instance, expected: Set<ActorRef<SWIM.Message>>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
-        Set(swim.suspects.map({ $0.ref })).shouldEqual(expected, file: file, line: line, column: column)
+        Set(swim.suspects.map { $0.ref }).shouldEqual(expected, file: file, line: line, column: column)
     }
 
     func validateGossip(swim: SWIM.Instance, expected: Set<SWIM.Member>, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let payload = swim.makeGossipPayload()
         if expected.isEmpty {
             guard case SWIM.Payload.none = payload else {
-                throw testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
+                throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
             }
         } else {
             guard case SWIM.Payload.membership(let members) = payload else {
-                throw testKit.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)
+                throw self.testKit.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)
             }
 
             Set(members).shouldEqual(expected, file: file, line: line, column: column)

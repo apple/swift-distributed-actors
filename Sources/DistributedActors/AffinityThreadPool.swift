@@ -44,7 +44,7 @@ internal final class AffinityThreadPool {
     /// - Throws:
     ///   - AffinityThreadPoolError.unknownWorker, when no worker exists for `workerNumber`
     @inlinable
-    internal func execute(on workerNumber: Int, _ task: @escaping () -> Void) throws -> Void {
+    internal func execute(on workerNumber: Int, _ task: @escaping () -> Void) throws {
         guard workerNumber < self.workerCount else {
             throw AffinityThreadPoolError.unknownWorker(workerNumber: workerNumber)
         }
