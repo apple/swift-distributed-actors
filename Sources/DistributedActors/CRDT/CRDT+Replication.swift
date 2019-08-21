@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-// TODO: instance+shell pattern (https://github.com/apple/swift-distributed-actors/pull/870#discussion_r2003176)
 // TODO: gossip. always send full CRDT, even for delta-CRDT. (https://github.com/apple/swift-distributed-actors/pull/787#issuecomment-4274783)
 // TODO: when to call `resetDelta` on delta-CRDTs stored in Replicator? after gossip? (https://github.com/apple/swift-distributed-actors/pull/831#discussion_r1969174)
 // TODO: reduce CRDT state size by pruning replicas associated with removed nodes; listen to membership changes
@@ -25,7 +24,16 @@ extension CRDT {
 
         // Messages from replicator to CRDT owner
         internal enum DataOwnerMessage {
+            /// Sent when the CRDT instance and owner have been registered with the replicator. The owner may start
+            /// modifying the CRDT instance at this point and will receive notifications whenever the CRDT instance is mutated.
+            case ready
+
+            /// Sent when the CRDT instance has been updated. The update could have been issued locally by the same or
+            /// another owner, or remotely then synchronized to this replicator.
             case updated(StateBasedCRDT)
+
+            /// Sent when the CRDT instance has been deleted. The delete could have been issued locally by the same or
+            /// another owner, or remotely then synchronized to this replicator.
             case deleted
         }
     }
@@ -41,22 +49,22 @@ extension CRDT {
         typealias ReplicatedData = CRDT.Replication.Data
 
         enum Message {
-            // The API for CRDT owner (e.g., actor) to call local replicator
+            /// The API for CRDT instance owner (e.g., actor) to call local replicator
             case localCommand(LocalCommand)
-            // Replication-related operations within the cluster and sent by local replicator to remote replicator
+            /// Replication-related operations within the cluster and sent by local replicator to remote replicator
             case remoteCommand(RemoteCommand)
         }
 
         enum LocalCommand: NoSerializationVerification {
-            // Register owner for CRDT
+            /// Register owner for CRDT instance
             case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<RegisterResult>)
 
-            // Perform write to at least `consistency` members
-            // `data` is expected to be the full CRDT. Don't send delta even if it is a delta-CRDT.
+            /// Perform write to at least `consistency` members
+            /// `data` is expected to be the full CRDT. Don't send delta even if it is a delta-CRDT.
             case write(_ id: Identity, _ data: ReplicatedData, consistency: OperationConsistency, replyTo: ActorRef<WriteResult>)
-            // Perform read from at least `consistency` members
+            /// Perform read from at least `consistency` members
             case read(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<ReadResult>)
-            // Perform delete to at least `consistency` members
+            /// Perform delete to at least `consistency` members
             case delete(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<DeleteResult>)
 
             enum RegisterResult {
@@ -98,13 +106,13 @@ extension CRDT {
         }
 
         enum RemoteCommand {
-            // Sent from one replicator to another to write the given CRDT as part of `OwnerCommand.write` to meet consistency requirement
+            /// Sent from one replicator to another to write the given CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
             case write(_ id: Identity, _ data: ReplicatedData, replyTo: ActorRef<WriteResult>)
-            // Sent from one replicator to another to write the given delta of delta-CRDT as part of `OwnerCommand.write` to meet consistency requirement
+            /// Sent from one replicator to another to write the given delta of delta-CRDT instance as part of `OwnerCommand.write` to meet consistency requirement
             case writeDelta(_ id: Identity, delta: ReplicatedData, replyTo: ActorRef<WriteResult>)
-            // Sent from one replicator to another to read CRDT with the given identity as part of `OwnerCommand.read` to meet consistency requirement
+            /// Sent from one replicator to another to read CRDT instance with the given identity as part of `OwnerCommand.read` to meet consistency requirement
             case read(_ id: Identity, replyTo: ActorRef<ReadResult>)
-            // Sent from one replicator to another to delete CRDT with the given identity as part of `OwnerCommand.delete` to meet consistency requirement
+            /// Sent from one replicator to another to delete CRDT instance with the given identity as part of `OwnerCommand.delete` to meet consistency requirement
             case delete(_ id: Identity, replyTo: ActorRef<DeleteResult>)
 
             enum WriteResult {

@@ -165,6 +165,8 @@ public enum CRDT {
 
             let subReceive = ownerContext.subReceive(SubReceiveId(id.id), CRDT.Replication.DataOwnerMessage.self) { message in
                 switch message {
+                case .ready:
+                    self.delegate.onReady(actorOwned: self)
                 case .updated(let data):
                     guard let data = data as? DataType else {
                         throw Error.replicatedDataDoesNotMatchExpectedType
@@ -266,22 +268,33 @@ public enum CRDT {
 }
 
 extension CRDT.ActorOwned {
-    /// Register callback for owning actor to be notified when the CRDT has been updated.
+    /// Callback for owning actor to be notified when the `ActorOwned` instance is ready. The owner may start
+    /// modifying the CRDT instance at this point and will receive notifications whenever the CRDT instance is mutated.
+    ///
+    /// Note that there can only be a single `onReady` callback for each `ActorOwned`. Multiple invocations of this
+    /// method overwrite existing value, and the last written one wins.
+    ///
+    /// - Parameter callback: Invoked when the `ActorOwned` instance becomes ready for the owner to perform any additional custom processing.
+    public func onReady(_ callback: @escaping (CRDT.Identity) -> Void) {
+        self.delegate.ownerDefinedOnReady = callback
+    }
+
+    /// Register callback for owning actor to be notified when the CRDT instance has been updated.
     ///
     /// Note that there can only be a single `onUpdate` callback for each `ActorOwned`. Multiple invocations of this
-    /// method overwrite existing value, and the last write one wins.
+    /// method overwrite existing value, and the last written one wins.
     ///
-    /// - Parameter callback: Invoked when the `ActorOwned` instance has been updated to perform any additional custom processing.
+    /// - Parameter callback: Invoked when the `ActorOwned` instance has been updated for the owner to perform any additional custom processing.
     public func onUpdate(_ callback: @escaping (CRDT.Identity, DataType) -> Void) {
         self.delegate.ownerDefinedOnUpdate = callback
     }
 
-    /// Register callback for owning actor to be notified when the CRDT has been deleted.
+    /// Register callback for owning actor to be notified when the CRDT instance has been deleted.
     ///
     /// Note that there can only be a single `onDelete` callback for each `ActorOwned`. Multiple invocations of this
-    /// method overwrite existing value, and the last write one wins.
+    /// method overwrite existing value, and the last written one wins.
     ///
-    /// - Parameter callback: Invoked when the `ActorOwned` instance has been deleted to perform any additional custom processing.
+    /// - Parameter callback: Invoked when the `ActorOwned` instance has been deleted for the owner to perform any additional custom processing.
     public func onDelete(_ callback: @escaping (CRDT.Identity) -> Void) {
         self.delegate.ownerDefinedOnDelete = callback
     }
@@ -290,18 +303,24 @@ extension CRDT.ActorOwned {
 extension CRDT {
     public class ActorOwnedDelegate<DataType: CvRDT> {
         // Callbacks defined by the owner
+        var ownerDefinedOnReady: ((Identity) -> Void)?
         var ownerDefinedOnUpdate: ((Identity, DataType) -> Void)?
         var ownerDefinedOnDelete: ((Identity) -> Void)?
 
         public init() {}
 
-        // `ReplicatedDataOwnerProtocol.updated`
+        // `DataOwnerMessage.ready`
+        func onReady(actorOwned: CRDT.ActorOwned<DataType>) {
+            self.ownerDefinedOnReady?(actorOwned.id)
+        }
+
+        // `DataOwnerMessage.updated`
         func onUpdate(actorOwned: CRDT.ActorOwned<DataType>, data: DataType) {
             actorOwned.data = data
             self.ownerDefinedOnUpdate?(actorOwned.id, data)
         }
 
-        // `ReplicatedDataOwnerProtocol.deleted`
+        // `DataOwnerMessage.deleted`
         func onDelete(actorOwned: CRDT.ActorOwned<DataType>) {
             actorOwned.status = .deleted
             self.ownerDefinedOnDelete?(actorOwned.id)

@@ -82,6 +82,7 @@ extension CRDT.Replicator {
                 // Then write the full CRDT so it's ready to be read
                 switch self.replicator.write(id, data, deltaMerge: false) {
                 case .applied:
+                    ownerRef.tell(.ready)
                     replyTo.tell(.success)
                 case .inputAndStoredDataTypeMismatch(let stored):
                     replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))

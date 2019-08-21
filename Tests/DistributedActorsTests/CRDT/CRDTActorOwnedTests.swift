@@ -29,7 +29,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         self.system.shutdown()
     }
 
-    private enum GCounterTestProtocol {
+    private enum GCounterCommand {
         case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case delete(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Void>)
@@ -39,14 +39,72 @@ final class CRDTActorOwnedTests: XCTestCase {
         case hasDelta(replyTo: ActorRef<Bool>)
     }
 
-    private enum OwnerEventProbeProtocol {
+    private enum GCounterOwnerMessage {
+        case registered
+        case command(GCounterCommand)
+    }
+
+    private enum OwnerEventProbeMessage {
+        case ownerDefinedOnReady
         case ownerDefinedOnUpdate
         case ownerDefinedOnDelete
     }
 
-    private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeProtocol>) -> Behavior<GCounterTestProtocol> {
+    private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterOwnerMessage> {
+        func ready(_ g: CRDT.ActorOwned<CRDT.GCounter>) -> Behavior<GCounterOwnerMessage> {
+            return .receive { context, ownerMessage in
+                switch ownerMessage {
+                case .command(let message):
+                    switch message {
+                    case .increment(let amount, let consistency, let timeout, let replyTo):
+                        g.increment(by: amount, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                            switch result {
+                            case .success(let g):
+                                replyTo.tell(g.value)
+                            case .failure(let error):
+                                fatalError("write error \(error)")
+                            }
+                        }
+                    case .read(let consistency, let timeout, let replyTo):
+                        g.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                            switch result {
+                            case .success(let g):
+                                replyTo.tell(g.value)
+                            case .failure(let error):
+                                fatalError("read error \(error)")
+                            }
+                        }
+                    case .delete(let consistency, let timeout, let replyTo):
+                        g.deleteFromCluster(consistency: consistency, timeout: timeout).onComplete { result in
+                            switch result {
+                            case .success:
+                                replyTo.tell(())
+                            case .failure(let error):
+                                fatalError("delete error \(error)")
+                            }
+                        }
+                    case .lastObservedValue(let replyTo):
+                        replyTo.tell(g.lastObservedValue)
+                    case .status(let replyTo):
+                        replyTo.tell(g.status)
+                    case .hasDelta(let replyTo):
+                        replyTo.tell(g.data.delta != nil)
+                    }
+                    return .same
+                case .registered:
+                    context.log.warning("Received .registered when gcounter is in 'ready' state")
+                    return .stop
+                }
+            }
+        }
+
         return .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: id)
+            g.onReady { id in
+                context.log.info("gcounter \(id) is ready")
+                ownerEventProbe.tell(.ownerDefinedOnReady)
+                context.myself.tell(.registered)
+            }
             g.onUpdate { id, gg in
                 context.log.info("gcounter \(id) updated with new value: \(gg.value)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
@@ -57,52 +115,34 @@ final class CRDTActorOwnedTests: XCTestCase {
             }
 
             return .receiveMessage { message in
+                // Wait for registration to complete before accepting commands
                 switch message {
-                case .increment(let amount, let consistency, let timeout, let replyTo):
-                    g.increment(by: amount, writeConsistency: consistency, timeout: timeout).onComplete { result in
-                        switch result {
-                        case .success(let g):
-                            replyTo.tell(g.value)
-                        case .failure(let error):
-                            fatalError("write error \(error)")
-                        }
-                    }
-                case .read(let consistency, let timeout, let replyTo):
-                    g.read(atConsistency: consistency, timeout: timeout).onComplete { result in
-                        switch result {
-                        case .success(let g):
-                            replyTo.tell(g.value)
-                        case .failure(let error):
-                            fatalError("read error \(error)")
-                        }
-                    }
-                case .delete(let consistency, let timeout, let replyTo):
-                    g.deleteFromCluster(consistency: consistency, timeout: timeout).onComplete { result in
-                        switch result {
-                        case .success:
-                            replyTo.tell(())
-                        case .failure(let error):
-                            fatalError("delete error \(error)")
-                        }
-                    }
-                case .lastObservedValue(let replyTo):
-                    replyTo.tell(g.lastObservedValue)
-                case .status(let replyTo):
-                    replyTo.tell(g.status)
-                case .hasDelta(let replyTo):
-                    replyTo.tell(g.data.delta != nil)
+                case .registered:
+                    return ready(g)
+                case .command:
+                    context.log.warning("Received command before gcounter is ready")
+                    return .same
                 }
-                return .same
             }
         }
     }
 
     func test_actorOwned_theLastWrittenOnUpdateCallbackWins() throws {
-        let ownerEventPA = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
-        let ownerEventPB = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let ownerEventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let ownerEventPA = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let ownerEventPB = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
 
-        let behavior: Behavior<String> = .setup { context in
+        enum Message {
+            case registered
+            case text(String)
+        }
+
+        let behavior: Behavior<Message> = .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: "test-gcounter")
+            g.onReady { _ in
+                ownerEventP.tell(.ownerDefinedOnReady)
+                context.myself.tell(.registered)
+            }
             g.onUpdate { _, _ in
                 ownerEventPA.tell(.ownerDefinedOnUpdate)
             }
@@ -118,11 +158,13 @@ final class CRDTActorOwnedTests: XCTestCase {
         }
         let owner = try system.spawn(.anonymous, behavior)
 
-        owner.tell("hello")
-        // This callback was overwritten so it shouldn't be invoked
-        try ownerEventPA.expectNoMessage(for: .milliseconds(100))
-        // The "winner"
+        // Make sure owner is registered first
+        try ownerEventP.expectMessage(.ownerDefinedOnReady)
+
+        owner.tell(.text("hello"))
+        // Callback "B" replaced "A" so "A" should not receive message
         try ownerEventPB.expectMessage(.ownerDefinedOnUpdate)
+        try ownerEventPA.expectNoMessage(for: .milliseconds(10))
     }
 
     func test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers() throws {
@@ -130,34 +172,39 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g2 = "gcounter-2"
 
         // g1 has two owners
-        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
         let g1Owner1IntP = self.testKit.spawnTestProbe(expecting: Int.self)
         let g1Owner1BoolP = self.testKit.spawnTestProbe(expecting: Bool.self)
 
-        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner2 = try system.spawn("gcounter1-owner2", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
         let g1Owner2IntP = self.testKit.spawnTestProbe(expecting: Int.self)
 
         // g2 has one owner
-        let g2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g2Owner1 = try system.spawn("gcounter2-owner1", self.actorOwnedGCounterBehavior(id: g2, oep: g2Owner1EventP.ref))
         let g2Owner1IntP = self.testKit.spawnTestProbe(expecting: Int.self)
 
+        // Make sure owners are registered before sending gcounter commands
+        try g1Owner1EventP.expectMessage(.ownerDefinedOnReady)
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnReady)
+        try g2Owner1EventP.expectMessage(.ownerDefinedOnReady)
+
         // g1 not incremented yet
-        g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
+        g1Owner1.tell(.command(.lastObservedValue(replyTo: g1Owner1IntP.ref)))
         try g1Owner1IntP.expectMessage(0)
 
         // Implement g1 and the latest value should be returned
-        g1Owner1.tell(.increment(amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1IntP.ref))
+        g1Owner1.tell(.command(.increment(amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1IntP.ref)))
         try g1Owner1IntP.expectMessage(3)
 
         // g1 owner1's local value should be up-to-date
-        g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
+        g1Owner1.tell(.command(.lastObservedValue(replyTo: g1Owner1IntP.ref)))
         try g1Owner1IntP.expectMessage(3)
 
         // owner1's g1.delta should be reset
-        g1Owner1.tell(.hasDelta(replyTo: g1Owner1BoolP.ref))
+        g1Owner1.tell(.command(.hasDelta(replyTo: g1Owner1BoolP.ref)))
         try g1Owner1BoolP.expectMessage(false)
 
         // owner1 should be notified even if it triggered the action
@@ -165,11 +212,11 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         // owner2 should be notified about g1 updates, which means it should have up-to-date value too
         try g1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
-        g1Owner2.tell(.lastObservedValue(replyTo: g1Owner2IntP.ref))
+        g1Owner2.tell(.command(.lastObservedValue(replyTo: g1Owner2IntP.ref)))
         try g1Owner2IntP.expectMessage(3)
 
         // g2 hasn't been mutated
-        g2Owner1.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: g2Owner1IntP.ref))
+        g2Owner1.tell(.command(.read(consistency: .local, timeout: .milliseconds(100), replyTo: g2Owner1IntP.ref)))
         try g2Owner1IntP.expectMessage(0)
         // As a result owner should not have received any events
         try g2Owner1EventP.expectNoMessage(for: .milliseconds(100))
@@ -179,21 +226,25 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1 = "gcounter-1"
 
         // g1 has two owners
-        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
         let g1Owner1VoidP = self.testKit.spawnTestProbe(expecting: Void.self)
         let g1Owner1StatusP = self.testKit.spawnTestProbe(expecting: CRDT.Status.self)
 
-        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeProtocol.self)
+        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner2 = try system.spawn("gcounter1-owner2", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
         let g1Owner2StatusP = self.testKit.spawnTestProbe(expecting: CRDT.Status.self)
 
+        // Make sure owners are registered before sending gcounter commands
+        try g1Owner1EventP.expectMessage(.ownerDefinedOnReady)
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnReady)
+
         // Should be .active
-        g1Owner2.tell(.status(replyTo: g1Owner2StatusP.ref))
+        g1Owner2.tell(.command(.status(replyTo: g1Owner2StatusP.ref)))
         try g1Owner2StatusP.expectMessage(.active)
 
         // owner1 makes call to delete g1
-        g1Owner1.tell(.delete(consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1VoidP.ref))
+        g1Owner1.tell(.command(.delete(consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1VoidP.ref)))
 
         // owner1 should be notified even if it triggered the action
         try g1Owner1EventP.expectMessage(.ownerDefinedOnDelete)
@@ -201,11 +252,11 @@ final class CRDTActorOwnedTests: XCTestCase {
         // owner2 should be notified as well
         try g1Owner2EventP.expectMessage(.ownerDefinedOnDelete)
         // And change status to .deleted
-        g1Owner2.tell(.status(replyTo: g1Owner2StatusP.ref))
+        g1Owner2.tell(.command(.status(replyTo: g1Owner2StatusP.ref)))
         try g1Owner2StatusP.expectMessage(.deleted)
 
         // owner1's g1 status should also be .deleted
-        g1Owner1.tell(.status(replyTo: g1Owner1StatusP.ref))
+        g1Owner1.tell(.command(.status(replyTo: g1Owner1StatusP.ref)))
         try g1Owner1StatusP.expectMessage(.deleted)
     }
 }

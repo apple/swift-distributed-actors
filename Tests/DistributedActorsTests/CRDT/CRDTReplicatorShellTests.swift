@@ -59,6 +59,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         // Register the owner
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         // We can read g1 now because part of `register` command is writing g1 to local data store
         replicatorRef.tell(.localCommand(.read(id, consistency: .local, replyTo: readP.ref)))
@@ -85,6 +86,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         // Mutate g1
         g1.increment(by: 10)
@@ -128,6 +130,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         // Ensure g1 exists (it was written as part of `register`)
         replicatorRef.tell(.localCommand(.read(id, consistency: .local, replyTo: readP.ref)))
@@ -162,6 +165,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         g1.increment(by: 10)
 
@@ -204,6 +208,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         g1.increment(by: 10)
 
@@ -246,6 +251,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
         let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
+        guard case .ready = try ownerP.expectMessage() else { throw ownerP.error() }
 
         // Ensure g1 exists (it was written as part of `register`)
         replicatorRef.tell(.remoteCommand(.read(id, replyTo: readP.ref)))
