@@ -43,6 +43,15 @@ This product is heavily influenced by:
 
 ---
 
+This product contains some modified data-structures from Apple/Swift-NIO.
+
+  * LICENSE (Apache 2.0):
+    * https://github.com/apple/swift-nio/blob/master/LICENSE.txt
+  * HOMEPAGE:
+    * https://github.com/apple/swift-nio
+
+---
+
 This product contains Cameron Desrochers's 'moodycamel::ConcurrentQueue'.
 
   * LICENSE (Simplified BSD):
