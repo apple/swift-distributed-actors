@@ -55,7 +55,12 @@ A good Swift Distributed Actors patch is:
 1. Concise, and contains as few changes as needed to achieve the end result.
 2. Tested, ensuring that any tests provided failed before the patch and pass after it.
 3. Documented, adding API documentation as needed to cover new functions and properties.
-4. Accompanied by a great commit message, using our commit message template.
+4. Adheres to our code formatting conventions and [style guide](STYLE_GUIDE.md).
+5. Accompanied by a great commit message, using our commit message template.
+
+### Code Format and Style
+
+Swift Distributed Actors uses [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) to enforce the preferred [swift code format](.swiftformat). Always run SwiftFormat before committing your code. 
 
 ### Commit Message Template
 
