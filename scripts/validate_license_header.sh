@@ -28,11 +28,11 @@ for language in swift-or-c bash dtrace; do
   printf "   * $language... "
   declare -a matching_files
   declare -a exceptions
-  expections=( )
+  expections=()
   matching_files=( -name '*' )
   case "$language" in
       swift-or-c)
-        exceptions=( -name Package.swift -o -name plugin_echo.sh -o -name plugin_junit_xml.sh -o -name run-single-test.sh -o -name run-tests.sh -o -name test_functions.sh -o -name c_atomics.h -o -name c_atomics.c -o -name cpp_magic.h -o -name Heap.swift -o -name defines.sh -o -name test_01_allocation_counts.sh -o -name run-alloc-counter-tests.sh )
+        exceptions=( -name Package.swift -o -name plugin_echo.sh -o -name plugin_junit_xml.sh -o -name run-single-test.sh -o -name run-tests.sh -o -name test_functions.sh -o -name c_atomics.h -o -name c_atomics.c -o -name cpp_magic.h -o -name Heap.swift -o -name defines.sh -o -name test_01_allocation_counts.sh -o -name run-alloc-counter-tests.sh -o -name atomics.swift -o -name lock.swift -o -name HeapTests.swift )
         matching_files=( -name '*.swift' -o -name '*.c' -o -name '*.h' )
         cat > "$tmp" <<"EOF"
 //===----------------------------------------------------------------------===//
