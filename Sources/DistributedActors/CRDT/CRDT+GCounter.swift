@@ -42,7 +42,7 @@ extension CRDT {
             let newCount: Int
             if let currentCount = state[replicaId] {
                 guard case (let sum, let overflow) = currentCount.addingReportingOverflow(amount), !overflow else {
-                    fatalError("Incrementing GCounter by given amount resulted in overflow")
+                    fatalError("Incrementing GCounter(\(self.replicaId)) by [\(amount)] resulted in overflow")
                 }
                 newCount = sum
             } else {

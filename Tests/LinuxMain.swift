@@ -93,6 +93,7 @@ XCTMain([
     testCase(TimersTests.allTests),
     testCase(TraversalTests.allTests),
     testCase(UniqueNodeTests.allTests),
+    testCase(VersionVectorTests.allTests),
     testCase(WorkerPoolTests.allTests),
 ])
 #endif
