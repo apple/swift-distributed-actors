@@ -64,7 +64,7 @@ public struct ClusterSettings {
     }
 
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
-    public var handshakeBackoffStrategy: BackoffStrategy = Backoff.constant(.milliseconds(100))
+    public var handshakeBackoffStrategy: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
 
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var nid: NodeID

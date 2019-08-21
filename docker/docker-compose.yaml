@@ -20,8 +20,7 @@ services:
     working_dir: /code
     environment:
       - MAX_ALLOCS_ALLOWED_001_actor_address=5
-      - MAX_ALLOCS_ALLOWED_002_actor_spawn_1000=35000
-      - MAX_ALLOCS_ALLOWED_003_actor_spawn_100=3500
+      - MAX_ALLOCS_ALLOWED_002_actor_spawn=56
 
   sanity:
     <<: *common

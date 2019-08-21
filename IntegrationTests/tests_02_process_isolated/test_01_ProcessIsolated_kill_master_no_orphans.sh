@@ -19,7 +19,7 @@ set -e
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
-declare -r app_name=DistributedActorsSampleProcessIsolated
+declare -r app_name='DistributedActorsSampleProcessIsolated'
 
 cd ${root_path}
 
@@ -30,16 +30,22 @@ _killall ${app_name}
 # ====------------------------------------------------------------------------------------------------------------------
 # test_ProcessIsolated: servant process should terminate if master is killed
 
+echo "=================================================================================================================="
+echo "BUILD APP"
 swift build # synchronously ensure built
 
+echo "=================================================================================================================="
+echo "RUN APP: ${app_name}"
 swift run ${app_name} &
+
+sleep 2
 
 await_n_processes "$app_name" 2
 
 # some visual output
 ps aux | grep ${app_name} | grep -v grep
 
-pid_master=$(ps aux | grep ${app_name} | grep -v grep | grep -v servant | awk '{ print $2 }')
+pid_master=$(ps aux | grep ${app_name} | grep -v grep | grep -v servant | head -n1 | awk '{ print $2 }')
 pid_servant=$(ps aux | grep ${app_name} | grep -v grep | grep servant | head -n1 | awk '{ print $2 }')
 
 echo "> PID Master: ${pid_master}"
