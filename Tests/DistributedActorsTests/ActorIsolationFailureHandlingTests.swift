@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ActorIsolationFailureHandlingTests: XCTestCase {
     var system: ActorSystem!
@@ -23,7 +23,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -38,10 +38,12 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         case spawned(child: ActorRef<FaultyWorkerMessages>)
         case echoing(message: String)
     }
+
     enum FaultyWorkerMessages {
         case work(n: Int, divideBy: Int)
         case throwError(error: Error)
     }
+
     enum WorkerError: Error {
         case error(code: Int)
     }
@@ -50,10 +52,10 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         return .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
-            case let .work(n, divideBy):
+            case .work(let n, let divideBy):
                 pw.tell(n / divideBy)
                 return .same
-            case let .throwError(error):
+            case .throwError(let error):
                 context.log.warning("Throwing as instructed, error: \(error)")
                 throw error
             }
@@ -65,7 +67,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         return .receive { context, message in
             switch message {
             case self.spawnFaultyWorkerCommand:
-                let worker = try context.spawn("faultyWorker", (self.faultyWorkerBehavior(probe: pw)))
+                let worker = try context.spawn("faultyWorker", self.faultyWorkerBehavior(probe: pw))
                 pm.tell(.spawned(child: worker))
             default:
                 pm.tell(.echoing(message: message))
@@ -75,15 +77,15 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-1")
-        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-1")
+        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-1")
+        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbeForWorker-1")
 
-        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
         healthyMaster.tell("spawnFaultyWorker")
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
+        guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
 
         // watch the worker and see that it works correctly:
         pw.watch(worker)
@@ -104,15 +106,15 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
     func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
         #if !SACT_DISABLE_FAULT_TESTING
-        let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-2")
-        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbeForWorker-2")
+        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-2")
+        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbeForWorker-2")
 
-        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
-        healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
+        healthyMaster.tell(self.spawnFaultyWorkerCommand)
+        guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
 
         // watch the worker and see that it works correctly:
         pw.watch(worker)
@@ -134,9 +136,9 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         pinfo("Good: Parent \(healthyMaster) still active.")
 
         // we are also now able to start a replacement actor for the terminated child:
-        healthyMaster.tell(spawnFaultyWorkerCommand)
+        healthyMaster.tell(self.spawnFaultyWorkerCommand)
         pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
-        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
+        guard case .spawned(let workerReplacement) = try pm.expectMessage() else { throw pm.error() }
 
         let workerAddress: ActorAddress = worker.address
         let replacementAddress: ActorAddress = workerReplacement.address
@@ -152,15 +154,15 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
 
     func test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated() throws {
         #if !SACT_DISABLE_FAULT_TESTING
-        let pm: ActorTestProbe<SimpleProbeMessages> = testKit.spawnTestProbe(name: "testProbe-master-3")
-        let pw: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "testProbe-faultyWorker")
+        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-3")
+        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbe-faultyWorker")
 
-        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
+        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 
         // watch parent and see it spawn the worker:
         pm.watch(healthyMaster)
-        healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(worker) = try pm.expectMessage() else { throw pm.error() }
+        healthyMaster.tell(self.spawnFaultyWorkerCommand)
+        guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
         pw.watch(worker)
 
         // watch the worker and see that it works correctly:
@@ -177,8 +179,8 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         pinfo("Good: \(workerTerminated)")
 
         // we are also now able to start a replacement actor for the terminated child:
-        healthyMaster.tell(spawnFaultyWorkerCommand)
-        guard case let .spawned(workerReplacement) = try pm.expectMessage() else { throw pm.error() }
+        healthyMaster.tell(self.spawnFaultyWorkerCommand)
+        guard case .spawned(let workerReplacement) = try pm.expectMessage() else { throw pm.error() }
         pw.watch(workerReplacement)
 
         let workerAddress: ActorAddress = worker.address
@@ -206,6 +208,4 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         fatalError("Boom like usual!")
         // this MUST NOT trigger Swift Distributed Actors failure handling, we are not inside of an actor!
     }
-
 }
-

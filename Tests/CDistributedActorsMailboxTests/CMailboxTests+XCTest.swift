@@ -21,11 +21,9 @@ import XCTest
 ///
 
 extension CMailboxTests {
-
-   static var allTests : [(String, (CMailboxTests) -> () throws -> Void)] {
-      return [
-                ("test_MailboxCapacityLimit", test_MailboxCapacityLimit),
-           ]
-   }
+    static var allTests: [(String, (CMailboxTests) -> () throws -> Void)] {
+        return [
+            ("test_MailboxCapacityLimit", test_MailboxCapacityLimit),
+        ]
+    }
 }
-

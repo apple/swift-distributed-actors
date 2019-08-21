@@ -12,16 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
+import CDistributedActorsMailbox
 import Dispatch
 import Logging
-import CDistributedActorsMailbox
+import NIO
 
 /// Selects until when an actor deferred block should be delayed.
 ///
 /// - SeeAlso: `ActorContext.defer(until:file:line:_:)` for usage and semantics details.
 public enum DeferUntilWhen {
-
     /// Semantically equivalent to a classic Swift `defer`, however also triggers in case of a fault occurring while receiving a message.
     case received
 
@@ -37,7 +36,7 @@ public enum DeferUntilWhen {
     ///
     /// Upon successful `receive` reduction the captured closure is NOT executed and **discarded**.
     case failed
-    // TODO specialize for fault / error.
+    // TODO: specialize for fault / error.
 }
 
 @usableFromInline
@@ -45,13 +44,13 @@ internal struct ActorDeferredClosure {
     @usableFromInline
     let when: DeferUntilWhen
     @usableFromInline
-    let closure: () -> ()
+    let closure: () -> Void
 
     // TODO: Perhaps only store them in "debug mode", keeping only filename could also be enough
     let file: String
     let line: UInt
 
-    init(until: DeferUntilWhen, _ closure: @escaping () -> (),
+    init(until: DeferUntilWhen, _ closure: @escaping () -> Void,
          file: String = #file, line: UInt = #line) {
         self.when = until
         self.closure = closure
@@ -60,9 +59,10 @@ internal struct ActorDeferredClosure {
         self.line = line
     }
 }
+
 extension ActorDeferredClosure: CustomStringConvertible {
     public var description: String {
-        fatalError("ActorDeferredClosure(until:\(when), Function defined at \(file):\(line))")
+        fatalError("ActorDeferredClosure(until:\(self.when), Function defined at \(self.file):\(self.line))")
     }
 }
 
@@ -75,8 +75,7 @@ struct DeferError: Error {
 }
 
 @usableFromInline
-final internal class DefersContainer {
-
+internal final class DefersContainer {
     @usableFromInline
     var _deferredStack: [ActorDeferredClosure] = []
 

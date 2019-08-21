@@ -21,16 +21,14 @@ import XCTest
 ///
 
 extension SystemMessageRedeliveryHandlerTests {
-
-   static var allTests : [(String, (SystemMessageRedeliveryHandlerTests) -> () throws -> Void)] {
-      return [
-                ("test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs", test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs),
-                ("test_systemMessageRedeliveryHandler_sendACKUponDelivery", test_systemMessageRedeliveryHandler_sendACKUponDelivery),
-                ("test_systemMessageRedeliveryHandler_receiveAnACK", test_systemMessageRedeliveryHandler_receiveAnACK),
-                ("test_systemMessageRedeliveryHandler_receiveAnACKFromFuture", test_systemMessageRedeliveryHandler_receiveAnACKFromFuture),
-                ("test_systemMessageRedeliveryHandler_receiveNACK", test_systemMessageRedeliveryHandler_receiveNACK),
-                ("test_sysMsgs_onSimulatedLossyNetwork", test_sysMsgs_onSimulatedLossyNetwork),
-           ]
-   }
+    static var allTests: [(String, (SystemMessageRedeliveryHandlerTests) -> () throws -> Void)] {
+        return [
+            ("test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs", test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs),
+            ("test_systemMessageRedeliveryHandler_sendACKUponDelivery", test_systemMessageRedeliveryHandler_sendACKUponDelivery),
+            ("test_systemMessageRedeliveryHandler_receiveAnACK", test_systemMessageRedeliveryHandler_receiveAnACK),
+            ("test_systemMessageRedeliveryHandler_receiveAnACKFromFuture", test_systemMessageRedeliveryHandler_receiveAnACKFromFuture),
+            ("test_systemMessageRedeliveryHandler_receiveNACK", test_systemMessageRedeliveryHandler_receiveNACK),
+            ("test_sysMsgs_onSimulatedLossyNetwork", test_sysMsgs_onSimulatedLossyNetwork),
+        ]
+    }
 }
-

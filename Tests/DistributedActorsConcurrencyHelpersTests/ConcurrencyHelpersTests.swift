@@ -18,12 +18,12 @@ import Darwin
 import Glibc
 #endif
 import Dispatch
-import XCTest
 @testable import DistributedActorsConcurrencyHelpers
+import XCTest
 
 class ConcurrencyHelpersTests: XCTestCase {
     private func sumOfIntegers(until n: UInt64) -> UInt64 {
-        return n*(n+1)/2
+        return n * (n + 1) / 2
     }
 
     func testLargeContendedAtomicSum() {
@@ -33,15 +33,15 @@ class ConcurrencyHelpersTests: XCTestCase {
         let q = DispatchQueue(label: "q", attributes: .concurrent)
         let g = DispatchGroup()
         let ai = DistributedActorsConcurrencyHelpers.Atomic<UInt64>(value: 0)
-        for thread in 1...noAsyncs {
+        for thread in 1 ... noAsyncs {
             q.async(group: g) {
-                for _ in 0..<noCounts {
+                for _ in 0 ..< noCounts {
                     _ = ai.add(thread)
                 }
             }
         }
         g.wait()
-        XCTAssertEqual(sumOfIntegers(until: noAsyncs) * noCounts, ai.load())
+        XCTAssertEqual(self.sumOfIntegers(until: noAsyncs) * noCounts, ai.load())
     }
 
     func testCompareAndExchangeBool() {
@@ -91,7 +91,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testCompareAndExchangeUInts() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger & UnsignedInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & UnsignedInteger>(_: T.Type) {
             let zero: T = 0
             let max = ~zero
 
@@ -107,8 +107,8 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchange(expected: zero, desired: max))
 
             var counter = max
-            for _ in 0..<255 {
-                XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter-1))
+            for _ in 0 ..< 255 {
+                XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter - 1))
                 counter = counter - 1
             }
         }
@@ -121,7 +121,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testCompareAndExchangeWeakUInts() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger & UnsignedInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & UnsignedInteger>(_: T.Type) {
             let zero: T = 0
             let max = ~zero
 
@@ -137,8 +137,8 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: max))
 
             var counter = max
-            for _ in 0..<255 {
-                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter-1))
+            for _ in 0 ..< 255 {
+                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter - 1))
                 counter = counter - 1
             }
         }
@@ -151,7 +151,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testCompareAndExchangeInts() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_: T.Type) {
             let zero: T = 0
             let upperBound: T = 127
 
@@ -167,8 +167,8 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchange(expected: zero, desired: upperBound))
 
             var counter = upperBound
-            for _ in 0..<255 {
-                XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter-1))
+            for _ in 0 ..< 255 {
+                XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter - 1))
                 XCTAssertFalse(ab.compareAndExchange(expected: counter, desired: counter))
                 counter = counter - 1
             }
@@ -182,7 +182,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testCompareAndExchangeWeakInts() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger & SignedInteger>(_: T.Type) {
             let zero: T = 0
             let upperBound: T = 127
 
@@ -198,8 +198,8 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: upperBound))
 
             var counter = upperBound
-            for _ in 0..<255 {
-                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter-1))
+            for _ in 0 ..< 255 {
+                XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter - 1))
                 XCTAssertFalse(ab.compareAndExchangeWeak(expected: counter, desired: counter))
                 counter = counter - 1
             }
@@ -213,7 +213,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testAddSub() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
             let zero: T = 0
 
             let ab = Atomic<T>(value: zero)
@@ -244,13 +244,13 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testAnd() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
-            let initial: T = 0b00001111
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
+            let initial: T = 0b0000_1111
 
             let ab = Atomic<T>(value: initial)
 
             XCTAssertEqual(initial, ab.and(initial))
-            XCTAssertEqual(initial, ab.and(0b11110000))
+            XCTAssertEqual(initial, ab.and(0b1111_0000))
             XCTAssertEqual(0, ab.load())
         }
 
@@ -267,7 +267,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testOr() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
             let initial: T = 0b0011
 
             let ab = Atomic<T>(value: initial)
@@ -290,7 +290,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testXor() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
             let initial: T = 0b0011
 
             let ab = Atomic<T>(value: initial)
@@ -314,7 +314,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testExchange() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
             let zero: T = 0
 
             let ab = Atomic<T>(value: zero)
@@ -345,7 +345,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testLoadStore() {
-        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_ value: T.Type) {
+        func testFor<T: AtomicPrimitive & FixedWidthInteger>(_: T.Type) {
             let zero: T = 0
 
             let ab = Atomic<T>(value: zero)
@@ -508,7 +508,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testConditionLockWithDifferentConditions() {
-        for _ in 0..<200 {
+        for _ in 0 ..< 200 {
             let l = ConditionLock(value: 0)
             let q1 = DispatchQueue(label: "q1")
             let q2 = DispatchQueue(label: "q2")
@@ -553,8 +553,8 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testAtomicBoxDoesNotTriviallyLeak() throws {
         class SomeClass {}
-        weak var weakSomeInstance1: SomeClass? = nil
-        weak var weakSomeInstance2: SomeClass? = nil
+        weak var weakSomeInstance1: SomeClass?
+        weak var weakSomeInstance2: SomeClass?
         ({
             let someInstance = SomeClass()
             weakSomeInstance1 = someInstance
@@ -571,9 +571,9 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testAtomicBoxCompareAndExchangeWorksIfEqual() throws {
         class SomeClass {}
-        weak var weakSomeInstance1: SomeClass? = nil
-        weak var weakSomeInstance2: SomeClass? = nil
-        weak var weakSomeInstance3: SomeClass? = nil
+        weak var weakSomeInstance1: SomeClass?
+        weak var weakSomeInstance2: SomeClass?
+        weak var weakSomeInstance3: SomeClass?
         ({
             let someInstance1 = SomeClass()
             let someInstance2 = SomeClass()
@@ -603,9 +603,9 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testAtomicBoxCompareAndExchangeWorksIfNotEqual() throws {
         class SomeClass {}
-        weak var weakSomeInstance1: SomeClass? = nil
-        weak var weakSomeInstance2: SomeClass? = nil
-        weak var weakSomeInstance3: SomeClass? = nil
+        weak var weakSomeInstance1: SomeClass?
+        weak var weakSomeInstance2: SomeClass?
+        weak var weakSomeInstance3: SomeClass?
         ({
             let someInstance1 = SomeClass()
             let someInstance2 = SomeClass()
@@ -636,9 +636,9 @@ class ConcurrencyHelpersTests: XCTestCase {
 
     func testAtomicBoxStoreWorks() throws {
         class SomeClass {}
-        weak var weakSomeInstance1: SomeClass? = nil
-        weak var weakSomeInstance2: SomeClass? = nil
-        weak var weakSomeInstance3: SomeClass? = nil
+        weak var weakSomeInstance1: SomeClass?
+        weak var weakSomeInstance2: SomeClass?
+        weak var weakSomeInstance3: SomeClass?
         ({
             let someInstance1 = SomeClass()
             let someInstance2 = SomeClass()
@@ -680,13 +680,13 @@ class ConcurrencyHelpersTests: XCTestCase {
             q.async(group: g) {
                 sem1.signal()
                 sem2.wait()
-                for _ in 0..<1000 {
+                for _ in 0 ..< 1000 {
                     XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
                 }
             }
             sem2.signal()
             sem1.wait()
-            for _ in 0..<1000 {
+            for _ in 0 ..< 1000 {
                 XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
             }
             g.wait()

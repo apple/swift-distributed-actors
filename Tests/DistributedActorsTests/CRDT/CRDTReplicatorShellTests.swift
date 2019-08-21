@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 // TODO: add tests for non-delta-CRDT
 // TODO: add tests for non-local consistency level
@@ -26,7 +26,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -46,15 +46,15 @@ final class CRDTReplicatorShellTests: XCTestCase {
     typealias RemoteDeleteResult = CRDT.Replicator.RemoteCommand.DeleteResult
 
     func test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
 
         // Register the owner
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
@@ -72,17 +72,17 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let writeP = testKit.spawnTestProbe(expecting: LocalWriteResult.self)
-        let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let writeP = self.testKit.spawnTestProbe(expecting: LocalWriteResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
@@ -115,17 +115,17 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let readP = testKit.spawnTestProbe(expecting: LocalReadResult.self)
-        let deleteP = testKit.spawnTestProbe(expecting: LocalDeleteResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: LocalReadResult.self)
+        let deleteP = self.testKit.spawnTestProbe(expecting: LocalDeleteResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
@@ -149,17 +149,17 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let writeP = testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
-        let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let writeP = self.testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: RemoteReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
@@ -191,17 +191,17 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let writeP = testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
-        let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let writeP = self.testKit.spawnTestProbe(expecting: RemoteWriteResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: RemoteReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 updates
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
@@ -233,17 +233,17 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners() throws {
-                let replicatorRef = try system.spawn("replicator", replicatorBehavior())
-        let registerP = testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
-        let readP = testKit.spawnTestProbe(expecting: RemoteReadResult.self)
-        let deleteP = testKit.spawnTestProbe(expecting: RemoteDeleteResult.self)
+        let replicatorRef = try system.spawn("replicator", self.replicatorBehavior())
+        let registerP = self.testKit.spawnTestProbe(expecting: LocalRegisterResult.self)
+        let readP = self.testKit.spawnTestProbe(expecting: RemoteReadResult.self)
+        let deleteP = self.testKit.spawnTestProbe(expecting: RemoteDeleteResult.self)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Register owner so replicator will notify it on g1 changes
-        let ownerP = testKit.spawnTestProbe(expecting: OwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: OwnerMessage.self)
         replicatorRef.tell(.localCommand(.register(ownerRef: ownerP.ref, id: id, data: g1.asAnyStateBasedCRDT, replyTo: registerP.ref)))
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
@@ -273,7 +273,7 @@ final class CRDTReplicatorShellTests: XCTestCase {
     }
 
     func replicatorBehavior(configuredWith configure: @escaping (inout CRDT.Replicator.Settings) -> Void = { _ in }) -> Behavior<CRDT.Replicator.Message> {
-        return .setup { context in
+        return .setup { _ in
             let replicator = self.makeReplicator(configuredWith: configure)
             return CRDT.Replicator.Shell(replicator).behavior
         }

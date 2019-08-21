@@ -15,18 +15,17 @@
 import DistributedActors
 
 struct DistributedDiningPhilosophers {
-
     /// Register the types of messages we will be sending over the network,
     /// such that the networking layer can handle their serialization automatically for us.
     ///
     /// It is important that the IDs of serializers are equal (marking "the same" type),
     /// on all nodes, as otherwise a wrong serializer would be used for incoming messages.
     private func configureMessageSerializers(_ settings: inout ActorSystemSettings) {
-        // TODO change the `registerCodable` API such that the IDs are easier to align (1st param),
+        // TODO: change the `registerCodable` API such that the IDs are easier to align (1st param),
         // which helps spotting mistakes if an ID was accidentally reused etc.
-        settings.serialization.registerCodable(for: Philosopher.Message.self,   underId: 1001)
-        settings.serialization.registerCodable(for: Fork.Reply.self,            underId: 1002)
-        settings.serialization.registerCodable(for: Fork.Message.self,          underId: 1003)
+        settings.serialization.registerCodable(for: Philosopher.Message.self, underId: 1001)
+        settings.serialization.registerCodable(for: Fork.Reply.self, underId: 1002)
+        settings.serialization.registerCodable(for: Fork.Message.self, underId: 1003)
     }
 
     /// Enable networking on this node, and select which port it should bind to.
@@ -35,8 +34,8 @@ struct DistributedDiningPhilosophers {
         settings.cluster.bindPort = port
     }
 
-    func run(`for` time: TimeAmount) throws {
-        let systemA = ActorSystem("DistributedPhilosophers") { settings in 
+    func run(for time: TimeAmount) throws {
+        let systemA = ActorSystem("DistributedPhilosophers") { settings in
             self.configureMessageSerializers(&settings)
             self.configureClustering(&settings, port: 1111)
         }

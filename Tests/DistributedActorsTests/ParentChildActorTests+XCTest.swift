@@ -21,23 +21,21 @@ import XCTest
 ///
 
 extension ParentChildActorTests {
-
-   static var allTests : [(String, (ParentChildActorTests) -> () throws -> Void)] {
-      return [
-                ("test_contextSpawn_shouldSpawnChildActorOnAppropriatePath", test_contextSpawn_shouldSpawnChildActorOnAppropriatePath),
-                ("test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath", test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath),
-                ("test_contextSpawn_duplicateNameShouldFail", test_contextSpawn_duplicateNameShouldFail),
-                ("test_contextStop_shouldStopChild", test_contextStop_shouldStopChild),
-                ("test_contextStop_shouldThrowIfRefIsNotChild", test_contextStop_shouldThrowIfRefIsNotChild),
-                ("test_contextStop_shouldThrowIfRefIsMyself", test_contextStop_shouldThrowIfRefIsMyself),
-                ("test_spawnStopSpawn_shouldWorkWithSameChildName", test_spawnStopSpawn_shouldWorkWithSameChildName),
-                ("test_throwOfSpawnedChild_shouldNotCauseParentToTerminate", test_throwOfSpawnedChild_shouldNotCauseParentToTerminate),
-                ("test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate", test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate),
-                ("test_watchedChild_shouldProduceInSingleTerminatedSignal", test_watchedChild_shouldProduceInSingleTerminatedSignal),
-                ("test_spawnWatch_shouldSpawnAWatchedActor", test_spawnWatch_shouldSpawnAWatchedActor),
-                ("test_stopParent_shouldWaitForChildrenToStop", test_stopParent_shouldWaitForChildrenToStop),
-                ("test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren", test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren),
-           ]
-   }
+    static var allTests: [(String, (ParentChildActorTests) -> () throws -> Void)] {
+        return [
+            ("test_contextSpawn_shouldSpawnChildActorOnAppropriatePath", test_contextSpawn_shouldSpawnChildActorOnAppropriatePath),
+            ("test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath", test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath),
+            ("test_contextSpawn_duplicateNameShouldFail", test_contextSpawn_duplicateNameShouldFail),
+            ("test_contextStop_shouldStopChild", test_contextStop_shouldStopChild),
+            ("test_contextStop_shouldThrowIfRefIsNotChild", test_contextStop_shouldThrowIfRefIsNotChild),
+            ("test_contextStop_shouldThrowIfRefIsMyself", test_contextStop_shouldThrowIfRefIsMyself),
+            ("test_spawnStopSpawn_shouldWorkWithSameChildName", test_spawnStopSpawn_shouldWorkWithSameChildName),
+            ("test_throwOfSpawnedChild_shouldNotCauseParentToTerminate", test_throwOfSpawnedChild_shouldNotCauseParentToTerminate),
+            ("test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate", test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate),
+            ("test_watchedChild_shouldProduceInSingleTerminatedSignal", test_watchedChild_shouldProduceInSingleTerminatedSignal),
+            ("test_spawnWatch_shouldSpawnAWatchedActor", test_spawnWatch_shouldSpawnAWatchedActor),
+            ("test_stopParent_shouldWaitForChildrenToStop", test_stopParent_shouldWaitForChildrenToStop),
+            ("test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren", test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren),
+        ]
+    }
 }
-

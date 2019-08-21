@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftProtobuf
-import NIO
 import struct Foundation.Data
+import NIO
+import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ACK / NACK
 
 extension SystemMessage.ACK: ProtobufRepresentable {
@@ -48,6 +49,7 @@ extension SystemMessage.NACK: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SystemMessageEnvelope
 
 extension SystemMessageEnvelope: ProtobufRepresentable {
@@ -67,8 +69,8 @@ extension SystemMessageEnvelope: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: SystemMessage
 
+// MARK: SystemMessage
 
 extension SystemMessage: ProtobufRepresentable {
     typealias ProtobufRepresentation = ProtoSystemMessage
@@ -107,7 +109,6 @@ extension SystemMessage: ProtobufRepresentable {
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.stop")
         case .tombstone:
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.tombstone")
-
         }
         return proto
     }
@@ -152,10 +153,9 @@ extension SystemMessage: ProtobufRepresentable {
             guard t.hasRef else {
                 throw SerializationError.missingField("ref", type: "SystemMessage.terminated")
             }
-            // TODO it is known dead, optimize the resolve?
+            // TODO: it is known dead, optimize the resolve?
             let ref = try context.resolveAddressableActorRef(identifiedBy: .init(fromProto: t.ref, context: context))
             self = .terminated(ref: ref, existenceConfirmed: t.existenceConfirmed, addressTerminated: t.addressTerminated)
-
         }
     }
 }

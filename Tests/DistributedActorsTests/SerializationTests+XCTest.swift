@@ -21,22 +21,20 @@ import XCTest
 ///
 
 extension SerializationTests {
-
-   static var allTests : [(String, (SerializationTests) -> () throws -> Void)] {
-      return [
-                ("test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer", test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer),
-                ("test_serialize_actorPath", test_serialize_actorPath),
-                ("test_serialize_actorAddress_shouldDemandContext", test_serialize_actorAddress_shouldDemandContext),
-                ("test_serialize_actorAddress_usingContext", test_serialize_actorAddress_usingContext),
-                ("test_serialize_actorRef_inMessage", test_serialize_actorRef_inMessage),
-                ("test_serialize_actorRef_inMessage_forRemoting", test_serialize_actorRef_inMessage_forRemoting),
-                ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType),
-                ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType),
-                ("test_serialize_shouldNotSerializeNotRegisteredType", test_serialize_shouldNotSerializeNotRegisteredType),
-                ("test_serialize_receivesSystemMessages_inMessage", test_serialize_receivesSystemMessages_inMessage),
-                ("test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string", test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string),
-                ("test_verifySerializable_shouldFault_forNotSerializableMessage", test_verifySerializable_shouldFault_forNotSerializableMessage),
-           ]
-   }
+    static var allTests: [(String, (SerializationTests) -> () throws -> Void)] {
+        return [
+            ("test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer", test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer),
+            ("test_serialize_actorPath", test_serialize_actorPath),
+            ("test_serialize_actorAddress_shouldDemandContext", test_serialize_actorAddress_shouldDemandContext),
+            ("test_serialize_actorAddress_usingContext", test_serialize_actorAddress_usingContext),
+            ("test_serialize_actorRef_inMessage", test_serialize_actorRef_inMessage),
+            ("test_serialize_actorRef_inMessage_forRemoting", test_serialize_actorRef_inMessage_forRemoting),
+            ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType),
+            ("test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType", test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType),
+            ("test_serialize_shouldNotSerializeNotRegisteredType", test_serialize_shouldNotSerializeNotRegisteredType),
+            ("test_serialize_receivesSystemMessages_inMessage", test_serialize_receivesSystemMessages_inMessage),
+            ("test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string", test_verifySerializable_shouldPass_forPreconfiguredSerializableMessages_string),
+            ("test_verifySerializable_shouldFault_forNotSerializableMessage", test_verifySerializable_shouldFault_forNotSerializableMessage),
+        ]
+    }
 }
-

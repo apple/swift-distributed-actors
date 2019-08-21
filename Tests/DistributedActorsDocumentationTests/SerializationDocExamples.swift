@@ -32,17 +32,17 @@ enum CustomlyEncodedMessage: String {
 // end::serialization_custom_messages[]
 
 class SerializationDocExamples {
-
     lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
 
     func prepare_system_codable() throws {
         // tag::prepare_system_codable[]
-        let system = ActorSystem("CodableExample") { settings in 
+        let system = ActorSystem("CodableExample") { settings in
             settings.serialization.registerCodable(for: ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
         }
         // end::prepare_system_codable[]
         _ = system // silence not-used warnings
     }
+
     func sending_serialized_messages() throws {
         let spotAvailable = false
         // tag::sending_serialized_messages[]
@@ -58,13 +58,12 @@ class SerializationDocExamples {
 
     func configure_serialize_all() {
         // tag::configure_serialize_all[]
-        let system = ActorSystem("SerializeAll") { settings in 
+        let system = ActorSystem("SerializeAll") { settings in
             settings.serialization.allMessages = true
         }
         // end::configure_serialize_all[]
         _ = system
     }
-
 
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
@@ -77,7 +76,6 @@ class SerializationDocExamples {
         // end::prepare_system_custom[]
         _ = system // silence not-used warnings
     }
-
 
     // tag::custom_serializer[]
     final class CustomlyEncodedSerializer: Serializer<CustomlyEncodedMessage> {
@@ -98,16 +96,15 @@ class SerializationDocExamples {
             self.takenRepr = takenRepr
         }
 
-
         override func serialize(message: CustomlyEncodedMessage) throws -> ByteBuffer { // <2>
             switch message {
             case .available: return self.availableRepr
-            case .taken:     return self.takenRepr
+            case .taken: return self.takenRepr
             }
         }
 
         override func deserialize(bytes: ByteBuffer) throws -> CustomlyEncodedMessage { // <3>
-            var bytes = bytes // TODO bytes should become `inout`
+            var bytes = bytes // TODO: bytes should become `inout`
             guard let letter = bytes.readString(length: 1) else {
                 throw CodingError.notEnoughBytes
             }
@@ -115,7 +112,7 @@ class SerializationDocExamples {
             switch letter {
             case "A": return .available
             case "T": return .taken
-            default:  throw CodingError.unknownEncoding(letter)
+            default: throw CodingError.unknownEncoding(letter)
             }
         }
 
@@ -124,8 +121,8 @@ class SerializationDocExamples {
             case unknownEncoding(String)
         }
     }
-    // end::custom_serializer[]
 
+    // end::custom_serializer[]
 
     // tag::custom_actorRef_serializer[]
     struct ContainsActorRef {
@@ -134,7 +131,7 @@ class SerializationDocExamples {
 
     final class CustomContainingActorRefSerializer: Serializer<ContainsActorRef> {
         private let allocator: NIO.ByteBufferAllocator
-        private var context: ActorSerializationContext! = nil
+        private var context: ActorSerializationContext!
 
         init(_ allocator: ByteBufferAllocator) {
             self.allocator = allocator
@@ -163,6 +160,6 @@ class SerializationDocExamples {
             case unknownEncoding(String)
         }
     }
-    // end::custom_actorRef_serializer[]
 
+    // end::custom_actorRef_serializer[]
 }

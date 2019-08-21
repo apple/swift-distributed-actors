@@ -22,7 +22,7 @@ class ActorTestKitTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -30,7 +30,7 @@ class ActorTestKitTests: XCTestCase {
     }
 
     func test_error_withoutMessage() throws {
-        let error = testKit.error()
+        let error = self.testKit.error()
         guard case CallSiteError.error(let message) = error else {
             throw error
         }
@@ -38,7 +38,7 @@ class ActorTestKitTests: XCTestCase {
     }
 
     func test_error_withMessage() throws {
-        let error = testKit.error("test")
+        let error = self.testKit.error("test")
         guard case CallSiteError.error(let message) = error else {
             throw error
         }

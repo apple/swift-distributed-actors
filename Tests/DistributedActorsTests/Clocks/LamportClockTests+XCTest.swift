@@ -21,11 +21,9 @@ import XCTest
 ///
 
 extension LamportClockTests {
-
-   static var allTests : [(String, (LamportClockTests) -> () throws -> Void)] {
-      return [
-                ("test_lamportClock_movesOnlyForward", test_lamportClock_movesOnlyForward),
-           ]
-   }
+    static var allTests: [(String, (LamportClockTests) -> () throws -> Void)] {
+        return [
+            ("test_lamportClock_movesOnlyForward", test_lamportClock_movesOnlyForward),
+        ]
+    }
 }
-

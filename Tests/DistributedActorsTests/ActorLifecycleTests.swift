@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ActorLifecycleTests: XCTestCase {
     var system: ActorSystem!
@@ -23,7 +23,7 @@ class ActorLifecycleTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -31,6 +31,7 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: starting actors
 
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
@@ -38,12 +39,12 @@ class ActorLifecycleTests: XCTestCase {
 
         let ex = shouldThrow {
             let sameBehavior: Behavior<String> = .same
-            let _ = try self.system.spawn("same", (sameBehavior))
+            _ = try self.system.spawn("same", sameBehavior)
         }
 
         "\(ex)".shouldEqual("""
-                            notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.same)
-                            """)
+        notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.same)
+        """)
     }
 
     func test_spawn_shouldNotAllowStartingWith_Unhandled() throws {
@@ -55,7 +56,7 @@ class ActorLifecycleTests: XCTestCase {
 
         let ex = shouldThrow {
             let unhandledBehavior: Behavior<String> = .unhandled
-            let _ = try system.spawn("unhandled", (unhandledBehavior))
+            _ = try system.spawn("unhandled", unhandledBehavior)
         }
 
         "\(ex)".shouldEqual("notAllowedAsInitial(DistributedActors.Behavior<Swift.String>.unhandled)")
@@ -67,24 +68,24 @@ class ActorLifecycleTests: XCTestCase {
                 let b: Behavior<String> = .ignore
 
                 // more coverage for all the different chars in [[ActorPathTests]]
-                let _ = try system.spawn(.unique(illegalName), b)
+                _ = try system.spawn(.unique(illegalName), b)
             }
             "\(err)".shouldEqual(expectedError)
         }
 
         try check(illegalName: "hello world", expectedError: """
-                                                             illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
-                                                             """)
+        illegalActorPathElement(name: "hello world", illegal: " ", index: 5)
+        """)
 
         try check(illegalName: "he//o", expectedError: """
-                                                       illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
-                                                       """)
+        illegalActorPathElement(name: "he//o", illegal: "/", index: 2)
+        """)
         try check(illegalName: "ążŻŌżąć", expectedError: """
-                                                         illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
-                                                         """)
+        illegalActorPathElement(name: "ążŻŌżąć", illegal: "ą", index: 0)
+        """)
         try check(illegalName: "カピバラ", expectedError: """
-                                                         illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
-                                                         """) // ka-pi-ba-ra
+        illegalActorPathElement(name: "カピバラ", illegal: "カ", index: 0)
+        """) // ka-pi-ba-ra
     }
 
     func test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned() {
@@ -92,10 +93,11 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Stopping actors
 
     func test_stopping_shouldDeinitTheBehavior() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "p1")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p1")
         let chattyAboutLifecycle =
             try system.spawn("deinitLifecycleActor", .class { LifecycleDeinitClassBehavior(p.ref) })
 
@@ -106,7 +108,6 @@ class ActorLifecycleTests: XCTestCase {
         try p.expectMessage("signal:PostStop()")
         try p.expectMessage("deinit")
     }
-
 }
 
 private enum LifecycleDeinitActorMessage {

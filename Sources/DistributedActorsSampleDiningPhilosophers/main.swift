@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import DistributedActors
+import NIO
 
 /*
  * Swift Distributed Actors implementation of the classic "Dining Philosophers" problem.

@@ -40,7 +40,7 @@ public final class StashBuffer<Message> {
     /// - Throws: `StashError.full` when underlying stash would overflow its capacity
     @inlinable
     public func stash(message: Message) throws {
-        guard buffer.offer(element: message) else {
+        guard self.buffer.offer(element: message) else {
             throw StashError.full
         }
     }
@@ -68,8 +68,8 @@ public final class StashBuffer<Message> {
     /// - Returns: The last behavior returned from processing the unstashed messages
     @inlinable
     public func unstashAll(context: ActorContext<Message>, behavior: Behavior<Message>) throws -> Behavior<Message> {
-        //TODO: can we make this honor the run length like `Mailbox` does?
-        var iterator = buffer.iterator
+        // TODO: can we make this honor the run length like `Mailbox` does?
+        var iterator = self.buffer.iterator
         let canonical = try context._downcastUnsafe.behavior.canonicalize(context, next: behavior)
         return try canonical.interpretMessages(context: context, messages: &iterator)
     }

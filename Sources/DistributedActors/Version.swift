@@ -14,7 +14,7 @@
 
 /// Version of wire protocol used by the given node.
 ///
-/// TODO: Exact semantics remain to be defined. Reserved likely to be used for flags "connection modes" etc "don't connect me, I just send 1 message" etc?
+// TODO: Exact semantics remain to be defined. Reserved likely to be used for flags "connection modes" etc "don't connect me, I just send 1 message" etc?
 public struct Version: Equatable, CustomStringConvertible {
     public var reserved: UInt8
     public var major: UInt8
@@ -29,6 +29,6 @@ public struct Version: Equatable, CustomStringConvertible {
     }
 
     public var description: String {
-        return "Version(\(major).\(minor).\(patch), reserved:\(reserved))"
+        return "Version(\(self.major).\(self.minor).\(self.patch), reserved:\(self.reserved))"
     }
 }

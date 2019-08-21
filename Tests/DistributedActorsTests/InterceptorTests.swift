@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 final class ShoutingInterceptor: Interceptor<String> {
     let probe: ActorTestProbe<String>?
@@ -58,7 +58,7 @@ class InterceptorTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -66,7 +66,7 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldConvertMessages() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let interceptor = ShoutingInterceptor()
 
@@ -76,21 +76,20 @@ class InterceptorTests: XCTestCase {
         }
 
         let ref: ActorRef<String> = try system.spawn("theWallsHaveEars",
-            .intercept(behavior: forwardToProbe, with: interceptor)
-        )
+                                                     .intercept(behavior: forwardToProbe, with: interceptor))
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             ref.tell("hello:\(i)")
         }
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             try p.expectMessage("hello:\(i)!")
         }
     }
 
     func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
-        let i: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let i: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let makeStringsLouderInterceptor = ShoutingInterceptor(probe: i)
 
@@ -111,32 +110,31 @@ class InterceptorTests: XCTestCase {
         }
 
         let ref: ActorRef<String> = try system.spawn("theWallsHaveEars",
-            interceptionInceptionBehavior(currentDepth: 0, stopAt: 100)
-        )
+                                                     interceptionInceptionBehavior(currentDepth: 0, stopAt: 100))
 
         ref.tell("hello")
 
         try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        for j in 0...100 {
+        for j in 0 ... 100 {
             let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
             try i.expectMessage(m)
         }
     }
 
     func test_interceptor_shouldInterceptSignals() throws {
-        let p: ActorTestProbe<Signals.Terminated> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
 
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
         let spawnSomeStoppers: Behavior<String> = .setup { context in
             let one: ActorRef<String> = try context.spawnWatch("stopperOne",
-                .receiveMessage { msg in
-                    return .stop
-                })
+                                                               .receiveMessage { _ in
+                                                                   .stop
+            })
             one.tell("stop")
 
-            let two: ActorRef<String> = try context.spawnWatch("stopperTwo", .receiveMessage { msg in
-                return .stop
+            let two: ActorRef<String> = try context.spawnWatch("stopperTwo", .receiveMessage { _ in
+                .stop
             })
             two.tell("stop")
 
@@ -144,8 +142,7 @@ class InterceptorTests: XCTestCase {
         }
 
         let _: ActorRef<String> = try system.spawn("theWallsHaveEarsForTermination",
-            .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals)
-        )
+                                                   .intercept(behavior: spawnSomeStoppers, with: spyOnTerminationSignals))
 
         // either of the two child actors can cause the death pact, depending on which one was scheduled first,
         // so we have to check that the message we get is from one of them and afterwards we should not receive
@@ -169,10 +166,10 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldRemainWHenReturningStoppingWithPostStop() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .receiveMessage { _ in
-            return .stop { _ in
+            .stop { _ in
                 p.tell("postStop")
             }
         }

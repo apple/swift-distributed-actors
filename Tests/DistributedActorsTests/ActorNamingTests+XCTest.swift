@@ -21,13 +21,11 @@ import XCTest
 ///
 
 extension ActorNamingTests {
-
-   static var allTests : [(String, (ActorNamingTests) -> () throws -> Void)] {
-      return [
-                ("test_makeName_unique", test_makeName_unique),
-                ("test_makeName_sequentialNumeric", test_makeName_sequentialNumeric),
-                ("test_makeName_letters", test_makeName_letters),
-           ]
-   }
+    static var allTests: [(String, (ActorNamingTests) -> () throws -> Void)] {
+        return [
+            ("test_makeName_unique", test_makeName_unique),
+            ("test_makeName_sequentialNumeric", test_makeName_sequentialNumeric),
+            ("test_makeName_letters", test_makeName_letters),
+        ]
+    }
 }
-

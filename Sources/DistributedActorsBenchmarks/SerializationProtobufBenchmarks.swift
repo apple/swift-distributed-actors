@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import DistributedActors
+import NIO
 import SwiftBenchmarkTools
 import SwiftProtobuf
 
@@ -55,12 +55,12 @@ final class ProtoMessageSerializer<M: SwiftProtobuf.Message>: Serializer<M> {
 
     override func serialize(message: M) throws -> ByteBuffer {
         let data = try message.serializedData()
-        var buffer = allocator.buffer(capacity: data.count)
+        var buffer = self.allocator.buffer(capacity: data.count)
         buffer.writeBytes(data)
         return buffer
     }
 
-    override func setSerializationContext(_ context: ActorSerializationContext) {
+    override func setSerializationContext(_: ActorSerializationContext) {
         return
     }
 }
@@ -102,6 +102,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
 
     postSetUp()
 }
+
 private func tearDown() {
     system.shutdown()
     _system = nil

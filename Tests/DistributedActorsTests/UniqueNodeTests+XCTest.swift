@@ -21,13 +21,11 @@ import XCTest
 ///
 
 extension UniqueNodeTests {
-
-   static var allTests : [(String, (UniqueNodeTests) -> () throws -> Void)] {
-      return [
-                ("test_uniqueNode_shouldRenderProperly", test_uniqueNode_shouldRenderProperly),
-                ("test_uniqueNode_comparison_equal", test_uniqueNode_comparison_equal),
-                ("test_uniqueNode_comparison_lessThan", test_uniqueNode_comparison_lessThan),
-           ]
-   }
+    static var allTests: [(String, (UniqueNodeTests) -> () throws -> Void)] {
+        return [
+            ("test_uniqueNode_shouldRenderProperly", test_uniqueNode_shouldRenderProperly),
+            ("test_uniqueNode_comparison_equal", test_uniqueNode_comparison_equal),
+            ("test_uniqueNode_comparison_lessThan", test_uniqueNode_comparison_lessThan),
+        ]
+    }
 }
-

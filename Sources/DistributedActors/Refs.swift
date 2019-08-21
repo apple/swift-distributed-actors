@@ -16,12 +16,12 @@ import CDistributedActorsMailbox
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Public API
 
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
 public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
-
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
@@ -73,7 +73,6 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
 }
 
 public extension ActorRef {
-
     /// Exposes given the current actor reference as limited capability representation of itself; an `AddressableActorRef`.
     ///
     /// An `AddressableActorRef` can be used to uniquely identify an actor, however it is not possible to directly send
@@ -100,13 +99,13 @@ extension ActorRef: Hashable {
         self.address.hash(into: &hasher)
     }
 
-    public static func ==(lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
+    public static func == (lhs: ActorRef<Message>, rhs: ActorRef<Message>) -> Bool {
         return lhs.address == rhs.address
     }
 }
 
 extension ActorRef.Personality {
-    public static func ==(lhs: ActorRef.Personality, rhs: ActorRef.Personality) -> Bool {
+    public static func == (lhs: ActorRef.Personality, rhs: ActorRef.Personality) -> Bool {
         switch (lhs, rhs) {
         case (.cell(let l), .cell(let r)):
             return l.address == r.address
@@ -126,6 +125,7 @@ extension ActorRef.Personality {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: Codable {
@@ -137,16 +137,15 @@ public protocol ReceivesMessages: Codable {
     /// Note that `tell` is a "fire-and-forget" operation and does not block.
     /// The actor will eventually, asynchronously process the message sent to it.
     func tell(_ message: Message, file: String, line: UInt)
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal implementation classes
 
 /// INTERNAL API: Only for use by the actor system itself
 @usableFromInline
 internal protocol ReceivesSystemMessages: Codable {
-
     var address: ActorAddress { get }
     var path: ActorPath { get }
 
@@ -167,10 +166,10 @@ extension ReceivesSystemMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor Ref Internals and Internal Capabilities
 
 internal extension ActorRef {
-
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
@@ -254,7 +253,6 @@ internal extension ActorRef {
 
 @usableFromInline
 internal final class ActorCell<Message> {
-
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
@@ -305,6 +303,7 @@ extension ActorCell: CustomDebugStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Convenience extensions for dead letters
 
 public extension ActorRef where Message == DeadLetter {
@@ -321,6 +320,7 @@ public extension ActorRef where Message == DeadLetter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: "Special" internal actors, "the Top Level Guardians"
 
 /// Represents an actor that has to exist, but does not exist in reality.
@@ -328,8 +328,7 @@ public extension ActorRef where Message == DeadLetter {
 ///
 /// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
 @usableFromInline
-internal struct TheOneWhoHasNoParent: ReceivesSystemMessages { // FIXME fix the name
-
+internal struct TheOneWhoHasNoParent: ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
     let address: ActorAddress = ._localRoot
@@ -343,18 +342,18 @@ internal struct TheOneWhoHasNoParent: ReceivesSystemMessages { // FIXME fix the 
     @usableFromInline
     func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")        
+        fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
 
     @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(address)
+        return AnyHashable(self.address)
     }
 
     @usableFromInline
     func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
         CDistributedActorsMailbox.sact_dump_backtrace()
-        fatalError("The \(address) actor MUST NOT be interacted with directly!")
+        fatalError("The \(self.address) actor MUST NOT be interacted with directly!")
     }
 }
 
@@ -362,6 +361,7 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
     public var description: String {
         return "/"
     }
+
     public var debugDescription: String {
         return "TheOneWhoHasNoParentActorRef(path: \"/\")"
     }
@@ -376,9 +376,11 @@ internal class Guardian {
     var address: ActorAddress {
         return self._address
     }
+
     var path: ActorPath {
         return self.address.path
     }
+
     let name: String
 
     // any access to children has to be protected by `lock`
@@ -386,7 +388,7 @@ internal class Guardian {
     private let _childrenLock: Mutex = Mutex()
     private var children: Children {
         return self._childrenLock.synchronized { () in
-            return _children
+            _children
         }
     }
 
@@ -419,12 +421,12 @@ internal class Guardian {
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
-        case let .childTerminated(ref):
-            _childrenLock.synchronized {
+        case .childTerminated(let ref):
+            self._childrenLock.synchronized {
                 _ = self._children.removeChild(identifiedBy: ref.address)
                 // if we are stopping and all children have been stopped,
                 // we need to notify waiting threads about it
-                if self.stopping && self._children.isEmpty {
+                if self.stopping, self._children.isEmpty {
                     self.allChildrenRemoved.signalAll()
                 }
             }
@@ -470,7 +472,7 @@ internal class Guardian {
 
     /// Stops all children and waits for them to signal termination
     func stopAllAwait() {
-        _childrenLock.synchronized {
+        self._childrenLock.synchronized {
             if self._children.isEmpty {
                 // if there are no children, we are done
                 self.stopping = true
@@ -500,7 +502,6 @@ internal class Guardian {
 }
 
 extension Guardian: _ActorTreeTraversable {
-
     @usableFromInline
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let children: Children = self.children

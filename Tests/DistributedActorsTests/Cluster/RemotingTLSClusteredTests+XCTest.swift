@@ -21,14 +21,12 @@ import XCTest
 ///
 
 extension RemotingTLSTests {
-
-   static var allTests : [(String, (RemotingTLSTests) -> () throws -> Void)] {
-      return [
-                ("test_boundServer_shouldAcceptAssociateWithSSLEnabled", test_boundServer_shouldAcceptAssociateWithSSLEnabled),
-                ("test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP", test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP),
-                ("test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP", test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP),
-                ("test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase", test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase),
-           ]
-   }
+    static var allTests: [(String, (RemotingTLSTests) -> () throws -> Void)] {
+        return [
+            ("test_boundServer_shouldAcceptAssociateWithSSLEnabled", test_boundServer_shouldAcceptAssociateWithSSLEnabled),
+            ("test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP", test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP),
+            ("test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP", test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP),
+            ("test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase", test_boundServer_shouldAcceptAssociateWithSSLEnabledAndCorrectPassphrase),
+        ]
+    }
 }
-

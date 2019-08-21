@@ -12,19 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 @testable import DistributedActors
+import Foundation
 
 import DistributedActorsConcurrencyHelpers
-import XCTest
 import NIO
 import NIOFoundationCompat
+import XCTest
 
 extension ByteBuffer {
-
     // For easier visual inspection of known utf8 data within a ByteBuffer, use with care (!)
     public func stringDebugDescription() -> String {
         return self.getString(at: 0, length: self.readableBytes)!
     }
-
 }

@@ -21,9 +21,8 @@ import Logging
 /// A pool can populate its member list using the `Receptionist` mechanism, and thus allows members to join and leave
 /// dynamically, e.g. if a node joins or removes itself from the cluster.
 ///
-/// TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
+// TODO: A pool can be configured to terminate itself when any of its workers terminate or attempt to spawn replacements.
 public class WorkerPool<Message> {
-
     typealias Ref = WorkerPoolRef<Message>
 
     /// A selector defines how actors should be selected to participate in the pool.
@@ -49,11 +48,12 @@ public class WorkerPool<Message> {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: State shared across all states of the WorkerPool
 
     var settings: WorkerPoolSettings<Message>
     var selector: Selector {
-        return settings.selector
+        return self.settings.selector
     }
 
     init(settings: WorkerPoolSettings<Message>) {
@@ -61,11 +61,12 @@ public class WorkerPool<Message> {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Public API, spawning the pool
 
-    // TODO how can we move the spawn somewhere else so we don't have to pass in the system or context?
-    // TODO round robin or what strategy?
-    static public func spawn(_ factory: ActorRefFactory, _ naming: ActorNaming, select selector: WorkerPool<Message>.Selector) throws -> WorkerPoolRef<Message> {
+    // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?
+    // TODO: round robin or what strategy?
+    public static func spawn(_ factory: ActorRefFactory, _ naming: ActorNaming, select selector: WorkerPool<Message>.Selector) throws -> WorkerPoolRef<Message> {
         // TODO: pass in settings rather than create them here
         let settings = try WorkerPoolSettings<Message>(selector: selector).validate()
 
@@ -79,11 +80,10 @@ public class WorkerPool<Message> {
 /// Immutable state shared across all of them is kept in the worker pool instance to avoid unnecessary passing around,
 /// and state bound to a specific state of the state machine is kept in each appropriate behavior.
 internal extension WorkerPool {
-
     typealias PoolBehavior = Behavior<WorkerPoolMessage<Message>>
 
     /// Register with receptionist under `selector.key` and become `awaitingWorkers`.
-     func initial() -> PoolBehavior {
+    func initial() -> PoolBehavior {
         return .setup { context in
             switch self.selector {
             case .dynamic(let key):
@@ -92,7 +92,8 @@ internal extension WorkerPool {
                     subscriber: context.messageAdapter(from: Receptionist.Listing<Message>.self) { listing in
                         context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                         return .listing(listing)
-                    })
+                    }
+                )
                 return self.awaitingWorkers()
 
             case .static(let workers):
@@ -101,7 +102,7 @@ internal extension WorkerPool {
         }
     }
 
-     func awaitingWorkers() -> PoolBehavior {
+    func awaitingWorkers() -> PoolBehavior {
         return .setup { context in
             let stash = StashBuffer(owner: context, capacity: self.settings.noWorkersAvailableStashCapacity)
 
@@ -131,9 +132,9 @@ internal extension WorkerPool {
     }
 
     // TODO: abstract how we keep them, for round robin / random etc
-     func forwarding(to workers: [ActorRef<Message>]) -> PoolBehavior {
+    func forwarding(to workers: [ActorRef<Message>]) -> PoolBehavior {
         return .setup { context in
-            // TODO would be some actual logic, that we can plug and play
+            // TODO: would be some actual logic, that we can plug and play
             var _roundRobinPos = 0
 
             func selectWorker() -> ActorRef<Message> {
@@ -142,7 +143,7 @@ internal extension WorkerPool {
                 return worker
             }
 
-            let _forwarding: Behavior<WorkerPoolMessage<Message>> =  .receive { context, poolMessage in
+            let _forwarding: Behavior<WorkerPoolMessage<Message>> = .receive { context, poolMessage in
                 switch poolMessage {
                 case .forward(let message):
                     let selected = selectWorker()
@@ -156,11 +157,11 @@ internal extension WorkerPool {
                         return self.awaitingWorkers()
                     }
 
-                    var newWorkers = Array(listing.refs) // TODO smarter logic here, remove dead ones etc; keep stable round robin while new listing arrives
+                    var newWorkers = Array(listing.refs) // TODO: smarter logic here, remove dead ones etc; keep stable round robin while new listing arrives
                     newWorkers.sort { l, r in l.address.description < r.address.description }
 
                     context.log.log(level: self.settings.logLevel, "Active workers: \(newWorkers.count)")
-                    // TODO if no more workers may want to issue warnings or timeouts
+                    // TODO: if no more workers may want to issue warnings or timeouts
                     return self.forwarding(to: newWorkers)
                 }
             }
@@ -175,7 +176,7 @@ internal extension WorkerPool {
             let eagerlyRemoteTerminatedWorkers: Behavior<WorkerPoolMessage<Message>> =
                 .receiveSpecificSignal(Signals.Terminated.self) { _, terminated in
                     var remainingWorkers = workers
-                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO removeFirst is enough, but has no closure version
+                    remainingWorkers.removeAll { ref in ref.address == terminated.address } // TODO: removeFirst is enough, but has no closure version
 
                     if remainingWorkers.count > 0 {
                         return self.forwarding(to: remainingWorkers)
@@ -204,6 +205,7 @@ internal extension WorkerPool {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Worker Pool Ref
 
 public struct WorkerPoolRef<Message>: ReceivesMessages {
@@ -226,7 +228,6 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
     public var path: ActorPath {
         return self.address.path
     }
-
 }
 
 extension WorkerPoolRef: ReceivesQuestions {
@@ -249,6 +250,7 @@ internal enum WorkerPoolMessage<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: WorkerPool Errors
 
 public enum WorkerPoolError: Error {
@@ -261,6 +263,7 @@ public enum WorkerPoolError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: WorkerPool Settings
 
 /// Used to configure a `WorkerPool`.
@@ -295,7 +298,7 @@ public struct WorkerPoolSettings<Message> {
             self.whenAllWorkersTerminated = .crash(.staticPoolExhausted(message))
         }
     }
-    
+
     public func validate() throws -> WorkerPoolSettings {
         switch self.selector {
         case .static(let workers) where workers.isEmpty:
@@ -303,11 +306,11 @@ public struct WorkerPoolSettings<Message> {
         case .static(let workers):
             if case .awaitNewWorkers = self.whenAllWorkersTerminated {
                 let message = """
-                              WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
-                              as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
-                              MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
-                              and provide an initial set of workers.
-                              """
+                WorkerPool configured as [.static(\(workers))], MUST NOT be configured to await for new workers \
+                as new workers are impossible to spawn and add to the pool in the static configuration. The pool \
+                MUST terminate when in .static mode and all workers terminate. Alternatively, use a .dynamic pool, \
+                and provide an initial set of workers.
+                """
                 throw WorkerPoolError.illegalAwaitNewWorkersForStaticPoolConfigured(message)
             }
         default:

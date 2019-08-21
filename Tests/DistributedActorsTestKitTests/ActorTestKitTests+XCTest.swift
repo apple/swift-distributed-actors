@@ -21,12 +21,10 @@ import XCTest
 ///
 
 extension ActorTestKitTests {
-
-   static var allTests : [(String, (ActorTestKitTests) -> () throws -> Void)] {
-      return [
-                ("test_error_withoutMessage", test_error_withoutMessage),
-                ("test_error_withMessage", test_error_withMessage),
-           ]
-   }
+    static var allTests: [(String, (ActorTestKitTests) -> () throws -> Void)] {
+        return [
+            ("test_error_withoutMessage", test_error_withoutMessage),
+            ("test_error_withMessage", test_error_withMessage),
+        ]
+    }
 }
-

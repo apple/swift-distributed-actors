@@ -26,7 +26,7 @@ public final class Condition {
     var condition: pthread_cond_t = pthread_cond_t()
 
     public init() {
-        let error = pthread_cond_init(&condition, nil)
+        let error = pthread_cond_init(&self.condition, nil)
 
         switch error {
         case 0:
@@ -41,8 +41,8 @@ public final class Condition {
     }
 
     @inlinable
-    public func wait(_ mutex: Mutex) -> Void {
-        let error = pthread_cond_wait(&condition, &mutex.mutex)
+    public func wait(_ mutex: Mutex) {
+        let error = pthread_cond_wait(&self.condition, &mutex.mutex)
 
         switch error {
         case 0:
@@ -68,13 +68,13 @@ public final class Condition {
         clock_gettime(CLOCK_REALTIME, &now)
         let time = now + TimeSpec.from(timeAmount: amount)
         #endif
-        let error = withUnsafePointer(to: time, { p -> Int32 in
+        let error = withUnsafePointer(to: time) { p -> Int32 in
             #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
             return pthread_cond_timedwait_relative_np(&condition, &mutex.mutex, p)
             #else
             return pthread_cond_timedwait(&condition, &mutex.mutex, p)
             #endif
-        })
+        }
 
         switch error {
         case 0:
@@ -92,7 +92,7 @@ public final class Condition {
 
     @inlinable
     public func signal() {
-        let error = pthread_cond_signal(&condition)
+        let error = pthread_cond_signal(&self.condition)
 
         switch error {
         case 0:
@@ -106,7 +106,7 @@ public final class Condition {
 
     @inlinable
     public func signalAll() {
-        let error = pthread_cond_broadcast(&condition)
+        let error = pthread_cond_broadcast(&self.condition)
 
         switch error {
         case 0:
@@ -117,5 +117,4 @@ public final class Condition {
             fatalError("Signal failed with unspecified error: \(error)")
         }
     }
-
 }

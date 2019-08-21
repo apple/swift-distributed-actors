@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #if os(OSX)
 import Darwin.C
 #else
@@ -37,12 +36,13 @@ import DistributedActorsConcurrencyHelpers
 /// Servant processes may be subject to master supervision, in similar ways as child actors can be supervised.
 /// The same strategies are available, and can be selected declaratively when invoking `requestSpawnServant`.
 public class ProcessIsolated {
-
     public let system: ActorSystem
     public let control: IsolatedControl
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Local state
+
     private let lock = Lock()
     private var _servants: [Int: ServantProcess] = [:]
 
@@ -53,16 +53,18 @@ public class ProcessIsolated {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Master supervisor thread interactions
 
     private let processSupervisorMailbox: ConcurrentBlockingQueue<_ProcessSupervisorMessage> = ConcurrentBlockingQueue()
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Process Master and functions exposed to it
 
-    internal var processCommander: ActorRef<ProcessCommander.Command>! = nil
+    internal var processCommander: ActorRef<ProcessCommander.Command>!
 
-    internal var parentProcessFailureDetector: ActorRef<PollingParentMonitoringFailureDetector.Message>! = nil
+    internal var parentProcessFailureDetector: ActorRef<PollingParentMonitoringFailureDetector.Message>!
 
     // ==== ------------------------------------------------------------------------------------------------------------
 
@@ -88,7 +90,6 @@ public class ProcessIsolated {
 
             let node = Node(systemName: "SERVANT", host: "127.0.0.1", port: port)
             bootSettings.settings.cluster.node = node
-
         }
 
         let system = boot(bootSettings)
@@ -101,10 +102,10 @@ public class ProcessIsolated {
         self._lastAssignedServantPort = system.settings.cluster.node.port
 
         if role.is("master") {
-            let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> () = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
+            let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
-            let funKillServantProcess: (Int) -> () = { (pid: Int)  in
+            let funKillServantProcess: (Int) -> Void = { (pid: Int) in
                 self.lock.withLockVoid {
                     if let servant = self._servants[pid] {
                         self.system.cluster._shell.tell(.command(.downCommand(servant.node.node)))
@@ -130,16 +131,14 @@ public class ProcessIsolated {
             system.cluster.join(node: uniqueMasterNode.node)
 
             self.parentProcessFailureDetector = try! system._spawnSystemActor(PollingParentMonitoringFailureDetector.name,
-                PollingParentMonitoringFailureDetector(
-                    parentNode: uniqueMasterNode,
-                    parentPID: POSIXProcessUtils.getParentPID()
-                ).behavior
-            )
+                                                                              PollingParentMonitoringFailureDetector(
+                                                                                  parentNode: uniqueMasterNode,
+                                                                                  parentPID: POSIXProcessUtils.getParentPID()
+                                                                              ).behavior)
 
             let resolveContext = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: uniqueMasterNode), system: system)
             self.processCommander = system._resolve(context: resolveContext)
         }
-
     }
 
     public var roles: [Role] {
@@ -157,7 +156,7 @@ public class ProcessIsolated {
     /// IMPORTANT: This MUST be called in master process's main thread and will block it indefinitely,
     public func blockAndSuperviseServants(file: String = #file, line: UInt = #line) {
         if self.control.hasRole(.master) {
-            system.log.info("Entering supervision loop. Main thread will be dedicated to this and NOT past this line", file: file, line: line)
+            self.system.log.info("Entering supervision loop. Main thread will be dedicated to this and NOT past this line", file: file, line: line)
             self.processMasterLoop()
         } else {
             while true {
@@ -165,7 +164,6 @@ public class ProcessIsolated {
             }
         }
     }
-
 
     /// Requests the spawning of a new servant process.
     /// In order for this to work, the master process MUST be running `blockAndSuperviseServants`.
@@ -192,12 +190,12 @@ public class ProcessIsolated {
             self._servants[pid] = servant
         }
     }
+
     func removeServantPID(_ pid: Int) {
         self.lock.withLockVoid {
             self._servants.removeValue(forKey: pid)
         }
     }
-
 
     /// Role that a process isolated process can fulfil.
     /// Used by `isolated.runOn(role: )
@@ -213,7 +211,7 @@ public class ProcessIsolated {
         }
 
         public var description: String {
-            return "Role(\(name))"
+            return "Role(\(self.name))"
         }
     }
 }
@@ -239,6 +237,7 @@ internal struct ServantProcess {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Servant Supervision
 
 /// Configures supervision for a specific su
@@ -278,7 +277,6 @@ internal enum _ProcessSupervisorMessage {
 }
 
 extension ProcessIsolated {
-
     // Effectively, this is a ProcessFailureDetector
     internal func processMasterLoop() {
         func monitorServants() {
@@ -289,8 +287,8 @@ extension ProcessIsolated {
                 }
 
                 guard let servant = maybeServant else {
-                    // TODO unknown PID died?
-                    system.log.warning("Unknown PID died, ignoring... PID was: \(res.pid)")
+                    // TODO: unknown PID died?
+                    self.system.log.warning("Unknown PID died, ignoring... PID was: \(res.pid)")
                     return
                 }
 
@@ -299,21 +297,21 @@ extension ProcessIsolated {
 
                 // if we have a restart supervision logic, we should apply it.
                 guard var restartLogic = servant.restartLogic else {
-                    system.log.info("Servant \(servant.node) (pid:\(res.pid)) has no supervision / restart strategy defined, NO replacement servant will be spawned in its place.")
+                    self.system.log.info("Servant \(servant.node) (pid:\(res.pid)) has no supervision / restart strategy defined, NO replacement servant will be spawned in its place.")
                     return
                 }
 
                 let messagePrefix = "Servant process [\(servant.node) @ pid:\(res.pid)] supervision"
                 switch restartLogic.recordFailure() {
                 case .stop:
-                    system.log.info("\(messagePrefix): STOP, as decided by: \(restartLogic)")
+                    self.system.log.info("\(messagePrefix): STOP, as decided by: \(restartLogic)")
                 case .escalate:
-                    system.log.info("\(messagePrefix): ESCALATE, as decided by: \(restartLogic)")
+                    self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(restartLogic)")
                 case .restartImmediately:
-                    system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
+                    self.system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
                     self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args)
                 case .restartBackoff:
-                    // TODO implement backoff for process isolated
+                    // TODO: implement backoff for process isolated
                     fatalError("\(messagePrefix): BACKOFF NOT IMPLEMENTED YET")
                 }
             }
@@ -363,7 +361,7 @@ extension ProcessIsolated {
                 let pid = try POSIXProcessUtils.forkExec(command: command, args: args)
                 self.storeServant(pid: pid, servant: servant)
             } catch {
-                system.log.error("Unable to spawn servant; Error: \(error)")
+                self.system.log.error("Unable to spawn servant; Error: \(error)")
             }
         }
     }
@@ -397,13 +395,13 @@ enum KnownServantParameters {
     func extractFirst(_ arguments: [String]) -> String? {
         return arguments.first { $0.starts(with: self.prefix) }.flatMap { self.parse(parameter: $0) }
     }
+
     func collect(_ arguments: [String]) -> [String] {
         return arguments.filter { $0.starts(with: self.prefix) }.compactMap { self.parse(parameter: $0) }
     }
 }
 
 public final class BootSettings {
-
     let roles: [ProcessIsolated.Role]
     let pid: Int
 
@@ -429,7 +427,7 @@ public final class BootSettings {
         return self.roles.contains(role)
     }
 
-    private var _settings: ActorSystemSettings? = nil
+    private var _settings: ActorSystemSettings?
     public var settings: ActorSystemSettings {
         get {
             if self._settings == nil {
@@ -442,11 +440,9 @@ public final class BootSettings {
             self._settings = newValue
         }
     }
-
 }
 
 public final class IsolatedControl {
-
     let system: ActorSystem
     let roles: [ProcessIsolated.Role]
     let masterNode: UniqueNode
@@ -467,13 +463,13 @@ public final class IsolatedControl {
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {
         return self.roles.contains(role)
     }
-
 }
 
 extension ProcessIsolated.Role {
     public static var master: ProcessIsolated.Role {
         return .init("master")
     }
+
     public static var servant: ProcessIsolated.Role {
         return .init("servant")
     }
@@ -485,6 +481,7 @@ public enum ProcessSpawnError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Naive method to parse Node
 
 extension UniqueNode {

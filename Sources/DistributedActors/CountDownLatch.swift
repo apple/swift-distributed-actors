@@ -16,7 +16,6 @@ import DistributedActorsConcurrencyHelpers
 
 /// INTERNAL but used in benchmarks
 internal class CountDownLatch {
-
     private var counter: Int
     private let condition: Condition
     private let lock: Mutex
@@ -29,7 +28,7 @@ internal class CountDownLatch {
 
     /// Returns previous value before the decrement was issued.
     func countDown() {
-        return lock.synchronized {
+        return self.lock.synchronized {
             self.counter -= 1
 
             if self.counter == 0 {
@@ -39,14 +38,14 @@ internal class CountDownLatch {
     }
 
     var count: Int {
-        return lock.synchronized {
-            return self.counter
+        return self.lock.synchronized {
+            self.counter
         }
     }
 
     func wait(atMost amount: TimeAmount? = nil) {
         self.lock.synchronized {
-            while (true) {
+            while true {
                 if self.counter == 0 {
                     return // done
                 }

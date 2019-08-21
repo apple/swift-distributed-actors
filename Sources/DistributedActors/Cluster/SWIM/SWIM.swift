@@ -17,7 +17,6 @@
 /// - SeeAlso: `SWIM.Instance` for a detailed discussion on the implementation.
 /// - SeeAlso: `SWIM.Shell` for the interpretation and actor driving the interactions.
 public enum SWIM {
-
     typealias Incarnation = UInt64
 
     typealias Shell = SWIMShell
@@ -34,7 +33,7 @@ public enum SWIM {
     internal enum RemoteMessage {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
         /// "Ping Request" requests a SWIM probe.
-        // TODO target -- node rather than the ref?
+        // TODO: target -- node rather than the ref?
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
 
         /// Extension: Lifeguard, Local Health Aware Probe
@@ -44,7 +43,6 @@ public enum SWIM {
         /// from the `k` members it enlists, even if the target of their indirect pings is not responsive.
         // case nack(Payload)
     }
-
 
     /// A `SWIM.Ack` is sent always in reply to a `SWIM.RemoteMessage.ping`.
     ///
@@ -115,6 +113,7 @@ public enum SWIM {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SWIM Member Status
 
 extension SWIM {
@@ -158,7 +157,6 @@ extension SWIM.Status: Comparable {
 }
 
 extension SWIM.Status {
-
     /// Only `alive` or `suspect` members carry an incarnation number.
     var incarnation: SWIM.Incarnation? {
         switch self {
@@ -217,17 +215,17 @@ extension SWIM.Status {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SWIM Member
 
 internal struct SWIMMember: Hashable {
-
-    // TODO would want to swap it around, nodes are members, not actors
+    // TODO: would want to swap it around, nodes are members, not actors
     var node: UniqueNode {
         return self.ref.address.node ?? self.ref._system!.settings.cluster.uniqueBindNode
     }
 
     /// Each (SWIM) cluster member is running a `probe` actor which we interact with when gossiping the SWIM messages.
-    let ref: ActorRef<SWIM.Message> // TODO better name for `ref` is it a `probeRef` (sounds right?) or `swimmerRef` (meh)?
+    let ref: ActorRef<SWIM.Message> // TODO: better name for `ref` is it a `probeRef` (sounds right?) or `swimmerRef` (meh)?
 
     var status: SWIM.Status
 
@@ -253,9 +251,8 @@ internal struct SWIMMember: Hashable {
     }
 }
 
-
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SWIM Gossip Payload
 
 extension SWIM {

@@ -21,22 +21,20 @@ import XCTest
 ///
 
 extension CRDTCoreTypeTests {
-
-   static var allTests : [(String, (CRDTCoreTypeTests) -> () throws -> Void)] {
-      return [
-                ("test_GCounter_incrementShouldUpdateDelta", test_GCounter_incrementShouldUpdateDelta),
-                ("test_GCounter_mergeMutates", test_GCounter_mergeMutates),
-                ("test_GCounter_mergingDoesNotMutate", test_GCounter_mergingDoesNotMutate),
-                ("test_GCounter_mergeDeltaMutates", test_GCounter_mergeDeltaMutates),
-                ("test_GCounter_mergingDeltaDoesNotMutate", test_GCounter_mergingDeltaDoesNotMutate),
-                ("test_AnyCvRDT_canBeUsedToMergeRightTypes", test_AnyCvRDT_canBeUsedToMergeRightTypes),
-                ("test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
-                ("test_AnyDeltaCRDT_canBeUsedToMergeRightTypes", test_AnyDeltaCRDT_canBeUsedToMergeRightTypes),
-                ("test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
-                ("test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType", test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType),
-                ("test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType", test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType),
-                ("test_AnyDeltaCRDT_canResetDelta", test_AnyDeltaCRDT_canResetDelta),
-           ]
-   }
+    static var allTests: [(String, (CRDTCoreTypeTests) -> () throws -> Void)] {
+        return [
+            ("test_GCounter_incrementShouldUpdateDelta", test_GCounter_incrementShouldUpdateDelta),
+            ("test_GCounter_mergeMutates", test_GCounter_mergeMutates),
+            ("test_GCounter_mergingDoesNotMutate", test_GCounter_mergingDoesNotMutate),
+            ("test_GCounter_mergeDeltaMutates", test_GCounter_mergeDeltaMutates),
+            ("test_GCounter_mergingDeltaDoesNotMutate", test_GCounter_mergingDeltaDoesNotMutate),
+            ("test_AnyCvRDT_canBeUsedToMergeRightTypes", test_AnyCvRDT_canBeUsedToMergeRightTypes),
+            ("test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
+            ("test_AnyDeltaCRDT_canBeUsedToMergeRightTypes", test_AnyDeltaCRDT_canBeUsedToMergeRightTypes),
+            ("test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
+            ("test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType", test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType),
+            ("test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType", test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType),
+            ("test_AnyDeltaCRDT_canResetDelta", test_AnyDeltaCRDT_canResetDelta),
+        ]
+    }
 }
-

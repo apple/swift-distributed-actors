@@ -13,15 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import NIOSSL
-import NIOFoundationCompat
 import class NIOExtras.LengthFieldBasedFrameDecoder
 import class NIOExtras.LengthFieldPrepender
+import NIOFoundationCompat
+import NIOSSL
 
-import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
-import SwiftProtobuf
-import Logging
 import Foundation
+import struct Foundation.Data // FIXME: would want to not have to use Data in our infra as it forces us to copy
+import Logging
+import SwiftProtobuf
 
 typealias Framing = LengthFieldBasedFrameDecoder
 
@@ -78,15 +78,15 @@ private final class InitiatingHandshakeHandler: ChannelInboundHandler, Removable
         self.log.debug("Offering handshake [\(proto)]")
 
         do {
-            // TODO allow allocating into existing buffer
+            // TODO: allow allocating into existing buffer
             // FIXME: serialization SHOULD be on dedicated part... put it into ELF already?
-            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator:  context.channel.allocator)
-            // TODO should we use the serialization infra ourselves here? I guess so...
+            let bytes: ByteBuffer = try proto.serializedByteBuffer(allocator: context.channel.allocator)
+            // TODO: should we use the serialization infra ourselves here? I guess so...
 
-            // FIXME make the promise dance here
+            // FIXME: make the promise dance here
             context.writeAndFlush(self.wrapOutboundOut(bytes), promise: nil)
         } catch {
-            // TODO change since serialization which can throw should be shipped of to a future
+            // TODO: change since serialization which can throw should be shipped of to a future
             // ---- since now we blocked the actor basically with the serialization
             context.fireErrorCaught(error)
         }
@@ -110,7 +110,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         do {
             var bytes = self.unwrapInboundIn(data)
-            // TODO formalize wire format...
+            // TODO: formalize wire format...
             let offer = try self.readHandshakeOffer(bytes: &bytes)
 
             self.log.debug("Received handshake offer from: [\(offer.from)] with protocol version: [\(offer.version)]")
@@ -187,7 +187,7 @@ private final class ProtocolMagicBytesValidator: ChannelInboundHandler, Removabl
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         var bytes = self.unwrapInboundIn(data)
         do {
-            guard let leadingBytes = bytes.readInteger(as: UInt16.self) else  {
+            guard let leadingBytes = bytes.readInteger(as: UInt16.self) else {
                 throw WireFormatError.notEnoughBytes(expectedAtLeastBytes: 16 / 8, hint: "handshake magic bytes")
             }
 
@@ -273,11 +273,10 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
             case .failure(let error):
                 self.log.error("Serialization of outgoing message failed: \(error)",
-                    metadata: [
-                        "recipient": "\(transportEnvelope.recipient)",
-                        "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")"
-                    ]
-                )
+                               metadata: [
+                                   "recipient": "\(transportEnvelope.recipient)",
+                                   "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
+                               ])
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
             }
@@ -348,6 +347,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Outbound
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -376,6 +376,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Inbound
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
@@ -427,7 +428,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             context.writeAndFlush(self.wrapOutboundOut(ackEnvelope), promise: nil)
         }
     }
-    
+
     private func onInboundACK(ack: SystemMessage.ACK) {
         switch self.outboundSystemMessages.acknowledge(ack) {
         case .acknowledged:
@@ -435,10 +436,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
         case .ackWasForFutureSequenceNr(let highestKnownSeqNr):
             self.log.warning("""
-                           Received unexpected system message [ACK(\(ack.sequenceNr))], while highest known (sent) \
-                           system message was [sequenceNr:\(highestKnownSeqNr)]. \
-                           Ignoring as harmless, however peer might be misbehaving.
-                           """) // TODO metadata: self.outboundSystemMessages.metadata
+            Received unexpected system message [ACK(\(ack.sequenceNr))], while highest known (sent) \
+            system message was [sequenceNr:\(highestKnownSeqNr)]. \
+            Ignoring as harmless, however peer might be misbehaving.
+            """) // TODO: metadata: self.outboundSystemMessages.metadata
         }
     }
 
@@ -451,10 +452,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
         case .nackWasForFutureSequenceNr(let highestKnownSeqNr):
             self.log.warning("""
-                           Received unexpected system message [NACK(\(nack.sequenceNr))], while highest known (sent) \
-                           system message was [sequenceNd:\(highestKnownSeqNr)]. \
-                           Ignoring as harmless, however peer migh be misbehaving.
-                           """) // TODO metadata: self.outboundSystemMessages.metadata
+            Received unexpected system message [NACK(\(nack.sequenceNr))], while highest known (sent) \
+            system message was [sequenceNd:\(highestKnownSeqNr)]. \
+            Ignoring as harmless, however peer migh be misbehaving.
+            """) // TODO: metadata: self.outboundSystemMessages.metadata
         }
     }
 
@@ -470,14 +471,14 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
             self.scheduleNextRedeliveryTick(context, in: nextRedeliveryTickDelay)
 
         case .giveUpAndSeverTies:
-            // FIXME implement this once we have the Kill or Down command on cluster shell
+            // FIXME: implement this once we have the Kill or Down command on cluster shell
             // cluster.tell(Down(that node))
             fatalError("TODO; kill the connection notify the membership!!!!")
         }
     }
 
     private func scheduleNextRedeliveryTick(_ context: ChannelHandlerContext, in nextRedeliveryDelay: TimeAmount) {
-        guard nil == self.redeliveryScheduled else {
+        guard self.redeliveryScheduled == nil else {
             return // already a tick scheduled, we'll ride on that one rather than kick off a new one
         }
 
@@ -492,10 +493,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: tracelog: System Redelivery [tracelog:sys-msg-redelivery]
 
 extension SystemMessageRedeliveryHandler {
-
     /// Optional "dump all messages" logging.
     private func tracelog(_ type: TraceLogType, message: Any,
                           file: String = #file, function: String = #function, line: UInt = #line) {
@@ -559,21 +560,19 @@ private final class ActorDeliveryHandler: ChannelInboundHandler {
             ref.sendSystemMessage(message)
         case .systemMessageEnvelope(let systemMessageEnvelope):
             fatalError("""
-                       .systemMessageEnvelope should not be allowed through to the \(self) handler! \
-                       The \(SystemMessageRedeliveryHandler.self) should have peeled off the system envelope. \
-                       This is a bug in pipeline construction! Was: \(systemMessageEnvelope)
-                       """)
+            .systemMessageEnvelope should not be allowed through to the \(self) handler! \
+            The \(SystemMessageRedeliveryHandler.self) should have peeled off the system envelope. \
+            This is a bug in pipeline construction! Was: \(systemMessageEnvelope)
+            """)
         case .systemMessageDelivery(let delivery):
             fatalError("""
-                       .systemMessageDelivery should not be allowed through to the \(self) handler! 
-                       The \(SystemMessageRedeliveryHandler.self) should have stopped the propagation of delivery confirmations. \
-                       This is a bug in pipeline construction! Was: \(delivery)
-                       """)
+            .systemMessageDelivery should not be allowed through to the \(self) handler! 
+            The \(SystemMessageRedeliveryHandler.self) should have stopped the propagation of delivery confirmations. \
+            This is a bug in pipeline construction! Was: \(delivery)
+            """)
         }
     }
 }
-
-
 
 // MARK: Protobuf read... implementations
 
@@ -636,14 +635,14 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-
     // TODO: abstract into `Transport`?
 
     internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
-        let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO share the loop with client side?
+        let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 
         let bootstrap = ServerBootstrap(group: group)
             // Specify backlog and enable SO_REUSEADDR for the server itself
@@ -702,7 +701,7 @@ extension ClusterShell {
             .childChannelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .childChannelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
 
-        return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO separate setup from using it
+        return bootstrap.bind(host: bindAddress.node.host, port: Int(bindAddress.node.port)) // TODO: separate setup from using it
     }
 
     internal func bootstrapClientSide(system: ActorSystem, shell: ClusterShell.Ref, targetNode: Node, handshakeOffer: Wire.HandshakeOffer, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
@@ -725,7 +724,7 @@ extension ClusterShell {
                         }
 
                         let sslContext = try self.makeSSLContext(fromConfig: tlsConfig, passphraseCallback: settings.tlsPassphraseCallback)
-                        let sslHandler = try NIOSSLClientHandler.init(context: sslContext, serverHostname: targetHost)
+                        let sslHandler = try NIOSSLClientHandler(context: sslContext, serverHostname: targetHost)
                         channelHandlers.append(("ssl", sslHandler))
                     } catch {
                         return channel.eventLoop.makeFailedFuture(error)
@@ -758,12 +757,12 @@ extension ClusterShell {
                 return self.addChannelHandlers(channelHandlers, to: channel.pipeline)
             }
 
-        return bootstrap.connect(host: targetNode.host, port: Int(targetNode.port)) // TODO separate setup from using it
+        return bootstrap.connect(host: targetNode.host, port: Int(targetNode.port)) // TODO: separate setup from using it
     }
 
     private func addChannelHandlers(_ handlers: [(String?, ChannelHandler)], to pipeline: ChannelPipeline) -> EventLoopFuture<Void> {
-        let res = pipeline.eventLoop.traverseIgnore(over: handlers) { (name, handler) in
-            return pipeline.addHandler(handler, name: name)
+        let res = pipeline.eventLoop.traverseIgnore(over: handlers) { name, handler in
+            pipeline.addHandler(handler, name: name)
         }
 
         // uncomment to print pipeline visualization:
@@ -778,12 +777,10 @@ extension ClusterShell {
         } else {
             return try NIOSSLContext(configuration: tlsConfig)
         }
-
     }
 }
 
 internal extension EventLoop {
-
     /// Traverses over a collection and applies the given closure to all elements, while maintaining sequential execution order,
     /// i.e. each element will only be processed once the future returned from the previous call is completed. A failed future
     /// will cause the processing to end and the returned future will be failed.
@@ -796,7 +793,7 @@ internal extension EventLoop {
 
         for element in elements.dropFirst() {
             acc = acc.flatMap { _ in
-               closure(element)
+                closure(element)
             }
         }
 
@@ -805,11 +802,11 @@ internal extension EventLoop {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: TransportEnvelope
 
 /// Mirrors `Envelope` however ensures that the payload is a message; i.e. it cannot be a closure.
 internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringConvertible {
-
     let storage: Storage
     enum Storage {
         /// Note: MAY contain SystemMessageEnvelope
@@ -820,7 +817,8 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         case systemMessageEnvelope(SystemMessageEnvelope)
         case systemMessageDelivery(SystemMessageDelivery)
     }
-    // TODO we could merge ACK and NACK if NACKs were to carry "the gap"
+
+    // TODO: we could merge ACK and NACK if NACKs were to carry "the gap"
     enum SystemMessageDelivery {
         case ack(SystemMessage.ACK)
         case nack(SystemMessage.NACK)
@@ -830,7 +828,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     let underlyingMessageMetaType: AnyMetaType
 
-    // TODO carry same data as Envelope -- baggage etc
+    // TODO: carry same data as Envelope -- baggage etc
 
     init<UnderlyingMessage>(envelope: Envelope, underlyingMessageType: UnderlyingMessage.Type, recipient: ActorAddress) {
         switch envelope.payload {
@@ -850,21 +848,25 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         self.recipient = recipient
         self.underlyingMessageMetaType = MetaType(Message.self)
     }
+
     init(systemMessage: SystemMessage, recipient: ActorAddress) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
         self.underlyingMessageMetaType = MetaType(SystemMessage.self)
     }
+
     init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
         self.storage = .systemMessageEnvelope(systemMessageEnvelope)
         self.recipient = recipient
         self.underlyingMessageMetaType = MetaType(SystemMessageEnvelope.self)
     }
+
     init(ack: SystemMessage.ACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
         self.underlyingMessageMetaType = MetaType(SystemMessage.ACK.self)
     }
+
     init(nack: SystemMessage.NACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
@@ -893,6 +895,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
     var description: String {
         return "TransportEnvelope(\(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
     }
+
     var debugDescription: String {
         return "TransportEnvelope(_storage: \(storage), recipient: \(recipient), messageMetaType: \(underlyingMessageMetaType))"
     }

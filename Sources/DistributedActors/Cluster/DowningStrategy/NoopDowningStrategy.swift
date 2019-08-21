@@ -16,7 +16,7 @@
 /// returns `.none` as the directive. This means that nodes that are detected to be unreachable will never
 /// be marked down and can always come back and re-join the cluster.
 internal struct NoopDowningStrategy: DowningStrategy {
-    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirective.MemberUnreachableDirective {
+    func onMemberUnreachable(_: Member) -> DowningStrategyDirective.MemberUnreachableDirective {
         return .none
     }
 
@@ -24,15 +24,15 @@ internal struct NoopDowningStrategy: DowningStrategy {
         return .none
     }
 
-    func onTimeout(_ member: Member) -> DowningStrategyDirective.TimeoutDirective {
+    func onTimeout(_: Member) -> DowningStrategyDirective.TimeoutDirective {
         return .none
     }
 
-    func onMemberReachable(_ member: Member) -> DowningStrategyDirective.MemberReachableDirective {
+    func onMemberReachable(_: Member) -> DowningStrategyDirective.MemberReachableDirective {
         return .none
     }
 
-    func onMemberRemoved(_ member: Member) -> DowningStrategyDirective.MemberRemovedDirective {
+    func onMemberRemoved(_: Member) -> DowningStrategyDirective.MemberRemovedDirective {
         return .none
     }
 }

@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Dispatch
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Death watch implementation
 
 /// DeathWatch implements the user facing `watch` and `unwatch` functions.
@@ -28,7 +29,6 @@ import Dispatch
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
 internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
-
     private var watching = Set<AddressableActorRef>()
     private var watchedBy = Set<AddressableActorRef>()
 
@@ -63,7 +63,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
-        subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+        self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"
@@ -107,11 +107,11 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     public mutating func receiveTerminated(_ terminated: Signals.Terminated) -> Bool {
         let deadPath = terminated.address
         let pathsEqual: (AddressableActorRef) -> Bool = { watched in
-            return watched.address == deadPath
+            watched.address == deadPath
         }
 
-        // FIXME make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
-        func removeDeadRef(from set: inout Set<AddressableActorRef>, `where` check: (AddressableActorRef) -> Bool) -> Bool {
+        // FIXME: make this better so it can utilize the hashcode, since it WILL be the same as the boxed thing even if types are not
+        func removeDeadRef(from set: inout Set<AddressableActorRef>, where check: (AddressableActorRef) -> Bool) -> Bool {
             if let deadIndex = set.firstIndex(where: check) {
                 set.remove(at: deadIndex)
                 return true
@@ -144,6 +144,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+
     // MARK: Myself termination
 
     func notifyWatchersWeDied(myself: ActorRef<Message>) {
@@ -156,6 +157,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Node termination
 
     private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {
@@ -163,13 +165,12 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
             self.failureDetectorRef.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: remoteNode))
         }
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Errors
 
 public enum DeathPactError: Error {
     case unhandledDeathPact(terminated: AddressableActorRef, myself: AddressableActorRef, message: String)
 }
-

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Addressable (but not tell-able) ActorRef
 
 /// Type erased form of `AddressableActorRef` in order to be used as existential type.
@@ -27,6 +28,7 @@ public struct AddressableActorRef: Hashable {
         var isLocal: Bool {
             return self == .local
         }
+
         var isRemote: Bool {
             return self == .remote
         }
@@ -75,7 +77,7 @@ public struct AddressableActorRef: Hashable {
 
 extension AddressableActorRef: CustomStringConvertible {
     public var description: String {
-        return "AddressableActorRef(\(ref.address))"
+        return "AddressableActorRef(\(self.ref.address))"
     }
 }
 
@@ -84,13 +86,13 @@ extension AddressableActorRef {
         self.address.hash(into: &hasher)
     }
 
-    public static func ==(lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
+    public static func == (lhs: AddressableActorRef, rhs: AddressableActorRef) -> Bool {
         return lhs.address == rhs.address
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal unsafe methods
 
 extension AddressableActorRef: ReceivesSystemMessages {
@@ -118,7 +120,6 @@ internal extension RemotePersonality {
 }
 
 internal extension ActorRef {
-
     /// UNSAFE API, DO NOT TOUCH.
     /// This may only be used when certain that a given ref points to a local actor, and thus contains a cell.
     /// May be used by internals when things are to be attached to "myself's cell".
@@ -138,4 +139,3 @@ internal extension ActorRef {
         }
     }
 }
-

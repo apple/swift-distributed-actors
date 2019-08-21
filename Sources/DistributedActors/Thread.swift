@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
 #else
 import Glibc
 #endif
 
-import NIO
 import DistributedActorsConcurrencyHelpers
+import NIO
 
 /// :nodoc: Not intended for general use. TODO: Make internal if possible.
 public enum ThreadError: Error {
@@ -77,7 +76,7 @@ public class Thread {
         pthread_detach(self.thread)
     }
 
-    public func cancel() -> Void {
+    public func cancel() {
         self.lock.synchronized {
             if self.isRunning.load() {
                 let error = pthread_cancel(self.thread)
@@ -94,7 +93,7 @@ public class Thread {
         }
     }
 
-    public static func sleep(_ amount: TimeAmount) -> Void {
+    public static func sleep(_ amount: TimeAmount) {
         var time = TimeSpec.from(timeAmount: amount)
         let err = nanosleep(&time, nil)
         if err != 0 {

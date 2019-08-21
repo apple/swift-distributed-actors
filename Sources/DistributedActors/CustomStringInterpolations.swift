@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: String Interpolation: _:leftPad:
 
 internal extension String.StringInterpolation {
@@ -24,6 +25,7 @@ internal extension String.StringInterpolation {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: String Interpolation: reflecting:
 
 internal extension String.StringInterpolation {
@@ -32,24 +34,24 @@ internal extension String.StringInterpolation {
     }
 }
 
-
 internal extension String.StringInterpolation {
     mutating func appendInterpolation(lineByLine subject: [Any]) {
-        self.appendLiteral("\n    \(subject.map({"\($0)"}).joined(separator: "\n    "))")
+        self.appendLiteral("\n    \(subject.map { "\($0)" }.joined(separator: "\n    "))")
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: String Interpolation: _:orElse:
 
 public extension String.StringInterpolation {
-    mutating func appendInterpolation<T>(_ value: Optional<T>, orElse defaultValue: String) {
-        self.appendLiteral("[\(value.map({ "\($0)" }) ?? defaultValue)]")
+    mutating func appendInterpolation<T>(_ value: T?, orElse defaultValue: String) {
+        self.appendLiteral("[\(value.map { "\($0)" } ?? defaultValue)]")
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor Ref custom interpolations
 
 public extension String.StringInterpolation {
@@ -58,7 +60,7 @@ public extension String.StringInterpolation {
     }
 
     mutating func appendInterpolation<Message>(uniquePath ref: ActorRef<Message>) {
-        self.appendLiteral("[\(ref.address)]") // TODO make those address
+        self.appendLiteral("[\(ref.address)]") // TODO: make those address
     }
 
     mutating func appendInterpolation<Message>(path ref: ActorRef<Message>) {

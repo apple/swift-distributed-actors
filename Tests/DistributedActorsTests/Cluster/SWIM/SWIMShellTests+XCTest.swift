@@ -21,24 +21,22 @@ import XCTest
 ///
 
 extension SWIMShellTests {
-
-   static var allTests : [(String, (SWIMShellTests) -> () throws -> Void)] {
-      return [
-                ("test_swim_shouldRespondWithAckToPing", test_swim_shouldRespondWithAckToPing),
-                ("test_swim_shouldPingRandomMember", test_swim_shouldPingRandomMember),
-                ("test_swim_shouldPingSpecificMemberWhenRequested", test_swim_shouldPingSpecificMemberWhenRequested),
-                ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested),
-                ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing),
-                ("test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing", test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing),
-                ("test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout),
-                ("test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed", test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed),
-                ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
-                ("test_swim_shouldSendGossipInPing_", test_swim_shouldSendGossipInPing_),
-                ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),
-                ("test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes", test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes),
-                ("test_swim_shouldConvergeStateThroughGossip", test_swim_shouldConvergeStateThroughGossip),
-                ("test_SWIMShell_shouldBeAbleToJoinACluster", test_SWIMShell_shouldBeAbleToJoinACluster),
-           ]
-   }
+    static var allTests: [(String, (SWIMShellTests) -> () throws -> Void)] {
+        return [
+            ("test_swim_shouldRespondWithAckToPing", test_swim_shouldRespondWithAckToPing),
+            ("test_swim_shouldPingRandomMember", test_swim_shouldPingRandomMember),
+            ("test_swim_shouldPingSpecificMemberWhenRequested", test_swim_shouldPingSpecificMemberWhenRequested),
+            ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested),
+            ("test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing", test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing),
+            ("test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing", test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing),
+            ("test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout", test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout),
+            ("test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed", test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed),
+            ("test_swim_shouldSendGossipInAck", test_swim_shouldSendGossipInAck),
+            ("test_swim_shouldSendGossipInPing_", test_swim_shouldSendGossipInPing_),
+            ("test_swim_shouldSendGossipInPingReq", test_swim_shouldSendGossipInPingReq),
+            ("test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes", test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes),
+            ("test_swim_shouldConvergeStateThroughGossip", test_swim_shouldConvergeStateThroughGossip),
+            ("test_SWIMShell_shouldBeAbleToJoinACluster", test_SWIMShell_shouldBeAbleToJoinACluster),
+        ]
+    }
 }
-

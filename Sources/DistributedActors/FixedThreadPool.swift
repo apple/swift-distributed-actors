@@ -17,7 +17,7 @@ import Foundation
 
 // TODO: Discuss naming of `Worker`
 private final class Worker {
-    var thread: Thread? = nil
+    var thread: Thread?
     var completedTasks: Int = 0
 
     @usableFromInline
@@ -58,7 +58,7 @@ public final class FixedThreadPool {
     public init(_ threadCount: Int) throws {
         self.runningWorkers = Atomic(value: threadCount)
 
-        for _ in 1...threadCount {
+        for _ in 1 ... threadCount {
             let worker = Worker()
             let thread = try Thread {
                 // threads in the pool keep running as long as the pool is not stopping

@@ -22,13 +22,13 @@ enum ArgumentError: Error {
 extension ArgumentError: CustomStringConvertible {
     public var description: String {
         switch self {
-        case let .missingValue(key):
+        case .missingValue(let key):
             return "missing value for '\(key)'"
-        case let .invalidType(value, type, argument):
+        case .invalidType(let value, let type, let argument):
             return (argument == nil)
                 ? "'\(value)' is not a valid '\(type)'"
                 : "'\(value)' is not a valid '\(type)' for '\(argument!)'"
-        case let .unsupportedArgument(argument):
+        case .unsupportedArgument(let argument):
             return "unsupported argument '\(argument)'"
         }
     }
@@ -44,7 +44,7 @@ func checked<T>(
     _ value: String,
     argument: String? = nil
 ) throws -> T {
-    if let t = try parse(value)  { return t }
+    if let t = try parse(value) { return t }
     var type = "\(T.self)"
     if type.starts(with: "Optional<") {
         let s = type.index(after: type.firstIndex(of: "<")!)
@@ -52,7 +52,8 @@ func checked<T>(
         type = String(type[s ..< e]) // strip Optional< >
     }
     throw ArgumentError.invalidType(
-        value: value, type: type, argument: argument)
+        value: value, type: type, argument: argument
+    )
 }
 
 /// Parser that converts the program's command line arguments to typed values
@@ -61,8 +62,9 @@ func checked<T>(
 class ArgumentParser<U> {
     private var result: U
     private var validOptions: [String] {
-        return arguments.compactMap { $0.name }
+        return self.arguments.compactMap { $0.name }
     }
+
     private var arguments: [Argument] = []
     private let programName: String = {
         // Strip full path from the program name.
@@ -70,8 +72,9 @@ class ArgumentParser<U> {
         let ss = r[r.startIndex ..< (r.firstIndex(of: "/") ?? r.endIndex)]
         return String(ss.reversed())
     }()
+
     private var positionalArgs = [String]()
-    private var optionalArgsMap = [String : String]()
+    private var optionalArgsMap = [String: String]()
 
     /// Argument holds the name of the command line parameter, its help
     /// desciption and a rule that's applied to process it.
@@ -83,7 +86,7 @@ class ArgumentParser<U> {
     struct Argument {
         let name: String?
         let help: String?
-        let apply: () throws -> ()
+        let apply: () throws -> Void
     }
 
     /// ArgumentParser is initialized with an instance of a type that holds
@@ -92,28 +95,29 @@ class ArgumentParser<U> {
         self.result = result
         self.arguments += [
             Argument(name: "--help", help: "show this help message and exit",
-                apply: printUsage)
+                     apply: printUsage),
         ]
     }
 
     private func printUsage() {
         guard let _ = optionalArgsMap["--help"] else { return }
         let space = " "
-        let maxLength = arguments.compactMap({ $0.name?.count }).max()!
+        let maxLength = self.arguments.compactMap { $0.name?.count }.max()!
         let padded = { (s: String) in
-            " \(s)\(String(repeating:space, count: maxLength - s.count))  " }
+            " \(s)\(String(repeating: space, count: maxLength - s.count))  "
+        }
         let f: (String, String) -> String = {
             "\(padded($0))\($1)"
                 .split(separator: "\n")
                 .joined(separator: "\n" + padded(""))
         }
         let positional = f("TEST", "name or number of the benchmark to measure")
-        let optional =  arguments.filter { $0.name != nil }
+        let optional = self.arguments.filter { $0.name != nil }
             .map { f($0.name!, $0.help ?? "") }
             .joined(separator: "\n")
         print(
             """
-            usage: \(programName) [--argument=VALUE] [TEST [TEST ...]]
+            usage: \(self.programName) [--argument=VALUE] [TEST [TEST ...]]
             positional arguments:
             \(positional)
             optional arguments:
@@ -127,9 +131,9 @@ class ArgumentParser<U> {
     /// the parsing fails.
     public func parse() -> U {
         do {
-            try parseArgs() // parse the argument syntax
-            try arguments.forEach { try $0.apply() } // type-check and store values
-            return result
+            try self.parseArgs() // parse the argument syntax
+            try self.arguments.forEach { try $0.apply() } // type-check and store values
+            return self.result
         } catch let error as ArgumentError {
             fputs("error: \(error)\n", stderr)
             exit(1)
@@ -153,22 +157,21 @@ class ArgumentParser<U> {
     /// - Throws: `ArgumentError.unsupportedArgument` on failure to parse
     ///     the supported argument syntax.
     private func parseArgs() throws {
-
         // For each argument we are passed...
-        for arg in CommandLine.arguments[1..<CommandLine.arguments.count] {
+        for arg in CommandLine.arguments[1 ..< CommandLine.arguments.count] {
             // If the argument doesn't match the optional argument pattern. Add
             // it to the positional argument list and continue...
             if !arg.starts(with: "-") {
-                positionalArgs.append(arg)
+                self.positionalArgs.append(arg)
                 continue
             }
             // Attempt to split it into two components separated by an equals sign.
             let components = arg.split(separator: "=")
             let optionName = String(components[0])
-            guard validOptions.contains(optionName) else {
+            guard self.validOptions.contains(optionName) else {
                 throw ArgumentError.unsupportedArgument(arg)
             }
-            var optionVal : String
+            var optionVal: String
             switch components.count {
             case 1: optionVal = ""
             case 2: optionVal = String(components[1])
@@ -177,7 +180,7 @@ class ArgumentParser<U> {
                 // an option switch. This is an invalid argument. Bail!
                 throw ArgumentError.unsupportedArgument(arg)
             }
-            optionalArgsMap[optionName] = optionVal
+            self.optionalArgsMap[optionName] = optionVal
         }
     }
 
@@ -200,8 +203,8 @@ class ArgumentParser<U> {
         help: String? = nil,
         parser: @escaping (String) throws -> T? = { _ in nil }
     ) {
-        arguments.append(Argument(name: name, help: help)
-        { try self.parseArgument(name, property, defaultValue, parser) })
+        self.arguments.append(Argument(name: name, help: help)
+            { try self.parseArgument(name, property, defaultValue, parser) })
     }
 
     /// Process the specified command line argument.
@@ -225,13 +228,13 @@ class ArgumentParser<U> {
     ) throws {
         if let name = name, let value = optionalArgsMap[name] {
             guard !value.isEmpty || defaultValue != nil
-                else { throw ArgumentError.missingValue(name) }
+            else { throw ArgumentError.missingValue(name) }
 
-            result[keyPath: property] = (value.isEmpty)
+            self.result[keyPath: property] = value.isEmpty
                 ? defaultValue!
                 : try checked(parse, value, argument: name)
         } else if name == nil {
-            result[keyPath: property] = positionalArgs as! T
+            self.result[keyPath: property] = self.positionalArgs as! T
         }
     }
 }

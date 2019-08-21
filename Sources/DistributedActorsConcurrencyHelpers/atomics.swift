@@ -189,7 +189,7 @@ public struct UnsafeEmbeddedAtomic<T: AtomicPrimitive> {
     ///   - value: The new value to set the object to.
     ///   - order: Memory order for this operation
     @inlinable
-    public func store(_ value: T, order: MemoryOrder = .seq_cst) -> Void {
+    public func store(_ value: T, order: MemoryOrder = .seq_cst) {
         T.atomic_store(self.value, value, order.to_C_memory_order)
     }
 
@@ -351,7 +351,7 @@ public final class Atomic<T: AtomicPrimitive> {
     ///   - value: The new value to set the object to.
     ///   - order: Memory order for this operation
     @inlinable
-    public func store(_ value: T, order: MemoryOrder = .seq_cst) -> Void {
+    public func store(_ value: T, order: MemoryOrder = .seq_cst) {
         self.embedded.store(value, order: order)
     }
 
@@ -381,173 +381,169 @@ public protocol AtomicPrimitive {
 }
 
 extension Bool: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic__Bool_create
-    public static let atomic_destroy                    = __catmc_atomic__Bool_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic__Bool_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic__Bool_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic__Bool_add
-    public static let atomic_sub                        = __catmc_atomic__Bool_sub
-    public static let atomic_and                        = __catmc_atomic__Bool_and
-    public static let atomic_or                         = __catmc_atomic__Bool_or
-    public static let atomic_xor                        = __catmc_atomic__Bool_xor
-    public static let atomic_exchange                   = __catmc_atomic__Bool_exchange
-    public static let atomic_load                       = __catmc_atomic__Bool_load
-    public static let atomic_store                      = __catmc_atomic__Bool_store
+    public static let atomic_create = __catmc_atomic__Bool_create
+    public static let atomic_destroy = __catmc_atomic__Bool_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic__Bool_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic__Bool_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic__Bool_add
+    public static let atomic_sub = __catmc_atomic__Bool_sub
+    public static let atomic_and = __catmc_atomic__Bool_and
+    public static let atomic_or = __catmc_atomic__Bool_or
+    public static let atomic_xor = __catmc_atomic__Bool_xor
+    public static let atomic_exchange = __catmc_atomic__Bool_exchange
+    public static let atomic_load = __catmc_atomic__Bool_load
+    public static let atomic_store = __catmc_atomic__Bool_store
 }
 
 extension Int8: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_int_least8_t_create
-    public static let atomic_destroy                    = __catmc_atomic_int_least8_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_int_least8_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_int_least8_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_int_least8_t_add
-    public static let atomic_sub                        = __catmc_atomic_int_least8_t_sub
-    public static let atomic_and                        = __catmc_atomic_int_least8_t_and
-    public static let atomic_or                         = __catmc_atomic_int_least8_t_or
-    public static let atomic_xor                        = __catmc_atomic_int_least8_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_int_least8_t_exchange
-    public static let atomic_load                       = __catmc_atomic_int_least8_t_load
-    public static let atomic_store                      = __catmc_atomic_int_least8_t_store
+    public static let atomic_create = __catmc_atomic_int_least8_t_create
+    public static let atomic_destroy = __catmc_atomic_int_least8_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_int_least8_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_int_least8_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_int_least8_t_add
+    public static let atomic_sub = __catmc_atomic_int_least8_t_sub
+    public static let atomic_and = __catmc_atomic_int_least8_t_and
+    public static let atomic_or = __catmc_atomic_int_least8_t_or
+    public static let atomic_xor = __catmc_atomic_int_least8_t_xor
+    public static let atomic_exchange = __catmc_atomic_int_least8_t_exchange
+    public static let atomic_load = __catmc_atomic_int_least8_t_load
+    public static let atomic_store = __catmc_atomic_int_least8_t_store
 }
 
 extension UInt8: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_uint_least8_t_create
-    public static let atomic_destroy                    = __catmc_atomic_uint_least8_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_uint_least8_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_uint_least8_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_uint_least8_t_add
-    public static let atomic_sub                        = __catmc_atomic_uint_least8_t_sub
-    public static let atomic_and                        = __catmc_atomic_uint_least8_t_and
-    public static let atomic_or                         = __catmc_atomic_uint_least8_t_or
-    public static let atomic_xor                        = __catmc_atomic_uint_least8_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_uint_least8_t_exchange
-    public static let atomic_load                       = __catmc_atomic_uint_least8_t_load
-    public static let atomic_store                      = __catmc_atomic_uint_least8_t_store
+    public static let atomic_create = __catmc_atomic_uint_least8_t_create
+    public static let atomic_destroy = __catmc_atomic_uint_least8_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_uint_least8_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_uint_least8_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_uint_least8_t_add
+    public static let atomic_sub = __catmc_atomic_uint_least8_t_sub
+    public static let atomic_and = __catmc_atomic_uint_least8_t_and
+    public static let atomic_or = __catmc_atomic_uint_least8_t_or
+    public static let atomic_xor = __catmc_atomic_uint_least8_t_xor
+    public static let atomic_exchange = __catmc_atomic_uint_least8_t_exchange
+    public static let atomic_load = __catmc_atomic_uint_least8_t_load
+    public static let atomic_store = __catmc_atomic_uint_least8_t_store
 }
 
 extension Int16: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_int_least16_t_create
-    public static let atomic_destroy                    = __catmc_atomic_int_least16_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_int_least16_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_int_least16_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_int_least16_t_add
-    public static let atomic_sub                        = __catmc_atomic_int_least16_t_sub
-    public static let atomic_and                        = __catmc_atomic_int_least16_t_and
-    public static let atomic_or                         = __catmc_atomic_int_least16_t_or
-    public static let atomic_xor                        = __catmc_atomic_int_least16_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_int_least16_t_exchange
-    public static let atomic_load                       = __catmc_atomic_int_least16_t_load
-    public static let atomic_store                      = __catmc_atomic_int_least16_t_store
+    public static let atomic_create = __catmc_atomic_int_least16_t_create
+    public static let atomic_destroy = __catmc_atomic_int_least16_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_int_least16_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_int_least16_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_int_least16_t_add
+    public static let atomic_sub = __catmc_atomic_int_least16_t_sub
+    public static let atomic_and = __catmc_atomic_int_least16_t_and
+    public static let atomic_or = __catmc_atomic_int_least16_t_or
+    public static let atomic_xor = __catmc_atomic_int_least16_t_xor
+    public static let atomic_exchange = __catmc_atomic_int_least16_t_exchange
+    public static let atomic_load = __catmc_atomic_int_least16_t_load
+    public static let atomic_store = __catmc_atomic_int_least16_t_store
 }
 
 extension UInt16: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_uint_least16_t_create
-    public static let atomic_destroy                    = __catmc_atomic_uint_least16_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_uint_least16_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_uint_least16_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_uint_least16_t_add
-    public static let atomic_sub                        = __catmc_atomic_uint_least16_t_sub
-    public static let atomic_and                        = __catmc_atomic_uint_least16_t_and
-    public static let atomic_or                         = __catmc_atomic_uint_least16_t_or
-    public static let atomic_xor                        = __catmc_atomic_uint_least16_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_uint_least16_t_exchange
-    public static let atomic_load                       = __catmc_atomic_uint_least16_t_load
-    public static let atomic_store                      = __catmc_atomic_uint_least16_t_store
+    public static let atomic_create = __catmc_atomic_uint_least16_t_create
+    public static let atomic_destroy = __catmc_atomic_uint_least16_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_uint_least16_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_uint_least16_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_uint_least16_t_add
+    public static let atomic_sub = __catmc_atomic_uint_least16_t_sub
+    public static let atomic_and = __catmc_atomic_uint_least16_t_and
+    public static let atomic_or = __catmc_atomic_uint_least16_t_or
+    public static let atomic_xor = __catmc_atomic_uint_least16_t_xor
+    public static let atomic_exchange = __catmc_atomic_uint_least16_t_exchange
+    public static let atomic_load = __catmc_atomic_uint_least16_t_load
+    public static let atomic_store = __catmc_atomic_uint_least16_t_store
 }
 
 extension Int32: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_int_least32_t_create
-    public static let atomic_destroy                    = __catmc_atomic_int_least32_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_int_least32_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_int_least32_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_int_least32_t_add
-    public static let atomic_sub                        = __catmc_atomic_int_least32_t_sub
-    public static let atomic_and                        = __catmc_atomic_int_least32_t_and
-    public static let atomic_or                         = __catmc_atomic_int_least32_t_or
-    public static let atomic_xor                        = __catmc_atomic_int_least32_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_int_least32_t_exchange
-    public static let atomic_load                       = __catmc_atomic_int_least32_t_load
-    public static let atomic_store                      = __catmc_atomic_int_least32_t_store
+    public static let atomic_create = __catmc_atomic_int_least32_t_create
+    public static let atomic_destroy = __catmc_atomic_int_least32_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_int_least32_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_int_least32_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_int_least32_t_add
+    public static let atomic_sub = __catmc_atomic_int_least32_t_sub
+    public static let atomic_and = __catmc_atomic_int_least32_t_and
+    public static let atomic_or = __catmc_atomic_int_least32_t_or
+    public static let atomic_xor = __catmc_atomic_int_least32_t_xor
+    public static let atomic_exchange = __catmc_atomic_int_least32_t_exchange
+    public static let atomic_load = __catmc_atomic_int_least32_t_load
+    public static let atomic_store = __catmc_atomic_int_least32_t_store
 }
 
 extension UInt32: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_uint_least32_t_create
-    public static let atomic_destroy                    = __catmc_atomic_uint_least32_t_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_uint_least32_t_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_uint_least32_t_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_uint_least32_t_add
-    public static let atomic_sub                        = __catmc_atomic_uint_least32_t_sub
-    public static let atomic_and                        = __catmc_atomic_uint_least32_t_and
-    public static let atomic_or                         = __catmc_atomic_uint_least32_t_or
-    public static let atomic_xor                        = __catmc_atomic_uint_least32_t_xor
-    public static let atomic_exchange                   = __catmc_atomic_uint_least32_t_exchange
-    public static let atomic_load                       = __catmc_atomic_uint_least32_t_load
-    public static let atomic_store                      = __catmc_atomic_uint_least32_t_store
+    public static let atomic_create = __catmc_atomic_uint_least32_t_create
+    public static let atomic_destroy = __catmc_atomic_uint_least32_t_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_uint_least32_t_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_uint_least32_t_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_uint_least32_t_add
+    public static let atomic_sub = __catmc_atomic_uint_least32_t_sub
+    public static let atomic_and = __catmc_atomic_uint_least32_t_and
+    public static let atomic_or = __catmc_atomic_uint_least32_t_or
+    public static let atomic_xor = __catmc_atomic_uint_least32_t_xor
+    public static let atomic_exchange = __catmc_atomic_uint_least32_t_exchange
+    public static let atomic_load = __catmc_atomic_uint_least32_t_load
+    public static let atomic_store = __catmc_atomic_uint_least32_t_store
 }
 
 extension Int64: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_long_long_create
-    public static let atomic_destroy                    = __catmc_atomic_long_long_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_long_long_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_long_long_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_long_long_add
-    public static let atomic_sub                        = __catmc_atomic_long_long_sub
-    public static let atomic_and                        = __catmc_atomic_long_long_and
-    public static let atomic_or                         = __catmc_atomic_long_long_or
-    public static let atomic_xor                        = __catmc_atomic_long_long_xor
-    public static let atomic_exchange                   = __catmc_atomic_long_long_exchange
-    public static let atomic_load                       = __catmc_atomic_long_long_load
-    public static let atomic_store                      = __catmc_atomic_long_long_store
+    public static let atomic_create = __catmc_atomic_long_long_create
+    public static let atomic_destroy = __catmc_atomic_long_long_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_long_long_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_long_long_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_long_long_add
+    public static let atomic_sub = __catmc_atomic_long_long_sub
+    public static let atomic_and = __catmc_atomic_long_long_and
+    public static let atomic_or = __catmc_atomic_long_long_or
+    public static let atomic_xor = __catmc_atomic_long_long_xor
+    public static let atomic_exchange = __catmc_atomic_long_long_exchange
+    public static let atomic_load = __catmc_atomic_long_long_load
+    public static let atomic_store = __catmc_atomic_long_long_store
 }
 
 extension UInt64: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_unsigned_long_long_create
-    public static let atomic_destroy                    = __catmc_atomic_unsigned_long_long_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_unsigned_long_long_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_unsigned_long_long_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_unsigned_long_long_add
-    public static let atomic_sub                        = __catmc_atomic_unsigned_long_long_sub
-    public static let atomic_and                        = __catmc_atomic_unsigned_long_long_and
-    public static let atomic_or                         = __catmc_atomic_unsigned_long_long_or
-    public static let atomic_xor                        = __catmc_atomic_unsigned_long_long_xor
-    public static let atomic_exchange                   = __catmc_atomic_unsigned_long_long_exchange
-    public static let atomic_load                       = __catmc_atomic_unsigned_long_long_load
-    public static let atomic_store                      = __catmc_atomic_unsigned_long_long_store
+    public static let atomic_create = __catmc_atomic_unsigned_long_long_create
+    public static let atomic_destroy = __catmc_atomic_unsigned_long_long_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_unsigned_long_long_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_unsigned_long_long_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_unsigned_long_long_add
+    public static let atomic_sub = __catmc_atomic_unsigned_long_long_sub
+    public static let atomic_and = __catmc_atomic_unsigned_long_long_and
+    public static let atomic_or = __catmc_atomic_unsigned_long_long_or
+    public static let atomic_xor = __catmc_atomic_unsigned_long_long_xor
+    public static let atomic_exchange = __catmc_atomic_unsigned_long_long_exchange
+    public static let atomic_load = __catmc_atomic_unsigned_long_long_load
+    public static let atomic_store = __catmc_atomic_unsigned_long_long_store
 }
 
 extension Int: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_long_create
-    public static let atomic_destroy                    = __catmc_atomic_long_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_long_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_long_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_long_add
-    public static let atomic_sub                        = __catmc_atomic_long_sub
-    public static let atomic_and                        = __catmc_atomic_long_and
-    public static let atomic_or                         = __catmc_atomic_long_or
-    public static let atomic_xor                        = __catmc_atomic_long_xor
-    public static let atomic_exchange                   = __catmc_atomic_long_exchange
-    public static let atomic_load                       = __catmc_atomic_long_load
-    public static let atomic_store                      = __catmc_atomic_long_store
+    public static let atomic_create = __catmc_atomic_long_create
+    public static let atomic_destroy = __catmc_atomic_long_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_long_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_long_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_long_add
+    public static let atomic_sub = __catmc_atomic_long_sub
+    public static let atomic_and = __catmc_atomic_long_and
+    public static let atomic_or = __catmc_atomic_long_or
+    public static let atomic_xor = __catmc_atomic_long_xor
+    public static let atomic_exchange = __catmc_atomic_long_exchange
+    public static let atomic_load = __catmc_atomic_long_load
+    public static let atomic_store = __catmc_atomic_long_store
 }
 
 extension UInt: AtomicPrimitive {
-    public static let atomic_create                     = __catmc_atomic_unsigned_long_create
-    public static let atomic_destroy                    = __catmc_atomic_unsigned_long_destroy
-    public static let atomic_compare_and_exchange       = __catmc_atomic_unsigned_long_compare_and_exchange_strong
-    public static let atomic_compare_and_exchange_weak  = __catmc_atomic_unsigned_long_compare_and_exchange_weak
-    public static let atomic_add                        = __catmc_atomic_unsigned_long_add
-    public static let atomic_sub                        = __catmc_atomic_unsigned_long_sub
-    public static let atomic_and                        = __catmc_atomic_unsigned_long_and
-    public static let atomic_or                         = __catmc_atomic_unsigned_long_or
-    public static let atomic_xor                        = __catmc_atomic_unsigned_long_xor
-    public static let atomic_exchange                   = __catmc_atomic_unsigned_long_exchange
-    public static let atomic_load                       = __catmc_atomic_unsigned_long_load
-    public static let atomic_store                      = __catmc_atomic_unsigned_long_store
+    public static let atomic_create = __catmc_atomic_unsigned_long_create
+    public static let atomic_destroy = __catmc_atomic_unsigned_long_destroy
+    public static let atomic_compare_and_exchange = __catmc_atomic_unsigned_long_compare_and_exchange_strong
+    public static let atomic_compare_and_exchange_weak = __catmc_atomic_unsigned_long_compare_and_exchange_weak
+    public static let atomic_add = __catmc_atomic_unsigned_long_add
+    public static let atomic_sub = __catmc_atomic_unsigned_long_sub
+    public static let atomic_and = __catmc_atomic_unsigned_long_and
+    public static let atomic_or = __catmc_atomic_unsigned_long_or
+    public static let atomic_xor = __catmc_atomic_unsigned_long_xor
+    public static let atomic_exchange = __catmc_atomic_unsigned_long_exchange
+    public static let atomic_load = __catmc_atomic_unsigned_long_load
+    public static let atomic_store = __catmc_atomic_unsigned_long_store
 }
-
-
-
-
 
 /// `AtomicBox` is a heap-allocated box which allows atomic access to an instance of a Swift class.
 ///
@@ -566,7 +562,7 @@ public class AtomicBox<T: AnyObject> {
     }
 
     deinit {
-        let oldPtrBits = self.storage.exchange(with: 0xdeadbee)
+        let oldPtrBits = self.storage.exchange(with: 0xDEADBEE)
         if oldPtrBits != 0 {
             let oldPtr = Unmanaged<T>.fromOpaque(UnsafeRawPointer(bitPattern: oldPtrBits)!)
             oldPtr.release()
@@ -638,9 +634,9 @@ public class AtomicBox<T: AnyObject> {
             let desiredBitPtr: UInt = desiredPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
 
             if self.storage.compareAndExchangeWeak(expected: expectedBitPtr,
-                                               desired: desiredBitPtr,
-                                               succ: succ,
-                                               fail: fail) {
+                                                   desired: desiredBitPtr,
+                                                   succ: succ,
+                                                   fail: fail) {
                 _ = desiredPtr?.retain()
                 expectedPtr?.release()
                 return true
@@ -696,7 +692,7 @@ public class AtomicBox<T: AnyObject> {
     ///   - value: The new value to set the object to.
     ///   - order: Memory order for this operation
     @inlinable
-    public func store(_ value: T?, order: MemoryOrder = .seq_cst) -> Void {
+    public func store(_ value: T?, order: MemoryOrder = .seq_cst) {
         _ = self.exchange(with: value, order: order)
     }
 }

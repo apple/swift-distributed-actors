@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-import DistributedActorsTestKit
 @testable import DistributedActors
+import DistributedActorsTestKit
 @testable import Logging
+import XCTest
 
 final class DeadLetterTests: XCTestCase {
     var system: ActorSystem!
@@ -27,7 +27,7 @@ final class DeadLetterTests: XCTestCase {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: "mock")
         }
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -35,6 +35,7 @@ final class DeadLetterTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
@@ -50,6 +51,7 @@ final class DeadLetterTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: ActorSystem integrated tests
 
     func test_sendingToTerminatedActor_shouldResultInDeadLetter() throws {
@@ -84,7 +86,7 @@ final class DeadLetterTests: XCTestCase {
             "This is a question, reply to \(replyTo)"
         }
 
-        _ = shouldThrow() {
+        _ = shouldThrow {
             try answer.nioFuture.wait()
         }
 
@@ -94,9 +96,9 @@ final class DeadLetterTests: XCTestCase {
 
     private func awaitLogContaining(text: String) throws {
         return try self.testKit.eventually(within: .seconds(1)) {
-            if !(self.logCaptureHandler.logs.contains(where: { log in
+            if !self.logCaptureHandler.logs.contains(where: { log in
                 "\(log)".contains(text)
-            })) {
+            }) {
                 throw TestError("Keep waiting; Contained only: \(self.logCaptureHandler.logs)")
             }
         }

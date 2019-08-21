@@ -21,30 +21,28 @@ import XCTest
 ///
 
 extension ActorDeferTests {
-
-   static var allTests : [(String, (ActorDeferTests) -> () throws -> Void)] {
-      return [
-                ("test_defer_untilReceived_shouldExecute_whenStayingSame", test_defer_untilReceived_shouldExecute_whenStayingSame),
-                ("test_defer_untilReceived_shouldExecute_afterNoError_whenStopping", test_defer_untilReceived_shouldExecute_afterNoError_whenStopping),
-                ("test_defer_untilReceived_shouldExecute_afterError", test_defer_untilReceived_shouldExecute_afterError),
-                ("test_defer_untilReceived_shouldExecute_afterFault", test_defer_untilReceived_shouldExecute_afterFault),
-                ("test_defer_untilTerminated_shouldNotExecute_whenStayingSame", test_defer_untilTerminated_shouldNotExecute_whenStayingSame),
-                ("test_defer_untilTerminated_shouldExecute_whenStopping", test_defer_untilTerminated_shouldExecute_whenStopping),
-                ("test_defer_untilTerminated_shouldExecute_afterError", test_defer_untilTerminated_shouldExecute_afterError),
-                ("test_defer_untilTerminated_shouldExecute_afterFault", test_defer_untilTerminated_shouldExecute_afterFault),
-                ("test_defer_untilFailed_shouldNotExecute_whenStayingSame", test_defer_untilFailed_shouldNotExecute_whenStayingSame),
-                ("test_defer_untilFailed_shouldNotExecute_whenStopping", test_defer_untilFailed_shouldNotExecute_whenStopping),
-                ("test_defer_untilFailed_shouldExecute_afterError", test_defer_untilFailed_shouldExecute_afterError),
-                ("test_defer_untilFailed_shouldExecute_afterFault", test_defer_untilFailed_shouldExecute_afterFault),
-                ("test_defer_untilReceiveFailed_shouldNotExecute_whenStayingSame", test_defer_untilReceiveFailed_shouldNotExecute_whenStayingSame),
-                ("test_defer_untilReceiveFailed_shouldNotExecute_whenStopping", test_defer_untilReceiveFailed_shouldNotExecute_whenStopping),
-                ("test_defer_untilReceiveFailed_shouldExecute_afterError", test_defer_untilReceiveFailed_shouldExecute_afterError),
-                ("test_defer_untilReceiveFailed_shouldExecute_afterFault", test_defer_untilReceiveFailed_shouldExecute_afterFault),
-                ("test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction", test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction),
-                ("test_mixedDefers_shouldExecuteAtRightPointsInTime_failed", test_mixedDefers_shouldExecuteAtRightPointsInTime_failed),
-                ("test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped", test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped),
-                ("test_executeDefer_whenSetupReturnsSame", test_executeDefer_whenSetupReturnsSame),
-           ]
-   }
+    static var allTests: [(String, (ActorDeferTests) -> () throws -> Void)] {
+        return [
+            ("test_defer_untilReceived_shouldExecute_whenStayingSame", test_defer_untilReceived_shouldExecute_whenStayingSame),
+            ("test_defer_untilReceived_shouldExecute_afterNoError_whenStopping", test_defer_untilReceived_shouldExecute_afterNoError_whenStopping),
+            ("test_defer_untilReceived_shouldExecute_afterError", test_defer_untilReceived_shouldExecute_afterError),
+            ("test_defer_untilReceived_shouldExecute_afterFault", test_defer_untilReceived_shouldExecute_afterFault),
+            ("test_defer_untilTerminated_shouldNotExecute_whenStayingSame", test_defer_untilTerminated_shouldNotExecute_whenStayingSame),
+            ("test_defer_untilTerminated_shouldExecute_whenStopping", test_defer_untilTerminated_shouldExecute_whenStopping),
+            ("test_defer_untilTerminated_shouldExecute_afterError", test_defer_untilTerminated_shouldExecute_afterError),
+            ("test_defer_untilTerminated_shouldExecute_afterFault", test_defer_untilTerminated_shouldExecute_afterFault),
+            ("test_defer_untilFailed_shouldNotExecute_whenStayingSame", test_defer_untilFailed_shouldNotExecute_whenStayingSame),
+            ("test_defer_untilFailed_shouldNotExecute_whenStopping", test_defer_untilFailed_shouldNotExecute_whenStopping),
+            ("test_defer_untilFailed_shouldExecute_afterError", test_defer_untilFailed_shouldExecute_afterError),
+            ("test_defer_untilFailed_shouldExecute_afterFault", test_defer_untilFailed_shouldExecute_afterFault),
+            ("test_defer_untilReceiveFailed_shouldNotExecute_whenStayingSame", test_defer_untilReceiveFailed_shouldNotExecute_whenStayingSame),
+            ("test_defer_untilReceiveFailed_shouldNotExecute_whenStopping", test_defer_untilReceiveFailed_shouldNotExecute_whenStopping),
+            ("test_defer_untilReceiveFailed_shouldExecute_afterError", test_defer_untilReceiveFailed_shouldExecute_afterError),
+            ("test_defer_untilReceiveFailed_shouldExecute_afterFault", test_defer_untilReceiveFailed_shouldExecute_afterFault),
+            ("test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction", test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction),
+            ("test_mixedDefers_shouldExecuteAtRightPointsInTime_failed", test_mixedDefers_shouldExecuteAtRightPointsInTime_failed),
+            ("test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped", test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped),
+            ("test_executeDefer_whenSetupReturnsSame", test_executeDefer_whenSetupReturnsSame),
+        ]
+    }
 }
-

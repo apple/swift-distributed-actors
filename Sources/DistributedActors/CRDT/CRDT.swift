@@ -15,6 +15,7 @@
 import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Core CRDT protocols
 
 /// Root type for all state-based CRDTs.
@@ -117,6 +118,7 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor-owned CRDT
 
 // Each owned-CRDT has an owner (e.g., actor) and a "pure" CRDT (e.g., `CRDT.GCounter`). The owner has a reference to
@@ -146,7 +148,7 @@ public enum CRDT {
     public class ActorOwned<DataType: CvRDT> {
         // Must be an implicitly unwrapped optional variable property because it requires (`ActorOwned`) `self`
         // during initialization, and `ActorOwned`'s initializer has a dependency on `AnyOwnerCell`.
-        internal var owner: AnyOwnerCell<DataType>! = nil
+        internal var owner: AnyOwnerCell<DataType>!
         let id: CRDT.Identity
         internal var data: DataType
         public internal(set) var status: Status = .active
@@ -293,8 +295,7 @@ extension CRDT {
         var ownerDefinedOnUpdate: ((Identity, DataType) -> Void)?
         var ownerDefinedOnDelete: ((Identity) -> Void)?
 
-        public init() {
-        }
+        public init() {}
 
         // `ReplicatedDataOwnerProtocol.updated`
         func onUpdate(actorOwned: CRDT.ActorOwned<DataType>, data: DataType) {
@@ -309,8 +310,7 @@ extension CRDT {
         }
 
         // `OwnerCommand.WriteResult.success`
-        func onWriteSuccess(actorOwned: CRDT.ActorOwned<DataType>) {
-        }
+        func onWriteSuccess(actorOwned: CRDT.ActorOwned<DataType>) {}
     }
 
     public class ActorOwnedDeltaCRDTDelegate<DataType: DeltaCRDT>: ActorOwnedDelegate<DataType> {
@@ -327,6 +327,7 @@ extension CRDT.ActorOwned where DataType: DeltaCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: CRDT.Identity
 
 extension CRDT {
@@ -346,6 +347,7 @@ extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpol
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: CRDT.ReplicaId
 
 extension CRDT {
@@ -367,14 +369,14 @@ extension CRDT.ReplicaId: CustomStringConvertible {
 }
 
 extension CRDT.ReplicaId: Comparable {
-    public static func <(lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
+    public static func < (lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l < r
         }
     }
 
-    public static func ==(lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
+    public static func == (lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
         switch (lhs, rhs) {
         case (.actorAddress(let l), .actorAddress(let r)):
             return l == r

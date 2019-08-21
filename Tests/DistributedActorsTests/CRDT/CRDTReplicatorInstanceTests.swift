@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 // TODO: add tests for non-delta-CRDT
 
@@ -24,7 +24,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -32,12 +32,12 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
     }
 
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
-    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)    
+    let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
 
     func test_registerOwner_shouldAddActorRefToOwnersSetForCRDT() throws {
         let replicator = CRDT.Replicator.Instance(.default)
 
-        let ownerP = testKit.spawnTestProbe(expecting: CRDT.Replication.DataOwnerMessage.self)
+        let ownerP = self.testKit.spawnTestProbe(expecting: CRDT.Replication.DataOwnerMessage.self)
         let id = CRDT.Identity("test-data")
 
         // Ensure CRDT has no owner
@@ -58,7 +58,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 10)
 
         // Ensure g1 is not in data store
@@ -94,7 +94,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -131,7 +131,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -168,7 +168,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -205,9 +205,9 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1Alpha = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1Alpha = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1Alpha.increment(by: 1)
-        var g1Beta = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g1Beta = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g1Beta.increment(by: 10)
 
         // Write g1Alpha (as new so `deltaMerge` ignored)
@@ -239,7 +239,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 (as new so `deltaMerge` ignored)
@@ -261,7 +261,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         guard case .missingCRDTForDelta = replicator.writeDelta(id, g1.delta!.asAnyStateBasedCRDT) else { // ! safe because `increment` should set `delta`
@@ -273,7 +273,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 to data store
@@ -333,7 +333,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         // Write g1 to data store

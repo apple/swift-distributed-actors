@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
+import Foundation
 import XCTest
 
 internal enum ActorTestProbeCommand<M> {
@@ -24,12 +24,12 @@ internal enum ActorTestProbeCommand<M> {
 
     case realMessage(message: M)
 }
+
 extension ActorTestProbeCommand: NoSerializationVerification {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
-final public class ActorTestProbe<Message> {
-
+public final class ActorTestProbe<Message> {
     public let name: String
     public static var naming: ActorNaming {
         // has to be computed property since: static stored properties are not supported in generic types
@@ -56,7 +56,7 @@ final public class ActorTestProbe<Message> {
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
     private let terminationsQueue = LinkedBlockingQueue<Signals.Terminated>()
 
-    private var lastMessageObserved: Message? = nil
+    private var lastMessageObserved: Message?
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
     internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
@@ -66,7 +66,8 @@ final public class ActorTestProbe<Message> {
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
             messageQueue: self.messagesQueue,
             signalQueue: self.signalQueue,
-            terminationsQueue: self.terminationsQueue)
+            terminationsQueue: self.terminationsQueue
+        )
 
         do {
             self.internalRef = try spawn(behavior)
@@ -74,7 +75,7 @@ final public class ActorTestProbe<Message> {
             fatalError("Failed to spawn test probe!", file: file, line: line)
         }
 
-        self.name = internalRef.address.name
+        self.name = self.internalRef.address.name
 
         let wrapRealMessages: (Message) -> ProbeCommands = { msg in
             ProbeCommands.realMessage(message: msg)
@@ -85,7 +86,7 @@ final public class ActorTestProbe<Message> {
     private static func behavior(messageQueue: LinkedBlockingQueue<Message>,
                                  signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
                                  terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
-        return Behavior<ProbeCommands>.receive { (context, message) in
+        return Behavior<ProbeCommands>.receive { context, message in
             guard let cell = context.myself._unsafeUnwrapCell.actor else {
                 throw TestProbeInitializationError.failedToObtainUnderlyingCell
             }
@@ -97,7 +98,7 @@ final public class ActorTestProbe<Message> {
                 messageQueue.enqueue(msg)
                 return .same
 
-                // probe commands:
+            // probe commands:
             case .watchCommand(let who, let file, let line):
                 cell.deathWatch.watch(watchee: who, myself: context.myself, parent: cell._parent, file: file, line: line)
                 return .same
@@ -109,7 +110,7 @@ final public class ActorTestProbe<Message> {
             case .stopCommand:
                 return .stop
             }
-        }.receiveSignal { (context, signal) in
+        }.receiveSignal { _, signal in
             traceLog_Probe("Probe received: [\(signal)]:\(type(of: signal))")
             switch signal {
             case let terminated as Signals.Terminated:
@@ -124,13 +125,13 @@ final public class ActorTestProbe<Message> {
     enum TestProbeInitializationError: Error {
         case failedToObtainUnderlyingCell
     }
+
     enum ExpectationError: Error {
         case noMessagesInQueue
         case notEnoughMessagesInQueue(actualCount: Int, expectedCount: Int)
         case withinDeadlineExceeded(timeout: TimeAmount)
         case timeoutAwaitingMessage(expected: AnyObject, timeout: TimeAmount)
     }
-
 }
 
 extension ActorTestProbe: CustomStringConvertible {
@@ -141,7 +142,6 @@ extension ActorTestProbe: CustomStringConvertible {
 }
 
 extension ActorTestProbe {
-
     /// Expects a message to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessage(_:Message)` overload which provides automatic equality checking.
     ///
@@ -182,7 +182,6 @@ extension ActorTestProbe {
 }
 
 extension ActorTestProbe {
-
     /// Expects a message to "maybe" arrive at the `ActorTestProbe` and returns it for further assertions,
     /// if no message arrives within the timeout (by default `expectationTimeout`) a `nil` value is returned.
     ///
@@ -235,6 +234,7 @@ extension ActorTestProbe {
     public func expectMessages(count: Int, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> [Message] {
         return try self.expectMessages(count: count, within: self.expectationTimeout, file: file, line: line, column: column)
     }
+
     /// Expects multiple messages to arrive at the TestProbe and returns it for further assertions.
     /// See also the `expectMessagesInAnyOrder([Message])` overload which provides automatic equality checking.
     ///
@@ -274,7 +274,6 @@ extension ActorTestProbe {
 }
 
 extension ActorTestProbe where Message: Equatable {
-
     // MARK: Expecting messages
 
     /// Fails in nice readable ways:
@@ -341,6 +340,7 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Clearing buffered messages (for expectations)
 
     public func clearMessages() {
@@ -375,15 +375,14 @@ public final class ProbeInterceptor<Message>: Interceptor<Message> {
         self.probe = probe
     }
 
-    final override public func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
+    public final override func interceptMessage(target: Behavior<Message>, context: ActorContext<Message>, message: Message) throws -> Behavior<Message> {
         self.probe.tell(message)
         return try target.interpretMessage(context: context, message: message)
     }
 }
 
 public extension ActorTestProbe {
-
-    // TODO would be nice to be able to also intercept system messages hm...
+    // TODO: would be nice to be able to also intercept system messages hm...
 
     func interceptAllMessages(sentTo behavior: Behavior<Message>) -> Behavior<Message> {
         let interceptor: Interceptor<Message> = ProbeInterceptor(probe: self)
@@ -394,12 +393,11 @@ public extension ActorTestProbe {
 // MARK: Watching Actors
 
 extension ActorTestProbe {
-
     @discardableResult
     private func within<T>(_ timeout: TimeAmount, _ block: () throws -> T) throws -> T {
-        // FIXME implement by scheduling checks rather than spinning
+        // FIXME: implement by scheduling checks rather than spinning
         let deadline = Deadline.fromNow(timeout)
-        var lastObservedError: Error? = nil
+        var lastObservedError: Error?
 
         // TODO: make more async than seining like this, also with check interval rather than spin, or use the blocking queue properly
         while !deadline.isBefore(.now()) {
@@ -420,7 +418,6 @@ extension ActorTestProbe {
     }
 
     // MARK: Failure helpers
-
 
     /// Returns a failure with additional information of the probes last observed messages.
     /// Most useful as the `else` in an guard expression where the left hand side was an [expectMessage].
@@ -449,15 +446,15 @@ extension ActorTestProbe {
     /// Expects a message and applies the nested logic to extract values out of it.
     ///
     /// The callback MAY return `nil` in order to signal "this is not the expected message", or throw an error itself.
-    // TODO find a better name; it is not exactly "fish for message" though, that can ignore messages for a while, this one does not
+    // TODO: find a better name; it is not exactly "fish for message" though, that can ignore messages for a while, this one does not
     public func expectMessageMatching<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ matchExtract: (Message) throws -> T?) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let timeout = expectationTimeout
+        let timeout = self.expectationTimeout
         do {
             let receivedMessage: Message = try self.receiveMessage(within: timeout)
             guard let extracted = try matchExtract(receivedMessage) else {
                 let message = "Received \(Message.self) message, however it did not pass the matching check, " +
-                "and did not produce the requested \(T.self)."
+                    "and did not produce the requested \(T.self)."
                 throw callSite.error(message)
             }
             return extracted
@@ -466,7 +463,6 @@ extension ActorTestProbe {
             throw callSite.error(message)
         }
     }
-
 
     // MARK: Expecting no message/signal within a timeout
 
@@ -493,14 +489,13 @@ extension ActorTestProbe {
         }
     }
 
-
     // MARK: Expecting termination signals
 
     /// Expects a signal to be enqueued to this actor within the default `expectationTimeout`.
     public func expectSignal(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        let maybeGot: SystemMessage? = self.signalQueue.poll(expectationTimeout)
+        let maybeGot: SystemMessage? = self.signalQueue.poll(self.expectationTimeout)
         guard let got = maybeGot else {
             throw callSite.error("Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
         }
@@ -512,7 +507,6 @@ extension ActorTestProbe {
         got.shouldEqual(expected, file: file, line: line, column: column)
     }
 
-
     // MARK: Death watch methods
 
     /// Instructs this probe to watch the passed in actor.
@@ -522,7 +516,7 @@ extension ActorTestProbe {
     /// The actor is the being watched subject, not a specific reference to it.
     ///
     /// This enables it to use `expectTerminated` to await for the watched actors termination.
-    /// 
+    ///
     /// Returns: reference to the passed in watchee actor.
     @discardableResult
     public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
@@ -550,7 +544,7 @@ extension ActorTestProbe {
     ///            otherwise the termination signal will never be received.
     /// - Returns: the matched `.terminated` message
     @discardableResult
-    // TODO expectTermination(of: ...) maybe nicer wording?
+    // TODO: expectTermination(of: ...) maybe nicer wording?
     public func expectTerminated<T>(_ ref: ActorRef<T>, within timeout: TimeAmount? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> Signals.Terminated {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let timeout = timeout ?? self.expectationTimeout
@@ -575,7 +569,7 @@ extension ActorTestProbe {
         var pathSet: Set<ActorAddress> = Set(refs.map { $0.address })
 
         let deadline = Deadline.fromNow(self.expectationTimeout)
-        while !pathSet.isEmpty && deadline.hasTimeLeft() {
+        while !pathSet.isEmpty, deadline.hasTimeLeft() {
             guard let terminated = self.terminationsQueue.poll(deadline.timeLeft) else {
                 throw callSite.error("Expected [\(refs)] to terminate within \(self.expectationTimeout.prettyDescription)")
             }
@@ -594,6 +588,4 @@ extension ActorTestProbe {
         // not strictly required, but can yield more predictable results when used from tests after all
         self.internalRef.tell(.stopCommand)
     }
-
 }
-

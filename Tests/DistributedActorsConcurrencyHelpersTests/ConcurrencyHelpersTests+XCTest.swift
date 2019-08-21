@@ -21,37 +21,35 @@ import XCTest
 ///
 
 extension ConcurrencyHelpersTests {
-
-   static var allTests : [(String, (ConcurrencyHelpersTests) -> () throws -> Void)] {
-      return [
-                ("testLargeContendedAtomicSum", testLargeContendedAtomicSum),
-                ("testCompareAndExchangeBool", testCompareAndExchangeBool),
-                ("testCompareAndExchangeWeakBool", testCompareAndExchangeWeakBool),
-                ("testAllOperationsBool", testAllOperationsBool),
-                ("testCompareAndExchangeUInts", testCompareAndExchangeUInts),
-                ("testCompareAndExchangeWeakUInts", testCompareAndExchangeWeakUInts),
-                ("testCompareAndExchangeInts", testCompareAndExchangeInts),
-                ("testCompareAndExchangeWeakInts", testCompareAndExchangeWeakInts),
-                ("testAddSub", testAddSub),
-                ("testAnd", testAnd),
-                ("testOr", testOr),
-                ("testXor", testXor),
-                ("testExchange", testExchange),
-                ("testLoadStore", testLoadStore),
-                ("testLockMutualExclusion", testLockMutualExclusion),
-                ("testWithLockMutualExclusion", testWithLockMutualExclusion),
-                ("testConditionLockMutualExclusion", testConditionLockMutualExclusion),
-                ("testConditionLock", testConditionLock),
-                ("testConditionLockWithDifferentConditions", testConditionLockWithDifferentConditions),
-                ("testAtomicBoxDoesNotTriviallyLeak", testAtomicBoxDoesNotTriviallyLeak),
-                ("testAtomicBoxCompareAndExchangeWorksIfEqual", testAtomicBoxCompareAndExchangeWorksIfEqual),
-                ("testAtomicBoxCompareAndExchangeWorksIfNotEqual", testAtomicBoxCompareAndExchangeWorksIfNotEqual),
-                ("testAtomicBoxStoreWorks", testAtomicBoxStoreWorks),
-                ("testAtomicBoxCompareAndExchangeOntoItselfWorks", testAtomicBoxCompareAndExchangeOntoItselfWorks),
-                ("testAtomicBoxEmpty", testAtomicBoxEmpty),
-                ("testAtomicBoxStoreNil", testAtomicBoxStoreNil),
-                ("testAtomicBoxCOmpareExchangeNil", testAtomicBoxCOmpareExchangeNil),
-           ]
-   }
+    static var allTests: [(String, (ConcurrencyHelpersTests) -> () throws -> Void)] {
+        return [
+            ("testLargeContendedAtomicSum", testLargeContendedAtomicSum),
+            ("testCompareAndExchangeBool", testCompareAndExchangeBool),
+            ("testCompareAndExchangeWeakBool", testCompareAndExchangeWeakBool),
+            ("testAllOperationsBool", testAllOperationsBool),
+            ("testCompareAndExchangeUInts", testCompareAndExchangeUInts),
+            ("testCompareAndExchangeWeakUInts", testCompareAndExchangeWeakUInts),
+            ("testCompareAndExchangeInts", testCompareAndExchangeInts),
+            ("testCompareAndExchangeWeakInts", testCompareAndExchangeWeakInts),
+            ("testAddSub", testAddSub),
+            ("testAnd", testAnd),
+            ("testOr", testOr),
+            ("testXor", testXor),
+            ("testExchange", testExchange),
+            ("testLoadStore", testLoadStore),
+            ("testLockMutualExclusion", testLockMutualExclusion),
+            ("testWithLockMutualExclusion", testWithLockMutualExclusion),
+            ("testConditionLockMutualExclusion", testConditionLockMutualExclusion),
+            ("testConditionLock", testConditionLock),
+            ("testConditionLockWithDifferentConditions", testConditionLockWithDifferentConditions),
+            ("testAtomicBoxDoesNotTriviallyLeak", testAtomicBoxDoesNotTriviallyLeak),
+            ("testAtomicBoxCompareAndExchangeWorksIfEqual", testAtomicBoxCompareAndExchangeWorksIfEqual),
+            ("testAtomicBoxCompareAndExchangeWorksIfNotEqual", testAtomicBoxCompareAndExchangeWorksIfNotEqual),
+            ("testAtomicBoxStoreWorks", testAtomicBoxStoreWorks),
+            ("testAtomicBoxCompareAndExchangeOntoItselfWorks", testAtomicBoxCompareAndExchangeOntoItselfWorks),
+            ("testAtomicBoxEmpty", testAtomicBoxEmpty),
+            ("testAtomicBoxStoreNil", testAtomicBoxStoreNil),
+            ("testAtomicBoxCOmpareExchangeNil", testAtomicBoxCOmpareExchangeNil),
+        ]
+    }
 }
-

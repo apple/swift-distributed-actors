@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 internal protocol AbstractAdapter: _ActorTreeTraversable {
-
     var address: ActorAddress { get }
     var deadLetters: ActorRef<DeadLetter> { get }
 
@@ -46,6 +45,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     var address: ActorAddress {
         return self.adapterAddress
     }
+
     let deadLetters: ActorRef<DeadLetter>
 
     init(_ ref: ActorRef<To>, address: ActorAddress, converter: @escaping (From) -> To) {
@@ -82,7 +82,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
 
     @usableFromInline
     func _sendUserMessage(_ message: From, file: String, line: UInt) {
-        self.target.tell(converter(message), file: file, line: line)
+        self.target.tell(self.converter(message), file: file, line: line)
     }
 
     @usableFromInline
@@ -91,14 +91,13 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
             self._sendUserMessage(message, file: file, line: line)
         } else {
             if let directMessage = message as? To {
-                fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " + 
+                fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " +
                     "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(From.self)`.")
             } else {
                 traceLog_Mailbox(self.address.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
                 return // TODO: "drop" the message
             }
         }
-
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
@@ -194,7 +193,7 @@ extension ActorRefAdapter {
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil && self.address.incarnation == context.address.incarnation else {
+        guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }
 
@@ -203,13 +202,13 @@ extension ActorRefAdapter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: DeadLetterAdapter
 
 /// :nodoc: Not intended to be used by end users.
 ///
 /// Wraps the `DeadLettersActorRef` to get properly typed deadLetters refs.
 internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
-
     let deadLetters: ActorRef<DeadLetter>
     let deadRecipient: ActorAddress
 
@@ -252,6 +251,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SubReceiveAdapter
 
 internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
@@ -264,6 +264,7 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     var address: ActorAddress {
         return self.adapterAddress
     }
+
     let deadLetters: ActorRef<DeadLetter>
 
     init(_ ref: ActorRef<OwnerMessage>, address: ActorAddress, closure: @escaping (Message) throws -> Void) {
@@ -401,7 +402,7 @@ extension SubReceiveAdapter {
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard context.selectorSegments.first == nil,
             self.address.incarnation == context.address.incarnation else {
-                return context.personalDeadLetters
+            return context.personalDeadLetters
         }
 
         switch self.myself {
@@ -413,7 +414,7 @@ extension SubReceiveAdapter {
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
-        guard context.selectorSegments.first == nil && self.address.incarnation == context.address.incarnation else {
+        guard context.selectorSegments.first == nil, self.address.incarnation == context.address.incarnation else {
             return context.personalDeadLetters.asAddressable()
         }
 

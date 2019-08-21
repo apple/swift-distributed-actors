@@ -13,15 +13,14 @@
 //===----------------------------------------------------------------------===//
 //
 
-import Foundation
-import XCTest
 @testable import DistributedActors
+import DistributedActorsTestKit
+import Foundation
 import NIO
 import NIOFoundationCompat
-import DistributedActorsTestKit
+import XCTest
 
 class TraversalTests: XCTestCase {
-
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -37,7 +36,7 @@ class TraversalTests: XCTestCase {
         self.testKit = ActorTestKit(self.system)
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
-        let probe = testKit.spawnTestProbe(expecting: ActorReady.self)
+        let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
 
         let tellProbeWhenReady: Behavior<Void> = .setup { context in
             probe.tell(ActorReady(context.name))
@@ -46,15 +45,15 @@ class TraversalTests: XCTestCase {
 
         let _: ActorRef<String> = try! self.system.spawn("hello", .setup { context in
             probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn("world", (tellProbeWhenReady))
+            let _: ActorRef<Void> = try context.spawn("world", tellProbeWhenReady)
             return .receiveMessage { _ in .same }
         })
 
         let _: ActorRef<String> = try! self.system.spawn("other", .setup { context in
             probe.tell(ActorReady(context.name))
-            let _: ActorRef<Void> = try context.spawn("inner-1", (tellProbeWhenReady))
-            let _: ActorRef<Void> = try context.spawn("inner-2", (tellProbeWhenReady))
-            let _: ActorRef<Void> = try context.spawn("inner-3", (tellProbeWhenReady))
+            let _: ActorRef<Void> = try context.spawn("inner-1", tellProbeWhenReady)
+            let _: ActorRef<Void> = try context.spawn("inner-2", tellProbeWhenReady)
+            let _: ActorRef<Void> = try context.spawn("inner-3", tellProbeWhenReady)
             return .receiveMessage { _ in .same }
         })
 
@@ -76,7 +75,7 @@ class TraversalTests: XCTestCase {
     func test_traverse_shouldTraverseAllActors() throws {
         var seen: Set<String> = []
 
-        self.system._traverseAllVoid { context, ref in
+        self.system._traverseAllVoid { _, ref in
             if ref.address.name != "traversalProbe" {
                 seen.insert(ref.address.name)
             }
@@ -84,21 +83,21 @@ class TraversalTests: XCTestCase {
         }
 
         seen.shouldEqual([
-            "system", 
-            "receptionist", 
-            "replicator", 
-            "user", 
-            "other", 
+            "system",
+            "receptionist",
+            "replicator",
+            "user",
+            "other",
             "inner-1",
             "inner-2",
             "inner-3",
-            "hello", 
+            "hello",
             "world",
         ])
     }
 
     func test_traverse_shouldAllowImplementingCollect() {
-        let found: TraversalResult<String> = self.system._traverseAll { context, ref in
+        let found: TraversalResult<String> = self.system._traverseAll { _, ref in
             if ref.address.name.contains("inner") {
                 // collect it
                 return .accumulateSingle(ref.address.name)
@@ -131,5 +130,4 @@ class TraversalTests: XCTestCase {
             }
         }
     }
-
 }

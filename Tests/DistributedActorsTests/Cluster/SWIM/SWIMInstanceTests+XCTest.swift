@@ -21,41 +21,39 @@ import XCTest
 ///
 
 extension SWIMInstanceTests {
-
-   static var allTests : [(String, (SWIMInstanceTests) -> () throws -> Void)] {
-      return [
-                ("test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod", test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod),
-                ("test_notMyself_shouldDetectRemoteVersionOfSelf", test_notMyself_shouldDetectRemoteVersionOfSelf),
-                ("test_notMyself_shouldDetectRandomNotMyselfActor", test_notMyself_shouldDetectRandomNotMyselfActor),
-                ("test_mark_shouldNotApplyEqualStatus", test_mark_shouldNotApplyEqualStatus),
-                ("test_mark_shouldApplyNewerStatus", test_mark_shouldApplyNewerStatus),
-                ("test_mark_shouldNotApplyOlderStatus", test_mark_shouldNotApplyOlderStatus),
-                ("test_mark_shouldApplyDead", test_mark_shouldApplyDead),
-                ("test_mark_shouldNotApplyAnyStatusIfAlreadyDead", test_mark_shouldNotApplyAnyStatusIfAlreadyDead),
-                ("test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion", test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion),
-                ("test_onPingRequestResponse_ignoresTooOldRefutations", test_onPingRequestResponse_ignoresTooOldRefutations),
-                ("test_onPing_shouldOfferAckMessageWithMyselfReference", test_onPing_shouldOfferAckMessageWithMyselfReference),
-                ("test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation),
-                ("test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation),
-                ("test_onGossipPayload_myself_withAlive", test_onGossipPayload_myself_withAlive),
-                ("test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation),
-                ("test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation),
-                ("test_onGossipPayload_myself_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnation),
-                ("test_onGossipPayload_myself_withDead", test_onGossipPayload_myself_withDead),
-                ("test_onGossipPayload_other_withDead", test_onGossipPayload_other_withDead),
-                ("test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne", test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne),
-                ("test_members_shouldContainAllAddedMembers", test_members_shouldContainAllAddedMembers),
-                ("test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder", test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder),
-                ("test_addMember_shouldNotAddLocalNodeForPinging", test_addMember_shouldNotAddLocalNodeForPinging),
-                ("test_nextMemberToPingRequest", test_nextMemberToPingRequest),
-                ("test_member_shouldReturnTheLastAssignedStatus", test_member_shouldReturnTheLastAssignedStatus),
-                ("test_member_shouldWorkForMyself", test_member_shouldWorkForMyself),
-                ("test_suspects_shouldContainOnlySuspectedNodes", test_suspects_shouldContainOnlySuspectedNodes),
-                ("test_memberCount_shouldNotCountDeadMembers", test_memberCount_shouldNotCountDeadMembers),
-                ("test_makeGossipPayload_shouldReturnNoneIfNothingToGossip", test_makeGossipPayload_shouldReturnNoneIfNothingToGossip),
-                ("test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes", test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes),
-                ("test_makeGossipPayload_shouldResetCounterWhenStatusChanged", test_makeGossipPayload_shouldResetCounterWhenStatusChanged),
-           ]
-   }
+    static var allTests: [(String, (SWIMInstanceTests) -> () throws -> Void)] {
+        return [
+            ("test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod", test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod),
+            ("test_notMyself_shouldDetectRemoteVersionOfSelf", test_notMyself_shouldDetectRemoteVersionOfSelf),
+            ("test_notMyself_shouldDetectRandomNotMyselfActor", test_notMyself_shouldDetectRandomNotMyselfActor),
+            ("test_mark_shouldNotApplyEqualStatus", test_mark_shouldNotApplyEqualStatus),
+            ("test_mark_shouldApplyNewerStatus", test_mark_shouldApplyNewerStatus),
+            ("test_mark_shouldNotApplyOlderStatus", test_mark_shouldNotApplyOlderStatus),
+            ("test_mark_shouldApplyDead", test_mark_shouldApplyDead),
+            ("test_mark_shouldNotApplyAnyStatusIfAlreadyDead", test_mark_shouldNotApplyAnyStatusIfAlreadyDead),
+            ("test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion", test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion),
+            ("test_onPingRequestResponse_ignoresTooOldRefutations", test_onPingRequestResponse_ignoresTooOldRefutations),
+            ("test_onPing_shouldOfferAckMessageWithMyselfReference", test_onPing_shouldOfferAckMessageWithMyselfReference),
+            ("test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation),
+            ("test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation", test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation),
+            ("test_onGossipPayload_myself_withAlive", test_onGossipPayload_myself_withAlive),
+            ("test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndSameIncarnation_shouldIncrementIncarnation),
+            ("test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndLowerIncarnation_shouldNotIncrementIncarnation),
+            ("test_onGossipPayload_myself_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnation", test_onGossipPayload_myself_withSuspectAndHigherIncarnation_shouldNotIncrementIncarnation),
+            ("test_onGossipPayload_myself_withDead", test_onGossipPayload_myself_withDead),
+            ("test_onGossipPayload_other_withDead", test_onGossipPayload_other_withDead),
+            ("test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne", test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne),
+            ("test_members_shouldContainAllAddedMembers", test_members_shouldContainAllAddedMembers),
+            ("test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder", test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder),
+            ("test_addMember_shouldNotAddLocalNodeForPinging", test_addMember_shouldNotAddLocalNodeForPinging),
+            ("test_nextMemberToPingRequest", test_nextMemberToPingRequest),
+            ("test_member_shouldReturnTheLastAssignedStatus", test_member_shouldReturnTheLastAssignedStatus),
+            ("test_member_shouldWorkForMyself", test_member_shouldWorkForMyself),
+            ("test_suspects_shouldContainOnlySuspectedNodes", test_suspects_shouldContainOnlySuspectedNodes),
+            ("test_memberCount_shouldNotCountDeadMembers", test_memberCount_shouldNotCountDeadMembers),
+            ("test_makeGossipPayload_shouldReturnNoneIfNothingToGossip", test_makeGossipPayload_shouldReturnNoneIfNothingToGossip),
+            ("test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes", test_makeGossipPayload_shouldReturnEachEntryOnlyTheConfiguredNumberOfTimes),
+            ("test_makeGossipPayload_shouldResetCounterWhenStatusChanged", test_makeGossipPayload_shouldResetCounterWhenStatusChanged),
+        ]
+    }
 }
-

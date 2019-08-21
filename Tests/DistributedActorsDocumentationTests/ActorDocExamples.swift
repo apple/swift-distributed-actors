@@ -18,11 +18,10 @@ import DistributedActors
 
 // end::imports[]
 
-import XCTest
 @testable import DistributedActorsTestKit
+import XCTest
 
 class ActorDocExamples: XCTestCase {
-
     // tag::message_greetings[]
     enum Greetings {
         case greet(name: String)
@@ -33,7 +32,7 @@ class ActorDocExamples: XCTestCase {
 
     func example_receive_behavior() throws {
         // tag::receive_behavior[]
-        let behavior: Behavior<Greetings> = .receive { context, message in // <1>
+        let behavior: Behavior<Greetings> = .receive { _, message in // <1>
             print("Received \(message)") // <2>
             return .same // <3>
         }
@@ -55,7 +54,6 @@ class ActorDocExamples: XCTestCase {
     func example_classOriented_behavior() throws {
         // tag::classOriented_behavior[]
         final class GreetingsPrinterBehavior: ClassBehavior<Greetings> { // <1>
-
             override func receive(context: ActorContext<Greetings>, message: Greetings) throws -> Behavior<Greetings> { // <2>
                 print("Received: \(message)") // <3>
                 return .same // <4>
@@ -67,18 +65,16 @@ class ActorDocExamples: XCTestCase {
     func example_classOriented_behaviorWithState() throws {
         // tag::classOriented_behaviorWithState[]
         final class GreetingsPrinterBehavior: ClassBehavior<Greetings> {
-
             private var messageCounter = 0 // <1>
 
             override func receive(context: ActorContext<Greetings>, message: Greetings) throws -> Behavior<Greetings> {
                 self.messageCounter += 1 // <2>
-                print("Received \(messageCounter)-th message: \(message)")
+                print("Received \(self.messageCounter)-th message: \(message)")
                 return .same
             }
         }
         // end::classOriented_behaviorWithState[]
     }
-
 
     func example_spawn_tell() throws {
         // tag::spawn[]
@@ -90,7 +86,7 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeterRef: ActorRef<String> = try system.spawn("greeter", (greeterBehavior)) // <3>
+        let greeterRef: ActorRef<String> = try system.spawn("greeter", greeterBehavior) // <3>
         // end::spawn[]
 
         // tag::tell_1[]
@@ -112,14 +108,14 @@ class ActorDocExamples: XCTestCase {
             fatalError("undefined")
         }
 
-        let lineHandling: Behavior<String> = .receive { context, message in
+        let lineHandling: Behavior<String> = .receive { _, _ in
             let data = readData() // <1>
             // do things with `data`...
 
             // and then...
             switch data {
             case .endOfFile: return .stop // <2>
-            default:         return .same
+            default: return .same
             }
         }
         // end::stop_myself_1[]
@@ -136,7 +132,7 @@ class ActorDocExamples: XCTestCase {
         private func stopForTerminal(_ data: LineByLineData) -> Behavior<String> {
             switch data {
             case .endOfFile: return .stop
-            default:         return .same
+            default: return .same
             }
         }
 
@@ -148,13 +144,12 @@ class ActorDocExamples: XCTestCase {
             fatalError("undefined")
         }
 
-        func stopForTerminal(_ data: X.LineByLineData) -> Behavior<String> {
+        func stopForTerminal(_: X.LineByLineData) -> Behavior<String> {
             fatalError("undefined")
         }
 
-
         // tag::stop_myself_refactored[]
-        let lineHandling: Behavior<String> = .receive { context, message in
+        let lineHandling: Behavior<String> = .receive { _, _ in
             let data = readData()
             // do things with `data`...
 
@@ -171,29 +166,29 @@ class ActorDocExamples: XCTestCase {
         // end::props_example[]
         _ = props // silence not-used warning
     }
+
     func example_props_inline() throws {
         let behavior: Behavior<String> = .ignore
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        let worker = try system.spawn("worker", 
-            props: .dispatcher(.default),
-            behavior
-        )
+        let worker = try system.spawn("worker",
+                                      props: .dispatcher(.default),
+                                      behavior)
         // end::props_inline[]
         _ = worker // silence not-used warning
     }
 
     func example_receptionist_register() {
         // tag::receptionist_register[]
-        let key = Receptionist.RegistrationKey(String.self, id: "my-actor")                    // <1>
+        let key = Receptionist.RegistrationKey(String.self, id: "my-actor") // <1>
 
         let behavior: Behavior<String> = .setup { context in
-            context.system.receptionist.tell(Receptionist.Register(context.myself, key: key))  // <2>
+            context.system.receptionist.tell(Receptionist.Register(context.myself, key: key)) // <2>
 
             return .receiveMessage { _ in
                 // ...
-                return .same
+                .same
             }
         }
         // end::receptionist_register[]
@@ -279,7 +274,7 @@ class ActorDocExamples: XCTestCase {
             return .same
         }
 
-        let greeter = try system.spawn("greeter", (greeterBehavior))
+        let greeter = try system.spawn("greeter", greeterBehavior)
 
         let response = greeter.ask(for: String.self, timeout: .seconds(1)) { replyTo in // <1>
             Hello(name: "Anne", replyTo: replyTo) // <2>
@@ -302,7 +297,7 @@ class ActorDocExamples: XCTestCase {
             message.replyTo.tell("Hello \(message.name)!")
             return .same
         }
-        let greeter = try system.spawn("greeter", (greeterBehavior))
+        let greeter = try system.spawn("greeter", greeterBehavior)
 
         let caplinBehavior: Behavior<Never> = .setup { context in
             let timeout: TimeAmount = .seconds(1)
@@ -322,7 +317,7 @@ class ActorDocExamples: XCTestCase {
             }
         }
 
-        _ = try system.spawn("caplin", (caplinBehavior))
+        _ = try system.spawn("caplin", caplinBehavior)
         // end::ask_inside[]
     }
 
@@ -354,16 +349,19 @@ struct ExampleWorker {
     public static var suggested: (Behavior<WorkerMessages>, Props) {
         return (behavior, ExampleWorker.props)
     }
-    internal static var behavior: Behavior<WorkerMessages> = .receive { context, work in
+
+    internal static var behavior: Behavior<WorkerMessages> = .receive { context, _ in
         context.log.info("Work, work!")
         return .same
     }
+
     internal static var props: Props = Props().dispatcher(.pinnedThread)
 }
+
 enum WorkerMessages {}
 
 func run(system: ActorSystem) throws {
-    let (b, props) = ExampleWorker.suggested // TODO replace with class/Shell pattern?
+    let (b, props) = ExampleWorker.suggested // TODO: replace with class/Shell pattern?
     _ = try system.spawn("heavy-worker", props: props, b)
 }
 

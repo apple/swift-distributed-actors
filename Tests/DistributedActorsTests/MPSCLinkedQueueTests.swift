@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActors
 import Foundation
 import XCTest
-import DistributedActors
 
 class MPSCLinkedQueueTests: XCTestCase {
-
     func testIsEmptyWhenEmpty() {
         let q = MPSCLinkedQueue<Int>()
 

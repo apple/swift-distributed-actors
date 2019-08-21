@@ -39,7 +39,6 @@ import Glibc
 ///       back to the [MessageDispatcher] using [unregisterCellFromCrashHandling].
 @usableFromInline
 internal struct FaultHandling {
-
     private init() {
         // no instances
     }
@@ -74,7 +73,6 @@ internal struct FaultHandling {
     ///
     /// The fault handler is effective only *during* an actor run, and should not trap errors made outside of actors.
     static func installCrashHandling() throws {
-
         let handlerInstalledCode = CDistributedActorsMailbox.sact_install_swift_crash_handler()
 
         switch handlerInstalledCode {
@@ -89,7 +87,7 @@ internal struct FaultHandling {
     ///
     /// Important: Remember to invoke `disableFailureHandling` once the run is complete.
     internal static func enableFaultHandling() {
-        CDistributedActorsMailbox.sact_enable_fault_handling() // TODO not really needed as threadlocal
+        CDistributedActorsMailbox.sact_enable_fault_handling() // TODO: not really needed as threadlocal
     }
 
     /// Clear the current cell failure context after a successful (or failed) run.
@@ -111,11 +109,11 @@ internal struct FaultHandling {
         let sicode: Int32 = _sicode
         #endif
 
-        switch (signo) {
+        switch signo {
         case SIGSEGV: return FaultHandlingError.E_SIGSEGV
         case SIGINT: return FaultHandlingError.E_SIGINT
         case SIGFPE:
-            switch (sicode) {
+            switch sicode {
             case FPE_INTDIV: return FaultHandlingError.E_SIGFPE_FPE_INTDIV
             case FPE_INTOVF: return FaultHandlingError.E_SIGFPE_FPE_INTOVF
             case FPE_FLTDIV: return FaultHandlingError.E_SIGFPE_FPE_FLTDIV
@@ -127,7 +125,7 @@ internal struct FaultHandling {
             default: return FaultHandlingError.posixFailure(signo: Int(signo), sicode: Int(sicode), description: "SIGFPE: Arithmetic Exception")
             }
         case SIGILL:
-            switch (sicode) {
+            switch sicode {
             case ILL_ILLOPC: return FaultHandlingError.E_SIGILL_ILL_ILLOPC
             case ILL_ILLOPN: return FaultHandlingError.E_SIGILL_ILL_ILLOPN
             case ILL_ILLADR: return FaultHandlingError.E_SIGILL_ILL_ILLADR

@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
-import NIO
+import Dispatch
 @testable import DistributedActors
 import DistributedActorsTestKit
-import Dispatch
+import Foundation
+import NIO
+import XCTest
 
 class DispatcherTests: XCTestCase {
-
     var group: EventLoopGroup!
     var system: ActorSystem!
     var testKit: ActorTestKit!
@@ -28,20 +27,20 @@ class DispatcherTests: XCTestCase {
     override func setUp() {
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
         self.system.shutdown()
-        self.group.shutdownGracefully(queue: DispatchQueue.global(), { error in
+        self.group.shutdownGracefully(queue: DispatchQueue.global()) { error in
             _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
-        })
+        }
     }
 
     // MARK: Running "on NIO" for fun and profit
 
     func test_runOn_nioEventLoop() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
@@ -60,7 +59,7 @@ class DispatcherTests: XCTestCase {
     }
 
     func test_runOn_nioEventLoopGroup() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
@@ -77,7 +76,4 @@ class DispatcherTests: XCTestCase {
         let dispatcher: String = try p.expectMessage()
         dispatcher.dropFirst("Dispatcher: ".count).shouldStartWith(prefix: "nio:")
     }
-
-
-    
 }

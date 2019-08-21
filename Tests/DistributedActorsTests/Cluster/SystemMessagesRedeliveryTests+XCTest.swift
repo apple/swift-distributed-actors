@@ -21,23 +21,21 @@ import XCTest
 ///
 
 extension SystemMessagesRedeliveryTests {
-
-   static var allTests : [(String, (SystemMessagesRedeliveryTests) -> () throws -> Void)] {
-      return [
-                ("test_sysMsg_outbound_passThroughWhenNoGapsReported", test_sysMsg_outbound_passThroughWhenNoGapsReported),
-                ("test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge", test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge),
-                ("test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK", test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK),
-                ("test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs", test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs),
-                ("test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr", test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr),
-                ("test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery", test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery),
-                ("test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages", test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages),
-                ("test_sysMsg_outbound_redelivery_shouldBeLimitedToConfiguredBatchAtMost", test_sysMsg_outbound_redelivery_shouldBeLimitedToConfiguredBatchAtMost),
-                ("test_sysMsg_outbound_exceedSendBufferLimit", test_sysMsg_outbound_exceedSendBufferLimit),
-                ("test_inbound_shouldAcceptMessagesInOrder", test_inbound_shouldAcceptMessagesInOrder),
-                ("test_inbound_shouldDetectGap", test_inbound_shouldDetectGap),
-                ("test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr", test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr),
-                ("test_redelivery_systemMessage_serialization", test_redelivery_systemMessage_serialization),
-           ]
-   }
+    static var allTests: [(String, (SystemMessagesRedeliveryTests) -> () throws -> Void)] {
+        return [
+            ("test_sysMsg_outbound_passThroughWhenNoGapsReported", test_sysMsg_outbound_passThroughWhenNoGapsReported),
+            ("test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge", test_sysMsg_outbound_ack_shouldCumulativelyAcknowledge),
+            ("test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK", test_sysMsg_outbound_ack_shouldIgnoreDuplicateACK),
+            ("test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs", test_sysMsg_outbound_ack_shouldRejectACKAboutFutureSeqNrs),
+            ("test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr", test_sysMsg_outbound_ack_thenOfferMore_shouldContinueAtRightSequenceNr),
+            ("test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery", test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery),
+            ("test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages", test_sysMsg_outbound_redeliveryTick_shouldRedeliverPendingMessages),
+            ("test_sysMsg_outbound_redelivery_shouldBeLimitedToConfiguredBatchAtMost", test_sysMsg_outbound_redelivery_shouldBeLimitedToConfiguredBatchAtMost),
+            ("test_sysMsg_outbound_exceedSendBufferLimit", test_sysMsg_outbound_exceedSendBufferLimit),
+            ("test_inbound_shouldAcceptMessagesInOrder", test_inbound_shouldAcceptMessagesInOrder),
+            ("test_inbound_shouldDetectGap", test_inbound_shouldDetectGap),
+            ("test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr", test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr),
+            ("test_redelivery_systemMessage_serialization", test_redelivery_systemMessage_serialization),
+        ]
+    }
 }
-

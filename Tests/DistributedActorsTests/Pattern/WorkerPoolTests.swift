@@ -12,31 +12,31 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
-// TODO "ActorGroup" perhaps could be better name?
+// TODO: "ActorGroup" perhaps could be better name?
 final class WorkerPoolTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
     override func setUp() {
-        system = ActorSystem(String(describing: type(of: self)))
-        testKit = ActorTestKit(system)
+        self.system = ActorSystem(String(describing: type(of: self)))
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_workerPool_registerNewlyStartedActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pC")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
@@ -49,9 +49,9 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        _ = try system.spawn("worker-a", (worker(p: pA)))
-        _ = try system.spawn("worker-b", (worker(p: pB)))
-        _ = try system.spawn("worker-c", (worker(p: pC)))
+        _ = try self.system.spawn("worker-a", worker(p: pA))
+        _ = try self.system.spawn("worker-b", worker(p: pB))
+        _ = try self.system.spawn("worker-c", worker(p: pC))
 
         let workers = try WorkerPool.spawn(self.system, "workers", select: .dynamic(workerKey))
 
@@ -79,9 +79,9 @@ final class WorkerPoolTests: XCTestCase {
     func test_workerPool_dynamic_removeDeadActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pC")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
@@ -104,19 +104,19 @@ final class WorkerPoolTests: XCTestCase {
         let workerC = try system.spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(system, "workersMayDie", select: .dynamic(workerKey))
+        let workers = try WorkerPool.spawn(self.system, "workersMayDie", select: .dynamic(workerKey))
 
         // since the workers joining the pool is still technically always a bit racy with the dynamic selection,
         // we try a few times to send a message and see it delivered at each worker. This would not be the case with a static selector.
-        try testKit.eventually(within: .seconds(1)) {
+        try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("a")
             try pA.expectMessage("work:a at worker-a", within: .milliseconds(200))
         }
-        try testKit.eventually(within: .seconds(1)) {
+        try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("b")
             try pB.expectMessage("work:b at worker-b", within: .milliseconds(200))
         }
-        try testKit.eventually(within: .seconds(1)) {
+        try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("c")
             try pC.expectMessage("work:c at worker-c", within: .milliseconds(200))
         }
@@ -128,8 +128,8 @@ final class WorkerPoolTests: XCTestCase {
         // with A removed, the worker pool races to get the information about this death,
         // while we send new work to it -- it may happen that it sends to the dead A since it did not yet
         // receive the terminated; here we instead check that at least thr work is being handled by the other workers
-        for i in 0...2 {
-            try testKit.eventually(within: .seconds(1)) {
+        for i in 0 ... 2 {
+            try self.testKit.eventually(within: .seconds(1)) {
                 workers.tell("after-A-dead-\(i)")
                 let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))
                 let maybeCGotIt = try pC.maybeExpectMessage(within: .milliseconds(200))
@@ -146,9 +146,9 @@ final class WorkerPoolTests: XCTestCase {
     }
 
     func test_workerPool_ask() throws {
-        let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
-        let pW: ActorTestProbe<WorkerPoolQuestion> = testKit.spawnTestProbe(name: "pW")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
+        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe(name: "pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
             return .receive { context, work in
@@ -160,7 +160,7 @@ final class WorkerPoolTests: XCTestCase {
         let workerA = try system.spawn("worker-a", worker(p: pA))
         let workerB = try system.spawn("worker-b", worker(p: pB))
 
-        let workers = try WorkerPool.spawn(system, "questioningTheWorkers", select: .static([workerA, workerB]))
+        let workers = try WorkerPool.spawn(self.system, "questioningTheWorkers", select: .static([workerA, workerB]))
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
         let answerA: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "AAA", replyTo: $0) }
@@ -180,16 +180,17 @@ final class WorkerPoolTests: XCTestCase {
         try pA.expectMessage("work:AAA at \(workerA.path.name)")
         try pB.expectMessage("work:BBB at \(workerB.path.name)")
     }
+
     struct WorkerPoolQuestion {
         let id: String
         let replyTo: ActorRef<String>
     }
 
     func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
-        let pA: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pC")
-        let pW: ActorTestProbe<String> = testKit.spawnTestProbe(name: "pW")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
+        let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .receive { context, work in
@@ -201,14 +202,14 @@ final class WorkerPoolTests: XCTestCase {
             }
         }
 
-        let workerA = try system.spawn("worker-a", (worker(p: pA)))
+        let workerA = try system.spawn("worker-a", worker(p: pA))
         pA.watch(workerA)
-        let workerB = try system.spawn("worker-b", (worker(p: pB)))
+        let workerB = try system.spawn("worker-b", worker(p: pB))
         pB.watch(workerB)
-        let workerC = try system.spawn("worker-c", (worker(p: pC)))
+        let workerC = try system.spawn("worker-c", worker(p: pC))
         pC.watch(workerC)
 
-        let workers = try WorkerPool.spawn(system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
+        let workers = try WorkerPool.spawn(self.system, "staticWorkersMayDie", select: .static([workerA, workerB, workerC]))
         pW.watch(workers._ref)
 
         // since using a static pool, we know the messages will arrive; no need to wait for the receptionist dance:
@@ -222,8 +223,8 @@ final class WorkerPoolTests: XCTestCase {
         workerA.tell("stop")
         try pA.expectTerminated(workerA)
 
-        for i in 0...2 {
-            try testKit.eventually(within: .seconds(1)) {
+        for i in 0 ... 2 {
+            try self.testKit.eventually(within: .seconds(1)) {
                 workers.tell("after-A-dead-\(i)")
                 let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))
                 let maybeCGotIt = try pC.maybeExpectMessage(within: .milliseconds(200))
@@ -246,12 +247,11 @@ final class WorkerPoolTests: XCTestCase {
         try pC.expectTerminated(workerC)
 
         try pW.expectTerminated(workers._ref)
-
     }
 
     func test_workerPool_static_throwOnEmptyInitialSet() throws {
-        let error = shouldThrow() {
-            let _: WorkerPoolRef <Never> = try WorkerPool.spawn(system, "wrongConfigPool", select: .static([]))
+        let error = shouldThrow {
+            let _: WorkerPoolRef<Never> = try WorkerPool.spawn(system, "wrongConfigPool", select: .static([]))
         }
 
         "\(error)".shouldContain("Illegal empty collection passed to `.static` worker pool")

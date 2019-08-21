@@ -21,14 +21,12 @@ import XCTest
 ///
 
 extension ActorIsolationFailureHandlingTests {
-
-   static var allTests : [(String, (ActorIsolationFailureHandlingTests) -> () throws -> Void)] {
-      return [
-                ("test_worker_crashOnlyWorkerOnPlainErrorThrow", test_worker_crashOnlyWorkerOnPlainErrorThrow),
-                ("test_worker_crashOnlyWorkerOnDivisionByZero", test_worker_crashOnlyWorkerOnDivisionByZero),
-                ("test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated", test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated),
-                ("test_crashOutsideOfActor_shouldStillFailLikeUsual", test_crashOutsideOfActor_shouldStillFailLikeUsual),
-           ]
-   }
+    static var allTests: [(String, (ActorIsolationFailureHandlingTests) -> () throws -> Void)] {
+        return [
+            ("test_worker_crashOnlyWorkerOnPlainErrorThrow", test_worker_crashOnlyWorkerOnPlainErrorThrow),
+            ("test_worker_crashOnlyWorkerOnDivisionByZero", test_worker_crashOnlyWorkerOnDivisionByZero),
+            ("test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated", test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated),
+            ("test_crashOutsideOfActor_shouldStillFailLikeUsual", test_crashOutsideOfActor_shouldStillFailLikeUsual),
+        ]
+    }
 }
-

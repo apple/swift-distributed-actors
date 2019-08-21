@@ -12,10 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 @testable import DistributedActors
-import SwiftBenchmarkTools
 import DistributedActorsConcurrencyHelpers
+import SwiftBenchmarkTools
 
 public let ActorMessageFloodingBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
@@ -31,12 +30,13 @@ public let ActorMessageFloodingBenchmarks: [BenchmarkInfo] = [
         tags: [],
         setUpFunction: { setUp() },
         tearDownFunction: tearDown
-    )
+    ),
 ]
 
 private func setUp() {
     _system = ActorSystem("ActorMessageFloodingBenchmarks")
 }
+
 private func tearDown() {
     system.shutdown()
     _system = nil
@@ -55,7 +55,7 @@ func flooding_behavior(latch: CountDownLatch, messageCount: Int) -> Behavior<Int
     }
 }
 
-func bench_messageFlooding(_ messageCount: Int) throws -> Void {
+func bench_messageFlooding(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
@@ -79,7 +79,7 @@ func bench_messageFlooding(_ messageCount: Int) throws -> Void {
     print("Processed \(messageCount) message in \(String(format: "%.3f", seconds)) seconds \(perSecond) msgs/s")
 }
 
-func bench_messageFlooding_send(_ messageCount: Int) throws -> Void {
+func bench_messageFlooding_send(_ messageCount: Int) throws {
     let timer = SwiftBenchmarkTools.Timer()
     let latch = CountDownLatch(from: 1)
 
@@ -95,8 +95,8 @@ func bench_messageFlooding_send(_ messageCount: Int) throws -> Void {
     latch.wait()
 
     let sendingTime = timer.diffTimeInNanoSeconds(from: startSending, to: stopSending)
-    let sendingSeconds = (Double(sendingTime) / 1000_000_000)
-    let sendingPerSecond = Int((Double(messageCount) / sendingSeconds))
+    let sendingSeconds = (Double(sendingTime) / 1_000_000_000)
+    let sendingPerSecond = Int(Double(messageCount) / sendingSeconds)
 
     print("Sending \(messageCount) messages took:    \(String(format: "%.3f", sendingSeconds)) seconds \(sendingPerSecond) msgs/s")
 }

@@ -12,11 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Dispatch
+import NIO
 
 protocol ChildActorRefFactory: ActorRefFactory {
-
     var children: Children { get set } // lock-protected
 
     func spawn<Message>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message>
@@ -33,10 +32,9 @@ internal enum Child {
 /// Convenience methods for locating children are provided, although it is recommended to keep the `ActorRef`
 /// of spawned actors in the context of where they are used, rather than looking them up continuously.
 public class Children {
-
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
-    typealias Name = String // TODO ActorName // TODO still?
+    typealias Name = String // TODO: ActorName // TODO still?
 
     private var container: [Name: Child]
     private var stopping: [ActorAddress: AbstractActor]
@@ -61,6 +59,7 @@ public class Children {
             }
         }
     }
+
     public func hasChild(identifiedBy address: ActorAddress) -> Bool {
         return self.hasChild(identifiedBy: address.path)
     }
@@ -96,9 +95,10 @@ public class Children {
     /// - SeeAlso: `contains(identifiedBy:)`
     internal func contains(name: String) -> Bool {
         return self.rwLock.withReaderLock {
-            return self.container.keys.contains(name)
+            self.container.keys.contains(name)
         }
     }
+
     /// Precise contains function, which checks if this children container contains the specific actor
     /// identified by the passed in path.
     ///
@@ -142,7 +142,7 @@ public class Children {
     @discardableResult
     internal func markAsStoppingChild(identifiedBy address: ActorAddress) -> Bool {
         return self.rwLock.withWriterLock {
-            return self._markAsStoppingChild(identifiedBy: address)
+            self._markAsStoppingChild(identifiedBy: address)
         }
     }
 
@@ -178,7 +178,7 @@ public class Children {
     @usableFromInline
     internal var isEmpty: Bool {
         return self.rwLock.withReaderLock {
-            return self.container.isEmpty && self.stopping.isEmpty
+            self.container.isEmpty && self.stopping.isEmpty
         }
     }
 
@@ -186,10 +186,10 @@ public class Children {
     internal var nonEmpty: Bool {
         return !self.isEmpty
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Traversal
 
 extension Children: _ActorTreeTraversable {
@@ -198,7 +198,7 @@ extension Children: _ActorTreeTraversable {
         var c = context.deeper
 
         let children = self.rwLock.withReaderLock {
-            return self.container.values
+            self.container.values
         }
 
         for child in children {
@@ -238,7 +238,7 @@ extension Children: _ActorTreeTraversable {
         }
 
         let child = self.rwLock.withReaderLock {
-            return self.container[selector.value]
+            self.container[selector.value]
         }
 
         switch child {
@@ -259,7 +259,7 @@ extension Children: _ActorTreeTraversable {
         }
 
         let child = self.rwLock.withReaderLock {
-            return self.container[selector.value]
+            self.container[selector.value]
         }
 
         switch child {
@@ -276,15 +276,14 @@ extension Children: _ActorTreeTraversable {
 // MARK: Convenience methods for stopping children
 
 extension Children {
-
-    /// TODO revise surface API what we want to expose; stopping by just name may be okey?
+    // TODO: revise surface API what we want to expose; stopping by just name may be okey?
 
     /// Stops given child actor (if it exists) regardless of what type of messages it can handle.
     ///
     /// Returns: `true` if the child was stopped by this invocation, `false` otherwise
     func stop(named name: String) -> Bool {
         return self.rwLock.withWriterLock {
-            return self._stop(named: name, includeAdapters: true)
+            self._stop(named: name, includeAdapters: true)
         }
     }
 
@@ -316,22 +315,22 @@ extension Children {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal shell operations
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
-
     internal func _spawn<M>(_ behavior: Behavior<M>, naming: ActorNaming, props: Props) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
-        try validateUniqueName(name) // FIXME reserve name
+        try self.validateUniqueName(name) // FIXME: reserve name
 
         let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {
-        case .default: dispatcher = self.dispatcher // TODO this is dispatcher inheritance, not sure about it
+        case .default: dispatcher = self.dispatcher // TODO: this is dispatcher inheritance, not sure about it
         case .callingThread: dispatcher = CallingThreadDispatcher()
         case .nio(let group): dispatcher = NIOEventLoopGroupDispatcher(group)
         default: fatalError("not implemented yet, only default dispatcher and calling thread one work")

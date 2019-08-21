@@ -21,12 +21,10 @@ import XCTest
 ///
 
 extension SWIMInstanceClusterTests {
-
-   static var allTests : [(String, (SWIMInstanceClusterTests) -> () throws -> Void)] {
-      return [
-                ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully", test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully),
-                ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember", test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember),
-           ]
-   }
+    static var allTests: [(String, (SWIMInstanceClusterTests) -> () throws -> Void)] {
+        return [
+            ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully", test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully),
+            ("test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember", test_swim_cluster_onGossipPayload_newMember_needsToConnect_andFails_shouldNotAddMember),
+        ]
+    }
 }
-

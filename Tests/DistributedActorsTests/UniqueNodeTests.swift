@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 final class UniqueNodeTests: XCTestCase {
-
     func test_uniqueNode_shouldRenderProperly() {
         let node = Node(systemName: "SystemName", host: "188.121.122.3", port: 1111)
         let uniqueNode = UniqueNode(node: node, nid: NodeID(2222))
@@ -34,6 +33,7 @@ final class UniqueNodeTests: XCTestCase {
         two.shouldEqual(anotherTwo)
         two.shouldBeLessThanOrEqual(anotherTwo)
     }
+
     func test_uniqueNode_comparison_lessThan() {
         let two = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeID(2222))
         let three = UniqueNode(node: Node(systemName: "SystemName", host: "188.121.122.3", port: 1111), nid: NodeID(3333))

@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-import Foundation
-@testable import DistributedActorsTestKit
 import DistributedActors
+@testable import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class DeadlineTests: XCTestCase {
-
     func test_deadline_nowIsNotPastNow() {
         let now = Deadline.now()
         let beforeDeadline = now - .seconds(100)
@@ -37,7 +36,7 @@ class DeadlineTests: XCTestCase {
         let t1Millis = 12000
         let d1 = now + .milliseconds(t1Millis)
 
-        let t2Millis = 1200000
+        let t2Millis = 1_200_000
         let d2 = now + .milliseconds(t2Millis)
 
         d1.isBefore(d2).shouldBeTrue()

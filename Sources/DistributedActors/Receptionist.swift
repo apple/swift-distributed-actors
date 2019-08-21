@@ -25,7 +25,7 @@
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
-    internal static let naming: ActorNaming = .unique("receptionist") // TODO make an ActorName
+    internal static let naming: ActorNaming = .unique("receptionist") // TODO: make an ActorName
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
@@ -89,7 +89,6 @@ public enum Receptionist {
         }
     }
 
-
     /// Response to a `Register` message
     public struct Registered<Message> {
         public let ref: ActorRef<Message>
@@ -122,7 +121,7 @@ public enum Receptionist {
         }
 
         var _addressableActorRef: AddressableActorRef {
-            return replyTo.asAddressable()
+            return self.replyTo.asAddressable()
         }
     }
 
@@ -130,7 +129,7 @@ public enum Receptionist {
     public struct Listing<Message>: Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
         public var description: String {
-            return "Listing<\(Message.self)>(\(refs.map { $0.address }))"
+            return "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
         }
     }
 
@@ -185,10 +184,10 @@ public enum Receptionist {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Receptionist ActorRef Extensions
 
 public extension ActorRef where Message == ReceptionistMessage {
-
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
     func register<M>(_ ref: ActorRef<M>, key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
         self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))
@@ -200,7 +199,6 @@ public extension ActorRef where Message == ReceptionistMessage {
     func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
         self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
     }
-
 }
 
 /// Receptionist for local execution. Does not depend on a cluster being available.
@@ -232,7 +230,7 @@ internal enum LocalReceptionist {
 
     private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
         let key = message._key.boxed
-        let addressable  = message._addressableActorRef
+        let addressable = message._addressableActorRef
 
         context.log.debug("Registering \(addressable) under key: \(key)")
 
@@ -320,6 +318,7 @@ internal enum LocalReceptionist {
 public protocol ReceptionistMessage {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: internal untyped protocols
 
 internal typealias FullyQualifiedTypeName = String

@@ -21,7 +21,6 @@ internal protocol WireMessage {}
 /// When written onto they wire they are serialized to their transport specific formats (e.g. using protobuf or hand-rolled serializers).
 /// These models are intentionally detached from their serialized forms.
 internal enum Wire {
-
     typealias Message = WireMessage
 
     /// The wire protocol version is the DistributedActors version (at least now)
@@ -31,8 +30,8 @@ internal enum Wire {
     struct Envelope {
         var recipient: ActorAddress
 
-        // TODO metadata
-        // TODO "flags" incl. isSystemMessage
+        // TODO: metadata
+        // TODO: "flags" incl. isSystemMessage
 
         var serializerId: UInt32
         var payload: ByteBuffer

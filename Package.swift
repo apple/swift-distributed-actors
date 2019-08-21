@@ -15,18 +15,17 @@ let targets: [PackageDescription.Target] = [
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
             "CDistributedActorsRunQueue",
-            "SwiftProtobuf"
+            "SwiftProtobuf",
         ]
     ),
 
     .target(
         name: "DistributedActorsSampleProcessIsolated",
         dependencies: [
-            "DistributedActors"
+            "DistributedActors",
         ]
     ),
 
-    
     /// This target is intended only for use in tests, though we have no way to mark this
     .target(
         name: "DistributedActorsTestKit",
@@ -45,8 +44,7 @@ let targets: [PackageDescription.Target] = [
 
     // NOT SUPPORTED transient library until Swift receives Atomics
     .target(name: "CDistributedActorsAtomics",
-        dependencies: []
-    ),
+            dependencies: []),
 
     // NOT SUPPORTED transient library until Swift receives Atomics
     .target(
@@ -79,8 +77,8 @@ let targets: [PackageDescription.Target] = [
     .target(
         name: "DistributedActorsBenchmarks",
         dependencies: [
-            "DistributedActors", 
-            "SwiftBenchmarkTools"
+            "DistributedActors",
+            "SwiftBenchmarkTools",
         ]
     ),
     .target(
@@ -105,15 +103,15 @@ let targets: [PackageDescription.Target] = [
     .testTarget(
         name: "DistributedActorsDocumentationTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
-    )
+    ),
 ]
 
 let dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-nio.git",        from: "2.7.0"),
+    .package(url: "https://github.com/apple/swift-nio.git", from: "2.7.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-nio-ssl.git",    from: "2.2.0"),
-    .package(url: "https://github.com/apple/swift-protobuf.git",   from: "1.4.0"),
-    .package(url: "https://github.com/apple/swift-log.git",        from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
+    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.4.0"),
+    .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
 ]
 
 let package = Package(

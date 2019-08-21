@@ -24,11 +24,11 @@ public let SerializationCodableBenchmarks: [BenchmarkInfo] = [
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
-            name: "SerializationCodable.bench_codable_roundTrip_message_medium",
-            runFunction: bench_codable_roundTrip_message_medium,
-            tags: [.serialization],
-            setUpFunction: { setUp() },
-            tearDownFunction: tearDown
+        name: "SerializationCodable.bench_codable_roundTrip_message_medium",
+        runFunction: bench_codable_roundTrip_message_medium,
+        tags: [.serialization],
+        setUpFunction: { setUp() },
+        tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "SerializationCodable.bench_codable_roundTrip_message_withRef",
@@ -40,7 +40,7 @@ public let SerializationCodableBenchmarks: [BenchmarkInfo] = [
 ]
 
 private func setUp(and postSetUp: () -> Void = { () in () }) {
-    _system = ActorSystem("SerializationCodableBenchmarks") { settings in 
+    _system = ActorSystem("SerializationCodableBenchmarks") { settings in
         settings.serialization.registerCodable(for: SmallMessage.self, underId: 1001)
         settings.serialization.registerCodable(for: MessageWithRef.self, underId: 1002)
         settings.serialization.registerCodable(for: MediumMessage.self, underId: 1003)
@@ -48,6 +48,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
     }
     postSetUp()
 }
+
 private func tearDown() {
     system.shutdown()
     _system = nil
@@ -59,11 +60,12 @@ struct SmallMessage: Codable {
     let number: Int
     let name: String
 }
+
 let message_small = SmallMessage(number: 1337, name: "kappa")
 
 func bench_codable_roundTrip_message_small(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_small)
-    let _ = try! system.serialization.deserialize(SmallMessage.self, from: bytes)
+    _ = try! system.serialization.deserialize(SmallMessage.self, from: bytes)
 }
 
 // -------
@@ -73,16 +75,17 @@ struct MessageWithRef: Codable {
     let name: String
     let reference: ActorRef<String>
 }
+
 var message_withRef: MessageWithRef!
 
 private func setUpActorRef() {
-    let ref: ActorRef<String> = try! system.spawn("someActor", (.ignore))
+    let ref: ActorRef<String> = try! system.spawn("someActor", .ignore)
     message_withRef = MessageWithRef(number: 1337, name: "kappa", reference: ref)
 }
 
 func bench_codable_roundTrip_message_withRef(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_withRef!)
-    let _ = try! system.serialization.deserialize(MessageWithRef.self, from: bytes)
+    _ = try! system.serialization.deserialize(MessageWithRef.self, from: bytes)
 }
 
 // -------
@@ -117,10 +120,11 @@ let message_medium = MediumMessage(
     field01: "something-test",
     field02: "something-else-test",
     field03: 42,
-    field04: MediumMessage.NestedMessage (
+    field04: MediumMessage.NestedMessage(
         field1: "something-nested-test",
         field2: 43,
-        field3: 44),
+        field3: 44
+    ),
     field05: false,
     field06: 45,
     field07: 46,
@@ -138,5 +142,5 @@ let message_medium = MediumMessage(
 
 func bench_codable_roundTrip_message_medium(n: Int) {
     let bytes = try! system.serialization.serialize(message: message_medium)
-    let _ = try! system.serialization.deserialize(MediumMessage.self, from: bytes)
+    _ = try! system.serialization.deserialize(MediumMessage.self, from: bytes)
 }

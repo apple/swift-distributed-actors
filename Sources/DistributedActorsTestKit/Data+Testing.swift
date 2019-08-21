@@ -12,19 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+@testable import DistributedActors
+import Foundation
 import NIO
 import NIOFoundationCompat
-import Foundation
-@testable import DistributedActors
 
-// FIXME this is obviously not a good idea
+// FIXME: this is obviously not a good idea
 private let testOnlyAllocator = ByteBufferAllocator()
 
 extension Data {
-
     /// For easier testing, as we want all our assertions etc on ByteBuffers
     public func copyToNewByteBuffer() -> ByteBuffer {
         return self._copyToByteBuffer(allocator: testOnlyAllocator)
     }
-
 }

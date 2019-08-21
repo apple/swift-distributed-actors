@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Logging
+import NIO
 
 /// Handler which simulates selective messages being lost or delayed.
 /// Can be used to simulate system operation on bad network; useful for testing re-deliveries,
@@ -28,7 +28,7 @@ internal final class FaultyNetworkSimulatingHandler<Message>: ChannelDuplexHandl
     private let settings: FaultyNetworkSimulationSettings
 
     /// The gremlin is responsible for dropping or delaying messages as defined by the configured mode.
-    /// TODO: in the future it can get more stateful behaviors if we wanted to or separate inbound/outbound etc.
+    // TODO: in the future it can get more stateful behaviors if we wanted to or separate inbound/outbound etc.
     ///
     /// "But the most important rule, [...] no matter how much he begs, never feed him after midnight."
     private let gremlin: Gremlin
@@ -37,7 +37,7 @@ internal final class FaultyNetworkSimulatingHandler<Message>: ChannelDuplexHandl
         let settings: FaultyNetworkSimulationSettings
 
         func decide() -> GremlinDirective {
-            let randomNumber = Double.random(in: 0.0...1.0)
+            let randomNumber = Double.random(in: 0.0 ... 1.0)
 
             switch self.settings.mode {
             case .drop(let p):
@@ -108,7 +108,7 @@ internal struct FaultyNetworkSimulationSettings {
     }
 
     /// At what level should all DROP or similar operations be logged?
-    var logLevel: Logger.Level? = nil
+    var logLevel: Logger.Level?
 
     init(mode: Mode) {
         self.mode = mode

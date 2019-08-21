@@ -29,13 +29,14 @@ public let ActorTreeTraversalBenchmarks: [BenchmarkInfo] = [
         tags: [],
         setUpFunction: { setUp(and: setUp_visit_depth_1000_total_1000) },
         tearDownFunction: tearDown
-    )
+    ),
 ]
 
 private func setUp(and postSetUp: () -> Void) {
     _system = ActorSystem("ActorResolveBenchmarks")
     postSetUp()
 }
+
 private func tearDown() {
     system.shutdown()
     _system = nil
@@ -44,8 +45,9 @@ private func tearDown() {
 // -------
 
 func setUp_visitSingleRef() {
-    let _: ActorRef<Never> = try! system.spawn("top", (.ignore))
+    let _: ActorRef<Never> = try! system.spawn("top", .ignore)
 }
+
 func bench_visitSingleRef(n: Int) {
 //    system._traverse { ref in () }
 }
@@ -55,18 +57,19 @@ func bench_visitSingleRef(n: Int) {
 func setUp_visit_depth_10_total_10() {
     func spawnDeeper(stillMore n: Int) -> Behavior<Never> {
         if n == 0 {
-            return .setup { context in
-                return .same
+            return .setup { _ in
+                .same
             }
         } else {
             return Behavior<Never>.setup { context in
-                _ = try context.spawn("a\(n)", (spawnDeeper(stillMore: n - 1)))
+                _ = try context.spawn("a\(n)", spawnDeeper(stillMore: n - 1))
                 return .receiveMessage { _ in .same }
             }
         }
     }
-    _ = try! system.spawn("top", (spawnDeeper(stillMore: 10)))
+    _ = try! system.spawn("top", spawnDeeper(stillMore: 10))
 }
+
 func bench_visit(n: Int) {
 //    system._traverse { ref in () }
 }
@@ -74,15 +77,15 @@ func bench_visit(n: Int) {
 func setUp_visit_depth_1000_total_1000() {
     func spawnDeeper(stillMore n: Int) -> Behavior<Never> {
         if n == 0 {
-            return .setup { context in
-                return .receiveMessage { _ in .same }
+            return .setup { _ in
+                .receiveMessage { _ in .same }
             }
         } else {
             return Behavior<Never>.setup { context in
-                _ = try context.spawn("a\(n)", (spawnDeeper(stillMore: n - 1)))
+                _ = try context.spawn("a\(n)", spawnDeeper(stillMore: n - 1))
                 return .receiveMessage { _ in .same }
             }
         }
     }
-    _ = try! system.spawn("top", (spawnDeeper(stillMore: 1000)))
+    _ = try! system.spawn("top", spawnDeeper(stillMore: 1000))
 }

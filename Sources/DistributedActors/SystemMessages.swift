@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 /// Messages sent only internally by the `ActorSystem` and actor internals.
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
@@ -39,7 +38,6 @@
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`
 @usableFromInline
 internal enum SystemMessage: Equatable {
-
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
     ///
@@ -93,10 +91,12 @@ internal extension SystemMessage {
     static func terminated(ref: AddressableActorRef) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
     }
+
     @inlinable
     static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
     }
+
     @inlinable
     static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
@@ -104,25 +104,25 @@ internal extension SystemMessage {
 }
 
 extension SystemMessage {
-    public static func ==(lhs: SystemMessage, rhs: SystemMessage) -> Bool {
+    public static func == (lhs: SystemMessage, rhs: SystemMessage) -> Bool {
         switch (lhs, rhs) {
         case (.start, .start): return true
 
-        case let (.watch(lWatchee, lWatcher), .watch(rWatchee, rWatcher)):
+        case (.watch(let lWatchee, let lWatcher), .watch(let rWatchee, let rWatcher)):
             return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
-        case let (.unwatch(lWatchee, lWatcher), .unwatch(rWatchee, rWatcher)):
+        case (.unwatch(let lWatchee, let lWatcher), .unwatch(let rWatchee, let rWatcher)):
             return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
-        case let (.terminated(lRef, lExisted, lAddrTerminated), .terminated(rRef, rExisted, rAddrTerminated)):
+        case (.terminated(let lRef, let lExisted, let lAddrTerminated), .terminated(let rRef, let rExisted, let rAddrTerminated)):
             return lRef.address == rRef.address && lExisted == rExisted && lAddrTerminated == rAddrTerminated
-        case let (.childTerminated(lPath), .childTerminated(rPath)):
+        case (.childTerminated(let lPath), .childTerminated(let rPath)):
             return lPath.address == rPath.address
-        case let (.nodeTerminated(lAddress), .nodeTerminated(rAddress)):
+        case (.nodeTerminated(let lAddress), .nodeTerminated(let rAddress)):
             return lAddress == rAddress
 
         case (.tombstone, .tombstone): return true
         case (.stop, .stop): return true
 
-            // listing cases rather than a full-on `default` to get an error when we add a new system message
+        // listing cases rather than a full-on `default` to get an error when we add a new system message
         case (.start, _),
              (.watch, _),
              (.unwatch, _),
@@ -142,10 +142,10 @@ extension SystemMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Errors
 
-
-// TODO document where this is intended to be used; supervision and suspension? should we separate the two?
+// TODO: document where this is intended to be used; supervision and suspension? should we separate the two?
 public struct ExecutionError: Error {
     let underlying: Error
 
