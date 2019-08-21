@@ -13,13 +13,13 @@ If you are learning about Actors you may instead want refer to the [Reference Do
 
 You may be interested in the following API documentation, as they are the "main" types one interacts with:
 
-The main entry point for an actor system: 
+The main entry point for an actor system:
 - [ActorSystem](Classes/ActorSystem.html)
- 
-Actor related types: 
+
+Actor related types:
 - [Behavior](Enums/Behavior.html)
 - [ActorContext](Classes/ActorContext.html)
-- [ActorRef](Classes/ActorRef.html)
+- [ActorRef](Structs/ActorRef.html)
 
 Supervision related types:
 - [SupervisionStrategy](Enums/SupervisionStrategy.html)

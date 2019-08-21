@@ -43,7 +43,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :mdash: &#8212;
 
 
-:dir_sact_doc_tests:    ../Tests/Swift Distributed ActorsDocumentationTests
+:dir_sact_doc_tests:    ../Tests/DistributedActorsDocumentationTests
 :dir_sact_actor:        ../Sources/DistributedActors
 :dir_sact_actor_tests:  ../Tests/DistributedActorsTests
 

@@ -1,5 +1,3 @@
-@testable import DistributedActors
-import DistributedActorsTestKit
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the Swift Distributed Actors open source project
@@ -14,6 +12,9 @@ import DistributedActorsTestKit
 //
 //===----------------------------------------------------------------------===//
 //
+
+@testable import DistributedActors
+import DistributedActorsTestKit
 import Foundation
 import NIO
 import NIOFoundationCompat
