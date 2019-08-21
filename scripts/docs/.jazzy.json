@@ -4,8 +4,8 @@
     "-scheme", "swift-distributed-actors-Package"
   ],
   "author": "Swift Distributed Actors Team",
-  "author_url": "https://github.com/kmalawski/sact",
-  "github_url": "https://github.com/kmalawski/sact",
+  "author_url": "https://github.com/apple/swift-distributed-actors",
+  "github_url": "https://github.com/apple/swift-distributed-actors",
   "module": "Swift Distributed Actors",
   "documentation": "Sources/Docs/*.md",
   "custom_categories": [

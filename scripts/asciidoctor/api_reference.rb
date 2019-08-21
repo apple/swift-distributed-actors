@@ -61,7 +61,7 @@ class ApiDocsInlineMacro < Asciidoctor::Extensions::InlineMacroProcessor
       text
     end
 
-    expected_at = File.join(File.dirname(__FILE__), '../../', link)
+    expected_at = File.join(File.dirname(__FILE__), '../../.build/docs', link)
     puts "NOT FOUND: `api:#{target}[#{attrs}]` links to::  #{expected_at} which does not exist. Parent: #{parent}" unless File.file?(expected_at)
 
     link = %{../../#{link}}

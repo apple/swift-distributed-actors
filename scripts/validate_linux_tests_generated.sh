@@ -16,25 +16,14 @@
 set -eu
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-printf "=> Checking docs\n"
-
-printf "   * api docs... "
-api_out=$("$here/docs/generate_api.sh" 2>&1)
-if [[ "$api_out" != *"jam out"* ]]; then
-  printf "\033[0;31merror!\033[0m\n"
-  echo "$api_out"
+printf "=> Checking linux tests... "
+FIRST_OUT="$(git status --porcelain)"
+ruby "$here/../scripts/generate_linux_tests.rb" > /dev/null
+SECOND_OUT="$(git status --porcelain)"
+if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
+  printf "\033[0;31mmissing changes!\033[0m\n"
+  git --no-pager diff
   exit 1
+else
+  printf "\033[0;32mokay.\033[0m\n"
 fi
-printf "\033[0;32mokay.\033[0m\n"
-
-printf "   * reference docs... "
-ref_out=$($here/docs/generate_reference.sh 2>&1)
-if [[ "$ref_out" == *"NOT FOUND"* ]]; then
-  printf "\033[0;31mbroken links found!\033[0m\n"
-  echo "======== NOT FOUND ISSUES ========="
-  echo "$ref_out" | grep "NOT FOUND"
-  echo "===== END OF NOT FOUND ISSUES ====="
-  echo "$ref_out"
-  exit 1
-fi
-printf "\033[0;32mokay.\033[0m\n"

@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:18.04-5.0
+    build:
+      args:
+        ubuntu_version: "18.04"
+        swift_version: "5.0"
+
+  unit-tests:
+    image: swift-distributed-actors:18.04-5.0
+
+  unit-tests-until-failure:
+    image: swift-distributed-actors:18.04-5.0
+
+  integration-tests:
+    image: swift-distributed-actors:18.04-5.0
+
+  test:
+    image: swift-distributed-actors:18.04-5.0
+
+  bench:
+    image: swift-distributed-actors:18.04-5.0
+
+  performance-test:
+    image: swift-distributed-actors:18.04-5.0
+
+  shell:
+    image: swift-distributed-actors:18.04-5.0
+
+  sample-crash:
+    image: swift-distributed-actors:18.04-5.0
+
+  sample-crash-actor:
+    image: swift-distributed-actors:18.04-5.0

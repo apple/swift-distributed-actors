@@ -1,24 +1,14 @@
-#@IgnoreInspection BashAddShebang
-
 ARG ubuntu_version=18.04
 FROM ubuntu:$ubuntu_version
 # needed to do again after FROM due to docker limitation
 ARG ubuntu_version
-
-### SETUP VERSIONS ###
-ENV ubuntu_version="18.04"
-ENV swift_version="5.0"
-ENV swift_flavour="RELEASE"
-ENV swift_builds_suffix="release"
-ENV skip_ruby_from_ppa="true"
-### END OF SETUP VERSIONS ###
 
 ARG DEBIAN_FRONTEND=noninteractive
 # do not start services during installation as this will fail and log a warning / error.
 RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d
 
 # basic dependencies
-RUN apt-get update && apt-get install -y wget git build-essential software-properties-common pkg-config locales
+RUN apt-get update && apt-get install -y wget git jq build-essential software-properties-common pkg-config locales
 RUN apt-get update && apt-get install -y libicu-dev libblocksruntime0
 RUN apt-get update && apt-get install -y lsof dnsutils netcat-openbsd net-tools # used by integration tests
 
@@ -41,30 +31,14 @@ RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 100
 RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.9 100
 
 # modern curl, if needed
-ARG install_curl_from_source
-RUN [ ! -z $install_curl_from_source ] || { apt-get update && apt-get install -y curl libcurl4-openssl-dev libz-dev; }
-RUN [ -z $install_curl_from_source ] || { apt-get update && apt-get install -y libssl-dev; }
-RUN [ -z $install_curl_from_source ] || mkdir $HOME/.curl
-RUN [ -z $install_curl_from_source ] || wget -q https://curl.haxx.se/download/curl-7.50.3.tar.gz -O $HOME/curl.tar.gz
-RUN [ -z $install_curl_from_source ] || tar xzf $HOME/curl.tar.gz --directory $HOME/.curl --strip-components=1
-RUN [ -z $install_curl_from_source ] || ( cd $HOME/.curl && ./configure --with-ssl && make && make install && cd - )
-RUN [ -z $install_curl_from_source ] || ldconfig
+RUN apt-get update && apt-get install -y curl libcurl4-openssl-dev libz-dev;
 
 # ruby and jazzy for docs generation
-ARG skip_ruby_from_ppa
-RUN [ -n "$skip_ruby_from_ppa" ] || apt-add-repository -y ppa:brightbox/ruby-ng
-RUN [ -n "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby2.4 ruby2.4-dev; }
-RUN [ -z "$skip_ruby_from_ppa" ] || { apt-get update && apt-get install -y ruby ruby-dev; }
-RUN apt-get update && apt-get install -y libsqlite3-dev
-RUN gem install jazzy --no-document
-
-# install java as generating diagrams for reference docs needs java
-RUN apt install -y default-jre
-
-# asciidoctor for reference documentation
-RUN gem install asciidoctor --no-document
-RUN gem install pygments.rb -v 0.6.3
-RUN gem install asciidoctor-diagram
+RUN apt-get update && apt-get install -y ruby ruby-dev libsqlite3-dev
+RUN gem install jazzy --no-ri --no-rdoc
+RUN gem install asciidoctor -v 1.5.8 --no-ri --no-rdoc
+RUN gem install asciidoctor-pdf --pre --no-ri --no-rdoc
+RUN gem install asciidoctor-diagram -v 1.5.8 --no-ri --no-rdoc
 
 # swift
 ARG swift_version=4.2.1
@@ -77,13 +51,17 @@ RUN tar xzf $HOME/swift.tar.gz --directory $HOME/.swift --strip-components=1
 RUN echo 'export PATH="$HOME/.swift/usr/bin:$PATH"' >> $HOME/.profile
 RUN echo 'export LINUX_SOURCEKIT_LIB_PATH="$HOME/.swift/usr/lib"' >> $HOME/.profile
 
-# script to allow mapping framepointers on linux
-RUN mkdir -p $HOME/.scripts
-RUN wget -q https://raw.githubusercontent.com/apple/swift/master/utils/symbolicate-linux-fatal -O $HOME/.scripts/symbolicate-linux-fatal
-RUN chmod 755 $HOME/.scripts/symbolicate-linux-fatal
-RUN echo 'export PATH="$HOME/.scripts:$PATH"' >> $HOME/.profile
+# tools
+RUN mkdir -p $HOME/.tools
+RUN echo 'export PATH="$HOME/.tools:$PATH"' >> $HOME/.profile
 
-# Additionally expose to everyone, since we will build using `builder` user
-RUN cp -R $HOME/.swift/usr/* /usr
-RUN cp -R $HOME/.scripts/* /usr/bin/
+# script to allow mapping framepointers on linux (until part of the toolchain)
+RUN wget -q https://raw.githubusercontent.com/apple/swift/master/utils/symbolicate-linux-fatal -O $HOME/.tools/symbolicate-linux-fatal
+RUN chmod 755 $HOME/.tools/symbolicate-linux-fatal
 
+# swiftformat (until part of the toolchain)
+
+ARG swiftformat_version=0.40.11
+RUN git clone --branch $swiftformat_version --depth 1 https://github.com/nicklockwood/SwiftFormat $HOME/.tools/swift-format
+RUN cd $HOME/.tools/swift-format && $HOME/.swift/usr/bin/swift build -c release
+RUN ln -s $HOME/.tools/swift-format/.build/release/swiftformat $HOME/.tools/swiftformat

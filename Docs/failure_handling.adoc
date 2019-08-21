@@ -123,7 +123,7 @@ The above snippet would yield the following log output (with logLevel set to `IN
 The above example log contains all the information regarding the failure: what was thrown, which actor has failed, which
 supervisor has handled this failure as well as its state and supervision result, which in this case is a restart of the actor.
 Following a restart, the actor can seamlessly continue processing messages of its mailbox -- this means, that even if the
-mailbox already contained the next `"Bob"` message it would _not_ be dropped due to the restart. Additionally, the api:ActorRef[class]
+mailbox already contained the next `"Bob"` message it would _not_ be dropped due to the restart. Additionally, the api:ActorRef[struct]
 remains valid and other actors can continue to send messages to it, as if nothing ever happened.
 
 Internally however the greeter's state has been "reset" during a restart -- it started anew using the initial behavior
@@ -161,11 +161,11 @@ unsafe actions which result in a fault (which usually would bring down an entire
 really change that much.
 
 The expectation is, that regardless of the actor performing possibly faulty operations (such as force unwrapping,
-index out of bounds, or similar fatal errors), the actor shall be restarted and remain usable -- without further 
+index out of bounds, or similar fatal errors), the actor shall be restarted and remain usable -- without further
 intervention of the caller. In other words, the faults of the fruit actor, are isolated within itself, and do not
 affect neither the entire process not the sending side of the messages.
 
-The log output obtained from running the above fault handling application snippet would look similar to the following: 
+The log output obtained from running the above fault handling application snippet would look similar to the following:
 
 WARNING: **WARNING:** The following shows the output of the "hacky signal handlers" supervision in action. We would like
          to obtain proper unwind support in Swift such that we could implement more correctly (i.e. no leaks, better
@@ -412,7 +412,7 @@ allowed such remote supervision, however at an huge complexity -- both implement
 Swift Distributed Actors instead enforces the importance of "watch" mechanisms, which are strongly inspired by the `watch` mechanism
 in Akka and `link` mechanism in Erlang.
 
-TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<Message>[class].
+TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<Message>[struct].
 
 ==== Death Watch Guarantees
 
