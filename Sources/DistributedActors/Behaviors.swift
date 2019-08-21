@@ -27,7 +27,6 @@ public struct Behavior<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Message Handling
 
 extension Behavior {
@@ -48,7 +47,6 @@ extension Behavior {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Most often used next-Behaviors
 
 extension Behavior {
@@ -80,7 +78,6 @@ extension Behavior {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Lifecycle Behaviors
 
 extension Behavior {
@@ -142,7 +139,6 @@ extension Behavior {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Behavior Combinators
 
 extension Behavior {
@@ -156,7 +152,6 @@ extension Behavior {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Signal receiving behaviors
 
 extension Behavior {
@@ -274,7 +269,6 @@ extension Behavior {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal behavior creators
 
 internal extension Behavior {
@@ -379,7 +373,6 @@ public enum IllegalBehaviorError<M>: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Class-based Behavior
 
 extension Behavior {
@@ -422,7 +415,6 @@ open class ClassBehavior<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Intercepting Messages
 
 extension Behavior {

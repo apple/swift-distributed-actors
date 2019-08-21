@@ -183,7 +183,6 @@ public struct Serialization {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serialization Public API
 
 extension Serialization {
@@ -289,7 +288,6 @@ extension Serialization {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: SerializationVerifications
 
 /// Marker protocol used to avoid serialization checks as configured by the `serializeAllMessages` setting.
@@ -301,7 +299,6 @@ public extension CodingUserInfoKey {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorSerializationContext
 
 /// A context object provided to any Encoder/Decoder, in order to allow special ActorSystem-bound types (such as ActorRef).
@@ -354,7 +351,6 @@ public struct ActorSerializationContext {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serialize specializations
 
 extension Serialization {
@@ -392,7 +388,6 @@ extension Serialization {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serialization Settings
 
 public struct SerializationSettings {
@@ -448,7 +443,6 @@ public struct SerializationSettings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Serializers
 
 /// Kind of like coder / encoder, we'll provide bridges for it

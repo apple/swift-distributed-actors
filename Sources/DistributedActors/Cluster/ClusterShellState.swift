@@ -17,7 +17,6 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Shell State
 
 // TODO: we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
@@ -332,7 +331,6 @@ extension ClusterShellState {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Membership
 
 extension ClusterShellState {
@@ -365,7 +363,6 @@ extension ClusterShellState {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ClusterShellState + Logging
 
 extension ClusterShellState {

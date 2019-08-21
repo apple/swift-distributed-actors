@@ -16,7 +16,6 @@ import CDistributedActorsMailbox
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Public API
 
 /// Represents a reference to an actor.
@@ -125,7 +124,6 @@ extension ActorRef.Personality {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal top generic "capability" abstractions; we'll need those for other "refs"
 
 public protocol ReceivesMessages: Codable {
@@ -140,7 +138,6 @@ public protocol ReceivesMessages: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal implementation classes
 
 /// INTERNAL API: Only for use by the actor system itself
@@ -166,7 +163,6 @@ extension ReceivesSystemMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor Ref Internals and Internal Capabilities
 
 internal extension ActorRef {
@@ -303,7 +299,6 @@ extension ActorCell: CustomDebugStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Convenience extensions for dead letters
 
 public extension ActorRef where Message == DeadLetter {
@@ -320,7 +315,6 @@ public extension ActorRef where Message == DeadLetter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: "Special" internal actors, "the Top Level Guardians"
 
 /// Represents an actor that has to exist, but does not exist in reality.

@@ -51,7 +51,6 @@ public final class LogCapture: LogHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Implement LogHandler API
 
 extension LogCapture {
@@ -96,7 +95,6 @@ public struct CapturedLogMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Should matchers
 
 extension LogCapture {

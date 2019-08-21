@@ -93,7 +93,6 @@ open class ClusteredNodesTestBase: XCTestCase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Printing information
 
 extension ClusteredNodesTestBase {
@@ -119,7 +118,6 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Logs
 
 extension ClusteredNodesTestBase {
@@ -135,7 +133,6 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Assertions
 
 extension ClusteredNodesTestBase {
@@ -247,7 +244,6 @@ extension ClusteredNodesTestBase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Resolve utilities, for resolving remote refs "on" a specific system
 
 extension ClusteredNodesTestBase {

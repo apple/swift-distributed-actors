@@ -243,7 +243,6 @@ extension ActorSystem: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: ActorRefFactory
 
 /// Public but not intended for user-extension.
@@ -268,7 +267,6 @@ extension ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Actor creation
 
 extension ActorSystem: ActorRefFactory {
@@ -330,7 +328,6 @@ extension ActorSystem: ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Beginnings of 'system time'
 
 extension ActorSystem {
@@ -345,7 +342,6 @@ extension ActorSystem {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal actor tree traversal utilities
 
 extension ActorSystem: _ActorTreeTraversable {

@@ -16,7 +16,6 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Remote Association State Machine
 
 /// An `Association` represents a bi-directional agreement between two nodes that they are able to communicate with each other.
@@ -69,7 +68,6 @@ struct AssociationStateMachine { // TODO: associations should be as light as pos
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Control capabilities (exposed to RemoteActorRef)
 
 /// A "Remote Control" offered to actors which wish to perform actions onto an association, e.g. send messages to the remote side.

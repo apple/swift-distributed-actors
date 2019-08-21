@@ -237,7 +237,6 @@ internal struct ServantProcess {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Servant Supervision
 
 /// Configures supervision for a specific su
@@ -481,7 +480,6 @@ public enum ProcessSpawnError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Naive method to parse Node
 
 extension UniqueNode {

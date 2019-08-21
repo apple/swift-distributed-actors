@@ -32,7 +32,6 @@ extension CRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Message protocol for interacting with replicator
 
 extension CRDT {
@@ -184,7 +183,6 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Replicator settings
 
 extension CRDT.Replicator {

@@ -16,7 +16,6 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Cluster Control
 
 /// Allows controlling the cluster, e.g. by issuing join/down commands, or subscribing to cluster events.

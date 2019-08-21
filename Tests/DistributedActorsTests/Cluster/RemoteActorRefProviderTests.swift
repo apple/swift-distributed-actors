@@ -34,7 +34,6 @@ class RemoteActorRefProviderTests: XCTestCase {
     lazy var remoteNode = ActorAddress(node: node, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-
     // MARK: Properly resolve
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
@@ -66,7 +65,6 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: resolve deadLetters
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {

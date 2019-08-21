@@ -17,7 +17,6 @@ import Logging
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: tracelog: Cluster Shell [tracelog:cluster]
 
 extension ClusterShellState {

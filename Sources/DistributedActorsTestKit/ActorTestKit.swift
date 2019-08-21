@@ -52,7 +52,6 @@ public struct TestError: Error, Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: TestKit settings
 
 public struct ActorTestKitSettings {
@@ -61,7 +60,6 @@ public struct ActorTestKitSettings {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Test Probes
 
 public extension ActorTestKit {
@@ -308,7 +306,6 @@ final class MockActorContext<Message>: ActorContext<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Error
 
 extension ActorTestKit {

@@ -60,7 +60,6 @@ internal enum AnyStateBasedCRDTError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: AnyCvRDT
 
 // Protocol `CvRDT` can only be used as a generic constraint because it has `Self` or
@@ -84,7 +83,6 @@ extension AnyCvRDT: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: AnyDeltaCRDT
 
 // Protocol `DeltaCRDT` can only be used as a generic constraint because it has `Self` or

@@ -195,7 +195,6 @@ public class Timers<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-
 // MARK: Internal System Timer capabilities
 
 internal extension Timers {

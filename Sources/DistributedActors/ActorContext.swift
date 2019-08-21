@@ -65,7 +65,7 @@ public class ActorContext<Message>: ActorRefFactory {
             return undefined()
         }
         set { // has to become settable
-            undefined()
+            fatalError()
         }
     }
 
@@ -218,7 +218,7 @@ public class ActorContext<Message>: ActorRefFactory {
             return undefined()
         }
         set {
-            undefined()
+            fatalError()
         }
     }
 
