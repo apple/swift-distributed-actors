@@ -218,7 +218,7 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=spawn]
 
 ==== Sending messages using `tell` (fire-and-forget)
 
-Sending messages to actors is straight forward and can be done thanks to the api:ActorRef[class]`.tell(_:)` method.
+Sending messages to actors is straight forward and can be done thanks to the api:ActorRef[struct]`.tell(_:)` method.
 
 #TODO: ActorRef link should be ActorRef<Message>#
 
@@ -473,7 +473,7 @@ catch one could log a warning about the "harmless" error having occurred.
 A feature of actors is that they have _unique identity_, which is represented by their address.
 Similar to real life, one can only send messages to an actor or friend if we know their address.
 
-The "sending" capability is expressed by obtaining an api:ActorRef[class], which also contains the actor's address.
+The "sending" capability is expressed by obtaining an api:ActorRef[struct], which also contains the actor's address.
 There can be many references (even on different nodes in a cluster) to the same actor, however its address remains the same.
 
 The address contains a UID which is sometimes referred to as the "Incarnation" ID. This UID is used to clarify identity in
@@ -490,7 +490,7 @@ the following situation:
 - thanks to the different UID the system knows that these messages are _not_ intended for the _current_ Caplin -- as it has a different identity.
   - note that this matters mostly for distributed systems, since in local systems the identity issue is resolved by simply
     holding references to actor mailboxes; however semantically the model is exactly the same: the "old incarnation" is now gone.
-- messages sent to the "old" api:ActorRef[class] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
+- messages sent to the "old" api:ActorRef[struct] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
 === Locating actors using the Receptionist [[receptionist]]
 

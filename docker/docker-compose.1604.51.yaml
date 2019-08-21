@@ -1,0 +1,36 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-distributed-actors:16.04-5.1
+    build:
+      args:
+        ubuntu_version: "16.04"
+        swift_version: "5.1"
+        swift_flavour: "DEVELOPMENT-SNAPSHOT-2019-08-15-a"
+        swift_builds_suffix: "branch"
+
+  unit-tests:
+    image: swift-distributed-actors:16.04-5.1
+
+  unit-tests-until-failure:
+    image: swift-distributed-actors:16.04-5.1
+
+  integration-tests:
+    image: swift-distributed-actors:16.04-5.1
+
+  test:
+    image: swift-distributed-actors:16.04-5.1
+
+  bench:
+    image: swift-distributed-actors:16.04-5.1
+
+  shell:
+    image: swift-distributed-actors:16.04-5.1
+
+  sample-crash:
+    image: swift-distributed-actors:16.04-5.1
+
+  sample-crash-actor:
+    image: swift-distributed-actors:16.04-5.1

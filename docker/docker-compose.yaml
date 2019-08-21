@@ -1,18 +1,18 @@
 # this file is not designed to be run directly
 # instead, use the docker-compose.<os>.<swift> files
-# eg docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.yaml run test
+# eg docker-compose -f docker/docker-compose.yaml -f docker/docker-compose.1604.51.yaml run test
 version: "3"
 
 services:
 
   runtime-setup:
-    image: swift-nio:default
+    image: swift-distributed-actors:default
     build:
       context: .
       dockerfile: Dockerfile
 
   common: &common
-    image: swift-nio:default
+    image: swift-distributed-actors:default
     depends_on: [runtime-setup]
     volumes:
       - ~/.ssh:/root/.ssh
@@ -37,27 +37,28 @@ services:
 
   integration-tests:
     <<: *common
-    command: /bin/bash -cl "./IntegrationTests/run-tests.sh"
+    command: /bin/bash -cl "./scripts/integration_tests.sh"
 
   test:
     <<: *common
-    command: /bin/bash -cl "swift test"
-
-  validate-docs:
-    <<: *common
-    command: /bin/bash -cl "./scripts/validate_docs.sh"
+    command: /bin/bash -cl "swift test && ./scripts/integration_tests.sh"
 
   bench:
     <<: *common
     command: /bin/bash -cl "swift run DistributedActorsBenchmarks"
 
+  # util
+
+  shell:
+    <<: *common
+    entrypoint: /bin/bash
+
+  # samples
+
   sample-crash:
     <<: *common
     command: /bin/bash -cl "swift run DistributedActorsSampleLetItCrash div-by-0"
+
   sample-crash-actor:
     <<: *common
     command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' DistributedActorsSampleLetItCrash div-by-0 actor"
-
-  bash:
-    <<: *common
-    command: /bin/bash

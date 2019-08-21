@@ -1,13 +1,13 @@
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the SwiftNIO open source project
+## This source file is part of the Swift Distributed Actors open source project
 ##
-## Copyright (c) 2018, 2019 Apple Inc. and the Swift Distributed Actors project authors
+## Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.md for the list of SwiftNIO project authors
+## See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -16,7 +16,7 @@
 set -e
 
 my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-root_path="$my_path/.."
+root_path="$my_path/../.."
 
 short_version=$(git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0")
 long_version=$(git describe            --tags 2> /dev/null || echo "0.0.0")
@@ -37,7 +37,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     swift build
   fi
   # setup source-kitten if required
-  source_kitten_source_path="$root_path/.SourceKitten"
+  source_kitten_source_path="$root_path/.build/SourceKittenSource"
   if [[ ! -d "$source_kitten_source_path" ]]; then
     git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
   fi
@@ -55,7 +55,6 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   done
 fi
 
-[[ -d api/${version} ]] || mkdir -p api/$version
 [[ -d swift-distributed-actors.xcodeproj ]] || swift package generate-xcodeproj
 
 # run jazzy
@@ -72,19 +71,21 @@ fi
 module_switcher="api/$version/README.md"
 jazzy_args=(--clean
             --readme "$module_switcher"
-            --config .jazzy.json
+            --config "$my_path/.jazzy.json"
             --documentation=$root_path/Docs/*.md
             --github-file-prefix https://github.com/apple/swift-distributed-actors/blob/$doc_link_version
             --theme fullwidth
            )
-cat "$my_path/docs_includes/generate_docs_api_main.md" > "$module_switcher"
+cat "$my_path/includes/api_docs_main.md" > "$module_switcher"
 
 for module in "${modules[@]}"; do
   echo " - [$module](../$module/index.html)" >> "$module_switcher"
 done
 
+mkdir -p "$root_path/.build/docs/api/$version"
+mkdir -p "$root_path/.build/docs/docset/$version"
 for module in "${modules[@]}"; do
-  args=("${jazzy_args[@]}"  --output "$root_path/api/$version/$module" --module "$module")
+  args=("${jazzy_args[@]}"  --output "$root_path/.build/docs/api/$version/$module" --docset-path "$root_path/.build/docs/docset/$version/$module"  --module "$module")
   if [[ -f "$root_path/.build/sourcekitten/$module.json" ]]; then
     args+=(--sourcekitten-sourcefile "$root_path/.build/sourcekitten/$module.json")
   fi
