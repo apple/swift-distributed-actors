@@ -16,6 +16,10 @@
 // MARK: GCounter as pure CRDT
 
 extension CRDT {
+    /// An optimized implementation of GCounter as delta-CRDT.
+    ///
+    /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
+    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct GCounter: NamedDeltaCRDT {
         public typealias Delta = GCounterDelta
 
@@ -30,10 +34,9 @@ extension CRDT {
             return self.state.values.reduce(0, +)
         }
 
-        init(replicaId: ReplicaId, state: [ReplicaId: Int] = [:], delta: Delta? = nil) {
+        init(replicaId: ReplicaId) {
             self.replicaId = replicaId
-            self.state = state
-            self.delta = delta
+            self.state = [:]
         }
 
         mutating func increment(by amount: Int) {
@@ -101,9 +104,8 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
     }
 
     public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
-        // Increment locally
+        // Increment locally then propagate
         self.data.increment(by: amount)
-        // Generic write which includes calling the replicator
         return self.write(consistency: consistency, timeout: timeout)
     }
 }

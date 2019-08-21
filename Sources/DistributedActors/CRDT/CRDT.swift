@@ -377,3 +377,33 @@ extension CRDT.ReplicaId: Comparable {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDTSet
+
+public protocol CRDTSet {
+    associatedtype Element: Hashable
+
+    var elements: Set<Element> { get }
+
+    mutating func add(_ element: Element)
+    mutating func remove(_ element: Element)
+}
+
+extension CRDT.ActorOwned where DataType: CRDTSet {
+    public var lastObservedValue: Set<DataType.Element> {
+        return self.data.elements
+    }
+
+    public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        // Add element locally then propagate
+        self.data.add(element)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        // Remove element locally the propagate
+        self.data.remove(element)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}

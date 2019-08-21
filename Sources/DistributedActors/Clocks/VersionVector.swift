@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: VersionVector
+
 /// Version vectors are a mechanism to capture causality in distributed systems.
 ///
 /// Often times the terms "version vector" and "vector clock" are used interchangeably. Indeed the two mechanisms share
@@ -154,5 +157,41 @@ extension VersionVector: Comparable {
 extension VersionVector: CustomStringConvertible {
     public var description: String {
         return "vv:\(self.state)"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Dot
+
+/// A dot is a (replica, version) pair that represents a single, globally unique event.
+///
+/// `Dot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Dot` needs
+/// to be `Hashable` we have to define a type.
+public struct Dot<ReplicaId> where ReplicaId: Hashable, ReplicaId: Comparable {
+    public let replicaId: ReplicaId
+
+    public let version: Int
+
+    init(_ replicaId: ReplicaId, _ version: Int) {
+        self.replicaId = replicaId
+        self.version = version
+    }
+}
+
+extension Dot: Hashable {}
+
+extension Dot: Comparable {
+    /// Lexical, NOT causal ordering of two dots.
+    public static func < (lhs: Dot, rhs: Dot) -> Bool {
+        if lhs.replicaId == rhs.replicaId {
+            return lhs.version < rhs.version
+        }
+        return lhs.replicaId < rhs.replicaId
+    }
+}
+
+extension Dot: CustomStringConvertible {
+    public var description: String {
+        return "dot:(\(self.replicaId),\(self.version))"
     }
 }
