@@ -20,7 +20,6 @@ import Logging
 ///   - It MUST only ever be accessed from its own Actor. It is fine though to close over it in the actors behaviours.
 ///   - It MUST NOT be shared to other actors, and MUST NOT be accessed concurrently (e.g. from outside the actor).
 public class ActorContext<Message>: ActorRefFactory {
-
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
         return undefined()
@@ -66,7 +65,7 @@ public class ActorContext<Message>: ActorRefFactory {
             return undefined()
         }
         set { // has to become settable
-            return undefined()
+            undefined()
         }
     }
 
@@ -76,6 +75,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Timers
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
@@ -84,6 +84,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Actor Lifecycle-bound defer
 
     /// - warning: Experimental API
@@ -131,6 +132,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Death Watch
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
@@ -192,6 +194,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Child actor management
 
     public func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
@@ -215,7 +218,7 @@ public class ActorContext<Message>: ActorRefFactory {
             return undefined()
         }
         set {
-            return undefined()
+            undefined()
         }
     }
 
@@ -234,6 +237,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Actor Suspension Mechanisms
 
     /// :nodoc: Not intended to be used by end users.
@@ -290,10 +294,10 @@ public class ActorContext<Message>: ActorRefFactory {
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
     public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
-            asyncResult.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
-                selfRef?.sendSystemMessage(.resume(result.map { $0 }))
-            }
-            return .suspend(handler: continuation)
+        asyncResult.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
+            selfRef?.sendSystemMessage(.resume(result.map { $0 }))
+        }
+        return .suspend(handler: continuation)
     }
 
     /// ***CAUTION***: This functionality should be used with extreme caution, as it will
@@ -313,13 +317,14 @@ public class ActorContext<Message>: ActorRefFactory {
     public func awaitResultThrowing<AR: AsyncResult>(
         of asyncResult: AR,
         timeout: TimeAmount,
-        _ continuation: @escaping (AR.Value) throws -> Behavior<Message>) -> Behavior<Message> {
-            return self.awaitResult(of: asyncResult, timeout: timeout) { result in
-                switch result {
-                case .success(let res):   return try continuation(res)
-                case .failure(let error): throw error.underlying
-                }
+        _ continuation: @escaping (AR.Value) throws -> Behavior<Message>
+    ) -> Behavior<Message> {
+        return self.awaitResult(of: asyncResult, timeout: timeout) { result in
+            switch result {
+            case .success(let res): return try continuation(res)
+            case .failure(let error): throw error.underlying
             }
+        }
     }
 
     /// Applies the result of the `task` to the given `continuation` within the
@@ -371,6 +376,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+
     // MARK: Message Adapters & Sub-Receive
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
@@ -403,7 +409,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    func subReceive<SubMessage>(_: SubReceiveId, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return undefined()
     }
 

@@ -24,15 +24,14 @@
 /// - Warning: Users MUST NOT implement new signals.
 ///            Instances of them are reserved to only be created and managed by the actor system itself.
 /// - SeeAlso: `Signals`, for a complete listing of pre-defined signals.
-public protocol Signal {
-}
+public protocol Signal {}
 
 /// Namespace for all pre-defined `Signal` types.
 ///
 /// - SeeAlso: `Signal`, for a semantic overview of what signals are.
 public enum Signals {
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Actor Lifecycle Events
 
     /// Signal sent to an actor right before it is restarted (by supervision).
@@ -60,6 +59,7 @@ public enum Signals {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Death Watch Signals
 
     /// Signal sent to all watchers of an actor once the `watchee` has terminated.
@@ -102,7 +102,6 @@ public enum Signals {
     ///
     /// - SeeAlso: `Terminated` which is sent when a watched actor terminates.
     public final class ChildTerminated: Terminated {
-
         /// Filled with the error that caused the child actor to terminate.
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
@@ -114,7 +113,7 @@ public enum Signals {
             super.init(address: address, existenceConfirmed: true)
         }
 
-        override public var description: String {
+        public override var description: String {
             let reason: String
             if case .some(let r) = self.cause {
                 reason = ", cause: \(r)"
@@ -127,7 +126,7 @@ public enum Signals {
 }
 
 extension Signals.Terminated: Equatable, Hashable {
-    public static func ==(lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
+    public static func == (lhs: Signals.Terminated, rhs: Signals.Terminated) -> Bool {
         return lhs.address == rhs.address &&
             lhs.existenceConfirmed == rhs.existenceConfirmed
     }

@@ -69,17 +69,17 @@ def createExtensionFile(fileName, classes)
     file.write "\n"
 
     for classArray in classes
-      file.write 'extension ' + classArray[0] + " {\n\n"
-      file.write '   static var allTests : [(String, (' + classArray[0] + ") -> () throws -> Void)] {\n"
-      file.write "      return [\n"
+      file.write 'extension ' + classArray[0] + " {\n"
+      file.write '    static var allTests: [(String, (' + classArray[0] + ") -> () throws -> Void)] {\n"
+      file.write "        return [\n"
 
       for funcName in classArray[1]
-        file.write '                ("' + funcName + '", ' + funcName + "),\n"
+        file.write '            ("' + funcName + '", ' + funcName + "),\n"
       end
 
-      file.write "           ]\n"
-      file.write "   }\n"
-      file.write "}\n\n"
+      file.write "        ]\n"
+      file.write "    }\n"
+      file.write "}\n"
     end
   end
 end
@@ -94,10 +94,10 @@ def createLinuxMain(testsDirectory, allTestSubDirectories, files)
 
     file.write "#if os(Linux) || os(FreeBSD)\n"
     for testSubDirectory in allTestSubDirectories.sort { |x, y| x <=> y }
-      file.write '   @testable import ' + testSubDirectory + "\n"
+      file.write '@testable import ' + testSubDirectory + "\n"
     end
     file.write "\n"
-    file.write "   XCTMain([\n"
+    file.write "XCTMain([\n"
 
     testCases = []
     for classes in files
@@ -107,9 +107,9 @@ def createLinuxMain(testsDirectory, allTestSubDirectories, files)
     end
 
     for testCase in testCases.sort { |x, y| x <=> y }
-      file.write '         testCase(' + testCase + ".allTests),\n"
+      file.write '    testCase(' + testCase + ".allTests),\n"
     end
-    file.write "    ])\n"
+    file.write "])\n"
     file.write "#endif\n"
   end
 end

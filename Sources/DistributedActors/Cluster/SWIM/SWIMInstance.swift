@@ -24,7 +24,6 @@ import Logging
 /// - SeeAlso: <a href="https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf">Scalable Weakly-consistent Infection-style Process Group Membership Protocol</a>
 /// - SeeAlso: <a href="https://arxiv.org/abs/1707.00788">Lifeguard: Local Health Awareness for More Accurate Failure Detection</a>
 final class SWIMInstance {
-
     let settings: SWIM.Settings
 
     /// Main members storage, map to values to obtain current members.
@@ -46,6 +45,7 @@ final class SWIMInstance {
     var incarnation: SWIM.Incarnation {
         return self._incarnation
     }
+
     private var _incarnation: SWIM.Incarnation = 0
 
     // The protocol period represents the number of times we have pinged a random member
@@ -57,11 +57,12 @@ final class SWIMInstance {
 
     // We need to store the path to the owning SWIMShell to avoid adding it to the `membersToPing` list
     // private var myRemoteAddress: ActorAddress? = nil
-    private var myShellMyself: ActorRef<SWIM.Message>? = nil
+    private var myShellMyself: ActorRef<SWIM.Message>?
     private var myShellAddress: ActorAddress? {
         return self.myShellMyself?.address
     }
-    private var myNode: UniqueNode? = nil
+
+    private var myNode: UniqueNode?
 
     private var _messagesToGossip = Heap(of: SWIM.Gossip.self, comparator: {
         $0.numberOfTimesGossiped < $1.numberOfTimesGossiped
@@ -93,13 +94,13 @@ final class SWIMInstance {
         let member = SWIMMember(ref: ref, status: status, protocolPeriod: self.protocolPeriod)
         self.members[ref] = member
 
-        if maybeExistingMember == nil && notMyself(member) {
+        if maybeExistingMember == nil, self.notMyself(member) {
             // Newly added members are inserted at a random spot in the list of members
             // to ping, to have a better distribution of messages to this node from all
             // other nodes. If for example all nodes would add it to the end of the list,
             // it would take a longer time until it would be pinged for the first time
             // and also likely receive multiple pings within a very short time frame.
-            let insertIndex = Int.random(in: self.membersToPing.startIndex...self.membersToPing.endIndex)
+            let insertIndex = Int.random(in: self.membersToPing.startIndex ... self.membersToPing.endIndex)
             self.membersToPing.insert(member, at: insertIndex)
             if insertIndex <= self.membersToPingIndex {
                 // If we inserted the new member before the current `membersToPingIndex`,
@@ -115,6 +116,7 @@ final class SWIMInstance {
 
         return .added
     }
+
     enum AddMemberDirective {
         case added
         case newerMemberAlreadyPresent(SWIM.Member)
@@ -159,15 +161,19 @@ final class SWIMInstance {
     func notMyself(_ member: SWIM.Member) -> Bool {
         return self.notMyself(member.ref)
     }
+
     func notMyself(_ ref: ActorRef<SWIM.Message>) -> Bool {
         return self.notMyself(ref.address)
     }
+
     func notMyself(_ memberAddress: ActorAddress) -> Bool {
         return !self.isMyself(memberAddress)
     }
+
     func isMyself(_ member: SWIM.Member) -> Bool {
         return self.isMyself(member.ref.address)
     }
+
     func isMyself(_ memberAddress: ActorAddress) -> Bool {
         return self.myShellAddress == memberAddress
     }
@@ -188,9 +194,10 @@ final class SWIMInstance {
         if status.isDead {
             self.removeFromMembersToPing(member)
         }
-        
+
         return .applied(previousStatus: previousStatusOption)
     }
+
     enum MarkedDirective: Equatable {
         case ignoredDueToOlderStatus(currentStatus: SWIM.Status)
         case applied(previousStatus: SWIM.Status?)
@@ -222,7 +229,7 @@ final class SWIMInstance {
     }
 
     func status(of ref: ActorRef<SWIM.Message>) -> SWIM.Status? {
-        if notMyself(ref) {
+        if self.notMyself(ref) {
             return self.members[ref]?.status
         } else {
             return .alive(incarnation: self.incarnation)
@@ -238,7 +245,7 @@ final class SWIMInstance {
             return self.member(for: self.myShellMyself!)
         }
 
-        return self.members.first(where: { (key, _) in key.address.node == node })?.value
+        return self.members.first(where: { key, _ in key.address.node == node })?.value
     }
 
     /// Counts non-dead members.
@@ -279,9 +286,9 @@ final class SWIMInstance {
         }
 
         var gossipMessages: [SWIM.Gossip] = []
-        gossipMessages.reserveCapacity(min(self.settings.gossip.maxGossipCountPerMessage, self._messagesToGossip.count) )
+        gossipMessages.reserveCapacity(min(self.settings.gossip.maxGossipCountPerMessage, self._messagesToGossip.count))
         while gossipMessages.count < self.settings.gossip.maxNumberOfMessages,
-              let gossip = self._messagesToGossip.removeRoot() {
+            let gossip = self._messagesToGossip.removeRoot() {
             gossipMessages.append(gossip)
         }
 
@@ -307,16 +314,16 @@ final class SWIMInstance {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Handling SWIM protocol interactions
 
 extension SWIM.Instance {
-
     func onPing(lastKnownStatus: SWIM.Status) -> OnPingDirective {
         guard let myself = self.myShellMyself else {
             preconditionFailure("Myself (ref to SWIM.Shell) must be set before reacting to ping messages.")
         }
 
-        var warning: String? = nil
+        var warning: String?
         // if a node suspects us in the current incarnation, we need to increment
         // our incarnation number, so the new `alive` status can properly propagate through
         // the cluster (and "win" over the old `.suspect` status).
@@ -328,9 +335,9 @@ extension SWIM.Instance {
                 // this should never happen, because the only member allowed to increment our incarnation nr is _us_,
                 // so it is not possible (unless malicious intents) to observe an incarnation larger than we are at.
                 warning = """
-                          Received ping with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
-                          which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                          """
+                Received ping with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
+                which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                """
             }
         }
 
@@ -338,6 +345,7 @@ extension SWIM.Instance {
 
         return .reply(ack, warning: warning)
     }
+
     enum OnPingDirective {
         case reply(SWIM.Ack, warning: String?)
     }
@@ -370,13 +378,14 @@ extension SWIM.Instance {
             assert(ack.pinged.address == member.address, "The ack.from member [\(ack.pinged)] MUST be equal to the pinged member \(member.address)]; The Ack message is being forwarded back to us from the pinged member.")
             switch self.mark(member, as: .alive(incarnation: ack.incarnation)) {
             case .applied:
-                // TODO we can be more interesting here, was it a move suspect -> alive or a reassurance?
+                // TODO: we can be more interesting here, was it a move suspect -> alive or a reassurance?
                 return .alive(previous: lastKnownStatus, payloadToProcess: ack.payload)
             case .ignoredDueToOlderStatus(let currentStatus):
                 return .ignoredDueToOlderStatus(currentStatus: currentStatus)
             }
         }
     }
+
     enum OnPingRequestResponseDirective {
         case alive(previous: SWIM.Status, payloadToProcess: SWIM.Payload)
         case unknownMember
@@ -402,9 +411,9 @@ extension SWIM.Instance {
                     return .applied(
                         level: .warning,
                         message: """
-                                 Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
-                                 which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                                 """
+                        Received gossip about self with incarnation number [\(suspectedInIncarnation)] > current incarnation [\(self._incarnation)], \
+                        which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                        """
                     )
                 }
                 return .applied
@@ -419,9 +428,9 @@ extension SWIM.Instance {
                     return .applied(
                         level: .warning,
                         message: """
-                                 Received gossip about self with incarnation number [\(unreachableInIncarnation)] > current incarnation [\(self._incarnation)], \
-                                 which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
-                                 """
+                        Received gossip about self with incarnation number [\(unreachableInIncarnation)] > current incarnation [\(self._incarnation)], \
+                        which should never happen and while harmless is highly suspicious, please raise an issue with logs. This MAY be an issue in the library.
+                        """
                     )
                 }
 
@@ -446,7 +455,7 @@ extension SWIM.Instance {
                     )
                 }
             } else if let remoteMemberNode = member.ref.address.node?.node {
-                // TODO store that we're now handshaking with it already?
+                // TODO: store that we're now handshaking with it already?
                 return .connect(node: remoteMemberNode, onceConnected: { _ in
                     self.addMember(member.ref, status: member.status)
                 })
@@ -454,14 +463,15 @@ extension SWIM.Instance {
                 return .ignored(
                     level: .warning,
                     message: """
-                             Received gossip about node which is neither myself or a remote node (i.e. address is not present)\
-                             which is highly unexpected and may indicate a configuration or networking issue. Ignoring gossip about this member. \
-                             Member: \(member), SWIM.Instance state: \(String(reflecting: self))
-                             """
+                    Received gossip about node which is neither myself or a remote node (i.e. address is not present)\
+                    which is highly unexpected and may indicate a configuration or networking issue. Ignoring gossip about this member. \
+                    Member: \(member), SWIM.Instance state: \(String(reflecting: self))
+                    """
                 )
             }
         }
     }
+
     enum OnGossipPayloadDirective {
         case applied(level: Logger.Level?, message: Logger.Message?)
         /// Ignoring a gossip update is perfectly fine: it may be "too old" or other reasons
@@ -470,7 +480,7 @@ extension SWIM.Instance {
         /// and do not have a connection to it either (e.g. we joined only seed nodes, and more nodes joined them later
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
-        case connect(node: Node, onceConnected: (UniqueNode) -> ())
+        case connect(node: Node, onceConnected: (UniqueNode) -> Void)
         /// Meaning the node is now marked `DEAD`.
         /// SWIM will continue to gossip about the dead node for a while.
         /// We should also notify the high-level membership that the node shall be considered `DOWN`.
@@ -482,6 +492,7 @@ extension SWIMInstance.OnGossipPayloadDirective {
     static var applied: SWIMInstance.OnGossipPayloadDirective {
         return .applied(level: nil, message: nil)
     }
+
     static var ignored: SWIMInstance.OnGossipPayloadDirective {
         return .ignored(level: nil, message: nil)
     }
@@ -491,25 +502,24 @@ extension SWIM.Instance: CustomDebugStringConvertible {
     public var debugDescription: String {
         // multi-line on purpose
         return """
-               SWIMInstance(
-                   settings: \(settings),
-                   
-                   myLocalPath: \(String(reflecting: myShellAddress)),
-                   myShellMyself: \(String(reflecting: myShellMyself)),
-                                       
-                   _incarnation: \(_incarnation),
-                   _protocolPeriod: \(_protocolPeriod), 
+        SWIMInstance(
+            settings: \(settings),
+            
+            myLocalPath: \(String(reflecting: myShellAddress)),
+            myShellMyself: \(String(reflecting: myShellMyself)),
+                                
+            _incarnation: \(_incarnation),
+            _protocolPeriod: \(_protocolPeriod), 
 
-                   members: [
-                       \(members.map({"\($0.key)"}).joined(separator: "\n        "))
-                   ] 
-                   membersToPing: [ 
-                       \(membersToPing.map({"\($0)"}).joined(separator: "\n        "))
-                   ]
-                    
-                   _messagesToGossip: \(_messagesToGossip)
-               )
-               """
+            members: [
+                \(members.map { "\($0.key)" }.joined(separator: "\n        "))
+            ] 
+            membersToPing: [ 
+                \(membersToPing.map { "\($0)" }.joined(separator: "\n        "))
+            ]
+             
+            _messagesToGossip: \(_messagesToGossip)
+        )
+        """
     }
 }
-

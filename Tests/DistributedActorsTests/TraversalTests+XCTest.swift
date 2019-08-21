@@ -21,14 +21,12 @@ import XCTest
 ///
 
 extension TraversalTests {
-
-   static var allTests : [(String, (TraversalTests) -> () throws -> Void)] {
-      return [
-                ("test_printTree_shouldPrintActorTree", test_printTree_shouldPrintActorTree),
-                ("test_traverse_shouldTraverseAllActors", test_traverse_shouldTraverseAllActors),
-                ("test_traverse_shouldAllowImplementingCollect", test_traverse_shouldAllowImplementingCollect),
-                ("test_traverse_shouldHaveRightDepthInContext", test_traverse_shouldHaveRightDepthInContext),
-           ]
-   }
+    static var allTests: [(String, (TraversalTests) -> () throws -> Void)] {
+        return [
+            ("test_printTree_shouldPrintActorTree", test_printTree_shouldPrintActorTree),
+            ("test_traverse_shouldTraverseAllActors", test_traverse_shouldTraverseAllActors),
+            ("test_traverse_shouldAllowImplementingCollect", test_traverse_shouldAllowImplementingCollect),
+            ("test_traverse_shouldHaveRightDepthInContext", test_traverse_shouldHaveRightDepthInContext),
+        ]
+    }
 }
-

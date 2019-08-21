@@ -21,12 +21,10 @@ import XCTest
 ///
 
 extension ClusterMembershipGossipTests {
-
-   static var allTests : [(String, (ClusterMembershipGossipTests) -> () throws -> Void)] {
-      return [
-                ("test_gossip_down_node_shouldReachAllNodes", test_gossip_down_node_shouldReachAllNodes),
-                ("test_join_swimDiscovered_thirdNode", test_join_swimDiscovered_thirdNode),
-           ]
-   }
+    static var allTests: [(String, (ClusterMembershipGossipTests) -> () throws -> Void)] {
+        return [
+            ("test_gossip_down_node_shouldReachAllNodes", test_gossip_down_node_shouldReachAllNodes),
+            ("test_join_swimDiscovered_thirdNode", test_join_swimDiscovered_thirdNode),
+        ]
+    }
 }
-

@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 internal enum ClusterReceptionist {
-
     static let syncKey = TimerKey("receptionist/sync")
 
     struct Replicate: Receptionist.Message, Codable {
@@ -29,8 +28,7 @@ internal enum ClusterReceptionist {
         let registrations: [AnyRegistrationKey: [ActorAddress]]
     }
 
-    struct Sync: Receptionist.Message {
-    }
+    struct Sync: Receptionist.Message {}
 
     static func behavior(syncInterval: TimeAmount) -> Behavior<Receptionist.Message> {
         return .setup { context in
@@ -39,7 +37,7 @@ internal enum ClusterReceptionist {
             // FIXME: this one's pretty bad. When using context.myself instead, we get serialization errors,
             // because the meta key will be `ReceptionistMessage` and it can't find the correct serializer.
             let replicateAdapter = context.messageAdapter(from: ClusterReceptionist.FullState.self) {
-                return $0
+                $0
             }
 
             context.timers.startPeriodic(key: syncKey, message: ClusterReceptionist.Sync(), interval: syncInterval)
@@ -115,7 +113,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onFullStateRequest(context: ActorContext<Receptionist.Message>, request: ClusterReceptionist.FullStateRequest, storage: Receptionist.Storage) {
-        context.log.debug("Received full state request from [\(request.replyTo)]") // TODO tracelog style
+        context.log.debug("Received full state request from [\(request.replyTo)]") // TODO: tracelog style
         var registrations: [AnyRegistrationKey: [ActorAddress]] = [:]
         registrations.reserveCapacity(storage._registrations.count)
         for (key, values) in storage._registrations {
@@ -143,7 +141,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onFullState(context: ActorContext<Receptionist.Message>, fullState: ClusterReceptionist.FullState, storage: Receptionist.Storage) throws {
-        context.log.debug("Received full state \(fullState)") // TODO tracelog style
+        context.log.debug("Received full state \(fullState)") // TODO: tracelog style
         for (key, paths) in fullState.registrations {
             var anyAdded = false
             for path in paths {
@@ -208,7 +206,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func replicate(context: ActorContext<Receptionist.Message>, register: _Register) throws {
-        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME should not be needed and use cluster members instead
+        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME: should not be needed and use cluster members instead
 
         guard !remoteControls.isEmpty else {
             return // nothing to do, no remote members
@@ -226,7 +224,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func syncRegistrations(context: ActorContext<Receptionist.Message>, myself: ActorRef<ClusterReceptionist.FullState>) throws {
-        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME should not be needed and use cluster members instead
+        let remoteControls = context.system._cluster!.associationRemoteControls // FIXME: should not be needed and use cluster members instead
 
         guard !remoteControls.isEmpty else {
             return // nothing to do, no remote members
@@ -234,7 +232,7 @@ internal enum ClusterReceptionist {
 
         for remoteControl in remoteControls {
             let remoteReceptionist = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteNode)
-            let envelope  = Envelope(payload: .message(ClusterReceptionist.FullStateRequest(replyTo: myself)))
+            let envelope = Envelope(payload: .message(ClusterReceptionist.FullStateRequest(replyTo: myself)))
 
             remoteControl.sendUserMessage(type: ClusterReceptionist.FullStateRequest.self, envelope: envelope, recipient: remoteReceptionist)
         }
@@ -252,4 +250,3 @@ internal enum ClusterReceptionist {
         return try! .init(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("receptionist")]), incarnation: .perpetual)
     }
 }
-

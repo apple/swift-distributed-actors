@@ -62,30 +62,30 @@ internal final class SerializationPool {
     @inlinable
     internal func serialize<M>(message: M, recipientPath: ActorPath, promise: EventLoopPromise<ByteBuffer>) {
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            return try self.serialization.serialize(message: message)
+            try self.serialization.serialize(message: message)
         }
     }
 
     @inlinable
     internal func serialize(message: Any, metaType: AnyMetaType, recipientPath: ActorPath, promise: EventLoopPromise<(Serialization.SerializerId, ByteBuffer)>) {
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.serializationWorkerPool) {
-            return try self.serialization.serialize(message: message, metaType: metaType)
+            try self.serialization.serialize(message: message, metaType: metaType)
         }
     }
 
     @inlinable
     internal func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<M>) {
-        // TODO bytes to become inout?
+        // TODO: bytes to become inout?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            return try self.serialization.deserialize(type, from: bytes)
+            try self.serialization.deserialize(type, from: bytes)
         }
     }
 
     @inlinable
     internal func deserialize(serializerId: Serialization.SerializerId, from bytes: ByteBuffer, recipientPath: ActorPath, promise: EventLoopPromise<Any>) {
-        // TODO bytes to become inout?
+        // TODO: bytes to become inout?
         self.enqueue(recipientPath: recipientPath, promise: promise, workerPool: self.deserializationWorkerPool) {
-            return try self.serialization.deserialize(serializerId: serializerId, from: bytes)
+            try self.serialization.deserialize(serializerId: serializerId, from: bytes)
         }
     }
 
@@ -112,6 +112,7 @@ internal final class SerializationPool {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: SerializationSettings
 
 public struct SerializationPoolSettings {

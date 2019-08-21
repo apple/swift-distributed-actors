@@ -12,19 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ActorRefAdapterTests: XCTestCase {
-
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -32,8 +31,8 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_shouldConvertMessages() throws {
-        let probe = testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
+        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
 
         let behavior: Behavior<String> = .setup { context in
             refProbe.tell(context.messageAdapter { "\($0)" })
@@ -43,15 +42,15 @@ class ActorRefAdapterTests: XCTestCase {
             }
         }
 
-        _ = try! system.spawn(.anonymous, behavior)
+        _ = try! self.system.spawn(.anonymous, behavior)
 
         let adapted = try refProbe.expectMessage()
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             adapted.tell(i)
         }
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             try probe.expectMessage("\(i)")
         }
     }
@@ -67,7 +66,7 @@ class ActorRefAdapterTests: XCTestCase {
         let probe = firstTestKit.spawnTestProbe(expecting: String.self)
         let refProbe = firstTestKit.spawnTestProbe(expecting: ActorRef<Int>.self)
 
-        let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in 
+        let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in
             settings.cluster.enabled = true
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 1991
@@ -90,22 +89,22 @@ class ActorRefAdapterTests: XCTestCase {
 
         let adapted: ActorRef<Int> = try refProbe.expectMessage()
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             adapted.tell(i)
         }
 
-        for i in 0...10 {
+        for i in 0 ... 10 {
             try probe.expectMessage("\(i)")
         }
     }
 
     func test_adaptedRef_shouldBeWatchable() throws {
-        let probe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let behavior: Behavior<Int> = .setup { context in
             probe.tell(context.messageAdapter { _ in 0 })
             return .receiveMessage { _ in
-                return .stop
+                .stop
             }
         }
 
@@ -128,13 +127,13 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_shouldShareTheSameLifecycleAsItsActor() throws {
-        let probe = testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
         let behavior: Behavior<LifecycleTestMessage> = .setup { context in
-            return .receiveMessage {
+            .receiveMessage {
                 switch $0 {
                 case .crash:
                     throw self.testKit.error()
@@ -170,8 +169,8 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {
-        let probe = testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
@@ -214,16 +213,16 @@ class ActorRefAdapterTests: XCTestCase {
 
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {
         let logCaptureHandler = LogCapture()
-        let system = ActorSystem("\(type(of: self))-2") { settings in 
+        let system = ActorSystem("\(type(of: self))-2") { settings in
             settings.overrideLogger = logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
         }
         defer { system.shutdown() }
 
-        let probe = testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let behavior: Behavior<LifecycleTestMessage> = .setup { context in
-            return .receiveMessage {
+            .receiveMessage {
                 switch $0 {
                 case .createAdapter(let replyTo):
                     replyTo.tell(context.messageAdapter { .message("adapter:\($0)") })
@@ -243,15 +242,14 @@ class ActorRefAdapterTests: XCTestCase {
         // the owner has terminated
         try probe.expectTerminated(ref)
 
-
         // thus sending to the adapter results in a dead letter
         adaptedRef.tell("whoops")
         let expectedLine = #line - 1
         let expectedFile = #file
 
         try logCaptureHandler.shouldContain(
-            message: "*was not delivered to [*", at: .info, 
-            expectedFile: expectedFile, expectedLine: expectedLine)
+            message: "*was not delivered to [*", at: .info,
+            expectedFile: expectedFile, expectedLine: expectedLine
+        )
     }
-
 }

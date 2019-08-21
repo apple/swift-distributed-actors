@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
-fileprivate let NANOS = 1_000_000_000
+private let NANOS = 1_000_000_000
 
 class TimeSpecTests: XCTestCase {
     let nanosAmount: TimeAmount = .nanoseconds(100)
@@ -26,46 +26,46 @@ class TimeSpecTests: XCTestCase {
     }
 
     var nanos: TimeSpec {
-        return .from(timeAmount: nanosAmount)
+        return .from(timeAmount: self.nanosAmount)
     }
 
     var seconds: TimeSpec {
-        return .from(timeAmount: secondsAmount)
+        return .from(timeAmount: self.secondsAmount)
     }
 
     var total: TimeSpec {
-        return .from(timeAmount: totalAmount)
+        return .from(timeAmount: self.totalAmount)
     }
 
     func test_timeSpecShouldBeCreatedProperlyFromTimeAmount() {
-        total.toNanos().shouldEqual(Int(totalAmount.nanoseconds))
-        total.tv_sec.shouldEqual(Int(totalAmount.nanoseconds) / NANOS)
-        total.tv_nsec.shouldEqual(Int(totalAmount.nanoseconds) % NANOS)
+        self.total.toNanos().shouldEqual(Int(self.totalAmount.nanoseconds))
+        self.total.tv_sec.shouldEqual(Int(self.totalAmount.nanoseconds) / NANOS)
+        self.total.tv_nsec.shouldEqual(Int(self.totalAmount.nanoseconds) % NANOS)
     }
 
     func test_timeSpecAdd() {
-        let sum = nanos + seconds
+        let sum = self.nanos + self.seconds
 
-        sum.shouldEqual(total)
+        sum.shouldEqual(self.total)
     }
 
     func test_lessThan() {
-        XCTAssertTrue(nanos < seconds)
-        XCTAssertFalse(seconds < nanos)
-        XCTAssertFalse(total < total)
+        XCTAssertTrue(self.nanos < self.seconds)
+        XCTAssertFalse(self.seconds < self.nanos)
+        XCTAssertFalse(self.total < self.total)
     }
 
     func test_greaterThan() {
-        XCTAssertFalse(nanos > seconds)
-        XCTAssertTrue(seconds > nanos)
+        XCTAssertFalse(self.nanos > self.seconds)
+        XCTAssertTrue(self.seconds > self.nanos)
     }
 
     func test_equals() {
-        XCTAssertFalse(nanos == seconds)
-        XCTAssertFalse(seconds == nanos)
+        XCTAssertFalse(self.nanos == self.seconds)
+        XCTAssertFalse(self.seconds == self.nanos)
 
-        XCTAssertTrue(nanos == nanos)
-        XCTAssertTrue(seconds == seconds)
-        XCTAssertTrue(total == total)
+        XCTAssertTrue(self.nanos == self.nanos)
+        XCTAssertTrue(self.seconds == self.seconds)
+        XCTAssertTrue(self.total == self.total)
     }
 }

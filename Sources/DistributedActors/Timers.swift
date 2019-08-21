@@ -59,8 +59,8 @@ public struct TimerKey: Hashable {
         self.identifier = AnyHashable(identifier)
         self.isSystemTimer = isSystemTimer
     }
-
 }
+
 extension TimerKey: CustomStringConvertible {
     public var description: String {
         if self.isSystemTimer {
@@ -96,7 +96,7 @@ public class Timers<Message> {
     /// Cancels all active timers.
     ///
     /// - WARNING: Does NOT cancel `_` prefixed keys. This is currently a workaround for "system timers" which should not be cancelled arbitrarily.
-    ///            TODO: This will be replaced by proper timer keys which can express such need eventually.
+    // TODO: This will be replaced by proper timer keys which can express such need eventually.
     public func cancelAll() {
         self._cancelAll(includeSystemTimers: false)
     }
@@ -195,10 +195,10 @@ public class Timers<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal System Timer capabilities
 
 internal extension Timers {
-
     @usableFromInline
     struct ScheduledResume<T> {
         let token: T
@@ -218,7 +218,7 @@ internal extension Timers {
             }
             traceLog_Supervision("executing the task ::: \(context.myself)")
 
-            // TODO avoid the box part?
+            // TODO: avoid the box part?
             context.myself.asAddressable().sendSystemMessage(.resume(.success(token)))
         }
 
@@ -226,5 +226,4 @@ internal extension Timers {
         self.context.log.debug("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")
         self.installedTimers[key] = Timer(key: key, message: nil, repeated: false, generation: generation, handle: handle)
     }
-
 }

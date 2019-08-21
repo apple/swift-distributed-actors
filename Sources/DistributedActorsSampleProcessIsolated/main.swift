@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #if os(OSX)
 import Darwin.C
 #else
@@ -32,12 +31,10 @@ let isolated = ProcessIsolated { boot in
 
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
-
 let workersKey = Receptionist.RegistrationKey(String.self, id: "workers")
 
 // though one can ensure to only run if in a process of a given role:
 try isolated.run(on: .master) {
-
     let pool = try WorkerPool.spawn(isolated.system, "workerPool", select: .dynamic(workersKey))
 
     let _: ActorRef<String> = try isolated.system.spawn("pingSource", .setup { context in
@@ -59,7 +56,7 @@ try isolated.run(on: .master) {
 
 // We only spawn workers on the servant nodes
 try isolated.run(on: .servant) {
-    for i in 1...5 {
+    for i in 1 ... 5 {
         let _: ActorRef<String> = try isolated.system.spawn(.prefixed(with: "worker"), .setup { context in
             context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
             context.system.receptionist.register(context.myself, key: workersKey)
@@ -71,7 +68,6 @@ try isolated.run(on: .servant) {
         })
     }
 }
-
 
 // finally, once prepared, you have to invoke the following:
 // which will BLOCK on the master process and use the main thread to

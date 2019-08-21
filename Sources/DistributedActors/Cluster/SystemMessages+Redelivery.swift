@@ -17,6 +17,7 @@ import Logging
 import struct NIO.CircularBuffer
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Re-Delivery queues
 
 /// Embedded inside a `MessageEnvelope` when pushing through the transport pipeline.
@@ -49,12 +50,13 @@ internal struct SystemMessageEnvelope: Equatable {
     // Actual messages start with sequence nr >= 1
     let sequenceNr: SequenceNr
     let message: SystemMessage
-    // TODO association id for logging?
+    // TODO: association id for logging?
 
     init(sequenceNr: SequenceNr, message: SystemMessage) {
         self.sequenceNr = sequenceNr
         self.message = message
     }
+
     init(sequenceNr: Int, message: SystemMessage) {
         assert(sequenceNr > 0, "sequenceNr MUST be > 0")
         self.init(sequenceNr: SequenceNr(sequenceNr), message: message)
@@ -66,7 +68,6 @@ extension SystemMessageEnvelope {
 }
 
 extension SystemMessage {
-
     /// ACKnowledgement -- sent by the receiving end for every (or coalesced) received system message.
     ///
     /// The carried `sequenceNr` indicates the "last correctly observed message"
@@ -77,6 +78,7 @@ extension SystemMessage {
         init(sequenceNr: SequenceNr) {
             self.sequenceNr = sequenceNr
         }
+
         init(sequenceNr: Int) {
             assert(sequenceNr > 0, "sequenceNr MUST BE > 0")
             self.sequenceNr = SequenceNr(sequenceNr)
@@ -101,6 +103,7 @@ extension SystemMessage {
         init(sequenceNr: SequenceNr) {
             self.sequenceNr = sequenceNr
         }
+
         init(sequenceNr: Int) {
             assert(sequenceNr > 0, "sequenceNr MUST be > 0")
             self.sequenceNr = SequenceNr(sequenceNr)
@@ -109,6 +112,7 @@ extension SystemMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Outbound Re-Delivery
 
 internal final class OutboundSystemMessageRedelivery {
@@ -119,7 +123,7 @@ internal final class OutboundSystemMessageRedelivery {
     // guaranteed to contain SystemMessageEnvelope but we also need the recipients which are in MessageEnvelope
     var messagesPendingAcknowledgement: NIO.CircularBuffer<TransportEnvelope> = .init(initialCapacity: 8)
 
-    // TODO metrics
+    // TODO: metrics
 
     // highest ACK we got back from the receiving end
     var highestAcknowledgedSeqNr: SequenceNr = 0 // 0 == no ACKs at all so far.
@@ -152,14 +156,15 @@ internal final class OutboundSystemMessageRedelivery {
         self.messagesPendingAcknowledgement.append(messageEnvelope)
         self.outgoingSequenceNr = systemEnvelope.sequenceNr
         return .send(systemEnvelope)
-   } 
+    }
+
     enum OfferedDirective {
         /// Send the following envelope
         case send(SystemMessageEnvelope)
         /// CRITICAL ISSUE: The outgoing system message buffer has overflown and we are not able to ensure system message consistency anymore!
         case bufferOverflowMustAbortAssociation(Int)
     }
-    
+
     func acknowledge(_ ack: ACK) -> AcknowledgeDirective {
         guard ack.sequenceNr <= self.outgoingSequenceNr else {
             // this is weird; we got an ACK for a higher sequence number than we ever sent to the node;
@@ -176,6 +181,7 @@ internal final class OutboundSystemMessageRedelivery {
 
         return .acknowledged
     }
+
     enum AcknowledgeDirective {
         // ACKed and nothing else to do; nothing to re-send
         case acknowledged
@@ -203,6 +209,7 @@ internal final class OutboundSystemMessageRedelivery {
 
         return .ensureRedeliveryTick(self.settings.redeliveryInterval)
     }
+
     enum NegativeAcknowledgeDirective {
         /// We got a NACK however we don't have anything to send
         /// Realistically this should not happen, as a node that sent a NACK even if it tried to send more ACKs would do so
@@ -226,10 +233,11 @@ internal final class OutboundSystemMessageRedelivery {
         }
 
         let redeliveryBatch = self.messagesPendingAcknowledgement.prefix(self.settings.redeliveryBatchSize)
-        // TODO is this a change to coalesce some system messages? what if someone did some silly watching the same exact thing many times?
+        // TODO: is this a change to coalesce some system messages? what if someone did some silly watching the same exact thing many times?
 
         return .redeliver(redeliveryBatch, nextTickIn: nextTickIn)
     }
+
     enum RedeliveryTickDirective {
         /// Redeliver the following redelivery batch and schedule another redelivery tick (if more
         /// Number of elements in the exposed buffer is guaranteed to be <= `settings.redeliveryBatchSize`.
@@ -250,27 +258,27 @@ internal final class OutboundSystemMessageRedelivery {
     }
 
     func onReconnected(newAssociationID: AssociationStateMachine.AssociatedState) {
-        // TODO redeliver everything
+        // TODO: redeliver everything
     }
 
     // We are DONE with this remote node and will never again talk to it again, we shall drop all pending messages.
     func onAssociationRemoved() {
         // FIXME: implement once cluster.down() is available issue #848
     }
+
     enum AssociationDroppedDirective {
         /// Drain all pending messages as dead letters
         case deadLetter([SystemMessageEnvelope])
     }
-
 }
 
-// TODO should expose metrics on redeliveries, times and gauges
-final class OutboundSystemMessageRedeliveryMetrics {
-}
+// TODO: should expose metrics on redeliveries, times and gauges
+final class OutboundSystemMessageRedeliveryMetrics {}
 
 struct GiveUpRedeliveringSystemMessagesError: Error {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Inbound
 
 /// Each association has one inbound system message queue.
@@ -288,7 +296,7 @@ internal class InboundSystemMessages {
 
     let settings: InboundSystemMessageRedeliverySettings
 
-    // TODO accept association id?
+    // TODO: accept association id?
     init(settings: InboundSystemMessageRedeliverySettings) {
         self.settings = settings
     }
@@ -308,6 +316,7 @@ internal class InboundSystemMessages {
             return .gapDetectedRequestRedelivery(NACK(sequenceNr: self.expectedSequenceNr - 1))
         }
     }
+
     enum InboundSystemMessageArrivalDirective: Equatable {
         case accept(ACK)
         case acceptRedelivery(ACK)
@@ -319,11 +328,10 @@ internal class InboundSystemMessages {
         self.expectedSequenceNr += 1
         return .accept(ack)
     }
-
 }
 
 extension InboundSystemMessages.InboundSystemMessageArrivalDirective {
-    static func ==(lhs: InboundSystemMessages.InboundSystemMessageArrivalDirective, rhs: InboundSystemMessages.InboundSystemMessageArrivalDirective) -> Bool {
+    static func == (lhs: InboundSystemMessages.InboundSystemMessageArrivalDirective, rhs: InboundSystemMessages.InboundSystemMessageArrivalDirective) -> Bool {
         switch (lhs, rhs) {
         case (.accept(let lack), .accept(let rack)):
             return lack == rack
@@ -338,10 +346,10 @@ extension InboundSystemMessages.InboundSystemMessageArrivalDirective {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Settings
 
 public struct OutboundSystemMessageRedeliverySettings {
-
     public static let `default` = OutboundSystemMessageRedeliverySettings()
 
     /// When enabled, logs all outbound messages using the tracelog facility.
@@ -359,7 +367,7 @@ public struct OutboundSystemMessageRedeliverySettings {
     }
 
     /// Configures the maximum number (per association)
-    var redeliveryBufferLimit = 10_000
+    var redeliveryBufferLimit = 10000
 
     /// Limits the maximum number of messages pushed out on one redelivery tick.
     var redeliveryBatchSize: Int = 500 {
@@ -368,19 +376,14 @@ public struct OutboundSystemMessageRedeliverySettings {
         }
     }
 
-    // TODO not used
+    // TODO: not used
     // var maxRedeliveryTicksWithoutACK = 10_000 // TODO settings
-
-
-
 }
 
 public struct InboundSystemMessageRedeliverySettings {
-
     public static let `default` = InboundSystemMessageRedeliverySettings()
 
     /// When enabled, logs all outbound messages using the tracelog facility.
     /// Logs lines will be marked with: [tracelog:sys-msg-redelivery]
     let tracelogLevel: Logger.Level? = nil
-
 }

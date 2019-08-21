@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Backoff Strategy protocol
 
 /// A `BackoffStrategy` abstracts over logic which computes appropriate time amounts to back off at, for a specific call.
@@ -22,7 +22,6 @@
 ///
 /// See also: `ConstantBackoffStrategy`, `ExponentialBackoffStrategy`
 public protocol BackoffStrategy {
-
     /// Returns next backoff interval to use OR `nil` if no further retries should be performed.
     mutating func next() -> TimeAmount?
 
@@ -31,6 +30,7 @@ public protocol BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Backoff Strategy implementations
 
 /// Factory for `BackoffStrategy` instances.
@@ -41,7 +41,6 @@ public protocol BackoffStrategy {
 ///
 /// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public enum Backoff {
-
     // TODO: implement noLongerThan: .seconds(30), where total time is taken from actor system clock
 
     /// Backoff each time using the same, constant, time amount.
@@ -70,13 +69,14 @@ public enum Backoff {
         initialInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.initialInterval,
         multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier,
         maxInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,
-        randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor) -> ExponentialBackoffStrategy {
+        randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor
+    ) -> ExponentialBackoffStrategy {
         return .init(initialInterval: initialInterval, multiplier: multiplier, capInterval: maxInterval, randomFactor: randomFactor)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Constant backoff strategy
 
 /// Simple strategy, always yielding the same backoff interval.
@@ -85,7 +85,6 @@ public enum Backoff {
 ///
 /// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public struct ConstantBackoffStrategy: BackoffStrategy {
-    
     /// The constant time amount to back-off by each time.
     internal let timeAmount: TimeAmount
 
@@ -103,6 +102,7 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Exponential backoff strategy
 
 /// Backoff strategy exponentially yielding greater time amounts each time when triggered.
@@ -139,7 +139,7 @@ public struct ConstantBackoffStrategy: BackoffStrategy {
 ///
 /// - SeeAlso: Also used to configure `SupervisionStrategy`.
 public struct ExponentialBackoffStrategy: BackoffStrategy {
-    // TODO clock + limit "max total wait time" etc
+    // TODO: clock + limit "max total wait time" etc
 
     /// Default values for the backoff parameters.
     public struct Defaults {
@@ -161,10 +161,10 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     private var currentBaseInterval: TimeAmount
 
     internal init(initialInterval: TimeAmount, multiplier: Double, capInterval: TimeAmount, randomFactor: Double) {
-        precondition(0 < initialInterval.nanoseconds, "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]")
-        precondition(1.0 <= multiplier, "multiplier MUST be >= 1.0, was: [\(multiplier)]")
+        precondition(initialInterval.nanoseconds > 0, "initialInterval MUST be > 0ns, was: [\(initialInterval.prettyDescription)]")
+        precondition(multiplier >= 1.0, "multiplier MUST be >= 1.0, was: [\(multiplier)]")
         precondition(initialInterval <= capInterval, "capInterval MUST be >= initialInterval, was: [\(capInterval)]")
-        precondition(0.0 <= randomFactor && randomFactor <= 1.0, "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]")
+        precondition(randomFactor >= 0.0 && randomFactor <= 1.0, "randomFactor MUST be within between 0 and 1, was: [\(randomFactor)]")
 
         self.initialInterval = initialInterval
         self.currentBaseInterval = initialInterval
@@ -175,10 +175,10 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 
     public mutating func next() -> TimeAmount? {
         let baseInterval = self.currentBaseInterval
-        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
 
         if baseInterval > self.capInterval {
-            let randomizedCappedInterval = capInterval * randomizeMultiplier
+            let randomizedCappedInterval = self.capInterval * randomizeMultiplier
             return randomizedCappedInterval
         } else {
             let randomizedInterval = baseInterval * randomizeMultiplier
@@ -203,6 +203,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Errors
 
 enum BackoffError {

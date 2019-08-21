@@ -21,15 +21,13 @@ import XCTest
 ///
 
 extension CMPSCLinkedQueueTests {
-
-   static var allTests : [(String, (CMPSCLinkedQueueTests) -> () throws -> Void)] {
-      return [
-                ("testIsEmptyWhenEmpty", testIsEmptyWhenEmpty),
-                ("testIsEmptyWhenNonEmpty", testIsEmptyWhenNonEmpty),
-                ("testDequeueWhenEmpty", testDequeueWhenEmpty),
-                ("testEnqueueDequeue", testEnqueueDequeue),
-                ("testDestroy", testDestroy),
-           ]
-   }
+    static var allTests: [(String, (CMPSCLinkedQueueTests) -> () throws -> Void)] {
+        return [
+            ("testIsEmptyWhenEmpty", testIsEmptyWhenEmpty),
+            ("testIsEmptyWhenNonEmpty", testIsEmptyWhenNonEmpty),
+            ("testDequeueWhenEmpty", testDequeueWhenEmpty),
+            ("testEnqueueDequeue", testEnqueueDequeue),
+            ("testDestroy", testDestroy),
+        ]
+    }
 }
-

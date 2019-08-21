@@ -21,10 +21,9 @@ import XCTest
 /// Used to determine if "pretty printing" errors should be done or not.
 /// Pretty errors help tremendously to quickly spot exact errors and track them back to source locations,
 /// e.g. on CI or when testing in command line and developing in a separate IDE or editor.
-fileprivate let isTty = isatty(fileno(stdin)) == 0
+private let isTty = isatty(fileno(stdin)) == 0
 
 public struct TestMatchers<T> {
-
     private let it: T
 
     private let callSite: CallSiteInfo
@@ -35,41 +34,40 @@ public struct TestMatchers<T> {
     }
 
     func toBe<T>(_ expected: T.Type) {
-        if !(it is T) {
-            let msg = self.callSite.detailedMessage(got: it, expected: expected)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        if !(self.it is T) {
+            let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
 
 public extension TestMatchers where T: Equatable {
     func toEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(got: it, expected: expected)
-        XCTAssertEqual(it, expected, msg, file: callSite.file, line: callSite.line)
+        let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
+        XCTAssertEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
 
     func toNotEqual(_ expected: T) {
-        let msg = self.callSite.detailedMessage(got: it, expected: expected)
-        XCTAssertNotEqual(it, expected, msg, file: callSite.file, line: callSite.line)
+        let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
+        XCTAssertNotEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
 
     func toBe<Other>(_ expected: Other.Type) {
-        if !(it is Other) {
-            let msg = self.callSite.detailedMessage(got: it, expected: expected)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+        if !(self.it is Other) {
+            let msg = self.callSite.detailedMessage(got: self.it, expected: expected)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
 
 public extension TestMatchers where T: Collection, T.Element: Equatable {
-
     /// Asserts that `it` starts with the passed in `prefix`.
     ///
     /// If `it` does not completely start with the passed in `prefix`, the error message will also include the a matching
     /// sub-prefix (if any), so one can easier spot at which position the sequences differ.
     func toStartWith<PossiblePrefix>(prefix: PossiblePrefix) where PossiblePrefix: Collection, T.Element == PossiblePrefix.Element {
-        if !it.starts(with: prefix) {
-            let partialMatch = it.commonPrefix(with: prefix)
+        if !self.it.starts(with: prefix) {
+            let partialMatch = self.it.commonPrefix(with: prefix)
 
             // classic printout without prefix matching:
             // let msg = self.callSite.detailedMessage("Expected [\(it)] to start with prefix: [\(prefix)]. " + partialMatchMessage)
@@ -79,7 +77,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += "[\(ANSIColors.bold.rawValue)" }
             m += "\(partialMatch)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
-            m += "\(it.dropFirst(partialMatch.underestimatedCount))] "
+            m += "\(self.it.dropFirst(partialMatch.underestimatedCount))] "
             m += "to start with prefix: "
             if isTty { m += "\n                " } // align with "[error] Expected "
             m += "["
@@ -90,13 +88,13 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             if isTty { m += " (Matching sub-prefix marked in \(ANSIColors.bold.rawValue)bold\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue))" }
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 
     /// Asserts that `it` contains the `el` element.
     func toContain(_ el: T.Element) {
-        if !it.contains(el) {
+        if !self.it.contains(el) {
             // fancy printout:
             var m = "Expected [\(it)] to contain: ["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
@@ -105,18 +103,18 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
             m += "]"
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 
     /// Asserts that `it` contains at least one element matching the predicate.
     func toContain(where predicate: (T.Element) -> Bool) {
-        if !it.contains(where: { el in predicate(el) }) {
+        if !self.it.contains(where: { el in predicate(el) }) {
             // fancy printout:
             let m = "Expected [\(it)] to contain element matching predicate"
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -124,7 +122,7 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
 public extension TestMatchers where T == String {
     /// Asserts that `it` contains the `subString`.
     func toContain(_ subString: String) {
-        if !it.contains(subString) {
+        if !self.it.contains(subString) {
             // fancy printout:
             var m = "Expected String [\(it)] to contain: ["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
@@ -133,49 +131,51 @@ public extension TestMatchers where T == String {
             m += "]"
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
 
 public extension TestMatchers where T: Comparable {
-
     func toBeLessThan(_ expected: T) {
         let msg = self.callSite.detailedMessage("\(self.it) is not less than \(expected)")
-        XCTAssertLessThan(self.it, expected, msg, file: callSite.file, line: callSite.line)
+        XCTAssertLessThan(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
+
     func toBeLessThanOrEqual(_ expected: T) {
         let msg = self.callSite.detailedMessage("\(self.it) is not less than or equal \(expected)")
-        XCTAssertLessThanOrEqual(self.it, expected, msg, file: callSite.file, line: callSite.line)
+        XCTAssertLessThanOrEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
+
     func toBeGreaterThan(_ expected: T) {
         let msg = self.callSite.detailedMessage("\(self.it) is not greater than \(expected)")
-        XCTAssertGreaterThan(self.it, expected, msg, file: callSite.file, line: callSite.line)
+        XCTAssertGreaterThan(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
+
     func toBeGreaterThanOrEqual(_ expected: T) {
         let msg = self.callSite.detailedMessage("\(self.it) is not greater than or equal \(expected)")
-        XCTAssertGreaterThanOrEqual(self.it, expected, msg, file: callSite.file, line: callSite.line)
+        XCTAssertGreaterThanOrEqual(self.it, expected, msg, file: self.callSite.file, line: self.callSite.line)
     }
 }
 
 public extension TestMatchers where T: Collection {
     /// Asserts that `it` is empty
     func toBeEmpty() {
-        if !it.isEmpty{
+        if !self.it.isEmpty {
             let m = "Expected [\(it)] to be empty"
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 
     /// Asserts that `it` is not empty
     func toBeNotEmpty() {
-        if it.isEmpty{
+        if self.it.isEmpty {
             let m = "Expected [\(it)] to to be non-empty"
 
             let msg = self.callSite.detailedMessage(m)
-            XCTAssert(false, msg, file: callSite.file, line: callSite.line)
+            XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
     }
 }
@@ -204,7 +204,6 @@ extension Optional {
 }
 
 extension Equatable {
-
     /// Asserts that the value is equal to the `other` value
     public func shouldEqual(_ other: @autoclosure () -> Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -243,6 +242,7 @@ extension Comparable {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeLessThan(expected)
     }
+
     public func shouldBeLessThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeLessThanOrEqual(expected)
@@ -252,6 +252,7 @@ extension Comparable {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeGreaterThan(expected)
     }
+
     public func shouldBeGreaterThanOrEqual(_ expected: Self, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toBeGreaterThanOrEqual(expected)
@@ -259,6 +260,7 @@ extension Comparable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Collection `should*` matchers
 
 extension Collection {
@@ -266,6 +268,7 @@ extension Collection {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBeEmpty() // TODO: lazy impl, should get "expected empty" messages etc
     }
+
     public func shouldBeNotEmpty(file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: callSiteInfo).toBeNotEmpty() // TODO: lazy impl, should get "expected non-empty" messages etc
@@ -299,6 +302,7 @@ extension String {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Free `should*` functions
 
 public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) {
@@ -315,7 +319,7 @@ public func shouldThrow<E: Error, T>(expected: E.Type, file: StaticString = #fil
 @discardableResult
 public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, column: UInt = #column, _ block: () throws -> T) -> Error {
     let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-    var it: T? = nil
+    var it: T?
     do {
         it = try block()
     } catch {
@@ -364,6 +368,7 @@ public func shouldNotHappen(_ message: String, file: StaticString = #file, line:
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Errors and metadata
 
 public enum ShouldMatcherError: Error {
@@ -381,7 +386,7 @@ struct CallSiteInfo {
         self.file = file
         self.line = line
         self.column = column
-        self.appliedAssertionName = String(function[function.startIndex...function.firstIndex(of: "(")!])
+        self.appliedAssertionName = String(function[function.startIndex ... function.firstIndex(of: "(")!])
     }
 
     /// Prepares a detailed error information, specialized for two values being equal
@@ -389,7 +394,7 @@ struct CallSiteInfo {
     /// - Warning: Performs file IO in order to read source location line where failure happened
     func detailedMessage(got it: Any, expected: Any) -> String {
         let msg = "[\(it)] does not equal expected: [\(expected)]\n"
-        return detailedMessage(msg)
+        return self.detailedMessage(msg)
     }
 
     /// Prepares a detailed error information
@@ -420,22 +425,19 @@ struct CallSiteInfo {
         }
         return s
     }
-
 }
 
 extension CallSiteInfo {
-
     /// Returns an Error that should be thrown by the called.
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
     public func error(_ message: String, failTest: Bool = true) -> Error {
-        let details = detailedMessage(message)
+        let details = self.detailedMessage(message)
         if failTest {
             XCTFail(details, file: self.file, line: self.line)
         }
 
         return CallSiteError.error(message: details)
     }
-
 }
 
 public enum CallSiteError: Error {

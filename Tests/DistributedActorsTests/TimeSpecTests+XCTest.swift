@@ -21,15 +21,13 @@ import XCTest
 ///
 
 extension TimeSpecTests {
-
-   static var allTests : [(String, (TimeSpecTests) -> () throws -> Void)] {
-      return [
-                ("test_timeSpecShouldBeCreatedProperlyFromTimeAmount", test_timeSpecShouldBeCreatedProperlyFromTimeAmount),
-                ("test_timeSpecAdd", test_timeSpecAdd),
-                ("test_lessThan", test_lessThan),
-                ("test_greaterThan", test_greaterThan),
-                ("test_equals", test_equals),
-           ]
-   }
+    static var allTests: [(String, (TimeSpecTests) -> () throws -> Void)] {
+        return [
+            ("test_timeSpecShouldBeCreatedProperlyFromTimeAmount", test_timeSpecShouldBeCreatedProperlyFromTimeAmount),
+            ("test_timeSpecAdd", test_timeSpecAdd),
+            ("test_lessThan", test_lessThan),
+            ("test_greaterThan", test_greaterThan),
+            ("test_equals", test_equals),
+        ]
+    }
 }
-

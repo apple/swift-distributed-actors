@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 import DistributedActors
 import SwiftBenchmarkTools
 
@@ -24,7 +23,7 @@ assert({
     return true
 }())
 
-var _system: ActorSystem? = nil
+var _system: ActorSystem?
 var system: ActorSystem {
     return _system!
 }
@@ -33,12 +32,14 @@ var system: ActorSystem {
 private func registerBenchmark(_ bench: BenchmarkInfo) {
     registeredBenchmarks.append(bench)
 }
+
 @inline(__always)
 private func registerBenchmark(_ benches: [BenchmarkInfo]) {
     benches.forEach(registerBenchmark)
 }
+
 @inline(__always)
-private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> (), _ tags: [BenchmarkCategory]) {
+private func registerBenchmark(_ name: String, _ function: @escaping (Int) -> Void, _ tags: [BenchmarkCategory]) {
     registerBenchmark(BenchmarkInfo(name: name, runFunction: function, tags: tags))
 }
 

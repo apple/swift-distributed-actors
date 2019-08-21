@@ -12,9 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-import DistributedActorsConcurrencyHelpers
 @testable import DistributedActors
+import DistributedActorsConcurrencyHelpers
 import Logging
 
 import XCTest
@@ -25,8 +24,7 @@ import XCTest
 ///
 /// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
-final public class ActorTestKit {
-
+public final class ActorTestKit {
     internal let system: ActorSystem
 
     private let spawnProbesLock = Lock()
@@ -42,7 +40,6 @@ final public class ActorTestKit {
         configureSettings(&settings)
         self.settings = settings
     }
-
 }
 
 /// Simple error type useful for failing tests / assertions
@@ -55,20 +52,19 @@ public struct TestError: Error, Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: TestKit settings
 
 public struct ActorTestKitSettings {
-
     /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
     var expectationTimeout: TimeAmount = .seconds(3)
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Test Probes
 
 public extension ActorTestKit {
-
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     func spawnTestProbe<M>(name naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
@@ -98,26 +94,25 @@ public extension ActorTestKit {
 // MARK: Eventually
 
 public extension ActorTestKit {
-
     /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
     /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
     ///
-    /// TODO does not handle blocking longer than `within` well
-    /// TODO: should use default `within` from TestKit
+    // TODO: does not handle blocking longer than `within` well
+    // TODO: should use default `within` from TestKit
     @discardableResult
     func eventually<T>(within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
                        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
                        _ block: () throws -> T) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = self.system.deadline(fromNow: timeAmount) // TODO system time source?
+        let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 
-        var lastError: Error? = nil
+        var lastError: Error?
         var polledTimes = 0
 
         while deadline.hasTimeLeft() {
             do {
                 polledTimes += 1
-                let res  = try block()
+                let res = try block()
                 return res
             } catch {
                 lastError = error
@@ -138,10 +133,10 @@ public extension ActorTestKit {
         }
 
         let message = callSite.detailedMessage("""
-                                               No result within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                                               Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
-                                               \(lastErrorMessage)
-                                               """)
+        No result within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+        Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
+        \(lastErrorMessage)
+        """)
         XCTFail(message, file: callSite.file, line: callSite.line)
         throw EventuallyError(message: message, lastError: lastError)
     }
@@ -163,10 +158,10 @@ public extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an `AssertionHoldsError` when the block fails within the specified tiem amount.
     func assertHolds(for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
-                       file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                       _ block: () throws -> Void) throws {
+                     file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+                     _ block: () throws -> Void) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let deadline = self.system.deadline(fromNow: timeAmount) // TODO system time source?
+        let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 
         var polledTimes = 0
 
@@ -177,9 +172,9 @@ public extension ActorTestKit {
                 usleep(useconds_t(interval.microseconds))
             } catch {
                 let message = callSite.detailedMessage("""
-                                                       Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
-                                                       Queried \(polledTimes) times, within \(timeAmount.prettyDescription).
-                                                       """)
+                Failed within \(timeAmount.prettyDescription) for block at \(file):\(line). \
+                Queried \(polledTimes) times, within \(timeAmount.prettyDescription).
+                """)
                 XCTFail(message, file: callSite.file, line: callSite.line)
                 throw AssertionHoldsError(message: message)
             }
@@ -191,18 +186,16 @@ public struct AssertionHoldsError: Error {
     let message: String
 }
 
-
 // MARK: Internal "power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
 extension ActorTestKit {
-    
-    // TODO how to better hide such more nasty assertions?
+    // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
     public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
-        
+
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let res: TraversalResult<AddressableActorRef> = self.system._traverseAll { context, ref in
+        let res: TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
             if ref.address.path.description == path {
                 return .accumulateSingle(ref) // TODO: could use the .return(...)
             } else {
@@ -211,10 +204,10 @@ extension ActorTestKit {
         }
 
         switch res {
-        case .result:            return // good
+        case .result: return // good
         case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
-        case .completed:         throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
-        case .failed(let err):   throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
+        case .completed: throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
+        case .failed(let err): throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
         }
     }
 }
@@ -222,7 +215,6 @@ extension ActorTestKit {
 // MARK: Fake and mock contexts
 
 public extension ActorTestKit {
-
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
@@ -258,15 +250,19 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override var system: ActorSystem {
         return self._system
     }
+
     override var path: ActorPath {
         return super.path
     }
+
     override var name: String {
         return "MockActorContext<\(Message.self)>"
     }
+
     override var myself: ActorRef<Message> {
-        return system.deadLetters.adapted()
+        return self.system.deadLetters.adapted()
     }
+
     private lazy var _log: Logger = Logger(label: "\(type(of: self))")
     override var log: Logger {
         get {
@@ -276,6 +272,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
             self._log = newValue
         }
     }
+
     override var dispatcher: MessageDispatcher {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -291,6 +288,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
     override func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
+
     override func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props, _ behavior: Behavior<M>) throws -> ActorRef<M> {
         fatalError("Failed: \(MockActorContextError())")
     }
@@ -310,6 +308,7 @@ final class MockActorContext<Message>: ActorContext<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Error
 
 extension ActorTestKit {

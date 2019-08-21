@@ -18,10 +18,10 @@ import NIOFoundationCompat
 import Foundation
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorSerializationContext for Encoder & Decoder
 
 extension Decoder {
-
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
     /// such as resolving an actor ref from its serialized form.
     ///
@@ -32,7 +32,6 @@ extension Decoder {
 }
 
 extension Encoder {
-
     /// Extracts an `ActorSerializationContext` which can be used to perform actor serialization specific tasks
     /// such as accessing additional system information which may be used while serializing actor references etc.
     ///
@@ -59,21 +58,19 @@ public enum ActorCoding {
 
     /// `Codable` support specific errors
     public enum CodingError: Error {
-
         /// Thrown when an operation needs to obtain an `ActorSerializationContext` however none was present in coder.
         ///
         /// This could be because an attempt was made to decode/encode an `ActorRef` outside of a system's `Serialization`,
         /// which is not supported, since refs are tied to a specific system and can not be (de)serialized without this context.
         case missingActorSerializationContext(Any.Type, details: String)
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ActorRef
 
 extension ActorRef {
-
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
@@ -91,12 +88,11 @@ extension ActorRef {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ReceivesMessages
 
 extension ReceivesMessages {
-
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
@@ -121,6 +117,7 @@ extension ReceivesMessages {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ReceivesSystemMessages
 
 /// Warning: presence of this extension and `ReceivesSystemMessages` being `Codable` does not actually enable users
@@ -129,7 +126,6 @@ extension ReceivesMessages {
 /// The `ReceivesSystemMessagesDecoder` however does enable this library itself to embed and use this type in Codable
 /// messages, if the need were to arise.
 extension ReceivesSystemMessages {
-
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         traceLog_Serialization("encode \(self.address) WITH address")
@@ -155,10 +151,10 @@ internal struct ReceivesSystemMessagesDecoder {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ActorAddress
 
 extension ActorAddress: Codable {
-
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: ActorCoding.CodingKeys.self)
         if let node = self.node {
@@ -186,6 +182,7 @@ extension ActorAddress: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ActorPath
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -203,6 +200,7 @@ extension ActorPath: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable ActorPath elements
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -225,6 +223,7 @@ extension ActorPathSegment: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable Incarnation
 
 // Customize coding to avoid nesting as {"value": "..."}
@@ -247,10 +246,11 @@ extension ActorIncarnation: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable Node Address
 
 extension Node: Codable {
-    // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
+    // FIXME: encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
         try container.encode(self.protocol)
@@ -258,9 +258,10 @@ extension Node: Codable {
         try container.encode(self.systemName)
         // @
         try container.encode(self.host)
-        // : 
+        // :
         try container.encode(self.port)
     }
+
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()
         self.protocol = try container.decode(String.self)
@@ -269,8 +270,9 @@ extension Node: Codable {
         self.port = try container.decode(Int.self)
     }
 }
+
 extension UniqueNode: Codable {
-    // FIXME encode as authority/URI with optimized parser here, this will be executed many many times...
+    // FIXME: encode as authority/URI with optimized parser here, this will be executed many many times...
     public func encode(to encoder: Encoder) throws {
         var container = encoder.unkeyedContainer()
         try container.encode(self.node.protocol)
@@ -283,6 +285,7 @@ extension UniqueNode: Codable {
         // #
         try container.encode(self.nid.value)
     }
+
     public init(from decoder: Decoder) throws {
         var container = try decoder.unkeyedContainer()
         let `protocol` = try container.decode(String.self)
@@ -295,6 +298,7 @@ extension UniqueNode: Codable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Convenience coding functions
 
 internal extension SingleValueDecodingContainer {
@@ -318,6 +322,7 @@ internal extension UnkeyedDecodingContainer {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Codable SystemMessage
 
 extension SystemMessage: Codable {

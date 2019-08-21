@@ -34,19 +34,20 @@ internal final class PollingParentMonitoringFailureDetector {
     var behavior: Behavior<Message> {
         return .setup { context in
             let interval = TimeAmount.seconds(1) // TODO: settings
-            context.timers.startPeriodic(key: self.timerKey , message: .checkOnParent, interval: interval)
+            context.timers.startPeriodic(key: self.timerKey, message: .checkOnParent, interval: interval)
             return self.monitoring
         }
     }
+
     internal var monitoring: Behavior<Message> {
         return .receive { context, message in
             switch message {
             case .checkOnParent:
                 guard self.parentPID == POSIXProcessUtils.getParentPID() else {
                     context.log.error("""
-                                      Parent process [\(self.parentPID)] has terminated! \
-                                      Servant process MUST NOT remain alive with master process terminated: EXITING. 
-                                      """)
+                    Parent process [\(self.parentPID)] has terminated! \
+                    Servant process MUST NOT remain alive with master process terminated: EXITING. 
+                    """)
 
                     // we crash hard; since we are running in process managed mode, death of parent
                     // means that we should ASAP exit workers as well; in this model we assume that the
@@ -59,5 +60,4 @@ internal final class PollingParentMonitoringFailureDetector {
             return .same
         }
     }
-
 }

@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import SwiftProtobuf
+import struct Foundation.Data // TODO: would refer to not go "through" Data as our target always is ByteBuffer
 import NIO
-import struct Foundation.Data // TODO would refer to not go "through" Data as our target always is ByteBuffer
+import SwiftProtobuf
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoEnvelope
 
 enum WireEnvelopeError: Error {
@@ -54,14 +55,15 @@ extension ProtoEnvelope {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoActorAddress
 
 extension ActorAddress {
-    init (_ proto: ProtoActorAddress) throws {
+    init(_ proto: ProtoActorAddress) throws {
         let path = try ActorPath(proto.path.segments.map { try ActorPathSegment($0) })
         let incarnation = ActorIncarnation(Int(proto.incarnation))
 
-        // TODO switch over senderNode | recipientNode | address
+        // TODO: switch over senderNode | recipientNode | address
         if proto.hasNode {
             self = try ActorAddress(node: UniqueNode(proto.node), path: path, incarnation: incarnation)
         } else {
@@ -103,7 +105,8 @@ extension ActorAddress: ProtobufRepresentable {
             protocol: proto.node.node.protocol,
             systemName: proto.node.node.system,
             host: proto.node.node.hostname,
-            port: Int(proto.node.node.port))
+            port: Int(proto.node.node.port)
+        )
 
         let uniqueNode = UniqueNode(node: node, nid: NodeID(proto.node.nid))
 
@@ -127,6 +130,7 @@ extension ActorRef: ProtobufRepresentable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoActorPath
 
 extension ActorPath {
@@ -141,14 +145,15 @@ extension ActorPath {
 
 extension ProtoActorPath {
     init(_ value: ActorPath) {
-        self.segments = value.segments.map { $0.value } // TODO avoiding the mapping could be nice... store segments as strings?
+        self.segments = value.segments.map { $0.value } // TODO: avoiding the mapping could be nice... store segments as strings?
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoProtocolVersion
 
-// TODO conversions are naive here, we'd want to express this more nicely...
+// TODO: conversions are naive here, we'd want to express this more nicely...
 extension Wire.Version {
     init(_ proto: ProtoProtocolVersion) {
         self.reserved = UInt8(proto.reserved)
@@ -170,6 +175,7 @@ extension ProtoProtocolVersion {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoHandshakeAccept
 
 extension Wire.HandshakeAccept {
@@ -186,10 +192,8 @@ extension Wire.HandshakeAccept {
         self.version = .init(proto.version)
         self.from = try .init(proto.from)
         self.origin = try .init(proto.origin)
-
     }
 }
-
 
 extension ProtoHandshakeAccept {
     init(_ accept: Wire.HandshakeAccept) {
@@ -199,8 +203,8 @@ extension ProtoHandshakeAccept {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ProtoHandshakeReject
 
 extension Wire.HandshakeReject {
@@ -222,7 +226,6 @@ extension Wire.HandshakeReject {
     }
 }
 
-
 extension ProtoHandshakeReject {
     init(_ reject: Wire.HandshakeReject) {
         self.version = .init(reject.version)
@@ -233,6 +236,7 @@ extension ProtoHandshakeReject {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: UniqueNode
 
 extension UniqueNode {
@@ -251,12 +255,13 @@ extension UniqueNode {
 
 extension ProtoUniqueNode {
     init(_ node: UniqueNode) {
-        self.node =  ProtoNode(node.node)
+        self.node = ProtoNode(node.node)
         self.nid = node.nid.value
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Node
 
 extension Node {
@@ -278,6 +283,7 @@ extension ProtoNode {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: HandshakeOffer
 
 extension Wire.HandshakeOffer {

@@ -16,10 +16,10 @@
 import DistributedActorsTestKit
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Somewhat invasive utilities for testing things depending on ActorSystem internals
 
 extension ActorSystem {
-
     /// Hack to make it easier to "resolve ref from that system, on mine, as if I obtained it via remoting"
     ///
     /// In real code this would not be useful and replaced by the receptionist.

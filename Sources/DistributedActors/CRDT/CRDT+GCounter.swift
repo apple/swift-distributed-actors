@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: GCounter as pure CRDT
 
 extension CRDT {
@@ -41,7 +42,7 @@ extension CRDT {
 
             let newCount: Int
             if let currentCount = state[replicaId] {
-                guard case let (sum, overflow) = currentCount.addingReportingOverflow(amount), !overflow else {
+                guard case (let sum, let overflow) = currentCount.addingReportingOverflow(amount), !overflow else {
                     fatalError("Incrementing GCounter by given amount resulted in overflow")
                 }
                 newCount = sum
@@ -63,17 +64,17 @@ extension CRDT {
         }
 
         // To merge delta into state, call `mergeDelta`.
-        mutating public func merge(other: GCounter) {
+        public mutating func merge(other: GCounter) {
             self.state.merge(other.state, uniquingKeysWith: max)
             self.resetDelta()
         }
 
-        mutating public func mergeDelta(_ delta: Delta) {
+        public mutating func mergeDelta(_ delta: Delta) {
             self.state.merge(delta.state, uniquingKeysWith: max)
             self.resetDelta()
         }
 
-        mutating public func resetDelta() {
+        public mutating func resetDelta() {
             self.delta = nil
         }
     }
@@ -86,13 +87,14 @@ extension CRDT {
             self.state = state
         }
 
-        mutating public func merge(other: GCounterDelta) {
+        public mutating func merge(other: GCounterDelta) {
             self.state.merge(other.state, uniquingKeysWith: max)
         }
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorOwned GCounter
 
 extension CRDT.ActorOwned where DataType == CRDT.GCounter {
@@ -115,7 +117,9 @@ extension CRDT.GCounter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Aliases
+
 // TODO: find better home for these type aliases
 
 typealias GrowOnlyCounter = CRDT.GCounter

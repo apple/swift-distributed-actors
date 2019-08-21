@@ -15,11 +15,11 @@
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: _ActorRefProvider
 
 /// `ActorRefProvider`s are those which both create and resolve actor references.
 internal protocol _ActorRefProvider: _ActorTreeTraversable {
-
     /// Path of the root guardian actor for this part of the actor tree.
     var rootAddress: ActorAddress { get }
 
@@ -36,20 +36,19 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     func stopAll()
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: RemoteActorRefProvider
 
-
-// TODO consider if we need abstraction / does it cost us?
+// TODO: consider if we need abstraction / does it cost us?
 internal struct RemoteActorRefProvider: _ActorRefProvider {
     private let localNode: UniqueNode
     private let localProvider: LocalActorRefProvider
 
     let cluster: ClusterShell
-    // TODO should cache perhaps also associations to inject them eagerly to actor refs?
+    // TODO: should cache perhaps also associations to inject them eagerly to actor refs?
 
-    // TODO restructure it somehow, perhaps we dont need the full abstraction like this
+    // TODO: restructure it somehow, perhaps we dont need the full abstraction like this
     init(settings: ActorSystemSettings,
          cluster: ClusterShell,
          localProvider: LocalActorRefProvider) {
@@ -62,6 +61,7 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: RemoteActorRefProvider delegates most tasks to underlying LocalActorRefProvider
 
 extension RemoteActorRefProvider {
@@ -84,10 +84,10 @@ extension RemoteActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: RemoteActorRefProvider implements resolve differently, by being aware of remote addresses
 
 extension RemoteActorRefProvider {
-
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         switch context.address._location {
         case .local:
@@ -115,6 +115,7 @@ extension RemoteActorRefProvider {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: LocalActorRefProvider
 
 internal struct LocalActorRefProvider: _ActorRefProvider {
@@ -133,7 +134,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
         behavior: Behavior<Message>, address: ActorAddress,
         dispatcher: MessageDispatcher, props: Props
     ) throws -> ActorRef<Message> {
-        return try root.makeChild(path: address.path) {
+        return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
             let actor: ActorShell<Message> = ActorShell(
                 system: system,
@@ -153,7 +154,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
     }
 
     internal func stopAll() {
-        root.stopAllAwait()
+        self.root.stopAllAwait()
     }
 }
 
@@ -171,9 +172,7 @@ extension LocalActorRefProvider {
     }
 }
 
-
 internal protocol _ActorTreeTraversable {
-
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T>
 
     /// Resolves the given actor path against the underlying actor tree.
@@ -204,7 +203,7 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         self.userTree = userTree
     }
 
-    // TODO duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
+    // TODO: duplicates some logic from _traverse implementation on Actor system (due to initialization dances), see if we can remove the duplication of this
     // TODO: we may be able to pull this off by implementing the "root" as traversable and then we expose it to the Serialization() impl
     @usableFromInline
     func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
@@ -226,7 +225,6 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         case .failed(let err):
             return .failed(err) // short circuit
         }
-
     }
 
     @usableFromInline
@@ -235,10 +233,10 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
             return context.personalDeadLetters // i.e. we resolved a "dead reference" as it points to nothing
         }
         switch selector.value {
-        case "system": return self.systemTree._resolve(context: context) 
-        case "user":   return self.userTree._resolve(context: context) 
-        case "dead":   return context.personalDeadLetters
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "system": return self.systemTree._resolve(context: context)
+        case "user": return self.userTree._resolve(context: context)
+        case "dead": return context.personalDeadLetters
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 
@@ -249,9 +247,9 @@ internal struct CompositeActorTreeTraversable: _ActorTreeTraversable {
         }
         switch selector.value {
         case "system": return self.systemTree._resolveUntyped(context: context)
-        case "user":   return self.userTree._resolveUntyped(context: context)
-        case "dead":   return context.personalDeadLetters.asAddressable()
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "user": return self.userTree._resolveUntyped(context: context)
+        case "dead": return context.personalDeadLetters.asAddressable()
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 }
@@ -288,12 +286,13 @@ internal struct TraversalContext<T> {
             }
         }
     }
-    
+
     var deeper: TraversalContext<T> {
         return self.deeper(by: 1)
     }
+
     /// Returns copy of traversal context yet "one level deeper"
-    func deeper(by n: Int) ->  TraversalContext<T> {
+    func deeper(by n: Int) -> TraversalContext<T> {
         var deeperSelector = self.selectorSegments
         deeperSelector = deeperSelector.dropFirst()
         let c = TraversalContext(
@@ -343,7 +342,6 @@ internal struct ResolveContext<Message> {
     var personalDeadLetters: ActorRef<Message> {
         return self.system.personalDeadLetters(recipient: self.address)
     }
-
 }
 
 /// Directives that steer the traversal state machine (which, however, always remains depth-first).
@@ -355,6 +353,7 @@ internal enum TraversalDirective<T> {
     case accumulateMany([T])
     case abort(Error)
 }
+
 @usableFromInline
 internal enum TraversalResult<T> {
     case result(T)

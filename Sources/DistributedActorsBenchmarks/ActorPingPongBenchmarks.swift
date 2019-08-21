@@ -12,11 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import SwiftBenchmarkTools
-import Dispatch
 import class Foundation.ProcessInfo
+import SwiftBenchmarkTools
 
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 import Darwin
@@ -25,17 +25,18 @@ import Glibc
 #endif
 
 // MARK: Ping Pong Benchmark
+
 //
 // This benchmark spawns a number of actors (2, more than cores, less than cores, equal nr as cores),
 // and makes them send ping pong messages between each other pairwise. This should show the latency
 // and throughput of direct "ping pong" messaging between highly messaged actors.
 
-fileprivate let cores = ProcessInfo.processInfo.activeProcessorCount
+private let cores = ProcessInfo.processInfo.activeProcessorCount
 
-fileprivate let twoActors = 2
-fileprivate let lessThanCoresActors = cores / 2
-fileprivate let sameAsCoresActors = cores
-fileprivate let moreThanCoresActors = cores * 2
+private let twoActors = 2
+private let lessThanCoresActors = cores / 2
+private let sameAsCoresActors = cores
+private let moreThanCoresActors = cores * 2
 
 public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
@@ -44,7 +45,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
             }
         },
         tearDownFunction: tearDown
@@ -55,7 +56,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
             }
         },
         tearDownFunction: tearDown
@@ -66,7 +67,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
             }
         },
         tearDownFunction: tearDown
@@ -77,7 +78,7 @@ public let ActorPingPongBenchmarks: [BenchmarkInfo] = [
         tags: [.actor],
         setUpFunction: {
             setUp { () in
-                supervisor = try! system.spawn("supervisor", (supervisorBehavior()))
+                supervisor = try! system.spawn("supervisor", supervisorBehavior())
             }
         },
         tearDownFunction: tearDown
@@ -97,14 +98,15 @@ private func tearDown() {
 }
 
 // === -----------------------------------------------------------------------------------------------------------------
-fileprivate enum PingPongCommand {
+private enum PingPongCommand {
     case startPingPong(
         messagesPerPair: Int,
         numActors: Int,
         // dispatcher: String,
         throughput: Int,
         shutdownTimeout: TimeAmount,
-        replyTo: ActorRef<PingPongCommand>)
+        replyTo: ActorRef<PingPongCommand>
+    )
 
     case pingPongStarted(completedLatch: CountDownLatch, startNanoTime: UInt64, totalNumMessages: Int)
 
@@ -113,14 +115,14 @@ fileprivate enum PingPongCommand {
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-fileprivate let mutex = Mutex()
+private let mutex = Mutex()
 
-fileprivate var supervisor: ActorRef<PingPongCommand>! = nil
+private var supervisor: ActorRef<PingPongCommand>!
 
-fileprivate func supervisorBehavior() -> Behavior<PingPongCommand> {
+private func supervisorBehavior() -> Behavior<PingPongCommand> {
     return .receive { context, message in
         switch message {
-        case let .startPingPong(numMessagesPerActorPair, numActors, throughput, _, replyTo):
+        case .startPingPong(let numMessagesPerActorPair, let numActors, let throughput, _, let replyTo):
             let numPairs = numActors / 2
             let totalNumMessages = numPairs * numMessagesPerActorPair / 2
 
@@ -151,30 +153,29 @@ fileprivate func supervisorBehavior() -> Behavior<PingPongCommand> {
     }
 }
 
-
-fileprivate func initiatePingPongForPairs(refs: [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)], inFlight: Int) {
+private func initiatePingPongForPairs(refs: [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)], inFlight: Int) {
     for (pingRef, pongRef) in refs {
         let message = EchoMessage(replyTo: pongRef)
-        for _ in 1...inFlight {
+        for _ in 1 ... inFlight {
             pingRef.tell(message)
         }
     }
 }
 
-
-fileprivate func startPingPongActorPairs(
+private func startPingPongActorPairs(
     context: ActorContext<PingPongCommand>,
     latch: CountDownLatch,
     messagesPerPair: Int,
-    numPairs: Int) throws -> [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)] {
+    numPairs: Int
+) throws -> [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)] {
     let pingPongBehavior = newPingPongBehavior(messagesPerPair: messagesPerPair, latch: latch)
 
     var actors: [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)] = []
     let startSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
     actors.reserveCapacity(numPairs)
-    for i in 0..<numPairs {
-        let ping = try context.spawn("ping-\(i)", (pingPongBehavior))
-        let pong = try context.spawn("pong-\(i)", (pingPongBehavior))
+    for i in 0 ..< numPairs {
+        let ping = try context.spawn("ping-\(i)", pingPongBehavior)
+        let pong = try context.spawn("pong-\(i)", pingPongBehavior)
         let actorPair = (ping, pong)
         actors.append(actorPair)
     }
@@ -185,7 +186,7 @@ fileprivate func startPingPongActorPairs(
     return actors
 }
 
-fileprivate struct EchoMessage: CustomStringConvertible {
+private struct EchoMessage: CustomStringConvertible {
     var seqNr: Int
     let replyTo: ActorRef<EchoMessage>
 
@@ -193,6 +194,7 @@ fileprivate struct EchoMessage: CustomStringConvertible {
         self.replyTo = replyTo
         self.seqNr = 0
     }
+
     init(replyTo: ActorRef<EchoMessage>, seqNr: Int) {
         self.replyTo = replyTo
         self.seqNr = seqNr
@@ -203,7 +205,7 @@ fileprivate struct EchoMessage: CustomStringConvertible {
     }
 }
 
-fileprivate func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) -> Behavior<EchoMessage> {
+private func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch) -> Behavior<EchoMessage> {
     return .setup { context in
         var left = messagesPerPair / 2
 
@@ -211,7 +213,7 @@ fileprivate func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch
             let pong = EchoMessage(replyTo: context.myself, seqNr: message.seqNr + 1)
             message.replyTo.tell(pong)
 
-            if (left > 0) {
+            if left > 0 {
                 left -= 1
                 return .same
             } else {
@@ -225,7 +227,7 @@ fileprivate func newPingPongBehavior(messagesPerPair: Int, latch: CountDownLatch
 
 // === -----------------------------------------------------------------------------------------------------------------
 
-fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
+private func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
     return { _ in
         let numMessagesPerActorPair = 2_000_000
         // let totalMessages = numMessagesPerActorPair * numActors / 2
@@ -241,11 +243,12 @@ fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
                 // dispatcher: "", // not used
                 throughput: 50,
                 shutdownTimeout: .seconds(30),
-                replyTo: benchmarkLatchRef)
+                replyTo: benchmarkLatchRef
+            )
         )
 
         let start = latchGuardian.blockUntilMessageReceived()
-        guard case let .pingPongStarted(completedLatch, startNanoTime, totalNumMessages) = start else {
+        guard case .pingPongStarted(let completedLatch, let startNanoTime, let totalNumMessages) = start else {
             fatalError("Boom")
         }
 
@@ -257,4 +260,3 @@ fileprivate func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
         system.shutdown()
     }
 }
-

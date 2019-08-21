@@ -52,7 +52,7 @@ internal enum EventStreamShell {
         case publish(Event)
     }
 
-    static func behavior<Event>(_ type: Event.Type) -> Behavior<Message<Event>> {
+    static func behavior<Event>(_: Event.Type) -> Behavior<Message<Event>> {
         return .setup { context in
             var subscribers: [ActorAddress: ActorRef<Event>] = [:]
 

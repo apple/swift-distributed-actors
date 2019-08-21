@@ -21,13 +21,11 @@ import XCTest
 ///
 
 extension CustomStringInterpolationTests {
-
-   static var allTests : [(String, (CustomStringInterpolationTests) -> () throws -> Void)] {
-      return [
-                ("test_leftPadTo_whenValueShorterThanPadTo", test_leftPadTo_whenValueShorterThanPadTo),
-                ("test_leftPadTo_whenValueLongerThanPadTo", test_leftPadTo_whenValueLongerThanPadTo),
-                ("test_leftPadTo_whenValueEqualThanPadTo", test_leftPadTo_whenValueEqualThanPadTo),
-           ]
-   }
+    static var allTests: [(String, (CustomStringInterpolationTests) -> () throws -> Void)] {
+        return [
+            ("test_leftPadTo_whenValueShorterThanPadTo", test_leftPadTo_whenValueShorterThanPadTo),
+            ("test_leftPadTo_whenValueLongerThanPadTo", test_leftPadTo_whenValueLongerThanPadTo),
+            ("test_leftPadTo_whenValueEqualThanPadTo", test_leftPadTo_whenValueEqualThanPadTo),
+        ]
+    }
 }
-

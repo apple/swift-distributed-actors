@@ -34,7 +34,7 @@ internal final class ProtobufSerializer<T: ProtobufRepresentable>: Serializer<T>
 
     let allocator: ByteBufferAllocator
 
-    init (allocator: ByteBufferAllocator) {
+    init(allocator: ByteBufferAllocator) {
         self.allocator = allocator
     }
 

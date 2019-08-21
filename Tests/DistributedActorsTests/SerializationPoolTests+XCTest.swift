@@ -21,17 +21,15 @@ import XCTest
 ///
 
 extension SerializationPoolTests {
-
-   static var allTests : [(String, (SerializationPoolTests) -> () throws -> Void)] {
-      return [
-                ("test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread", test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread),
-                ("test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence),
-                ("test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel),
-                ("test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread", test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread),
-                ("test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence),
-                ("test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel),
-                ("test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools", test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools),
-           ]
-   }
+    static var allTests: [(String, (SerializationPoolTests) -> () throws -> Void)] {
+        return [
+            ("test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread", test_serializationPool_shouldSerializeMessagesInDefaultGroupOnCallingThread),
+            ("test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPool_shouldSerializeMessagesInTheSameNonDefaultGroupInSequence),
+            ("test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPool_shouldSerializeMessagesInDifferentNonDefaultGroupsInParallel),
+            ("test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread", test_serializationPool_shouldDeserializeMessagesInDefaultGroupOnCallingThread),
+            ("test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence", test_serializationPool_shouldDeserializeMessagesInTheSameNonDefaultGroupInSequence),
+            ("test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel", test_serializationPool_shouldDeserializeMessagesInDifferentNonDefaultGroupsInParallel),
+            ("test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools", test_serializationPool_shouldExecuteSerializationAndDeserializationGroupsOnSeparateWorkerPools),
+        ]
+    }
 }
-

@@ -21,15 +21,13 @@ import XCTest
 ///
 
 extension ActorLifecycleTests {
-
-   static var allTests : [(String, (ActorLifecycleTests) -> () throws -> Void)] {
-      return [
-                ("test_spawn_shouldNotAllowStartingWith_Same", test_spawn_shouldNotAllowStartingWith_Same),
-                ("test_spawn_shouldNotAllowStartingWith_Unhandled", test_spawn_shouldNotAllowStartingWith_Unhandled),
-                ("test_spawn_shouldNotAllowIllegalActorNames", test_spawn_shouldNotAllowIllegalActorNames),
-                ("test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned", test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned),
-                ("test_stopping_shouldDeinitTheBehavior", test_stopping_shouldDeinitTheBehavior),
-           ]
-   }
+    static var allTests: [(String, (ActorLifecycleTests) -> () throws -> Void)] {
+        return [
+            ("test_spawn_shouldNotAllowStartingWith_Same", test_spawn_shouldNotAllowStartingWith_Same),
+            ("test_spawn_shouldNotAllowStartingWith_Unhandled", test_spawn_shouldNotAllowStartingWith_Unhandled),
+            ("test_spawn_shouldNotAllowIllegalActorNames", test_spawn_shouldNotAllowIllegalActorNames),
+            ("test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned", test_spawn_shouldThrowFromMultipleActorsWithTheSamePathBeingSpawned),
+            ("test_stopping_shouldDeinitTheBehavior", test_stopping_shouldDeinitTheBehavior),
+        ]
+    }
 }
-

@@ -12,17 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
 import NIO
+import XCTest
 
 class ProtoEnvelopeTests: XCTestCase {
-
     func test_init_ProtoEnvelopeZeroCopy() throws {
         var proto = ProtoEnvelope()
-        proto.payload = Data.init([1,2,3])
+        proto.payload = Data([1, 2, 3])
         proto.recipient = ProtoActorAddress(ActorAddress(path: ._user, incarnation: .perpetual))
         proto.serializerID = 5
         let allocator = ByteBufferAllocator()

@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
+import XCTest
 
 final class FixedThreadPoolTests: XCTestCase {
     func test_pool_shouldProperlyShutdownAllThreads() throws {

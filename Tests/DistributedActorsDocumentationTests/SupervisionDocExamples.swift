@@ -19,7 +19,6 @@ import DistributedActors
 // end::imports[]
 
 class SupervisionDocExamples {
-
     lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
 
     func supervise_props() throws {
@@ -45,9 +44,9 @@ class SupervisionDocExamples {
         let context: ActorContext<String> = undefined()
 
         // tag::supervise_inline[]
-        let greeterRef = try context.spawn("greeter", 
-            props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
-            greeterBehavior)
+        let greeterRef = try context.spawn("greeter",
+                                           props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
+                                           greeterBehavior)
         // end::supervise_inline[]
         _ = greeterRef
     }
@@ -109,13 +108,12 @@ class SupervisionDocExamples {
         let whoLikesWhat: [Name: LikedFruit] = [
             "Alice": "Apples",
             "Bob": "Bananas",
-            "Caplin": "Cucumbers"
+            "Caplin": "Cucumbers",
         ]
 
         let greeterRef = try system.spawn("favFruit",
-            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
-            favouriteFruitBehavior(whoLikesWhat)
-        )
+                                          props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+                                          favouriteFruitBehavior(whoLikesWhat))
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!
@@ -131,7 +129,6 @@ class SupervisionDocExamples {
         struct CatchThisError: Error {}
         struct NotIntendedToBeCaught: Error {}
 
-
         /// "Re-throws" whichever error was sent to it.
         let throwerBehavior: Behavior<Error> = .setup { context in
             context.log.info("Starting...")
@@ -146,7 +143,7 @@ class SupervisionDocExamples {
             "thrower",
             props: Props()
                 .addingSupervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self), // <2>
-                // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
+            // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
             throwerBehavior
         )
         // Starting...

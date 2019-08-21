@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class BehaviorCanonicalizeTests: XCTestCase {
     var system: ActorSystem!
@@ -23,7 +23,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -31,13 +31,13 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "canonicalizeProbe1")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe1")
 
-        let b: Behavior<String> = .setup { c1 in
+        let b: Behavior<String> = .setup { _ in
             p.tell("outer-1")
-            return .setup { c2 in
+            return .setup { _ in
                 p.tell("inner-2")
-                return .setup { c2 in
+                return .setup { _ in
                     p.tell("inner-3")
                     return .receiveMessage { m in
                         p.tell("received:\(m)")
@@ -47,7 +47,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             }
         }
 
-        let ref = try system.spawn("nestedSetups", (b))
+        let ref = try system.spawn("nestedSetups", b)
 
         try p.expectMessage("outer-1")
         try p.expectMessage("inner-2")
@@ -58,10 +58,10 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "canonicalizeProbe2")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
-            return .setup { context in
+            return .setup { _ in
                 if depth < limit {
                     // add another "setup layer"
                     return deepSetupRabbitHole(currentDepth: depth + 1, stopAt: limit)
@@ -76,28 +76,28 @@ class BehaviorCanonicalizeTests: XCTestCase {
 
         // we attempt to cause a stack overflow by nesting tons of setups inside each other.
         // this could fail if canonicalization were implemented in some naive way.
-        let depthLimit = system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
-        let ref = try system.spawn("deepSetupNestedRabbitHole", (deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit)))
+        let depthLimit = self.system.settings.actor.maxBehaviorNestingDepth - 2 // not a good idea, but we should not crash
+        let ref = try system.spawn("deepSetupNestedRabbitHole", deepSetupRabbitHole(currentDepth: 0, stopAt: depthLimit))
 
         ref.tell("ping")
         try p.expectMessage("received:ping")
     }
 
     func test_canonicalize_unwrapInterceptBehaviors() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "canonicalizeProbe3")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe3")
 
-        let b: Behavior<String> = .intercept(behavior: .setup { c1 in
+        let b: Behavior<String> = .intercept(behavior: .setup { _ in
             p.tell("outer-1")
-            return .setup { c2 in
+            return .setup { _ in
                 p.tell("inner-2")
                 return .receiveMessage { m in
                     p.tell("received:\(m)")
                     return .same
                 }
             }
-            }, with: ProbeInterceptor(probe: p))
+        }, with: ProbeInterceptor(probe: p))
 
-        let ref = try system.spawn("nestedSetups", (b))
+        let ref = try system.spawn("nestedSetups", b)
 
         try p.expectMessage("outer-1")
         try p.expectMessage("inner-2")
@@ -108,13 +108,13 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_orElse_shouldThrowOnTooDeeplyNestedBehaviors() throws {
-        let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
         var behavior: Behavior<Int> = .receiveMessage { message in
             p.tell(message)
             return .same
         }
 
-        for i in (0...system.settings.actor.maxBehaviorNestingDepth).reversed() {
+        for i in (0 ... self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
             behavior = Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
@@ -131,7 +131,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn("orElseCanonicalizeNestedSetups", .receiveMessage { msg in
             let onlyA = Behavior<String>.setup { _ in
@@ -170,11 +170,11 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe(name: "startBehaviorProbe")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "startBehaviorProbe")
 
         /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
         func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> Behavior<String> {
-            return .setup { context in
+            return .setup { _ in
                 p.tell("at:\(depth)")
                 return setupDaDoRunRunRunDaDoRunRun(depth: depth + 1)
             }
@@ -183,16 +183,16 @@ class BehaviorCanonicalizeTests: XCTestCase {
         // TODO: if issue #244 is implemented, we cna supervise and "spy on" start() failures making this test much more specific
 
         let behavior = setupDaDoRunRunRunDaDoRunRun()
-        _ = try system.spawn("nestedSetups", (behavior))
+        _ = try system.spawn("nestedSetups", behavior)
 
-        for depth in 0..<system.settings.actor.maxBehaviorNestingDepth {
+        for depth in 0 ..< self.system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")
         }
         try p.expectNoMessage(for: .milliseconds(50))
     }
 
     func test_stopWithoutPostStop_shouldUsePreviousBehavior() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
             .stop
@@ -213,10 +213,10 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_stopWithPostStop_shouldUseItForPostStopSignalHandling() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
-            return .stop { _ in
+            .stop { _ in
                 p.tell("postStop")
             }
         }
@@ -231,10 +231,10 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_setup_returningSameShouldThrow() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { _ in
-            return .same
+            .same
         }
 
         let ref = try system.spawn(.anonymous, behavior)

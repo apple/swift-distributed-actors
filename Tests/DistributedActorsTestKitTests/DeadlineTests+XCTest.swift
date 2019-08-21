@@ -21,15 +21,13 @@ import XCTest
 ///
 
 extension DeadlineTests {
-
-   static var allTests : [(String, (DeadlineTests) -> () throws -> Void)] {
-      return [
-                ("test_deadline_nowIsNotPastNow", test_deadline_nowIsNotPastNow),
-                ("test_deadline_remainingShouldReturnExpectedTimeAmounts", test_deadline_remainingShouldReturnExpectedTimeAmounts),
-                ("test_deadline_hasTimeLeft", test_deadline_hasTimeLeft),
-                ("test_deadline_subtracting", test_deadline_subtracting),
-                ("test_fromNow", test_fromNow),
-           ]
-   }
+    static var allTests: [(String, (DeadlineTests) -> () throws -> Void)] {
+        return [
+            ("test_deadline_nowIsNotPastNow", test_deadline_nowIsNotPastNow),
+            ("test_deadline_remainingShouldReturnExpectedTimeAmounts", test_deadline_remainingShouldReturnExpectedTimeAmounts),
+            ("test_deadline_hasTimeLeft", test_deadline_hasTimeLeft),
+            ("test_deadline_subtracting", test_deadline_subtracting),
+            ("test_fromNow", test_fromNow),
+        ]
+    }
 }
-

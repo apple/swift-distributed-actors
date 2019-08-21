@@ -21,11 +21,9 @@ import XCTest
 ///
 
 extension FixedThreadPoolTests {
-
-   static var allTests : [(String, (FixedThreadPoolTests) -> () throws -> Void)] {
-      return [
-                ("test_pool_shouldProperlyShutdownAllThreads", test_pool_shouldProperlyShutdownAllThreads),
-           ]
-   }
+    static var allTests: [(String, (FixedThreadPoolTests) -> () throws -> Void)] {
+        return [
+            ("test_pool_shouldProperlyShutdownAllThreads", test_pool_shouldProperlyShutdownAllThreads),
+        ]
+    }
 }
-

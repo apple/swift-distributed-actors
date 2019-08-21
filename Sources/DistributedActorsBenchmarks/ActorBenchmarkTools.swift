@@ -42,7 +42,7 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
     }
 
     func blockUntilMessageReceived() -> Message {
-        return receptacle.wait(atMost: .seconds(10))!
+        return self.receptacle.wait(atMost: .seconds(10))!
     }
 
     func timeSinceUnlocked() -> DistributedActors.TimeAmount? {

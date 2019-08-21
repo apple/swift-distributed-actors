@@ -32,6 +32,7 @@ public struct LamportClock: ExpressibleByIntegerLiteral {
     public init() {
         self._time = 0
     }
+
     public init(integerLiteral value: IntegerLiteralType) {
         self._time = LamportTime(value)
     }

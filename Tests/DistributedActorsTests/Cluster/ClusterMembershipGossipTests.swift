@@ -12,14 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
 import NIOSSL
+import XCTest
 
 final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
-
     func test_gossip_down_node_shouldReachAllNodes() throws {
         let first = self.setUpNode("first") { settings in
             settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
@@ -74,7 +73,7 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
 
         // 1. first join second
         first.cluster.join(node: second.cluster.node.node)
-        
+
         // 2. third join second
         third.cluster.join(node: second.cluster.node.node)
 
@@ -86,19 +85,18 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         try assertAssociated(third, withAtLeast: second.settings.cluster.uniqueBindNode)
         try assertAssociated(second, withAtLeast: third.settings.cluster.uniqueBindNode)
         pinfo("Associated: second <~> third")
-        
+
         // 3.1. first should discover third
         // confirm 3.1
         try assertAssociated(first, withAtLeast: third.settings.cluster.uniqueBindNode)
         pinfo("Associated: first ~> third")
-        
+
         // 3.2. third should discover first
         // confirm 3.2
         try assertAssociated(third, withAtLeast: first.settings.cluster.uniqueBindNode)
         pinfo("Associated: third ~> first")
-        
+
         // excellent, all nodes know each other
         pinfo("Associated: third <~> first")
     }
-
 }

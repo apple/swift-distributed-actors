@@ -12,15 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import NIO
 import NIOSSL
-import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor System Cluster Settings
 
 public struct ClusterSettings {
-
     public enum Default {
         public static let systemName: String = "ActorSystem"
         public static let bindHost: String = "localhost"
@@ -79,12 +79,13 @@ public struct ClusterSettings {
     public var protocolVersion: DistributedActors.Version {
         return self._protocolVersion
     }
+
     // Exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
     /// If set, this event loop group will be used by the cluster infrastructure.
-    // TODO do we need to separate server and client sides? Sounds like a reasonable thing to do.
-    public var eventLoopGroup: EventLoopGroup? = nil
+    // TODO: do we need to separate server and client sides? Sounds like a reasonable thing to do.
+    public var eventLoopGroup: EventLoopGroup?
 
     // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
     /// Interval with which the receptionists will sync their state with the other nodes.
@@ -93,13 +94,14 @@ public struct ClusterSettings {
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
     public func makeDefaultEventLoopGroup() -> EventLoopGroup {
-        return MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO share pool with others
+        return MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+
     // MARK: Cluster membership and failure detection
 
     public var downingStrategy: DowningStrategySettings = .noop
@@ -108,6 +110,7 @@ public struct ClusterSettings {
     public var swim: SWIM.Settings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Logging
 
     /// If enabled, logs membership changes (including the entire membership table from the perspective of the current node).
@@ -118,7 +121,7 @@ public struct ClusterSettings {
     #if SACT_TRACE_CLUSTER
     var traceLogLevel: Logger.Level? = .warning
     #else
-    var traceLogLevel: Logger.Level? = nil
+    var traceLogLevel: Logger.Level?
     #endif
 
     public init(node: Node, tls: TLSConfiguration? = nil) {

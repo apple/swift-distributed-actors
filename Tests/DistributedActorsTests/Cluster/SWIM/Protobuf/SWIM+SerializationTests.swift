@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 final class SWIMSerializationTests: XCTestCase {
     var system: ActorSystem!
@@ -26,7 +26,7 @@ final class SWIMSerializationTests: XCTestCase {
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
     func test_serializationOf_ping() throws {
@@ -34,7 +34,7 @@ final class SWIMSerializationTests: XCTestCase {
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.Ack.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let ping: SWIM.Message = .remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
-        try shared_serializationRoundtrip(ping)
+        try self.shared_serializationRoundtrip(ping)
     }
 
     func test_serializationOf_pingReq() throws {
@@ -42,14 +42,14 @@ final class SWIMSerializationTests: XCTestCase {
         let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.Ack.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let pingReq: SWIM.Message = .remote(.pingReq(target: memberProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
-        try shared_serializationRoundtrip(pingReq)
+        try self.shared_serializationRoundtrip(pingReq)
     }
 
     func test_serializationOf_Ack() throws {
         let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let pingReq: SWIM.Ack = .init(pinged: memberProbe.ref, incarnation: 1, payload: payload)
-        try shared_serializationRoundtrip(pingReq)
+        try self.shared_serializationRoundtrip(pingReq)
     }
 
     func shared_serializationRoundtrip<T: ProtobufRepresentable>(_ obj: T) throws {

@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import CDistributedActorsMailbox
 import Dispatch
+import DistributedActorsConcurrencyHelpers
 import Logging
 import NIO
 
@@ -25,19 +25,18 @@ import NIO
 ///
 /// An `ActorSystem` and all of the actors contained within remain alive until the `terminate` call is made.
 public final class ActorSystem {
-
     public let name: String
 
     // initialized during startup
-    internal var _deadLetters: ActorRef<DeadLetter>! = nil
+    internal var _deadLetters: ActorRef<DeadLetter>!
 
 //    /// Impl note: Atomic since we are being called from outside actors here (or MAY be), thus we need to synchronize access
-    // TODO avoid the lock...
+    // TODO: avoid the lock...
     internal var _namingContext = ActorNamingContext()
     internal let namingLock = Lock()
     internal func withNamingContext<T>(_ block: (inout ActorNamingContext) throws -> T) rethrows -> T {
         return try self.namingLock.withLock {
-            return try block(&self._namingContext)
+            try block(&self._namingContext)
         }
     }
 
@@ -45,8 +44,8 @@ public final class ActorSystem {
 
     // TODO: converge into one tree? // YEAH
     // Note: This differs from Akka, we do full separate trees here
-    private var systemProvider: _ActorRefProvider! = nil
-    private var userProvider: _ActorRefProvider! = nil
+    private var systemProvider: _ActorRefProvider!
+    private var userProvider: _ActorRefProvider!
 
     internal let _root: ReceivesSystemMessages
 
@@ -57,23 +56,25 @@ public final class ActorSystem {
     public let settings: ActorSystemSettings
 
     // initialized during startup
-    public var serialization: Serialization! = nil
+    public var serialization: Serialization!
 
     public var receptionist: ActorRef<Receptionist.Message> {
         return self._receptionist
     }
-    private var _receptionist: ActorRef<Receptionist.Message>! = nil
+
+    private var _receptionist: ActorRef<Receptionist.Message>!
 
     internal var replicator: ActorRef<CRDT.Replicator.Message> {
         return self._replicator
     }
-    private var _replicator: ActorRef<CRDT.Replicator.Message>! = nil
+
+    private var _replicator: ActorRef<CRDT.Replicator.Message>!
 
     // MARK: Cluster
 
     // initialized during startup
-    internal var _cluster: ClusterShell? = nil
-    internal var _clusterEventStream: EventStream<ClusterEvent>? = nil
+    internal var _cluster: ClusterShell?
+    internal var _clusterEventStream: EventStream<ClusterEvent>?
 
     // MARK: Logging
 
@@ -101,6 +102,7 @@ public final class ActorSystem {
         configureSettings(&settings)
         self.init(settings: settings)
     }
+
     public init(settings: ActorSystemSettings) {
         var settings = settings
         self.name = settings.cluster.node.systemName
@@ -135,7 +137,7 @@ public final class ActorSystem {
             if settings.cluster.enabled {
                 context[metadataKey: "node"] = .stringConvertible(settings.cluster.uniqueBindNode)
             }
-                context[metadataKey: "nodeName"] = .stringConvertible(name)
+            context[metadataKey: "nodeName"] = .stringConvertible(name)
             return ActorOriginLogHandler(context)
         })
         deadLogger.logLevel = settings.defaultLogLevel
@@ -144,8 +146,8 @@ public final class ActorSystem {
 
         // actor providers
         let localUserProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "user", system: self))
-        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", system: self)) 
-        // TODO want to reconciliate those into one, and allow /dead as well
+        let localSystemProvider = LocalActorRefProvider(root: Guardian(parent: theOne, name: "system", system: self))
+        // TODO: want to reconciliate those into one, and allow /dead as well
 
         var effectiveUserProvider: _ActorRefProvider = localUserProvider
         var effectiveSystemProvider: _ActorRefProvider = localSystemProvider
@@ -201,7 +203,6 @@ public final class ActorSystem {
         #endif
     }
 
-
     // FIXME: make termination async and add an awaitable that signals completion of the termination
 
     /// Forcefully stops this actor system and all actors that live within.
@@ -216,7 +217,7 @@ public final class ActorSystem {
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
         try! self.eventLoopGroup.syncShutdownGracefully()
-        receptacle.wait(atMost: .milliseconds(100)) // FIXME configure
+        receptacle.wait(atMost: .milliseconds(100)) // FIXME: configure
         self.serialization = nil
         self._cluster = nil
         self._receptionist = self.deadLetters.adapted()
@@ -224,7 +225,7 @@ public final class ActorSystem {
 }
 
 extension ActorSystem: Equatable {
-    public static func ==(lhs: ActorSystem, rhs: ActorSystem) -> Bool {
+    public static func == (lhs: ActorSystem, rhs: ActorSystem) -> Bool {
         return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     }
 }
@@ -242,6 +243,7 @@ extension ActorSystem: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorRefFactory
 
 /// Public but not intended for user-extension.
@@ -249,7 +251,6 @@ extension ActorSystem: CustomStringConvertible {
 /// An `ActorRefFactory` is able to create ("spawn") new actors and return `ActorRef` instances for them.
 /// Only the `ActorSystem`, `ActorContext` and potentially testing facilities can ever expose this ability.
 public protocol ActorRefFactory {
-
     /// Spawn an actor with the given `name`, optional `props` and `behavior`.
     ///
     /// ### Naming
@@ -267,10 +268,10 @@ extension ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Actor creation
 
 extension ActorSystem: ActorRefFactory {
-
     /// Spawn a new top-level Actor with the given initial behavior and name.
     ///
     /// - throws: when the passed behavior is not a legal initial behavior
@@ -299,7 +300,7 @@ extension ActorSystem: ActorRefFactory {
 
         let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
 
-        // TODO lock inside provider, not here
+        // TODO: lock inside provider, not here
         let address: ActorAddress = try self.withNamingContext { namingContext in
             let name = naming.makeName(&namingContext)
 
@@ -329,26 +330,25 @@ extension ActorSystem: ActorRefFactory {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Beginnings of 'system time'
 
 extension ActorSystem {
-
     /// Returns `Deadline` set `timeAmount` away from the systems current `now` time.
-    /// TODO: Programmatic timers are not yet implemented, but would be in use here to offer and set the "now"
+    // TODO: Programmatic timers are not yet implemented, but would be in use here to offer and set the "now"
     func deadline(fromNow timeAmount: TimeAmount) -> Deadline {
-        let now = Deadline.now() // TODO allow programmatic timers
+        let now = Deadline.now() // TODO: allow programmatic timers
         return now + timeAmount
     }
 
     // func progressTimeBy(_ timeAmount: TimeAmount) // TODO: Implement
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Internal actor tree traversal utilities
 
 extension ActorSystem: _ActorTreeTraversable {
-
     /// Prints Actor hierarchy as a "tree".
     ///
     /// Note that the printout is NOT a "snapshot" of a systems state, and therefore may print actors which by the time
@@ -382,7 +382,6 @@ extension ActorSystem: _ActorTreeTraversable {
         }
     }
 
-
     internal func _traverseAll<T>(_ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
         let context = TraversalContext<T>()
         return self._traverse(context: context, visit)
@@ -393,18 +392,17 @@ extension ActorSystem: _ActorTreeTraversable {
         return self._traverseAll(visit)
     }
 
-
     @usableFromInline
     func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
         }
-        
+
         switch selector.value {
         case "system": return self.systemProvider._resolve(context: context)
-        case "user":   return self.userProvider._resolve(context: context)
-        case "dead":   return context.personalDeadLetters
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "user": return self.userProvider._resolve(context: context)
+        case "dead": return context.personalDeadLetters
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
 
@@ -415,12 +413,11 @@ extension ActorSystem: _ActorTreeTraversable {
         }
         switch selector.value {
         case "system": return self.systemProvider._resolveUntyped(context: context)
-        case "user":   return self.userProvider._resolveUntyped(context: context)
-        case "dead":   return context.personalDeadLetters.asAddressable()
-        default:       fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
+        case "user": return self.userProvider._resolveUntyped(context: context)
+        case "dead": return context.personalDeadLetters.asAddressable()
+        default: fatalError("Found unrecognized root. Only /system and /user are supported so far. Was: \(selector)")
         }
     }
-
 }
 
 public enum ActorSystemError: Error {

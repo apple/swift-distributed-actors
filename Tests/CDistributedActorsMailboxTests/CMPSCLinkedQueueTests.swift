@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import CDistributedActorsMailbox
 import Foundation
 import XCTest
-import CDistributedActorsMailbox
 
 class CMPSCLinkedQueueTests: XCTestCase {
-
     func testIsEmptyWhenEmpty() {
         let q = c_sact_mpsc_linked_queue_create()
         let empty = c_sact_mpsc_linked_queue_is_empty(q)

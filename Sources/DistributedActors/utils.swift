@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import DistributedActorsConcurrencyHelpers
 import CDistributedActorsMailbox // for backtrace
+import DistributedActorsConcurrencyHelpers
+import Foundation
 
 /**
  * `undefined()` pretends to be able to produce a value of any type `T` which can
@@ -31,7 +31,7 @@ import CDistributedActorsMailbox // for backtrace
  *
  *  - `let x : String = undefined()`
  *  - `let f : String -> Int? = undefined("string to optional int function")`
- *  - `return undefined() /* in any function */`
+ *  - `return undefined() /* in any function */ `
  *  - `let x : String = (undefined() as Int -> String)(42)`
  *  - ...
  *
@@ -61,16 +61,15 @@ internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #file,
     sact_dump_backtrace()
     fatalError(hint, file: file, line: line)
 }
-internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) {
 
+internal func assertBacktrace(_ condition: @autoclosure () -> Bool, _ message: @autoclosure () -> String = String(), file: StaticString = #file, line: UInt = #line) {
     assert(condition(), { () in sact_dump_backtrace(); return message() }(), file: file, line: line)
 }
-
 
 /// Short for "pretty print", useful for debug tracing
 public func pprint(_ message: String, file: StaticString = #file, line: UInt = #line) {
     print("[pprint][\(file):\(line)][\(_hackyPThreadThreadId())]: \(message)")
-//  print("[pprint][\(file):\(line)]: \(message)")
+    //  print("[pprint][\(file):\(line)]: \(message)")
 }
 
 /// Like [pprint] but yellow, use for things that are better not to miss.
@@ -92,13 +91,14 @@ internal func _hackyPThreadThreadId() -> String {
     var threadId: UInt64 = 0
     _ = pthread_threadid_np(nil, &threadId)
     #else
-    let threadId = pthread_self(); // TODO: since pthread_threadid_np not available, how to get an id?
+    let threadId = pthread_self() // TODO: since pthread_threadid_np not available, how to get an id?
     #endif
 
     return "thread:\(threadId)"
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
 /// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
@@ -113,7 +113,7 @@ internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: St
 @inlinable
 internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
-    pprint("SACT_TRACE_MAILBOX(\(path.map({ "\($0)" }) ?? "<unknown>")): \(message())", file: file, line: line)
+    pprint("SACT_TRACE_MAILBOX(\(path.map { "\($0)" } ?? "<unknown>")): \(message())", file: file, line: line)
     #endif
 }
 
@@ -163,10 +163,12 @@ func traceLog_Remote(_ message: @autoclosure () -> String, file: StaticString = 
 internal func _identity<T>(_ param: T) -> T {
     return param
 }
+
 @inlinable
 internal func _right<L, R>(left: L, right: R) -> R {
     return right
 }
+
 @inlinable
 internal func _left<L, R>(left: L, right: R) -> L {
     return left
@@ -182,6 +184,6 @@ internal extension BinaryInteger {
 
 internal extension Array where Array.Element == UInt8 {
     var hexString: String {
-        return "0x\(self.map({$0.hexString}).joined(separator: ""))"
+        return "0x\(self.map { $0.hexString }.joined(separator: ""))"
     }
 }

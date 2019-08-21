@@ -12,23 +12,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 final class SystemMessagesRedeliveryTests: XCTestCase {
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: OutboundSystemMessageRedelivery
 
     func test_sysMsg_outbound_passThroughWhenNoGapsReported() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        for i in 1...(outbound.settings.redeliveryBatchSize + 5) {
+        for i in 1 ... (outbound.settings.redeliveryBatchSize + 5) {
             switch outbound.offer(.start, recipient: ._deadLetters) {
             case .send(let envelope):
-                envelope.sequenceNr.shouldEqual(seqNr(i))
+                envelope.sequenceNr.shouldEqual(self.seqNr(i))
 
             case let other:
                 XCTFail("Expected [.send], was: [\(other)] on i:\(i)")
@@ -45,7 +45,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
 
         outbound.messagesPendingAcknowledgement.count.shouldEqual(3)
 
-        let res = outbound.acknowledge(ack(2))
+        let res = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res else {
             XCTFail("Expected [.acknowledged], was: [\(res)]")
             return
@@ -60,12 +60,12 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         _ = outbound.offer(.start, recipient: ._deadLetters) // 2
         _ = outbound.offer(.start, recipient: ._deadLetters) // 3
 
-        let res1 = outbound.acknowledge(ack(2))
+        let res1 = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res1 else {
             XCTFail("Expected [.acknowledged], was: [\(res1)]")
             return
         }
-        let res2 = outbound.acknowledge(ack(2))
+        let res2 = outbound.acknowledge(self.ack(2))
         guard case .acknowledged = res2 else {
             XCTFail("Expected [.acknowledged], was: [\(res2)]")
             return
@@ -80,13 +80,13 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         _ = outbound.offer(.start, recipient: ._deadLetters) // 2
         _ = outbound.offer(.start, recipient: ._deadLetters) // 3
 
-        let res = outbound.acknowledge(ack(4)) // 4 was not sent yet (!)
+        let res = outbound.acknowledge(self.ack(4)) // 4 was not sent yet (!)
         guard case .ackWasForFutureSequenceNr(let highestKnownSeqNr) = res else {
             XCTFail("Expected [.ackWasForFutureSequenceNr], was: [\(res)]")
             return
         }
-        highestKnownSeqNr.shouldEqual(seqNr(3))
-        // TODO expose .metrics which are actual Metrics and write tests against them
+        highestKnownSeqNr.shouldEqual(self.seqNr(3))
+        // TODO: expose .metrics which are actual Metrics and write tests against them
         outbound.messagesPendingAcknowledgement.count.shouldEqual(3) // still 3, the ACK was ignored, good
     }
 
@@ -97,7 +97,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         _ = outbound.offer(.start, recipient: ._deadLetters) // 2
         _ = outbound.offer(.start, recipient: ._deadLetters) // 3
 
-        _ = outbound.acknowledge(ack(1))
+        _ = outbound.acknowledge(self.ack(1))
 
         switch outbound.offer(.start, recipient: ._deadLetters) {
         case .send(let envelope):
@@ -106,7 +106,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
             XCTFail("Expected [.send], was: \(other)")
         }
 
-        _ = outbound.acknowledge(ack(4))
+        _ = outbound.acknowledge(self.ack(4))
 
         switch outbound.offer(.start, recipient: ._deadLetters) {
         case .send(let envelope):
@@ -116,7 +116,6 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         }
     }
 
-
     func test_sysMsg_outbound_nack_shouldCauseAppropriateRedelivery() {
         let outbound = OutboundSystemMessageRedelivery()
 
@@ -124,12 +123,12 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         _ = outbound.offer(.start, recipient: ._deadLetters) // 2
         _ = outbound.offer(.start, recipient: ._deadLetters) // 3
 
-        let res = outbound.negativeAcknowledge(nack(1)) // we saw 3 but not 2
+        let res = outbound.negativeAcknowledge(self.nack(1)) // we saw 3 but not 2
         guard case .ensureRedeliveryTick = res else {
             XCTFail("Expected [.ensureRedeliveryTick], was: [\(res)]")
             return
         }
-        // TODO expose .metrics which are actual Metrics and write tests against them
+        // TODO: expose .metrics which are actual Metrics and write tests against them
         outbound.messagesPendingAcknowledgement.count.shouldEqual(2) // 2, since 1 was implicitly ACKed by the NACK
     }
 
@@ -148,7 +147,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
             XCTFail("Expected [.redeliver], was: \(other)")
         }
 
-        _ = outbound.acknowledge(ack(2))
+        _ = outbound.acknowledge(self.ack(2))
         switch outbound.onRedeliveryTick() {
         case .redeliver(let envelopes, _):
             envelopes.count.shouldEqual(1)
@@ -212,48 +211,50 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         limit.shouldEqual(settings.redeliveryBufferLimit)
     }
 
-    // TODO test when we exceed the redelivery attempts limit
+    // TODO: test when we exceed the redelivery attempts limit
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: InboundSystemMessages
 
     func test_inbound_shouldAcceptMessagesInOrder() throws {
         let inboundSystemMessages = InboundSystemMessages()
 
-        for i in 1...32 {
-            inboundSystemMessages.onDelivery(self.msg(seqNr: i)).shouldEqual(.accept(ack(i)))
+        for i in 1 ... 32 {
+            inboundSystemMessages.onDelivery(self.msg(seqNr: i)).shouldEqual(.accept(self.ack(i)))
         }
     }
 
     func test_inbound_shouldDetectGap() throws {
         let inbound = InboundSystemMessages()
 
-        inbound.onDelivery(self.msg(seqNr: 1)).shouldEqual(.accept(ack(1)))
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.accept(ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 1)).shouldEqual(.accept(self.ack(1)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.accept(self.ack(2)))
         // missing 3
-        inbound.onDelivery(self.msg(seqNr: 4)).shouldEqual(.gapDetectedRequestRedelivery(nack(2))) // missing 3
-        inbound.onDelivery(self.msg(seqNr: 5)).shouldEqual(.gapDetectedRequestRedelivery(nack(2))) // still missing 3
+        inbound.onDelivery(self.msg(seqNr: 4)).shouldEqual(.gapDetectedRequestRedelivery(self.nack(2))) // missing 3
+        inbound.onDelivery(self.msg(seqNr: 5)).shouldEqual(.gapDetectedRequestRedelivery(self.nack(2))) // still missing 3
 
         // re-deliver the missing 3
-        inbound.onDelivery(self.msg(seqNr: 3)).shouldEqual(.accept(ack(3))) // accepted 3
+        inbound.onDelivery(self.msg(seqNr: 3)).shouldEqual(.accept(self.ack(3))) // accepted 3
 
-        inbound.onDelivery(self.msg(seqNr: 4)).shouldEqual(.accept(ack(4))) // accepted 4
+        inbound.onDelivery(self.msg(seqNr: 4)).shouldEqual(.accept(self.ack(4))) // accepted 4
     }
 
     func test_inbound_shouldacceptRedeliveriesOfAlreadyAcceptedSeqNr() throws {
         let inbound = InboundSystemMessages()
 
-        inbound.onDelivery(self.msg(seqNr: 1)).shouldEqual(.accept(ack(1)))
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.accept(ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 1)).shouldEqual(.accept(self.ack(1)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.accept(self.ack(2)))
         // re-deliver the already accepted 2
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(ack(2)))
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(ack(2)))
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(ack(2)))
-        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(ack(2)))
-        inbound.onDelivery(self.msg(seqNr: 3)).shouldEqual(.accept(ack(3)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(self.ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(self.ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(self.ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 2)).shouldEqual(.acceptRedelivery(self.ack(2)))
+        inbound.onDelivery(self.msg(seqNr: 3)).shouldEqual(.accept(self.ack(3)))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Serialization
 
     func test_redelivery_systemMessage_serialization() throws {
@@ -261,9 +262,9 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         defer {
             system.shutdown()
         }
-        
+
         func validateRoundTrip<T: Equatable>(_ value: T) throws {
-            try shouldNotThrow() {
+            try shouldNotThrow {
                 let bytes = try system.serialization.serialize(message: value)
                 let back = try system.serialization.deserialize(T.self, from: bytes)
 
@@ -278,6 +279,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Utilities
 
     private func msg(seqNr: Int) -> SystemMessageEnvelope {
@@ -297,7 +299,6 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     private func seqNr(_ i: Int) -> SystemMessageEnvelope.SequenceNr {
         return SystemMessageEnvelope.SequenceNr(i)
     }
-
 }
 
 extension OutboundSystemMessageRedelivery {

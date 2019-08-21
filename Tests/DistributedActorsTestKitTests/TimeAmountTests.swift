@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
-import Foundation
 @testable import DistributedActors
 @testable import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class TimeAmountTests: XCTestCase {
-
     func test_timeAmount_rendersPrettyDurations() {
         TimeAmount.nanoseconds(12).prettyDescription.shouldEqual("12ns")
         TimeAmount.microseconds(12).prettyDescription.shouldEqual("12μs")

@@ -12,19 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 final class CRDTCoreTypeTests: XCTestCase {
     let ownerAlpha = try! ActorAddress(path: ActorPath._user.appending("alpha"), incarnation: .perpetual)
     let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: GCounter tests
 
     func test_GCounter_incrementShouldUpdateDelta() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
 
         g1.increment(by: 1)
         // delta should not be nil after increment
@@ -40,9 +41,9 @@ final class CRDTCoreTypeTests: XCTestCase {
     }
 
     func test_GCounter_mergeMutates() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         // delta should not be nil after increment
@@ -53,32 +54,32 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.merge(other: g2)
 
         g1.value.shouldEqual(11) // 1 (g1) + 10 (g2)
-        g1.delta.shouldBeNil()   // delta is reset after merge
+        g1.delta.shouldBeNil() // delta is reset after merge
         g2.value.shouldEqual(10) // unchanged
         g2.delta.shouldNotBeNil()
     }
 
     func test_GCounter_mergingDoesNotMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         // Neither g1 nor g2 is mutated
         let g3 = g1.merging(other: g2)
 
-        g1.value.shouldEqual(1)   // unchanged
+        g1.value.shouldEqual(1) // unchanged
         g1.delta.shouldNotBeNil() // delta should not be nil after increment
-        g2.value.shouldEqual(10)  // unchanged
+        g2.value.shouldEqual(10) // unchanged
         g2.delta.shouldNotBeNil() // delta should not be nil after increment
-        g3.value.shouldEqual(11)  // 1 (g1) + 10 (g2)
+        g3.value.shouldEqual(11) // 1 (g1) + 10 (g2)
         g3.delta.shouldBeNil()
     }
 
     func test_GCounter_mergeDeltaMutates() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         guard let d = g2.delta else {
@@ -88,13 +89,13 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.mergeDelta(d)
 
         g1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
-        g1.delta.shouldBeNil()   // delta is reset after mergeDelta
+        g1.delta.shouldBeNil() // delta is reset after mergeDelta
     }
 
     func test_GCounter_mergingDeltaDoesNotMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         guard let d = g2.delta else {
@@ -103,19 +104,20 @@ final class CRDTCoreTypeTests: XCTestCase {
         // g1 is not mutated
         let g3 = g1.mergingDelta(d)
 
-        g1.value.shouldEqual(1)   // unchanged
+        g1.value.shouldEqual(1) // unchanged
         g1.delta.shouldNotBeNil() // delta should not be nil after increment
-        g3.value.shouldEqual(11)  // 1 (g1) + 10 (g2 delta)
+        g3.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
         g3.delta.shouldBeNil()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: AnyCvRDT tests
 
     func test_AnyCvRDT_canBeUsedToMergeRightTypes() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         // Can have AnyCvRDT of different concrete CRDTs in same collection
@@ -123,7 +125,7 @@ final class CRDTCoreTypeTests: XCTestCase {
             "gcounter-1": AnyCvRDT(g1),
             "gcounter-2": AnyCvRDT(g2),
             "mock-1": AnyCvRDT(MockCvRDT()),
-            "mock-2": AnyCvRDT(MockCvRDT())
+            "mock-2": AnyCvRDT(MockCvRDT()),
         ]
 
         guard var gg1: AnyCvRDT = anyCvRDTs["gcounter-1"] else {
@@ -153,12 +155,12 @@ final class CRDTCoreTypeTests: XCTestCase {
     }
 
     func test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [
             "gcounter-1": AnyCvRDT(g1),
-            "mock-1": AnyCvRDT(MockCvRDT())
+            "mock-1": AnyCvRDT(MockCvRDT()),
         ]
 
         guard var gg1: AnyCvRDT = anyCvRDTs["gcounter-1"] else {
@@ -168,20 +170,21 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
-        let error = shouldThrow() {
+        let error = shouldThrow {
             try gg1.tryMerge(other: m1)
         }
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: AnyDeltaCRDT tests
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT
     func test_AnyDeltaCRDT_canBeUsedToMergeRightTypes() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         // A collection of AnyCvRDTs and AnyDeltaCRDTs
@@ -189,7 +192,7 @@ final class CRDTCoreTypeTests: XCTestCase {
             "gcounter-1": g1.asAnyCvRDT,
             "gcounter-2": g2.asAnyCvRDT,
             "gcounter-as-delta-1": g1.asAnyDeltaCRDT,
-            "gcounter-as-delta-2": g2.asAnyDeltaCRDT
+            "gcounter-as-delta-2": g2.asAnyDeltaCRDT,
         ]
 
         guard var gg1 = anyCRDTs["gcounter-as-delta-1"] as? AnyDeltaCRDT else {
@@ -213,19 +216,19 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Should be a GCounter")
         }
         ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2)
-        ugg1.delta.shouldBeNil()   // delta is reset after merge
+        ugg1.delta.shouldBeNil() // delta is reset after merge
         ugg2.value.shouldEqual(10) // unchanged
         ugg2.delta.shouldNotBeNil()
     }
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT
     func test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         let anyDeltaCRDTs: [CRDT.Identity: AnyDeltaCRDT] = [
             "gcounter-1": g1.asAnyDeltaCRDT,
-            "mock-1": AnyDeltaCRDT(MockDeltaCRDT())
+            "mock-1": AnyDeltaCRDT(MockDeltaCRDT()),
         ]
 
         guard var gg1: AnyDeltaCRDT = anyDeltaCRDTs["gcounter-1"] else {
@@ -235,16 +238,16 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
-        let error = shouldThrow() {
+        let error = shouldThrow {
             try gg1.tryMerge(other: m1)
         }
-        "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")        
+        "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
 
     func test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         var gg1 = g1.asAnyDeltaCRDT
@@ -258,24 +261,24 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Should be a GCounter")
         }
         ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
-        ugg1.delta.shouldBeNil()   // delta is reset after mergeDelta
+        ugg1.delta.shouldBeNil() // delta is reset after mergeDelta
     }
 
     func test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         var gg1 = g1.asAnyDeltaCRDT
         let d = AnyCvRDT(MockCvRDT())
 
-        let error = shouldThrow() {
+        let error = shouldThrow {
             try gg1.tryMergeDelta(d)
         }
         "\(error)".shouldStartWith(prefix: "incompatibleDeltaTypeMergeAttempted")
     }
 
     func test_AnyDeltaCRDT_canResetDelta() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
 
         var gg1 = g1.asAnyDeltaCRDT
@@ -290,7 +293,9 @@ final class CRDTCoreTypeTests: XCTestCase {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: CRDT types for testing
+
 // TODO: remove after we implement more CRDTs
 
 struct MockCvRDT: CvRDT {
@@ -308,7 +313,7 @@ struct MockDeltaCRDT: DeltaCRDT {
         print("MockDeltaCRDT merge")
     }
 
-    mutating func mergeDelta(_ delta: Delta) {
+    mutating func mergeDelta(_: Delta) {
         print("MockDeltaCRDT mergeDelta")
     }
 

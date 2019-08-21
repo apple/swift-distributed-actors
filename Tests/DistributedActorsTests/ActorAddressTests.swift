@@ -12,21 +12,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 final class ActorAddressTests: XCTestCase {
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: ActorPath
 
     func test_shouldNotAllow_illegalCharacters() {
         shouldThrow(expected: ActorPathError.self) {
-            let _ = try ActorPath(root: "")
+            _ = try ActorPath(root: "")
         }
         shouldThrow(expected: ActorPathError.self) {
-            let _ = try ActorPath(root: " ")
+            _ = try ActorPath(root: " ")
         }
     }
 
@@ -64,7 +64,7 @@ final class ActorAddressTests: XCTestCase {
 
     func test_path_startsWith() throws {
         let path = try ActorPath(root: "test").appending("foo").appending("bar")
-        path.starts(with: path).shouldBeTrue() // TODO fixme consistency of matchers, some throw and some not
+        path.starts(with: path).shouldBeTrue() // TODO: fixme consistency of matchers, some throw and some not
         try path.starts(with: path.appending("nope")).shouldBeFalse()
         try path.starts(with: ActorPath(root: "test").appending("foo").appending("nope")).shouldBeFalse()
         try path.starts(with: ActorPath(root: "test").appending("nein").appending("bar")).shouldBeFalse()
@@ -76,6 +76,7 @@ final class ActorAddressTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Description tests
 
     func test_local_actorAddress_shouldPrintNicely() throws {
@@ -110,6 +111,7 @@ final class ActorAddressTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Equality
 
     func test_equalityOf_addressWithSameSegmentsButDifferentIncarnation() throws {
@@ -137,5 +139,4 @@ final class ActorAddressTests: XCTestCase {
 
         addressA.shouldNotEqual(addressA2)
     }
-
 }

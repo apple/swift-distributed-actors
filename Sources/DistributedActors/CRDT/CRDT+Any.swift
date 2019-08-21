@@ -19,8 +19,8 @@ internal protocol AnyStateBasedCRDT {
 }
 
 extension AnyStateBasedCRDT where Self: CvRDT {
-    fileprivate static func _merge<DataType: CvRDT>(_ type: DataType.Type) -> (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT {
-        return { (l, r) in
+    fileprivate static func _merge<DataType: CvRDT>(_: DataType.Type) -> (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT {
+        return { l, r in
             let l = l as! DataType // as! safe, since `l` should be `self.underlying`
             let r = r as! DataType // as! safe, since invoking _merge is protected by checking the `metaType`
             return l.merging(other: r)
@@ -60,6 +60,7 @@ internal enum AnyStateBasedCRDTError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: AnyCvRDT
 
 // Protocol `CvRDT` can only be used as a generic constraint because it has `Self` or
@@ -83,6 +84,7 @@ extension AnyCvRDT: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: AnyDeltaCRDT
 
 // Protocol `DeltaCRDT` can only be used as a generic constraint because it has `Self` or
@@ -101,7 +103,7 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
     let _resetDelta: (StateBasedCRDT) -> StateBasedCRDT
 
     var delta: Delta? {
-        return _delta(self.underlying)
+        return self._delta(self.underlying)
     }
 
     init<DataType: DeltaCRDT>(_ data: DataType) {
@@ -110,7 +112,7 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
         self._merge = AnyDeltaCRDT._merge(DataType.self)
 
         self.deltaMetaType = MetaType(DataType.Delta.self)
-        self._delta = { (dt) in
+        self._delta = { dt in
             let dt: DataType = dt as! DataType // as! safe, since `dt` should be `self.underlying`
             switch dt.delta {
             case .none:
@@ -119,12 +121,12 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
                 return d.asAnyCvRDT
             }
         }
-        self._mergeDelta = { (dt, d) in
+        self._mergeDelta = { dt, d in
             let dt = dt as! DataType // as! safe, since `dt` should be `self.underlying`
-            let d: DataType.Delta = d.underlying as! DataType.Delta  // as! safe, since invoking _mergeDelta is protected by checking the `deltaMetaType`
+            let d: DataType.Delta = d.underlying as! DataType.Delta // as! safe, since invoking _mergeDelta is protected by checking the `deltaMetaType`
             return dt.mergingDelta(d)
         }
-        self._resetDelta = { (dt) in
+        self._resetDelta = { dt in
             var dt: DataType = dt as! DataType // as! safe, since `dt` should be `self.underlying`
             dt.resetDelta()
             return dt

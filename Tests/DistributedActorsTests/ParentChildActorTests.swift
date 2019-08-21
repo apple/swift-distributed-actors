@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ParentChildActorTests: XCTestCase {
     var system: ActorSystem!
@@ -23,7 +23,7 @@ class ParentChildActorTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -88,7 +88,7 @@ class ParentChildActorTests: XCTestCase {
                     probe.tell(.spawnFailed(path: path))
                 } // bubble up others
 
-            case let .findByName(name):
+            case .findByName(let name):
                 if let found = context.children.find(named: name, withType: ChildProtocol.self) {
                     probe.tell(.childFound(name: name, ref: found))
                 } else {
@@ -105,7 +105,7 @@ class ParentChildActorTests: XCTestCase {
             }
 
             return .same
-        }.receiveSignal { (context, signal) in
+        }.receiveSignal { _, signal in
             switch signal {
             case let terminated as Signals.Terminated:
                 if notifyWhenChildStops {
@@ -124,13 +124,13 @@ class ParentChildActorTests: XCTestCase {
 
             return .receiveMessage { message in
                 switch message {
-                case let .howAreYou(replyTo):
+                case .howAreYou(let replyTo):
                     replyTo.tell("Pretty good, I'm \(context.path)")
                 case .fail:
                     fatalError("Ohh no~!")
                 case .throwWhoops:
                     throw ChildError.whoops
-                case let .spawnChild(name, behavior):
+                case .spawnChild(let name, let behavior):
                     do {
                         let kid = try context.spawn(.unique(name), behavior)
                         if notifyWhenChildStops {
@@ -147,12 +147,12 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_contextSpawn_shouldSpawnChildActorOnAppropriatePath() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
         let parent: ActorRef<ParentProtocol> = try system.spawn("parent", self.parentBehavior(probe: p.ref))
-        parent.tell(.spawnChild(name: "kid", behavior: childBehavior(probe: p.ref)))
+        parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         pnote("Hello: \(child)")
 
         let unknownName = "capybara"
@@ -171,13 +171,14 @@ class ParentChildActorTests: XCTestCase {
         parent.tell(.findByName(name: child.address.name)) // should not find that child anymore, it was stopped
         try p.expectMessage(.childNotFound(name: child.address.name))
     }
+
     func test_contextSpawnAnonymous_shouldSpawnChildActorOnAppropriatePath() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<ParentProtocol> = try system.spawn("parent", (self.parentBehavior(probe: p.ref)))
-        parent.tell(.spawnAnonymousChild(behavior: childBehavior(probe: p.ref)))
+        let parent: ActorRef<ParentProtocol> = try system.spawn("parent", self.parentBehavior(probe: p.ref))
+        parent.tell(.spawnAnonymousChild(behavior: self.childBehavior(probe: p.ref)))
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         pnote("Hello: \(child)")
 
         parent.tell(.findByName(name: child.address.name))
@@ -194,34 +195,34 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_contextSpawn_duplicateNameShouldFail() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<ParentProtocol> = try system.spawn("parent-2", (self.parentBehavior(probe: p.ref)))
-        parent.tell(.spawnChild(name: "kid", behavior: childBehavior(probe: p.ref)))
+        let parent: ActorRef<ParentProtocol> = try system.spawn("parent-2", self.parentBehavior(probe: p.ref))
+        parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
 
         _ = try p.expectMessageMatching { x throws -> ActorRef<ChildProtocol>? in
             switch x {
-            case let .spawned(child): return child
+            case .spawned(let child): return child
             default: return nil
             }
         }
 
-        parent.tell(.spawnChild(name: "kid", behavior: childBehavior(probe: p.ref)))
+        parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
 
         _ = try p.expectMessageMatching { x throws -> ActorPath? in
             switch x {
-            case let .spawnFailed(path): return path
+            case .spawnFailed(let path): return path
             default: return nil
             }
         }
     }
 
     func test_contextStop_shouldStopChild() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<ParentProtocol> = try system.spawn("parent-3", (self.parentBehavior(probe: p.ref, notifyWhenChildStops: true)))
+        let parent: ActorRef<ParentProtocol> = try system.spawn("parent-3", self.parentBehavior(probe: p.ref, notifyWhenChildStops: true))
 
-        parent.tell(.spawnChild(name: "kid", behavior: childBehavior(probe: p.ref)))
+        parent.tell(.spawnChild(name: "kid", behavior: self.childBehavior(probe: p.ref)))
 
         guard case .spawned = try p.expectMessage() else { throw p.error() }
 
@@ -238,9 +239,9 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_contextStop_shouldThrowIfRefIsNotChild() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<String> = try system.spawn("parent-4", .receive { (context, msg) in
+        let parent: ActorRef<String> = try system.spawn("parent-4", .receive { context, _ in
             do {
                 try context.stop(child: p.ref)
             } catch {
@@ -259,9 +260,9 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_contextStop_shouldThrowIfRefIsMyself() throws {
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
-        let parent: ActorRef<String> = try system.spawn("parent-5", .receive { (context, msg) in
+        let parent: ActorRef<String> = try system.spawn("parent-5", .receive { context, _ in
             do {
                 try context.stop(child: context.myself)
             } catch {
@@ -280,11 +281,11 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
-        let p: ActorTestProbe<Never> = testKit.spawnTestProbe(name: "p")
-        let p1: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p1")
-        let p2: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe(name: "p2")
+        let p: ActorTestProbe<Never> = self.testKit.spawnTestProbe(name: "p")
+        let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe(name: "p1")
+        let p2: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe(name: "p2")
 
-        let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { (context, msg) in
+        let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
             switch msg {
             case "spawn":
                 let refA: ActorRef<ChildProtocol> = try context.spawn("child", .setup { context in
@@ -308,10 +309,10 @@ class ParentChildActorTests: XCTestCase {
         p.watch(parent)
         parent.tell("spawn")
 
-        // TODO would be useful to provide some expectSpawned since it's such a common thing
-        guard case let .spawned(childA) = try p1.expectMessage() else { throw p1.error() }
+        // TODO: would be useful to provide some expectSpawned since it's such a common thing
+        guard case .spawned(let childA) = try p1.expectMessage() else { throw p1.error() }
         p1.watch(childA)
-        guard case let .spawned(childB) = try p2.expectMessage() else { throw p2.error() }
+        guard case .spawned(let childB) = try p2.expectMessage() else { throw p2.error() }
         p2.watch(childB)
 
         try p1.expectTerminated(childA, within: .milliseconds(500))
@@ -320,14 +321,14 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_throwOfSpawnedChild_shouldNotCauseParentToTerminate() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
         let childBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
 
-        let parentBehavior = Behavior<String>.receive { (context, msg) in
+        let parentBehavior = Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
-                let childRef = try context.spawn("child", (childBehavior))
+                let childRef = try context.spawn("child", childBehavior)
                 p.tell(.spawned(child: childRef))
                 return .same
             default:
@@ -335,12 +336,12 @@ class ParentChildActorTests: XCTestCase {
             }
         }
 
-        let parent: ActorRef<String> = try system.spawn("watchingParent", (parentBehavior))
+        let parent: ActorRef<String> = try system.spawn("watchingParent", parentBehavior)
 
         p.watch(parent)
         parent.tell("spawn")
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
 
         child.tell(.throwWhoops)
@@ -362,14 +363,14 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_throwOfWatchedSpawnedChild_shouldCauseParentToTerminate() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
         let stoppingChildBehavior = self.childBehavior(probe: p.ref)
 
-        let parentBehavior = Behavior<String>.receive { (context, msg) in
+        let parentBehavior = Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
-                let childRef = try context.spawnWatch("child", (stoppingChildBehavior))
+                let childRef = try context.spawnWatch("child", stoppingChildBehavior)
                 p.tell(.spawned(child: childRef))
                 return .same
             default:
@@ -377,12 +378,12 @@ class ParentChildActorTests: XCTestCase {
             }
         }
 
-        let parent: ActorRef<String> = try system.spawn("watchingParent", (parentBehavior))
+        let parent: ActorRef<String> = try system.spawn("watchingParent", parentBehavior)
 
         p.watch(parent)
         parent.tell("spawn")
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
 
         child.tell(.throwWhoops)
@@ -392,21 +393,21 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_watchedChild_shouldProduceInSingleTerminatedSignal() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
-        let pChild: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
+        let pChild: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let childBehavior: Behavior<ChildProtocol> = self.childBehavior(probe: p.ref)
 
-        let parentBehavior = Behavior<String>.receive { (context, msg) in
+        let parentBehavior = Behavior<String>.receive { context, msg in
             switch msg {
             case "spawn":
-                let childRef = try context.spawnWatch("child", (childBehavior))
+                let childRef = try context.spawnWatch("child", childBehavior)
                 p.tell(.spawned(child: childRef))
                 return .same
             default:
                 return .ignore
             }
-        }.receiveSignal { context, signal in
+        }.receiveSignal { _, signal in
             switch signal {
             case let terminated as Signals.ChildTerminated:
                 // only this should match
@@ -420,12 +421,12 @@ class ParentChildActorTests: XCTestCase {
             return .same
         }
 
-        let parent: ActorRef<String> = try system.spawn("watchingParent", (parentBehavior))
+        let parent: ActorRef<String> = try system.spawn("watchingParent", parentBehavior)
 
         p.watch(parent)
         parent.tell("spawn")
 
-        guard case let .spawned(child) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let child) = try p.expectMessage() else { throw p.error() }
         p.watch(child)
 
         child.tell(.howAreYou(replyTo: pChild.ref))
@@ -445,12 +446,12 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnWatch_shouldSpawnAWatchedActor() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
         let parentBehavior: Behavior<String> = .receive { context, message in
             switch message {
             case "spawn":
-                let childRef: ChildRef = try context.spawnWatch("child", (.stop))
+                let childRef: ChildRef = try context.spawnWatch("child", .stop)
                 p.tell(.spawned(child: childRef))
             default:
                 ()
@@ -458,7 +459,7 @@ class ParentChildActorTests: XCTestCase {
             return .same
         }
 
-        let parent = try system.spawn(.anonymous, parentBehavior.receiveSignal { (_, signal) in
+        let parent = try system.spawn(.anonymous, parentBehavior.receiveSignal { _, signal in
             if case let terminated as Signals.Terminated = signal {
                 p.tell(.childStopped(name: terminated.address.name))
             }
@@ -468,25 +469,25 @@ class ParentChildActorTests: XCTestCase {
 
         parent.tell("spawn")
 
-        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.error() }
-        guard case let .childStopped(name) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let childRef) = try p.expectMessage() else { throw p.error() }
+        guard case .childStopped(let name) = try p.expectMessage() else { throw p.error() }
 
         childRef.address.name.shouldEqual(name)
     }
 
     func test_stopParent_shouldWaitForChildrenToStop() throws {
-        let p: ActorTestProbe<ParentChildProbeProtocol> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe()
 
-        let parent = try system.spawn("parent", (parentBehavior(probe: p.ref)))
-        parent.tell(.spawnChild(name: "child", behavior: childBehavior(probe: p.ref)))
+        let parent = try system.spawn("parent", self.parentBehavior(probe: p.ref))
+        parent.tell(.spawnChild(name: "child", behavior: self.childBehavior(probe: p.ref)))
         p.watch(parent)
 
-        guard case let .spawned(childRef) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let childRef) = try p.expectMessage() else { throw p.error() }
         p.watch(childRef)
 
-        childRef.tell(.spawnChild(name: "grandChild", behavior: childBehavior(probe: p.ref)))
+        childRef.tell(.spawnChild(name: "grandChild", behavior: self.childBehavior(probe: p.ref)))
 
-        guard case let .spawned(grandchildRef) = try p.expectMessage() else { throw p.error() }
+        guard case .spawned(let grandchildRef) = try p.expectMessage() else { throw p.error() }
         p.watch(grandchildRef)
 
         parent.tell(.stop)
@@ -495,7 +496,7 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {
-        let p: ActorTestProbe<Int> = testKit.spawnTestProbe(name: "p")
+        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "p")
         let childCount = 100
 
         let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
@@ -503,7 +504,7 @@ class ParentChildActorTests: XCTestCase {
             case "spawn":
                 for count in 1 ... childCount {
                     let behavior: Behavior<Never> = .receiveMessage { _ in
-                        return .ignore
+                        .ignore
                     }
                     let ref: ActorRef<Never> = try context.spawn("child", behavior.receiveSignal { _, signal in
                         if signal is Signals.PostStop {

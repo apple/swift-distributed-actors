@@ -12,19 +12,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-import Logging
 import DistributedActorsConcurrencyHelpers
+import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Shell State
 
-// TODO we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
+// TODO: we hopefully will rather than this, end up with specialized protocols depending on what we need to expose,
 // and then types may require those specific capabilities from the shell; e.g. scheduling things or similar.
 internal protocol ReadOnlyClusterState {
     var log: Logger { get }
     var allocator: ByteBufferAllocator { get }
-    var eventLoopGroup: EventLoopGroup { get } // TODO or expose the MultiThreaded one...?
+    var eventLoopGroup: EventLoopGroup { get } // TODO: or expose the MultiThreaded one...?
 
     /// Base backoff strategy to use in handshake retries // TODO: move it around somewhere so only handshake cares?
     var backoffStrategy: BackoffStrategy { get }
@@ -38,7 +39,7 @@ internal protocol ReadOnlyClusterState {
 internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
-    // TODO maybe move log and settings outside of state into the shell?
+    // TODO: maybe move log and settings outside of state into the shell?
     public var log: Logger
     public let settings: ClusterSettings
 
@@ -48,7 +49,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     public let eventLoopGroup: EventLoopGroup
 
     public var backoffStrategy: BackoffStrategy {
-        return settings.handshakeBackoffStrategy
+        return self.settings.handshakeBackoffStrategy
     }
 
     public let allocator: ByteBufferAllocator
@@ -56,7 +57,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     private var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: AssociationStateMachine.State] = [:]
 
-    // TODO make private
+    // TODO: make private
     internal var _membership: Membership
 
     init(settings: ClusterSettings, channel: Channel, log: Logger) {
@@ -90,9 +91,10 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
         return set
     }
+
     func handshakes() -> [HandshakeStateMachine.State] {
         return self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
-            return hsm
+            hsm
         }
     }
 
@@ -102,7 +104,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 }
 
 extension ClusterShellState {
-
     /// This is the entry point for a client initiating a handshake with a remote node.
     ///
     /// This MAY return `inFlight`, in which case it means someone already initiated a handshake with given node,
@@ -142,12 +143,12 @@ extension ClusterShellState {
         #if DEBUG
         let handshakeInProgress: HandshakeStateMachine.State? = self.handshakeInProgress(with: initiated.remoteNode)
 
-        if case let .some(.initiated(existingInitiated)) = handshakeInProgress {
+        if case .some(.initiated(let existingInitiated)) = handshakeInProgress {
             if existingInitiated.remoteNode != initiated.remoteNode {
                 fatalError("""
-                           onHandshakeChannelConnected MUST be called with the existing ongoing initiated
-                           handshake! Existing: \(existingInitiated), passed in: \(initiated).
-                           """)
+                onHandshakeChannelConnected MUST be called with the existing ongoing initiated
+                handshake! Existing: \(existingInitiated), passed in: \(initiated).
+                """)
             }
             if existingInitiated.channel != nil {
                 fatalError("onHandshakeChannelConnected should only be invoked once on an initiated state; yet seems the state already has a channel! Was: \(String(reflecting: handshakeInProgress))")
@@ -215,7 +216,6 @@ extension ClusterShellState {
     ///     Winner: Keeps the outgoing connection, negotiates and replies accept/reject on the "incoming" connection from the remote node.
     ///     Loser: Drops the incoming connection and waits for Winner's decision.
     mutating func onIncomingHandshakeOffer(offer: Wire.HandshakeOffer) -> OnIncomingHandshakeOfferDirective {
-
         func negotiate(promise: EventLoopPromise<Wire.HandshakeResponse>? = nil) -> OnIncomingHandshakeOfferDirective {
             let promise = promise ?? self.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
             let fsm = HandshakeStateMachine.HandshakeReceivedState(state: self, offer: offer, whenCompleted: promise)
@@ -233,9 +233,9 @@ extension ClusterShellState {
             /// order on nodes is somewhat arbitrary, but that is fine, since we only need this for tiebreakers
             let tieBreakWinner = initiated.localNode < offer.from
             self.log.warning("""
-                             Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.from)](remote) \
-                             detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
-                             """)
+            Concurrently initiated handshakes from nodes [\(initiated.localNode)](local) and [\(offer.from)](remote) \
+            detected! Resolving race by address ordering; This node \(tieBreakWinner ? "WON (will negotiate and reply)" : "LOST (will await reply)") tie-break. 
+            """)
             if tieBreakWinner {
                 if let abortedHandshake = self.abortOutgoingHandshake(with: offer.from.node) {
                     self.log.info("Aborted handshake, as concurrently negotiating another one with same node already; Aborted handshake: \(abortedHandshake)")
@@ -262,6 +262,7 @@ extension ClusterShellState {
             fatalError("completed state [\(completed)] should never have been stored as handshake state; This is likely a bug, please open an issue.")
         }
     }
+
     enum OnIncomingHandshakeOfferDirective {
         case negotiate(HandshakeStateMachine.HandshakeReceivedState)
         /// An existing handshake with given peer is already in progress,
@@ -269,14 +270,14 @@ extension ClusterShellState {
         case abortDueToConcurrentHandshake
     }
 
-    mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? { // TODO return directives to act on
+    mutating func incomingHandshakeAccept(_ accept: Wire.HandshakeAccept) -> HandshakeStateMachine.CompletedState? { // TODO: return directives to act on
         if let inProgressHandshake = self._handshakes[accept.from.node] {
             switch inProgressHandshake {
             case .initiated(let hsm):
                 let completed = HandshakeStateMachine.CompletedState(fromInitiated: hsm, remoteNode: accept.from)
                 return completed
             case .wasOfferedHandshake:
-                // TODO model the states to express this can not happen // there is a client side state machine and a server side one
+                // TODO: model the states to express this can not happen // there is a client side state machine and a server side one
                 self.log.warning("Received accept but state machine is in WAS OFFERED state. This should be impossible.")
                 return nil
             case .completed:
@@ -287,7 +288,7 @@ extension ClusterShellState {
                 fatalError("An in-flight marker state should never be stored, yet was encountered in \(#function)")
             }
         } else {
-            fatalError("Accept incoming for handshake which was not in progress!") // TODO model differently
+            fatalError("Accept incoming for handshake which was not in progress!") // TODO: model differently
         }
     }
 
@@ -296,7 +297,7 @@ extension ClusterShellState {
     mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.AssociatedState {
         guard self._handshakes.removeValue(forKey: handshake.remoteNode.node) != nil else {
             fatalError("Can not complete a handshake which was not in progress!")
-            // TODO perhaps we instead just warn and ignore this; since it should be harmless
+            // TODO: perhaps we instead just warn and ignore this; since it should be harmless
         }
 
         let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
@@ -328,14 +329,13 @@ extension ClusterShellState {
 
         return asm
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Membership
 
 extension ClusterShellState {
-
     /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
     //    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
     mutating func onMembershipChange(_ node: Node, toStatus: MemberStatus) -> MembershipChange? {
@@ -365,13 +365,13 @@ extension ClusterShellState {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ClusterShellState + Logging
 
 extension ClusterShellState {
     var metadata: Logger.Metadata {
         return [
-
-            "membership/count": "\(String(describing: self._membership.count))"
+            "membership/count": "\(String(describing: self._membership.count))",
         ]
     }
 

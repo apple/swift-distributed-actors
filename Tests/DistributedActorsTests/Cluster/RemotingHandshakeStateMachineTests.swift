@@ -12,15 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
-import NIO
+import Foundation
 import Logging
+import NIO
+import XCTest
 
 final class RemoteHandshakeStateMachineTests: XCTestCase {
-
     typealias HSM = HandshakeStateMachine
 
     let systemName = "RemoteHandshakeStateMachineTests"
@@ -31,28 +30,29 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         case server
     }
 
-    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> () = { _ in () }) -> ClusterShellState {
+    func makeMockKernelState(side: HandshakeSide, configureSettings: (inout ClusterSettings) -> Void = { _ in () }) -> ClusterShellState {
         var settings = ClusterSettings(
             node: Node(
                 systemName: systemName,
-                host: "127.0.0.1", 
-                port: 7337)
+                host: "127.0.0.1",
+                port: 7337
+            )
         )
         configureSettings(&settings)
-        let log = Logger(label: "handshake-\(side)") // TODO could be a mock logger we can assert on?
+        let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
 
         return ClusterShellState(settings: settings, channel: EmbeddedChannel(), log: log)
     }
-    
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Happy path handshakes
 
     func test_handshake_happyPath() throws {
         let serverKernel = self.makeMockKernelState(side: .server)
         let serverAddress = serverKernel.selfNode
 
-        let clientKernel = self.makeMockKernelState(side: .client) { settings  in
+        let clientKernel = self.makeMockKernelState(side: .client) { settings in
             settings.node.port = 2222
         }
 
@@ -61,8 +61,8 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
-        _ = received._acceptAndMakeCompletedState() // TODO hide this
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO: test that it completes?
+        _ = received._acceptAndMakeCompletedState() // TODO: hide this
 
         let serverCompleted: HSM.CompletedState
         switch received.negotiate() {
@@ -84,8 +84,8 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         clientCompleted.localNode.shouldEqual(clientKernel.selfNode)
     }
 
-
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Version negotiation
 
     func test_negotiate_server_shouldAcceptClient_newerPatch() throws {
@@ -101,7 +101,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO: test that it completes?
 
         // then
 
@@ -126,7 +126,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         let offer = clientInitiated.makeOffer()
 
         // server
-        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO test that it completes?
+        let received = HSM.HandshakeReceivedState(state: serverKernel, offer: offer, whenCompleted: nil) // TODO: test that it completes?
 
         // then
 
@@ -142,8 +142,8 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Handshake timeout causing retries
 
+    // MARK: Handshake timeout causing retries
 
     func test_onTimeout_shouldReturnNewHandshakeOffersMultipleTimes() throws {
         let serverKernel = self.makeMockKernelState(side: .server)
@@ -166,5 +166,4 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
             throw shouldNotHappen("Expected retry attempt after handshake timeout")
         }
     }
-
 }

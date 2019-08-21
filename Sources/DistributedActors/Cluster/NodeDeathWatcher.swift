@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Logging
+import NIO
 
 /// Implements `DeathWatch` semantics in presence of `Node` failures.
 ///
@@ -32,12 +32,11 @@ import Logging
 ///
 /// Allows manually mocking membership changes to trigger terminated notifications.
 internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
-
     private let selfNode: UniqueNode
     private var membership: Membership
 
     /// Members which have been `removed`
-    // TODO clear after a few days
+    // TODO: clear after a few days
     private var nodeTombstones: Set<UniqueNode> = []
 
     /// Mapping between remote node, and actors which have watched some actors on given remote node.
@@ -102,7 +101,6 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
 
 /// The callbacks defined on a `NodeDeathWatcher` are invoked by an enclosing actor, and thus synchronization is guaranteed
 internal protocol NodeDeathWatcher {
-
     /// Called when the `watcher` watches a remote actor which resides on the `remoteNode`.
     /// A failure detector may have to start monitoring this node using some internal mechanism,
     /// in order to be able to signal the watcher in case the node terminates (e.g. the node crashes).
@@ -112,7 +110,7 @@ internal protocol NodeDeathWatcher {
     ///
     /// A failure detector should signal termination signals if it notices that a previously monitored node has now
     /// left the cluster.
-    // TODO this will change to subscribing to cluster events once those land
+    // TODO: this will change to subscribing to cluster events once those land
     func onMembershipChanged(_ change: MembershipChange)
 }
 
@@ -130,7 +128,7 @@ enum NodeDeathWatcherShell {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
         case membershipSnapshot(Membership)
         case membershipChange(MembershipChange)
-        case forceDown(UniqueNode) // TODO this should go away with cluster events landing
+        case forceDown(UniqueNode) // TODO: this should go away with cluster events landing
     }
 
     static func behavior() -> Behavior<Message> {
@@ -142,37 +140,36 @@ enum NodeDeathWatcherShell {
     }
 
     static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
-        return .receive { context, message in
+        return .receive { _, message in
 
             let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
 
             switch message {
             case .remoteActorWatched(let watcher, let remoteNode):
-                _ = instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO return and interpret directives
+                _ = instance.onActorWatched(by: watcher, remoteNode: remoteNode) // TODO: return and interpret directives
 
             case .membershipSnapshot(let membership):
                 let diff = Membership.diff(from: lastMembership, to: membership)
 
                 for change in diff.entries {
-                    _ = instance.onMembershipChanged(change) // TODO return and interpret directives
+                    _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
                 }
 
             case .membershipChange(let change):
-                _ = instance.onMembershipChanged(change) // TODO return and interpret directives
+                _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
 
             case .forceDown(let node):
-                // TODO we'd get the change from subscribing to events and applying to local membership
+                // TODO: we'd get the change from subscribing to events and applying to local membership
                 let change = MembershipChange(node: node, fromStatus: .none, toStatus: .down)
                 instance.handleAddressDown(change)
             }
             return .same
         }
     }
-
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Errors
 
 public enum NodeDeathWatcherError: Error {

@@ -12,13 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class ActorSystemTests: XCTestCase {
-
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     var system: ActorSystem!
@@ -26,7 +25,7 @@ class ActorSystemTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
@@ -40,7 +39,7 @@ class ActorSystemTests: XCTestCase {
             let _: ActorRef<String> = try system.spawn("test", .ignore)
         }
 
-        guard case let ActorContextError.duplicateActorPath(path) = error else {
+        guard case ActorContextError.duplicateActorPath(let path) = error else {
             XCTFail()
             return
         }
@@ -50,23 +49,23 @@ class ActorSystemTests: XCTestCase {
     }
 
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
-        let p: ActorTestProbe<Int> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
-        let ref: ActorRef<String> = try system.spawn("test", (.stop))
+        let ref: ActorRef<String> = try system.spawn("test", .stop)
 
         p.watch(ref)
         try p.expectTerminated(ref)
 
         // since spawning on top level is racy for the names replacements;
         // we try a few times, and if it eventually succeeds things are correct -- it should succeed only once though
-        try testKit.eventually(within: .milliseconds(500)) {
-            let _: ActorRef<String> = try system.spawn("test", (.ignore))
+        try self.testKit.eventually(within: .milliseconds(500)) {
+            let _: ActorRef<String> = try system.spawn("test", .ignore)
         }
     }
 
     func test_terminate_shouldStopAllActors() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receiveMessage { message in
             p.tell(message)
             return .same
@@ -90,7 +89,7 @@ class ActorSystemTests: XCTestCase {
 
     func test_terminate_selfSendingActorShouldNotDeadlockSystem() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receive { context, message in
             context.myself.tell(message)
             return .same

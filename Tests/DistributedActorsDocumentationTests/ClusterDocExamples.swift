@@ -18,21 +18,20 @@ import DistributedActors
 
 // end::imports[]
 
-import XCTest
 @testable import DistributedActorsTestKit
+import XCTest
 
 class ClusterDocExamples: XCTestCase {
-
     func example_receive_behavior() throws {
         // tag::joining[]
-        let system = ActorSystem("ClusterJoining") { settings in 
+        let system = ActorSystem("ClusterJoining") { settings in
             settings.cluster.enabled = true // <1>
             // system will bind by default on `localhost:7337`
         }
 
         let otherNode = Node(systemName: "ClusterJoining", host: "localhost", port: 8228)
-        system.cluster.join(node: otherNode) // TODO not final API // <2>
-        // TODO provide a proper API for this; perhaps system.tell(.cluster(.join)) or similar ?
+        system.cluster.join(node: otherNode) // TODO: not final API // <2>
+        // TODO: provide a proper API for this; perhaps system.tell(.cluster(.join)) or similar ?
 
         // end::joining[]
     }

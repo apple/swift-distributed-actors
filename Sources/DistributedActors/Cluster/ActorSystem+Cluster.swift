@@ -12,17 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Cluster Control
 
 /// Allows controlling the cluster, e.g. by issuing join/down commands, or subscribing to cluster events.
 public struct ClusterControl {
     /// Read only view of the settings in use by the cluster.
     public let events: EventStream<ClusterEvent>
-    
+
     public let settings: ClusterSettings
 
     internal let _shell: ClusterShell.Ref
@@ -36,6 +37,7 @@ public struct ClusterControl {
     public func join(host: String, port: Int) {
         self.join(node: Node(systemName: "sact", host: host, port: port))
     }
+
     public func join(node: Node) {
         self._shell.tell(.command(.join(node)))
     }
@@ -43,6 +45,7 @@ public struct ClusterControl {
     public func down(node: Node) {
         self._shell.tell(.command(.downCommand(node)))
     }
+
     public func down(node: UniqueNode) {
         self._shell.tell(.command(.downCommand(node.node)))
     }
@@ -53,7 +56,6 @@ public struct ClusterControl {
 }
 
 extension ActorSystem {
-
     public var cluster: ClusterControl {
         let shell = self._cluster?.ref ?? self.deadLetters.adapted()
         return .init(self.settings.cluster, shell: shell, eventStream: self.clusterEvents)
@@ -62,6 +64,4 @@ extension ActorSystem {
     internal var clusterEvents: EventStream<ClusterEvent> {
         return self._clusterEventStream ?? EventStream(ref: self.deadLetters.adapted())
     }
-
 }
-

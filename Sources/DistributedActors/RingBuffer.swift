@@ -33,8 +33,8 @@ final class RingBuffer<A> {
     @inlinable
     func offer(element: A) -> Bool {
         if let index = writeIndex {
-            writeCounter += 1
-            elements[index] = element
+            self.writeCounter += 1
+            self.elements[index] = element
             return true
         }
 
@@ -45,8 +45,8 @@ final class RingBuffer<A> {
     func take() -> A? {
         if let index = readIndex {
             defer { elements[index] = nil }
-            readCounter += 1
-            return elements[index]
+            self.readCounter += 1
+            return self.elements[index]
         }
 
         return nil
@@ -55,7 +55,7 @@ final class RingBuffer<A> {
     @inlinable
     func peek() -> A? {
         if let index = readIndex {
-            return elements[index]
+            return self.elements[index]
         }
 
         return nil
@@ -63,35 +63,35 @@ final class RingBuffer<A> {
 
     @inlinable
     var writeIndex: Int? {
-        if isFull {
+        if self.isFull {
             return nil
         }
 
-        return writeCounter % capacity
+        return self.writeCounter % self.capacity
     }
 
     @inlinable
     var readIndex: Int? {
-        if isEmpty {
+        if self.isEmpty {
             return nil
         }
 
-        return readCounter % capacity
+        return self.readCounter % self.capacity
     }
 
     @inlinable
     public var count: Int {
-        return writeCounter - readCounter
+        return self.writeCounter - self.readCounter
     }
 
     @inlinable
     public var isEmpty: Bool {
-        return readCounter == writeCounter
+        return self.readCounter == self.writeCounter
     }
 
     @inlinable
     public var isFull: Bool {
-        return (writeCounter - readCounter) == capacity
+        return (self.writeCounter - self.readCounter) == self.capacity
     }
 
     @inlinable
@@ -116,17 +116,17 @@ class RingBufferIterator<Element>: IteratorProtocol {
 
     @inlinable
     func next() -> Element? {
-        if count == 0 {
+        if self.count == 0 {
             return nil
         }
 
-        count -= 1
+        self.count -= 1
 
-        return buffer.take()
+        return self.buffer.take()
     }
 
     @inlinable
     func take(_ count: Int) -> RingBufferIterator {
-        return RingBufferIterator(buffer: buffer, count: min(self.count, count))
+        return RingBufferIterator(buffer: self.buffer, count: min(self.count, count))
     }
 }

@@ -12,14 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Foundation
+import XCTest
 
 class RemoteActorRefProviderTests: XCTestCase {
-
-    var system: ActorSystem! = nil
+    var system: ActorSystem!
 
     override func setUp() {
         self.system = ActorSystem("RemoteActorRefProviderTests") { settings in
@@ -28,14 +27,15 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     override func tearDown() {
-        system.shutdown()
+        self.system.shutdown()
     }
 
-    let node = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888888))
+    let node = UniqueNode(systemName: "RemoteAssociationTests", host: "127.0.0.1", port: 9559, nid: NodeID(888_888))
     lazy var remoteNode = ActorAddress(node: node, path: try! ActorPath._user.appending("henry").appending("hacker"), incarnation: .random())
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Properly resolve
+    // ==== ----------------------------------------------------------------------------------------------------------------
+
+    // MARK: Properly resolve
 
     func test_remoteActorRefProvider_shouldMakeRemoteRef_givenSomeRemotePath() throws {
         // given
@@ -66,38 +66,39 @@ class RemoteActorRefProviderTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: resolve deadLetters
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let ref: ActorRef<String> = try system.spawn("ignoresStrings", (.stop))
+        let ref: ActorRef<String> = try system.spawn("ignoresStrings", .stop)
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<Int>(address: address, system: system)
-        let resolvedRef = system._resolve(context: resolveContext)
+        let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("ActorRef<Int>(/dead/user/ignoresStrings)")
     }
 
     func test_remoteActorRefProvider_shouldResolveSameAsLocalNodeDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let ref: ActorRef<DeadLetter> = system.deadLetters
+        let ref: ActorRef<DeadLetter> = self.system.deadLetters
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
-        let resolvedRef = system._resolve(context: resolveContext)
+        let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("ActorRef<DeadLetter>(/dead/letters)")
     }
 
     func test_remoteActorRefProvider_shouldResolveRemoteDeadLettersRef_forTypeMismatchOfActorAndResolveContext() throws {
-        let ref: ActorRef<DeadLetter> = system.deadLetters
+        let ref: ActorRef<DeadLetter> = self.system.deadLetters
         var address: ActorAddress = ref.address
         let unknownNode = UniqueNode(node: .init(systemName: "something", host: "1.1.1.1", port: 1111), nid: NodeID(1211))
         address._location = .remote(unknownNode)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
-        let resolvedRef = system._resolve(context: resolveContext)
+        let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/letters)")
     }
@@ -107,19 +108,19 @@ class RemoteActorRefProviderTests: XCTestCase {
         let address: ActorAddress = try .init(node: unknownNode, path: ActorPath._dead.appending("already"), incarnation: .perpetual)
 
         let resolveContext = ResolveContext<DeadLetter>(address: address, system: system)
-        let resolvedRef = system._resolve(context: resolveContext)
+        let resolvedRef = self.system._resolve(context: resolveContext)
 
         "\(resolvedRef)".shouldEqual("ActorRef<DeadLetter>(sact://something@1.1.1.1:1111/dead/already)")
     }
 
     func test_remoteActorRefProvider_shouldResolveDeadRef_forSerializedDeadLettersRef() throws {
-        let ref: ActorRef<String> = system.deadLetters.adapt(from: String.self)
+        let ref: ActorRef<String> = self.system.deadLetters.adapt(from: String.self)
 
         var address: ActorAddress = ref.address
-        address._location = .remote(system.settings.cluster.uniqueBindNode)
+        address._location = .remote(self.system.settings.cluster.uniqueBindNode)
 
         let resolveContext = ResolveContext<String>(address: address, system: system)
-        let resolvedRef = system._resolve(context: resolveContext)
+        let resolvedRef = self.system._resolve(context: resolveContext)
 
         // then
         pinfo("Made remote ref: \(resolvedRef)")

@@ -28,7 +28,7 @@ public final class Mutex {
         pthread_mutexattr_init(&attr)
         pthread_mutexattr_settype(&attr, Int32(PTHREAD_MUTEX_RECURSIVE))
 
-        let error = pthread_mutex_init(&mutex, &attr)
+        let error = pthread_mutex_init(&self.mutex, &attr)
         pthread_mutexattr_destroy(&attr)
 
         switch error {
@@ -44,8 +44,8 @@ public final class Mutex {
     }
 
     @inlinable
-    public func lock() -> Void {
-        let error = pthread_mutex_lock(&mutex)
+    public func lock() {
+        let error = pthread_mutex_lock(&self.mutex)
 
         switch error {
         case 0:
@@ -58,8 +58,8 @@ public final class Mutex {
     }
 
     @inlinable
-    public func unlock() -> Void {
-        let error = pthread_mutex_unlock(&mutex)
+    public func unlock() {
+        let error = pthread_mutex_unlock(&self.mutex)
 
         switch error {
         case 0:
@@ -73,7 +73,7 @@ public final class Mutex {
 
     @inlinable
     public func tryLock() -> Bool {
-        let error = pthread_mutex_trylock(&mutex)
+        let error = pthread_mutex_trylock(&self.mutex)
 
         switch error {
         case 0:
@@ -89,7 +89,7 @@ public final class Mutex {
 
     @inlinable
     public func synchronized<A>(_ f: () -> A) -> A {
-        lock()
+        self.lock()
 
         defer {
             unlock()
@@ -100,7 +100,7 @@ public final class Mutex {
 
     @inlinable
     public func synchronized<A>(_ f: () throws -> A) throws -> A {
-        lock()
+        self.lock()
 
         defer {
             unlock()
@@ -110,8 +110,8 @@ public final class Mutex {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Blocking Receptacle
 
 /// :nodoc: Not intended to be used by end users.
@@ -129,7 +129,7 @@ internal final class BlockingReceptacle<Value> {
     @usableFromInline
     let notEmpty = Condition()
 
-    private var _value: Value? = nil
+    private var _value: Value?
 
     /// Offer a value to the Receptacle -- only once. Further offers will result in Faults.
     ///
@@ -139,7 +139,7 @@ internal final class BlockingReceptacle<Value> {
     func offerOnce(_ value: Value) {
         self.lock.synchronized {
             if self._value != nil {
-                fatalError("BlockingReceptacle can only be offered once. Already was offered [\(self._value, orElse: "no-value")] before, " + 
+                fatalError("BlockingReceptacle can only be offered once. Already was offered [\(self._value, orElse: "no-value")] before, " +
                     "and can not accept new offer: [\(value)]!")
             }
             self._value = value
@@ -172,7 +172,6 @@ internal final class BlockingReceptacle<Value> {
         }
     }
 }
-
 
 // ------------ "locks.swift" of the proposal
 

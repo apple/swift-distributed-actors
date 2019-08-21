@@ -12,11 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct Foundation.Date
 import struct Dispatch.DispatchTime
+import struct Foundation.Date
 import struct NIO.TimeAmount
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: TimeAmount
 
 // TODO: We have discussed and wanted to "do your own" rather than import the NIO ones, but not entirely sold on the usefulness of replicating them -- ktoso
@@ -25,9 +26,8 @@ import struct NIO.TimeAmount
 ///
 /// - note: `TimeAmount` should not be used to represent a point in time.
 public struct TimeAmount {
-
     public typealias Value = Int64
-  
+
     /// The nanoseconds representation of the `TimeAmount`.
     public let nanoseconds: Value
 
@@ -43,6 +43,7 @@ public struct TimeAmount {
     public static func nanoseconds(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount)
     }
+
     public static func nanoseconds(_ amount: Int) -> TimeAmount {
         return self.nanoseconds(Value(amount))
     }
@@ -55,6 +56,7 @@ public struct TimeAmount {
     public static func microseconds(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount * 1000)
     }
+
     public static func microseconds(_ amount: Int) -> TimeAmount {
         return self.microseconds(Value(amount))
     }
@@ -67,6 +69,7 @@ public struct TimeAmount {
     public static func milliseconds(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount * 1000 * 1000)
     }
+
     public static func milliseconds(_ amount: Int) -> TimeAmount {
         return self.milliseconds(Value(amount))
     }
@@ -79,6 +82,7 @@ public struct TimeAmount {
     public static func seconds(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount * 1000 * 1000 * 1000)
     }
+
     public static func seconds(_ amount: Int) -> TimeAmount {
         return self.seconds(Value(amount))
     }
@@ -91,9 +95,11 @@ public struct TimeAmount {
     public static func minutes(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount * 1000 * 1000 * 1000 * 60)
     }
+
     public static func minutes(_ amount: Int) -> TimeAmount {
         return self.minutes(Value(amount))
     }
+
     /// Creates a new `TimeAmount` for the given amount of hours.
     ///
     /// - parameters:
@@ -102,6 +108,7 @@ public struct TimeAmount {
     public static func hours(_ amount: Value) -> TimeAmount {
         return TimeAmount(amount * 1000 * 1000 * 1000 * 60 * 60)
     }
+
     public static func hours(_ amount: Int) -> TimeAmount {
         return self.hours(Value(amount))
     }
@@ -161,7 +168,7 @@ extension TimeAmount: CustomStringConvertible {
     }
 
     private func chooseUnit(_ ns: Value) -> TimeUnit {
-        //@formatter:off
+        // @formatter:off
         if ns / TimeUnit.days.rawValue > 0 {
             return TimeUnit.days
         } else if ns / TimeUnit.hours.rawValue > 0 {
@@ -177,20 +184,20 @@ extension TimeAmount: CustomStringConvertible {
         } else {
             return TimeUnit.nanoseconds
         }
-        //@formatter:on
+        // @formatter:on
     }
 
     /// Represents number of nanoseconds within given time unit
     enum TimeUnit: Value {
-        //@formatter:off
+        // @formatter:off
         case days = 86_400_000_000_000
         case hours = 3_600_000_000_000
         case minutes = 60_000_000_000
         case seconds = 1_000_000_000
         case milliseconds = 1_000_000
-        case microseconds = 1_000
+        case microseconds = 1000
         case nanoseconds = 1
-        //@formatter:on
+        // @formatter:on
 
         var abbreviated: String {
             switch self {
@@ -215,7 +222,6 @@ extension TimeAmount: CustomStringConvertible {
             case .days: return .hours(Value(amount) * 24)
             }
         }
-
     }
 
     public var toNIO: NIO.TimeAmount {
@@ -228,22 +234,27 @@ public extension TimeAmount {
     var microseconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.microseconds.rawValue
     }
+
     /// The milliseconds representation of the `TimeAmount`.
     var milliseconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.milliseconds.rawValue
     }
+
     /// The seconds representation of the `TimeAmount`.
     var seconds: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.seconds.rawValue
     }
+
     /// The minutes representation of the `TimeAmount`.
     var minutes: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.minutes.rawValue
     }
+
     /// The hours representation of the `TimeAmount`.
     var hours: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.hours.rawValue
     }
+
     /// The days representation of the `TimeAmount`.
     var days: Int64 {
         return self.nanoseconds / TimeAmount.TimeUnit.days.rawValue
@@ -272,6 +283,7 @@ public extension TimeAmount {
     static func + (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
         return .nanoseconds(lhs.nanoseconds + rhs.nanoseconds)
     }
+
     static func - (lhs: TimeAmount, rhs: TimeAmount) -> TimeAmount {
         return .nanoseconds(lhs.nanoseconds - rhs.nanoseconds)
     }
@@ -279,6 +291,7 @@ public extension TimeAmount {
     static func * (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         return TimeAmount(lhs.nanoseconds * Value(rhs))
     }
+
     static func * (lhs: TimeAmount, rhs: Double) -> TimeAmount {
         return TimeAmount(Int64(Double(lhs.nanoseconds) * rhs))
     }
@@ -286,12 +299,14 @@ public extension TimeAmount {
     static func / (lhs: TimeAmount, rhs: Int) -> TimeAmount {
         return TimeAmount(lhs.nanoseconds / Value(rhs))
     }
+
     static func / (lhs: TimeAmount, rhs: Double) -> TimeAmount {
         return TimeAmount(Int64(Double(lhs.nanoseconds) / rhs))
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Deadline
 
 // TODO: Deadline based on https://github.com/apple/swift-nio/pull/770/files (removed our own), we need to decide what to do with these types. -- ktoso
@@ -315,7 +330,7 @@ public extension TimeAmount {
 /// - note: `Deadline` should not be used to represent a time interval
 public struct Deadline: Equatable, Hashable {
     public typealias Value = Int64
-    
+
     /// The nanoseconds since boot representation of the `Deadline`.
     public let uptimeNanoseconds: Value
 
@@ -374,7 +389,6 @@ extension Deadline {
 }
 
 public extension Deadline {
-
     static func fromNow(_ amount: TimeAmount) -> Deadline {
         return .now() + amount
     }
@@ -383,6 +397,7 @@ public extension Deadline {
     func hasTimeLeft() -> Bool {
         return self.hasTimeLeft(until: .now())
     }
+
     func hasTimeLeft(until: Deadline) -> Bool {
         return !self.isBefore(until)
     }
@@ -391,6 +406,7 @@ public extension Deadline {
     func isOverdue() -> Bool {
         return self.isBefore(.now())
     }
+
     func isBefore(_ until: Deadline) -> Bool {
         return self.uptimeNanoseconds < until.uptimeNanoseconds
     }

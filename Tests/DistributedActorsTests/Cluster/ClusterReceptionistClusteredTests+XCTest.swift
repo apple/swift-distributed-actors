@@ -21,13 +21,11 @@ import XCTest
 ///
 
 extension ClusterReceptionistTests {
-
-   static var allTests : [(String, (ClusterReceptionistTests) -> () throws -> Void)] {
-      return [
-                ("test_clusterReceptionist_shouldReplicateRegistrations", test_clusterReceptionist_shouldReplicateRegistrations),
-                ("test_clusterReceptionist_shouldSyncPeriodically", test_clusterReceptionist_shouldSyncPeriodically),
-                ("test_clusterReceptionist_shouldMergeEntriesOnSync", test_clusterReceptionist_shouldMergeEntriesOnSync),
-           ]
-   }
+    static var allTests: [(String, (ClusterReceptionistTests) -> () throws -> Void)] {
+        return [
+            ("test_clusterReceptionist_shouldReplicateRegistrations", test_clusterReceptionist_shouldReplicateRegistrations),
+            ("test_clusterReceptionist_shouldSyncPeriodically", test_clusterReceptionist_shouldSyncPeriodically),
+            ("test_clusterReceptionist_shouldMergeEntriesOnSync", test_clusterReceptionist_shouldMergeEntriesOnSync),
+        ]
+    }
 }
-

@@ -12,12 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
+import XCTest
 
 class BlockingReceptacleTests: XCTestCase {
-
     func test_blockingReceptacle_singleThreadedOfferWait() {
         let receptacle: BlockingReceptacle<String> = BlockingReceptacle()
 

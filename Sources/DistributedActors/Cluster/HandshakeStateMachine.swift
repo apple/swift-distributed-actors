@@ -15,26 +15,29 @@
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Protocol version
 
 /// Wire Protocol version of this Swift Distributed Actors build.
 public let DistributedActorsProtocolVersion: DistributedActors.Version = Version(reserved: 0, major: 0, minor: 0, patch: 1)
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Constants for Cluster
 
 /// Magic 2 byte value for use as initial bytes in connections (before handshake).
 /// Reads as: `5AC7 == SACT == S Act == Swift/Swift Distributed Actors Act == Swift/Swift Distributed Actors`
 internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Handshake State Machine
+
 // "All Handshakes want to become Associations when they grow up." -- unknown
 
 internal struct HandshakeStateMachine {
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Directives
 
     /// Directives are what instructs the state machine driver about what should be performed next.
@@ -59,6 +62,7 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handshake Initiated
 
     internal struct InitiatedState {
@@ -79,11 +83,10 @@ internal struct HandshakeStateMachine {
         /// This is ALWAYS set once the initial clientBootstrap has completed.
         var channel: Channel?
 
-        // TODO counter for how many times to retry associating (timeouts)
+        // TODO: counter for how many times to retry associating (timeouts)
 
         init(settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node,
-             whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
-             ) {
+             whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?) {
             precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy
@@ -93,7 +96,7 @@ internal struct HandshakeStateMachine {
         }
 
         func makeOffer() -> Wire.HandshakeOffer {
-            // TODO maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
+            // TODO: maybe store also at what time we sent the handshake, so we can diagnose if we should reject replies for being late etc
             return Wire.HandshakeOffer(version: self.protocolVersion, from: self.localNode, to: self.remoteNode)
         }
 
@@ -109,7 +112,7 @@ internal struct HandshakeStateMachine {
             self.channel = channel
         }
 
-        mutating func onHandshakeError(_ error: Error) -> HandshakeStateMachine.RetryDirective {
+        mutating func onHandshakeError(_: Error) -> HandshakeStateMachine.RetryDirective {
             switch self.backoff.next() {
             case .some(let amount):
                 return .scheduleRetryHandshake(delay: amount)
@@ -120,6 +123,7 @@ internal struct HandshakeStateMachine {
     }
 
 //    // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handshake In-Flight, and should attach to existing negotiation
 
     internal struct InFlightState {
@@ -134,6 +138,7 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handshake Received
 
     /// Initial state for server side of handshake.
@@ -144,8 +149,9 @@ internal struct HandshakeStateMachine {
         var boundAddress: UniqueNode {
             return self.state.selfNode
         }
+
         var protocolVersion: DistributedActors.Version {
-            return state.settings.protocolVersion
+            return self.state.settings.protocolVersion
         }
 
         let whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
@@ -178,8 +184,8 @@ internal struct HandshakeStateMachine {
                 case .rejectHandshake(let rejectedState):
                     self.whenCompleted?.succeed(.reject(rejectedState.makeReject()))
                     return negotiatedVersion
-                case.acceptAndAssociate:
-                    fatalError("Should not happen, only rejections or nothing should be yielded from negotiateVersion") // TODO more typesafety would be nice
+                case .acceptAndAssociate:
+                    fatalError("Should not happen, only rejections or nothing should be yielded from negotiateVersion") // TODO: more typesafety would be nice
                 }
             }
 
@@ -189,14 +195,15 @@ internal struct HandshakeStateMachine {
             return .acceptAndAssociate(self._acceptAndMakeCompletedState())
         }
 
-        // TODO determine the actual logic we'd want here, for now we accept anything except major changes; use semver?
+        // TODO: determine the actual logic we'd want here, for now we accept anything except major changes; use semver?
         /// - Returns `rejectHandshake` or `nil`
         func negotiateVersion(local: DistributedActors.Version, remote: DistributedActors.Version) -> HandshakeStateMachine.NegotiateDirective? {
             let accept: HandshakeStateMachine.NegotiateDirective? = nil
 
             guard local.major == remote.major else {
                 let error = HandshakeError.incompatibleProtocolVersion(
-                    local: self.protocolVersion, remote: self.offer.version)
+                    local: self.protocolVersion, remote: self.offer.version
+                )
                 return .rejectHandshake(RejectedState(fromReceived: self, remoteNode: self.offer.from, error: error))
             }
 
@@ -205,6 +212,7 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handshake Completed
 
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.
@@ -256,7 +264,7 @@ internal struct HandshakeStateMachine {
         }
 
         func makeReject() -> Wire.HandshakeReject {
-            return .init(version: self.protocolVersion, from: self.localNode, origin: remoteNode, reason: "\(self.error)")
+            return .init(version: self.protocolVersion, from: self.localNode, origin: self.remoteNode, reason: "\(self.error)")
         }
     }
 
@@ -268,12 +276,11 @@ internal struct HandshakeStateMachine {
         case inFlight(InFlightState)
         case wasOfferedHandshake(HandshakeReceivedState)
         case completed(CompletedState)
-
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Handshake error types
 
 enum HandshakeError: Error {
@@ -296,5 +303,4 @@ enum HandshakeError: Error {
 
     /// Returned when an incoming handshake protocol version does not match what this node can understand.
     case incompatibleProtocolVersion(local: DistributedActors.Version, remote: DistributedActors.Version)
-
 }

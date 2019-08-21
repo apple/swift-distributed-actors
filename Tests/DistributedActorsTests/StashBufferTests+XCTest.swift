@@ -21,14 +21,12 @@ import XCTest
 ///
 
 extension StashBufferTests {
-
-   static var allTests : [(String, (StashBufferTests) -> () throws -> Void)] {
-      return [
-                ("test_stash_shouldStashMessages", test_stash_shouldStashMessages),
-                ("test_fullStash_shouldThrowWhenAttemptToStashSomeMore", test_fullStash_shouldThrowWhenAttemptToStashSomeMore),
-                ("test_unstash_intoSetupBehavior_shouldCanonicalize", test_unstash_intoSetupBehavior_shouldCanonicalize),
-                ("test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun", test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun),
-           ]
-   }
+    static var allTests: [(String, (StashBufferTests) -> () throws -> Void)] {
+        return [
+            ("test_stash_shouldStashMessages", test_stash_shouldStashMessages),
+            ("test_fullStash_shouldThrowWhenAttemptToStashSomeMore", test_fullStash_shouldThrowWhenAttemptToStashSomeMore),
+            ("test_unstash_intoSetupBehavior_shouldCanonicalize", test_unstash_intoSetupBehavior_shouldCanonicalize),
+            ("test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun", test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun),
+        ]
+    }
 }
-

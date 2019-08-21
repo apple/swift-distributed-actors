@@ -12,14 +12,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-import struct NIO.EventLoopPromise
 import class NIO.EventLoopFuture
+import struct NIO.EventLoopPromise
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Receives Questions
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ask capability is marked by ReceivesQuestions
+
 public protocol ReceivesQuestions: Codable {
     associatedtype Question
 
@@ -39,11 +42,14 @@ public protocol ReceivesQuestions: Codable {
         for type: Answer.Type,
         timeout: TimeAmount,
         file: String, function: String, line: UInt,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer>
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+    ) -> AskResponse<Answer>
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: ActorRef + ask
+
 extension ActorRef: ReceivesQuestions {
     public typealias Question = Message
 
@@ -57,13 +63,14 @@ extension ActorRef: ReceivesQuestions {
     /// and will be invalid afterwards. The AskResponse will be failed with a
     /// TimeoutError if no response is received within the specified timeout.
     ///
-    /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state. 
+    /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state.
     ///            It may be executed concurrently with regards to the current context.
     public func ask<Answer>(
         for type: Answer.Type,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
-        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer> {
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+    ) -> AskResponse<Answer> {
         guard let system = self._system else {
             fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }
@@ -77,13 +84,15 @@ extension ActorRef: ReceivesQuestions {
             timeout: timeout,
             file: file,
             function: function,
-            line: line))
+            line: line
+        ))
 
         return AskResponse(nioFuture: promise.futureResult)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: AskResponse
 
 /// Asynchronously completed response to an `ask` operation.
@@ -95,7 +104,6 @@ extension ActorRef: ReceivesQuestions {
 ///            enclosing actor state is NOT SAFE, as the underlying future MAY not be scheduled on the same context
 ///            as the actor.
 public struct AskResponse<Value> {
-
     /// *WARNING* Use with caution.
     ///
     /// Exposes underlying `NIO.EventLoopFuture`.
@@ -137,13 +145,14 @@ extension AskResponse: AsyncResult {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Ask Actor
 
 /// :nodoc: Used to receive a single response to a message when using `ActorRef.ask`.extension EventLoopFuture: AsyncResult {
 /// Will either complete the `AskResponse` with the first message received, or fail
 /// it with a `TimeoutError` is no response is received within the specified timeout.
 ///
-/// TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
+// TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
 private enum AskActor {
     enum Event<Message> {
         case result(Message)
@@ -159,7 +168,8 @@ private enum AskActor {
         timeout: TimeAmount,
         file: String,
         function: String,
-        line: UInt) -> Behavior<Event<ResponseType>> {
+        line: UInt
+    ) -> Behavior<Event<ResponseType>> {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
         return .setup { context in
@@ -175,10 +185,10 @@ private enum AskActor {
                 switch $0 {
                 case .timeout:
                     let errorMessage = """
-                                       No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
-                                       Ask was initiated from function [\(function)] in [\(file):\(line)] and \
-                                       expected response of type [\(String(reflecting: ResponseType.self))]. 
-                                       """
+                    No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
+                    Ask was initiated from function [\(function)] in [\(file):\(line)] and \
+                    expected response of type [\(String(reflecting: ResponseType.self))]. 
+                    """
                     completable.fail(TimeoutError(message: errorMessage, timeout: timeout))
 
                 case .result(let message):

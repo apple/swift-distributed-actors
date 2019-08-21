@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsConcurrencyHelpers
 import DistributedActors
+import DistributedActorsConcurrencyHelpers
 @testable import Logging
 import XCTest
 
@@ -21,7 +21,7 @@ import XCTest
 ///
 /// ### Warning
 /// This handler uses locks for each and every operation.
-// TODO the implementation is quite incomplete and does not allow inspecting metadata setting etc.
+// TODO: the implementation is quite incomplete and does not allow inspecting metadata setting etc.
 public final class LogCapture: LogHandler {
     var _logs: [CapturedLogMessage] = []
     let lock = DistributedActorsConcurrencyHelpers.Lock()
@@ -30,8 +30,7 @@ public final class LogCapture: LogHandler {
 
     public var metadata: Logger.Metadata = [:]
 
-    public init() {
-    }
+    public init() {}
 
     public func makeLogger(label: String) -> Logger {
         self.label = label
@@ -40,16 +39,19 @@ public final class LogCapture: LogHandler {
 
     public var logs: [CapturedLogMessage] {
         return self.lock.withLock {
-            return self._logs
+            self._logs
         }
     }
+
     public var deadLetterLogs: [CapturedLogMessage] {
         return self.lock.withLock {
-            return self._logs.filter { $0.metadata?.keys.contains("deadLetter") ?? false }
+            self._logs.filter { $0.metadata?.keys.contains("deadLetter") ?? false }
         }
     }
 }
+
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Implement LogHandler API
 
 extension LogCapture {
@@ -94,10 +96,10 @@ public struct CapturedLogMessage {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+
 // MARK: Should matchers
 
 extension LogCapture {
-
     /// Asserts that a message matching the query requirements was captures *already* (without waiting for it to appear)
     ///
     /// - Parameter message: can be surrounded like `*what*` to query as a "contains" rather than an == on the captured logs.
@@ -114,10 +116,10 @@ extension LogCapture {
         let found = self.logs.lazy
             .filter { log in
                 if let expected = message {
-                    if expected.first == "*" && expected.last == "*" {
+                    if expected.first == "*", expected.last == "*" {
                         return "\(log.message)".contains(expected.dropFirst().dropLast())
                     } else {
-                        return "\(log.message)" == expected
+                        return expected == "\(log.message)"
                     }
                 } else {
                     return true
@@ -136,12 +138,12 @@ extension LogCapture {
                 }
             }.filter { log in
                 if let expected = expectedFile {
-                    return "\(log.file)" == expected
+                    return expected == "\(log.file)"
                 } else {
                     return true
                 }
             }.filter { log in
-                if expectedLine > -1  {
+                if expectedLine > -1 {
                     return log.line == expectedLine
                 } else {
                     return true
@@ -156,17 +158,17 @@ extension LogCapture {
                 prefix.map { "prefix: \"\($0)\"" },
                 level.map { "level: \($0)" } ?? "",
                 expectedFile.map { "expectedFile: \"\($0)\"" },
-                (expectedLine > -1 ? Optional(expectedLine) : nil).map { "expectedLine: \($0)" }
+                (expectedLine > -1 ? Optional(expectedLine) : nil).map { "expectedLine: \($0)" },
             ].compactMap { $0 }
-            .joined(separator: ", ")
+                .joined(separator: ", ")
 
             let message = """
-                          Did not find expected log, matching query: 
-                              [\(query)]
-                          in captured logs: 
-                              \(logs.map({"\($0)"}).joined(separator: "\n    "))\n
-                          at \(file):\(line)
-                          """
+            Did not find expected log, matching query: 
+                [\(query)]
+            in captured logs: 
+                \(logs.map { "\($0)" }.joined(separator: "\n    "))\n
+            at \(file):\(line)
+            """
             let callSiteError = callSite.error(message)
             XCTAssert(false, message, file: callSite.file, line: callSite.line)
             throw callSiteError

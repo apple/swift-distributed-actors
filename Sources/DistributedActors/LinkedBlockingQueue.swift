@@ -26,6 +26,7 @@ public final class LinkedBlockingQueue<A> {
             self.item = item
         }
     }
+
     @usableFromInline
     internal var producer: Node<A>
     @usableFromInline
@@ -37,10 +38,9 @@ public final class LinkedBlockingQueue<A> {
     @usableFromInline
     internal var count: Int = 0
 
-
     public init() {
         self.producer = Node(nil)
-        self.consumer = producer
+        self.consumer = self.producer
     }
 
     /// Adds the given item to the back of the queue. If the queue was empty
@@ -49,7 +49,7 @@ public final class LinkedBlockingQueue<A> {
     ///
     /// - Parameter item: The item to be added to the queue.
     @inlinable
-    public func enqueue(_ item: A) -> Void {
+    public func enqueue(_ item: A) {
         self.lock.synchronized {
             let next = Node(item)
             self.producer.next = next
@@ -134,8 +134,8 @@ public final class LinkedBlockingQueue<A> {
     }
 
     public func size() -> Int {
-        return lock.synchronized {
-            return self.count
+        return self.lock.synchronized {
+            self.count
         }
     }
 }

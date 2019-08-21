@@ -18,19 +18,19 @@ import Glibc
 import Darwin
 #endif
 
-extension BenchmarkCategory : CustomStringConvertible {
+extension BenchmarkCategory: CustomStringConvertible {
     public var description: String {
         return self.rawValue
     }
 }
 
-extension BenchmarkCategory : Comparable {
+extension BenchmarkCategory: Comparable {
     public static func < (lhs: BenchmarkCategory, rhs: BenchmarkCategory) -> Bool {
         return lhs.rawValue < rhs.rawValue
     }
 }
 
-public struct BenchmarkPlatformSet : OptionSet {
+public struct BenchmarkPlatformSet: OptionSet {
     public let rawValue: Int
 
     public init(rawValue: Int) {
@@ -58,14 +58,14 @@ public struct BenchmarkInfo {
     public var name: String
 
     /// Shadow static variable for runFunction.
-    private var _runFunction: (Int) -> ()
+    private var _runFunction: (Int) -> Void
 
     /// A function that invokes the specific benchmark routine.
-    public var runFunction: ((Int) -> ())? {
-        if !shouldRun {
+    public var runFunction: ((Int) -> Void)? {
+        if !self.shouldRun {
             return nil
         }
-        return _runFunction
+        return self._runFunction
     }
 
     /// A set of category tags that describe this benchmark. This is used by the
@@ -77,33 +77,33 @@ public struct BenchmarkInfo {
     private var unsupportedPlatforms: BenchmarkPlatformSet
 
     /// Shadow variable for setUpFunction.
-    private var _setUpFunction: (() -> ())?
+    private var _setUpFunction: (() -> Void)?
 
     /// An optional function that if non-null is run before benchmark samples
     /// are timed.
-    public var setUpFunction : (() -> ())? {
-        if !shouldRun {
+    public var setUpFunction: (() -> Void)? {
+        if !self.shouldRun {
             return nil
         }
-        return _setUpFunction
+        return self._setUpFunction
     }
 
     /// Shadow static variable for computed property tearDownFunction.
-    private var _tearDownFunction: (() -> ())?
+    private var _tearDownFunction: (() -> Void)?
 
     /// An optional function that if non-null is run after samples are taken.
-    public var tearDownFunction: (() -> ())? {
-        if !shouldRun {
+    public var tearDownFunction: (() -> Void)? {
+        if !self.shouldRun {
             return nil
         }
-        return _tearDownFunction
+        return self._tearDownFunction
     }
 
     public var legacyFactor: Int?
 
-    public init(name: String, runFunction: @escaping (Int) -> (), tags: [BenchmarkCategory],
-                setUpFunction: (() -> ())? = nil,
-                tearDownFunction: (() -> ())? = nil,
+    public init(name: String, runFunction: @escaping (Int) -> Void, tags: [BenchmarkCategory],
+                setUpFunction: (() -> Void)? = nil,
+                tearDownFunction: (() -> Void)? = nil,
                 unsupportedPlatforms: BenchmarkPlatformSet = [],
                 legacyFactor: Int? = nil) {
         self.name = name
@@ -117,22 +117,23 @@ public struct BenchmarkInfo {
 
     /// Returns true if this benchmark should be run on the current platform.
     var shouldRun: Bool {
-        return !unsupportedPlatforms.contains(.currentPlatform)
+        return !self.unsupportedPlatforms.contains(.currentPlatform)
     }
 }
 
-extension BenchmarkInfo : Comparable {
+extension BenchmarkInfo: Comparable {
     public static func < (lhs: BenchmarkInfo, rhs: BenchmarkInfo) -> Bool {
         return lhs.name < rhs.name
     }
+
     public static func == (lhs: BenchmarkInfo, rhs: BenchmarkInfo) -> Bool {
         return lhs.name == rhs.name
     }
 }
 
-extension BenchmarkInfo : Hashable {
+extension BenchmarkInfo: Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(name)
+        hasher.combine(self.name)
     }
 }
 
@@ -143,16 +144,17 @@ extension BenchmarkInfo : Hashable {
 // 32-bit register.
 struct LFSR {
     // Set the register to some seed that I pulled out of a hat.
-    var lfsr : UInt32 = 0xb78978e7
+    var lfsr: UInt32 = 0xB789_78E7
 
     mutating func shift() {
-        lfsr = (lfsr >> 1) ^ (UInt32(bitPattern: -Int32((lfsr & 1))) & 0xD0000001)
+        self.lfsr = (self.lfsr >> 1) ^ (UInt32(bitPattern: -Int32(self.lfsr & 1)) & 0xD000_0001)
     }
+
     mutating func randInt() -> Int64 {
-        var result : UInt32 = 0
-        for _ in 0..<32 {
-            result = (result << 1) | (lfsr & 1)
-            shift()
+        var result: UInt32 = 0
+        for _ in 0 ..< 32 {
+            result = (result << 1) | (self.lfsr & 1)
+            self.shift()
         }
         return Int64(bitPattern: UInt64(result))
     }
@@ -187,18 +189,18 @@ public func False() -> Bool { return false }
 
 /// This is a dummy protocol to test the speed of our protocol dispatch.
 public protocol SomeProtocol { func getValue() -> Int }
-struct MyStruct : SomeProtocol {
+struct MyStruct: SomeProtocol {
     init() {}
     func getValue() -> Int { return 1 }
 }
+
 public func someProtocolFactory() -> SomeProtocol { return MyStruct() }
 
 // Just consume the argument.
 // It's important that this function is in another module than the tests
 // which are using it.
 @inline(never)
-public func blackHole<T>(_ x: T) {
-}
+public func blackHole<T>(_: T) {}
 
 // Return the passed argument without letting the optimizer know that.
 @inline(never)

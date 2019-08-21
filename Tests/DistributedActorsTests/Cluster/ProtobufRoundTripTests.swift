@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
-import XCTest
 @testable import DistributedActors
 import DistributedActorsTestKit
-import SwiftProtobuf
+import Foundation
 import NIO
+import SwiftProtobuf
+import XCTest
 
 final class ProtobufRoundTripTests: XCTestCase {
     func check<Value, Proto>(_ value: Value, toProto: (Value) throws -> Proto, fromProto: (Proto) throws -> Value) throws {
@@ -33,27 +33,28 @@ final class ProtobufRoundTripTests: XCTestCase {
     let localActorAddress = try! ActorAddress(path: ActorPath._user.appending("hello"), incarnation: .random())
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Core actor types
+
     func test_roundTrip_ActorAddress() throws {
-        try check(self.localActorAddress,
-            toProto: ProtoActorAddress.init,
-            fromProto: ActorAddress.init)
+        try self.check(self.localActorAddress,
+                       toProto: ProtoActorAddress.init,
+                       fromProto: ActorAddress.init)
     }
 
     func test_roundTrip_ActorPath() throws {
-        try check(ActorPath._user.appending("hello").appending("more").appending("another"),
-            toProto: ProtoActorPath.init,
-            fromProto: ActorPath.init)
+        try self.check(ActorPath._user.appending("hello").appending("more").appending("another"),
+                       toProto: ProtoActorPath.init,
+                       fromProto: ActorPath.init)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
+
     // MARK: Handshake protocol
 
     func test_roundTrip_Wire_HandshakeOffer() throws {
-        try check(Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), from: node, to: node.node),
-            toProto: ProtoHandshakeOffer.init,
-            fromProto: Wire.HandshakeOffer.init)
+        try self.check(Wire.HandshakeOffer(version: .init(reserved: 2, major: 3, minor: 5, patch: 5), from: self.node, to: self.node.node),
+                       toProto: ProtoHandshakeOffer.init,
+                       fromProto: Wire.HandshakeOffer.init)
     }
-
-
 }

@@ -22,15 +22,14 @@ import Glibc
 
 /// Utilities to perform process management in an OS-agnostic way.
 internal enum POSIXProcessUtils {
-
     /// - SeeAlso: http://man7.org/linux/man-pages/man3/posix_spawn.3.html
     /// - SeeAlso: https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/posix_spawn.2.html
     public static func forkExec(command: String, args: [String]) throws -> Int {
         var pid: pid_t = 0
 
         #if os(OSX)
-        var tid: pthread_t? = nil
-        var childFDActions: posix_spawn_file_actions_t? = nil
+        var tid: pthread_t?
+        var childFDActions: posix_spawn_file_actions_t?
         #else
         var tid = pthread_t()
         var childFDActions = posix_spawn_file_actions_t()
@@ -73,6 +72,7 @@ internal enum POSIXProcessUtils {
 
         return .init(pid: Int(_pid), status: Int(status))
     }
+
     internal struct WaitPidResult {
         let pid: Int
         let status: Int
@@ -89,7 +89,7 @@ internal enum POSIXProcessUtils {
 
 extension Array where Element == String {
     internal func withNULLTerminatedCArrayOfStrings<T>(_ body: @escaping (UnsafePointer<UnsafeMutablePointer<Int8>?>) -> T) -> T {
-        func appendPointer(_ index: Array.Index, to target: inout Array<UnsafeMutablePointer<Int8>?>) -> T {
+        func appendPointer(_ index: Array.Index, to target: inout [UnsafeMutablePointer<Int8>?]) -> T {
             if index == self.endIndex {
                 target.append(nil)
                 return body(&target)
@@ -101,7 +101,7 @@ extension Array where Element == String {
             }
         }
 
-        var elements = Array<UnsafeMutablePointer<Int8>?>()
+        var elements = [UnsafeMutablePointer<Int8>?]()
         elements.reserveCapacity(self.count + 1)
 
         return appendPointer(self.startIndex, to: &elements)

@@ -21,22 +21,20 @@ import XCTest
 ///
 
 extension ActorAddressTests {
-
-   static var allTests : [(String, (ActorAddressTests) -> () throws -> Void)] {
-      return [
-                ("test_shouldNotAllow_illegalCharacters", test_shouldNotAllow_illegalCharacters),
-                ("test_pathsWithSameSegments_shouldBeEqual", test_pathsWithSameSegments_shouldBeEqual),
-                ("test_pathsWithSameSegments_shouldHaveSameHasCode", test_pathsWithSameSegments_shouldHaveSameHasCode),
-                ("test_path_shouldRenderNicely", test_path_shouldRenderNicely),
-                ("test_pathName_shouldRenderNicely", test_pathName_shouldRenderNicely),
-                ("test_rootPath_shouldRenderAsExpected", test_rootPath_shouldRenderAsExpected),
-                ("test_path_startsWith", test_path_startsWith),
-                ("test_local_actorAddress_shouldPrintNicely", test_local_actorAddress_shouldPrintNicely),
-                ("test_remote_actorAddress_shouldPrintNicely", test_remote_actorAddress_shouldPrintNicely),
-                ("test_equalityOf_addressWithSameSegmentsButDifferentIncarnation", test_equalityOf_addressWithSameSegmentsButDifferentIncarnation),
-                ("test_equalityOf_addressWithDifferentSystemNameOnly", test_equalityOf_addressWithDifferentSystemNameOnly),
-                ("test_equalityOf_addressWithDifferentSegmentsButSameUID", test_equalityOf_addressWithDifferentSegmentsButSameUID),
-           ]
-   }
+    static var allTests: [(String, (ActorAddressTests) -> () throws -> Void)] {
+        return [
+            ("test_shouldNotAllow_illegalCharacters", test_shouldNotAllow_illegalCharacters),
+            ("test_pathsWithSameSegments_shouldBeEqual", test_pathsWithSameSegments_shouldBeEqual),
+            ("test_pathsWithSameSegments_shouldHaveSameHasCode", test_pathsWithSameSegments_shouldHaveSameHasCode),
+            ("test_path_shouldRenderNicely", test_path_shouldRenderNicely),
+            ("test_pathName_shouldRenderNicely", test_pathName_shouldRenderNicely),
+            ("test_rootPath_shouldRenderAsExpected", test_rootPath_shouldRenderAsExpected),
+            ("test_path_startsWith", test_path_startsWith),
+            ("test_local_actorAddress_shouldPrintNicely", test_local_actorAddress_shouldPrintNicely),
+            ("test_remote_actorAddress_shouldPrintNicely", test_remote_actorAddress_shouldPrintNicely),
+            ("test_equalityOf_addressWithSameSegmentsButDifferentIncarnation", test_equalityOf_addressWithSameSegmentsButDifferentIncarnation),
+            ("test_equalityOf_addressWithDifferentSystemNameOnly", test_equalityOf_addressWithDifferentSystemNameOnly),
+            ("test_equalityOf_addressWithDifferentSegmentsButSameUID", test_equalityOf_addressWithDifferentSegmentsButSameUID),
+        ]
+    }
 }
-

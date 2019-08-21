@@ -34,7 +34,7 @@ class RingBufferTests: XCTestCase {
 
     func test_isEmpty_after_wrap() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             if buffer.offer(element: i) {
                 _ = buffer.take()
             }
@@ -58,7 +58,7 @@ class RingBufferTests: XCTestCase {
 
     func test_isFull_full() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             _ = buffer.offer(element: i)
         }
 
@@ -68,7 +68,7 @@ class RingBufferTests: XCTestCase {
     func test_offer_empty() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             buffer.offer(element: i).shouldEqual(true)
         }
     }
@@ -76,7 +76,7 @@ class RingBufferTests: XCTestCase {
     func test_offer_full() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             buffer.offer(element: i).shouldEqual(true)
         }
 
@@ -113,7 +113,7 @@ class RingBufferTests: XCTestCase {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
         _ = buffer.offer(element: 1)
 
-        for _ in 1...10 {
+        for _ in 1 ... 10 {
             buffer.peek().shouldEqual(1)
         }
 
@@ -129,7 +129,7 @@ class RingBufferTests: XCTestCase {
     func test_writeIndex_full() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             _ = buffer.offer(element: i)
         }
 
@@ -139,7 +139,7 @@ class RingBufferTests: XCTestCase {
     func test_writeIndex_empty_after_wrap() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
 
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             _ = buffer.offer(element: i)
             _ = buffer.take()
         }
@@ -164,7 +164,7 @@ class RingBufferTests: XCTestCase {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
         let middleIndex = (capacity / 2)
 
-        for i in 1...middleIndex {
+        for i in 1 ... middleIndex {
             _ = buffer.offer(element: i)
             _ = buffer.take()
         }
@@ -175,7 +175,7 @@ class RingBufferTests: XCTestCase {
 
     func test_readIndex_empty_after_wrap() {
         let buffer: RingBuffer<Int> = RingBuffer(capacity: capacity)
-        for i in 1...capacity {
+        for i in 1 ... self.capacity {
             _ = buffer.offer(element: i)
             _ = buffer.take()
         }
