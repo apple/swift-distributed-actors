@@ -16,8 +16,8 @@
 function _killall() {
     set +e
     local killall_app_name="$1"
-    echo "> KILLALL: pgrep $killall_app_name"
-    (pgrep ${killall_app_name} | xargs kill -9) || true
+    echo "> KILLALL: $killall_app_name"
+    ps aux | grep ${killall_app_name} | awk '{ print $2 }' | xargs kill -9
     set -e
 }
 
@@ -35,7 +35,7 @@ function await_termination_pid() {
         if [[ "${pid_exists}" -ne "" ]]; then
             echo "> Waiting for PID ${pid} to terminate..."
             spin=$((spin+1))
-            sleep 1;
+            sleep 2
         fi
     done
 
@@ -58,19 +58,19 @@ function await_n_processes() {
 
     local spin=0
     local max_spins=20
-    local app_procs=$(pgrep ${wait_app_name} | wc -l)
+    local app_procs_count=0
 
-    while [[ ${spin} -lt ${max_spins} ]] && [[ ${app_procs} -lt ${wait_procs} ]]; do
+    while [[ ${spin} -lt ${max_spins} ]] && [[ ${app_procs_count} -lt ${wait_procs} ]]; do
         echo "> Waiting for ${wait_app_name} processes..."
-        pgrep "${wait_app_name}"
+        app_procs_count=$(ps aux | grep ${wait_app_name} | grep -v 'grep' | wc -l)
+        ps aux | grep ${wait_app_name} | grep -v 'grep'
 
-        app_procs=$(pgrep ${wait_app_name} | wc -l)
-        if [[ ${app_procs} -ge ${wait_procs} ]]; then
+        if [[ ${app_procs_count} -ge ${wait_procs} ]]; then
             echo "> DONE WAITING for $wait_procs ($wait_app_name) processes."
             continue
         fi
         spin=$((spin+1))
-        sleep 1
+        sleep 2
     done
     set -e
 }

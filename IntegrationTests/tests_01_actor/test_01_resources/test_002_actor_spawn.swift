@@ -13,19 +13,21 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import DistributedActorsConcurrencyHelpers
 
 func run(identifier: String) {
     let system = ActorSystem("\(identifier)")
 
     measure(identifier: identifier) {
-        var i = 0
-        for _ in 0 ..< 100 {
-            let _: ActorRef<String> = try! system.spawn(.anonymous, .ignore)
-            i += 1
-        }
+        let _: ActorRef<String> = try! system.spawn(.anonymous, of: String.self,
+            Behavior<String>.setup { _ in
+                return .stop
+            }
+        )
 
-        return i
+        return 0
     }
 
-    system.shutdown()
+    system.shutdown() // blocks until all actors ha
 }
+
