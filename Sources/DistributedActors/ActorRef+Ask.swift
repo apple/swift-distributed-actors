@@ -14,6 +14,7 @@
 
 import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
+import struct NIO.Scheduled
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receives Questions
@@ -166,6 +167,7 @@ internal enum AskActor {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
         return .setup { context in
+            var scheduledTimeout: Scheduled<Void>?
             if !timeout.isEffectivelyInfinite {
                 let timeoutSub = context.subReceive(Event.self) { event in
                     switch event {
@@ -183,13 +185,13 @@ internal enum AskActor {
                     }
                 }
 
-                context.system.eventLoopGroup.next().scheduleTask(in: timeout.toNIO) {
+                scheduledTimeout = context.system.eventLoopGroup.next().scheduleTask(in: timeout.toNIO) {
                     timeoutSub.tell(.timeout)
                 }
             }
 
             return .receiveMessage { message in
-                context.timers.cancelAll()
+                scheduledTimeout?.cancel()
                 completable.succeed(message)
 
                 return .stop
