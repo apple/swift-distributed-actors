@@ -16,10 +16,13 @@
 set -e
 #set -x # verbose
 
+declare -r RED='\033[0;31m'
+declare -r RST='\033[0m'
+
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
-declare -r app_name='DistributedActorsSampleProcessIsolated'
+declare -r app_name='it_ProcessIsolated_noLeaking'
 
 cd ${root_path}
 
@@ -28,7 +31,7 @@ source ${my_path}/shared.sh
 _killall ${app_name}
 
 # ====------------------------------------------------------------------------------------------------------------------
-# test_ProcessIsolated: killing servant should make it restart
+# MARK: the servant process should not inherit FDs that the master had opened
 
 swift build # synchronously ensure built
 
@@ -37,32 +40,23 @@ swift run ${app_name} &
 await_n_processes "$app_name" 2
 
 pid_master=$(ps aux | grep ${app_name} | grep -v grep | grep -v servant | awk '{ print $2 }')
-pid_servant=$(ps aux | grep ${app_name} | grep -v grep | grep servant | head -n1 | awk '{ print $2 }')
+pid_servants=$(ps aux | grep ${app_name} | grep -v grep | grep servant | awk '{ print $2 }')
 
 echo "> PID Master: ${pid_master}"
-echo "> PID Servant: ${pid_servant}"
+echo "> Master open FDs: $(lsof -p $pid_master | wc -l)"
 
-echo '~~~~~~~~~~~~BEFORE KILL~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-ps aux | grep ${app_name}
-echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+for pid_servant in $pid_servants; do
+    echo "> PID Servant: ${pid_servant}"
+    echo "> Servant open FDs: $(lsof -p $pid_servant | wc -l)"
 
-echo "> KILL Servant: ${pid_servant}"
-kill -9 ${pid_servant}
-
-echo '~~~~~~~~~~~~~ KILLED KILLED KILLED KILLED KILLED KILLED ~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-ps aux | grep ${app_name}
-echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-
-# the 1 servant should die, but be restarted so we'll be back at two processes
-await_n_processes "$app_name" 2
-
-if [[ $(ps aux | awk '{print $2}' | grep ${pid_servant}  | grep -v 'grep' | wc -l) -ne 0 ]]; then
-    echo "ERROR: Seems the servant was not killed!!!"
-    exit -2
-fi
-
-await_n_processes "$app_name" 2
+    if [[ $(lsof -p $pid_servant | wc -l) -gt 100 ]]; then
+        lsof -p $pid_servant
+        printf "${RED}ERROR: Seems the servant [${pid_servant}] has too many FDs open, did the masters FD leak?${RST}\n"
+        exit -2
+    fi
+done
 
 # === cleanup ----------------------------------------------------------------------------------------------------------
 
 _killall ${app_name}
+

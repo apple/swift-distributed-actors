@@ -19,12 +19,8 @@ let targets: [PackageDescription.Target] = [
         ]
     ),
 
-    .target(
-        name: "DistributedActorsSampleProcessIsolated",
-        dependencies: [
-            "DistributedActors",
-        ]
-    ),
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: TestKit
 
     /// This target is intended only for use in tests, though we have no way to mark this
     .target(
@@ -32,27 +28,8 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors", "DistributedActorsConcurrencyHelpers"]
     ),
 
-    .target(
-        name: "CDistributedActorsMailbox",
-        dependencies: []
-    ),
-
-    .target(
-        name: "CDistributedActorsRunQueue",
-        dependencies: []
-    ),
-
-    // NOT SUPPORTED transient library until Swift receives Atomics
-    .target(name: "CDistributedActorsAtomics",
-            dependencies: []),
-
-    // NOT SUPPORTED transient library until Swift receives Atomics
-    .target(
-        name: "DistributedActorsConcurrencyHelpers",
-        dependencies: ["CDistributedActorsAtomics"]
-    ),
-
-    /* test targets */
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Tests
 
     .testTarget(
         name: "DistributedActorsTests",
@@ -73,7 +50,26 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
-    /* --- performance --- */
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Integration Tests - `it_` prefixed
+    .target(
+        name: "it_ProcessIsolated_respawnsServants",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_respawnsServants"
+    ),
+    .target(
+        name: "it_ProcessIsolated_noLeaking",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_noLeaking"
+    ),
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Performance / Benchmarks
+
     .target(
         name: "DistributedActorsBenchmarks",
         dependencies: [
@@ -86,7 +82,9 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors"]
     ),
 
-    /* --- samples --- */
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Samples
+
     .target(
         name: "DistributedActorsSampleDiningPhilosophers",
         dependencies: ["DistributedActors"]
@@ -103,6 +101,27 @@ let targets: [PackageDescription.Target] = [
     .testTarget(
         name: "DistributedActorsDocumentationTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+    ),
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Internals; NOT SUPPORTED IN ANY WAY
+
+    .target(
+        name: "CDistributedActorsMailbox",
+        dependencies: []
+    ),
+
+    .target(
+        name: "CDistributedActorsRunQueue",
+        dependencies: []
+    ),
+
+    .target(name: "CDistributedActorsAtomics",
+        dependencies: []),
+
+    .target(
+        name: "DistributedActorsConcurrencyHelpers",
+        dependencies: ["CDistributedActorsAtomics"]
     ),
 ]
 
