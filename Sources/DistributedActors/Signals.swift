@@ -31,7 +31,6 @@ public protocol Signal {}
 /// - SeeAlso: `Signal`, for a semantic overview of what signals are.
 public enum Signals {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Actor Lifecycle Events
 
     /// Signal sent to an actor right before it is restarted (by supervision).
@@ -59,7 +58,6 @@ public enum Signals {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Death Watch Signals
 
     /// Signal sent to all watchers of an actor once the `watchee` has terminated.

@@ -45,7 +45,6 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Happy path handshakes
 
     func test_handshake_happyPath() throws {
@@ -85,7 +84,6 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Version negotiation
 
     func test_negotiate_server_shouldAcceptClient_newerPatch() throws {

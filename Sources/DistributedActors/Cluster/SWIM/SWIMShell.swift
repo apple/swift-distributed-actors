@@ -35,7 +35,6 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Behaviors
 
     /// Initial behavior, kicks off timers and becomes `ready`.
@@ -77,7 +76,6 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Receiving messages
 
     func receiveRemoteMessage(context: ActorContext<SWIM.Message>, message: SWIM.RemoteMessage) {
@@ -129,7 +127,6 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Sending ping, ping-req and friends
 
     /// - parameter pingReqOrigin: is set only when the ping that this is a reply to was originated as a `pingReq`.
@@ -251,7 +248,6 @@ internal struct SWIMShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handling local messages
 
     func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {

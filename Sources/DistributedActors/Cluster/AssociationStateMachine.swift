@@ -29,7 +29,6 @@ import NIO
 /// An `Association` can only be obtained by successfully completing a `HandshakeStateMachine` dance.
 struct AssociationStateMachine { // TODO: associations should be as light as possible.
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Directives
 
     enum State {

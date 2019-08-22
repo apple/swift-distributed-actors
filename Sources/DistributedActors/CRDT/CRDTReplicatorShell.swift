@@ -59,7 +59,6 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
-
         // MARK: Local command
 
         private func receiveLocalCommand(_ context: ActorContext<Message>, command: LocalCommand) {
@@ -159,7 +158,6 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
-
         // MARK: Remote command
 
         private func receiveRemoteCommand(_ context: ActorContext<Message>, command: RemoteCommand) {
@@ -226,7 +224,6 @@ extension CRDT.Replicator {
         }
 
         // ==== ------------------------------------------------------------------------------------------------------------
-
         // MARK: Notify owners
 
         private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {

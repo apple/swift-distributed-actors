@@ -58,7 +58,6 @@ class SerializationTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Codable round-trip tests for of simple Swift Distributed Actors types
 
     func test_serialize_actorPath() throws {

@@ -35,7 +35,6 @@ final class DeadLetterTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: DeadLetterOffice tests
 
     func test_deadLetters_logWithSourcePosition() throws {
@@ -51,7 +50,6 @@ final class DeadLetterTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: ActorSystem integrated tests
 
     func test_sendingToTerminatedActor_shouldResultInDeadLetter() throws {

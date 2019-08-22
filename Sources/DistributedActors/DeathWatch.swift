@@ -156,7 +156,6 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Node termination
 
     private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {

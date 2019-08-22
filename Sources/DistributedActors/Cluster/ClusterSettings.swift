@@ -109,7 +109,6 @@ public struct ClusterSettings {
     public var swim: SWIM.Settings = .default
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Logging
 
     /// If enabled, logs membership changes (including the entire membership table from the perspective of the current node).

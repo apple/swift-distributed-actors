@@ -31,7 +31,6 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: starting actors
 
     func test_spawn_shouldNotAllowStartingWith_Same() throws {
@@ -93,7 +92,6 @@ class ActorLifecycleTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Stopping actors
 
     func test_stopping_shouldDeinitTheBehavior() throws {

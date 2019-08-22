@@ -18,7 +18,6 @@ import XCTest
 
 final class ActorAddressTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: ActorPath
 
     func test_shouldNotAllow_illegalCharacters() {
@@ -76,7 +75,6 @@ final class ActorAddressTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Description tests
 
     func test_local_actorAddress_shouldPrintNicely() throws {
@@ -111,7 +109,6 @@ final class ActorAddressTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Equality
 
     func test_equalityOf_addressWithSameSegmentsButDifferentIncarnation() throws {

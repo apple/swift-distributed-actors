@@ -147,7 +147,6 @@ public struct Serialization {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: // MARK: Internal workings
 
     internal func serializerIdFor<M>(message: M) throws -> SerializerId {
