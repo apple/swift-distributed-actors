@@ -53,7 +53,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
 
     public let allocator: ByteBufferAllocator
 
-    private var _handshakes: [Node: HandshakeStateMachine.State] = [:]
+    internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: AssociationStateMachine.State] = [:]
 
     // TODO: make private

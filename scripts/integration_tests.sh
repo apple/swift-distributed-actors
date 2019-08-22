@@ -13,8 +13,5 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-echo -e "\033[0;33mFIXME: integration tests disabled\033[0m"
-exit 0
-
 mkdir -p .build # for the junit.xml file
 ./IntegrationTests/run-tests.sh --junit-xml .build/junit-sh-tests.xml -i

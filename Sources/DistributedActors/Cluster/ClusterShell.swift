@@ -480,6 +480,8 @@ extension ClusterShell {
                 }
             }
 
+            state._handshakes[remoteNode] = .initiated(initiated)
+
         case .wasOfferedHandshake(let state):
             preconditionFailure("Outbound connection error should never happen on receiving end. State was: [\(state)], error was: \(error)")
         case .completed(let state):
