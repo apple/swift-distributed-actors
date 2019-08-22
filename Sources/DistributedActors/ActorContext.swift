@@ -75,7 +75,6 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Timers
 
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
@@ -84,7 +83,6 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Actor Lifecycle-bound defer
 
     /// - warning: Experimental API
@@ -132,7 +130,6 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Death Watch
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
@@ -194,7 +191,6 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Child actor management
 
     public func spawn<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
@@ -237,7 +233,6 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Actor Suspension Mechanisms
 
     /// :nodoc: Not intended to be used by end users.

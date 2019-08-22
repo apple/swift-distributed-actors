@@ -34,7 +34,6 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: handling gossip about the receiving node
 
     func test_swim_cluster_onGossipPayload_newMember_needsToConnect_successfully() throws {

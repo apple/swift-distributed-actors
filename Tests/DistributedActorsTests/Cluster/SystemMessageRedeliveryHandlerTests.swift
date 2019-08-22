@@ -84,7 +84,6 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     //      these tests here just make sure we embed it properly in its Shell / Handler.
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: outbound
 
     func test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs() throws {
@@ -102,7 +101,6 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: inbound
 
     func test_systemMessageRedeliveryHandler_sendACKUponDelivery() throws {
@@ -136,7 +134,6 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Lossy Network
 
     // Note: realistically on reliable transports such as TCP such aggressive dropping is rather unlikely,

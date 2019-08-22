@@ -21,7 +21,6 @@ final class CRDTCoreTypeTests: XCTestCase {
     let ownerBeta = try! ActorAddress(path: ActorPath._user.appending("beta"), incarnation: .perpetual)
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: GCounter tests
 
     func test_GCounter_incrementShouldUpdateDelta() throws {
@@ -111,7 +110,6 @@ final class CRDTCoreTypeTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: AnyCvRDT tests
 
     func test_AnyCvRDT_canBeUsedToMergeRightTypes() throws {
@@ -177,7 +175,6 @@ final class CRDTCoreTypeTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: AnyDeltaCRDT tests
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT

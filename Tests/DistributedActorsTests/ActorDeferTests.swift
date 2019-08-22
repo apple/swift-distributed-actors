@@ -81,7 +81,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: .received) {}
 
     func test_defer_untilReceived_shouldExecute_whenStayingSame() throws {
@@ -124,7 +123,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: .failed) {}
 
     func test_defer_untilFailed_shouldNotExecute_whenStayingSame() throws {
@@ -146,7 +144,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: .receiveFailed) {}
 
     func test_defer_untilReceiveFailed_shouldNotExecute_whenStayingSame() throws {
@@ -308,7 +305,6 @@ class ActorDeferTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: context.defer(until: .received) { context.defer(until: .received) }
 
     // TODO: could be implemented if we really want to keep context.defer and keep semantics as close to Swift as possible

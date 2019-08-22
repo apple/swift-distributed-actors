@@ -20,14 +20,12 @@ func run(identifier: String) {
 
     measure(identifier: identifier) {
         let _: ActorRef<String> = try! system.spawn(.anonymous, of: String.self,
-            Behavior<String>.setup { _ in
-                return .stop
-            }
-        )
+                                                    Behavior<String>.setup { _ in
+                                                        .stop
+        })
 
         return 0
     }
 
     system.shutdown() // blocks until all actors ha
 }
-
