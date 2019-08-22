@@ -14,6 +14,7 @@
 
 import class NIO.EventLoopFuture
 import struct NIO.EventLoopPromise
+import struct NIO.Scheduled
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Receives Questions
@@ -74,15 +75,17 @@ extension ActorRef: ReceivesQuestions {
         let promise = system.eventLoopGroup.next().makePromise(of: type)
 
         // TODO: implement special actor ref instead of using real actor
-        _ = try! system.spawn(.ask, AskActor.behavior(
+        let ref = try! system.spawn(.ask, AskActor.behavior(
             promise,
             ref: self,
-            makeQuestion: makeQuestion,
             timeout: timeout,
             file: file,
             function: function,
             line: line
         ))
+
+        let message = makeQuestion(ref)
+        self.tell(message, file: file, line: line)
 
         return AskResponse(nioFuture: promise.futureResult)
     }
@@ -148,48 +151,48 @@ extension AskResponse: AsyncResult {
 /// it with a `TimeoutError` is no response is received within the specified timeout.
 ///
 // TODO: replace with a special minimal `ActorRef` that does not require spawning or scheduling.
-private enum AskActor {
-    enum Event<Message> {
-        case result(Message)
+internal enum AskActor {
+    enum Event {
         case timeout
     }
-
-    static let askTimeoutKey: TimerKey = TimerKey("ask/timeout")
 
     static func behavior<Message, ResponseType>(
         _ completable: EventLoopPromise<ResponseType>,
         ref: ActorRef<Message>,
-        makeQuestion: @escaping (ActorRef<ResponseType>) -> Message,
         timeout: TimeAmount,
         file: String,
         function: String,
         line: UInt
-    ) -> Behavior<Event<ResponseType>> {
+    ) -> Behavior<ResponseType> {
         // TODO: could we optimize the case when the target is _local_ and _terminated_ so we don't have to do the watch dance (heavy if we did it always),
         // but make dead letters tell us back that our ask will never reply?
         return .setup { context in
-            let adapter = context.messageAdapter(from: ResponseType.self, with: { .result($0) })
-            let message = makeQuestion(adapter)
-            ref.tell(message, file: file, line: line)
-
+            var scheduledTimeout: Scheduled<Void>?
             if !timeout.isEffectivelyInfinite {
-                context.timers.startSingle(key: askTimeoutKey, message: .timeout, delay: timeout)
+                let timeoutSub = context.subReceive(Event.self) { event in
+                    switch event {
+                    case .timeout:
+                        let errorMessage = """
+                        No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
+                        Ask was initiated from function [\(function)] in [\(file):\(line)] and \
+                        expected response of type [\(String(reflecting: ResponseType.self))].
+                        """
+                        completable.fail(TimeoutError(message: errorMessage, timeout: timeout))
+
+                        // FIXME: Hack to stop from subReceive. Should we allow this somehow?
+                        //        Maybe add a SubReceiveContext or similar?
+                        try context._downcastUnsafe.becomeNext(behavior: .stop)
+                    }
+                }
+
+                scheduledTimeout = context.system.eventLoopGroup.next().scheduleTask(in: timeout.toNIO) {
+                    timeoutSub.tell(.timeout)
+                }
             }
 
-            return .receiveMessage {
-                switch $0 {
-                case .timeout:
-                    let errorMessage = """
-                    No response received for ask to [\(ref.address)] within timeout [\(timeout.prettyDescription)]. \
-                    Ask was initiated from function [\(function)] in [\(file):\(line)] and \
-                    expected response of type [\(String(reflecting: ResponseType.self))]. 
-                    """
-                    completable.fail(TimeoutError(message: errorMessage, timeout: timeout))
-
-                case .result(let message):
-                    context.timers.cancelAll()
-                    completable.succeed(message)
-                }
+            return .receiveMessage { message in
+                scheduledTimeout?.cancel()
+                completable.succeed(message)
 
                 return .stop
             }
