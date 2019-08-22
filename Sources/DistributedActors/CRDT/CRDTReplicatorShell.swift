@@ -75,18 +75,18 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleLocalRegisterCommand(_ context: ActorContext<Message>, ownerRef: ActorRef<OwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<LocalRegisterResult>) {
+        private func handleLocalRegisterCommand(_ context: ActorContext<Message>, ownerRef: ActorRef<OwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<LocalRegisterResult>?) {
             // Register the owner first
             switch self.replicator.registerOwner(dataId: id, owner: ownerRef) {
             case .registered:
                 // Then write the full CRDT so it's ready to be read
                 switch self.replicator.write(id, data, deltaMerge: false) {
                 case .applied:
-                    replyTo.tell(.success)
+                    replyTo?.tell(.success)
                 case .inputAndStoredDataTypeMismatch(let stored):
-                    replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))
+                    replyTo?.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))
                 case .unsupportedCRDT:
-                    replyTo.tell(.failed(.unsupportedCRDT))
+                    replyTo?.tell(.failed(.unsupportedCRDT))
                 }
             }
 
