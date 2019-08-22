@@ -50,7 +50,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Detecting myself
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
@@ -73,7 +72,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Marking members as various statuses
 
     func test_mark_shouldNotApplyEqualStatus() throws {
@@ -143,7 +141,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: handling ping-req responses
 
     func test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion() {
@@ -193,7 +190,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: receive a ping and reply to it
 
     func test_onPing_shouldOfferAckMessageWithMyselfReference() {
@@ -257,7 +253,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: handling gossip about the receiving node
 
     func test_onGossipPayload_myself_withAlive() throws {
@@ -389,7 +384,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: increment-ing counters
 
     func test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne() {
@@ -418,7 +412,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Selecting members to ping
 
     func test_nextMemberToPing_shouldReturnEachMemberOnceBeforeRepeatingAndKeepOrder() throws {
@@ -511,7 +504,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: (Round up the usual...) Suspects
 
     func test_suspects_shouldContainOnlySuspectedNodes() {
@@ -564,7 +556,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: makeGossipPayload
 
     func test_makeGossipPayload_shouldReturnNoneIfNothingToGossip() throws {
@@ -610,7 +601,6 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: utility functions
 
     func validateMark(swim: SWIM.Instance, member: ActorRef<SWIM.Message>, status: SWIM.Status, shouldSucceed: Bool, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {

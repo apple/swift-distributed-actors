@@ -34,7 +34,6 @@ internal let HandshakeMagicBytes: UInt16 = 0x5AC7
 
 internal struct HandshakeStateMachine {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Directives
 
     /// Directives are what instructs the state machine driver about what should be performed next.
@@ -59,7 +58,6 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handshake Initiated
 
     internal struct InitiatedState {
@@ -120,7 +118,6 @@ internal struct HandshakeStateMachine {
     }
 
 //    // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handshake In-Flight, and should attach to existing negotiation
 
     internal struct InFlightState {
@@ -135,7 +132,6 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handshake Received
 
     /// Initial state for server side of handshake.
@@ -209,7 +205,6 @@ internal struct HandshakeStateMachine {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handshake Completed
 
     /// State reached once we have received a `HandshakeAccepted` and are ready to create an association.

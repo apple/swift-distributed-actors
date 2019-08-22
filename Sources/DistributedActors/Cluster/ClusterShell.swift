@@ -81,7 +81,6 @@ internal class ClusterShell {
     // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Cluster Shell, reference used for issuing commands to the cluster
 
     private var _ref: ClusterShell.Ref?
@@ -95,7 +94,6 @@ internal class ClusterShell {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Node-Death Watcher
 
     // Implementation notes: The `_failureDetectorRef` has to remain internally accessible.

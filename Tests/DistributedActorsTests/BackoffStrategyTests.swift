@@ -18,7 +18,6 @@ import XCTest
 
 class BackoffStrategyTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Constant backoff
 
     func test_constantBackoff_shouldAlwaysYieldSameTimeAmount() {
@@ -38,7 +37,6 @@ class BackoffStrategyTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Exponential backoff
 
     func test_exponentialBackoff_shouldIncreaseBackoffEachTime() {

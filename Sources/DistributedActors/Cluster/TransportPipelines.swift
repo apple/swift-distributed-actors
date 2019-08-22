@@ -347,7 +347,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Outbound
 
     func write(context: ChannelHandlerContext, data: NIOAny, promise: EventLoopPromise<Void>?) {
@@ -376,7 +375,6 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Inbound
 
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {

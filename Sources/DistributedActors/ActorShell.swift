@@ -41,7 +41,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     var namingContext: ActorNamingContext
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Basic ActorContext capabilities
 
     private let _dispatcher: MessageDispatcher
@@ -73,7 +72,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Timers
 
     public override var timers: Timers<Message> {
@@ -83,7 +81,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     lazy var _timers: Timers<Message> = Timers(context: self)
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Fault handling infrastructure
 
     // We always have a supervisor in place, even if it is just the ".stop" one.
@@ -91,7 +88,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // TODO: we can likely optimize not having to call "through" supervisor if we are .stop anyway
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Defer
 
     @usableFromInline
@@ -110,7 +106,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Death Watch infrastructure
 
     // Implementation of DeathWatch
@@ -128,7 +123,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: ActorShell implementation
 
     internal init(system: ActorSystem, parent: AddressableActorRef,
@@ -179,7 +173,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Children
 
     private let _childrenLock = ReadWriteLock()
@@ -205,7 +198,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Conforming to ActorContext
 
     /// Returns this actors "self" actor reference, which can be freely shared across
@@ -247,7 +239,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Interpreting messages
 
     /// Interprets the incoming message using the current `Behavior` and swaps it with the
@@ -292,7 +283,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handling system messages
 
     /// Process single system message and return if processing of further shall continue.
@@ -556,7 +546,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Spawn implementations
 
     public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
@@ -572,7 +561,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Death Watch API
 
     public override func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
@@ -590,7 +578,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Message Adapters API
 
     private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]

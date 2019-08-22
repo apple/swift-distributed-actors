@@ -40,7 +40,6 @@ public class ProcessIsolated {
     public let control: IsolatedControl
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Local state
 
     private let lock = Lock()
@@ -53,13 +52,11 @@ public class ProcessIsolated {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Master supervisor thread interactions
 
     private let processSupervisorMailbox: ConcurrentBlockingQueue<_ProcessSupervisorMessage> = ConcurrentBlockingQueue()
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Process Master and functions exposed to it
 
     internal var processCommander: ActorRef<ProcessCommander.Command>!

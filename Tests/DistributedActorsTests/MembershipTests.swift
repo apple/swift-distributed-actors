@@ -27,7 +27,6 @@ final class MembershipTests: XCTestCase {
     ]
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: status ordering
 
     func test_status_ordering() {
@@ -53,7 +52,6 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: member listing
 
     func test_members_listing() {
@@ -107,7 +105,6 @@ final class MembershipTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: diff
 
     func test_membershipDiff_beEmpty_whenNothingChangedForIt() {

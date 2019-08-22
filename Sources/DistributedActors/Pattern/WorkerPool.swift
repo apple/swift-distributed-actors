@@ -48,7 +48,6 @@ public class WorkerPool<Message> {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: State shared across all states of the WorkerPool
 
     var settings: WorkerPoolSettings<Message>
@@ -61,7 +60,6 @@ public class WorkerPool<Message> {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Public API, spawning the pool
 
     // TODO: how can we move the spawn somewhere else so we don't have to pass in the system or context?

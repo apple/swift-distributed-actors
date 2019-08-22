@@ -122,7 +122,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Shared test implementation, which is to run with either error/fault causing messages
 
     func sharedTestLogic_isolatedFailureHandling_shouldStopActorOnFailure(runName: String, makeEvilMessage: (String) -> FaultyMessage) throws {
@@ -462,7 +461,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Stopping supervision
 
     func test_stopSupervised_throws_shouldStop() throws {
@@ -480,7 +478,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Restarting supervision
 
     func test_restartSupervised_fatalError_shouldRestart() throws {
@@ -550,7 +547,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Restarting supervision with Backoff
 
     func test_restartSupervised_fatalError_shouldRestartWithConstantBackoff() throws {
@@ -612,7 +608,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handling faults, divide by zero
 
     // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
@@ -634,7 +629,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Composite handler tests
 
     func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
@@ -688,7 +682,6 @@ class SupervisionTests: XCTestCase {
     // All in all, TODO and cement the meaning in docs and tests.
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Handling faults inside receiveSignal
 
     func sharedTestLogic_failInSignalHandling_shouldRestart(failBy failureMode: FailureMode) throws {
@@ -754,7 +747,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 
     func test_supervise_notSuperviseStackOverflow() throws {
@@ -807,7 +799,6 @@ class SupervisionTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Tests for selective failure handlers
 
     /// Throws all Errors it receives, EXCEPT `PleaseReply` to which it replies to the probe

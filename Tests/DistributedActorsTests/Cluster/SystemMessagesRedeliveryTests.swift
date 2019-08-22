@@ -19,7 +19,6 @@ import XCTest
 
 final class SystemMessagesRedeliveryTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: OutboundSystemMessageRedelivery
 
     func test_sysMsg_outbound_passThroughWhenNoGapsReported() {
@@ -214,7 +213,6 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     // TODO: test when we exceed the redelivery attempts limit
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: InboundSystemMessages
 
     func test_inbound_shouldAcceptMessagesInOrder() throws {
@@ -254,7 +252,6 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Serialization
 
     func test_redelivery_systemMessage_serialization() throws {
@@ -279,7 +276,6 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Utilities
 
     private func msg(seqNr: Int) -> SystemMessageEnvelope {

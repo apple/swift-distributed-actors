@@ -19,7 +19,6 @@ import XCTest
 
 final class ClusterAssociationTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Happy path, accept association
 
     func test_boundServer_shouldAcceptAssociate() throws {
@@ -60,7 +59,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
@@ -120,7 +118,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Concurrently initiated handshakes to same node should both get completed
 
     func test_association_shouldEstablishSingleAssociationForConcurrentlyInitiatedHandshakes_incoming_outgoing() throws {
@@ -159,7 +156,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Retry associations
 
     func test_association_shouldKeepTryingUntilOtherNodeBindsPort() throws {
@@ -215,7 +211,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Remote control caching
 
     func test_cachedRemoteControlsWithSameNodeID_shouldNotOverwriteEachOther() throws {
@@ -259,7 +254,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Change membership on Down detected
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {

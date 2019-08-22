@@ -435,7 +435,6 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: utility functions
 
     struct ForwardedSWIMMessage {

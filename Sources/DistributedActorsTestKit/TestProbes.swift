@@ -340,7 +340,6 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-
     // MARK: Clearing buffered messages (for expectations)
 
     public func clearMessages() {
