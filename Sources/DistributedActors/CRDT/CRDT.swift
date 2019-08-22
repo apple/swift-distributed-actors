@@ -177,10 +177,8 @@ public enum CRDT {
             let replicator = ownerContext.system.replicator
             self.owner = AnyOwnerCell(subReceive: subReceive, replicator: replicator)
 
-            // Register as owner of the CRDT with local replicator
-            _ = replicator.ask(for: RegisterResult.self, timeout: .milliseconds(100)) { replyTo in
-                .localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: replyTo))
-            }
+            // Register as owner of the CRDT instance with local replicator
+            replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
         }
 
         // TODO: handle error instead of throw? convert replicator error to something else?
@@ -266,22 +264,22 @@ public enum CRDT {
 }
 
 extension CRDT.ActorOwned {
-    /// Register callback for owning actor to be notified when the CRDT has been updated.
+    /// Register callback for owning actor to be notified when the CRDT instance has been updated.
     ///
     /// Note that there can only be a single `onUpdate` callback for each `ActorOwned`. Multiple invocations of this
-    /// method overwrite existing value, and the last write one wins.
+    /// method overwrite existing value, and the last written one wins.
     ///
-    /// - Parameter callback: Invoked when the `ActorOwned` instance has been updated to perform any additional custom processing.
+    /// - Parameter callback: Invoked when the `ActorOwned` instance has been updated for the owner to perform any additional custom processing.
     public func onUpdate(_ callback: @escaping (CRDT.Identity, DataType) -> Void) {
         self.delegate.ownerDefinedOnUpdate = callback
     }
 
-    /// Register callback for owning actor to be notified when the CRDT has been deleted.
+    /// Register callback for owning actor to be notified when the CRDT instance has been deleted.
     ///
     /// Note that there can only be a single `onDelete` callback for each `ActorOwned`. Multiple invocations of this
-    /// method overwrite existing value, and the last write one wins.
+    /// method overwrite existing value, and the last written one wins.
     ///
-    /// - Parameter callback: Invoked when the `ActorOwned` instance has been deleted to perform any additional custom processing.
+    /// - Parameter callback: Invoked when the `ActorOwned` instance has been deleted for the owner to perform any additional custom processing.
     public func onDelete(_ callback: @escaping (CRDT.Identity) -> Void) {
         self.delegate.ownerDefinedOnDelete = callback
     }
@@ -295,13 +293,13 @@ extension CRDT {
 
         public init() {}
 
-        // `ReplicatedDataOwnerProtocol.updated`
+        // `DataOwnerMessage.updated`
         func onUpdate(actorOwned: CRDT.ActorOwned<DataType>, data: DataType) {
             actorOwned.data = data
             self.ownerDefinedOnUpdate?(actorOwned.id, data)
         }
 
-        // `ReplicatedDataOwnerProtocol.deleted`
+        // `DataOwnerMessage.deleted`
         func onDelete(actorOwned: CRDT.ActorOwned<DataType>) {
             actorOwned.status = .deleted
             self.ownerDefinedOnDelete?(actorOwned.id)
