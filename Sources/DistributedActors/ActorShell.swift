@@ -614,7 +614,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         do {
-            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
+            let naming = ActorNaming(unchecked: .prefixed(prefix: "$subReceive-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
             let ref = SubReceiveAdapter(self.myself, address: adaptedAddress, closure: closure)

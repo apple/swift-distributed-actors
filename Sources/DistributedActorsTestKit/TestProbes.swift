@@ -299,7 +299,7 @@ extension ActorTestProbe where Message: Equatable {
             self.lastMessageObserved = receivedMessage
             receivedMessage.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
         } catch {
-            let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
+            let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)] at probe [\(self.ref.path)], error: \(error)"
             throw callSite.error(message)
         }
     }

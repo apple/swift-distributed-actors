@@ -190,11 +190,11 @@ extension CRDT.Replicator {
         /// When enabled traces _all_ replicator messages.
         /// All logs will be prefixed using `[tracelog:replicator]`, for easier grepping and inspecting only logs related to the replicator.
         // TODO: how to make this nicely dynamically changeable during runtime
-        #if SACT_TRACE_REPLICATOR
+//        #if SACT_TRACE_REPLICATOR
         var traceLogLevel: Logger.Level? = .warning
-        #else
-        var traceLogLevel: Logger.Level?
-        #endif
+//        #else
+//        var traceLogLevel: Logger.Level?
+//        #endif
 
         // TODO: gossip settings
         public static var `default`: Settings {

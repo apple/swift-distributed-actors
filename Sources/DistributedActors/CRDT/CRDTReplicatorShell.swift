@@ -63,6 +63,8 @@ extension CRDT.Replicator {
         // MARK: Local command
 
         private func receiveLocalCommand(_ context: ActorContext<Message>, command: LocalCommand) {
+            self.tracelog(context, .localReceive, message: command)
+
             switch command {
             case .register(let ownerRef, let id, let data, let replyTo):
                 self.handleLocalRegisterCommand(context, ownerRef: ownerRef, id: id, data: data, replyTo: replyTo)
@@ -163,18 +165,16 @@ extension CRDT.Replicator {
         // MARK: Remote command
 
         private func receiveRemoteCommand(_ context: ActorContext<Message>, command: RemoteCommand) {
+            self.tracelog(context, .remoteReceive, message: command)
+
             switch command {
             case .write(let id, let data, let replyTo):
-                self.tracelog(context, .receive, message: command)
                 self.handleRemoteWriteCommand(context, id, data, replyTo: replyTo)
             case .writeDelta(let id, let delta, let replyTo):
-                self.tracelog(context, .receive, message: command)
                 self.handleRemoteWriteDeltaCommand(context, id, delta, replyTo: replyTo)
             case .read(let id, let replyTo):
-                self.tracelog(context, .receive, message: command)
                 self.handleRemoteReadCommand(context, id, replyTo: replyTo)
             case .delete(let id, let replyTo):
-                self.tracelog(context, .receive, message: command)
                 self.handleRemoteDeleteCommand(context, id, replyTo: replyTo)
             }
         }
@@ -229,19 +229,22 @@ extension CRDT.Replicator {
 
         // MARK: Notify owners
 
-        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
+        private func notifyOwnersOnUpdate(_ context: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
             if let owners = self.replicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data.underlying)
                 for owner in owners {
+                    self.tracelog(context, .updateOwner(owner), message: message)
                     owner.tell(message)
                 }
             }
         }
 
-        private func notifyOwnersOnDelete(_: ActorContext<Message>, _ id: Identity) {
+        private func notifyOwnersOnDelete(_ context: ActorContext<Message>, _ id: Identity) {
             if let owners = self.replicator.owners(for: id) {
+                let message: OwnerMessage = .deleted
                 for owner in owners {
-                    owner.tell(.deleted)
+                    self.tracelog(context, .updateOwner(owner), message: message)
+                    owner.tell(message)
                 }
             }
         }
@@ -266,12 +269,18 @@ extension CRDT.Replicator.Shell {
     }
 
     internal enum TraceLogType: CustomStringConvertible {
-        case receive
+        case remoteReceive
+        case localReceive
+        case updateOwner(ActorRef<OwnerMessage>)
 
         var description: String {
             switch self {
-            case .receive:
-                return "RECV"
+            case .remoteReceive:
+                return "R-RECV"
+            case .localReceive:
+                return "L-RECV"
+            case .updateOwner(let owner):
+                return "UP-OWN(\(owner.path.name))"
             }
         }
     }
