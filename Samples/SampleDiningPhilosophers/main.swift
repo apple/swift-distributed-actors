@@ -29,7 +29,7 @@ import NIO
 print("===-----------------------------------------------------===")
 print("|            Dining Philosophers Sample App               |")
 print("|                                                         |")
-print("| USAGE: swift run DistributedActorsSampleDiningPhilosophers [dist] |")
+print("| USAGE: swift run SampleDiningPhilosophers [dist] |")
 print("===-----------------------------------------------------===")
 
 switch CommandLine.arguments.dropFirst().first {

@@ -33,10 +33,10 @@ internal enum POSIXProcessUtils {
         var pid = pid_t()
 
         #if os(OSX)
-        var tid: pthread_t?
+        // var tid: pthread_t?
         var childFDActions: posix_spawn_file_actions_t?
         #else
-        var tid = pthread_t()
+        // var tid = pthread_t()
         var childFDActions = posix_spawn_file_actions_t()
         #endif
 
