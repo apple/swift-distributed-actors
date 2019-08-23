@@ -22,6 +22,9 @@ import DistributedActors
 
 let isolated = ProcessIsolated { boot in
     boot.settings.defaultLogLevel = .info
+    boot.runOn(role: .servant) {
+        boot.settings.guardianFailureHandling = .systemExit(-1)
+    }
     return ActorSystem(settings: boot.settings)
 }
 
@@ -34,12 +37,13 @@ try isolated.run(on: .master) {
 try isolated.run(on: .servant) {
     isolated.system.log.info("ISOLATED RUNNING")
 
-    let _: ActorRef<String> = try isolated.system.spawn(
-        "failOn\(isolated.roles.first!.name)",
+    // TODO: system should be configured to terminate HARD when a failure reaches the guardian
+
+    let _: ActorRef<String> = try isolated.system.spawn("failing",
         props: Props().supervision(strategy: .escalate),
         .setup { context in
             context.log.info("Spawned \(context.path) on servant node, it will fault with a [Boom].")
-            context.timers.startSingle(key: "explode", message: "Boom", delay: .milliseconds(200))
+            context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
 
             return .receiveMessage { message in
                 fatalError("Faulting on purpose: \(message)")

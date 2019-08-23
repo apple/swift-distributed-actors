@@ -89,6 +89,9 @@ public class ProcessIsolated {
             bootSettings.settings.cluster.node = node
         }
 
+        if role == .servant {
+            bootSettings.settings.guardianFailureHandling = .systemExit(-1)
+        }
         let system = boot(bootSettings)
 
         system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parent pid: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")

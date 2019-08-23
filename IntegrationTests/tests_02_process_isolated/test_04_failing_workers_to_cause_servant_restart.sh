@@ -31,7 +31,9 @@ source ${my_path}/shared.sh
 _killall ${app_name}
 
 # ====------------------------------------------------------------------------------------------------------------------
-# MARK: the servant process should not inherit FDs that the master had opened
+# MARK: the app has workers which fail so hard that the failures reach the top level actors which then terminate the system
+#       when the system terminates we kill the process; once the process terminates, the servant supervision kicks in and
+#       restarts the entire process; layered supervision for they win!
 
 swift build # synchronously ensure built
 
@@ -49,8 +51,7 @@ echo '~~~~~~~~~~~~BEFORE KILL~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 ps aux | grep ${app_name}
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
-echo "> KILL Servant: ${pid_servant}"
-kill -9 ${pid_servant}
+sleep 3 # TODO rather, sleep until another proc replaces the servant automatically
 
 echo '~~~~~~~~~~~~~ KILLED KILLED KILLED KILLED KILLED KILLED ~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 ps aux | grep ${app_name}

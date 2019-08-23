@@ -50,6 +50,9 @@ public struct ActorSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Settings
+
 public struct ActorSettings {
     public static var `default`: ActorSettings {
         return .init()
