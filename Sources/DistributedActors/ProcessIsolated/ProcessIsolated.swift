@@ -354,7 +354,7 @@ extension ProcessIsolated {
             args.append(contentsOf: args)
 
             do {
-                let pid = try POSIXProcessUtils.forkExec(command: command, args: args)
+                let pid = try POSIXProcessUtils.spawn(command: command, args: args)
                 self.storeServant(pid: pid, servant: servant)
             } catch {
                 self.system.log.error("Unable to spawn servant; Error: \(error)")
