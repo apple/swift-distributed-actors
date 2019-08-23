@@ -104,17 +104,17 @@ public enum Signals {
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
-        public let cause: Error?
+        public let escalation: Supervision.Failure?
 
-        public init(address: ActorAddress, error: Error?) {
-            self.cause = error
+        public init(address: ActorAddress, escalation: Supervision.Failure?) {
+            self.escalation = escalation
             super.init(address: address, existenceConfirmed: true)
         }
 
         public override var description: String {
             let reason: String
-            if case .some(let r) = self.cause {
-                reason = ", cause: \(r)"
+            if case .some(let r) = self.escalation {
+                reason = ", escalation: \(r)"
             } else {
                 reason = ""
             }

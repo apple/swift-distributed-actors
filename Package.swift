@@ -65,6 +65,13 @@ let targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
     .target(
+        name: "it_ProcessIsolated_faultingWorkers",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_escalatingWorkers"
+    ),
+    .target(
         name: "it_ProcessIsolated_respawnsServants",
         dependencies: [
             "DistributedActors",

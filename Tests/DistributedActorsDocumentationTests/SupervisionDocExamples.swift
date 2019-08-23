@@ -27,7 +27,7 @@ class SupervisionDocExamples {
 
         // tag::supervise_props[]
         let props = Props() // <1>
-            .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
+            .supervision(strategy: .restart(atMost: 2, within: .seconds(1))) // <2>
         // potentially more props configuration here ...
 
         let greeterRef = try context.spawn(
@@ -45,7 +45,7 @@ class SupervisionDocExamples {
 
         // tag::supervise_inline[]
         let greeterRef = try context.spawn("greeter",
-                                           props: .addingSupervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
+                                           props: .supervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
                                            greeterBehavior)
         // end::supervise_inline[]
         _ = greeterRef
@@ -75,7 +75,7 @@ class SupervisionDocExamples {
 
         let greeterRef: ActorRef<String> = try system.spawn(
             "greeter",
-            props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+            props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
             greeterBehavior(friends: friends)
         )
 
@@ -112,7 +112,7 @@ class SupervisionDocExamples {
         ]
 
         let greeterRef = try system.spawn("favFruit",
-                                          props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+                                          props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
                                           favouriteFruitBehavior(whoLikesWhat))
 
         greeterRef.tell("Alice") // ok!
@@ -142,7 +142,7 @@ class SupervisionDocExamples {
         let thrower = try system.spawn(
             "thrower",
             props: Props()
-                .addingSupervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self), // <2>
+                .supervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self), // <2>
             // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
             throwerBehavior
         )

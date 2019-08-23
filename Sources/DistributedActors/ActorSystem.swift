@@ -294,6 +294,10 @@ extension ActorSystem: ActorRefFactory {
         return try self._spawnUserActor(naming, behavior, props: props)
     }
 
+    public func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
+        return try self._spawnActor(using: self.userProvider, behavior, name: naming, props: props)
+    }
+
     internal func _spawnUserActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
         return try self._spawnActor(using: self.userProvider, behavior, name: naming, props: props)
     }

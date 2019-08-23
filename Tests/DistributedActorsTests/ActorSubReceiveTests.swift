@@ -157,7 +157,7 @@ class ActorSubReceiveTests: XCTestCase {
             return .unhandled
         }
 
-        _ = try system.spawn("test", props: .addingSupervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
+        _ = try system.spawn("test", props: .supervision(strategy: .restart(atMost: 5, within: .seconds(5))), behavior)
 
         let subRef = try refProbe.expectMessage()
 

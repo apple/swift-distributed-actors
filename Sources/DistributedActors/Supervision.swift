@@ -49,9 +49,9 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    static func addingSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    static func supervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = Props()
-        props.addSupervision(strategy: strategy, forErrorType: errorType)
+        props.supervise(strategy: strategy, forErrorType: errorType)
         return props
     }
 
@@ -62,8 +62,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    static func addingSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return self.addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    static func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Creates a new `Props` appending an supervisor for the selected `Error` type, useful for setting a few options in-line when spawning actors.
@@ -73,9 +73,9 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: error type selector, determining for what type of error the given supervisor should perform its logic.
-    func addingSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
+    func supervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) -> Props {
         var props = self
-        props.addSupervision(strategy: strategy, forErrorType: errorType)
+        props.supervise(strategy: strategy, forErrorType: errorType)
         return props
     }
 
@@ -86,8 +86,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    func addingSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
-        return self.addingSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    func supervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) -> Props {
+        return self.supervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 
     /// Adds another supervisor for the selected `Error` type to the chain of existing supervisors in this `Props`.
@@ -97,7 +97,7 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forErrorType: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func addSupervision(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
+    mutating func supervise(strategy: SupervisionStrategy, forErrorType errorType: Error.Type) {
         self.supervision.add(strategy: strategy, forErrorType: errorType)
     }
 
@@ -108,8 +108,8 @@ public extension Props {
     /// - Parameters:
     ///   - strategy: supervision strategy to apply for the given class of failures
     ///   - forAll: failure type selector, working as a "catch all" for the specific types of failures.
-    mutating func addSupervision(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) {
-        self.addSupervision(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
+    mutating func supervise(strategy: SupervisionStrategy, forAll selector: Supervise.All = .failures) {
+        self.supervise(strategy: strategy, forErrorType: Supervise.internalErrorTypeFor(selector: selector))
     }
 }
 
@@ -189,6 +189,27 @@ public enum SupervisionStrategy {
     ///     The actor's mailbox remains untouched by default, and it would continue processing it from where it left off before the crash;
     ///     the message which caused a failure is NOT processed again. For retrying processing of such higher level mechanisms should be used.
     case restart(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy?) // TODO: would like to remove the `?` and model more properly
+
+    /// WARNING: Purposefully ESCALATES the failure to the parent of the spawned actor, even if it has not watched the child.
+    ///
+    /// This allows for constructing "fail the parent" even if the parent is not under our control.
+    /// This method should not be over used, as normally the parent should decide by itself if it wants to stop
+    /// or spawn a replacement child or something else, however sometimes it is useful to allow providers of props
+    /// to configure a parent to be torn down when a specific child dies. E.g. when providing workers to a pool,
+    /// and we want to enforce the pool dying if only a single child (or a special one) terminates.
+    ///
+    /// ### Escalating to guardians
+    /// Root guardians, such as `/user` or `/system` take care of spawning children when `system.spawn` is invoked.
+    /// These guardians normally do not care for the termination of their children, as the `stop` supervision strategy
+    /// instructs them to. By spawning a top-level actor, e.g. under the `/user`-guardian and passing in the `.escalate`
+    /// strategy, it is possible to escalate failures to the guardians, which in turn will cause the system to terminate.
+    ///
+    /// This strategy is useful whenever the failure of some specific actor should be considered "fatal to the actor system",
+    /// yet we still want to perform a graceful shutdown, rather than an abrupt one (e.g. by calling `exit()`).
+    ///
+    /// #### Inter-op with `ProcessIsolated`
+    /// It is worth pointing out, that escalating failures to root guardians
+    case escalate
 }
 
 public extension SupervisionStrategy {
@@ -237,6 +258,8 @@ public struct Supervision {
             case .restart(let atMost, let within, let backoffStrategy):
                 let strategy = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
                 return RestartingSupervisor(initialBehavior: initialBehavior, restartLogic: strategy, failureType: failureType)
+            case .escalate:
+                return EscalatingSupervisor(failureType: failureType)
             case .stop:
                 return StoppingSupervisor(failureType: failureType)
             }
@@ -338,7 +361,9 @@ public enum Supervise {
     }
 
     internal enum AllErrors: Error {}
+
     internal enum AllFaults: Error {}
+
     internal enum AllFailures: Error {}
 }
 
@@ -470,9 +495,9 @@ internal class Supervisor<Message> {
         repeat {
             switch processingAction {
             case .closure(let closure):
-                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.location)] , handling with \(self)")
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.location)], handling with \(self.descriptionForLogs)")
             default:
-                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self)")
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self.descriptionForLogs)")
             }
 
             let directive: Directive
@@ -489,8 +514,7 @@ internal class Supervisor<Message> {
                     return .stop(reason: .failure(.error(error)))
 
                 case .escalate(let failure):
-                    // TODO: this is not really escalating (yet)
-                    return .stop(reason: .failure(failure))
+                    return context._downcastUnsafe._escalate(failure: failure)
 
                 case .restartImmediately(let replacement):
                     try context._downcastUnsafe._restartPrepare()
@@ -498,7 +522,6 @@ internal class Supervisor<Message> {
 
                 case .restartDelayed(let delay, let replacement):
                     try context._downcastUnsafe._restartPrepare()
-
                     return SupervisionRestartDelayedBehavior.after(delay: delay, with: replacement)
                 }
             } catch {
@@ -531,6 +554,10 @@ internal class Supervisor<Message> {
     func isSame(as other: Supervisor<Message>) -> Bool {
         return undefined()
     }
+
+    var descriptionForLogs: String {
+        return "\(type(of: self))"
+    }
 }
 
 /// Supervisor equivalent to not having supervision enabled, since stopping is the default behavior of failing actors.
@@ -544,12 +571,12 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
     }
 
     override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
-        guard failure.shouldBeHandled(bySupervisorHandling: self.failureType) else {
+        if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
             // TODO: matters perhaps only for metrics where we'd want to "please count this specific type of error" so leaving this logic as-is
             return .stop
+        } else {
+            return .stop
         }
-
-        return .stop
     }
 
     override func isSame(as other: Supervisor<Message>) -> Bool {
@@ -562,6 +589,43 @@ final class StoppingSupervisor<Message>: Supervisor<Message> {
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
         return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+    }
+
+    override var descriptionForLogs: String {
+        return "[.stop] supervision strategy"
+    }
+}
+
+/// Escalates failure to parent, while failing the current actor.
+final class EscalatingSupervisor<Message>: Supervisor<Message> {
+    internal let failureType: Error.Type
+
+    internal init(failureType: Error.Type) {
+        self.failureType = failureType
+    }
+
+    override func handleFailure(_ context: ActorContext<Message>, target: Behavior<Message>, failure: Supervision.Failure, processingType: ProcessingType) throws -> SupervisionDirective<Message> {
+        if failure.shouldBeHandled(bySupervisorHandling: self.failureType) {
+            return .escalate(failure)
+        } else {
+            return .stop
+        }
+    }
+
+    override func isSame(as other: Supervisor<Message>) -> Bool {
+        if let other = other as? EscalatingSupervisor<Message> {
+            return self.failureType == other.failureType
+        } else {
+            return false
+        }
+    }
+
+    override func canHandle(failure: Supervision.Failure) -> Bool {
+        return failure.shouldBeHandled(bySupervisorHandling: self.failureType)
+    }
+
+    override var descriptionForLogs: String {
+        return "[.escalate<\(self.failureType)>] supervision strategy"
     }
 }
 
@@ -589,7 +653,9 @@ final class CompositeSupervisor<Message>: Supervisor<Message> {
     }
 
     override func canHandle(failure: Supervision.Failure) -> Bool {
-        return self.supervisors.contains { $0.canHandle(failure: failure) }
+        return self.supervisors.contains {
+            $0.canHandle(failure: failure)
+        }
     }
 }
 
@@ -746,6 +812,10 @@ final class RestartingSupervisor<Message>: Supervisor<Message> {
     // TODO: complete impl
     public override func isSame(as other: Supervisor<Message>) -> Bool {
         return other is RestartingSupervisor<Message>
+    }
+
+    override var descriptionForLogs: String {
+        return "[.restart(\(self.restartDecider))] supervision strategy"
     }
 }
 

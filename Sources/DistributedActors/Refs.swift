@@ -415,7 +415,7 @@ internal class Guardian {
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
-        case .childTerminated(let ref):
+        case .childTerminated(let ref, let escalatedFailure):
             self._childrenLock.synchronized {
                 _ = self._children.removeChild(identifiedBy: ref.address)
                 // if we are stopping and all children have been stopped,
@@ -423,6 +423,15 @@ internal class Guardian {
                 if self.stopping, self._children.isEmpty {
                     self.allChildrenRemoved.signalAll()
                 }
+            }
+
+            if let failure = escalatedFailure {
+                guard let system = self.system else {
+                    // TODO: What else to do here? print to stderr? we are likely already shutting down or already shut down.")
+                    return
+                }
+                system.log.error("Escalated failure from [\(ref)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)")
+                system.shutdown()
             }
         default:
             CDistributedActorsMailbox.sact_dump_backtrace()

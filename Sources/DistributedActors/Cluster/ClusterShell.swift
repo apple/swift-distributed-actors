@@ -197,7 +197,7 @@ internal class ClusterShell {
 
     private var props: Props =
         Props()
-        .addingSupervision(strategy: .stop) // always fail completely (may revisit this) // TODO: Escalate
+        .supervision(strategy: .escalate) // always fail completely
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -330,7 +330,7 @@ extension ClusterShell {
 
         if let existingAssociation = state.association(with: remoteNode) {
             // TODO: we maybe could want to attempt and drop the other "old" one?
-            state.log.warning("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
+            state.log.debug("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
             switch existingAssociation {
             case .associated(let associationState):
                 replyTo?.tell(.success(associationState.remoteNode))

@@ -21,29 +21,31 @@ import Glibc
 import DistributedActors
 
 let isolated = ProcessIsolated { boot in
-    // create actor system (for each process this will run a new since this is the beginning of the program)
     boot.settings.defaultLogLevel = .info
     return ActorSystem(settings: boot.settings)
 }
 
-// all code following here executes on either servant or master
-// ...
-
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
-// though one can ensure to only run if in a process of a given role:
 try isolated.run(on: .master) {
-    // open some fds, hope to not leak them into children!
-    var fds: [Int] = []
-    for i in 1 ... 1000 {
-        fds.append(Int(open("/tmp/masters-treasure-\(i).txt", O_WRONLY | O_CREAT, 0o666)))
-    }
+    isolated.spawnServantProcess(supervision: .restart(atMost: 1, within: nil), args: ["fatalError"])
+}
 
-    isolated.system.log.info("Opened \(fds.count) files...! Let's not leak them to servants")
+try isolated.run(on: .servant) {
+    isolated.system.log.info("ISOLATED RUNNING")
 
-    /// spawn a servant
+    let _: ActorRef<String> = try isolated.system.spawn(
+        "failOn\(isolated.roles.first!.name)",
+        props: Props().supervision(strategy: .escalate),
+        .setup { context in
+            context.log.info("Spawned \(context.path) on servant node, it will fault with a [Boom].")
+            context.timers.startSingle(key: "explode", message: "Boom", delay: .milliseconds(200))
 
-    isolated.spawnServantProcess(supervision: .restart(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
+            return .receiveMessage { message in
+                fatalError("Faulting on purpose: \(message)")
+                return .stop
+            }
+        })
 }
 
 // finally, once prepared, you have to invoke the following:

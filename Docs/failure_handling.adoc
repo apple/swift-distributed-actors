@@ -5,15 +5,6 @@
 > Thankfully actors make this task much simpler, as all kinds of failures are unified into supervision or termination events,
 > to which one can react to.
 
-CAUTION: **The current supervision implementation** (of "faults" specifically) **is a Proof of Concept.** +
-         +
-         It "works, but..." will leak memory that the actor has allocated in case of
-         supervision handling a fault (e.g. a division by zero). The application process will remain alive, the fault
-         will be logged and handled by stopping or restarting the offending actor, however resources will leak. +
-         This behavior can be controlled with the `supervisionMode` setting on api:ActorSystemSettings[struct]. +
-         +
-         Supervision also handles `Error` throws which is safe in the same way throws in normal Swift applications are.
-
 [[supervision_vocabulary]]
 === Failure Vocabulary
 
@@ -38,7 +29,7 @@ Further more, you can expect see phases involving the word "crash". We use this 
 handling or a failure causing the stopping of an entire node. The wording should usually classify what the subject of the
 crash was, e.g. _"the system crashed"_ or _"the request handler (actor) crashed."_
 
-=== Supervision
+=== Actor Supervision
 
 > Supervision allows actors to isolate failures and optionally restart by clearing their state and continuing to process
 their mailbox while retaining their identity.
@@ -221,6 +212,104 @@ TIP: Supervision is not a replacement for fixing faults. Faults should be taken 
 
 #TODO cleanup logs a bit, the supervisor is quite large in the printout#
 
+[[failure_isolation]]
+=== Failure Isolation Modes
+
+Actor systems allow you to isolate failure in various levels, of both "effort" and amount of achieved isolation / safety.
+
+NOTE: Failure isolation across nodes is simple, as such processes by design do not share memory and only communicate
+using messages over the network, the failure of one component is already isolated thanks to the network boundary. +
+      +
+      We do however have the ability to detect and react to node failures, which we'll discuss in the <<cluster>> section of the guide.
+
+==== Thread Isolation of Errors (Default)
+
+[cols="20,80"]
+|===
+
+| When to use | Always; Always-on and complementary to other modes.
+
+| Effort      | Low, built in supervision of `Error` throws.
+
+|===
+
+
+==== (Managed) Process Isolation
+
+[cols="20,80"]
+|===
+
+| When to use   | To isolate actors with a process boundary. E.g. to isolate potentially unsafe C code etc.
+
+| Effort        | Medium; need to bootstrap application starting with `ProcessIsolated`. See #TODO NIO example# how to use with Swift NIO.
+
+| Security note | *This is NOT a security feature.* No protection from actively malicious code is achieved by this approach.
+                  It can protect from memory leaks and issues in unsafe but not malicious code.
+
+|===
+
+To overcome the limitations of supervising faults in present day Swift as well as isolating faults originating from potentially
+unsafe code (such as C libraries which you may not have control over), the `ProcessIsolated` class offers automatic and same
+"look and feel" ability to control operating system processes for isolating actor system instances from one another.
+
+By using the api:ProcessIsolated[class], you can easily maintain multiple operating system processes.
+The following diagram showcases a structure of an process using api:ProcessIsolated[class] to spawn some servant processes.
+
+Servants are ActorSystem managed child processes (called servants, to separate them from non-managed child processes),
+which partake in the same cluster as their master process.
+
+image::images/process-isolated-servants.png[ProcessIsolated process and system structure]
+
+
+NOTE: While this method is effective in isolating faults including serious ones like segfaults or similar in
+      the servant (child) processes, it comes at a price; Maintaining many processes is expensive and communication between them
+      is less efficient than communicating between actors located in the same actor system (as serialization needs to be involved). +
+      +
+      *Having that said, this is the recommended way to achieve fault isolation with status-quo Swift.*
+
+==== Node Isolation
+
+|===
+
+| When to use | To distribute your application across multiple nodes; Scale-out for either redundancy of because of memory constraints.
+
+| Effort      | Medium; The cluster needs to be bootstrapped, and any messages to be send across nodes need to have <<Serialization, serializers>> defined.
+
+|===
+
+==== ☠️ *Unsafe*, PoC: Thread Isolation of Faults
+
+#TODO: Remove this feature.#
+
+[cols="20,80"]
+|===
+
+| When to use | Never. (Almost never... could be used for asap-but-graceful-shutdown)
+
+| Effort      | Low, though wrong -- this leads to memory leaks and is not safe for production environments.
+
+|===
+
+
+CAUTION: **The supervision of faults is an UNSAFE Proof of Concept. DO NOT USE.** +
+         +
+         It "works, but..." *will leak memory* that the actor has allocated in case of
+supervision handling a fault (e.g. a division by zero). The application process will remain alive, the fault
+will be logged and handled by stopping or restarting the offending actor, however resources will leak. +
+         This behavior can be controlled with the `supervisionMode` setting on api:ActorSystemSettings[struct]. +
+         +
+         Supervision also handles `Error` throws which is safe in the same way throws in normal Swift applications are.
+
+
+WARNING: It is possible to enable a special mode in which faults _are_ supervised just as errors, however due to current
+Swift limitations, this method will result in leaking memory upon "survival" of such crash. +
+         +
+         This mode may be enabled using the `-DSACT_DANGER_SUPERVISE_ACTOR_FAULTS` flag #TODO make this flag#,
+and should be used with great care, as it is using potentially unsafe methods and _does_ leak memory upon survival of fault. +
+         +
+         This mode is ONLY intended to "survive crash and immediately issue a graceful shutdown" of a system.
+
+
 === Supervision strategies
 
 As shown in the previous section, actors can be supervised by applying specific props settings to them at spawn-time.
@@ -311,16 +400,8 @@ NOTE: Supervision is not intended to replace `do/catch` blocks, and should be us
       entity or situation.
 
 
-[[failure_isolation]]
-=== Failure isolation
 
-#TODO: write this#
-
-NOTE: Failure isolation across nodes is simple, as such processes by design do not share memory and only communicate
-      using messages over the network, the failure of one component is already isolated thanks to the network boundary. +
-      +
-      We do however have the ability to detect and react to node failures, which we'll discuss in the <<cluster>> section
-      of the guide.
+#TODO: DOCUMENT#
 
 [[supervision_tree]]
 === Supervision hierarchies
@@ -345,14 +426,6 @@ Some faults are serious enough that continuing running after they have occurred 
 At the same time, bear in mind that while it may be possible to recover from some faults using Swift Distributed Actors, it may not be the best course of action,
 sometimes faults are legitimate problems and can leave your system vulnerable. Make sure to always investigate fault crashes
 of your actors and aim to build systems where faults do not occur on regular basis.
-
-=== Failure Isolation
-
-Actor systems allow you to isolate failure in various levels, of both "effort" and amount of achieved isolation / safety.
-
-==== Process Isolation
-
-#TODO: DOCUMENT#
 
 [[backtraces]]
 === Analysing Back Traces (Crash Logs)

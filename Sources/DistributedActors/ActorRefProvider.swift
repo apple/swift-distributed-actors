@@ -140,10 +140,15 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
                 dispatcher: dispatcher
             )
 
-            let refWithCell = actor._myCell
+            let cell = actor._myCell
 
-            refWithCell.sendSystemMessage(.start)
-
+            cell.sendSystemMessage(.start)
+            switch props.supervision.supervisionMappings.first?.strategy {
+            case .some(.escalate):
+                cell.sendSystemMessage(.watch(watchee: actor.asAddressable, watcher: root.ref.asAddressable()))
+            default:
+                ()
+            }
             return actor
         }
     }

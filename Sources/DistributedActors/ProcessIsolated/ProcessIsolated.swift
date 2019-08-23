@@ -197,13 +197,13 @@ public class ProcessIsolated {
     /// Role that a process isolated process can fulfil.
     /// Used by `isolated.runOn(role: )
     public struct Role: Hashable, CustomStringConvertible {
-        let name: String
+        public let name: String
 
         init(_ name: String) {
             self.name = name
         }
 
-        func `is`(_ name: String) -> Bool {
+        public func `is`(_ name: String) -> Bool {
             return self.name == name
         }
 
@@ -227,6 +227,8 @@ internal struct ServantProcess {
         switch supervisionStrategy.underlying {
         case .restart(let atMost, let within, let backoffStrategy):
             self.restartLogic = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
+        case .escalate:
+            fatalError("TODO: IMPLEMENT ME")
         case .stop:
             self.restartLogic = nil
         }

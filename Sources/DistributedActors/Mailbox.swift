@@ -176,7 +176,7 @@ internal final class Mailbox<Message> {
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
             switch _shell {
-            case .some(let cell): cell.fail(error)
+            case .some(let shell): shell.fail(error)
             case .none: pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
@@ -192,7 +192,7 @@ internal final class Mailbox<Message> {
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
             switch _shell {
-            case .some(let cell): cell.fail(error)
+            case .some(let shell): shell.fail(error)
             case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
@@ -231,11 +231,10 @@ internal final class Mailbox<Message> {
                     // decision is to stop which is terminal, thus: Let it Crash!
                     return .failureTerminate
 
-                case .escalate:
+                case .escalate(let failure):
                     pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
                     // failure escalated "all the way", so decision is to fail, Let it Crash!
-                    // TODO: escalate to parent via terminated with the error?
-                    // TODO: do we need to crash children explicitly here?
+                    try shell.becomeNext(behavior: shell._escalate(failure: failure))
                     return .failureTerminate
 
                 case .restartImmediately(let nextBehavior):
