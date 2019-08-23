@@ -252,7 +252,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Ack.self)
         let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
 
-        let memberProbe = self.testKit(remote).spawnTestProbe(name: "RemoteSWIM", expecting: SWIM.Message.self)
+        let memberProbe = self.testKit(remote).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
         let remoteMemberRef = local._resolveKnownRemote(memberProbe.ref, onRemoteSystem: remote)
 
         let swimRef = try local.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.localClusterProbe.ref))

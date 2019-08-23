@@ -5,8 +5,18 @@
 > Thankfully actors make this task much simpler, as all kinds of failures are unified into supervision or termination events,
 > to which one can react to.
 
+=== Introduction
+
+==== Mindset for Handling Failure with Actors
+
+#TODO: Using actors, we separate happy paths, from failure paths#.
+
+Errors which are meant to be handled in your logic -- handle them using your logic.
+
+
+
 [[supervision_vocabulary]]
-=== Failure Vocabulary
+==== Failure Vocabulary
 
 Before we explain the mechanisms available to you to handle failures in Swift Distributed Actors, we first need to define a shared vocabulary
 that we will use while discussing these. Since there are various "types" of failure conditions, we want to be as specific

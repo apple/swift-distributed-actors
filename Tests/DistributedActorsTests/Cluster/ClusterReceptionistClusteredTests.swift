@@ -95,9 +95,9 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe(name: "registeredProbe", expecting: Receptionist.Registered<String>.self)
-        let localLookupProbe = self.testKit(local).spawnTestProbe(name: "localLookupProbe", expecting: Receptionist.Listing<String>.self)
-        let remoteLookupProbe = self.testKit(remote).spawnTestProbe(name: "remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Receptionist.Registered<String>.self)
+        let localLookupProbe = self.testKit(local).spawnTestProbe("localLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let remoteLookupProbe = self.testKit(remote).spawnTestProbe("remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             .same

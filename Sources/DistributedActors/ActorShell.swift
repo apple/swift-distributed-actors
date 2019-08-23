@@ -313,9 +313,20 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
 
-        case .childTerminated(let ref, let maybeEscalatedFailure):
-            let terminated = Signals.ChildTerminated(address: ref.address, escalation: maybeEscalatedFailure)
-            try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+        case .childTerminated(let ref, let circumstances):
+            switch circumstances {
+            // escalation takes precedence over death watch in terms of how we report errors
+            case .escalating(let failure):
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: true)
+
+            case .stopped:
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: false)
+            case .failed(let failure):
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: false)
+            }
 
         case .nodeTerminated(let remoteNode):
             self.interpretNodeTerminated(remoteNode)
@@ -359,7 +370,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
-        case .stop: return self.children.nonEmpty
+        case .stop, .failed: return self.children.nonEmpty
         default: return true
         }
     }
@@ -398,10 +409,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     @usableFromInline
     internal func _escalate(failure: Supervision.Failure) -> Behavior<Message> {
-        self._myCell.mailbox.setFailed()
         self.behavior = self.behavior.fail(cause: failure)
 
-        self._parent.ref.sendSystemMessage(.childTerminated(ref: self.asAddressable, escalated: failure), file: #file, line: #line)
+        // FIXME: should not be needed since we'll signal when we finishTerminating
+        // self._parent.ref.sendSystemMessage(.childTerminated(ref: self.asAddressable, .escalating(failure)), file: #file, line: #line)
 
         return self.behavior
     }
@@ -499,8 +510,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         // note that even though the parent can (and often does) `watch(child)`, we filter it out from
         // our `watchedBy` set, since otherwise we would have to filter it out when sending the terminated back.
         // correctness is ensured though, since the parent always receives the `ChildTerminated`.
-        self.notifyParentWeDied()
-        self.notifyWatchersWeDied()
+        self.notifyParentOfTermination()
+        self.notifyWatchersOfTermination()
 
         self.invokePendingDeferredClosuresWhileTerminating()
 
@@ -530,20 +541,26 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed
-    func notifyWatchersWeDied() {
+    func notifyWatchersOfTermination() {
         traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.address)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
 
-    func notifyParentWeDied() {
+    func notifyParentOfTermination() {
         let parent: AddressableActorRef = self._parent
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.address)], parent [\(parent.address)]")
-        switch self.behavior.underlying {
-        case .failed(_, let error):
-            parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), escalated: error))
-        default:
-            parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), escalated: nil))
+
+        guard case .failed(_, let failure) = self.behavior.underlying else {
+            // we are not failed, so no need to further check for .escalate supervision
+            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .stopped))
         }
+
+        guard self.supervisor is EscalatingSupervisor<Message> else {
+            // NOT escalating
+            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .failed(failure)))
+        }
+
+        parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
     }
 
     func invokePendingDeferredClosuresWhileTerminating() {
@@ -692,7 +709,8 @@ extension ActorShell {
     /// Results in signaling `Terminated` for all of the locally watched actors on the (now terminated) node.
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
-    @inlinable internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
+    @inlinable
+    internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received address terminated: \(terminatedNode)")
         #endif
@@ -700,12 +718,14 @@ extension ActorShell {
         self.deathWatch.receiveNodeTerminated(terminatedNode, myself: self.asAddressable)
     }
 
-    @inlinable internal func interpretStop() throws {
+    @inlinable
+    internal func interpretStop() throws {
         self.children.stopAll()
         try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
-    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
+    @inlinable
+    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated, escalation: Bool) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif
@@ -721,8 +741,6 @@ extension ActorShell {
         // next we may apply normal deathWatch logic if the child was being watched
         if self.deathWatch.isWatching(terminatedRef.address) {
             return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
-
-            // TODO: escalation?
         } else {
             // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
 

@@ -25,6 +25,11 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     /// Spawn an actor with the passed in [Behavior] and return its [ActorRef].
     ///
     /// The returned actor ref is immediately valid and may have messages sent to.
+    ///
+    /// ### Lack of `.spawnWatch` on top level
+    /// Note that it is not possible to `.spawnWatch` top level actors. // TODO this is on purpose,
+    /// since any stop would mean the system shutdown if you really want this then implement your own top actor to spawn children.
+    /// It is possible however to use .supervision(strategy: .escalate)) as failures bubbling up through the system may indeed be a reason to terminate.
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
@@ -143,12 +148,6 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
             let cell = actor._myCell
 
             cell.sendSystemMessage(.start)
-            switch props.supervision.supervisionMappings.first?.strategy {
-            case .some(.escalate):
-                cell.sendSystemMessage(.watch(watchee: actor.asAddressable, watcher: root.ref.asAddressable()))
-            default:
-                ()
-            }
             return actor
         }
     }

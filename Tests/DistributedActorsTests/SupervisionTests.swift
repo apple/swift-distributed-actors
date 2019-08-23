@@ -517,23 +517,24 @@ class SupervisionTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Escalating supervision
 
-    func test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents() throws {
+    func test_escalateSupervised_throws_shouldKeepEscalatingThrough_watchingParents() throws {
         let pt = self.testKit.spawnTestProbe("pt", expecting: ActorRef<String>.self)
         let pm = self.testKit.spawnTestProbe("pm", expecting: ActorRef<String>.self)
         let pab = self.testKit.spawnTestProbe("pab", expecting: ActorRef<String>.self)
         let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
         let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
-        _ = try self.system.spawnWatch("top", of: String.self, .setup { c in
+        _ = try self.system.spawn("top", of: String.self, .setup { c in
             pt.tell(c.myself)
 
-            _ = try c.spawnWatch("middle", of: String.self, .setup { cc in
+            _ = try c.spawn("middle", of: String.self, props: .supervision(strategy: .escalate), .setup { cc in
                 pm.tell(cc.myself)
 
+                // you can also just watch, this way the failure will be both in case of stop or crash; failure will be a Death Pact rather than indicating an escalation
                 _ = try cc.spawnWatch("almostBottom", of: String.self, .setup { ccc in
                     pab.tell(ccc.myself)
 
-                    _ = try ccc.spawnWatch("bottom", of: String.self, .setup { cccc in
+                    _ = try ccc.spawnWatch("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
                         pb.tell(cccc.myself)
                         return .receiveMessage { message in
                             throw Boom(message)
@@ -574,6 +575,118 @@ class SupervisionTests: XCTestCase {
 
         // top should not terminate since it handled the thing
         try pt.expectNoTerminationSignal(for: .milliseconds(200))
+    }
+
+    func test_escalateSupervised_throws_shouldKeepEscalatingThrough_nonWatchingParents() throws {
+        let pt = self.testKit.spawnTestProbe("pt", expecting: ActorRef<String>.self)
+        let pm = self.testKit.spawnTestProbe("pm", expecting: ActorRef<String>.self)
+        let pab = self.testKit.spawnTestProbe("pab", expecting: ActorRef<String>.self)
+        let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
+        let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
+
+        _ = try self.system.spawn("top", of: String.self, .setup { c in
+            pt.tell(c.myself)
+
+            _ = try c.spawn("middle", of: String.self, props: .supervision(strategy: .escalate), .setup { cc in
+                pm.tell(cc.myself)
+
+                _ = try cc.spawn("almostBottom", of: String.self, props: .supervision(strategy: .escalate), .setup { ccc in
+                    pab.tell(ccc.myself)
+
+                    _ = try ccc.spawn("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
+                        pb.tell(cccc.myself)
+                        return .receiveMessage { message in
+                            throw Boom(message)
+                        }
+                    })
+
+                    return .ignore
+                })
+
+                return .ignore
+            })
+
+            return Behavior<String>.receiveSpecificSignal(Signals.ChildTerminated.self) { context, terminated in
+                pp.tell("Prevented escalation to top level in \(context.myself.path), terminated: \(terminated)")
+
+                return .same // stop the failure from reaching the guardian and terminating the system
+            }
+        })
+
+        let top = try pt.expectMessage()
+        pt.watch(top)
+        let middle = try pm.expectMessage()
+        pm.watch(middle)
+        let almostBottom = try pab.expectMessage()
+        pab.watch(almostBottom)
+        let bottom = try pb.expectMessage()
+        pb.watch(bottom)
+
+        bottom.tell("Boom!")
+
+        let msg = try pp.expectMessage()
+        msg.shouldContain("Prevented escalation to top level in /user/top")
+
+        // Death Parade:
+        try pb.expectTerminated(bottom) // Boom!
+        try pab.expectTerminated(almostBottom) // Boom!
+        try pm.expectTerminated(middle) // Boom!
+
+        // top should not terminate since it handled the thing
+        try pt.expectNoTerminationSignal(for: .milliseconds(200))
+    }
+
+    func test_escalateSupervised_throws_shouldKeepEscalatingUntilNonEscalatingParent() throws {
+        let pt = self.testKit.spawnTestProbe("pt", expecting: ActorRef<String>.self)
+        let pm = self.testKit.spawnTestProbe("pm", expecting: ActorRef<String>.self)
+        let pab = self.testKit.spawnTestProbe("pab", expecting: ActorRef<String>.self)
+        let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
+        let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
+
+        _ = try self.system.spawn("top", of: String.self, .setup { c in
+            pt.tell(c.myself)
+
+            _ = try c.spawn("middle", of: String.self, .setup { cc in
+                pm.tell(cc.myself)
+
+                // does not watch or escalate child failures, this means that this is our "failure isolator"; failures will be stopped at this actor (!)
+                _ = try cc.spawn("almostBottom", of: String.self, .setup { ccc in
+                    pab.tell(ccc.myself)
+
+                    _ = try ccc.spawn("bottom", of: String.self, props: .supervision(strategy: .escalate), .setup { cccc in
+                        pb.tell(cccc.myself)
+                        return .receiveMessage { message in
+                            throw Boom(message)
+                        }
+                    })
+
+                    return .ignore
+                })
+
+                return .ignore
+            })
+
+            return .ignore
+        })
+
+        let top = try pt.expectMessage()
+        pt.watch(top)
+        let middle = try pm.expectMessage()
+        pm.watch(middle)
+        let almostBottom = try pab.expectMessage()
+        pab.watch(almostBottom)
+        let bottom = try pb.expectMessage()
+        pb.watch(bottom)
+
+        bottom.tell("Boom!")
+
+        // Death Parade:
+        try pb.expectTerminated(bottom) // Boom!
+        try pab.expectTerminated(almostBottom) // Boom!
+
+        // the almost bottom has isolated the fault; it does not leak more upwards the tree
+        try pm.expectNoTerminationSignal(for: .milliseconds(100))
+        try pt.expectNoTerminationSignal(for: .milliseconds(100))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

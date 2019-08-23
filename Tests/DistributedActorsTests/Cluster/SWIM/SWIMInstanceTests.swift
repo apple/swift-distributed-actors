@@ -169,9 +169,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPingRequestResponse_ignoresTooOldRefutations() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(name: "p1", expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(name: "p2", expecting: SWIM.Message.self).ref
-        let p3 = self.testKit.spawnTestProbe(name: "p3", expecting: SWIM.Message.self).ref
+        let p1 = self.testKit.spawnTestProbe("p1", expecting: SWIM.Message.self).ref
+        let p2 = self.testKit.spawnTestProbe("p2", expecting: SWIM.Message.self).ref
+        let p3 = self.testKit.spawnTestProbe("p3", expecting: SWIM.Message.self).ref
 
         // p3 is suspect already...
         swim.addMyself(p1)

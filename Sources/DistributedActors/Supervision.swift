@@ -515,6 +515,7 @@ internal class Supervisor<Message> {
 
                 case .escalate(let failure):
                     return context._downcastUnsafe._escalate(failure: failure)
+//                     return .stop(reason: .failure(failure))
 
                 case .restartImmediately(let replacement):
                     try context._downcastUnsafe._restartPrepare()
