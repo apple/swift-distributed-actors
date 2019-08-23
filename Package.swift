@@ -115,7 +115,7 @@ let dependencies: [Package.Dependency] = [
 ]
 
 let package = Package(
-    name: "DistributedActors",
+    name: "swift-distributed-actors",
     products: [
         .library(
             name: "DistributedActors",
