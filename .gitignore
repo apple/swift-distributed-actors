@@ -16,3 +16,4 @@ SwiftDistributedActors.xcworkspace
 /reference/
 /api/
 .swiftpm/
+Package.resolved
