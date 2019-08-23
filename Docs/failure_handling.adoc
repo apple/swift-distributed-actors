@@ -346,6 +346,14 @@ At the same time, bear in mind that while it may be possible to recover from som
 sometimes faults are legitimate problems and can leave your system vulnerable. Make sure to always investigate fault crashes
 of your actors and aim to build systems where faults do not occur on regular basis.
 
+=== Failure Isolation
+
+Actor systems allow you to isolate failure in various levels, of both "effort" and amount of achieved isolation / safety.
+
+==== Process Isolation
+
+#TODO: DOCUMENT#
+
 [[backtraces]]
 === Analysing Back Traces (Crash Logs)
 

@@ -19,7 +19,7 @@ set -e
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
-declare -r app_name='DistributedActorsSampleProcessIsolated'
+declare -r app_name='it_ProcessIsolated_respawnsServants'
 
 cd ${root_path}
 
@@ -28,7 +28,7 @@ source ${my_path}/shared.sh
 _killall ${app_name}
 
 # ====------------------------------------------------------------------------------------------------------------------
-# test_ProcessIsolated: servant process should terminate if master is killed
+# MARK: servant process should terminate if master is killed
 
 echo "=================================================================================================================="
 echo "BUILD APP"
