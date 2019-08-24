@@ -85,7 +85,7 @@ public extension ActorRef {
 
 extension ActorRef: CustomStringConvertible {
     public var description: String {
-        // we do this in order to print `Fork.Messages` rather than `DistributedActorsSampleDiningPhilosophers.Fork.Messages`
+        // we do this in order to print `Fork.Messages` rather than `SampleDiningPhilosophers.Fork.Messages`
         // or the `Messages` which a simple "\(Message.self)" would yield.
         let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
         return "ActorRef<\(prettyTypeName)>(\(self.address))"

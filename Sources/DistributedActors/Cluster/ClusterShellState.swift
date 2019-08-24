@@ -307,7 +307,7 @@ extension ClusterShellState {
 
             // TODO; we currently automatically move to UP; this should be done with more coordination
             self._membership = self._membership.joining(handshake.remoteNode)
-            self._membership.mark(handshake.remoteNode, as: .up)
+            _ = self._membership.mark(handshake.remoteNode, as: .up)
         }
 
         let change = self._membership.join(handshake.remoteNode)

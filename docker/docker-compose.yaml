@@ -56,8 +56,8 @@ services:
 
   sample-crash:
     <<: *common
-    command: /bin/bash -cl "swift run DistributedActorsSampleLetItCrash div-by-0"
+    command: /bin/bash -cl "swift run SampleLetItCrash div-by-0"
 
   sample-crash-actor:
     <<: *common
-    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' DistributedActorsSampleLetItCrash div-by-0 actor"
+    command: /bin/bash -cl "swift run -Xswiftc='-DSACT_BACKTRACE_DEMANGLE' SampleLetItCrash div-by-0 actor"

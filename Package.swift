@@ -28,6 +28,14 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors", "DistributedActorsConcurrencyHelpers"]
     ),
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Documentation
+
+    .testTarget(
+        name: "DistributedActorsDocumentationTests",
+        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+    ),
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Tests
 
@@ -86,21 +94,19 @@ let targets: [PackageDescription.Target] = [
     // MARK: Samples
 
     .target(
-        name: "DistributedActorsSampleDiningPhilosophers",
-        dependencies: ["DistributedActors"]
+        name: "SampleDiningPhilosophers",
+        dependencies: ["DistributedActors"],
+        path: "Samples/SampleDiningPhilosophers"
     ),
     .target(
-        name: "DistributedActorsSampleLetItCrash",
-        dependencies: ["DistributedActors"]
+        name: "SampleLetItCrash",
+        dependencies: ["DistributedActors"],
+        path: "Samples/SampleLetItCrash"
     ),
     .target(
-        name: "DistributedActorsSampleCluster",
-        dependencies: ["DistributedActors"]
-    ),
-    /* --- documentation snippets --- */
-    .testTarget(
-        name: "DistributedActorsDocumentationTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        name: "SampleCluster",
+        dependencies: ["DistributedActors"],
+        path: "Samples/SampleCluster"
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -155,15 +161,15 @@ let package = Package(
 
         .executable(
             name: "DistributedActorsSampleDiningPhilosophers",
-            targets: ["DistributedActorsSampleDiningPhilosophers"]
+            targets: ["SampleDiningPhilosophers"]
         ),
         .executable(
             name: "DistributedActorsSampleLetItCrash",
-            targets: ["DistributedActorsSampleLetItCrash"]
+            targets: ["SampleLetItCrash"]
         ),
         .executable(
             name: "DistributedActorsSampleCluster",
-            targets: ["DistributedActorsSampleCluster"]
+            targets: ["SampleCluster"]
         ),
     ],
 
