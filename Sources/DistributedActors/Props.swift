@@ -156,14 +156,18 @@ extension Props {
     ///
     /// E.g. you may want to report average mailbox size among all worker actors, rather than each and single worker,
     /// to achieve this, one would tag all spawned workers using the same metrics `group`.
-    public static func withMetrics(group: String, dimensions: [(String, String)] = []) -> Props {
+    public static func metrics(group: String, dimensions: [(String, String)] = []) -> Props {
         var props = Props()
         props.metrics = .init(group: group, dimensions: dimensions)
         return props
     }
 
-    /// --||--
-    public func withMetrics(group: String, dimensions: [(String, String)] = []) -> Props {
+    /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
+    /// Since actors may be running various behaviors, it is best to explicitly tag spawned actors with which group they should be reporting metrics to.
+    ///
+    /// E.g. you may want to report average mailbox size among all worker actors, rather than each and single worker,
+    /// to achieve this, one would tag all spawned workers using the same metrics `group`.
+    public func metrics(group: String, dimensions: [(String, String)] = []) -> Props {
         var props = self
         props.metrics = .init(group: group, dimensions: dimensions)
         return props

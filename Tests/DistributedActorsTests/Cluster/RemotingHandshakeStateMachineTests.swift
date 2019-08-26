@@ -41,7 +41,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         configureSettings(&settings)
         let log = Logger(label: "handshake-\(side)") // TODO: could be a mock logger we can assert on?
 
-        return ClusterShellState(settings: settings, metrics: ActorSystemMetrics(), channel: EmbeddedChannel(), log: log)
+        return ClusterShellState(settings: settings, channel: EmbeddedChannel(), log: log)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

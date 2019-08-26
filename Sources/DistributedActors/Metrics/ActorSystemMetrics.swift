@@ -24,47 +24,53 @@ internal class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Metrics (global)
 
-    /// Total number of alive actors in the system
-    let actors_count: AddGauge
-    let actors_count_system: AddGauge
-    let actors_suspended: AddGauge
+    /// actors.count { root=/user, event=start }
+    /// actors.count { root=/user, event=stop }
+    let actors_count_user: MetricsPNCounter
+    /// actors.count { root=/system, event=start }
+    /// actors.count { root=/system, event=stop }
+    let actors_count_system: MetricsPNCounter
 
-    func recordStart<Anything>(_ shell: ActorShell<Anything>) {
+    func recordActorStart<Anything>(_ shell: ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        if shell.path.starts(with: ._system) {
+        switch shell.path.segments.first! {
+        case ActorPathSegment._system:
             self.actors_count_system.increment()
-        } else {
-            self.actors_count.increment()
+        case ActorPathSegment._user:
+            self.actors_count_user.increment()
+        default:
+            fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
     }
 
-    func recordStop<Anything>(_ shell: ActorShell<Anything>) {
+    func recordActorStop<Anything>(_ shell: ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        if shell.path.starts(with: ._system) {
+        switch shell.path.segments.first! {
+        case ActorPathSegment._system:
             self.actors_count_system.decrement()
-        } else {
-            self.actors_count.decrement()
+        case ActorPathSegment._user:
+            self.actors_count_user.decrement()
+        default:
+            fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Mailbox
 
-    // TODO: seems we have to cache the gauges ourselves for the Prometheus backend? seems wrong.
-
-    let _mailbox_size: AddGauge
-
-    /// Report mailbox size, based on shell's props (e.g. into a group measurement)
-    func mailbox_size<Anything>(_ shell: ActorShell<Anything>) -> AddGauge? {
-        if let group = shell._props.metrics.group {
-            // TODO: get counter for specific group, such that: `dimensions: [("group": group)]`
-            return self._mailbox_size
-        } else {
-            return nil
-        }
-    }
+//    let _mailbox_size: Gauge
+//
+//    /// Report mailbox size, based on shell's props (e.g. into a group measurement)
+//    func mailbox_size<Anything>(_ shell: ActorShell<Anything>) -> Gauge? {
+//        if let group = shell._props.metrics.group {
+//            // TODO: get counter for specific group, such that: `dimensions: [("group": group)]`
+//            return self._mailbox_size
+//        } else {
+//            return nil
+//        }
+//    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Metrics
@@ -78,7 +84,7 @@ internal class ActorSystemMetrics {
 
     let cluster_unreachable_members: Gauge
 
-    func update(_ membership: Membership) {
+    func recordMembership(_ membership: Membership) {
         let members = membership.members(atLeast: .joining)
 
         var joining = 0
@@ -156,22 +162,27 @@ internal class ActorSystemMetrics {
         self.settings = settings
 
         // ==== Actors -------------------------------------------
-        // TODO: generalize this
-        self.actors_count = .init(label: settings.makeLabel("actors", "count"), dimensions: [("root", "user")])
-        self.actors_count_system = .init(label: settings.makeLabel("actors", "count"), dimensions: [("root", "system")])
-        self.actors_suspended = .init(label: settings.makeLabel("actors", "suspended"), dimensions: [])
+        let dimStart = ("event", "start")
+        let dimStop = ("event", "stop")
+        let rootUser = ("root", "/user")
+        let rootSystem = ("root", "/system")
+
+        let actorsLifecycle = settings.makeLabel("actors", "lifecycle")
+        self.actors_count_user = .init(label: actorsLifecycle, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
+        self.actors_count_system = .init(label: actorsLifecycle, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
 
         // ==== Mailbox -------------------------------------------
-        self._mailbox_size = AddGauge(label: "TODO.mailbox.count", dimensions: [])
+        // TODO: more mailbox metrics;
 
         // ==== Cluster -------------------------------------------
         // TODO: generalize somehow how we add dimensions?
-        self.cluster_members = .init(label: settings.makeLabel("cluster", "members"))
-        self.cluster_members_joining = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("status", "joining")])
-        self.cluster_members_up = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("status", "up")])
-        self.cluster_members_down = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("status", "down")])
-        self.cluster_members_leaving = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("status", "leaving")])
-        self.cluster_members_removed = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("status", "removed")])
-        self.cluster_unreachable_members = .init(label: settings.makeLabel("cluster", "members"), dimensions: [("reachability", "unreachable")])
+        let clusterMembers = settings.makeLabel("cluster", "members")
+        self.cluster_members = .init(label: clusterMembers)
+        self.cluster_members_joining = .init(label: clusterMembers, dimensions: [("status", "joining")])
+        self.cluster_members_up = .init(label: clusterMembers, dimensions: [("status", "up")])
+        self.cluster_members_down = .init(label: clusterMembers, dimensions: [("status", "down")])
+        self.cluster_members_leaving = .init(label: clusterMembers, dimensions: [("status", "leaving")])
+        self.cluster_members_removed = .init(label: clusterMembers, dimensions: [("status", "removed")])
+        self.cluster_unreachable_members = .init(label: clusterMembers, dimensions: [("reachability", "unreachable")])
     }
 }

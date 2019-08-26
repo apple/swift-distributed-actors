@@ -88,7 +88,7 @@ struct MetricPrinter {
     }
 }
 
-let props = Props().withMetrics(group: "talkers")
+let props = Props().metrics(group: "talkers")
 
 let t1 = try system.spawn("talker-1", props: props, Talker.talkTo(another: nil))
 let t2 = try system.spawn("talker-2", props: props, Talker.talkTo(another: t1))

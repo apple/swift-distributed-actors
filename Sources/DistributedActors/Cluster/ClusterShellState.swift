@@ -41,7 +41,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     // TODO: maybe move log and settings outside of state into the shell?
     var log: Logger
     let settings: ClusterSettings
-    let metrics: ActorSystemMetrics
 
     let selfNode: UniqueNode
     let channel: Channel
@@ -60,10 +59,9 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     // TODO: make private
     internal var _membership: Membership
 
-    init(settings: ClusterSettings, metrics: ActorSystemMetrics, channel: Channel, log: Logger) {
+    init(settings: ClusterSettings, channel: Channel, log: Logger) {
         self.log = log
         self.settings = settings
-        self.metrics = metrics
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 

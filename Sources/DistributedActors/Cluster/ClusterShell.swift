@@ -241,8 +241,8 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let state = ClusterShellState(settings: clusterSettings, metrics: context.system.metrics, channel: chan, log: context.log)
-                state.metrics.update(state.membership)
+                let state = ClusterShellState(settings: clusterSettings, channel: chan, log: context.log)
+                context.system.metrics.recordMembership(state.membership)
 
                 return self.ready(state: state)
             }
@@ -603,7 +603,7 @@ extension ClusterShell {
                 self._events.publish(.reachability(.memberReachable(changedMember)))
             }
 
-            state.metrics.update(state.membership)
+            context.system.metrics.recordMembership(state.membership)
 
             return self.ready(state: state)
         } else {

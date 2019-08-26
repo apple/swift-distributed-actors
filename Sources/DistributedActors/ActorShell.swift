@@ -147,6 +147,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         self.namingContext = ActorNamingContext()
 
+        // TODO: replace with TestMetrics which we could use to inspect the start/stop counts
         #if SACT_TESTS_LEAKS
         // We deliberately only count user actors here, because the number of
         // system actors may change over time and they are also not relevant for
@@ -155,7 +156,9 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             _ = system.userCellInitCounter.add(1)
         }
         #endif
-        system.metrics.actors_count.add(1)
+
+        super.init()
+        system.metrics.recordActorStart(self)
     }
 
     deinit {
@@ -165,7 +168,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             _ = system.userCellInitCounter.sub(1)
         }
         #endif
-        system.metrics.actors_count.add(-1)
+        system.metrics.recordActorStop(self)
     }
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
@@ -722,8 +725,8 @@ extension ActorShell {
 
 extension ActorShell: CustomStringConvertible {
     public var description: String {
-        let path = self._myCell.address.description
-        return "\(type(of: self))(\(path))"
+        let prettyTypeName = String(reflecting: Message.self).split(separator: ".").dropFirst().joined(separator: ".")
+        return "ActorShell<\(prettyTypeName)>(\(self.path))"
     }
 }
 
