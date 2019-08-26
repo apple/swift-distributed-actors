@@ -19,10 +19,16 @@ extension CRDT {
     /// An optimized ORSet based on [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf),
     /// influenced by Bartosz Sypytkowski's work (https://github.com/Horusiath/crdt-examples) and Akka's [`ORSet`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/ORSet.scala).
     ///
+    /// ORSet, short for observed-remove set and also known as add-wins replicated set, supports both `add` and `remove`.
+    /// An element can be added or removed any number of times. The outcome of `add`s and `remove`s depends only on the
+    /// causal history ("happens-before" relation) of operations. It's "add-wins" because when `add` and `remove` of the
+    /// same element are concurrent (i.e., we cannot determine which happens before another), `add` always "wins" since
+    /// `remove` is concerned with *observed* events only (the concurrent `add` hasn't been observed yet).
+    ///
     /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
-    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-    public struct ORSet<Element: Hashable>: NamedDeltaCRDT, CRDTSet {
+    /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
+    public struct ORSet<Element: Hashable>: NamedDeltaCRDT, ORSetOperations {
         public typealias ORSetDelta = VersionedContainer<Element>.Delta
         public typealias Delta = ORSetDelta
 
@@ -133,7 +139,41 @@ extension CRDT {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 
-// See CRDT.ActorOwned extension for generic operations of CRDTSet
+public protocol ORSetOperations {
+    associatedtype Element: Hashable
+
+    var elements: Set<Element> { get }
+
+    mutating func add(_ element: Element)
+    mutating func remove(_ element: Element)
+}
+
+// `CRDT.ORSet` is a generic type and we are not allowed to have `extension CRDT.ActorOwned where DataType == ORSet`. As
+// a result we introduce the `ORSetOperations` in order to bind `Element`. A workaround would be to add generic parameter
+// to each method:
+//
+//     extension CRDT.ActorOwned {
+//         public func add<Element: Hashable>(_ element: Element, ...) -> Result<DataType> where DataType == CRDT.ORSet<Element> { ... }
+//     }
+//
+// But this doesn't work for `lastObservedValue`, which is a computed property.
+extension CRDT.ActorOwned where DataType: ORSetOperations {
+    public var lastObservedValue: Set<DataType.Element> {
+        return self.data.elements
+    }
+
+    public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        // Add element locally then propagate
+        self.data.add(element)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        // Remove element locally then propagate
+        self.data.remove(element)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}
 
 extension CRDT.ORSet {
     public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.ORSet<Element>> {

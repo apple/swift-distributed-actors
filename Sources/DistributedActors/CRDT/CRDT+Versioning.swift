@@ -26,11 +26,11 @@
 //  - Dotted version vector: {(c,4), {(a,3), (b,2), (c,2)}}, where (c,4) is the "dot".
 //
 // In the papers listed above a dotted version vector is defined to have only a single dot, and Riak implemented it so (https://github.com/basho/riak_core/blob/develop-3.0/src/dvvset.erl).
-// (DVVSet is an improved implementation of DVV. See https://github.com/ricardobcl/Dotted-Version-Vectors.)
+// (DVVSet is an improved implementation of DVV. See https://github.com/ricardobcl/Dotted-Version-Vectors)
 //
 // Akka's CRDTs and Bartosz Sypytkowski's work (https://github.com/Horusiath/crdt-examples, https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
-// are similar to one another. Different from Riak, they both use multiple dots with a version vector instead of a DVV
-// (i.e., a dot with a version vector)--a notion that we will follow here.
+// are similar to one another. Different from Riak, which uses DVV (i.e., a single dot with a version vector), they both
+// use multiple dots with a version vector instead--a notion that we will follow here.
 
 extension CRDT {
     /// `VersionContext`'s internal structure is very similar to dotted version vector. The difference is that it keeps
@@ -279,7 +279,7 @@ extension CRDT {
             //   2) B removed it and A has not seen that yet
             // We compare the element's birth dot to the `versionContext` in the replica that the element is absent
             // from. If the dot is covered by `versionContext`, it means the element was removed recently (2).
-            /// Otherwise, the element was added recently (1).
+            // Otherwise, the element was added recently (1).
 
             var mergedElementByBirthDot = self.elementByBirthDot
 

@@ -18,6 +18,9 @@
 extension CRDT {
     /// An optimized implementation of GCounter as delta-CRDT.
     ///
+    /// GCounter, or grow-only counter, is a counter that only increments. Its value cannot be decreased--there is no
+    /// `decrement` operation and negative values are rejected by the `increment` method.
+    ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/abs/1603.01529)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct GCounter: NamedDeltaCRDT {
