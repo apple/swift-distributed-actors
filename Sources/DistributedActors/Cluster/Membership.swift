@@ -135,7 +135,13 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     }
 
     func members(atLeast status: MemberStatus) -> [Member] {
-        return self._members.values.filter { $0.status <= status }
+        switch status {
+        case .joining:
+            // at least joining nodes == all nodes, since there is no status earlier than joining
+            return Array(self._members.values) // TODO: avoid copy
+        default:
+            return self._members.values.filter { $0.status <= status }
+        }
     }
 }
 

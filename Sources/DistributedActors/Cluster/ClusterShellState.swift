@@ -39,19 +39,20 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
     // TODO: maybe move log and settings outside of state into the shell?
-    public var log: Logger
-    public let settings: ClusterSettings
+    var log: Logger
+    let settings: ClusterSettings
+    let metrics: ActorSystemMetrics
 
-    public let selfNode: UniqueNode
-    public let channel: Channel
+    let selfNode: UniqueNode
+    let channel: Channel
 
-    public let eventLoopGroup: EventLoopGroup
+    let eventLoopGroup: EventLoopGroup
 
-    public var backoffStrategy: BackoffStrategy {
+    var backoffStrategy: BackoffStrategy {
         return self.settings.handshakeBackoffStrategy
     }
 
-    public let allocator: ByteBufferAllocator
+    let allocator: ByteBufferAllocator
 
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: AssociationStateMachine.State] = [:]
@@ -59,9 +60,10 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     // TODO: make private
     internal var _membership: Membership
 
-    init(settings: ClusterSettings, channel: Channel, log: Logger) {
+    init(settings: ClusterSettings, metrics: ActorSystemMetrics, channel: Channel, log: Logger) {
         self.log = log
         self.settings = settings
+        self.metrics = metrics
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 

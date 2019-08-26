@@ -21,6 +21,8 @@ public struct ActorSystemSettings {
         return .init()
     }
 
+    // TODO: LoggingSettings
+
     /// Configure default log level for all `Logger` instances created by the library.
     public var defaultLogLevel: Logger.Level = .info // TODO: maybe remove this? should be up to logging library to configure for us as well
 
@@ -34,6 +36,7 @@ public struct ActorSystemSettings {
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
+    public var metrics: MetricsSettings = .default(rootName: nil)
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode

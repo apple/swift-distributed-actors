@@ -34,14 +34,17 @@ public struct Props {
 
     public var supervision: SupervisionProps
 
-    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, supervision: SupervisionProps) {
+    public var metrics: MetricsProps
+
+    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, supervision: SupervisionProps, metrics: MetricsProps) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
         self.supervision = supervision
+        self.metrics = metrics
     }
 
     public init() {
-        self.init(mailbox: .default(), dispatcher: .default, supervision: .init())
+        self.init(mailbox: .default(), dispatcher: .default, supervision: .init(), metrics: .default)
     }
 }
 
@@ -142,4 +145,36 @@ public enum MailboxOverflowStrategy {
     case crash
     case dropIncoming
     case dropMailbox
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Metrics Props
+
+extension Props {
+    /// It is too often too much to report metrics for every single actor, and thus metrics are often better reported in groups.
+    /// Since actors may be running various behaviors, it is best to explicitly tag spawned actors with which group they should be reporting metrics to.
+    ///
+    /// E.g. you may want to report average mailbox size among all worker actors, rather than each and single worker,
+    /// to achieve this, one would tag all spawned workers using the same metrics `group`.
+    public static func withMetrics(group: String, dimensions: [(String, String)] = []) -> Props {
+        var props = Props()
+        props.metrics = .init(group: group, dimensions: dimensions)
+        return props
+    }
+
+    /// --||--
+    public func withMetrics(group: String, dimensions: [(String, String)] = []) -> Props {
+        var props = self
+        props.metrics = .init(group: group, dimensions: dimensions)
+        return props
+    }
+}
+
+public struct MetricsProps {
+    let group: String?
+    let dimensions: [(String, String)]
+
+    public static var `default`: MetricsProps {
+        return .init(group: nil, dimensions: [])
+    }
 }

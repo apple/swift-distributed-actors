@@ -58,11 +58,17 @@ public final class ActorSystem {
     // initialized during startup
     public var serialization: Serialization!
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Receptionist
+
     public var receptionist: ActorRef<Receptionist.Message> {
         return self._receptionist
     }
 
     private var _receptionist: ActorRef<Receptionist.Message>!
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: CRDT Replicator
 
     internal var replicator: ActorRef<CRDT.Replicator.Message> {
         return self._replicator
@@ -70,6 +76,16 @@ public final class ActorSystem {
 
     private var _replicator: ActorRef<CRDT.Replicator.Message>!
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Metrics
+
+    internal var metrics: ActorSystemMetrics {
+        return self._metrics
+    }
+
+    private lazy var _metrics: ActorSystemMetrics = ActorSystemMetrics(self.settings.metrics)
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Cluster
 
     // initialized during startup
@@ -99,6 +115,7 @@ public final class ActorSystem {
     public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         var settings = ActorSystemSettings()
         settings.cluster.node.systemName = name
+        settings.metrics.rootName = name
         configureSettings(&settings)
         self.init(settings: settings)
     }
@@ -191,6 +208,8 @@ public final class ActorSystem {
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
         }
+
+        _ = self.metrics // force init of metrics
     }
 
     public convenience init() {

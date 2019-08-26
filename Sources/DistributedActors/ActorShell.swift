@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 
 import CDistributedActorsMailbox
-import Dispatch
 import Logging
+import Metrics
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -155,6 +155,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             _ = system.userCellInitCounter.add(1)
         }
         #endif
+        system.metrics.actors_count.add(1)
     }
 
     deinit {
@@ -164,6 +165,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             _ = system.userCellInitCounter.sub(1)
         }
         #endif
+        system.metrics.actors_count.add(-1)
     }
 
     /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
