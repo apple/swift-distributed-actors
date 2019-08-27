@@ -34,7 +34,7 @@ public struct MetricsSettings {
 
     /// Prefix all metrics with this segment.
     ///
-    /// Defaults to the actor systems' name.
+    /// Defaults to the actor system's name.
     public var systemName: String?
 
     /// Segment prefixed before all metrics exported automatically by the actor system.
