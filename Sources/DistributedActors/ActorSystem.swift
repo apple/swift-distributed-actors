@@ -115,7 +115,7 @@ public final class ActorSystem {
     public convenience init(_ name: String, configuredWith configureSettings: (inout ActorSystemSettings) -> Void = { _ in () }) {
         var settings = ActorSystemSettings()
         settings.cluster.node.systemName = name
-        settings.metrics.rootName = name
+        settings.metrics.systemName = name
         configureSettings(&settings)
         self.init(settings: settings)
     }

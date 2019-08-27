@@ -19,7 +19,7 @@ import Metrics
 public struct MetricsSettings {
     public static func `default`(rootName: String?) -> MetricsSettings {
         var it = MetricsSettings()
-        it.rootName = rootName
+        it.systemName = rootName
         return it
     }
 
@@ -35,14 +35,21 @@ public struct MetricsSettings {
     /// Prefix all metrics with this segment.
     ///
     /// Defaults to the actor systems' name.
-    public var rootName: String?
+    public var systemName: String?
+
+    /// Segment prefixed before all metrics exported automatically by the actor system.
+    public var systemMetricsPrefix: String? = "sact"
 
     func makeLabel(_ segments: String...) -> String {
         let joined = segments.joined(separator: self.segmentSeparator)
-        switch self.rootName {
-        case .some(let root):
+        switch (self.systemName, self.systemMetricsPrefix) {
+        case (.some(let root), .some(let prefix)):
+            return "\(root)\(self.segmentSeparator)\(prefix)\(self.segmentSeparator)\(joined)"
+        case (.none, .some(let prefix)):
+            return "\(prefix)\(self.segmentSeparator)\(joined)"
+        case (.some(let root), .none):
             return "\(root)\(self.segmentSeparator)\(joined)"
-        case .none:
+        case (.none, .none):
             return "\(joined)"
         }
     }

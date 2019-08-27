@@ -36,7 +36,7 @@ public struct Props {
 
     public var metrics: MetricsProps
 
-    public init(mailbox: MailboxProps, dispatcher: DispatcherProps, supervision: SupervisionProps, metrics: MetricsProps) {
+    public init(mailbox: MailboxProps = .default(), dispatcher: DispatcherProps = .default, supervision: SupervisionProps = .default, metrics: MetricsProps = .default) {
         self.mailbox = mailbox
         self.dispatcher = dispatcher
         self.supervision = supervision
@@ -44,7 +44,7 @@ public struct Props {
     }
 
     public init() {
-        self.init(mailbox: .default(), dispatcher: .default, supervision: .init(), metrics: .default)
+        self.init(mailbox: .default(), dispatcher: .default, supervision: .default, metrics: .default)
     }
 }
 
@@ -129,7 +129,7 @@ public enum MailboxProps {
     /// Default mailbox.
     case `default`(capacity: UInt32, onOverflow: MailboxOverflowStrategy)
 
-    static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
+    public static func `default`(capacity: UInt32 = UInt32.max) -> MailboxProps {
         return .default(capacity: capacity, onOverflow: .crash)
     }
 
@@ -180,5 +180,10 @@ public struct MetricsProps {
 
     public static var `default`: MetricsProps {
         return .init(group: nil, dimensions: [])
+    }
+
+    public init(group: String?, dimensions: [(String, String)]) {
+        self.group = group
+        self.dimensions = dimensions
     }
 }

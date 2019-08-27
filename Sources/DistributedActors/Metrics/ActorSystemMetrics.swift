@@ -17,6 +17,14 @@ import Metrics
 
 /// Carries references to all metrics objects for simple and structured usage throughout the actor system.
 ///
+/// Implementation note: Metrics should be updated by using some dedicated meaningfully named method, e.g. `recordActorStart()`,
+/// rather than directly updating counters from library code, such that which counter is updated and how is encapsulated in this file,
+/// and is possible to refer to when wanting to understand metrics.
+///
+/// ### Naming
+/// Metric variable names here follow the snake case-style, this is in order to have a visual 1:1 match with how the metrics
+/// are reported in to actual metrics backends; Most often the segments are separated by `.`, `/`, or `_`.
+///
 /// - SeeAlso: [SwiftMetrics](https://github.com/apple/swift-metrics) for compatible backend implementations.
 internal class ActorSystemMetrics {
     let settings: MetricsSettings
@@ -24,21 +32,23 @@ internal class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Metrics (global)
 
-    /// actors.count { root=/user, event=start }
-    /// actors.count { root=/user, event=stop }
-    let actors_count_user: MetricsPNCounter
-    /// actors.count { root=/system, event=start }
-    /// actors.count { root=/system, event=stop }
-    let actors_count_system: MetricsPNCounter
+    // Note: To calculate number of current alive actors, calculate: `actors.lifecycle { event=start } - actors.lifecycle { event=stop }`
+
+    /// actors.lifecycle { root=/user, event=start }
+    /// actors.lifecycle { root=/user, event=stop }
+    let _actors_lifecycle_user: MetricsPNCounter
+    /// actors.lifecycle { root=/system, event=start }
+    /// actors.lifecycle { root=/system, event=stop }
+    let _actors_lifecycle_system: MetricsPNCounter
 
     func recordActorStart<Anything>(_ shell: ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         switch shell.path.segments.first! {
         case ActorPathSegment._system:
-            self.actors_count_system.increment()
+            self._actors_lifecycle_system.increment()
         case ActorPathSegment._user:
-            self.actors_count_user.increment()
+            self._actors_lifecycle_user.increment()
         default:
             fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
@@ -49,9 +59,9 @@ internal class ActorSystemMetrics {
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
         switch shell.path.segments.first! {
         case ActorPathSegment._system:
-            self.actors_count_system.decrement()
+            self._actors_lifecycle_system.decrement()
         case ActorPathSegment._user:
-            self.actors_count_user.decrement()
+            self._actors_lifecycle_user.decrement()
         default:
             fatalError("TODO other actor path roots not supported; Was: \(shell)")
         }
@@ -75,14 +85,16 @@ internal class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Cluster Metrics
 
-    let cluster_members: Gauge
-    let cluster_members_joining: Gauge
-    let cluster_members_up: Gauge
-    let cluster_members_down: Gauge
-    let cluster_members_leaving: Gauge
-    let cluster_members_removed: Gauge
+    /// cluster.members
+    let _cluster_members: Gauge
+    /// cluster.members
+    let _cluster_members_joining: Gauge
+    let _cluster_members_up: Gauge
+    let _cluster_members_down: Gauge
+    let _cluster_members_leaving: Gauge
+    let _cluster_members_removed: Gauge
 
-    let cluster_unreachable_members: Gauge
+    let _cluster_unreachable_members: Gauge
 
     func recordMembership(_ membership: Membership) {
         let members = membership.members(atLeast: .joining)
@@ -114,13 +126,13 @@ internal class ActorSystemMetrics {
                 () // skip
             }
 
-            self.cluster_members.record(up)
-            self.cluster_members_joining.record(joining)
-            self.cluster_members_up.record(up)
-            self.cluster_members_down.record(down)
-            self.cluster_members_leaving.record(leaving)
-            self.cluster_members_removed.record(removed)
-            self.cluster_unreachable_members.record(unreachable)
+            self._cluster_members.record(up)
+            self._cluster_members_joining.record(joining)
+            self._cluster_members_up.record(up)
+            self._cluster_members_down.record(down)
+            self._cluster_members_leaving.record(leaving)
+            self._cluster_members_removed.record(removed)
+            self._cluster_unreachable_members.record(unreachable)
         }
     }
 
@@ -161,28 +173,30 @@ internal class ActorSystemMetrics {
     init(_ settings: MetricsSettings) {
         self.settings = settings
 
-        // ==== Actors -------------------------------------------
+        // ==== Actors ----------------------------------------------
         let dimStart = ("event", "start")
         let dimStop = ("event", "stop")
         let rootUser = ("root", "/user")
         let rootSystem = ("root", "/system")
 
-        let actorsLifecycle = settings.makeLabel("actors", "lifecycle")
-        self.actors_count_user = .init(label: actorsLifecycle, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
-        self.actors_count_system = .init(label: actorsLifecycle, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
+        let actorsLifecycleLabel = settings.makeLabel("actors", "lifecycle")
+        self._actors_lifecycle_user = .init(label: actorsLifecycleLabel, positive: [rootUser, dimStart], negative: [rootUser, dimStop])
+        self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
 
-        // ==== Mailbox -------------------------------------------
+        // ==== Mailbox ---------------------------------------------
         // TODO: more mailbox metrics;
 
-        // ==== Cluster -------------------------------------------
-        // TODO: generalize somehow how we add dimensions?
-        let clusterMembers = settings.makeLabel("cluster", "members")
-        self.cluster_members = .init(label: clusterMembers)
-        self.cluster_members_joining = .init(label: clusterMembers, dimensions: [("status", "joining")])
-        self.cluster_members_up = .init(label: clusterMembers, dimensions: [("status", "up")])
-        self.cluster_members_down = .init(label: clusterMembers, dimensions: [("status", "down")])
-        self.cluster_members_leaving = .init(label: clusterMembers, dimensions: [("status", "leaving")])
-        self.cluster_members_removed = .init(label: clusterMembers, dimensions: [("status", "removed")])
-        self.cluster_unreachable_members = .init(label: clusterMembers, dimensions: [("reachability", "unreachable")])
+        // ==== CRDTs -----------------------------------------------
+        // TODO: more mailbox metrics;
+
+        // ==== Cluster ---------------------------------------------
+        let clusterMembersLabel = settings.makeLabel("cluster", "members")
+        self._cluster_members = .init(label: clusterMembersLabel)
+        self._cluster_members_joining = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.joining.rawValue)])
+        self._cluster_members_up = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.joining.rawValue)])
+        self._cluster_members_down = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.down.rawValue)])
+        self._cluster_members_leaving = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.leaving.rawValue)])
+        self._cluster_members_removed = .init(label: clusterMembersLabel, dimensions: [("status", MemberStatus.removed.rawValue)])
+        self._cluster_unreachable_members = .init(label: clusterMembersLabel, dimensions: [("reachability", MemberReachability.unreachable.rawValue)])
     }
 }

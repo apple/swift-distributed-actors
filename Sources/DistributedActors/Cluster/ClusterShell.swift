@@ -197,7 +197,7 @@ internal class ClusterShell {
 
     private var props: Props =
         Props()
-        .addingSupervision(strategy: .stop) // always fail completely (may revisit this)
+        .addingSupervision(strategy: .stop) // always fail completely (may revisit this) // TODO: Escalate
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -292,15 +292,18 @@ extension ClusterShell {
             case .handshakeOffer(let offer, let channel, let promise):
                 self.tracelog(context, .receiveUnique(from: offer.from), message: offer)
                 return self.onHandshakeOffer(context, state, offer, channel: channel, replyInto: promise)
+
             case .handshakeAccepted(let accepted, let channel):
                 self.tracelog(context, .receiveUnique(from: accepted.from), message: accepted)
-                return self.onHandshakeAccepted(state, accepted, channel: channel)
+                return self.onHandshakeAccepted(context, state, accepted, channel: channel)
+
             case .handshakeRejected(let rejected):
                 self.tracelog(context, .receive(from: rejected.from), message: rejected)
-                return self.onHandshakeRejected(state, rejected)
+                return self.onHandshakeRejected(context, state, rejected)
+
             case .handshakeFailed(let address, let error):
                 self.tracelog(context, .receive(from: address), message: error)
-                return self.onHandshakeFailed(state, with: address, error: error) // FIXME: implement this basically disassociate() right away?
+                return self.onHandshakeFailed(context, state, with: address, error: error) // FIXME: implement this basically disassociate() right away?
             }
         }
 
@@ -497,7 +500,7 @@ extension ClusterShell {
 // MARK: Incoming Handshake Replies
 
 extension ClusterShell {
-    private func onHandshakeAccepted(_ state: ClusterShellState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
+    private func onHandshakeAccepted(_ context: ActorContext<Message>, _ state: ClusterShellState, _ accept: Wire.HandshakeAccept, channel: Channel) -> Behavior<Message> {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
@@ -516,10 +519,11 @@ extension ClusterShell {
 
         completed.whenCompleted?.succeed(.accept(completed.makeAccept()))
 
+        context.system.metrics.recordMembership(state.membership)
         return self.ready(state: state)
     }
 
-    private func onHandshakeRejected(_ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
+    private func onHandshakeRejected(_ context: ActorContext<Message>, _ state: ClusterShellState, _ reject: Wire.HandshakeReject) -> Behavior<Message> {
         var state = state
 
         state.log.error("Handshake was rejected by: [\(reject.from)], reason: [\(reject.reason)]")
@@ -530,10 +534,11 @@ extension ClusterShell {
             self.notifyHandshakeFailure(state: hsmState, node: reject.from, error: HandshakeConnectionError(node: reject.from, message: reject.reason))
         }
 
+        context.system.metrics.recordMembership(state.membership)
         return self.ready(state: state)
     }
 
-    private func onHandshakeFailed(_ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
+    private func onHandshakeFailed(_ context: ActorContext<Message>, _ state: ClusterShellState, with node: Node, error: Error) -> Behavior<Message> {
         var state = state
 
         state.log.error("Handshake error while connecting [\(node)]: \(error)")
@@ -541,6 +546,7 @@ extension ClusterShell {
             self.notifyHandshakeFailure(state: hsmState, node: node, error: error)
         }
 
+        context.system.metrics.recordMembership(state.membership)
         return self.ready(state: state)
     }
 
@@ -604,7 +610,6 @@ extension ClusterShell {
             }
 
             context.system.metrics.recordMembership(state.membership)
-
             return self.ready(state: state)
         } else {
             return .same
