@@ -21,9 +21,9 @@ extension CRDT {
     ///
     /// ORSet, short for observed-remove set and also known as add-wins replicated set, supports both `add` and `remove`.
     /// An element can be added or removed any number of times. The outcome of `add`s and `remove`s depends only on the
-    /// causal history ("happens-before" relation) of operations. It's "add-wins" because when `add` and `remove` of the
+    /// causal history ("happens-before" relation) of operations. It is "add-wins" because when `add` and `remove` of the
     /// same element are concurrent (i.e., we cannot determine which happens before another), `add` always "wins" since
-    /// `remove` is concerned with *observed* events only (the concurrent `add` hasn't been observed yet).
+    /// `remove` is concerned with *observed* events only (the concurrent `add` has not been observed yet).
     ///
     /// - SeeAlso: [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf)
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
@@ -65,7 +65,7 @@ extension CRDT {
 
             // The paper suggests we coalesce repeated adds of an element within this replica only, but since
             // `VersionedContainer` keeps track of causal history, we know the globally unique version (i.e., the birth
-            // dot) created for this add dominates all previous ones, even if they occurred in other replicas, so it's
+            // dot) created for this add dominates all previous ones, even if they occurred in other replicas, so it is
             // safe to call `remove(element)` here.
 
             // Keep only the latest add to reduce space.
@@ -156,7 +156,7 @@ public protocol ORSetOperations {
 //         public func add<Element: Hashable>(_ element: Element, ...) -> Result<DataType> where DataType == CRDT.ORSet<Element> { ... }
 //     }
 //
-// But this doesn't work for `lastObservedValue`, which is a computed property.
+// But this does not work for `lastObservedValue`, which is a computed property.
 extension CRDT.ActorOwned where DataType: ORSetOperations {
     public var lastObservedValue: Set<DataType.Element> {
         return self.data.elements

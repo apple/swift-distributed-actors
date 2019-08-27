@@ -177,7 +177,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         }
 
         g1.increment(by: 10)
-        // Reset g1's delta so that it's nil
+        // Reset g1's delta so that it is nil
         g1.resetDelta()
 
         // Write g1 with deltaMerge == true but g1.delta is nil; code should fallback to `merge`

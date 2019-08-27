@@ -56,7 +56,7 @@ extension CRDT {
             case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<RegisterResult>?)
 
             // Perform write to at least `consistency` members
-            // `data` is expected to be the full CRDT. Don't send delta even if it is a delta-CRDT.
+            // `data` is expected to be the full CRDT. Do not send delta even if it is a delta-CRDT.
             case write(_ id: Identity, _ data: ReplicatedData, consistency: OperationConsistency, replyTo: ActorRef<WriteResult>)
             // Perform read from at least `consistency` members
             case read(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<ReadResult>)
