@@ -114,7 +114,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
             return .same
         }
 
-        for i in (0 ... self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
+        for i in (0...self.system.settings.actor.maxBehaviorNestingDepth).reversed() {
             behavior = Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)
@@ -185,7 +185,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
         let behavior = setupDaDoRunRunRunDaDoRunRun()
         _ = try system.spawn("nestedSetups", behavior)
 
-        for depth in 0 ..< self.system.settings.actor.maxBehaviorNestingDepth {
+        for depth in 0..<self.system.settings.actor.maxBehaviorNestingDepth {
             try p.expectMessage("at:\(depth)")
         }
         try p.expectNoMessage(for: .milliseconds(50))

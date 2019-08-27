@@ -573,7 +573,7 @@ final class TestRunner {
         samples.reserveCapacity(numSamples)
         logVerbose("    Collecting \(numSamples) samples.")
         logVerbose("    Measuring with scale \(numIters).")
-        for _ in samples.count ..< numSamples {
+        for _ in samples.count..<numSamples {
             addSample(measure(test.name, fn: testFn, numIters: numIters))
         }
 
@@ -598,7 +598,7 @@ final class TestRunner {
             let base20 = "0123456789ABCDEFGHIJ".map { String($0) }
             let index: (Int) -> String =
                 { q == 2 ? "" : q <= 20 ? base20[$0] : String($0) }
-            let tail = (1 ..< q).map { prefix + index($0) } + ["MAX"]
+            let tail = (1..<q).map { prefix + index($0) } + ["MAX"]
             return [withUnit("MIN")] + tail.map(c.delta ? withDelta : withUnit)
         }
         return (
@@ -616,7 +616,7 @@ final class TestRunner {
         func report(_ index: String, _ t: BenchmarkInfo, results: BenchResults?) {
             func values(r: BenchResults) -> [String] {
                 func quantiles(q: Int) -> [Int] {
-                    let qs = (0 ... q).map { i in r[Double(i) / Double(q)] }
+                    let qs = (0...q).map { i in r[Double(i) / Double(q)] }
                     return c.delta ?
                         qs.reduce(into: (encoded: [], last: 0)) {
                             $0.encoded.append($1 - $0.last); $0.last = $1

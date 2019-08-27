@@ -383,7 +383,7 @@ struct CallSiteInfo {
         self.file = file
         self.line = line
         self.column = column
-        self.appliedAssertionName = String(function[function.startIndex ... function.firstIndex(of: "(")!])
+        self.appliedAssertionName = String(function[function.startIndex...function.firstIndex(of: "(")!])
     }
 
     /// Prepares a detailed error information, specialized for two values being equal

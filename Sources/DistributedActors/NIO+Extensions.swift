@@ -34,7 +34,7 @@ internal extension ByteBuffer {
             }
         }
         func asASCII(_ byte: UInt8) -> String {
-            if (0x20 ... 0x7F).contains(byte) {
+            if (0x20...0x7F).contains(byte) {
                 return "\(Character(UnicodeScalar(byte)))"
             } else {
                 return "." // not ascii (e.g. binary data)

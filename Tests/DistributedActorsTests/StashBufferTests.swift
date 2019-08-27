@@ -55,11 +55,11 @@ class StashBufferTests: XCTestCase {
 
         let stasher = try system.spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 
@@ -119,12 +119,12 @@ class StashBufferTests: XCTestCase {
 
         let stasher = try system.spawn(.anonymous, behavior)
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             stasher.tell(i)
         }
 
         // we are expecting to get each stashed message once
-        for i in 0 ... 9 {
+        for i in 0...9 {
             try probe.expectMessage(i)
         }
 

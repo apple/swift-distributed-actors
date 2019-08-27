@@ -29,7 +29,7 @@ internal final class AffinityThreadPool {
         self.workerCount = workerCount
         self.stopped = Atomic(value: false)
 
-        for _ in 0 ..< workerCount {
+        for _ in 0..<workerCount {
             workers.append(try Worker(stopped: self.stopped))
         }
 

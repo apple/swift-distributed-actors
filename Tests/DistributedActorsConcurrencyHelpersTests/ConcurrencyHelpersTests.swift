@@ -33,9 +33,9 @@ class ConcurrencyHelpersTests: XCTestCase {
         let q = DispatchQueue(label: "q", attributes: .concurrent)
         let g = DispatchGroup()
         let ai = DistributedActorsConcurrencyHelpers.Atomic<UInt64>(value: 0)
-        for thread in 1 ... noAsyncs {
+        for thread in 1...noAsyncs {
             q.async(group: g) {
-                for _ in 0 ..< noCounts {
+                for _ in 0..<noCounts {
                     _ = ai.add(thread)
                 }
             }
@@ -107,7 +107,7 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchange(expected: zero, desired: max))
 
             var counter = max
-            for _ in 0 ..< 255 {
+            for _ in 0..<255 {
                 XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter - 1))
                 counter = counter - 1
             }
@@ -137,7 +137,7 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: max))
 
             var counter = max
-            for _ in 0 ..< 255 {
+            for _ in 0..<255 {
                 XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter - 1))
                 counter = counter - 1
             }
@@ -167,7 +167,7 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchange(expected: zero, desired: upperBound))
 
             var counter = upperBound
-            for _ in 0 ..< 255 {
+            for _ in 0..<255 {
                 XCTAssertTrue(ab.compareAndExchange(expected: counter, desired: counter - 1))
                 XCTAssertFalse(ab.compareAndExchange(expected: counter, desired: counter))
                 counter = counter - 1
@@ -198,7 +198,7 @@ class ConcurrencyHelpersTests: XCTestCase {
             XCTAssertTrue(ab.compareAndExchangeWeak(expected: zero, desired: upperBound))
 
             var counter = upperBound
-            for _ in 0 ..< 255 {
+            for _ in 0..<255 {
                 XCTAssertTrue(ab.compareAndExchangeWeak(expected: counter, desired: counter - 1))
                 XCTAssertFalse(ab.compareAndExchangeWeak(expected: counter, desired: counter))
                 counter = counter - 1
@@ -508,7 +508,7 @@ class ConcurrencyHelpersTests: XCTestCase {
     }
 
     func testConditionLockWithDifferentConditions() {
-        for _ in 0 ..< 200 {
+        for _ in 0..<200 {
             let l = ConditionLock(value: 0)
             let q1 = DispatchQueue(label: "q1")
             let q2 = DispatchQueue(label: "q2")
@@ -680,13 +680,13 @@ class ConcurrencyHelpersTests: XCTestCase {
             q.async(group: g) {
                 sem1.signal()
                 sem2.wait()
-                for _ in 0 ..< 1000 {
+                for _ in 0..<1000 {
                     XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
                 }
             }
             sem2.signal()
             sem1.wait()
-            for _ in 0 ..< 1000 {
+            for _ in 0..<1000 {
                 XCTAssertTrue(atomic.compareAndExchange(expected: instance, desired: instance))
             }
             g.wait()

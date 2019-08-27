@@ -83,7 +83,7 @@ class ActorSubReceiveTests: XCTestCase {
         let subRef = try refProbe.expectMessage()
 
         var previousState = 0
-        for _ in 1 ... 10 {
+        for _ in 1...10 {
             subRef.tell(IncrementAndGet(replyTo: p.ref))
             let state = try p.expectMessage()
             state.shouldEqual(previousState + 1)

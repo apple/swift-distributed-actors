@@ -63,7 +63,7 @@ func bench_messageFlooding(_ messageCount: Int) throws {
 
     let start = timer.getTime()
 
-    for i in 1 ... messageCount {
+    for i in 1...messageCount {
         ref.tell(i)
     }
 
@@ -87,7 +87,7 @@ func bench_messageFlooding_send(_ messageCount: Int) throws {
 
     let startSending = timer.getTime()
 
-    for i in 1 ... messageCount {
+    for i in 1...messageCount {
         ref.tell(i)
     }
     let stopSending = timer.getTime()

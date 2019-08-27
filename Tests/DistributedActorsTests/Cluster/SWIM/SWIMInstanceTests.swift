@@ -92,7 +92,7 @@ final class SWIMInstanceTests: XCTestCase {
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
 
-        for i in 0 ... 5 {
+        for i in 0...5 {
             swim.incrementProtocolPeriod()
             try self.validateMark(swim: swim, member: probe.ref, status: .suspect(incarnation: SWIM.Incarnation(i)), shouldSucceed: true)
             try self.validateMark(swim: swim, member: probe.ref, status: .alive(incarnation: SWIM.Incarnation(i + 1)), shouldSucceed: true)
@@ -389,7 +389,7 @@ final class SWIMInstanceTests: XCTestCase {
     func test_incrementProtocolPeriod_shouldIncrementTheProtocolPeriodNumberByOne() {
         let swim = SWIM.Instance(.default)
 
-        for i in 0 ..< 10 {
+        for i in 0..<10 {
             swim.protocolPeriod.shouldEqual(i)
             swim.incrementProtocolPeriod()
         }
@@ -418,14 +418,14 @@ final class SWIMInstanceTests: XCTestCase {
         let swim = SWIM.Instance(.default)
         let memberCount = 10
         var members: Set<ActorRef<SWIM.Message>> = []
-        for _ in 0 ..< memberCount {
+        for _ in 0..<memberCount {
             let p = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
             members.insert(p.ref)
             swim.addMember(p.ref, status: .alive(incarnation: 0))
         }
 
         var seenMembers: [ActorRef<SWIM.Message>] = []
-        for _ in 0 ..< memberCount {
+        for _ in 0..<memberCount {
             guard let member = swim.nextMemberToPing() else {
                 throw self.testKit.fail("Could not fetch member to ping")
             }
@@ -437,7 +437,7 @@ final class SWIMInstanceTests: XCTestCase {
         members.shouldBeEmpty()
 
         // should loop around and we should encounter all the same members now
-        for _ in 0 ..< memberCount {
+        for _ in 0..<memberCount {
             guard let member = swim.nextMemberToPing() else {
                 throw self.testKit.fail("Could not fetch member to ping")
             }

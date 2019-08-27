@@ -46,7 +46,7 @@ func bench_SpawnTopLevel(_ actorCount: Int) throws {
 
     let start = timer.getTime()
 
-    for i in 1 ... actorCount {
+    for i in 1...actorCount {
         let _: ActorRef<Never> = try system.spawn("test-\(i)", .ignore)
     }
 
@@ -75,7 +75,7 @@ func bench_SpawnChildren(_ actorCount: Int) throws {
     let latch = CountDownLatch(from: 1)
 
     let spawnerBehavior: Behavior<String> = .receive { _, _ in
-        for i in 1 ... actorCount {
+        for i in 1...actorCount {
             let _: ActorRef<Never> = try system.spawn("test-\(i)", .ignore)
         }
         latch.countDown()

@@ -78,11 +78,11 @@ class InterceptorTests: XCTestCase {
         let ref: ActorRef<String> = try system.spawn("theWallsHaveEars",
                                                      .intercept(behavior: forwardToProbe, with: interceptor))
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             ref.tell("hello:\(i)")
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try p.expectMessage("hello:\(i)!")
         }
     }
@@ -115,7 +115,7 @@ class InterceptorTests: XCTestCase {
         ref.tell("hello")
 
         try p.expectMessage("received:hello!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        for j in 0 ... 100 {
+        for j in 0...100 {
             let m = "from-interceptor:hello\(String(repeating: "!", count: j))"
             try i.expectMessage(m)
         }

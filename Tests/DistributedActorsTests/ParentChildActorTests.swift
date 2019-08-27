@@ -502,7 +502,7 @@ class ParentChildActorTests: XCTestCase {
         let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
             switch msg {
             case "spawn":
-                for count in 1 ... childCount {
+                for count in 1...childCount {
                     let behavior: Behavior<Never> = .receiveMessage { _ in
                         .ignore
                     }
@@ -525,6 +525,6 @@ class ParentChildActorTests: XCTestCase {
         parent.tell("spawn")
 
         let messages = try p.expectMessages(count: childCount)
-        messages.sorted().shouldEqual((1 ... childCount).sorted())
+        messages.sorted().shouldEqual((1...childCount).sorted())
     }
 }

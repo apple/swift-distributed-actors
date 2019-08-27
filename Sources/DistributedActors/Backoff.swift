@@ -171,7 +171,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
 
     public mutating func next() -> TimeAmount? {
         let baseInterval = self.currentBaseInterval
-        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor) ... (1 + self.randomFactor))
+        let randomizeMultiplier = Double.random(in: (1 - self.randomFactor)...(1 + self.randomFactor))
 
         if baseInterval > self.capInterval {
             let randomizedCappedInterval = self.capInterval * randomizeMultiplier

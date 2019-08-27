@@ -222,7 +222,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
         try self.awaitStatus(.suspect(incarnation: 0), for: remoteMemberRef, on: ref, within: .seconds(1))
 
-        for _ in 0 ..< SWIMSettings.default.failureDetector.suspicionTimeoutPeriodsMax {
+        for _ in 0..<SWIMSettings.default.failureDetector.suspicionTimeoutPeriodsMax {
             ref.tell(.local(.pingRandomMember))
             try self.expectPing(on: p, reply: false)
         }
@@ -348,7 +348,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
         let ref = try local.spawn("SWIM", self.swimBehavior(members: [memberProbe.ref], clusterRef: self.localClusterProbe.ref))
 
-        for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage {
+        for _ in 0..<SWIM.Settings.default.gossip.maxGossipCountPerMessage {
             ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
             let response = try p.expectMessage()

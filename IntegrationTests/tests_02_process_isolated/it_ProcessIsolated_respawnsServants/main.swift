@@ -56,7 +56,7 @@ try isolated.run(on: .master) {
 
 // We only spawn workers on the servant nodes
 try isolated.run(on: .servant) {
-    for _ in 1 ... 5 {
+    for _ in 1...5 {
         let _: ActorRef<String> = try isolated.system.spawn(.prefixed(with: "worker"), .setup { context in
             context.log.info("Spawned \(context.path) on servant node, registering with receptionist.")
             context.system.receptionist.register(context.myself, key: workersKey)

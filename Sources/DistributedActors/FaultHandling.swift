@@ -57,7 +57,7 @@ internal struct FaultHandling {
         var backtrace: [String] = []
         backtrace.reserveCapacity(Int(cDetails.backtrace_length))
 
-        for i in 0 ..< Int(cDetails.backtrace_length) {
+        for i in 0..<Int(cDetails.backtrace_length) {
             let str = String(cString: cDetails.backtrace[i]!)
             backtrace.append(str)
         }

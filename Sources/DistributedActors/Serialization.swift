@@ -24,7 +24,7 @@ import Foundation // for Codable
 
 /// Serialization engine, holding all key-ed serializers.
 public struct Serialization {
-    public static let ReservedSerializerIds = UInt32(0) ... 999 // arbitrary range, we definitely need more than just 100 though, since we have to register every single type
+    public static let ReservedSerializerIds = UInt32(0)...999 // arbitrary range, we definitely need more than just 100 though, since we have to register every single type
 
     public typealias SerializerId = UInt32
     internal typealias MetaTypeKey = AnyHashable

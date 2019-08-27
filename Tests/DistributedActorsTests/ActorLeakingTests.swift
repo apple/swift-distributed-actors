@@ -169,7 +169,7 @@ class ActorLeakingTests: XCTestCase {
             if childCount == 0 {
                 return .stop
             } else {
-                for _ in 1 ... childCount {
+                for _ in 1...childCount {
                     let b: Behavior<String> = .receiveMessage { _ in .same }
                     try context.spawn(.anonymous, b)
                 }
@@ -252,7 +252,7 @@ class ActorLeakingTests: XCTestCase {
         #if SACT_TESTS_LEAKS
         let initialSystemCount = ActorSystem.actorSystemInitCounter.load()
 
-        for _ in 1 ... 5 {
+        for _ in 1...5 {
             let system = ActorSystem("Test")
             system.shutdown()
         }

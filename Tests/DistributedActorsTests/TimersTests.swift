@@ -71,7 +71,7 @@ class TimersTests: XCTestCase {
         }
 
         _ = try system.spawn(.anonymous, behavior)
-        for _ in 0 ..< 5 {
+        for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(10))
@@ -95,7 +95,7 @@ class TimersTests: XCTestCase {
         }
 
         _ = try system.spawn(.anonymous, behavior)
-        for _ in 0 ..< 5 {
+        for _ in 0..<5 {
             try p.expectMessage("fromTimer")
         }
         try p.expectNoMessage(for: .milliseconds(100))

@@ -37,7 +37,7 @@ let workersKey = Receptionist.RegistrationKey(String.self, id: "workers")
 try isolated.run(on: .master) {
     // open some fds, hope to not leak them into children!
     var fds: [Int] = []
-    for i in 1 ... 1000 {
+    for i in 1...1000 {
         fds.append(Int(open("/tmp/masters-treasure-\(i).txt", O_WRONLY | O_CREAT, 0o666)))
     }
 

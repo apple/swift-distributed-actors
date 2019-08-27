@@ -454,7 +454,7 @@ class SupervisionTests: XCTestCase {
 
         let ref: ActorRef<String> = try system.spawn("fail-in-start-3", props: .addingSupervision(strategy: strategy), behavior)
         probe.watch(ref)
-        for _ in 1 ... 5 {
+        for _ in 1...5 {
             try probe.expectMessage("starting")
         }
         try probe.expectTerminated(ref)

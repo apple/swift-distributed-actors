@@ -57,7 +57,7 @@ class BehaviorTests: XCTestCase {
 
         var counter = 0
 
-        for _ in 0 ... 10 {
+        for _ in 0...10 {
             counter += 1
             let payload: String = "message-\(counter)"
             p.tell(payload)
@@ -76,7 +76,7 @@ class BehaviorTests: XCTestCase {
                 return .same
             })
 
-        for _ in 0 ... 10 {
+        for _ in 0...10 {
             counter += 1
             let payload: String = "message-\(counter)"
             echoPayload.tell(TestMessage(message: payload, replyTo: p.ref))
@@ -108,12 +108,12 @@ class BehaviorTests: XCTestCase {
         let ref = try system.spawn("countTill\(n)", countTillNThenDieBehavior(n: n))
 
         // first we send many messages
-        for i in 0 ... n {
+        for i in 0...n {
             ref.tell(i)
         }
 
         // then we expect they arrive in the expected order
-        for i in 0 ... n {
+        for i in 0...n {
             try p.expectMessage(i)
         }
     }
@@ -138,7 +138,7 @@ class BehaviorTests: XCTestCase {
         let ref: ActorRef<TestMessage> = try system.spawn(.anonymous, .class { MyActorBehavior() })
 
         // first we send many messages
-        for i in 0 ... 10 {
+        for i in 0...10 {
             ref.tell(TestMessage(message: "message-\(i)", replyTo: p.ref))
         }
 
@@ -148,7 +148,7 @@ class BehaviorTests: XCTestCase {
 
         // separately see if we got the expected replies in the right order.
         // we do so separately to avoid sending in "lock-step" in the first loop above here
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try p.expectMessage(thxFor("message-\(i)"))
         }
     }
@@ -302,7 +302,7 @@ class BehaviorTests: XCTestCase {
             return .same
         }
 
-        for i in (0 ... 100).reversed() {
+        for i in (0...100).reversed() {
             behavior = Behavior<Int>.receiveMessage { message in
                 if message == i {
                     p.tell(-i)

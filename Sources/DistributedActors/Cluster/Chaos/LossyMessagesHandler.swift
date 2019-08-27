@@ -37,7 +37,7 @@ internal final class FaultyNetworkSimulatingHandler<Message>: ChannelDuplexHandl
         let settings: FaultyNetworkSimulationSettings
 
         func decide() -> GremlinDirective {
-            let randomNumber = Double.random(in: 0.0 ... 1.0)
+            let randomNumber = Double.random(in: 0.0...1.0)
 
             switch self.settings.mode {
             case .drop(let p):

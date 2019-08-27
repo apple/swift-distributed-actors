@@ -87,7 +87,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     // MARK: outbound
 
     func test_systemMessageRedeliveryHandler_sendWithIncreasingSeqNrs() throws {
-        for i in 1 ... 5 {
+        for i in 1...5 {
             self.remoteControl.sendSystemMessage(.start, recipient: ._deadLetters)
             let write = try self.expectWrite()
 
@@ -167,7 +167,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         var lastDelivered: SystemMessageEnvelope.SequenceNr = 0
 
         let rounds = 20
-        for round in 1 ... rounds {
+        for round in 1...rounds {
             self.remoteControl.sendSystemMessage(.start, recipient: ._deadLetters)
             self.interactInMemory(self.channel, partnerChannel)
             if round % 2 == 0 {

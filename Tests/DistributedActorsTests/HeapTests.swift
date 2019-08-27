@@ -131,7 +131,7 @@ class HeapTests: XCTestCase {
             XCTAssertEqual(Array(maxHeap.sorted().reversed()), Array(maxHeap))
         }
 
-        for _ in 0 ..< N / 2 {
+        for _ in 0..<N / 2 {
             var value = maxHeap.removeRoot()!
             XCTAssertLessThanOrEqual(value, maxHeapLast)
             maxHeapLast = value
@@ -156,7 +156,7 @@ class HeapTests: XCTestCase {
             XCTAssertTrue(minHeap.checkHeapProperty(), maxHeap.debugDescription)
         }
 
-        for _ in 0 ..< N / 2 + N {
+        for _ in 0..<N / 2 + N {
             var value = maxHeap.removeRoot()!
             XCTAssertLessThanOrEqual(value, maxHeapLast)
             maxHeapLast = value

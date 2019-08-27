@@ -106,7 +106,7 @@ private func initLoop(m messages: Int, n actors: Int) {
         spawnStart.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
 
         var loopRef = context.myself
-        for i in (1 ... actors).reversed() {
+        for i in (1...actors).reversed() {
             loopRef = try context.spawn("a\(actors - i)", loopMember(id: i, next: loopRef, msg: Token(messages)))
             // context.log.info("SPAWNed \(loopRef.path.name)...")
         }

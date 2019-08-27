@@ -152,7 +152,7 @@ struct LFSR {
 
     mutating func randInt() -> Int64 {
         var result: UInt32 = 0
-        for _ in 0 ..< 32 {
+        for _ in 0..<32 {
             result = (result << 1) | (self.lfsr & 1)
             self.shift()
         }

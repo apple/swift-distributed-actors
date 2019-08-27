@@ -100,7 +100,7 @@ final class SWIMInstance {
             // other nodes. If for example all nodes would add it to the end of the list,
             // it would take a longer time until it would be pinged for the first time
             // and also likely receive multiple pings within a very short time frame.
-            let insertIndex = Int.random(in: self.membersToPing.startIndex ... self.membersToPing.endIndex)
+            let insertIndex = Int.random(in: self.membersToPing.startIndex...self.membersToPing.endIndex)
             self.membersToPing.insert(member, at: insertIndex)
             if insertIndex <= self.membersToPingIndex {
                 // If we inserted the new member before the current `membersToPingIndex`,

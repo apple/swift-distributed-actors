@@ -52,7 +52,7 @@ internal enum POSIXProcessUtils {
         envp[env.count] = nil
 
         defer {
-            for pair in envp ..< envp + env.count {
+            for pair in envp..<envp + env.count {
                 free(UnsafeMutableRawPointer(pair.pointee))
             }
             envp.deallocate()
@@ -94,7 +94,7 @@ internal enum POSIXProcessUtils {
 
         // TODO: This has global effects and we would prefer to use (METHOD 1),
         // Alternative method, though has global effects, on any process spawn, not only ones managed by the actor system.
-        for fd in 3 ..< getdtablesize() {
+        for fd in 3..<getdtablesize() {
             _ = fcntl(fd, F_SETFD, FD_CLOEXEC)
         }
 

@@ -46,11 +46,11 @@ class ActorRefAdapterTests: XCTestCase {
 
         let adapted = try refProbe.expectMessage()
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             adapted.tell(i)
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try probe.expectMessage("\(i)")
         }
     }
@@ -89,11 +89,11 @@ class ActorRefAdapterTests: XCTestCase {
 
         let adapted: ActorRef<Int> = try refProbe.expectMessage()
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             adapted.tell(i)
         }
 
-        for i in 0 ... 10 {
+        for i in 0...10 {
             try probe.expectMessage("\(i)")
         }
     }

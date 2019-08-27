@@ -128,7 +128,7 @@ final class WorkerPoolTests: XCTestCase {
         // with A removed, the worker pool races to get the information about this death,
         // while we send new work to it -- it may happen that it sends to the dead A since it did not yet
         // receive the terminated; here we instead check that at least thr work is being handled by the other workers
-        for i in 0 ... 2 {
+        for i in 0...2 {
             try self.testKit.eventually(within: .seconds(1)) {
                 workers.tell("after-A-dead-\(i)")
                 let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))
@@ -223,7 +223,7 @@ final class WorkerPoolTests: XCTestCase {
         workerA.tell("stop")
         try pA.expectTerminated(workerA)
 
-        for i in 0 ... 2 {
+        for i in 0...2 {
             try self.testKit.eventually(within: .seconds(1)) {
                 workers.tell("after-A-dead-\(i)")
                 let maybeBGotIt = try pB.maybeExpectMessage(within: .milliseconds(200))

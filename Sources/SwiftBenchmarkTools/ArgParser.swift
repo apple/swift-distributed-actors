@@ -49,7 +49,7 @@ func checked<T>(
     if type.starts(with: "Optional<") {
         let s = type.index(after: type.firstIndex(of: "<")!)
         let e = type.index(before: type.endIndex) // ">"
-        type = String(type[s ..< e]) // strip Optional< >
+        type = String(type[s..<e]) // strip Optional< >
     }
     throw ArgumentError.invalidType(
         value: value, type: type, argument: argument
@@ -69,7 +69,7 @@ class ArgumentParser<U> {
     private let programName: String = {
         // Strip full path from the program name.
         let r = CommandLine.arguments[0].reversed()
-        let ss = r[r.startIndex ..< (r.firstIndex(of: "/") ?? r.endIndex)]
+        let ss = r[r.startIndex..<(r.firstIndex(of: "/") ?? r.endIndex)]
         return String(ss.reversed())
     }()
 
@@ -158,7 +158,7 @@ class ArgumentParser<U> {
     ///     the supported argument syntax.
     private func parseArgs() throws {
         // For each argument we are passed...
-        for arg in CommandLine.arguments[1 ..< CommandLine.arguments.count] {
+        for arg in CommandLine.arguments[1..<CommandLine.arguments.count] {
             // If the argument doesn't match the optional argument pattern. Add
             // it to the positional argument list and continue...
             if !arg.starts(with: "-") {

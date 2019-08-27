@@ -156,7 +156,7 @@ private func supervisorBehavior() -> Behavior<PingPongCommand> {
 private func initiatePingPongForPairs(refs: [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)], inFlight: Int) {
     for (pingRef, pongRef) in refs {
         let message = EchoMessage(replyTo: pongRef)
-        for _ in 1 ... inFlight {
+        for _ in 1...inFlight {
             pingRef.tell(message)
         }
     }
@@ -173,7 +173,7 @@ private func startPingPongActorPairs(
     var actors: [(ActorRef<EchoMessage>, ActorRef<EchoMessage>)] = []
     let startSpawning = SwiftBenchmarkTools.Timer().getTimeAsInt()
     actors.reserveCapacity(numPairs)
-    for i in 0 ..< numPairs {
+    for i in 0..<numPairs {
         let ping = try context.spawn("ping-\(i)", pingPongBehavior)
         let pong = try context.spawn("pong-\(i)", pingPongBehavior)
         let actorPair = (ping, pong)

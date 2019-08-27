@@ -478,7 +478,7 @@ public extension ActorIncarnation {
     static let perpetual: ActorIncarnation = ActorIncarnation(0)
 
     static func random() -> ActorIncarnation {
-        return ActorIncarnation(UInt32.random(in: UInt32(1) ... UInt32.max))
+        return ActorIncarnation(UInt32.random(in: UInt32(1)...UInt32.max))
     }
 }
 

@@ -24,7 +24,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     func test_sysMsg_outbound_passThroughWhenNoGapsReported() {
         let outbound = OutboundSystemMessageRedelivery()
 
-        for i in 1 ... (outbound.settings.redeliveryBatchSize + 5) {
+        for i in 1...(outbound.settings.redeliveryBatchSize + 5) {
             switch outbound.offer(.start, recipient: ._deadLetters) {
             case .send(let envelope):
                 envelope.sequenceNr.shouldEqual(self.seqNr(i))
@@ -218,7 +218,7 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
     func test_inbound_shouldAcceptMessagesInOrder() throws {
         let inboundSystemMessages = InboundSystemMessages()
 
-        for i in 1 ... 32 {
+        for i in 1...32 {
             inboundSystemMessages.onDelivery(self.msg(seqNr: i)).shouldEqual(.accept(self.ack(i)))
         }
     }
