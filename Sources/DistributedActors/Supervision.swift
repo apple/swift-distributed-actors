@@ -18,6 +18,8 @@ public struct SupervisionProps {
     // on purpose stored as list, to keep order in which the supervisors are added as we "scan" from first to last when we handle
     internal var supervisionMappings: [ErrorTypeBoundSupervisionStrategy]
 
+    public static let `default`: SupervisionProps = .init()
+
     public init() {
         self.supervisionMappings = []
     }

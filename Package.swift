@@ -8,14 +8,17 @@ let targets: [PackageDescription.Target] = [
         name: "DistributedActors",
         dependencies: [
             "NIO",
+            "NIOSSL",
             "NIOExtras",
             "NIOFoundationCompat",
-            "NIOSSL",
-            "Logging",
+
+            "SwiftProtobuf",
+
+            "Logging", "Metrics",
+
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
             "CDistributedActorsRunQueue",
-            "SwiftProtobuf",
         ]
     ),
 
@@ -108,6 +111,14 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActors"],
         path: "Samples/SampleCluster"
     ),
+    .target(
+        name: "SampleMetrics",
+        dependencies: [
+            "DistributedActors",
+            "SwiftPrometheus",
+        ],
+        path: "Samples/SampleMetrics"
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Internals; NOT SUPPORTED IN ANY WAY
@@ -135,8 +146,14 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.7.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
+
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.4.0"),
+
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
+    .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
+
+    // ~~~ only for samples ~~~
+    .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master"))
 ]
 
 let package = Package(
@@ -160,16 +177,20 @@ let package = Package(
         /* ---  samples --- */
 
         .executable(
-            name: "DistributedActorsSampleDiningPhilosophers",
+            name: "SampleDiningPhilosophers",
             targets: ["SampleDiningPhilosophers"]
         ),
         .executable(
-            name: "DistributedActorsSampleLetItCrash",
+            name: "SampleLetItCrash",
             targets: ["SampleLetItCrash"]
         ),
         .executable(
-            name: "DistributedActorsSampleCluster",
+            name: "SampleCluster",
             targets: ["SampleCluster"]
+        ),
+        .executable(
+            name: "SampleMetrics",
+            targets: ["SampleMetrics"]
         ),
     ],
 

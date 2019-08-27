@@ -402,6 +402,11 @@ public struct ActorPathSegment: Hashable {
     }
 }
 
+extension ActorPathSegment {
+    internal static let _user: ActorPathSegment = try! ActorPathSegment("user")
+    internal static let _system: ActorPathSegment = try! ActorPathSegment("system")
+}
+
 extension ActorPathSegment: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         return "\(self.value)"
