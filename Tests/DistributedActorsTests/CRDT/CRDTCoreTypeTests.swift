@@ -23,7 +23,7 @@ final class CRDTCoreTypeTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GCounter tests
 
-    func test_GCounter_incrementShouldUpdateDelta() throws {
+    func test_GCounter_increment_shouldUpdateDelta() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
 
         g1.increment(by: 1)
@@ -39,15 +39,11 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.delta!.state[g1.replicaId]!.shouldEqual(11) // 1 + 10
     }
 
-    func test_GCounter_mergeMutates() throws {
+    func test_GCounter_merge_shouldMutate() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
-
-        // delta should not be nil after increment
-        g1.delta.shouldNotBeNil()
-        g2.delta.shouldNotBeNil()
 
         // g1 is mutated; g2 is not
         g1.merge(other: g2)
@@ -58,7 +54,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         g2.delta.shouldNotBeNil()
     }
 
-    func test_GCounter_mergingDoesNotMutate() throws {
+    func test_GCounter_merging_shouldNotMutate() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
@@ -75,14 +71,14 @@ final class CRDTCoreTypeTests: XCTestCase {
         g3.delta.shouldBeNil()
     }
 
-    func test_GCounter_mergeDeltaMutates() throws {
+    func test_GCounter_mergeDelta_shouldMutate() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         guard let d = g2.delta else {
-            throw shouldNotHappen("Delta should not be nil")
+            throw shouldNotHappen("g2.delta should not be nil after increment")
         }
         // g1 is mutated
         g1.mergeDelta(d)
@@ -91,14 +87,14 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.delta.shouldBeNil() // delta is reset after mergeDelta
     }
 
-    func test_GCounter_mergingDeltaDoesNotMutate() throws {
+    func test_GCounter_mergingDelta_shouldNotMutate() throws {
         var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
         g1.increment(by: 1)
         var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
         g2.increment(by: 10)
 
         guard let d = g2.delta else {
-            throw shouldNotHappen("Delta should not be nil")
+            throw shouldNotHappen("g2.delta should not be nil after increment")
         }
         // g1 is not mutated
         let g3 = g1.mergingDelta(d)
@@ -107,6 +103,195 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.delta.shouldNotBeNil() // delta should not be nil after increment
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
         g3.delta.shouldBeNil()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: ORSet tests
+
+    func test_ORSet_basicOperations() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+
+        s1.elements.isEmpty.shouldBeTrue()
+        s1.count.shouldEqual(0)
+        s1.isEmpty.shouldBeTrue()
+
+        s1.add(1)
+        s1.add(3)
+        s1.remove(1)
+        s1.add(5)
+
+        s1.elements.shouldEqual([3, 5])
+        s1.count.shouldEqual(2)
+        s1.isEmpty.shouldBeFalse()
+
+        s1.contains(3).shouldBeTrue()
+        s1.contains(1).shouldBeFalse()
+
+        s1.removeAll()
+
+        s1.elements.isEmpty.shouldBeTrue()
+        s1.count.shouldEqual(0)
+        s1.isEmpty.shouldBeTrue()
+    }
+
+    func test_ORSet_add_remove_shouldUpdateDelta() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+
+        // version 1
+        s1.add(1)
+        s1.elements.shouldEqual([1])
+        s1.delta.shouldNotBeNil()
+        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(1)
+        s1.delta!.elementByBirthDot.count.shouldEqual(1)
+        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1)
+
+        // version 2
+        s1.add(3)
+        s1.elements.shouldEqual([1, 3])
+        s1.delta.shouldNotBeNil()
+        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.delta!.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
+        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1)
+        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3)
+
+        // `remove` doesn't increment version
+        s1.remove(1)
+        s1.elements.shouldEqual([3])
+        s1.delta.shouldNotBeNil()
+        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.delta!.elementByBirthDot.count.shouldEqual(1)
+        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3)
+
+        // version 3 - duplicate element, previous version(s) deleted
+        s1.add(3)
+        s1.elements.shouldEqual([3])
+        s1.delta.shouldNotBeNil()
+        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(3)
+        // Any existing dots for the element are removed before inserting, which means there is a single dot per element
+        s1.delta!.elementByBirthDot.count.shouldEqual(1)
+        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 3)]!.shouldEqual(3)
+    }
+
+    func test_ORSet_merge_shouldMutate() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        s1.add(1)
+        s1.add(3)
+        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        s2.add(3)
+        s2.add(5)
+        s2.add(1)
+
+        // s1 is mutated
+        s1.merge(other: s2)
+
+        s1.elements.shouldEqual([1, 3, 5])
+        s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
+        s1.state.elementByBirthDot.count.shouldEqual(5)
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
+        // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
+
+        s1.delta.shouldBeNil() // delta reset after `merge`
+    }
+
+    func test_ORSet_merge_shouldMutate_shouldCompact() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+
+        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        s2.add(7) // (B,1): 7
+
+        s1.merge(other: s2) // Now s1 has (B,1): 7
+        s1.contains(7).shouldBeTrue()
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
+
+        s1.add(1)
+        s1.add(3)
+
+        s2.add(3) // (B,2): 3
+        s2.add(7) // (B,3): 7; (B,1) deleted with this add
+
+        // s1 is mutated
+        s1.merge(other: s2)
+
+        s1.elements.shouldEqual([1, 3, 7])
+        s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
+        s1.state.elementByBirthDot.count.shouldEqual(4)
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
+
+        s1.delta.shouldBeNil() // delta reset after `merge`
+    }
+
+    func test_ORSet_mergeDelta_shouldMutate() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        s1.add(1)
+        s1.add(3)
+        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        s2.add(3)
+        s2.add(5)
+        s2.add(1)
+
+        guard let d = s2.delta else {
+            throw shouldNotHappen("s2.delta should not be nil after add")
+        }
+        // s1 is mutated
+        s1.mergeDelta(d)
+
+        s1.elements.shouldEqual([1, 3, 5])
+        s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
+        s1.state.elementByBirthDot.count.shouldEqual(5)
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
+        // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
+
+        s1.delta.shouldBeNil() // delta reset after `mergeDelta`
+    }
+
+    func test_ORSet_mergeDelta_shouldMutate_shouldCompact() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+
+        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        s2.add(7) // (B,1): 7
+
+        s1.merge(other: s2) // Now s1 has (B,1): 7
+        s1.contains(7).shouldBeTrue()
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
+
+        s1.add(1)
+        s1.add(3)
+
+        s2.add(3) // (B,2): 3
+        s2.add(7) // (B,3): 7; (B,1) deleted with this add
+
+        guard let d = s2.delta else {
+            throw shouldNotHappen("s2.delta should not be nil after add")
+        }
+        // s1 is mutated
+        s1.mergeDelta(d)
+
+        s1.elements.shouldEqual([1, 3, 7])
+        s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
+        s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
+        s1.state.elementByBirthDot.count.shouldEqual(4)
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
+        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
+
+        s1.delta.shouldBeNil() // delta reset after `mergeDelta`
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

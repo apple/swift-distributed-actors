@@ -123,7 +123,7 @@ let targets: [PackageDescription.Target] = [
     ),
 
     .target(name: "CDistributedActorsAtomics",
-        dependencies: []),
+            dependencies: []),
 
     .target(
         name: "DistributedActorsConcurrencyHelpers",
