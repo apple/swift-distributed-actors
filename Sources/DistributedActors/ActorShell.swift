@@ -317,15 +317,16 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             switch circumstances {
             // escalation takes precedence over death watch in terms of how we report errors
             case .escalating(let failure):
+                // we only populate `escalation` if the child is escalating
                 let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
-                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: true)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
 
             case .stopped:
                 let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
-                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: false)
-            case .failed(let failure):
-                let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
-                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated, escalation: false)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+            case .failed:
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
             }
 
         case .nodeTerminated(let remoteNode):
@@ -394,10 +395,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal func fail(_ error: Error) {
         self._myCell.mailbox.setFailed()
         self.behavior = self.behavior.fail(cause: .error(error))
-        // TODO: we could handle here "wait for children to terminate"
 
-        // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
-        // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
         case DeathPactError.unhandledDeathPact(_, _, let message):
             self.log.error("\(message)") // TODO: configurable logging? in props?
@@ -528,6 +526,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // become stopped, if not already
         switch self.behavior.underlying {
+        case .failed(_, let failure):
+            self.behavior = .stop(reason: .failure(failure))
         case .stop(_, let reason):
             self.behavior = .stop(reason: reason)
         default:
@@ -725,7 +725,7 @@ extension ActorShell {
     }
 
     @inlinable
-    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated, escalation: Bool) throws {
+    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif

@@ -312,6 +312,7 @@ extension ProcessIsolated {
                     self.system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
                     self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args)
                 case .restartBackoff:
+                    self.system.log.info("\(messagePrefix): RESTART BACKOFF, as decided by: \(restartLogic)")
                     // TODO: implement backoff for process isolated
                     fatalError("\(messagePrefix): BACKOFF NOT IMPLEMENTED YET")
                 }
