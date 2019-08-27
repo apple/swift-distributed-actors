@@ -42,10 +42,6 @@ public struct Props {
         self.supervision = supervision
         self.metrics = metrics
     }
-
-    public init() {
-        self.init(mailbox: .default(), dispatcher: .default, supervision: .default, metrics: .default)
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

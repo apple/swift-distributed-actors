@@ -30,7 +30,7 @@ internal struct MetricsPNCounter {
 
     init(label: String, positive positiveDimensions: [(String, String)] = [], negative negativeDimensions: [(String, String)] = []) {
         assert(positiveDimensions.map { "\($0)\($1)" }.joined() != negativeDimensions.map { "\($0)\($1)" }.joined(),
-               "Dimensions for PNCounter pair [\(label)] MUST NOT be equal.")
+               "Dimensions for MetricsPNCounter pair [\(label)] MUST NOT be equal.")
 
         self.positive = Counter(label: label, dimensions: positiveDimensions)
         self.negative = Counter(label: label, dimensions: negativeDimensions)
