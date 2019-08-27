@@ -23,11 +23,17 @@ import XCTest
 extension CRDTCoreTypeTests {
     static var allTests: [(String, (CRDTCoreTypeTests) -> () throws -> Void)] {
         return [
-            ("test_GCounter_incrementShouldUpdateDelta", test_GCounter_incrementShouldUpdateDelta),
-            ("test_GCounter_mergeMutates", test_GCounter_mergeMutates),
-            ("test_GCounter_mergingDoesNotMutate", test_GCounter_mergingDoesNotMutate),
-            ("test_GCounter_mergeDeltaMutates", test_GCounter_mergeDeltaMutates),
-            ("test_GCounter_mergingDeltaDoesNotMutate", test_GCounter_mergingDeltaDoesNotMutate),
+            ("test_GCounter_increment_shouldUpdateDelta", test_GCounter_increment_shouldUpdateDelta),
+            ("test_GCounter_merge_shouldMutate", test_GCounter_merge_shouldMutate),
+            ("test_GCounter_merging_shouldNotMutate", test_GCounter_merging_shouldNotMutate),
+            ("test_GCounter_mergeDelta_shouldMutate", test_GCounter_mergeDelta_shouldMutate),
+            ("test_GCounter_mergingDelta_shouldNotMutate", test_GCounter_mergingDelta_shouldNotMutate),
+            ("test_ORSet_basicOperations", test_ORSet_basicOperations),
+            ("test_ORSet_add_remove_shouldUpdateDelta", test_ORSet_add_remove_shouldUpdateDelta),
+            ("test_ORSet_merge_shouldMutate", test_ORSet_merge_shouldMutate),
+            ("test_ORSet_merge_shouldMutate_shouldCompact", test_ORSet_merge_shouldMutate_shouldCompact),
+            ("test_ORSet_mergeDelta_shouldMutate", test_ORSet_mergeDelta_shouldMutate),
+            ("test_ORSet_mergeDelta_shouldMutate_shouldCompact", test_ORSet_mergeDelta_shouldMutate_shouldCompact),
             ("test_AnyCvRDT_canBeUsedToMergeRightTypes", test_AnyCvRDT_canBeUsedToMergeRightTypes),
             ("test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged", test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged),
             ("test_AnyDeltaCRDT_canBeUsedToMergeRightTypes", test_AnyDeltaCRDT_canBeUsedToMergeRightTypes),

@@ -29,6 +29,14 @@ final class CRDTActorOwnedTests: XCTestCase {
         self.system.shutdown()
     }
 
+    private enum OwnerEventProbeMessage {
+        case ownerDefinedOnUpdate
+        case ownerDefinedOnDelete
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor-owned GCounter tests
+
     private enum GCounterCommand {
         case increment(amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
         case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Int>)
@@ -39,20 +47,15 @@ final class CRDTActorOwnedTests: XCTestCase {
         case hasDelta(replyTo: ActorRef<Bool>)
     }
 
-    private enum OwnerEventProbeMessage {
-        case ownerDefinedOnUpdate
-        case ownerDefinedOnDelete
-    }
-
     private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterCommand> {
         return .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: id)
             g.onUpdate { id, gg in
-                context.log.info("gcounter \(id) updated with new value: \(gg.value)")
+                context.log.info("GCounter \(id) updated with new value: \(gg.value)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
             }
             g.onDelete { id in
-                context.log.info("gcounter \(id) deleted")
+                context.log.info("GCounter \(id) deleted")
                 ownerEventProbe.tell(.ownerDefinedOnDelete)
             }
 
@@ -147,7 +150,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
         try g1Owner1IntP.expectMessage(0)
 
-        // Implement g1 and the latest value should be returned
+        // Increment g1 and the latest value should be returned
         g1Owner1.tell(.increment(amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: g1Owner1IntP.ref))
         try g1Owner1IntP.expectMessage(3)
 
@@ -206,5 +209,110 @@ final class CRDTActorOwnedTests: XCTestCase {
         // owner1's g1 status should also be .deleted
         g1Owner1.tell(.status(replyTo: g1Owner1StatusP.ref))
         try g1Owner1StatusP.expectMessage(.deleted)
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor-owned ORSet tests
+
+    private enum ORSetCommand {
+        case add(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
+        case remove(_ element: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
+        case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<Set<Int>>)
+
+        case lastObservedValue(replyTo: ActorRef<Set<Int>>)
+    }
+
+    private func actorOwnedORSetBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORSetCommand> {
+        return .setup { context in
+            let s = CRDT.ORSet<Int>.owned(by: context, id: id)
+            s.onUpdate { id, ss in
+                context.log.info("ORSet \(id) updated with new value: \(ss.elements)")
+                ownerEventProbe.tell(.ownerDefinedOnUpdate)
+            }
+            s.onDelete { id in
+                context.log.info("ORSet \(id) deleted")
+                ownerEventProbe.tell(.ownerDefinedOnDelete)
+            }
+
+            return .receiveMessage { message in
+                switch message {
+                case .add(let element, let consistency, let timeout, let replyTo):
+                    s.add(element, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                        switch result {
+                        case .success(let s):
+                            replyTo.tell(s.elements)
+                        case .failure(let error):
+                            fatalError("add error \(error)")
+                        }
+                    }
+                case .remove(let element, let consistency, let timeout, let replyTo):
+                    s.remove(element, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                        switch result {
+                        case .success(let s):
+                            replyTo.tell(s.elements)
+                        case .failure(let error):
+                            fatalError("remove error \(error)")
+                        }
+                    }
+                case .read(let consistency, let timeout, let replyTo):
+                    s.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                        switch result {
+                        case .success(let s):
+                            replyTo.tell(s.elements)
+                        case .failure(let error):
+                            fatalError("read error \(error)")
+                        }
+                    }
+                case .lastObservedValue(let replyTo):
+                    replyTo.tell(s.lastObservedValue)
+                }
+                return .same
+            }
+        }
+    }
+
+    func test_actorOwned_ORSet_add_remove_shouldResetDelta_shouldNotifyOthers() throws {
+        let s1 = "orset-1"
+        let s2 = "orset-2"
+
+        // s1 has two owners
+        let s1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s1Owner1 = try system.spawn("orset1-owner1", self.actorOwnedORSetBehavior(id: s1, oep: s1Owner1EventP.ref))
+        let s1Owner1IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+
+        let s1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s1Owner2 = try system.spawn("orset1-owner2", self.actorOwnedORSetBehavior(id: s1, oep: s1Owner2EventP.ref))
+        let s1Owner2IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+
+        // s2 has one owner
+        let s2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s2Owner1 = try system.spawn("orset2-owner1", self.actorOwnedORSetBehavior(id: s2, oep: s2Owner1EventP.ref))
+        let s2Owner1IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+
+        // s1 not modified yet
+        s1Owner1.tell(.lastObservedValue(replyTo: s1Owner1IntSetP.ref))
+        try s1Owner1IntSetP.expectMessage([])
+
+        // Add element to s1 and the latest value should be returned
+        s1Owner1.tell(.add(3, consistency: .local, timeout: .milliseconds(100), replyTo: s1Owner1IntSetP.ref))
+        try s1Owner1IntSetP.expectMessage([3])
+
+        // s1 owner1's local value should be up-to-date
+        s1Owner1.tell(.lastObservedValue(replyTo: s1Owner1IntSetP.ref))
+        try s1Owner1IntSetP.expectMessage([3])
+
+        // owner1 should be notified even if it triggered the action
+        try s1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
+
+        // owner2 should be notified about s1 updates, which means it should have up-to-date value too
+        try s1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
+        s1Owner2.tell(.lastObservedValue(replyTo: s1Owner2IntSetP.ref))
+        try s1Owner2IntSetP.expectMessage([3])
+
+        // s2 hasn't been mutated
+        s2Owner1.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: s2Owner1IntSetP.ref))
+        try s2Owner1IntSetP.expectMessage([])
+        // As a result owner should not have received any events
+        try s2Owner1IntSetP.expectNoMessage(for: .milliseconds(100))
     }
 }

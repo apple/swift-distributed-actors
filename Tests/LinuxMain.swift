@@ -50,6 +50,7 @@ XCTMain([
     testCase(CRDTCoreTypeTests.allTests),
     testCase(CRDTReplicatorInstanceTests.allTests),
     testCase(CRDTReplicatorShellTests.allTests),
+    testCase(CRDTVersioningTests.allTests),
     testCase(ClusterAssociationTests.allTests),
     testCase(ClusterMembershipGossipTests.allTests),
     testCase(ClusterReceptionistTests.allTests),

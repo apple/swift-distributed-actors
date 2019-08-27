@@ -23,13 +23,14 @@ import XCTest
 extension VersionVectorTests {
     static var allTests: [(String, (VersionVectorTests) -> () throws -> Void)] {
         return [
-            ("test_init_default_canModify", test_init_default_canModify),
-            ("test_init_fromVersionVector_canModify", test_init_fromVersionVector_canModify),
-            ("test_init_fromArrayOfReplicaVersionTuples_canModify", test_init_fromArrayOfReplicaVersionTuples_canModify),
-            ("test_merge_shouldMutate", test_merge_shouldMutate),
-            ("test_contains", test_contains),
-            ("test_comparisonOperators", test_comparisonOperators),
-            ("test_compareTo", test_compareTo),
+            ("test_VersionVector_init_default_canModify", test_VersionVector_init_default_canModify),
+            ("test_VersionVector_init_fromVersionVector_canModify", test_VersionVector_init_fromVersionVector_canModify),
+            ("test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify", test_VersionVector_init_fromArrayOfReplicaVersionTuples_canModify),
+            ("test_VersionVector_merge_shouldMutate", test_VersionVector_merge_shouldMutate),
+            ("test_VersionVector_contains", test_VersionVector_contains),
+            ("test_VersionVector_comparisonOperators", test_VersionVector_comparisonOperators),
+            ("test_VersionVector_compareTo", test_VersionVector_compareTo),
+            ("test_Dot_sort_shouldBeByReplicaThenByVersion", test_Dot_sort_shouldBeByReplicaThenByVersion),
         ]
     }
 }
