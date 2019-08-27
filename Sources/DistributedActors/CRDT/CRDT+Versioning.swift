@@ -73,7 +73,7 @@ extension CRDT {
             // Sort dots by replica then by version in ascending order. We need this ordering to check for continuity.
             for dot in self.gaps.sorted() {
                 if dot.version == self.vv[dot.replicaId] + 1 {
-                    // If the dot's version follows replica's version in `vv`, it's no longer detached and can be added to `vv`.
+                    // If the dot's version follows replica's version in `vv`, it is no longer detached and can be added to `vv`.
                     self.vv.increment(at: dot.replicaId)
                     self.gaps.remove(dot)
                 } else if self.vv.contains(dot.replicaId, dot.version) {
@@ -87,7 +87,7 @@ extension CRDT {
         /// For a `VersionContext` to contain a dot means that the corresponding event has been acknowledged or observed.
         /// It requires either 1) the dot is covered by `vv` or 2) the dot is in `gaps`.
         ///
-        /// Dots that are NOT contained in `VersionContext` are important because they are likely changes that haven't
+        /// Dots that are NOT contained in `VersionContext` are important because they are likely changes that have not
         /// been processed yet.
         public func contains(_ dot: Dot<ReplicaId>) -> Bool {
             return self.vv.contains(dot.replicaId, dot.version) || self.gaps.contains(dot)
@@ -106,7 +106,7 @@ extension CRDT {
     /// [`ORSet` documentation](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/ORSet.scala).
     ///
     /// The optimization implemented by Akka and Sypytkowski is based on [An optimized conflict-free replicated set](https://hal.inria.fr/file/index/docid/738680/filename/RR-8083.pdf).
-    /// In essence, the addition of a (replica, version, element) tuple always happens before its removal (i.e., you can't
+    /// In essence, the addition of a (replica, version, element) tuple always happens before its removal (i.e., you cannot
     /// delete without adding first), so there is no need to store tombstones. Conflict can be resolved by analyzing
     /// `VersionContext`, which contains version vector, and birth dot (see `merge` method for details).
     ///
@@ -164,7 +164,7 @@ extension CRDT {
                 self.delta = Delta()
             }
             // Unless birth dot's version is 1 and version context is empty (i.e., version 0), the birth dot
-            // will stay in `versionContext.gaps` and cannot be added to `vv` because it's not contiguous.
+            // will stay in `versionContext.gaps` and cannot be added to `vv` because it is not contiguous.
             self.delta?.versionContext.add(birthDot)
             self.delta?.versionContext.compact()
             self.delta?.elementByBirthDot[birthDot] = element
@@ -194,7 +194,7 @@ extension CRDT {
                 // Why? Keep in mind that delete is acknowledged by version being present in `versionContext` but the
                 // element is not found in `elementByBirthDot`.
                 // To understand that take a look at `merge` method. When delta reaches another replica:
-                //   If the other replica has the birth dot in its `elementByBirthDot` but delta doesn't, it will
+                //   If the other replica has the birth dot in its `elementByBirthDot` but delta does not, it will
                 //   compare the birth dot against delta's `versionContext`. If delta has a more recent version,
                 //   then the other replica will delete the (birth dot, element) entry.
                 self.delta?.versionContext.add(birthDot)
@@ -283,7 +283,7 @@ extension CRDT {
 
             var mergedElementByBirthDot = self.elementByBirthDot
 
-            // "this" doesn't have birth dot and "this"'s `versionContext` does NOT dominate birth dot => element added (1)
+            // "this" does not have birth dot and "this"'s `versionContext` does NOT dominate birth dot => element added (1)
             let toAdd = other.elementByBirthDot.filter { birthDot, _ in
                 self.elementByBirthDot[birthDot] == nil && !self.versionContext.contains(birthDot)
             }

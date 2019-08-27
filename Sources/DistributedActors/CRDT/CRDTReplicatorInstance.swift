@@ -138,7 +138,7 @@ extension CRDT.Replicator {
         func writeDelta(_ id: Identity, _ delta: ReplicatedData) -> WriteDeltaDirective {
             switch self.dataStore[id] {
             case .none:
-                // Can't do anything if delta (i.e., partial state) is sent and full CRDT is unknown.
+                // Cannot do anything if delta (i.e., partial state) is sent and full CRDT is unknown.
                 return .missingCRDTForDelta
             case .some(let stored):
                 switch stored {

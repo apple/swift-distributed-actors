@@ -78,7 +78,7 @@ extension CRDT.Replicator {
             // Register the owner first
             switch self.replicator.registerOwner(dataId: id, owner: ownerRef) {
             case .registered:
-                // Then write the full CRDT so it's ready to be read
+                // Then write the full CRDT so it is ready to be read
                 switch self.replicator.write(id, data, deltaMerge: false) {
                 case .applied:
                     replyTo?.tell(.success)
@@ -104,7 +104,7 @@ extension CRDT.Replicator {
                     // TODO: send update to a subset of remote replicators based on consistency then send reply
                     // if CvRDT send full CRDT (`RemoteCommand.write`); if DeltaCRDT send data.delta (not replicator's
                     // delta, but the received CRDT's) (`ClusterCommand.writeDelta`)
-                    // if CRDT is new locally, send full regardless if it's a DeltaCRDT. the id might be unknown to
+                    // if CRDT is new locally, send full regardless if it is a DeltaCRDT. the id might be unknown to
                     // remote replicator as well and sending just the delta would not work in that case.
                     replyTo.tell(.success)
                 }
