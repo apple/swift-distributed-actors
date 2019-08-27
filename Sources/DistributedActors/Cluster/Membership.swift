@@ -442,7 +442,7 @@ extension MemberStatus {
 /// and `.unreachable` states multiple times during the lifetime of a member.
 ///
 /// - SeeAlso: `SWIM` for a distributed failure detector implementation which may issue unreachable events.
-public enum MemberReachability {
+public enum MemberReachability: String, Equatable {
     /// The member is reachable and responding to failure detector probing properly.
     case reachable
     /// Failure detector has determined this node as not reachable.

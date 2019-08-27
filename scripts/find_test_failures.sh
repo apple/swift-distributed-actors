@@ -21,6 +21,7 @@ declare -r logs=$1
 failures_count=0
 failures=()
 
+IFS=$'\n'
 fails=$(cat $logs | grep -n "' failed (")
 for fail in $fails; do
     printf "\033[0;31m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\033[0m\n"

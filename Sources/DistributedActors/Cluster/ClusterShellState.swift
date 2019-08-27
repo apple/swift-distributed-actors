@@ -39,19 +39,19 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     typealias Messages = ClusterShell.Message
 
     // TODO: maybe move log and settings outside of state into the shell?
-    public var log: Logger
-    public let settings: ClusterSettings
+    var log: Logger
+    let settings: ClusterSettings
 
-    public let selfNode: UniqueNode
-    public let channel: Channel
+    let selfNode: UniqueNode
+    let channel: Channel
 
-    public let eventLoopGroup: EventLoopGroup
+    let eventLoopGroup: EventLoopGroup
 
-    public var backoffStrategy: BackoffStrategy {
+    var backoffStrategy: BackoffStrategy {
         return self.settings.handshakeBackoffStrategy
     }
 
-    public let allocator: ByteBufferAllocator
+    let allocator: ByteBufferAllocator
 
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
     private var _associations: [Node: AssociationStateMachine.State] = [:]
