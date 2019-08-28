@@ -101,7 +101,7 @@ public class ProcessIsolated {
 
         self._lastAssignedServantPort = system.settings.cluster.node.port
 
-        if role.is("master") {
+        if role.is(.master) {
             let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
@@ -175,7 +175,7 @@ public class ProcessIsolated {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
             // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
-            self.processCommander.tell(.requestSpawnServant(supervision, args: args))
+            self.processCommander.tell(.requestSpawnServant(supervision, args: args, delay: nil))
         }
     }
 
@@ -210,6 +210,10 @@ public class ProcessIsolated {
             return self.name == name
         }
 
+        public func `is`(_ role: Role) -> Bool {
+            return self == role
+        }
+
         public var description: String {
             return "Role(\(self.name))"
         }
@@ -231,7 +235,7 @@ internal struct ServantProcess {
         case .restart(let atMost, let within, let backoffStrategy):
             self.restartLogic = RestartDecisionLogic(maxRestarts: atMost, within: within, backoffStrategy: backoffStrategy)
         case .escalate:
-            fatalError("TODO: IMPLEMENT ME")
+            self.restartLogic = nil
         case .stop:
             self.restartLogic = nil
         }
@@ -288,7 +292,6 @@ extension ProcessIsolated {
                 }
 
                 guard let servant = maybeServant else {
-                    // TODO: unknown PID died?
                     self.system.log.warning("Unknown PID died, ignoring... PID was: \(res.pid)")
                     return
                 }
@@ -311,10 +314,9 @@ extension ProcessIsolated {
                 case .restartImmediately:
                     self.system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
                     self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args)
-                case .restartBackoff:
+                case .restartBackoff(let delay):
                     self.system.log.info("\(messagePrefix): RESTART BACKOFF, as decided by: \(restartLogic)")
-                    // TODO: implement backoff for process isolated
-                    fatalError("\(messagePrefix): BACKOFF NOT IMPLEMENTED YET")
+                    self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args, delay: delay)
                 }
             }
         }
@@ -352,15 +354,15 @@ extension ProcessIsolated {
                 fatalError("Unable to extract first argument of command line arguments (which is expected to be the application name); Args: \(CommandLine.arguments)")
             }
 
-            var args: [String] = []
-            args.append(command)
-            args.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
-            args.append(KnownServantParameters.port.render(value: "\(port)"))
-            args.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
-            args.append(contentsOf: args)
+            var effectiveArgs: [String] = []
+            effectiveArgs.append(command)
+            effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
+            effectiveArgs.append(KnownServantParameters.port.render(value: "\(port)"))
+            effectiveArgs.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
+            effectiveArgs.append(contentsOf: args)
 
             do {
-                let pid = try POSIXProcessUtils.spawn(command: command, args: args)
+                let pid = try POSIXProcessUtils.spawn(command: command, args: effectiveArgs)
                 self.storeServant(pid: pid, servant: servant)
             } catch {
                 self.system.log.error("Unable to spawn servant; Error: \(error)")
@@ -455,11 +457,12 @@ public final class IsolatedControl {
         self.masterNode = masterNode
     }
 
-    func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
+    /// Request spawning a new servant process.
+    func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = [], delay: TimeAmount? = nil) {
         precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
-        self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args))
+        self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args, delay: delay))
     }
 
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {

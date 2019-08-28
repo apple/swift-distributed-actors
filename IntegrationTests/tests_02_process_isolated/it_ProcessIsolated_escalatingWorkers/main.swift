@@ -30,24 +30,37 @@ let isolated = ProcessIsolated { boot in
 
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
-try isolated.run(on: .master) {
+struct OnPurposeBoom: Error {}
+
+isolated.run(on: .master) {
     isolated.spawnServantProcess(supervision: .restart(atMost: 1, within: nil), args: ["fatalError"])
+    isolated.spawnServantProcess(supervision: .restart(atMost: 1, within: nil), args: ["escalateError"])
 }
 
 try isolated.run(on: .servant) {
-    isolated.system.log.info("ISOLATED RUNNING")
+    isolated.system.log.info("ISOLATED RUNNING: \(CommandLine.arguments)")
 
-    // TODO: system should be configured to terminate HARD when a failure reaches the guardian
+    // TODO: assert command line arguments are the expected ones
 
-    let _: ActorRef<String> = try isolated.system.spawn("failing",
+    _ = try isolated.system.spawn("failed", of: String.self,
         props: Props().supervision(strategy: .escalate),
         .setup { context in
-            context.log.info("Spawned \(context.path) on servant node, it will fault with a [Boom].")
+            context.log.info("Spawned \(context.path) on servant node it will fail soon...")
             context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
 
             return .receiveMessage { message in
-                fatalError("Faulting on purpose: \(message)")
-                return .stop
+                if CommandLine.arguments.contains("fatalError") {
+                    context.log.error("Time to crash with: fatalError")
+                    // crashes process since we do not isolate faults
+                    fatalError("FATAL ERROR ON PURPOSE")
+                } else if CommandLine.arguments.contains("escalateError") {
+                    context.log.error("Time to crash with: throwing an error, escalated to top level")
+                    // since we .escalate and are a top-level actor, this will cause the process to die as well
+                    throw OnPurposeBoom()
+                } else {
+                    context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly.")
+                    fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly.")
+                }
             }
         })
 }

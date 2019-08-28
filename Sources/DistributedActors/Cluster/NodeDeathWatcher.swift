@@ -126,21 +126,31 @@ enum NodeDeathWatcherShell {
     /// it would be possible however to allow implementing the raw protocol by user actors if we ever see the need for it.
     internal enum Message {
         case remoteActorWatched(watcher: AddressableActorRef, remoteNode: UniqueNode)
-        case membershipSnapshot(Membership)
-        case membershipChange(MembershipChange)
-        case forceDown(UniqueNode) // TODO: this should go away with cluster events landing
+        case membershipSnapshot(Membership) // TODO: remove?
+        case membershipChange(MembershipChange) // TODO: remove as well
     }
 
-    static func behavior() -> Behavior<Message> {
+    static func behavior(clusterEvents: EventStream<ClusterEvent>) -> Behavior<Message> {
         return .setup { context in
-            // WARNING: DO NOT TOUCH context.system.cluster; we are started potentially before the cluster (!)
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
+
+            context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
+                context.log.info("EVENT::::: \(event)")
+                switch event {
+                case .membership(.memberDown(let member)):
+                    let change = MembershipChange(node: member.node, fromStatus: .none, toStatus: .down)
+                    instance.handleAddressDown(change)
+                default:
+                    () // ignore for now...
+                }
+            })
+
             return NodeDeathWatcherShell.behavior(instance)
         }
     }
 
     static func behavior(_ instance: NodeDeathWatcherInstance) -> Behavior<Message> {
-        return .receive { _, message in
+        return .receiveMessage { message in
 
             let lastMembership: Membership = .empty // TODO: To be mutated based on membership changes
 
@@ -157,11 +167,6 @@ enum NodeDeathWatcherShell {
 
             case .membershipChange(let change):
                 _ = instance.onMembershipChanged(change) // TODO: return and interpret directives
-
-            case .forceDown(let node):
-                // TODO: we'd get the change from subscribing to events and applying to local membership
-                let change = MembershipChange(node: node, fromStatus: .none, toStatus: .down)
-                instance.handleAddressDown(change)
             }
             return .same
         }

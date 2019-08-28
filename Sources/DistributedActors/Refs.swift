@@ -433,16 +433,16 @@ internal class Guardian {
                 }
                 switch system.settings.failure.onGuardianFailure {
                 case .shutdownActorSystem:
-                    let message = "Escalated failure from [\(ref)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)"
-                    system.log.error("\(message)")
+                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)"
+                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
                     print(message) // TODO: to stderr
 
                     _ = try! Thread {
                         system.shutdown() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
                     }
                 case .systemExit(let code):
-                    let message = "Escalated failure from [\(ref)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
-                    system.log.error("\(message)")
+                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
+                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
                     print(message) // TODO: to stderr
 
                     POSIXProcessUtils._exit(Int32(code))

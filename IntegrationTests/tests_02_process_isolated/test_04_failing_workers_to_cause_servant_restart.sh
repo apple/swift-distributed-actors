@@ -39,7 +39,7 @@ swift build # synchronously ensure built
 
 swift run ${app_name} &
 
-await_n_processes "$app_name" 2
+await_n_processes "$app_name" 3
 
 pid_master=$(ps aux | grep ${app_name} | grep -v grep | grep -v servant | awk '{ print $2 }')
 pid_servant=$(ps aux | grep ${app_name} | grep -v grep | grep servant | head -n1 | awk '{ print $2 }')
@@ -53,12 +53,8 @@ echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
 sleep 3 # TODO rather, sleep until another proc replaces the servant automatically
 
-echo '~~~~~~~~~~~~~ KILLED KILLED KILLED KILLED KILLED KILLED ~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-ps aux | grep ${app_name}
-echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-
 # the 1 servant should die, but be restarted so we'll be back at two processes
-await_n_processes "$app_name" 2
+await_n_processes "$app_name" 3
 
 if [[ $(ps aux | awk '{print $2}' | grep ${pid_servant}  | grep -v 'grep' | wc -l) -ne 0 ]]; then
     echo "ERROR: Seems the servant was not killed!!!"

@@ -93,21 +93,6 @@ internal class ClusterShell {
         return it
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Node-Death Watcher
-
-    // Implementation notes: The `_failureDetectorRef` has to remain internally accessible.
-    // This is in order to solve a chicken-and-egg problem that we face during spawning of
-    // the first system actor that is the *failure detector* so it cannot reach to the systems
-    // value before it started...
-    var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
-    var nodeDeathWatcher: NodeDeathWatcherShell.Ref {
-        guard let it = self._nodeDeathWatcher else {
-            return fatalErrorBacktrace("Accessing ClusterShell.nodeDeathWatcher failed, was nil! This should never happen as access should only happen after start() was invoked.")
-        }
-        return it
-    }
-
     init() {
         self._associationsLock = Lock()
         self._associationsRegistry = [:]
@@ -116,21 +101,13 @@ internal class ClusterShell {
         // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
         // remote refs need to obtain those
         //
-        // TODO: see if we can restructure this to avoid these nil/then-set dance
+        // FIXME: see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
-        self._nodeDeathWatcher = nil
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> ClusterShell.Ref {
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
-
-        self._nodeDeathWatcher = try system._spawnSystemActor(
-            NodeDeathWatcherShell.naming,
-            NodeDeathWatcherShell.behavior(),
-            perpetual: true
-        )
-
         self._events = eventStream
 
         // TODO: concurrency... lock the ref as others may read it?
@@ -259,6 +236,7 @@ extension ClusterShell {
                 return self.onJoin(context, state: state, joining: node)
 
             case .handshakeWith(let remoteAddress, let replyTo):
+                state.logMembership()
                 return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
@@ -469,7 +447,7 @@ extension ClusterShell {
         case .initiated(var initiated):
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
-                state.log.info("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
+                state.log.debug("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
                 context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
@@ -619,7 +597,8 @@ extension ClusterShell {
         var state = state
 
         if let change = state.onMembershipChange(node, toStatus: .down) {
-            self.nodeDeathWatcher.tell(.forceDown(change.node))
+            // self.nodeDeathWatcher.tell(.forceDown(change.node))
+            self._events.publish(.membership(.memberDown(Member(node: change.node, status: .down))))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
                 context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change), membership: \(state.membership)")

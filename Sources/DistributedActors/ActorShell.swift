@@ -138,11 +138,11 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        if let failureDetectorRef = system._cluster?._nodeDeathWatcher {
-            self._deathWatch = DeathWatch(failureDetectorRef: failureDetectorRef)
+        if let nodeDeathWatcher = system._nodeDeathWatcher {
+            self._deathWatch = DeathWatch(nodeDeathWatcher: nodeDeathWatcher)
         } else {
             // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?
-            self._deathWatch = DeathWatch(failureDetectorRef: system.deadLetters.adapted())
+            self._deathWatch = DeathWatch(nodeDeathWatcher: system.deadLetters.adapted())
         }
 
         self.namingContext = ActorNamingContext()

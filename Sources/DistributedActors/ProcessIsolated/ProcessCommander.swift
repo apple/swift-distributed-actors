@@ -19,8 +19,7 @@ public struct ProcessCommander {
     public static let name: String = "processCommander"
 
     public enum Command {
-        case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String])
-//        case checkOnServantProcesses
+        case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String], delay: TimeAmount?)
     }
 
     private let funRemoveServantPid: (Int) -> Void
@@ -46,30 +45,24 @@ public struct ProcessCommander {
     }
 
     var running: Behavior<Command> {
-        return .receive { context, message in
-            switch message {
-            case .requestSpawnServant(let supervision, let args):
-                context.log.info("Spawning new servant process; Supervision \(supervision), arguments: \(args)")
-                self.funSpawnServantProcess(supervision, args)
-                return .same
+        return .setup { context in
+            var _spawnServantTimerId = 0
+            func nextSpawnServantTimerKey() -> TimerKey {
+                _spawnServantTimerId += 1
+                return "spawnServant-\(_spawnServantTimerId)"
+            }
 
-//            case .checkOnServantProcesses:
-//                let res = POSIXProcessUtils.nonBlockingWaitPID(pid: 0)
-//                if res.pid > 0 {
-//                    let node = self.lock.withLock {
-//                        self._servants.removeValue(forKey: res.pid)
-//                    }
-//
-//                    if let node = node {
-//                        system.log.warning("Servant process died [\(res)], node: [\(node)]; Issuing a forced DOWN command.")
-//                        self.system.cluster._shell.tell(.command(.down(node.node)))
-//                    }
-//
-//                    // TODO spawn replacement configurable
-//                    self.control.requestSpawnServant(args: [])
-//
-//                    return .same
-//                }
+            return .receiveMessage { message in
+                switch message {
+                case .requestSpawnServant(let supervision, let args, .none):
+                    context.log.info("Spawning new servant process; Supervision \(supervision), arguments: \(args)")
+                    self.funSpawnServantProcess(supervision, args)
+
+                case .requestSpawnServant(let supervision, let args, .some(let delay)):
+                    context.log.info("Scheduling spawning of new servant process in [\(delay.prettyDescription)]; Supervision \(supervision), arguments: \(args)")
+                    context.timers.startSingle(key: nextSpawnServantTimerKey(), message: .requestSpawnServant(supervision, args: args, delay: nil), delay: delay)
+                }
+                return .same
             }
         }
     }

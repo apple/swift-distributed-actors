@@ -91,8 +91,10 @@ public final class ActorSystem {
 
     // initialized during startup
     internal var _cluster: ClusterShell?
-    internal var _clusterEventStream: EventStream<ClusterEvent>?
+    internal var _clusterEvents: EventStream<ClusterEvent>?
+    internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
     public var log: Logger {
@@ -199,8 +201,16 @@ public final class ActorSystem {
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
-                self._clusterEventStream = try! EventStream(self, name: "clusterEvents")
+                let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents")
+                self._clusterEvents = clusterEvents // TODO: why stored on self here?
                 _ = try cluster.start(system: self, eventStream: self.clusterEvents) // only spawns when cluster is initialized
+
+                // Node watcher MUST be started AFTER cluster and clusterEvents
+                self._nodeDeathWatcher = try self._spawnSystemActor(
+                    NodeDeathWatcherShell.naming,
+                    NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                    perpetual: true
+                )
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
