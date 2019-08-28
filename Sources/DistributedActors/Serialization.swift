@@ -82,10 +82,10 @@ public struct Serialization {
 
         // register all
         // TODO: change APIs here a bit, it does not read nice
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.SystemMessageACKSerializerId)
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.SystemMessageNACKSerializerId)
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.SystemMessageEnvelopeSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.SystemMessageACKSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.SystemMessageNACKSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.SystemMessageEnvelopeSerializerId)
 
         self.registerSystemSerializer(context, serializer: self.stringSerializer, for: String.self, underId: Serialization.StringSerializerId)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.FullStateRequestSerializerId)
@@ -93,8 +93,8 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullState.self, underId: Serialization.FullStateSerializerId)
 
         // SWIM serializers
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.SWIMMessageSerializerId)
-        self.registerSystemSerializer(context, serializer: ProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.SWIMAckSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.SWIMMessageSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.SWIMAckSerializerId)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
