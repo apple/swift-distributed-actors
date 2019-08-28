@@ -28,6 +28,8 @@ public protocol BackoffStrategy {
     mutating func reset()
 }
 
+// TODO: make nicer for auto completion? (.constant) etc
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Backoff Strategy implementations
 
@@ -44,7 +46,7 @@ public enum Backoff {
     /// Backoff each time using the same, constant, time amount.
     ///
     /// See `ConstantBackoffStrategy` for details
-    static func constant(_ backoff: TimeAmount) -> ConstantBackoffStrategy {
+    public static func constant(_ backoff: TimeAmount) -> ConstantBackoffStrategy {
         return .init(timeAmount: backoff)
     }
 
@@ -63,7 +65,7 @@ public enum Backoff {
     ///         MUST be `>= initialInterval`.
     ///   - randomFactor: A random factor of `0.5` results in backoffs between 50% below and 50% above the base interval.
     ///         MUST be between: `<0; 1>` (inclusive)
-    static func exponential(
+    public static func exponential(
         initialInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.initialInterval,
         multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier,
         maxInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,

@@ -48,14 +48,14 @@ public struct ServantProcessSupervisionStrategy {
         return .init(underlying: .escalate)
     }
 
-    /// The replacing strategy allows the supervised servant process to be restarted `atMost` times `within` a time period.
+    /// The respawn strategy allows the supervised servant process to be restarted `atMost` times `within` a time period.
     /// In addition, each subsequent restart _may_ be performed after a certain backoff.
     ///
-    /// ### Servant Replacement vs. Actor Restart semantics
-    /// While servant `.replace` supervision may, on the surface, seem identical to `restart` supervision of actors,
+    /// ### Servant Respawn vs. Actor Restart semantics
+    /// While servant `.respawn` supervision may, on the surface, seem identical to `restart` supervision of actors,
     /// it differs in one crucial aspect: supervising actors with `.restart` allows them to retain the existing mailbox
     /// and create a new instance of the initial behavior to continue serving the same mailbox, i.e. only a single message is lost upon restart.
-    /// Servant process replacement sadly cannot guarantee this, and all mailboxes and state in the servant process is lost, including all mailboxes,
+    /// A respawned servant process sadly cannot guarantee this, and all mailboxes and state in the servant process is lost, including all mailboxes,
     /// thus explaining the slightly different naming and semantics implications of this supervision strategy.
     ///
     /// - SeeAlso: The actor `SupervisionStrategy` documentation, which explains the exact semantics of this supervision mechanism in-depth.
@@ -65,7 +65,7 @@ public struct ServantProcessSupervisionStrategy {
     ///                     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
     ///                     no restart is performed and the failure is escalated (and the actor terminates in the process).
     /// - parameter backoff: strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
-    public static func replace(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> ServantProcessSupervisionStrategy {
+    public static func respawn(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> ServantProcessSupervisionStrategy {
         return .init(underlying: .restart(atMost: atMost, within: within, backoff: backoff))
     }
 }
@@ -86,27 +86,27 @@ extension ProcessIsolated {
             // TODO: we could aggressively tell other nodes about the down rather rely on the gossip...?
 
             // if we have a restart supervision logic, we should apply it.
-            guard var decision = servant.recordFailure() else {
-                self.system.log.info("Servant \(servant.node) (pid:\(res.pid)) has no supervision / restart strategy defined, NO replacement servant will be spawned in its place.")
+            guard let decision = servant.recordFailure() else {
+                self.system.log.info("Servant \(servant.node) (pid:\(res.pid)) has no supervision / restart strategy defined.")
                 return
             }
 
             let messagePrefix = "Servant [\(servant.node) @ pid:\(res.pid)] supervision"
             switch decision {
             case .stop:
-                self.system.log.info("\(messagePrefix): STOP, as decided by: \(servant.restartLogic); No replacement process will be spawned for servant.")
+                self.system.log.info("\(messagePrefix): STOP, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>"); Servant process will not be respawned.")
 
             case .escalate:
-                self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(servant.restartLogic)")
+                self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
                 self.system.cluster.down(node: self.system.cluster.node)
                 // TODO: ensure we exit the master process as well
 
             case .restartImmediately:
-                self.system.log.info("\(messagePrefix): REPLACE, as decided by: \(servant.restartLogic)")
+                self.system.log.info("\(messagePrefix): RESPAWN, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
                 self.control.requestServantRestart(servant, delay: nil)
 
             case .restartBackoff(let delay):
-                self.system.log.info("\(messagePrefix): REPLACE BACKOFF, as decided by: \(servant.restartLogic)")
+                self.system.log.info("\(messagePrefix): RESPAWN BACKOFF, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
                 self.control.requestServantRestart(servant, delay: delay)
             }
         }

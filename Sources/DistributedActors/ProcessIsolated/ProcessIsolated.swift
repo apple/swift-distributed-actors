@@ -105,8 +105,8 @@ public class ProcessIsolated {
             let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
             }
-            let funReplaceServantProcess: (ServantProcess) -> Void = { (servant: ServantProcess) in
-                self.replaceServantProcess(servant)
+            let funRespawnServantProcess: (ServantProcess) -> Void = { (servant: ServantProcess) in
+                self.respawnServantProcess(servant)
             }
             let funKillServantProcess: (Int) -> Void = { (pid: Int) in
                 self.lock.withLockVoid {
@@ -121,7 +121,7 @@ public class ProcessIsolated {
 
             let processCommander = ProcessCommander(
                 funSpawnServantProcess: funSpawnServantProcess,
-                funReplaceServantProcess: funReplaceServantProcess,
+                funRespawnServantProcess: funRespawnServantProcess,
                 funKillServantProcess: funKillServantProcess
             )
             self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, perpetual: true)
@@ -174,7 +174,7 @@ public class ProcessIsolated {
     ///
     /// ### Thread safety
     /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
-    public func spawnServantProcess(supervision: ServantProcessSupervisionStrategy, args: [String]) {
+    public func spawnServantProcess(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
         if self.control.hasRole(.master) {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
@@ -183,12 +183,12 @@ public class ProcessIsolated {
         }
     }
 
-    internal func replaceServantProcess(_ servant: ServantProcess, delay: TimeAmount? = nil) {
+    internal func respawnServantProcess(_ servant: ServantProcess, delay: TimeAmount? = nil) {
         if self.control.hasRole(.master) {
-            self.processSupervisorMailbox.enqueue(.replaceServant(servant))
+            self.processSupervisorMailbox.enqueue(.respawnServant(servant))
         } else {
             // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
-            self.processCommander.tell(.requestReplaceServant(servant, delay: delay))
+            self.processCommander.tell(.requestRespawnServant(servant, delay: delay))
         }
     }
 
@@ -283,7 +283,7 @@ internal struct ServantProcess {
 
 internal enum _ProcessSupervisorMessage {
     case spawnServant(ServantProcessSupervisionStrategy, args: [String])
-    case replaceServant(ServantProcess)
+    case respawnServant(ServantProcess)
 }
 
 extension ProcessIsolated {
@@ -338,7 +338,7 @@ extension ProcessIsolated {
             }
             return true
 
-        case .replaceServant(let terminated):
+        case .respawnServant(let terminated):
             var replacement = terminated
 
             let replacementNode = self.makeServantNode()
@@ -472,7 +472,7 @@ public final class IsolatedControl {
         precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
-        self.system._resolve(context: context).tell(.requestReplaceServant(servant, delay: delay))
+        self.system._resolve(context: context).tell(.requestRespawnServant(servant, delay: delay))
     }
 
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {

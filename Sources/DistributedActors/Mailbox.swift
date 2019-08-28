@@ -216,57 +216,6 @@ internal final class Mailbox<Message> {
             deadLetters.tell(DeadLetter(msg, recipient: address))
         })
 
-                let supervisionDirective: SupervisionDirective<Message>
-                switch runPhase {
-                case .processingSystemMessages:
-                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .signal)
-                case .processingUserMessages:
-                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .message)
-                }
-
-                // TODO: this handling MUST be aligned with the throws handling.
-                switch supervisionDirective {
-                case .stop:
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    // decision is to stop which is terminal, thus: Let it Crash!
-                    return .failureTerminate
-
-                case .escalate(let failure):
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    // failure escalated "all the way", so decision is to fail, Let it Crash!
-                    try shell.becomeNext(behavior: shell._escalate(failure: failure))
-                    return .failureTerminate
-
-                case .restartImmediately(let nextBehavior):
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    do {
-                        // received new behavior, restarting immediately
-                        try shell._restartPrepare()
-                        _ = try shell._restartComplete(with: nextBehavior)
-                        return .failureRestart
-                    } catch {
-                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
-                    }
-
-                case .restartDelayed(let delay, let nextBehavior):
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    do {
-                        // received new behavior, however actual restart is delayed, so we only prepare
-                        try shell._restartPrepare()
-                        // and become the restarting behavior which schedules the wakeUp system message on setup
-                        try shell.becomeNext(behavior: SupervisionRestartDelayedBehavior.after(delay: delay, with: nextBehavior))
-                        return .failureRestart
-                    } catch {
-                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
-                    }
-                }
-            },
-            describeMessage: { failedMessageRawPtr in
-                // guaranteed to be of our generic Message type, however the context could not close over the generic type
-                renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
-            }
-        )
-
         // cache `run`, seems to give performance benefit
         self._run = self.run
     }

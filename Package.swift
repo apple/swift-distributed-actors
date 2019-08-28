@@ -85,6 +85,13 @@ let targets: [PackageDescription.Target] = [
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_noLeaking"
     ),
+    .target(
+        name: "it_ProcessIsolated_backoffRespawn",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
+    ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Performance / Benchmarks

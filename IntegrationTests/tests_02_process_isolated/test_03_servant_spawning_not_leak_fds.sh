@@ -16,9 +16,6 @@
 set -e
 #set -x # verbose
 
-declare -r RED='\033[0;31m'
-declare -r RST='\033[0m'
-
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 

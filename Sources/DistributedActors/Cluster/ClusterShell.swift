@@ -236,7 +236,6 @@ extension ClusterShell {
                 return self.onJoin(context, state: state, joining: node)
 
             case .handshakeWith(let remoteAddress, let replyTo):
-                state.logMembership()
                 return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)

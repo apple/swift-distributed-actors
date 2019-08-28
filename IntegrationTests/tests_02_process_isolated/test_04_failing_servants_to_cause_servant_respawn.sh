@@ -16,9 +16,6 @@
 set -e
 #set -x # verbose
 
-declare -r RED='\033[0;31m'
-declare -r RST='\033[0m'
-
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
@@ -41,14 +38,14 @@ declare -r log_file="/tmp/${app_name}.log"
 rm -f ${log_file}
 swift run ${app_name} > ${log_file} &
 
-declare -r supervision_replace_grep_txt='supervision: REPLACE'
+declare -r supervision_respawn_grep_txt='supervision: RESPAWN'
 declare -r supervision_stop_grep_txt='supervision: STOP'
 
-# we want to wait until 2 STOPs are found in the logs; then we can check if the other conditions are as we expect
-echo "Waiting for servants to REPLACE and STOP..."
+# we want to wait until 2 RESPAs are found in the logs; then we can check if the other conditions are as we expect
+echo "Waiting for servant to RESPAWN a few times..."
 spin=1 # spin counter
 max_spins=20
-while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 2 ]]; do
+while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 3 ]]; do
     sleep 1
     spin=$((spin+1))
     if [[ ${spin} -eq ${max_spins} ]]; then
@@ -59,15 +56,15 @@ while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 2 
 done
 
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-cat ${log_file} | grep "${supervision_replace_grep_txt}"
+cat ${log_file} | grep "${supervision_respawn_grep_txt}"
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 cat ${log_file} | grep "${supervision_stop_grep_txt}"
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
-if [[ $(cat ${log_file} | grep "${supervision_replace_grep_txt}" | wc -l) -ne 2 ]]; then
-    echoerr "ERROR: We expected 2 servants to only restart once, yet more restarts were detected!"
+if [[ $(cat ${log_file} | grep "${supervision_respawn_grep_txt}" | wc -l) -ne 2 ]]; then
+    echoerr "ERROR: We expected 2 servants to only respawn once, yet other number of respawns was detected!"
     cat ${log_file}
 
     _killall ${app_name}

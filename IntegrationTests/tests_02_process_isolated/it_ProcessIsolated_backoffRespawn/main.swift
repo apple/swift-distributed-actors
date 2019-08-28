@@ -33,14 +33,20 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 struct OnPurposeBoom: Error {}
 
 isolated.run(on: .master) {
-    isolated.spawnServantProcess(supervision: .respawn(atMost: 1, within: nil), args: ["fatalError"])
-    isolated.spawnServantProcess(supervision: .respawn(atMost: 1, within: nil), args: ["escalateError"])
+    isolated.spawnServantProcess(supervision:
+        .respawn(
+            atMost: 5, within: nil,
+            backoff: Backoff.exponential(
+                initialInterval: .milliseconds(100),
+                multiplier: 1.5,
+                randomFactor: 0
+            )
+        )
+    )
 }
 
 try isolated.run(on: .servant) {
     isolated.system.log.info("ISOLATED RUNNING: \(CommandLine.arguments)")
-
-    // TODO: assert command line arguments are the expected ones
 
     _ = try isolated.system.spawn("failed", of: String.self,
         props: Props().supervision(strategy: .escalate),
@@ -49,18 +55,9 @@ try isolated.run(on: .servant) {
             context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
 
             return .receiveMessage { message in
-                if CommandLine.arguments.contains("fatalError") {
-                    context.log.error("Time to crash with: fatalError")
-                    // crashes process since we do not isolate faults
-                    fatalError("FATAL ERROR ON PURPOSE")
-                } else if CommandLine.arguments.contains("escalateError") {
-                    context.log.error("Time to crash with: throwing an error, escalated to top level")
-                    // since we .escalate and are a top-level actor, this will cause the process to die as well
-                    throw OnPurposeBoom()
-                } else {
-                    context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
-                    fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
-                }
+                context.log.error("Time to crash with: fatalError")
+                // crashes process since we do not isolate faults
+                fatalError("FATAL ERROR ON PURPOSE")
             }
         })
 }
