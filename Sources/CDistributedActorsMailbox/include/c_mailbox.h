@@ -33,9 +33,9 @@ SWIFT_CLOSED_ENUM(SActMailboxRunPhase) {
 } SActMailboxRunPhase;
 
 typedef struct {
-            uint32_t  capacity;
-            uint32_t  max_run_length;
-    _Atomic int64_t   status;
+            uint32_t      capacity;
+            uint32_t      max_run_length;
+    _Atomic int64_t       status;
     CSActMPSCLinkedQueue* system_messages;
     CSActMPSCLinkedQueue* messages;
 } CSActMailbox;

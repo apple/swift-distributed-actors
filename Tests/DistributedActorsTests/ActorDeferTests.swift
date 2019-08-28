@@ -34,7 +34,7 @@ class ActorDeferTests: XCTestCase {
         case staysSame
         case stops
         case failsByThrowing
-        case failsByFaulting
+        // case failsByFaulting
     }
 
     func receiveDeferBehavior(_ probe: ActorRef<String>, deferUntil: DeferUntilWhen, whenActor reaction: ReductionReaction) -> Behavior<String> {
@@ -51,7 +51,7 @@ class ActorDeferTests: XCTestCase {
             case .staysSame: return .same
             case .stops: return .stop
             case .failsByThrowing: throw TestError("Failing on purpose")
-            case .failsByFaulting: fatalError("Failing on purpose")
+                // case .failsByFaulting: fatalError("Failing on purpose")
             }
         }
     }
@@ -96,9 +96,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceived_shouldExecute_afterFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.shared_defer_shouldExecute(deferUntil: .received, whenActor: .failsByFaulting)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -117,9 +115,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilTerminated_shouldExecute_afterFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.shared_defer_shouldExecute(deferUntil: .terminated, whenActor: .failsByFaulting)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -138,9 +134,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilFailed_shouldExecute_afterFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.shared_defer_shouldExecute(deferUntil: .failed, whenActor: .failsByFaulting)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -159,9 +153,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceiveFailed_shouldExecute_afterFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.shared_defer_shouldExecute(deferUntil: .receiveFailed, whenActor: .failsByFaulting)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     func test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction() throws {

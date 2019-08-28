@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ActorIsolationFailureHandlingTests: XCTestCase {
+final class ActorIsolationFailureHandlingTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -52,7 +52,7 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         return .receive { context, message in
             context.log.info("Working on: \(message)")
             switch message {
-            case .work(let n, let divideBy):
+            case .work(let n, let divideBy): // Fault handling is not implemented
                 pw.tell(n / divideBy)
                 return .same
             case .throwError(let error):
@@ -105,97 +105,11 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-2")
-        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbeForWorker-2")
-
-        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
-
-        // watch parent and see it spawn the worker:
-        pm.watch(healthyMaster)
-        healthyMaster.tell(self.spawnFaultyWorkerCommand)
-        guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
-
-        // watch the worker and see that it works correctly:
-        pw.watch(worker)
-        worker.tell(.work(n: 100, divideBy: 10))
-        try pw.expectMessage(10)
-
-        // issue a message that will cause the worker to crash
-        worker.tell(.work(n: 100, divideBy: 0)) // BOOM!
-        try pw.expectNoMessage(for: .milliseconds(200)) // code after the divide-by-zero should not be allowed to execute
-
-        // the worker, should have terminated due to the error:
-        let workerTerminated = try pw.expectTerminated(worker)
-        pinfo("Good: \(workerTerminated)")
-
-        // even though the worker crashed, the parent is still alive (!)
-        let stillAlive = "still alive"
-        healthyMaster.tell(stillAlive)
-        try pm.expectMessage(.echoing(message: "still alive"))
-        pinfo("Good: Parent \(healthyMaster) still active.")
-
-        // we are also now able to start a replacement actor for the terminated child:
-        healthyMaster.tell(self.spawnFaultyWorkerCommand)
-        pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
-        guard case .spawned(let workerReplacement) = try pm.expectMessage() else { throw pm.error() }
-
-        let workerAddress: ActorAddress = worker.address
-        let replacementAddress: ActorAddress = workerReplacement.address
-        replacementAddress.shouldNotEqual(workerAddress) // NOT same address
-        replacementAddress.path.shouldEqual(workerAddress.path) // same path
-        replacementAddress.incarnation.shouldNotEqual(workerAddress.incarnation) // NOT same uid
-        workerReplacement.shouldNotEqual(worker) // NOT same identity
-
-        workerReplacement.tell(.work(n: 1000, divideBy: 100))
-        try pw.expectMessage(10)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     func test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-3")
-        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbe-faultyWorker")
-
-        let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
-
-        // watch parent and see it spawn the worker:
-        pm.watch(healthyMaster)
-        healthyMaster.tell(self.spawnFaultyWorkerCommand)
-        guard case .spawned(let worker) = try pm.expectMessage() else { throw pm.error() }
-        pw.watch(worker)
-
-        // watch the worker and see that it works correctly:
-        pw.watch(worker)
-        worker.tell(.work(n: 100, divideBy: 10))
-        try pw.expectMessage(10)
-
-        // issue a message that will cause the worker to crash
-        worker.tell(.work(n: 100, divideBy: 0)) // BOOM!
-        try pw.expectNoMessage(for: .milliseconds(500)) // code after the divide-by-zero should not be allowed to execute
-
-        // the worker, should have terminated due to the error:
-        let workerTerminated = try pw.expectTerminated(worker)
-        pinfo("Good: \(workerTerminated)")
-
-        // we are also now able to start a replacement actor for the terminated child:
-        healthyMaster.tell(self.spawnFaultyWorkerCommand)
-        guard case .spawned(let workerReplacement) = try pm.expectMessage() else { throw pm.error() }
-        pw.watch(workerReplacement)
-
-        let workerAddress: ActorAddress = worker.address
-        let replacementAddress: ActorAddress = workerReplacement.address
-        replacementAddress.shouldNotEqual(workerAddress) // NOT same address
-        replacementAddress.path.shouldEqual(workerAddress.path) // same path
-        replacementAddress.incarnation.shouldNotEqual(workerAddress.incarnation) // NOT same uid
-        replacementAddress.path.shouldEqual(workerAddress.path) // same path
-        workerReplacement.shouldNotEqual(worker) // NOT same identity
-
-        pinfo("Good: Parent \(healthyMaster) was able to spawn new worker under the same name (unregistering of dead child worked).")
-
-        workerReplacement.tell(.work(n: 1000, divideBy: 100))
-        try pw.expectMessage(10)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 
     func test_crashOutsideOfActor_shouldStillFailLikeUsual() throws {
@@ -203,7 +117,6 @@ class ActorIsolationFailureHandlingTests: XCTestCase {
         pnote("Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`")
         return ()
         #endif
-        _ = "Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`"
 
         fatalError("Boom like usual!")
         // this MUST NOT trigger Swift Distributed Actors failure handling, we are not inside of an actor!

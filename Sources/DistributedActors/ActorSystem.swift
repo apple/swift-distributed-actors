@@ -136,6 +136,7 @@ public final class ActorSystem {
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
         do {
+            // Fault handling is not implemented and will never install the crash handling signal-handler.
             if settings.faultSupervisionMode.isEnabled {
                 try FaultHandling.installCrashHandling()
             }

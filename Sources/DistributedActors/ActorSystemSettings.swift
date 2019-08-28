@@ -53,7 +53,7 @@ public struct ActorSystemSettings {
     ///            to initiate some form of graceful shutdown when facing faults.
     ///
     /// - SeeAlso: `FaultSupervisionMode` for a detailed discussion of the available modes.
-    public var faultSupervisionMode: FaultSupervisionMode = .isolateYetMayLeakMemory
+    public let faultSupervisionMode: FaultSupervisionMode = .crashOnFaults
 }
 
 public struct ActorSettings {
@@ -73,15 +73,6 @@ public struct ActorSettings {
 /// The main reason for this option is that the `isolate` mode is inherently leaking memory, due to current Swift limitations,
 /// while we hope to address these in
 public enum FaultSupervisionMode {
-    /// A signal handler will be installed to catch and recover from faults.
-    ///
-    /// In this mode memory can leak upon faults, but the process will not crash.
-    /// Crashes caused by faults can be handled in supervision. This mode should
-    /// be chosen when keeping the process alive is more important than not leaking.
-    ///
-    /// - warning: May leak memory (!), usually may want to initiate a clean shutdown upon such fault being captured.
-    case isolateYetMayLeakMemory
-
     /// Faults will crash the entire process and no memory will leak.
     /// This mode is equivalent to Swift's default fault handling model.
     ///
@@ -93,7 +84,6 @@ public enum FaultSupervisionMode {
 internal extension FaultSupervisionMode {
     var isEnabled: Bool {
         switch self {
-        case .isolateYetMayLeakMemory: return true
         case .crashOnFaults: return false
         }
     }

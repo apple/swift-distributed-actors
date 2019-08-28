@@ -171,8 +171,6 @@ class ActorSubReceiveTests: XCTestCase {
     }
 
     func test_subReceive_shouldTriggerSupervisionOnFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: .faulting)
-        #endif
+        pnote("Fault handling is not implemented.")
     }
 }

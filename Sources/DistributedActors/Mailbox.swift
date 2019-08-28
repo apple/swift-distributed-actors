@@ -156,28 +156,27 @@ internal final class Mailbox<Message> {
             }
         }
         self.invokeSupervision = { ctxPtr, runPhase, failedMessagePtr in
-            traceLog_Mailbox(nil, "Actor has faulted, supervisor to decide course of action.")
-
             if let crashDetails = FaultHandling.getCrashDetails() {
                 if let context: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
-                    traceLog_Mailbox(nil, "Run failed in phase \(runPhase)")
+                    traceLog_Mailbox(context.path, "Actor has faulted, run failed in phase \(runPhase)")
 
                     let messageDescription = context.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!)
                     let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
 
                     do {
+                        pprint("failure = \(failure)")
                         return try context.handleMessageFailure(.fault(failure), whileProcessing: runPhase)
                     } catch {
                         traceLog_Supervision("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
-                        exit(-1)
+                        exit(-1) // FIXME: at least log as well before we exit?
                     }
                 } else {
-                    traceLog_Supervision("No crash details...")
+                    traceLog_Supervision("Actor has faulted, no crash details...")
                     // no crash details, so we can't invoke supervision; Let it Crash!
                     return .failureTerminate
                 }
             } else {
-                traceLog_Supervision("No crash details...")
+                traceLog_Supervision("Actor has faulted, no crash details...")
                 // no crash details, so we can't invoke supervision; Let it Crash!
                 return .failureTerminate
             }
@@ -253,6 +252,7 @@ internal final class Mailbox<Message> {
         // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
         // It has to implement the equivalent of `Supervisor.interpretSupervised`, for the fault handling path.
         self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
+            shell.path,
             handleMessageFailure: { [weak _shell = shell] supervisionFailure, runPhase in
                 guard let shell = _shell else {
                     /// if we cannot unwrap the cell it means it was closed and deallocated
@@ -441,12 +441,13 @@ internal final class Mailbox<Message> {
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)
 
-        switch cmailbox_send_system_tombstone(self.mailbox, ptr) {
+        let res = cmailbox_send_system_tombstone(self.mailbox, ptr)
+        switch res {
         case .mailboxTerminating:
             // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
             cell.dispatcher.execute(self._run)
         default:
-            fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
+            fatalError("!!! BUG !!! RES(\(res)) Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
         }
     }
 
@@ -661,6 +662,8 @@ private struct DropMessageClosureContext {
 
 /// Wraps context for use in closures passed to C
 private struct InvokeSupervisionClosureContext {
+    internal let path: ActorPath
+
     // Implementation note: we wold like to execute the usual handle failure here, but we can't since the passed
     // over to C ClosureContext may not close over generic context. Thus the passed in closure here has to contain all the logic,
     // and only yield us the "supervised run result", which usually will be `Failure` or `FailureRestart`
@@ -671,8 +674,10 @@ private struct InvokeSupervisionClosureContext {
     // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
     private let _describeMessage: (UnsafeMutableRawPointer) -> String
 
-    init(handleMessageFailure: @escaping (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult,
+    init(_ path: ActorPath,
+         handleMessageFailure: @escaping (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult,
          describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
+        self.path = path
         self._handleMessageFailureBecauseC = handleMessageFailure
         self._describeMessage = describeMessage
     }
@@ -726,7 +731,7 @@ private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> S
 
 // MARK: Custom string representations of C-defined enumerations
 
-/// Helper for rendering the C defined `MailboxRunResult` enum in human readable format
+/// Helper for rendering the C defined `SActMailboxRunResult` enum in human readable format
 extension SActMailboxRunResult: CustomStringConvertible {
     public var description: String {
         switch self {
@@ -746,7 +751,25 @@ extension SActMailboxRunResult: CustomStringConvertible {
     }
 }
 
-/// Helper for rendering the C defined `MailboxRunResult` enum in human readable format
+/// Helper for rendering the C defined `SActMailboxEnqueueResult` enum in human readable format
+extension SActMailboxEnqueueResult: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .needsScheduling:
+            return "SActMailboxEnqueueResult.needsScheduling"
+        case .alreadyScheduled:
+            return "SActMailboxEnqueueResult.alreadyScheduled"
+        case .mailboxTerminating:
+            return "SActMailboxEnqueueResult.mailboxTerminating"
+        case .mailboxClosed:
+            return "SActMailboxEnqueueResult.mailboxClosed"
+        case .mailboxFull:
+            return "SActMailboxEnqueueResult.mailboxFull"
+        }
+    }
+}
+
+/// Helper for rendering the C defined `SActActorRunResult` enum in human readable format
 extension SActActorRunResult: CustomStringConvertible {
     public var description: String {
         switch self {
