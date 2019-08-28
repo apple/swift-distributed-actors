@@ -431,7 +431,7 @@ internal class Guardian {
                     // TODO: What else to do here? print to stderr? we are likely already shutting down or already shut down.")
                     return
                 }
-                switch system.settings.guardianFailureHandling {
+                switch system.settings.failure.onGuardianFailure {
                 case .shutdownActorSystem:
                     let message = "Escalated failure from [\(ref)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)"
                     system.log.error("\(message)")

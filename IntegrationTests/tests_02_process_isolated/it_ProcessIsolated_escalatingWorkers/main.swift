@@ -23,7 +23,7 @@ import DistributedActors
 let isolated = ProcessIsolated { boot in
     boot.settings.defaultLogLevel = .info
     boot.runOn(role: .servant) {
-        boot.settings.guardianFailureHandling = .systemExit(-1)
+        boot.settings.failure.onGuardianFailure = .systemExit(-1)
     }
     return ActorSystem(settings: boot.settings)
 }

@@ -155,7 +155,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NoSerializationVerification {
+    enum CommandMessage: NoSerializationVerification, SilentDeadLetter {
         case join(Node)
 
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
@@ -236,8 +236,6 @@ extension ClusterShell {
             )
 
             // TODO: configurable bind timeout?
-
-            //  TODO: crash everything, entire system, when bind fails
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
@@ -269,6 +267,7 @@ extension ClusterShell {
                 return self.onReachabilityChange(context, state: state, node: node, reachability: reachability)
 
             case .unbind(let receptacle):
+                // TODO: should become shutdown
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
 
             case .downCommand(let node):
@@ -279,7 +278,7 @@ extension ClusterShell {
         func receiveQuery(context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
             switch query {
             case .associatedNodes(let replyTo):
-                replyTo.tell(state.associatedAddresses()) // TODO: we'll want to put this into some nicer message wrapper?
+                replyTo.tell(state.associatedNodes()) // TODO: we'll want to put this into some nicer message wrapper?
                 return .same
             case .currentMembership(let replyTo):
                 replyTo.tell(state.membership)
@@ -504,7 +503,7 @@ extension ClusterShell {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
-            if state.associatedAddresses().contains(accept.from) {
+            if state.associatedNodes().contains(accept.from) {
                 // this seems to be a re-delivered accept, we already accepted association with this node.
                 return .ignore
             } else {

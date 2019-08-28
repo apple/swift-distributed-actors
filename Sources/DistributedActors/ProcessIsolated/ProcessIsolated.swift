@@ -90,7 +90,7 @@ public class ProcessIsolated {
         }
 
         if role == .servant {
-            bootSettings.settings.guardianFailureHandling = .systemExit(-1)
+            bootSettings.settings.failure.onGuardianFailure = .systemExit(-1)
         }
         let system = boot(bootSettings)
 
