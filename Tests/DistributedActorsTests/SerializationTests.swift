@@ -289,7 +289,10 @@ class SerializationTests: XCTestCase {
     }
 
     func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
+        pnote("Fault handling is not implemented, so we cannot test for the fault ocurring when no serializer defined.")
+        return
+
+        /// if we had fault handling, this test should work:
         let s2 = ActorSystem("SerializeMessages") { settings in
             settings.serialization.allMessages = true
         }
@@ -309,7 +312,6 @@ class SerializationTests: XCTestCase {
 
         try p.expectTerminated(senderOfNotSerializableMessage)
         s2.shutdown()
-        #endif
     }
 }
 
