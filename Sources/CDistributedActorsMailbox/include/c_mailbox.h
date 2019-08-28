@@ -92,15 +92,6 @@ typedef SActActorRunResult (*SActInterpretMessageCallback)(SActDropMessageClosur
  */
 typedef void (*SActDropMessageCallback)(SActDropMessageClosureContext, void*); // TODO rename, deadletters
 
-/*
- * Callback for Swift interop.
- *
- * Accepts pointer to message which caused the failure.
- *
- * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
- */
-typedef SActMailboxRunResult (*SActInvokeSupervisionCallback)(SActSupervisionClosureContext, SActMailboxRunPhase, void*);
-
 CSActMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length);
 
 /*
@@ -138,15 +129,11 @@ SActMailboxEnqueueResult cmailbox_send_system_tombstone(CSActMailbox* mailbox, v
  */
 SActMailboxRunResult cmailbox_run(
     CSActMailbox* mailbox,
-    void* cell, bool handle_crashes,
+    void* cell,
     // message processing:
     SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
     SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
     SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
-    // fault handling:
-    jmp_buf* error_jmp_buf,
-    SActSupervisionClosureContext supervision_context, SActInvokeSupervisionCallback supervision_invoke,
-    void** failed_message,
     SActMailboxRunPhase* run_phase
     );
 

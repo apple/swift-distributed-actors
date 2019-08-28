@@ -45,15 +45,6 @@ public struct ActorSystemSettings {
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
-
-    /// Controls how faults (i.e. `fatalError` and similar) are handled by supervision.
-    ///
-    /// - warning: By default faults are isolated by actors, rather than terminating the entire process.
-    ///            Currently, this may (very likely though) result in memory leaks, so it is recommended
-    ///            to initiate some form of graceful shutdown when facing faults.
-    ///
-    /// - SeeAlso: `FaultSupervisionMode` for a detailed discussion of the available modes.
-    public let faultSupervisionMode: FaultSupervisionMode = .crashOnFaults
 }
 
 public struct ActorSettings {
@@ -63,28 +54,4 @@ public struct ActorSettings {
 
     // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
     public var maxBehaviorNestingDepth: Int = 128
-}
-
-/// Used to configure fault handling mode.
-///
-/// Note that these settings only impact how faults are supervised, and have no impact on supervision of `Error`s (throws),
-/// inside actors.
-///
-/// The main reason for this option is that the `isolate` mode is inherently leaking memory, due to current Swift limitations,
-/// while we hope to address these in
-public enum FaultSupervisionMode {
-    /// Faults will crash the entire process and no memory will leak.
-    /// This mode is equivalent to Swift's default fault handling model.
-    ///
-    /// This mode should be chosen when preventing leaks is more important than keeping
-    /// the process alive.
-    case crashOnFaults
-}
-
-internal extension FaultSupervisionMode {
-    var isEnabled: Bool {
-        switch self {
-        case .crashOnFaults: return false
-        }
-    }
 }

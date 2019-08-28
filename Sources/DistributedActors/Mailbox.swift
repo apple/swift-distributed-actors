@@ -100,14 +100,9 @@ internal final class Mailbox<Message> {
     // Implementation note: closure callbacks passed to C-mailbox
     private let interpretMessage: SActInterpretMessageCallback
     private let deadLetterMessage: SActDropMessageCallback
-    // Enables supervision to work for faults (and not only errors).
-    // If the currently run behavior is wrapped using a supervision interceptor,
-    // we store a reference to its Supervisor handler, that we invoke
-    private let invokeSupervision: SActInvokeSupervisionCallback
 
     /// If `true`, all messages should be attempted to be serialized before sending
     private let serializeAllMessages: Bool
-    private let handleCrashes: Bool
     private var _run: () -> Void = {}
 
     init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
@@ -124,7 +119,6 @@ internal final class Mailbox<Message> {
 
         // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         self.serializeAllMessages = shell.system.settings.serialization.allMessages
-        self.handleCrashes = shell.system.settings.faultSupervisionMode.isEnabled
 
         // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
 
@@ -153,32 +147,6 @@ internal final class Mailbox<Message> {
                 try context?.pointee.drop(with: msgPtr!)
             } catch {
                 traceLog_Mailbox(nil, "Error while dropping message! Was: \(error) TODO supervision decisions...")
-            }
-        }
-        self.invokeSupervision = { ctxPtr, runPhase, failedMessagePtr in
-            if let crashDetails = FaultHandling.getCrashDetails() {
-                if let context: InvokeSupervisionClosureContext = ctxPtr?.assumingMemoryBound(to: InvokeSupervisionClosureContext.self).pointee {
-                    traceLog_Mailbox(context.path, "Actor has faulted, run failed in phase \(runPhase)")
-
-                    let messageDescription = context.renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessagePtr!)
-                    let failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
-
-                    do {
-                        pprint("failure = \(failure)")
-                        return try context.handleMessageFailure(.fault(failure), whileProcessing: runPhase)
-                    } catch {
-                        traceLog_Supervision("Supervision: Double-fault during supervision, unconditionally hard crashing the system: \(error)")
-                        exit(-1) // FIXME: at least log as well before we exit?
-                    }
-                } else {
-                    traceLog_Supervision("Actor has faulted, no crash details...")
-                    // no crash details, so we can't invoke supervision; Let it Crash!
-                    return .failureTerminate
-                }
-            } else {
-                traceLog_Supervision("Actor has faulted, no crash details...")
-                // no crash details, so we can't invoke supervision; Let it Crash!
-                return .failureTerminate
             }
         }
 
@@ -275,16 +243,19 @@ internal final class Mailbox<Message> {
                 // TODO: this handling MUST be aligned with the throws handling.
                 switch supervisionDirective {
                 case .stop:
+                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
                     // decision is to stop which is terminal, thus: Let it Crash!
                     return .failureTerminate
 
                 case .escalate:
+                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
                     // failure escalated "all the way", so decision is to fail, Let it Crash!
                     // TODO: escalate to parent via terminated with the error?
                     // TODO: do we need to crash children explicitly here?
                     return .failureTerminate
 
                 case .restartImmediately(let nextBehavior):
+                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
                     do {
                         // received new behavior, restarting immediately
                         try shell._restartPrepare()
@@ -295,6 +266,7 @@ internal final class Mailbox<Message> {
                     }
 
                 case .restartDelayed(let delay, let nextBehavior):
+                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
                     do {
                         // received new behavior, however actual restart is delayed, so we only prepare
                         try shell._restartPrepare()
@@ -453,13 +425,6 @@ internal final class Mailbox<Message> {
 
     @inlinable
     func run() {
-        if self.handleCrashes {
-            // For every run we make we mark "we are inside of an mailbox run now" and remove the marker once the run completes.
-            // This is because fault handling MUST ONLY be triggered for mailbox runs, we do not want to handle arbitrary failures on this thread.
-            FaultHandling.enableFaultHandling()
-        }
-        defer { FaultHandling.disableFaultHandling() }
-
         guard var cell = self.shell else {
             traceLog_Mailbox(self.address.path, "has already stopped, ignoring run")
             return
@@ -475,13 +440,11 @@ internal final class Mailbox<Message> {
 
         // Run the mailbox:
         let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
-                                                                  &cell, self.handleCrashes,
+                                                                  &cell,
                                                                   &self.messageClosureContext, &self.systemMessageClosureContext,
                                                                   &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
                                                                   self.interpretMessage, self.deadLetterMessage,
-                                                                  // fault handling:
-                                                                  FaultHandling.getErrorJmpBuf(),
-                                                                  &self.invokeSupervisionClosureContext, self.invokeSupervision, failedMessagePtr, &runPhase)
+                                                                  &runPhase)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -501,7 +464,7 @@ internal final class Mailbox<Message> {
             // but in case of a failure that code can not be executed
             failedMessagePtr.deinitialize(count: 1)
             // FIXME: !!! we must know if we should schedule or not after a restart...
-            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)") // FIXME:
+            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)")
             cell.dispatcher.execute(self._run)
 
         case .failureTerminate:
@@ -516,10 +479,11 @@ internal final class Mailbox<Message> {
             // and will dead letter them. We need to process all existing system messages though all the way to the tombstone,
             // before we become CLOSED.
 
-            // Meaning supervision was either applied and decided to fail, or not applied and we should fail anyway.
-            // We have to guarantee the processing of any outstanding system messages, and use a tombstone marker to notice this.
-            let failedRunPhase = runPhase
-            self.reportCrashFailCellWithBestPossibleError(shell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
+            // Fault handling is not implemented.
+            // // Meaning supervision was either applied and decided to fail, or not applied and we should fail anyway.
+            // // We have to guarantee the processing of any outstanding system messages, and use a tombstone marker to notice this.
+            // let failedRunPhase = runPhase
+            // self.reportCrashFailCellWithBestPossibleError(shell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
 
             // since we may have faulted while processing user messages, while system messages were being enqueued,
             // we have to perform one last run to potentially drain any remaining system messages to dead letters for
@@ -563,46 +527,6 @@ internal final class Mailbox<Message> {
         self.deadLetterSystemMessageClosureContext = nil
         self.invokeSupervisionClosureContext = nil
     }
-}
-
-// MARK: Crash handling functions for Mailbox
-
-extension Mailbox {
-    // TODO: rename to "log crash error"?
-    private func reportCrashFailCellWithBestPossibleError(shell: ActorShell<Message>, failedMessagePtr: UnsafeMutablePointer<UnsafeMutableRawPointer?>, runPhase: SActMailboxRunPhase) {
-        let failure: MessageProcessingFailure
-
-        if let crashDetails = FaultHandling.getCrashDetails() {
-            if let failedMessageRaw = failedMessagePtr.pointee {
-                defer { failedMessageRaw.deallocate() }
-
-                // appropriately render the message (recovering generic information thanks to the passed in type)
-                let messageDescription = renderMessageDescription(runPhase: runPhase, failedMessageRaw: failedMessageRaw, userMessageType: Message.self)
-                failure = MessageProcessingFailure(messageDescription: messageDescription, backtrace: crashDetails.backtrace)
-            } else {
-                failure = MessageProcessingFailure(messageDescription: "UNKNOWN", backtrace: crashDetails.backtrace)
-            }
-        } else {
-            failure = MessageProcessingFailure(messageDescription: "Error received, but no details set. Supervision omitted.", backtrace: [])
-        }
-
-        shell.reportCrashFail(cause: failure)
-    }
-}
-
-// TODO: separate metadata things from the mailbox, perhaps rather we should do it inside the run (pain to do due to C interop a bit?)
-extension Mailbox {
-    // TODO: enable again once https://github.com/apple/swift-log/issues/37 is resolved
-//    internal static func populateLoggerMetadata(_ shell:  ActorShell<Message>, from envelope: Envelope<Message>) -> Logger.Metadata {
-//        let old = shell.log.metadata
-//        #if SACT_DEBUG
-//        shell.log[metadataKey: "actorSenderPath"] = .lazy({ .string(envelope.senderPath.description) })
-//        #endif
-//        return old
-//    }
-//    internal static func resetLoggerMetadata(_ shell:  ActorShell<Message>, to metadata: Logger.Metadata) {
-//        cell.log.metadata = metadata
-//    }
 }
 
 internal struct MessageProcessingFailure: Error {

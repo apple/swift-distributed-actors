@@ -296,8 +296,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Throws:
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
-    /// Fails:
-    ///   - can potentially fail, which is handled by [FaultHandling] and terminates an actor run immediately.
     func interpretSystemMessage(message: SystemMessage) throws -> SActActorRunResult {
         traceLog_Cell("Interpret system message: \(message)")
 

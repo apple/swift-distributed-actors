@@ -470,14 +470,14 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_stopSupervised_fatalError_shouldStop() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
 
     func test_restartSupervised_fatalError_shouldRestart() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_restartSupervised_throws_shouldRestart() throws {
@@ -493,7 +493,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
@@ -538,7 +538,7 @@ class SupervisionTests: XCTestCase {
     // MARK: Restarting supervision with Backoff
 
     func test_restartSupervised_fatalError_shouldRestartWithConstantBackoff() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_restart_throws_shouldHandleFailureWhenInterpretingStart() throws {
@@ -687,7 +687,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_faultInSignalHandling_shouldRestart() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -805,11 +805,11 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_shouldOnlyHandle_anyFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_supervisor_shouldOnlyHandle_anyFailure() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
@@ -840,7 +840,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy failureMode: FailureMode, backoff: BackoffStrategy?) throws {
@@ -883,7 +883,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
@@ -891,7 +891,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
@@ -954,7 +954,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcherClosure() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy failureMode: FailureMode) throws {
@@ -993,7 +993,7 @@ class SupervisionTests: XCTestCase {
     }
 
     func test_supervisor_awaitResult_shouldInvokeSupervisionOnFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {

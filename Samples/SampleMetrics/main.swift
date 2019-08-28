@@ -80,7 +80,9 @@ struct MetricPrinter {
 
             return .receiveMessage { _ in
                 print("------------------------------------------------------------------------------------------")
-                print(prom.collect())
+                prom.collect { (s: String) in
+                    print(s)
+                }
 
                 return .same
             }

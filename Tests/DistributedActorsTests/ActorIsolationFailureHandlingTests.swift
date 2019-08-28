@@ -105,11 +105,11 @@ final class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_crashOutsideOfActor_shouldStillFailLikeUsual() throws {

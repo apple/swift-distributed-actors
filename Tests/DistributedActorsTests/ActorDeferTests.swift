@@ -96,7 +96,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceived_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilTerminated_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilFailed_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceiveFailed_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction() throws {

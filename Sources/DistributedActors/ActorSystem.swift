@@ -135,16 +135,6 @@ public final class ActorSystem {
 
         self.dispatcher = try! FixedThreadPool(settings.threadPoolSize)
 
-        do {
-            // Fault handling is not implemented and will never install the crash handling signal-handler.
-            if settings.faultSupervisionMode.isEnabled {
-                try FaultHandling.installCrashHandling()
-            }
-        } catch {
-            CDistributedActorsMailbox.sact_dump_backtrace()
-            fatalError("Unable to install crash handling signal handler. Terminating. Error was: \(error)")
-        }
-
         // initialize top level guardians
         self._root = TheOneWhoHasNoParent()
         let theOne = self._root

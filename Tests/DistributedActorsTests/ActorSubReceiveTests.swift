@@ -171,6 +171,6 @@ class ActorSubReceiveTests: XCTestCase {
     }
 
     func test_subReceive_shouldTriggerSupervisionOnFault() throws {
-        pnote("Fault handling is not implemented.")
+        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 }
