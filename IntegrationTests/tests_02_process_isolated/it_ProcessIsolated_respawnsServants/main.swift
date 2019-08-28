@@ -49,7 +49,7 @@ try isolated.run(on: .master) {
     })
 
     // should we allow anyone to issue this, or only on master? we could `runOnMaster { control` etc
-    isolated.spawnServantProcess(supervision: .restart(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
+    isolated.spawnServantProcess(supervision: .replace(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
 }
 
 // Notice that master has no workers, just the pool...

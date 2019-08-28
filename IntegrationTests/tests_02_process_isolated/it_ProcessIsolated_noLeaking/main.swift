@@ -43,7 +43,7 @@ try isolated.run(on: .master) {
 
     /// spawn a servant
 
-    isolated.spawnServantProcess(supervision: .restart(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
+    isolated.spawnServantProcess(supervision: .replace(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
 }
 
 // finally, once prepared, you have to invoke the following:

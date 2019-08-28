@@ -13,6 +13,10 @@
 ##
 ##===----------------------------------------------------------------------===##
 
+function echoerr() {
+    echo "$@" 1>&2;
+}
+
 function _killall() {
     set +e
     local killall_app_name="$1"

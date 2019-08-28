@@ -730,14 +730,15 @@ internal struct RestartDecisionLogic {
             if let backoffAmount = self.backoffStrategy?.next() {
                 return .restartBackoff(delay: backoffAmount)
             } else {
-                // TODO: or plain stop? now they are the same though...
-                // we stop/escalate since the strategy decided we've been trying again enough and it is time to stop
-                return .escalate
+                // we stop since the strategy decided we've been trying again enough and it is time to stop
+                // TODO: could be configurable to escalate once restarts exhausted
+                return .stop
             }
 
         } else {
             // e.g. total time within which we are allowed to back off has been exceeded etc
-            return .escalate
+            // TODO: could be configurable to escalate once restarts exhausted
+            return .stop
         }
     }
 

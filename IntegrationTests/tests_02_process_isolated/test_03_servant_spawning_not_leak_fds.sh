@@ -52,7 +52,9 @@ for pid_servant in $pid_servants; do
     if [[ $(lsof -p $pid_servant | wc -l) -gt 100 ]]; then
         lsof -p $pid_servant
         printf "${RED}ERROR: Seems the servant [${pid_servant}] has too many FDs open, did the masters FD leak?${RST}\n"
-        exit -2
+
+        _killall ${app_name}
+        exit -1
     fi
 done
 

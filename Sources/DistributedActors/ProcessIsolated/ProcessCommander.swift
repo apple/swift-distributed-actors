@@ -14,21 +14,25 @@
 
 /// EXPERIMENTAL.
 // Master (Process) and Commander (Actor): The Far Side of the World
-public struct ProcessCommander {
-    public static let naming: ActorNaming = "processCommander"
+internal struct ProcessCommander {
     public static let name: String = "processCommander"
+    public static let naming: ActorNaming = .unique(name)
 
-    public enum Command {
-        case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String], delay: TimeAmount?)
+    internal enum Command {
+        case requestSpawnServant(ServantProcessSupervisionStrategy, args: [String])
+        case requestReplaceServant(ServantProcess, delay: TimeAmount?)
     }
 
-    private let funRemoveServantPid: (Int) -> Void
+    private let funRemoveServantByPID: (Int) -> Void
     private let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void
+    private let funReplaceServantProcess: (ServantProcess) -> Void
 
-    public init(funSpawnServantProcess: @escaping (ServantProcessSupervisionStrategy, [String]) -> Void,
-                funKillServantProcess: @escaping (Int) -> Void) {
+    init(funSpawnServantProcess: @escaping (ServantProcessSupervisionStrategy, [String]) -> Void,
+         funReplaceServantProcess: @escaping (ServantProcess) -> Void,
+         funKillServantProcess: @escaping (Int) -> Void) {
         self.funSpawnServantProcess = funSpawnServantProcess
-        self.funRemoveServantPid = funKillServantProcess
+        self.funReplaceServantProcess = funReplaceServantProcess
+        self.funRemoveServantByPID = funKillServantProcess
     }
 
     private var _servants: [Int: ServantProcess] = [:]
@@ -54,13 +58,17 @@ public struct ProcessCommander {
 
             return .receiveMessage { message in
                 switch message {
-                case .requestSpawnServant(let supervision, let args, .none):
+                case .requestSpawnServant(let supervision, let args):
                     context.log.info("Spawning new servant process; Supervision \(supervision), arguments: \(args)")
                     self.funSpawnServantProcess(supervision, args)
 
-                case .requestSpawnServant(let supervision, let args, .some(let delay)):
-                    context.log.info("Scheduling spawning of new servant process in [\(delay.prettyDescription)]; Supervision \(supervision), arguments: \(args)")
-                    context.timers.startSingle(key: nextSpawnServantTimerKey(), message: .requestSpawnServant(supervision, args: args, delay: nil), delay: delay)
+                case .requestReplaceServant(let servant, .some(let delay)):
+                    context.log.info("Scheduling spawning of new servant process in [\(delay.prettyDescription)]; Servant to be replaced: \(servant), in \(delay.prettyDescription)")
+                    context.timers.startSingle(key: nextSpawnServantTimerKey(), message: .requestReplaceServant(servant, delay: nil), delay: delay)
+                case .requestReplaceServant(let servant, .none):
+                    // restart immediately
+                    context.log.info("Spawning replacement servant process; Supervision \(servant.supervisionStrategy), arguments: \(servant.args)")
+                    self.funReplaceServantProcess(servant)
                 }
                 return .same
             }

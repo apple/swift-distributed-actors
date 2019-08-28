@@ -135,13 +135,12 @@ enum NodeDeathWatcherShell {
             let instance = NodeDeathWatcherInstance(selfNode: context.system.settings.cluster.uniqueBindNode)
 
             context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
-                context.log.info("EVENT::::: \(event)")
                 switch event {
                 case .membership(.memberDown(let member)):
                     let change = MembershipChange(node: member.node, fromStatus: .none, toStatus: .down)
                     instance.handleAddressDown(change)
                 default:
-                    () // ignore for now...
+                    () // ignore other changes, we only need to react on nodes becoming DOWN
                 }
             })
 

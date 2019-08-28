@@ -37,31 +37,50 @@ _killall ${app_name}
 
 swift build # synchronously ensure built
 
-swift run ${app_name} &
+declare -r log_file="/tmp/${app_name}.log"
+rm -f ${log_file}
+swift run ${app_name} > ${log_file} &
 
-await_n_processes "$app_name" 3
+declare -r supervision_replace_grep_txt='supervision: REPLACE'
+declare -r supervision_stop_grep_txt='supervision: STOP'
 
-pid_master=$(ps aux | grep ${app_name} | grep -v grep | grep -v servant | awk '{ print $2 }')
-pid_servant=$(ps aux | grep ${app_name} | grep -v grep | grep servant | head -n1 | awk '{ print $2 }')
+# we want to wait until 2 STOPs are found in the logs; then we can check if the other conditions are as we expect
+echo "Waiting for servants to REPLACE and STOP..."
+spin=1 # spin counter
+max_spins=20
+while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 2 ]]; do
+    sleep 1
+    spin=$((spin+1))
+    if [[ ${spin} -eq ${max_spins} ]]; then
+        echoerr "Never saw enough '${supervision_stop_grep_txt}' in logs."
+        cat ${log_file}
+        exit -1
+    fi
+done
 
-echo "> PID Master: ${pid_master}"
-echo "> PID Servant: ${pid_servant}"
-
-echo '~~~~~~~~~~~~BEFORE KILL~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-ps aux | grep ${app_name}
+echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+cat ${log_file} | grep "${supervision_replace_grep_txt}"
 echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
-sleep 3 # TODO rather, sleep until another proc replaces the servant automatically
+echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+cat ${log_file} | grep "${supervision_stop_grep_txt}"
+echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
-# the 1 servant should die, but be restarted so we'll be back at two processes
-await_n_processes "$app_name" 3
+if [[ $(cat ${log_file} | grep "${supervision_replace_grep_txt}" | wc -l) -ne 2 ]]; then
+    echoerr "ERROR: We expected 2 servants to only restart once, yet more restarts were detected!"
+    cat ${log_file}
 
-if [[ $(ps aux | awk '{print $2}' | grep ${pid_servant}  | grep -v 'grep' | wc -l) -ne 0 ]]; then
-    echo "ERROR: Seems the servant was not killed!!!"
-    exit -2
+    _killall ${app_name}
+    exit -1
 fi
 
-await_n_processes "$app_name" 2
+if [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 2 ]]; then
+    echoerr "ERROR: Expected the servants to STOP after they are replaced once!"
+    cat ${log_file}
+
+    _killall ${app_name}
+    exit -2
+fi
 
 # === cleanup ----------------------------------------------------------------------------------------------------------
 

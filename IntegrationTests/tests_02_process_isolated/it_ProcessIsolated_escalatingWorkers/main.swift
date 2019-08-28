@@ -33,8 +33,8 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 struct OnPurposeBoom: Error {}
 
 isolated.run(on: .master) {
-    isolated.spawnServantProcess(supervision: .restart(atMost: 1, within: nil), args: ["fatalError"])
-    isolated.spawnServantProcess(supervision: .restart(atMost: 1, within: nil), args: ["escalateError"])
+    isolated.spawnServantProcess(supervision: .replace(atMost: 1, within: nil), args: ["fatalError"])
+    isolated.spawnServantProcess(supervision: .replace(atMost: 1, within: nil), args: ["escalateError"])
 }
 
 try isolated.run(on: .servant) {
@@ -58,8 +58,8 @@ try isolated.run(on: .servant) {
                     // since we .escalate and are a top-level actor, this will cause the process to die as well
                     throw OnPurposeBoom()
                 } else {
-                    context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly.")
-                    fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly.")
+                    context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
+                    fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
                 }
             }
         })

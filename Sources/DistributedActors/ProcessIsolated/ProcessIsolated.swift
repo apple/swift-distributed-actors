@@ -94,7 +94,7 @@ public class ProcessIsolated {
         }
         let system = boot(bootSettings)
 
-        system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parent pid: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
+        system.log.info("Configured ProcessIsolated(\(role), pid: \(getpid())), parentPID: \(POSIXProcessUtils.getParentPID()), with arguments: \(arguments)")
 
         self.control = IsolatedControl(system: system, roles: [role], masterNode: system.settings.cluster.uniqueBindNode)
         self.system = system
@@ -104,6 +104,9 @@ public class ProcessIsolated {
         if role.is(.master) {
             let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void = { (supervision: ServantProcessSupervisionStrategy, args: [String]) in
                 self.spawnServantProcess(supervision: supervision, args: args)
+            }
+            let funReplaceServantProcess: (ServantProcess) -> Void = { (servant: ServantProcess) in
+                self.replaceServantProcess(servant)
             }
             let funKillServantProcess: (Int) -> Void = { (pid: Int) in
                 self.lock.withLockVoid {
@@ -118,6 +121,7 @@ public class ProcessIsolated {
 
             let processCommander = ProcessCommander(
                 funSpawnServantProcess: funSpawnServantProcess,
+                funReplaceServantProcess: funReplaceServantProcess,
                 funKillServantProcess: funKillServantProcess
             )
             self.processCommander = try! system._spawnSystemActor(ProcessCommander.naming, processCommander.behavior, perpetual: true)
@@ -175,11 +179,19 @@ public class ProcessIsolated {
             self.processSupervisorMailbox.enqueue(.spawnServant(supervision, args: args))
         } else {
             // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
-            self.processCommander.tell(.requestSpawnServant(supervision, args: args, delay: nil))
+            self.processCommander.tell(.requestSpawnServant(supervision, args: args))
         }
     }
 
-    // FIXME: this does not work have tests yet.
+    internal func replaceServantProcess(_ servant: ServantProcess, delay: TimeAmount? = nil) {
+        if self.control.hasRole(.master) {
+            self.processSupervisorMailbox.enqueue(.replaceServant(servant))
+        } else {
+            // we either send like this, or we allow only the master to do this (can enforce getting a ref to spawnServant)
+            self.processCommander.tell(.requestReplaceServant(servant, delay: delay))
+        }
+    }
+
     /// Requests the spawning of a new servant process.
     /// In order for this to work, the master process MUST be running `blockAndSuperviseServants`.
     ///
@@ -191,12 +203,20 @@ public class ProcessIsolated {
         }
     }
 
-    func removeServantPID(_ pid: Int) {
-        self.lock.withLockVoid {
+    ///
+    /// ### Thread safety
+    /// Thread safe, can be invoked from any thread (and any node, managed by the `ProcessIsolated` launcher)
+    internal func removeServant(pid: Int) -> ServantProcess? {
+        return self.lock.withLock {
             self._servants.removeValue(forKey: pid)
         }
     }
+}
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Role
+
+extension ProcessIsolated {
     /// Role that a process isolated process can fulfil.
     /// Used by `isolated.runOn(role: )
     public struct Role: Hashable, CustomStringConvertible {
@@ -220,11 +240,16 @@ public class ProcessIsolated {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ServantProcess
+
+/// Servant process representation owned by the supervising Master Process.
+/// May be mutated when applying supervision decisions.
 internal struct ServantProcess {
-    let node: UniqueNode
-    let args: [String]
+    var node: UniqueNode
+    var args: [String]
     let supervisionStrategy: ServantProcessSupervisionStrategy
-    let restartLogic: RestartDecisionLogic?
+    var restartLogic: RestartDecisionLogic?
 
     init(node: UniqueNode, args: [String], supervisionStrategy: ServantProcessSupervisionStrategy) {
         self.node = node
@@ -240,115 +265,53 @@ internal struct ServantProcess {
             self.restartLogic = nil
         }
     }
-}
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Servant Supervision
-
-/// Configures supervision for a specific su
-///
-/// Similar to `SupervisionStrategy` (which is for actors), however in effect for servant processes.
-///
-/// - SeeAlso: `SupervisionStrategy` for detailed documentation on supervision and timing semantics.
-public struct ServantProcessSupervisionStrategy {
-    fileprivate let underlying: SupervisionStrategy
-
-    /// Stopping supervision strategy, meaning that terminated servant processes will not get automatically spawned replacements.
-    /// It is useful if you want to manually manage replacements and servant processes, however note that without restarting
-    /// servants, the system may end up in a state with no servants, and only the master running, so you should plan to take
-    /// action in case this happens (e.g. by terminating the master itself, and relying on a higher level orchestrator to restart
-    /// the entire system).
-    public static var stop: ServantProcessSupervisionStrategy {
-        return .init(underlying: .stop)
+    var command: String {
+        return self.args.first! // TODO: or safer somehow?
     }
 
-    /// The restarting strategy allows the supervised servant process to be restarted `atMost` times `within` a time period.
-    /// In addition, each subsequent restart _may_ be performed after a certain backoff.
-    ///
-    /// - SeeAlso: The actor `SupervisionStrategy` documentation, which explains the exact semantics of this supervision mechanism in-depth.
-    ///
-    /// - parameter atMost: number of attempts allowed restarts within a single failure period (defined by the `within` parameter. MUST be > 0).
-    /// - parameter within: amount of time within which the `atMost` failures are allowed to happen. This defines the so called "failure period",
-    ///                     which runs from the first failure encountered for `within` time, and if more than `atMost` failures happen in this time amount then
-    ///                     no restart is performed and the failure is escalated (and the actor terminates in the process).
-    /// - parameter backoff: strategy to be used for suspending the failed actor for a given (backoff) amount of time before completing the restart.
-    public static func restart(atMost: Int, within: TimeAmount?, backoff: BackoffStrategy? = nil) -> ServantProcessSupervisionStrategy {
-        return .init(underlying: .restart(atMost: atMost, within: within, backoff: backoff))
+    /// Record a failure of the servant process, and decide if we should restart (spawn a replacement) it or not.
+    // TODO: should we reuse this supervision decision or use a new type; "restart" implies not losing the mailbox... here we DO lose mailboxes..." WDYT?
+    mutating func recordFailure() -> SupervisionDecision? {
+        if let decision = self.restartLogic?.recordFailure() {
+            return decision
+        } else {
+            return nil
+        }
     }
 }
 
 internal enum _ProcessSupervisorMessage {
     case spawnServant(ServantProcessSupervisionStrategy, args: [String])
+    case replaceServant(ServantProcess)
 }
 
 extension ProcessIsolated {
     // Effectively, this is a ProcessFailureDetector
     internal func processMasterLoop() {
-        func monitorServants() {
-            let res = POSIXProcessUtils.nonBlockingWaitPID(pid: 0)
-            if res.pid > 0 {
-                let maybeServant = self.lock.withLock {
-                    self._servants.removeValue(forKey: res.pid)
-                }
-
-                guard let servant = maybeServant else {
-                    self.system.log.warning("Unknown PID died, ignoring... PID was: \(res.pid)")
-                    return
-                }
-
-                // always DOWN the node that we know has terminated
-                self.system.cluster.down(node: servant.node)
-
-                // if we have a restart supervision logic, we should apply it.
-                guard var restartLogic = servant.restartLogic else {
-                    self.system.log.info("Servant \(servant.node) (pid:\(res.pid)) has no supervision / restart strategy defined, NO replacement servant will be spawned in its place.")
-                    return
-                }
-
-                let messagePrefix = "Servant process [\(servant.node) @ pid:\(res.pid)] supervision"
-                switch restartLogic.recordFailure() {
-                case .stop:
-                    self.system.log.info("\(messagePrefix): STOP, as decided by: \(restartLogic)")
-                case .escalate:
-                    self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(restartLogic)")
-                case .restartImmediately:
-                    self.system.log.info("\(messagePrefix): RESTART, as decided by: \(restartLogic)")
-                    self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args)
-                case .restartBackoff(let delay):
-                    self.system.log.info("\(messagePrefix): RESTART BACKOFF, as decided by: \(restartLogic)")
-                    self.control.requestSpawnServant(supervision: servant.supervisionStrategy, args: servant.args, delay: delay)
-                }
-            }
-        }
-
         while true {
-            monitorServants()
+            self.monitorServants()
 
             guard let message = self.processSupervisorMailbox.poll(.milliseconds(300)) else {
                 continue // spin again
             }
 
-            self.receive(message)
+            // TODO: check for the self system to be terminating or not
+
+            guard self.receive(message) else {
+                break
+            }
         }
     }
 
-    private func receive(_ message: _ProcessSupervisorMessage) {
+    private func receive(_ message: _ProcessSupervisorMessage) -> Bool {
         guard self.control.hasRole(.master) else {
-            return
+            return false
         }
 
         switch message {
         case .spawnServant(let supervision, let args):
-            let port = self.nextServantPort()
-            let nid = NodeID.random()
-
-            let node = UniqueNode(systemName: "SERVANT", host: "127.0.0.1", port: port, nid: nid)
-
-            let servant = ServantProcess(
-                node: node,
-                args: args,
-                supervisionStrategy: supervision
-            )
+            let node = self.makeServantNode()
 
             guard let command = CommandLine.arguments.first else {
                 fatalError("Unable to extract first argument of command line arguments (which is expected to be the application name); Args: \(CommandLine.arguments)")
@@ -357,17 +320,53 @@ extension ProcessIsolated {
             var effectiveArgs: [String] = []
             effectiveArgs.append(command)
             effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
-            effectiveArgs.append(KnownServantParameters.port.render(value: "\(port)"))
+            effectiveArgs.append(KnownServantParameters.port.render(value: "\(node.port)"))
             effectiveArgs.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
             effectiveArgs.append(contentsOf: args)
 
+            let servant = ServantProcess(
+                node: node,
+                args: effectiveArgs,
+                supervisionStrategy: supervision
+            )
+
             do {
-                let pid = try POSIXProcessUtils.spawn(command: command, args: effectiveArgs)
+                let pid = try POSIXProcessUtils.spawn(command: servant.command, args: servant.args)
                 self.storeServant(pid: pid, servant: servant)
             } catch {
                 self.system.log.error("Unable to spawn servant; Error: \(error)")
             }
+            return true
+
+        case .replaceServant(let terminated):
+            var replacement = terminated
+
+            let replacementNode = self.makeServantNode()
+            replacement.node = replacementNode
+
+//            var effectiveArgs: [String] = []
+//            effectiveArgs.append(replacement.command)
+//            effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
+//            effectiveArgs.append(KnownServantParameters.port.render(value: "\(replacement.node.port)"))
+//            effectiveArgs.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
+//            effectiveArgs.append(contentsOf: replacement.args)
+
+            do {
+                let pid = try POSIXProcessUtils.spawn(command: replacement.command, args: replacement.args)
+                self.storeServant(pid: pid, servant: replacement)
+            } catch {
+                self.system.log.error("Unable to restart servant [terminated: \(terminated)]; Error: \(error)")
+            }
+            return true
         }
+    }
+
+    private func makeServantNode() -> UniqueNode {
+        let port = self.nextServantPort()
+        let nid = NodeID.random()
+
+        let node = UniqueNode(systemName: "SERVANT", host: "127.0.0.1", port: port, nid: nid)
+        return node
     }
 }
 
@@ -458,11 +457,22 @@ public final class IsolatedControl {
     }
 
     /// Request spawning a new servant process.
-    func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = [], delay: TimeAmount? = nil) {
+    func requestSpawnServant(supervision: ServantProcessSupervisionStrategy, args: [String] = []) {
         precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
 
         let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
-        self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args, delay: delay))
+        self.system._resolve(context: context).tell(.requestSpawnServant(supervision, args: args))
+    }
+
+    /// Requests starting a replacement of given servant.
+    ///
+    /// Such restart does NOT preserve existing mailboxes of actors that lived in the given servant process,
+    /// they are lost forever.
+    func requestServantRestart(_ servant: ServantProcess, delay: TimeAmount?) {
+        precondition(self.hasRole(.master), "Only 'master' process can spawn servants. Was: \(self)")
+
+        let context = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: self.masterNode), system: self.system)
+        self.system._resolve(context: context).tell(.requestReplaceServant(servant, delay: delay))
     }
 
     public func hasRole(_ role: ProcessIsolated.Role) -> Bool {

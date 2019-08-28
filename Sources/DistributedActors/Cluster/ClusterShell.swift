@@ -678,27 +678,3 @@ extension ClusterShell {
         }
     }
 }
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSystem extensions
-
-extension ActorSystem {
-    internal var clusterShell: ActorRef<ClusterShell.Message> {
-        return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
-    }
-
-    // TODO: not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func join(node: Node) {
-        self.clusterShell.tell(.command(.join(node)))
-    }
-
-    // TODO: not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func _dumpAssociations() {
-        let ref: ActorRef<Set<UniqueNode>> = try! self.spawn(.anonymous, .receive { context, nodes in
-            let stringlyNodes = nodes.map { String(reflecting: $0) }.joined(separator: "\n     ")
-            context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
-            return .stop
-        })
-        self.clusterShell.tell(.query(.associatedNodes(ref)))
-    }
-}
