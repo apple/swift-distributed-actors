@@ -56,23 +56,28 @@ done
 
 popd >> /dev/null
 
-benchmark_proto_path="$root_path/Sources/DistributedActorsBenchmarks/BenchmarkProtos"
+declare -a internal_proto_paths
+internal_proto_paths=( "$root_path/Sources/DistributedActorsBenchmarks/BenchmarkProtos" "$root_path/Tests/DistributedActorsDocumentationTests/DocumentationProtos" )
 
-pushd $benchmark_proto_path >> /dev/null
+for internal_proto_path in "${internal_proto_paths[@]}"; do
+  (
+    pushd "$internal_proto_path" >> /dev/null
 
-for p in $(find . -name "*.proto"); do
-    out_dir=$( dirname "$p" )
-    base_name=$( echo basename "$p" | sed "s/.*\///" )
-    out_name="${base_name%.*}.pb.swift"
-    dest_dir="../${out_dir}/Protobuf"
-    dest_file="${dest_dir}/${out_name}"
-    mkdir -p ${dest_dir}
-    command="protoc --swift_out=. ${p}"
-    echo $command
-    `$command`
-    mv "${out_dir}/${out_name}" "${dest_file}"
+    find . -name "*.proto" | while read p; do
+      out_dir=$( dirname "$p" )
+      base_name=$( echo basename "$p" | sed "s/.*\///" )
+      out_name="${base_name%.*}.pb.swift"
+      dest_dir="../${out_dir}/Protobuf"
+      dest_file="${dest_dir}/${out_name}"
+      mkdir -p ${dest_dir}
+      command="protoc --swift_out=. ${p}"
+      echo $command
+      `$command`
+      mv "${out_dir}/${out_name}" "${dest_file}"
+    done
+
+    popd >> /dev/null
+  )
 done
-
-popd >> /dev/null
 
 echo "Done."
