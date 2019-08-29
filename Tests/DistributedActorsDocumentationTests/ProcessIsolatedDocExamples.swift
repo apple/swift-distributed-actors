@@ -44,7 +44,7 @@ class ProcessIsolatedDocExamples {
 
         // ~~~ The following code will execute on any process ~~~ // <2>
 
-        print("Started process: \(getpid()) with roles: \(isolated.roles)")
+        // ...
 
         // executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         try isolated.run(on: .master) { // <3>

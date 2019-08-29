@@ -368,8 +368,6 @@ internal final class Mailbox<Message> {
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
-        var runPhase: SActMailboxRunPhase = .processingSystemMessages
-
         // Run the mailbox:
         let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
                                                                   &cell,
