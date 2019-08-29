@@ -41,11 +41,11 @@ swift run ${app_name} > ${log_file} &
 declare -r supervision_respawn_grep_txt='supervision: RESPAWN'
 declare -r supervision_stop_grep_txt='supervision: STOP'
 
-# we want to wait until 2 RESPAs are found in the logs; then we can check if the other conditions are as we expect
+# we want to wait until 2 RESPAWNs are found in the logs; then we can check if the other conditions are as we expect
 echo "Waiting for servant to RESPAWN a few times..."
 spin=1 # spin counter
 max_spins=20
-while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 3 ]]; do
+while [[ $(cat ${log_file} | grep "${supervision_stop_grep_txt}" | wc -l) -ne 2 ]]; do
     sleep 1
     spin=$((spin+1))
     if [[ ${spin} -eq ${max_spins} ]]; then
