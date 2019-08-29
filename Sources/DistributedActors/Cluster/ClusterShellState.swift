@@ -178,7 +178,7 @@ extension ClusterShellState {
 
         switch state {
         case .initiated(let initiated):
-            assert(initiated.channel != nil, "Channel should always be present after the initial initialization.")
+            assert(initiated.channel != nil, "Channel should always be present after the initial initialization, state was: \(state)")
             _ = initiated.channel?.close()
         case .wasOfferedHandshake:
             fatalError("abortOutgoingHandshake was called in a context where the handshake was not an outgoing one! Was: \(state)")
