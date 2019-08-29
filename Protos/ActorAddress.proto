@@ -1,0 +1,40 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+message ActorAddress {
+    UniqueNode node        = 1; // TODO oneof { senderNode | recipientNode | node }
+    ActorPath path         = 2;
+    uint32 incarnation     = 3;
+}
+
+message ActorPath {
+    repeated string segments = 1;
+}
+
+message UniqueNode {
+    Node node   = 1;
+    uint32 nid  = 2;
+}
+
+message Node {
+    string protocol = 1;
+    string system   = 2;
+    string hostname = 3;
+    uint32 port     = 4;
+}

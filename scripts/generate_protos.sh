@@ -22,17 +22,36 @@ proto_path="$root_path/Protos"
 
 pushd $proto_path >> /dev/null
 
-for p in $(find . -name "*.proto"); do
-    out_dir=$( dirname "$p" )
-    base_name=$( echo basename "$p" | sed "s/.*\///" )
-    out_name="${base_name%.*}.pb.swift"
-    dest_dir="../Sources/DistributedActors/${out_dir}/Protobuf"
-    dest_file="${dest_dir}/${out_name}"
-    mkdir -p ${dest_dir}
-    command="protoc --swift_out=. ${p}"
-    echo $command
-   `$command`
-    mv "${out_dir}/${out_name}" "${dest_file}"
+declare -a public_protos
+public_protos=( -name 'ActorAddress.proto' )
+
+# There are two visibility options: Public, Internal (default)
+# https://github.com/apple/swift-protobuf/blob/master/Documentation/PLUGIN.md#generation-option-visibility---visibility-of-generated-types
+# TODO: https://github.com/apple/swift-distributed-actors/issues/59
+for visibility in public default; do
+  swift_opt=''
+  case "$visibility" in
+    public)
+      files=$(find . \( "${public_protos[@]}" \))
+      swift_opt='--swift_opt=Visibility=Public'
+      ;;
+    default)
+      files=$(find . -name '*.proto' -a \( \! \( "${public_protos[@]}" \) \) )
+      ;;
+  esac
+
+  for p in $files; do
+      out_dir=$( dirname "$p" )
+      base_name=$( echo basename "$p" | sed "s/.*\///" )
+      out_name="${base_name%.*}.pb.swift"
+      dest_dir="../Sources/DistributedActors/${out_dir}/Protobuf"
+      dest_file="${dest_dir}/${out_name}"
+      mkdir -p ${dest_dir}
+      command="protoc --swift_out=. ${p} ${swift_opt}"
+      echo $command
+     `$command`
+      mv "${out_dir}/${out_name}" "${dest_file}"
+  done
 done
 
 popd >> /dev/null

@@ -52,7 +52,7 @@ final class SWIMSerializationTests: XCTestCase {
         try self.shared_serializationRoundtrip(pingReq)
     }
 
-    func shared_serializationRoundtrip<T: ProtobufRepresentable>(_ obj: T) throws {
+    func shared_serializationRoundtrip<T: InternalProtobufRepresentable>(_ obj: T) throws {
         let bytes = try system.serialization.serialize(message: obj)
         let deserialized = try system.serialization.deserialize(T.self, from: bytes)
         "\(obj)".shouldEqual("\(deserialized)")

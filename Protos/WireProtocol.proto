@@ -18,6 +18,8 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
+import "ActorAddress.proto";
+
 // === Handshake --------------------------------------------------------------
 
 message HandshakeOffer {
@@ -72,31 +74,9 @@ message SystemEnvelope {
     bytes payload           = 4;
 }
 
-message ActorAddress {
-    UniqueNode node        = 1; // TODO oneof { senderNode | recipientNode | node }
-    ActorPath path         = 2;
-    uint32 incarnation     = 3;
-}
-
-message ActorPath {
-    repeated string segments = 1;
-}
-
 message SystemAck {
     uint64 sequenceNr   = 1;
     UniqueNode from     = 2;
-}
-
-message UniqueNode {
-    Node node   = 1;
-    uint32 nid  = 2;
-}
-
-message Node {
-    string protocol = 1;
-    string system   = 2;
-    string hostname = 3;
-    uint32 port     = 4;
 }
 
 // The version is represented as 4 bytes:

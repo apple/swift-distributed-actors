@@ -18,7 +18,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-import "WireProtocol.proto";
+import "ActorAddress.proto";
 
 // === System Message --------------------------------------------------------------
 
