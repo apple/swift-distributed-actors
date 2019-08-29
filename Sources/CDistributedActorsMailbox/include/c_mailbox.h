@@ -33,9 +33,9 @@ SWIFT_CLOSED_ENUM(SActMailboxRunPhase) {
 } SActMailboxRunPhase;
 
 typedef struct {
-            uint32_t  capacity;
-            uint32_t  max_run_length;
-    _Atomic int64_t   status;
+            uint32_t      capacity;
+            uint32_t      max_run_length;
+    _Atomic int64_t       status;
     CSActMPSCLinkedQueue* system_messages;
     CSActMPSCLinkedQueue* messages;
 } CSActMailbox;
@@ -45,9 +45,11 @@ SWIFT_CLOSED_ENUM(SActMailboxRunResult) {
     SActMailboxRunResult_Close            = 0,
     SActMailboxRunResult_Done             = 1,
     SActMailboxRunResult_Reschedule       = 2,
+
     // failure and supervision:
-    SActMailboxRunResult_FailureTerminate = 3,
-    SActMailboxRunResult_FailureRestart   = 4,
+    // SActMailboxRunResult_FailureTerminate = 3,
+    // SActMailboxRunResult_FailureRestart   = 4,
+
     // closed status reached, never run again.
     SActMailboxRunResult_Closed           = 5,
 } SActMailboxRunResult;
@@ -92,15 +94,6 @@ typedef SActActorRunResult (*SActInterpretMessageCallback)(SActDropMessageClosur
  */
 typedef void (*SActDropMessageCallback)(SActDropMessageClosureContext, void*); // TODO rename, deadletters
 
-/*
- * Callback for Swift interop.
- *
- * Accepts pointer to message which caused the failure.
- *
- * Invokes supervision, which may mutate the cell's behavior and return if we are to proceed with `Failure` or `FailureRestart`.
- */
-typedef SActMailboxRunResult (*SActInvokeSupervisionCallback)(SActSupervisionClosureContext, SActMailboxRunPhase, void*);
-
 CSActMailbox* cmailbox_create(uint32_t capacity, uint32_t max_run_length);
 
 /*
@@ -138,16 +131,11 @@ SActMailboxEnqueueResult cmailbox_send_system_tombstone(CSActMailbox* mailbox, v
  */
 SActMailboxRunResult cmailbox_run(
     CSActMailbox* mailbox,
-    void* cell, bool handle_crashes,
+    void* cell,
     // message processing:
     SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
     SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
-    SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
-    // fault handling:
-    jmp_buf* error_jmp_buf,
-    SActSupervisionClosureContext supervision_context, SActInvokeSupervisionCallback supervision_invoke,
-    void** failed_message,
-    SActMailboxRunPhase* run_phase
+    SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message
     );
 
 uint32_t cmailbox_message_count(CSActMailbox* mailbox);

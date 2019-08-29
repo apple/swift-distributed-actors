@@ -245,22 +245,17 @@ SActMailboxEnqueueResult cmailbox_send_system_tombstone(CSActMailbox* mailbox, v
 // and we may only do this AFTER the cmailbox has set the status to terminating, otherwise we get races on insertion to queues...
 SActMailboxRunResult cmailbox_run(
       CSActMailbox* mailbox,
-      void* cell, bool handle_crashes,
+      void* cell,
       // message processing:
       SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
       SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
-      SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
-      // failure handling:
-      jmp_buf* error_jmp_buf,
-      SActSupervisionClosureContext supervision_context, SActInvokeSupervisionCallback supervision_invoke,
-      void** message, // We store the current message in here so that it is still accessible after a failure and from the calling Swift code.
-      SActMailboxRunPhase* run_phase) {
+      SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message) {
+    void* message = NULL;
     print_debug_status(mailbox, "Entering run");
 
     int64_t status = set_processing_system_messages(mailbox);
 
-    int64_t processed_activations[1];
-    *processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
+    int64_t processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     uint32_t run_length = max(message_count(status), mailbox->max_run_length);
 
@@ -274,180 +269,142 @@ SActMailboxRunResult cmailbox_run(
         run_result = SActActorRunResult_shouldSuspend;
     }
 
-    // We store the current stack frame to `tl_error_jmp_buf` so that we can restore
-    // it to jump back here in case an error occurs during message processing.
-    // `sigsetjmp` also stores the signal mask when the second argument is non-zero.
-    if (handle_crashes && sigsetjmp(*error_jmp_buf, 1)) {
-        // Supervision re-entry point; once a fault has occurred we resume here.
+    // run system messages -----------------------------------------------------------------------------------------
+    SActMailboxRunPhase run_phase = SActMailboxRunPhase_ProcessingSystemMessages;
+    if (has_system_messages(status)) {
+        message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
 
-        // We attempt to invoke a supervisor for this crashing behavior:
-        SActMailboxRunResult supervisionRunResult = supervision_invoke(supervision_context, *run_phase, *message);
-
-        if (supervisionRunResult == SActMailboxRunResult_FailureRestart) {
-            // we have to decrement the status activations to keep the correct message count because we restart the actor
-            decrement_status_activations(mailbox, *processed_activations);
-
-            return SActMailboxRunResult_FailureRestart;
-        } else {
-            // TODO: we COULD decrement_status_activations I suppose, to keep counts correct? although we'll never run them, right?
-            print_debug_status(mailbox, "Supervision decided we should fail. Before status mod.");
-            // if we end up here, it means that the run was aborted (since we jumped to this handler),
-            // and its status is still activated. We use this fact to guarantee that noone else can activate
-            // this actor -- since from their perspective it is still activated (and even "in the middle of a run" one
-            // could say). We use this fact to act as-if we "won" the activation race, and ALWAYS schedule the last run
-            // with the tombstone once we exit from here.
-            // Thanks to this others may enqueue while we set the Terminated; once we did this they end up in dead letters,
-            // and then anything that was inserted before we got to the terminated state will be BEFORE the tombstone,
-            // thus following up with inserting the tombstone on Terminated state is correct and safely guarantees the last runs'
-            // last message MUST be the tombstone.
-            set_status_terminating(mailbox);
-            print_debug_status(mailbox, "Supervision decided we should fail.  After status mod.");
-
-            return SActMailboxRunResult_FailureTerminate;
-        }
-    } else {
-
-        // run system messages -----------------------------------------------------------------------------------------
-        if (has_system_messages(status)) {
-            *run_phase = SActMailboxRunPhase_ProcessingSystemMessages;
-            *message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
-
-            while (*message != NULL && (run_result != SActActorRunResult_shouldStop && run_result != SActActorRunResult_closed)) {
-                // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-                run_result = interpret_message(system_context, cell, *message, *run_phase);
-                *message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
-            }
-
-            // was our run was interrupted by a system message initiating a stop?
-            if (run_result == SActActorRunResult_shouldStop || run_result == SActActorRunResult_closed) {
-
-                if (is_not_terminating(status)) {
-                    // avoid unnecessarily setting the terminating bit again
-                    set_status_terminating(mailbox);
-                }
-
-                // Since we are terminating, and bailed out from a system run, there may be
-                // pending system messages in the queue still; we want to finish this run till they are drained.
-                //
-                // Never run user messages before draining system messages, system messages must be processed with priority,
-                // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
-                if (*message == NULL) {
-                    *message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
-                }
-                while (*message != NULL) {
-                    print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
-                    // drain all messages to dead letters
-                    // this is very important since dead letters will handle any posthumous watches for us
-                    drop_message(dead_letter_system_context, *message);
-
-                    *message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
-                }
-            }
-        }
-        // end of system messages run ----------------------------------------------------------------------------------
-
-        // suspension logic
-
-        // not needed since the run_result is either closed or shouldStop? -- ktoso
-//        if (is_terminating(status)) {
-//            // while a run shall handle system messages while terminating,
-//            // it should NOT handle user messages while terminating:
-//            run_result = SActActorRunResult_shouldStop; // TODO I think this broke the finishTermination returning the closed
-//        } else
-        if (is_suspended(status) && run_result != SActActorRunResult_shouldSuspend) {
-            // the actor was previously suspended, but has been unsuspended, so we
-            // need to reset the SUSPENDED bit in the status to continue processing
-            // user messages
-            reset_status_suspended(mailbox);
-        } else if (!is_suspended(status) && run_result == SActActorRunResult_shouldSuspend) {
-            set_status_suspended(mailbox);
-            print_debug_status(mailbox, "MARKED SUSPENDED");
+        while (message != NULL &&
+               (run_result != SActActorRunResult_shouldStop && run_result != SActActorRunResult_closed)) {
+            // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
+            run_result = interpret_message(system_context, cell, message, run_phase);
+            message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
         }
 
-        // run user messages -------------------------------------------------------------------------------------------
+        // was our run was interrupted by a system message initiating a stop?
+        if (run_result == SActActorRunResult_shouldStop || run_result == SActActorRunResult_closed) {
 
-        if (run_result == SActActorRunResult_continueRunning) {
-            *run_phase = SActMailboxRunPhase_ProcessingUserMessages;
-            *message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
-
-            while (*message != NULL && (run_result == SActActorRunResult_continueRunning)) {
-                // we need to add 2 to processed_activations because the user message count is stored
-                // shifted by 1 in the status and we use the same field to clear the
-                // system message bit
-                *processed_activations += SINGLE_USER_MESSAGE_MASK;
-                // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
-                // TODO: fix this dance
-                run_result = interpret_message(context, cell, *message, *run_phase); // TODO: we can optimize the keep_running into the processed counter?
-
-                // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
-                if ((run_result == SActActorRunResult_shouldStop) && !is_terminating(status)) {
-                    // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
-                    set_status_terminating(mailbox);
-                    print_debug_status(mailbox, "MARKED TERMINATING");
-                    *message = NULL; // break out of the loop
-                } else if (run_result == SActActorRunResult_shouldSuspend) {
-                    set_status_suspended(mailbox);
-                    print_debug_status(mailbox, "MARKED SUSPENDED");
-                    *message = NULL;
-                } else if (*processed_activations >= run_length) {
-                    *message = NULL; // break out of the loop
-                } else {
-                    // dequeue another message, if there are no more messages left, message
-                    // will contain NULL and terminate the loop
-                    *message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
-                }
+            if (is_not_terminating(status)) {
+                // avoid unnecessarily setting the terminating bit again
+                set_status_terminating(mailbox);
             }
-        } else if (run_result == SActActorRunResult_shouldSuspend) {
-            print_debug_status(mailbox, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING");
-        } else /* we are terminating and need to drain messages */ {
-            // TODO: drain them to dead letters
 
-            // TODO: drainToDeadLetters(mailbox->messages) {
-            *message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
-            while (*message != NULL) {
-                drop_message(dead_letter_context, *message);
-                *processed_activations += SINGLE_USER_MESSAGE_MASK;
-                *message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages); // keep draining
+            // Since we are terminating, and bailed out from a system run, there may be
+            // pending system messages in the queue still; we want to finish this run till they are drained.
+            //
+            // Never run user messages before draining system messages, system messages must be processed with priority,
+            // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
+            if (message == NULL) {
+                message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
+            }
+            while (message != NULL) {
+                print_debug_status(mailbox, "CLOSED, yet pending system messages still made it in... draining...");
+                // drain all messages to dead letters
+                // this is very important since dead letters will handle any posthumous watches for us
+                drop_message(dead_letter_system_context, message);
+
+                message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
             }
         }
+    }
+    // end of system messages run ----------------------------------------------------------------------------------
 
-        // we finished without a failure, so we unset the message ptr
-        *message = NULL;
+    // suspension logic --------------------------------------------------------------------------------------------
 
-        // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
+    if (is_suspended(status) && run_result != SActActorRunResult_shouldSuspend) {
+        // the actor was previously suspended, but has been unsuspended, so we
+        // need to reset the SUSPENDED bit in the status to continue processing
+        // user messages
+        reset_status_suspended(mailbox);
+    } else if (!is_suspended(status) && run_result == SActActorRunResult_shouldSuspend) {
+        set_status_suspended(mailbox);
+        print_debug_status(mailbox, "MARKED SUSPENDED");
+    }
 
-        int64_t old_status = decrement_status_activations(mailbox, *processed_activations);
+    // run user messages -------------------------------------------------------------------------------------------
 
-        // end of run user messages ------------------------------------------------------------------------------------
+    if (run_result == SActActorRunResult_continueRunning) {
+        run_phase = SActMailboxRunPhase_ProcessingUserMessages;
+        message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
 
-        int64_t old_activations = activations(old_status);
-        // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
-        print_debug_status(mailbox, "Run complete...");
+        while (message != NULL && (run_result == SActActorRunResult_continueRunning)) {
+            // we need to add 2 to processed_activations because the user message count is stored
+            // shifted by 1 in the status and we use the same field to clear the
+            // system message bit
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
+            // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
+            // TODO: fix this dance
+            run_result = interpret_message(context, cell, message, run_phase); // TODO: we can optimize the keep_running into the processed counter?
 
-        // issue directives to mailbox ---------------------------------------------------------------------------------
-        if (run_result == SActActorRunResult_shouldStop) {
-            // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
-            // as other conditions may hold, yet we really are ready to terminate immediately.
-            print_debug_status(mailbox, "terminating, notifying swift mailbox...");
-            return SActMailboxRunResult_Close;
-        } else if ((old_activations > *processed_activations && !is_suspended(old_status)) || has_system_messages(old_status)) {
-            // if we received new system messages during user message processing, or we could not process
-            // all user messages in this run, because we had more messages queued up than the maximum run
-            // length, return `Reschedule` to signal the queue should be re-scheduled
+            // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
+            if ((run_result == SActActorRunResult_shouldStop) && !is_terminating(status)) {
+                // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
+                set_status_terminating(mailbox);
+                print_debug_status(mailbox, "MARKED TERMINATING");
+                message = NULL; // break out of the loop
+            } else if (run_result == SActActorRunResult_shouldSuspend) {
+                set_status_suspended(mailbox);
+                print_debug_status(mailbox, "MARKED SUSPENDED");
+                message = NULL;
+            } else if (processed_activations >= run_length) {
+                message = NULL; // break out of the loop
+            } else {
+                // dequeue another message, if there are no more messages left, message
+                // will contain NULL and terminate the loop
+                message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
+            }
+        }
+    } else if (run_result == SActActorRunResult_shouldSuspend) {
+        print_debug_status(mailbox, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING");
+    } else /* we are terminating and need to drain messages */ {
+        // TODO: drain them to dead letters
+
+        // TODO: drainToDeadLetters(mailbox->messages) {
+        message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
+        while (message != NULL) {
+            drop_message(dead_letter_context, message);
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
+            message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages); // keep draining
+        }
+    }
+
+    // we finished without a failure, so we unset the message ptr
+    message = NULL;
+
+    // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
+
+    int64_t old_status = decrement_status_activations(mailbox, processed_activations);
+
+    // end of run user messages ------------------------------------------------------------------------------------
+
+    int64_t old_activations = activations(old_status);
+    // printf("[SACT_TRACE_MAILBOX][c] Old: %lu, processed_activations: %lu\n", old_activations, processed_activations);
+    print_debug_status(mailbox, "Run complete...");
+
+    // issue directives to mailbox ---------------------------------------------------------------------------------
+    if (run_result == SActActorRunResult_shouldStop) {
+        // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
+        // as other conditions may hold, yet we really are ready to terminate immediately.
+        print_debug_status(mailbox, "terminating, notifying swift mailbox...");
+        return SActMailboxRunResult_Close;
+    } else if ((old_activations > processed_activations && !is_suspended(old_status)) ||
+               has_system_messages(old_status)) {
+        // if we received new system messages during user message processing, or we could not process
+        // all user messages in this run, because we had more messages queued up than the maximum run
+        // length, return `Reschedule` to signal the queue should be re-scheduled
 
 #ifdef SACT_TRACE_MAILBOX
-            char msg[300];
-            snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, *processed_activations);
-            print_debug_status(mailbox, msg);
+        char msg[300];
+        snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, processed_activations);
+        print_debug_status(mailbox, msg);
 #endif
-            return SActMailboxRunResult_Reschedule;
-        } else if (run_result == SActActorRunResult_closed) {
-            print_debug_status(mailbox, "terminating, completely closed now...");
-            return SActMailboxRunResult_Closed;
-        } else {
-            print_debug_status(mailbox, "Run complete, shouldReschedule:false");
-            return SActMailboxRunResult_Done;
-        }
+        return SActMailboxRunResult_Reschedule;
+    } else if (run_result == SActActorRunResult_closed) {
+        print_debug_status(mailbox, "terminating, completely closed now...");
+        return SActMailboxRunResult_Closed;
+    } else {
+        print_debug_status(mailbox, "Run complete, shouldReschedule:false");
+        return SActMailboxRunResult_Done;
     }
 }
 

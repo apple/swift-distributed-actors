@@ -44,7 +44,10 @@ internal class ActorSystemMetrics {
     func recordActorStart<Anything>(_ shell: ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        switch shell.path.segments.first! {
+        guard let root = shell.path.segments.first else {
+            return // do nothing
+        }
+        switch root {
         case ActorPathSegment._system:
             self._actors_lifecycle_system.increment()
         case ActorPathSegment._user:
@@ -57,7 +60,10 @@ internal class ActorSystemMetrics {
     func recordActorStop<Anything>(_ shell: ActorShell<Anything>) {
         // TODO: use specific dimensions if shell has it configured or groups etc
         // TODO: generalize this such that we can do props -> dimensions -> done, and not special case the system ones
-        switch shell.path.segments.first! {
+        guard let root = shell.path.segments.first else {
+            return // do nothing
+        }
+        switch root {
         case ActorPathSegment._system:
             self._actors_lifecycle_system.decrement()
         case ActorPathSegment._user:

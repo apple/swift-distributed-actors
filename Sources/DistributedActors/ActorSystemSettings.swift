@@ -45,15 +45,6 @@ public struct ActorSystemSettings {
 
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
-
-    /// Controls how faults (i.e. `fatalError` and similar) are handled by supervision.
-    ///
-    /// - warning: By default faults are isolated by actors, rather than terminating the entire process.
-    ///            Currently, this may (very likely though) result in memory leaks, so it is recommended
-    ///            to initiate some form of graceful shutdown when facing faults.
-    ///
-    /// - SeeAlso: `FaultSupervisionMode` for a detailed discussion of the available modes.
-    public var faultSupervisionMode: FaultSupervisionMode = .isolateYetMayLeakMemory
 }
 
 public struct ActorSettings {
@@ -63,38 +54,4 @@ public struct ActorSettings {
 
     // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
     public var maxBehaviorNestingDepth: Int = 128
-}
-
-/// Used to configure fault handling mode.
-///
-/// Note that these settings only impact how faults are supervised, and have no impact on supervision of `Error`s (throws),
-/// inside actors.
-///
-/// The main reason for this option is that the `isolate` mode is inherently leaking memory, due to current Swift limitations,
-/// while we hope to address these in
-public enum FaultSupervisionMode {
-    /// A signal handler will be installed to catch and recover from faults.
-    ///
-    /// In this mode memory can leak upon faults, but the process will not crash.
-    /// Crashes caused by faults can be handled in supervision. This mode should
-    /// be chosen when keeping the process alive is more important than not leaking.
-    ///
-    /// - warning: May leak memory (!), usually may want to initiate a clean shutdown upon such fault being captured.
-    case isolateYetMayLeakMemory
-
-    /// Faults will crash the entire process and no memory will leak.
-    /// This mode is equivalent to Swift's default fault handling model.
-    ///
-    /// This mode should be chosen when preventing leaks is more important than keeping
-    /// the process alive.
-    case crashOnFaults
-}
-
-internal extension FaultSupervisionMode {
-    var isEnabled: Bool {
-        switch self {
-        case .isolateYetMayLeakMemory: return true
-        case .crashOnFaults: return false
-        }
-    }
 }
