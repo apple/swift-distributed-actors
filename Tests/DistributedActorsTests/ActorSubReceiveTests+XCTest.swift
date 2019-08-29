@@ -28,7 +28,6 @@ extension ActorSubReceiveTests {
             ("test_subReceive_shouldBeWatchable", test_subReceive_shouldBeWatchable),
             ("test_subReceive_shouldShareLifetimeWithParent", test_subReceive_shouldShareLifetimeWithParent),
             ("test_subReceive_shouldTriggerSupervisionOnError", test_subReceive_shouldTriggerSupervisionOnError),
-            ("test_subReceive_shouldTriggerSupervisionOnFault", test_subReceive_shouldTriggerSupervisionOnFault),
         ]
     }
 }

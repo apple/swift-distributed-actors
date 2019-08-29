@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <execinfo.h>
 
-#include "include/crash_support.h"
+#include "include/backtrace_support.h"
 
 void sact_dump_backtrace() {
     char** strs;
@@ -32,9 +32,4 @@ int sact_get_backtrace(char*** strs) {
     int frames = backtrace(callstack, 128);
     *strs = backtrace_symbols(callstack, frames);
     return frames;
-}
-
-/* UD2 is defined as "Raises an invalid opcode exception in all operating modes." */
-void sact_simulate_trap() {
-    __asm__("UD2");
 }

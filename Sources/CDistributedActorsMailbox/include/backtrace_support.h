@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SACT_CRASH_SUPPORT_H
-#define SACT_CRASH_SUPPORT_H
+#ifndef SACT_BACKTRACE_SUPPORT_H
+#define SACT_BACKTRACE_SUPPORT_H
 
 /**
  * Prints a stack backtrace directly to `stderr`.
@@ -25,8 +25,5 @@
 void sact_dump_backtrace(void);
 
 int sact_get_backtrace(char*** strs);
-
-/* emit `ud2` assembly, simulating a trap */
-void sact_simulate_trap(void);
 
 #endif
