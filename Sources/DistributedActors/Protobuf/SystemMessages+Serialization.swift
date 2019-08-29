@@ -19,8 +19,8 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ACK / NACK
 
-extension SystemMessage.ACK: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageACK
+extension SystemMessage.ACK: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSystemMessageACK
 
     func toProto(context: ActorSerializationContext) -> ProtoSystemMessageACK {
         var proto = ProtoSystemMessageACK()
@@ -33,8 +33,8 @@ extension SystemMessage.ACK: ProtobufRepresentable {
     }
 }
 
-extension SystemMessage.NACK: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageNACK
+extension SystemMessage.NACK: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSystemMessageNACK
 
     func toProto(context: ActorSerializationContext) -> ProtoSystemMessageNACK {
         var proto = ProtoSystemMessageNACK()
@@ -50,8 +50,8 @@ extension SystemMessage.NACK: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessageEnvelope
 
-extension SystemMessageEnvelope: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessageEnvelope
+extension SystemMessageEnvelope: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSystemMessageEnvelope
 
     func toProto(context: ActorSerializationContext) throws -> ProtoSystemMessageEnvelope {
         var proto = ProtoSystemMessageEnvelope()
@@ -69,8 +69,8 @@ extension SystemMessageEnvelope: ProtobufRepresentable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: SystemMessage
 
-extension SystemMessage: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoSystemMessage
+extension SystemMessage: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSystemMessage
 
     func toProto(context: ActorSerializationContext) throws -> ProtoSystemMessage {
         var proto = ProtoSystemMessage()

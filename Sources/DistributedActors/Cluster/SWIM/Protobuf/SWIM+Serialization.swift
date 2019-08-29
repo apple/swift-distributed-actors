@@ -17,8 +17,8 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization
 
-extension SWIM.Message: ProtobufRepresentable {
-    typealias ProtobufType = ProtoSWIMMessage
+extension SWIM.Message: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMMessage
 
     func toProto(context: ActorSerializationContext) -> ProtoSWIMMessage {
         var proto = ProtoSWIMMessage()
@@ -66,8 +66,8 @@ extension SWIM.Message: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Status: ProtobufRepresentable {
-    typealias ProtobufType = ProtoSWIMStatus
+extension SWIM.Status: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMStatus
 
     func toProto(context: ActorSerializationContext) -> ProtoSWIMStatus {
         var proto = ProtoSWIMStatus()
@@ -105,8 +105,8 @@ extension SWIM.Status: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Payload: ProtobufRepresentable {
-    typealias ProtobufType = ProtoSWIMPayload
+extension SWIM.Payload: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMPayload
 
     func toProto(context: ActorSerializationContext) -> ProtoSWIMPayload {
         var payload = ProtoSWIMPayload()
@@ -127,8 +127,8 @@ extension SWIM.Payload: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Member: ProtobufRepresentable {
-    typealias ProtobufType = ProtoSWIMMember
+extension SWIM.Member: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMMember
 
     func toProto(context: ActorSerializationContext) -> ProtoSWIMMember {
         var proto = ProtoSWIMMember()
@@ -145,8 +145,8 @@ extension SWIM.Member: ProtobufRepresentable {
     }
 }
 
-extension SWIM.Ack: ProtobufRepresentable {
-    typealias ProtobufType = ProtoSWIMAck
+extension SWIM.Ack: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoSWIMAck
 
     func toProto(context: ActorSerializationContext) -> ProtoSWIMAck {
         var proto = ProtoSWIMAck()
