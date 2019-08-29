@@ -62,8 +62,10 @@ public enum Signals {
 
     /// Signal sent to all watchers of an actor once the `watchee` has terminated.
     ///
+    /// The actual reason for the terminated message being sent may vary from the actor terminating, to the entire `Node`
+    /// hosting this actor having been marked as `.down` and thus any actors residing on it have to be assumed terminated.
+    ///
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
-    /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
     public class Terminated: Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress

@@ -142,16 +142,16 @@ class SupervisionDocExamples {
         let thrower = try system.spawn(
             "thrower",
             props: Props()
-                .supervision(strategy: .restart(atMost: 10, within: .seconds(5)), forErrorType: CatchThisError.self), // <2>
-            // .addSupervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
+                .supervision(strategy: .restart(atMost: 10, within: nil), forErrorType: CatchThisError.self), // <2>
+            // .supervision(strategy: .stop, forAll: .failures) // (implicitly appended always) // <3>
             throwerBehavior
         )
-        // Starting...
+        // Logs: [info] Starting...
 
         thrower.tell(CatchThisError()) // will crash and restart
-        // Starting...
+        // Logs: [info] Starting...
         thrower.tell(CatchThisError()) // again
-        // Starting...
+        // Logs: [info] Starting...
         thrower.tell(NotIntendedToBeCaught()) // crashes the actor for good
         // further messages sent to it will end up in `system.deadLetters`
 

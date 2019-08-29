@@ -448,6 +448,8 @@ section of the guide), or its `dispatcher`.
 [[suggested_props_pattern]]
 ==== Suggested Props Pattern
 
+#TODO: deprecate this and replace with "shell" pattern I guess?#
+
 Sometimes when implementing behaviors which may be spawned by other users, it may be useful to centralize the props creation
 along with its default "suggested" settings. The _Suggested Props_ pattern explains a common style in which this can be solved.
 
