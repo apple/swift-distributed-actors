@@ -43,8 +43,6 @@ class SupervisionTests: XCTestCase {
 
     enum FaultyMessage {
         case pleaseThrow(error: Error)
-        // case pleaseFatalError(message: String) // Fault isolation is not implemented
-        // case pleaseDivideByZero // Fault isolation is not implemented
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
     }
 
@@ -78,12 +76,6 @@ class SupervisionTests: XCTestCase {
                 switch $0 {
                 case .pleaseThrow(let error):
                     throw error
-                // case .pleaseFatalError(let msg):
-                //     fatalError(msg)
-                // case .pleaseDivideByZero:
-                //     let zero = Int("0")! // to trick swiftc into allowing us to write "/ 0", which it otherwise catches at compile time
-                //     _ = 100 / zero
-                //     return .same
                 case .echo(let msg, let sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
@@ -469,16 +461,8 @@ class SupervisionTests: XCTestCase {
         })
     }
 
-    func test_stopSupervised_fatalError_shouldStop() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
-
-    func test_restartSupervised_fatalError_shouldRestart() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
 
     func test_restartSupervised_throws_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
@@ -490,10 +474,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in
             FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
-    }
-
-    func test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
@@ -537,26 +517,14 @@ class SupervisionTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision with Backoff
 
-    func test_restartSupervised_fatalError_shouldRestartWithConstantBackoff() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     func test_restart_throws_shouldHandleFailureWhenInterpretingStart() throws {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .throwing)
-    }
-
-    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStart() throws {
-        pinfo("Fault handling is not implemented")
     }
 
     func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "throws", makeEvilMessage: { msg in
             FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
-    }
-
-    func test_restartSupervised_fatalError_shouldRestartWithExponentialBackoff() throws {
-        pinfo("Fault handling is not implemented")
     }
 
     func test_restartSupervised_throws_shouldRestartWithExponentialBackoff() throws {
@@ -569,29 +537,8 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .throwing)
     }
 
-    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {
-        pinfo("Fault handling is not implemented")
-    }
-
     func test_restart_throws_shouldFailAfterMaxFailuresInSetup() throws {
         try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .throwing)
-    }
-
-    func test_restart_fatalError_shouldFailAfterMaxFailuresInSetup() throws {
-        pinfo("Fault handling is not implemented")
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Handling faults, divide by zero
-
-    // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
-
-    func test_stopSupervised_divideByZero_shouldStop() throws {
-        pinfo("Fault handling is not implemented")
-    }
-
-    func test_restartSupervised_divideByZero_shouldRestart() throws {
-        pinfo("Fault handling is not implemented")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -614,10 +561,6 @@ class SupervisionTests: XCTestCase {
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
         faultyWorker.tell(.pleaseThrow(error: CantTouchThis()))
         try probe.expectTerminated(faultyWorker)
-    }
-
-    func test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler() throws {
-        pinfo("Fault handling is not implemented")
     }
 
     // TODO: we should nail down and spec harder exact semantics of the failure counting, I'd say we do.
@@ -686,10 +629,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .throwing)
     }
 
-    func test_faultInSignalHandling_shouldRestart() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 
@@ -751,8 +690,6 @@ class SupervisionTests: XCTestCase {
             switch error {
             case let reply as PleaseReply:
                 probe.tell(reply)
-            // case is PleaseFatalError:
-            //     fatalError("Boom! Fatal error on demand.")
             default:
                 throw error
             }
@@ -804,14 +741,6 @@ class SupervisionTests: XCTestCase {
         try p.expectMessage(PleaseReply())
     }
 
-    func test_supervisor_shouldOnlyHandle_anyFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
-    func test_supervisor_shouldOnlyHandle_anyFailure() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
@@ -837,10 +766,6 @@ class SupervisionTests: XCTestCase {
 
     func test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting() throws {
         try self.sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .throwing)
-    }
-
-    func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy failureMode: FailureMode, backoff: BackoffStrategy?) throws {
@@ -882,16 +807,8 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: nil)
     }
 
-    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: Backoff.constant(.milliseconds(10)))
-    }
-
-    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
@@ -953,10 +870,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .throwing)
     }
 
-    func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcherClosure() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     func sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy failureMode: FailureMode) throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -992,10 +905,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .throwing)
     }
 
-    func test_supervisor_awaitResult_shouldInvokeSupervisionOnFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -1029,6 +938,5 @@ class SupervisionTests: XCTestCase {
     private struct PleaseReply: Error, Equatable {}
     private struct EasilyCatchable: Error, Equatable {}
     private struct CantTouchThis: Error, Equatable {}
-    // private struct PleaseFatalError: Error, Equatable {} // Fault handling is not implemented
     private struct CatchMe: Error, Equatable {}
 }

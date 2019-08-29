@@ -45,9 +45,11 @@ SWIFT_CLOSED_ENUM(SActMailboxRunResult) {
     SActMailboxRunResult_Close            = 0,
     SActMailboxRunResult_Done             = 1,
     SActMailboxRunResult_Reschedule       = 2,
+
     // failure and supervision:
-    SActMailboxRunResult_FailureTerminate = 3,
-    SActMailboxRunResult_FailureRestart   = 4,
+    // SActMailboxRunResult_FailureTerminate = 3,
+    // SActMailboxRunResult_FailureRestart   = 4,
+
     // closed status reached, never run again.
     SActMailboxRunResult_Closed           = 5,
 } SActMailboxRunResult;

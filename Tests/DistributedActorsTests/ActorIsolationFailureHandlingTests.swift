@@ -103,22 +103,4 @@ final class ActorIsolationFailureHandlingTests: XCTestCase {
         healthyMaster.tell(stillAlive)
         try pm.expectMessage(.echoing(message: "still alive"))
     }
-
-    func test_worker_crashOnlyWorkerOnDivisionByZero() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
-    func test_worker_shouldBeAbleToHaveReplacementStartedByParentOnceItSeesPreviousChildTerminated() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
-    func test_crashOutsideOfActor_shouldStillFailLikeUsual() throws {
-        #if !SACT_TESTS_CRASH
-        pnote("Skipping test \(#function), can't that a fatalError() kills the process, it would kill the test suite; To see it crash run with `-D SACT_TESTS_CRASH`")
-        return ()
-        #endif
-
-        fatalError("Boom like usual!")
-        // this MUST NOT trigger Swift Distributed Actors failure handling, we are not inside of an actor!
-    }
 }

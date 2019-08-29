@@ -51,7 +51,6 @@ class ActorDeferTests: XCTestCase {
             case .staysSame: return .same
             case .stops: return .stop
             case .failsByThrowing: throw TestError("Failing on purpose")
-                // case .failsByFaulting: fatalError("Failing on purpose")
             }
         }
     }
@@ -95,10 +94,6 @@ class ActorDeferTests: XCTestCase {
         try self.shared_defer_shouldExecute(deferUntil: .received, whenActor: .failsByThrowing)
     }
 
-    func test_defer_untilReceived_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: context.defer(until: .terminated) {}
 
@@ -112,10 +107,6 @@ class ActorDeferTests: XCTestCase {
 
     func test_defer_untilTerminated_shouldExecute_afterError() throws {
         try self.shared_defer_shouldExecute(deferUntil: .terminated, whenActor: .failsByThrowing)
-    }
-
-    func test_defer_untilTerminated_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -133,10 +124,6 @@ class ActorDeferTests: XCTestCase {
         try self.shared_defer_shouldExecute(deferUntil: .failed, whenActor: .failsByThrowing)
     }
 
-    func test_defer_untilFailed_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: context.defer(until: .receiveFailed) {}
 
@@ -150,10 +137,6 @@ class ActorDeferTests: XCTestCase {
 
     func test_defer_untilReceiveFailed_shouldExecute_afterError() throws {
         try self.shared_defer_shouldExecute(deferUntil: .receiveFailed, whenActor: .failsByThrowing)
-    }
-
-    func test_defer_untilReceiveFailed_shouldExecute_afterFault() throws {
-        pnote("Fault handling is not implemented, skipping '\(#function)'")
     }
 
     func test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction() throws {

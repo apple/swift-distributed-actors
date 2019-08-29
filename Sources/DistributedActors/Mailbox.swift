@@ -95,7 +95,6 @@ internal final class Mailbox<Message> {
     private var systemMessageClosureContext: InterpretMessageClosureContext!
     private var deadLetterMessageClosureContext: DropMessageClosureContext!
     private var deadLetterSystemMessageClosureContext: DropMessageClosureContext!
-    private var invokeSupervisionClosureContext: InvokeSupervisionClosureContext!
 
     // Implementation note: closure callbacks passed to C-mailbox
     private let interpretMessage: SActInterpretMessageCallback
@@ -216,73 +215,6 @@ internal final class Mailbox<Message> {
             let msg = envelopePtr.move()
             deadLetters.tell(DeadLetter(msg, recipient: address))
         })
-
-        // This closure acts similar to a "catch" block, however it is invoked when a fault is captured.
-        // It has to implement the equivalent of `Supervisor.interpretSupervised`, for the fault handling path.
-        self.invokeSupervisionClosureContext = InvokeSupervisionClosureContext(
-            shell.path,
-            handleMessageFailure: { [weak _shell = shell] supervisionFailure, runPhase in
-                guard let shell = _shell else {
-                    /// if we cannot unwrap the cell it means it was closed and deallocated
-                    return .close
-                }
-
-                traceLog_Mailbox(self.address.path, "INVOKE SUPERVISION !!! FAILURE: \(supervisionFailure)")
-
-                // TODO: improve logging, should include what decision was taken; same for THROWN
-                shell.log.warning("Supervision: Actor has FAULTED while \("\(runPhase)".split(separator: ".").dropFirst().first!), handling with \(shell.supervisor); Failure details: \(String(reflecting: supervisionFailure))")
-
-                let supervisionDirective: SupervisionDirective<Message>
-                switch runPhase {
-                case .processingSystemMessages:
-                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .signal)
-                case .processingUserMessages:
-                    supervisionDirective = try shell.supervisor.handleFailure(shell, target: shell.behavior, failure: supervisionFailure, processingType: .message)
-                }
-
-                // TODO: this handling MUST be aligned with the throws handling.
-                switch supervisionDirective {
-                case .stop:
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    // decision is to stop which is terminal, thus: Let it Crash!
-                    return .failureTerminate
-
-                case .escalate:
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    // failure escalated "all the way", so decision is to fail, Let it Crash!
-                    // TODO: escalate to parent via terminated with the error?
-                    // TODO: do we need to crash children explicitly here?
-                    return .failureTerminate
-
-                case .restartImmediately(let nextBehavior):
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    do {
-                        // received new behavior, restarting immediately
-                        try shell._restartPrepare()
-                        _ = try shell._restartComplete(with: nextBehavior)
-                        return .failureRestart
-                    } catch {
-                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
-                    }
-
-                case .restartDelayed(let delay, let nextBehavior):
-                    pnote("Fault handling is not implemented, skipping '\(#function)'") // Fault handling is not implemented
-                    do {
-                        // received new behavior, however actual restart is delayed, so we only prepare
-                        try shell._restartPrepare()
-                        // and become the restarting behavior which schedules the wakeUp system message on setup
-                        try shell.becomeNext(behavior: SupervisionRestartDelayedBehavior.after(delay: delay, with: nextBehavior))
-                        return .failureRestart
-                    } catch {
-                        fatalError("Double fault while restarting actor \(shell.path). Terminating.")
-                    }
-                }
-            },
-            describeMessage: { failedMessageRawPtr in
-                // guaranteed to be of our generic Message type, however the context could not close over the generic type
-                renderUserMessageDescription(failedMessageRawPtr, type: Message.self)
-            }
-        )
 
         // cache `run`, seems to give performance benefit
         self._run = self.run
@@ -454,42 +386,11 @@ internal final class Mailbox<Message> {
         case .reschedule:
             // pending messages, and we are the one who should should reschedule
             cell.dispatcher.execute(self._run)
+
         case .done:
             // No more messages to run, we are done here
             return
 
-        case .failureRestart:
-            // in case of a failure, we need to deinitialize the message here,
-            // because usually it would be deinitialized after processing,
-            // but in case of a failure that code can not be executed
-            failedMessagePtr.deinitialize(count: 1)
-            // FIXME: !!! we must know if we should schedule or not after a restart...
-            traceLog_Supervision("Supervision: Mailbox run complete, restart decision! RESCHEDULING (TODO FIXME IF WE SHOULD OR NOT)")
-            cell.dispatcher.execute(self._run)
-
-        case .failureTerminate:
-            // in case of a failure, we need to deinitialize the message here,
-            // because usually it would be deinitialized after processing,
-            // but in case of a failure that code can not be executed
-            failedMessagePtr.deinitialize(count: 1)
-
-            // We are now terminating. The run has been aborted and other threads were not yet allowed to activate this
-            // actor (since it was in the middle of processing). We MUST therefore activate right now, and at the same time
-            // force the enqueue of the tombstone system message, as the actor now will NOT accept any more messages
-            // and will dead letter them. We need to process all existing system messages though all the way to the tombstone,
-            // before we become CLOSED.
-
-            // Fault handling is not implemented.
-            // // Meaning supervision was either applied and decided to fail, or not applied and we should fail anyway.
-            // // We have to guarantee the processing of any outstanding system messages, and use a tombstone marker to notice this.
-            // let failedRunPhase = runPhase
-            // self.reportCrashFailCellWithBestPossibleError(shell: cell, failedMessagePtr: failedMessagePtr, runPhase: failedRunPhase)
-
-            // since we may have faulted while processing user messages, while system messages were being enqueued,
-            // we have to perform one last run to potentially drain any remaining system messages to dead letters for
-            // death watch correctness.
-            traceLog_Mailbox(self.address.path, "interpret failureTerminate")
-            self.sendSystemTombstone() // Rest in Peace
         case .close:
             // termination has been set as mailbox status and we should send ourselves the .tombstone
             // which serves as final system message after which termination will completely finish.
@@ -497,6 +398,7 @@ internal final class Mailbox<Message> {
             // and now we need to handle those that made it in, before the terminating status was set.
             traceLog_Mailbox(self.address.path, "interpret CLOSE")
             self.sendSystemTombstone() // Rest in Peace
+
         case .closed:
             // Meaning that the tombstone was processed and this mailbox will never again run any messages.
             // Its actor and shell will be released, and the mailbox should also deinit; in order to vacillate this,
@@ -525,7 +427,6 @@ internal final class Mailbox<Message> {
         self.systemMessageClosureContext = nil
         self.deadLetterMessageClosureContext = nil
         self.deadLetterSystemMessageClosureContext = nil
-        self.invokeSupervisionClosureContext = nil
     }
 }
 
@@ -584,75 +485,7 @@ private struct DropMessageClosureContext {
     }
 }
 
-/// Wraps context for use in closures passed to C
-private struct InvokeSupervisionClosureContext {
-    internal let path: ActorPath
-
-    // Implementation note: we wold like to execute the usual handle failure here, but we can't since the passed
-    // over to C ClosureContext may not close over generic context. Thus the passed in closure here has to contain all the logic,
-    // and only yield us the "supervised run result", which usually will be `Failure` or `FailureRestart`
-    //
-    // private let _handleMessageFailure: (UnsafeMutableRawPointer) throws -> Behavior<Message>
-    private let _handleMessageFailureBecauseC: (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult
-
-    // Since we cannot close over generic context here, we invoke the generic requiring rendering inside this
-    private let _describeMessage: (UnsafeMutableRawPointer) -> String
-
-    init(_ path: ActorPath,
-         handleMessageFailure: @escaping (Supervision.Failure, SActMailboxRunPhase) throws -> SActMailboxRunResult,
-         describeMessage: @escaping (UnsafeMutableRawPointer) -> String) {
-        self.path = path
-        self._handleMessageFailureBecauseC = handleMessageFailure
-        self._describeMessage = describeMessage
-    }
-
-    @inlinable
-    func handleMessageFailure(_ failure: Supervision.Failure, whileProcessing runPhase: SActMailboxRunPhase) throws -> SActMailboxRunResult {
-        return try self._handleMessageFailureBecauseC(failure, runPhase)
-    }
-
-    // hides the generic Message and provides same capabilities of rendering messages as the free function of the same name
-    @inlinable
-    func renderMessageDescription(runPhase: SActMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer) -> String {
-        switch runPhase {
-        case .processingSystemMessages:
-            // we can invoke it directly since it is not generic
-            return renderSystemMessageDescription(failedMessageRaw)
-
-        case .processingUserMessages:
-            // since Message is generic, we need to hop over the provided function which was allowed to close over the generic state
-            return self._describeMessage(failedMessageRaw)
-        }
-    }
-}
-
-/// Renders a `SystemMessage` or user `Message` appropriately given a raw pointer to such message.
-/// Only really needed due to the c-interop of failure handling where we need to recover the lost generic information this way.
-private func renderMessageDescription<Message>(runPhase: SActMailboxRunPhase, failedMessageRaw: UnsafeMutableRawPointer, userMessageType: Message.Type) -> String {
-    switch runPhase {
-    case .processingSystemMessages:
-        return renderSystemMessageDescription(failedMessageRaw)
-    case .processingUserMessages:
-        return renderUserMessageDescription(failedMessageRaw, type: Message.self)
-    }
-}
-
-// Extracted like this since we need to use it directly, as well as from contexts which may not carry generic information
-// such as the InvokeSupervisionClosureContext where we invoke things via a function calling into this one to avoid the
-// generics issue.
-private func renderUserMessageDescription<Message>(_ ptr: UnsafeMutableRawPointer, type: Message.Type) -> String {
-    let envelope = ptr.assumingMemoryBound(to: Envelope.self).pointee
-    switch envelope.payload {
-    case .closure: return "closure"
-    case .message(let message): return "[\(message)]:\(Message.self)"
-    }
-}
-
-private func renderSystemMessageDescription(_ ptr: UnsafeMutableRawPointer) -> String {
-    let systemMessage = ptr.assumingMemoryBound(to: SystemMessage.self).pointee
-    return "[\(systemMessage)]:\(SystemMessage.self)"
-}
-
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Custom string representations of C-defined enumerations
 
 /// Helper for rendering the C defined `SActMailboxRunResult` enum in human readable format
@@ -667,10 +500,6 @@ extension SActMailboxRunResult: CustomStringConvertible {
             return "MailboxRunResult.done"
         case .reschedule:
             return "MailboxRunResult.reschedule"
-        case .failureTerminate:
-            return "MailboxRunResult.failureTerminate"
-        case .failureRestart:
-            return "MailboxRunResult.failureRestart"
         }
     }
 }
