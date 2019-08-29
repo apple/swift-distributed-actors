@@ -249,15 +249,13 @@ SActMailboxRunResult cmailbox_run(
       // message processing:
       SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
       SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
-      SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
-      SActMailboxRunPhase* run_phase) {
+      SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message) {
     void* message = NULL;
     print_debug_status(mailbox, "Entering run");
 
     int64_t status = set_processing_system_messages(mailbox);
 
-    int64_t processed_activations[1];
-    *processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
+    int64_t processed_activations = has_system_messages(status) ? PROCESSING_SYSTEM_MESSAGES : 0;
     // TODO: more smart scheduling decisions (smart batching), though likely better on dispatcher layer
     uint32_t run_length = max(message_count(status), mailbox->max_run_length);
 
@@ -272,14 +270,14 @@ SActMailboxRunResult cmailbox_run(
     }
 
     // run system messages -----------------------------------------------------------------------------------------
+    SActMailboxRunPhase run_phase = SActMailboxRunPhase_ProcessingSystemMessages;
     if (has_system_messages(status)) {
-        *run_phase = SActMailboxRunPhase_ProcessingSystemMessages;
         message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
 
         while (message != NULL &&
                (run_result != SActActorRunResult_shouldStop && run_result != SActActorRunResult_closed)) {
             // printf("[SACT_TRACE_MAILBOX][c] Processing system message...\n");
-            run_result = interpret_message(system_context, cell, message, *run_phase);
+            run_result = interpret_message(system_context, cell, message, run_phase);
             message = c_sact_mpsc_linked_queue_dequeue(mailbox->system_messages);
         }
 
@@ -326,17 +324,17 @@ SActMailboxRunResult cmailbox_run(
     // run user messages -------------------------------------------------------------------------------------------
 
     if (run_result == SActActorRunResult_continueRunning) {
-        *run_phase = SActMailboxRunPhase_ProcessingUserMessages;
+        run_phase = SActMailboxRunPhase_ProcessingUserMessages;
         message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
 
         while (message != NULL && (run_result == SActActorRunResult_continueRunning)) {
             // we need to add 2 to processed_activations because the user message count is stored
             // shifted by 1 in the status and we use the same field to clear the
             // system message bit
-            *processed_activations += SINGLE_USER_MESSAGE_MASK;
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
             // printf("[SACT_TRACE_MAILBOX][c] Processing user message...\n");
             // TODO: fix this dance
-            run_result = interpret_message(context, cell, message, *run_phase); // TODO: we can optimize the keep_running into the processed counter?
+            run_result = interpret_message(context, cell, message, run_phase); // TODO: we can optimize the keep_running into the processed counter?
 
             // TODO: optimize all this branching into riding on the processed_activations perhaps? we'll see later on -- ktoso
             if ((run_result == SActActorRunResult_shouldStop) && !is_terminating(status)) {
@@ -348,7 +346,7 @@ SActMailboxRunResult cmailbox_run(
                 set_status_suspended(mailbox);
                 print_debug_status(mailbox, "MARKED SUSPENDED");
                 message = NULL;
-            } else if (*processed_activations >= run_length) {
+            } else if (processed_activations >= run_length) {
                 message = NULL; // break out of the loop
             } else {
                 // dequeue another message, if there are no more messages left, message
@@ -365,7 +363,7 @@ SActMailboxRunResult cmailbox_run(
         message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages);
         while (message != NULL) {
             drop_message(dead_letter_context, message);
-            *processed_activations += SINGLE_USER_MESSAGE_MASK;
+            processed_activations += SINGLE_USER_MESSAGE_MASK;
             message = c_sact_mpsc_linked_queue_dequeue(mailbox->messages); // keep draining
         }
     }
@@ -375,7 +373,7 @@ SActMailboxRunResult cmailbox_run(
 
     // printf("[SACT_TRACE_MAILBOX][c] ProcessedActivations %lu messages...\n", processed_activations);
 
-    int64_t old_status = decrement_status_activations(mailbox, *processed_activations);
+    int64_t old_status = decrement_status_activations(mailbox, processed_activations);
 
     // end of run user messages ------------------------------------------------------------------------------------
 
@@ -389,7 +387,7 @@ SActMailboxRunResult cmailbox_run(
         // as other conditions may hold, yet we really are ready to terminate immediately.
         print_debug_status(mailbox, "terminating, notifying swift mailbox...");
         return SActMailboxRunResult_Close;
-    } else if ((old_activations > *processed_activations && !is_suspended(old_status)) ||
+    } else if ((old_activations > processed_activations && !is_suspended(old_status)) ||
                has_system_messages(old_status)) {
         // if we received new system messages during user message processing, or we could not process
         // all user messages in this run, because we had more messages queued up than the maximum run
@@ -397,7 +395,7 @@ SActMailboxRunResult cmailbox_run(
 
 #ifdef SACT_TRACE_MAILBOX
         char msg[300];
-        snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, *processed_activations);
+        snprintf(msg, 300, "Run complete, shouldReschedule:true; %lld > %lld", old_activations, processed_activations);
         print_debug_status(mailbox, msg);
 #endif
         return SActMailboxRunResult_Reschedule;

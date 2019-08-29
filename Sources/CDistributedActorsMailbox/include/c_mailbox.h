@@ -135,8 +135,7 @@ SActMailboxRunResult cmailbox_run(
     // message processing:
     SActInterpretMessageClosureContext context, SActInterpretSystemMessageClosureContext system_context,
     SActDropMessageClosureContext dead_letter_context, SActDropMessageClosureContext dead_letter_system_context,
-    SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message,
-    SActMailboxRunPhase* run_phase
+    SActInterpretMessageCallback interpret_message, SActDropMessageCallback drop_message
     );
 
 uint32_t cmailbox_message_count(CSActMailbox* mailbox);

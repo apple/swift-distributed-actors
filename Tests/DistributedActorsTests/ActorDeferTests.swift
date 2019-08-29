@@ -34,7 +34,6 @@ class ActorDeferTests: XCTestCase {
         case staysSame
         case stops
         case failsByThrowing
-        // case failsByFaulting
     }
 
     func receiveDeferBehavior(_ probe: ActorRef<String>, deferUntil: DeferUntilWhen, whenActor reaction: ReductionReaction) -> Behavior<String> {

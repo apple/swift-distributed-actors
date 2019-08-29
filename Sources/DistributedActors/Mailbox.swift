@@ -375,8 +375,7 @@ internal final class Mailbox<Message> {
                                                                   &cell,
                                                                   &self.messageClosureContext, &self.systemMessageClosureContext,
                                                                   &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
-                                                                  self.interpretMessage, self.deadLetterMessage,
-                                                                  &runPhase)
+                                                                  self.interpretMessage, self.deadLetterMessage)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
