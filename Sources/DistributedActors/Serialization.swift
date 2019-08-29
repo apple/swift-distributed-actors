@@ -415,15 +415,18 @@ public struct SerializationSettings {
     internal let allocator = ByteBufferAllocator()
 
     public mutating func register<T>(_ makeSerializer: (ByteBufferAllocator) -> Serializer<T>, for type: T.Type, underId id: Serialization.SerializerId) {
-        self.userSerializerIds[MetaType(type).asHashable()] = id
+        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
+        self.validateSerializer(for: type, metaTypeKey: metaTypeKey, underId: id)
+        self.register(makeSerializer, for: metaTypeKey, underId: id)
+    }
+
+    private mutating func register<T>(_ makeSerializer: (ByteBufferAllocator) -> Serializer<T>, for metaTypeKey: Serialization.MetaTypeKey, underId id: Serialization.SerializerId) {
+        self.userSerializerIds[metaTypeKey] = id
         self.userSerializers[id] = BoxedAnySerializer(makeSerializer(self.allocator))
     }
 
     /// - Faults: when serializer `id` is reused
-    // TODO: Pretty sure this is not the final form of it yet...
-    public mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
-        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
-
+    private func validateSerializer<T>(for type: T.Type, metaTypeKey: Serialization.MetaTypeKey, underId id: Serialization.SerializerId) {
         if let alreadyRegisteredId = self.userSerializerIds[metaTypeKey] {
             let err = SerializationError.alreadyDefined(type: type, serializerId: alreadyRegisteredId, serializer: nil)
             fatalError("Fatal serialization configuration error: \(err)")
@@ -432,12 +435,33 @@ public struct SerializationSettings {
             let err = SerializationError.alreadyDefined(type: type, serializerId: id, serializer: alreadyRegisteredSerializer)
             fatalError("Fatal serialization configuration error: \(err)")
         }
+    }
+
+    /// - Faults: when serializer `id` is reused
+    // TODO: Pretty sure this is not the final form of it yet...
+    public mutating func registerCodable<T: Codable>(for type: T.Type, underId id: Serialization.SerializerId) {
+        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
+
+        self.validateSerializer(for: type, metaTypeKey: metaTypeKey, underId: id)
 
         let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
             JSONCodableSerializer<T>(allocator: allocator)
         }
-        self.userSerializerIds[metaTypeKey] = id
-        self.userSerializers[id] = BoxedAnySerializer(makeSerializer(self.allocator))
+
+        self.register(makeSerializer, for: metaTypeKey, underId: id)
+    }
+
+    /// - Faults: when serializer `id` is reused
+    public mutating func registerProtobufRepresentable<T: ProtobufRepresentable>(for type: T.Type, underId id: Serialization.SerializerId) {
+        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
+
+        self.validateSerializer(for: type, metaTypeKey: metaTypeKey, underId: id)
+
+        let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
+            ProtobufSerializer<T>(allocator: allocator)
+        }
+
+        self.register(makeSerializer, for: metaTypeKey, underId: id)
     }
 }
 
@@ -576,7 +600,7 @@ enum SerializationError: Error {
     // --- illegal errors ---
     case mayNeverBeSerialized(type: String)
 
-    static func alreadyDefined<T: Codable>(type: T.Type, serializerId: Serialization.SerializerId, serializer: AnySerializer?) -> SerializationError {
+    static func alreadyDefined<T>(type: T.Type, serializerId: Serialization.SerializerId, serializer: AnySerializer?) -> SerializationError {
         return .alreadyDefined(hint: String(reflecting: type), serializerId: serializerId, serializer: serializer)
     }
 

@@ -26,7 +26,8 @@ declare -a public_protos
 public_protos=( -name 'ActorAddress.proto' )
 
 # There are two visibility options: Public, Internal (default)
-# https://github.com/apple/swift-protobuf/blob/master/Sources/protoc-gen-swift/GeneratorOptions.swift#L20
+# https://github.com/apple/swift-protobuf/blob/master/Documentation/PLUGIN.md#generation-option-visibility---visibility-of-generated-types
+# TODO: https://github.com/apple/swift-distributed-actors/issues/59
 for visibility in public default; do
   swift_opt=''
   case "$visibility" in

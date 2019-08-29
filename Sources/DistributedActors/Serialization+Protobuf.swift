@@ -18,7 +18,9 @@ import SwiftProtobuf
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Protobuf representations
 
-/// User-defined messages that are protobuf-serializable must conform to this protocol.
+/// A protocol that facilitates conversion between Swift and protobuf messages.
+///
+/// - SeeAlso: Serialization.registerProtobufRepresentable
 public protocol ProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 

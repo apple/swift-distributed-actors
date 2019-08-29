@@ -16,7 +16,7 @@ import DistributedActors
 
 import Metrics
 import Prometheus
-//import StatsdClient
+// import StatsdClient
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Prometheus backend
@@ -33,9 +33,8 @@ MetricsSystem.bootstrap(prom)
 // let statsdClient = try StatsdClient(host: "localhost", port: 8125)
 // MetricsSystem.bootstrap(statsdClient)
 
-
 // start actor system
-let system = ActorSystem("Metrics") { settings in 
+let system = ActorSystem("Metrics") { settings in
     settings.cluster.enabled = true
 }
 
@@ -43,6 +42,7 @@ struct Talker {
     enum Message {
         case hello(Int, replyTo: ActorRef<Talker.Message>?)
     }
+
     static func talkTo(another talker: ActorRef<Message>?) -> Behavior<Message> {
         return .setup { context in
             context.log.info("Started \(context.myself.path)")
@@ -99,7 +99,7 @@ let t4 = try system.spawn("talker-4", props: props, Talker.talkTo(another: t3))
 
 let m = try system.spawn("metricsPrinter", MetricPrinter.behavior)
 
-for i in 1...10 {
+for i in 1 ... 10 {
     _ = try system.spawn("life-\(i)", DieAfterSomeTime.behavior)
     Thread.sleep(.seconds(1))
 }
