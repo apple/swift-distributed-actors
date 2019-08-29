@@ -43,8 +43,6 @@ class SupervisionTests: XCTestCase {
 
     enum FaultyMessage {
         case pleaseThrow(error: Error)
-        case pleaseFatalError(message: String)
-        case pleaseDivideByZero
         case echo(message: String, replyTo: ActorRef<WorkerMessages>)
     }
 
@@ -60,11 +58,11 @@ class SupervisionTests: XCTestCase {
 
     enum FailureMode {
         case throwing
-        case faulting
+        // case faulting // Not implemented
 
         func fail() throws {
             switch self {
-            case .faulting: fatalError("SIGNAL_BOOM")
+            // case .faulting: fatalError("SIGNAL_BOOM") // not implemented
             case .throwing: throw FaultyError.boom(message: "SIGNAL_BOOM")
             }
         }
@@ -78,12 +76,6 @@ class SupervisionTests: XCTestCase {
                 switch $0 {
                 case .pleaseThrow(let error):
                     throw error
-                case .pleaseFatalError(let msg):
-                    fatalError(msg)
-                case .pleaseDivideByZero:
-                    let zero = Int("0")! // to trick swiftc into allowing us to write "/ 0", which it otherwise catches at compile time
-                    _ = 100 / zero
-                    return .same
                 case .echo(let msg, let sender):
                     sender.tell(.echo(message: "echo:\(msg)"))
                     return .same
@@ -469,24 +461,8 @@ class SupervisionTests: XCTestCase {
         })
     }
 
-    func test_stopSupervised_fatalError_shouldStop() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessage.pleaseFatalError(message: msg)
-        })
-        #endif
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision
-
-    func test_restartSupervised_fatalError_shouldRestart() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessage.pleaseFatalError(message: msg)
-        })
-        #endif
-    }
 
     func test_restartSupervised_throws_shouldRestart() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "throws", makeEvilMessage: { msg in
@@ -498,14 +474,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "throws", makeEvilMessage: { msg in
             FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
-    }
-
-    func test_restartAtMostWithin_fatalError_shouldRestartNoMoreThanAllowedWithinPeriod() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartAtMostWithin_throws_shouldRestartNoMoreThanAllowedWithinPeriod(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessage.pleaseFatalError(message: msg)
-        })
-        #endif
     }
 
     func test_restartSupervised_throws_shouldRestart_andCreateNewInstanceOfClassBehavior() throws {
@@ -549,36 +517,14 @@ class SupervisionTests: XCTestCase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Restarting supervision with Backoff
 
-    func test_restartSupervised_fatalError_shouldRestartWithConstantBackoff() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessage.pleaseFatalError(message: msg)
-        })
-        #endif
-    }
-
     func test_restart_throws_shouldHandleFailureWhenInterpretingStart() throws {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .throwing)
-    }
-
-    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStart() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStart(failureMode: .faulting)
-        #endif
     }
 
     func test_restartSupervised_throws_shouldRestartWithConstantBackoff() throws {
         try self.sharedTestLogic_restartSupervised_shouldRestartWithConstantBackoff(runName: "throws", makeEvilMessage: { msg in
             FaultyMessage.pleaseThrow(error: FaultyError.boom(message: msg))
         })
-    }
-
-    func test_restartSupervised_fatalError_shouldRestartWithExponentialBackoff() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestartWithExponentialBackoff(runName: "fatalError", makeEvilMessage: { msg in
-            FaultyMessage.pleaseFatalError(message: msg)
-        })
-        #endif
     }
 
     func test_restartSupervised_throws_shouldRestartWithExponentialBackoff() throws {
@@ -591,41 +537,8 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .throwing)
     }
 
-    func test_restart_fatalError_shouldHandleFailureWhenInterpretingStartAfterFailure() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restart_shouldHandleFailureWhenInterpretingStartAfterFailure(failureMode: .faulting)
-        #endif
-    }
-
     func test_restart_throws_shouldFailAfterMaxFailuresInSetup() throws {
         try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .throwing)
-    }
-
-    func test_restart_fatalError_shouldFailAfterMaxFailuresInSetup() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restart_shouldFailAfterMaxFailuresInSetup(failureMode: .faulting)
-        #endif
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Handling faults, divide by zero
-
-    // This should effectively be exactly the same as other faults, but we want to make sure, just in case Swift changes this (so we'd notice early)
-
-    func test_stopSupervised_divideByZero_shouldStop() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { _ in
-            FaultyMessage.pleaseDivideByZero
-        })
-        #endif
-    }
-
-    func test_restartSupervised_divideByZero_shouldRestart() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_restartSupervised_shouldRestart(runName: "fatalError", makeEvilMessage: { _ in
-            FaultyMessage.pleaseDivideByZero
-        })
-        #endif
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -648,30 +561,6 @@ class SupervisionTests: XCTestCase {
         try probe.expectNoTerminationSignal(for: .milliseconds(20))
         faultyWorker.tell(.pleaseThrow(error: CantTouchThis()))
         try probe.expectTerminated(faultyWorker)
-    }
-
-    func test_compositeSupervisor_shouldFaultHandleUsingTheRightHandler() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        let probe = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
-
-        let faultyWorker = try system.spawn("compositeFailures-1",
-                                            props: Props()
-                                                .addingSupervision(strategy: .restart(atMost: 2, within: nil), forAll: .faults)
-                                                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self) // should not the limit that .faults has
-                                                .addingSupervision(strategy: .restart(atMost: 1, within: nil), forAll: .failures), // matters, but first in chain is .faults with the 3 limit
-                                            self.faulty(probe: probe.ref))
-
-        probe.watch(faultyWorker)
-
-        faultyWorker.tell(.pleaseDivideByZero)
-        try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        faultyWorker.tell(.pleaseDivideByZero)
-        try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        //        faultyWorker.tell(.pleaseThrow(error: CatchMe()))
-        //        try probe.expectNoTerminationSignal(for: .milliseconds(20))
-        faultyWorker.tell(.pleaseDivideByZero)
-        try probe.expectTerminated(faultyWorker)
-        #endif
     }
 
     // TODO: we should nail down and spec harder exact semantics of the failure counting, I'd say we do.
@@ -740,12 +629,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .throwing)
     }
 
-    func test_faultInSignalHandling_shouldRestart() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_failInSignalHandling_shouldRestart(failBy: .faulting)
-        #endif
-    }
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Hard crash tests, hidden under flags (since they really crash the application, and SHOULD do so)
 
@@ -807,8 +690,6 @@ class SupervisionTests: XCTestCase {
             switch error {
             case let reply as PleaseReply:
                 probe.tell(reply)
-            case is PleaseFatalError:
-                fatalError("Boom! Fatal error on demand.")
             default:
                 throw error
             }
@@ -860,55 +741,6 @@ class SupervisionTests: XCTestCase {
         try p.expectMessage(PleaseReply())
     }
 
-    func test_supervisor_shouldOnlyHandle_anyFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReply.self)
-
-        let supervisedThrower: ActorRef<Error> = try system.spawn(
-            "mr-fawlty-1",
-            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .faults),
-            self.throwerBehavior(probe: p)
-        )
-
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
-
-        supervisedThrower.tell(PleaseFatalError()) // will cause restart
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
-
-        supervisedThrower.tell(CatchMe()) // will NOT cause restart, we only handle faults here (as unusual of a decision this is, yeah)
-
-        supervisedThrower.tell(PleaseReply())
-        try p.expectNoMessage(for: .milliseconds(50))
-        #endif
-    }
-
-    func test_supervisor_shouldOnlyHandle_anyFailure() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        let p = self.testKit.spawnTestProbe(expecting: PleaseReply.self)
-
-        let supervisedThrower: ActorRef<Error> = try system.spawn(
-            "any-failure-1",
-            props: .addingSupervision(strategy: .restart(atMost: 100, within: nil), forAll: .failures),
-            self.throwerBehavior(probe: p)
-        )
-
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
-
-        supervisedThrower.tell(PleaseFatalError()) // will cause restart
-
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
-
-        supervisedThrower.tell(CatchMe()) // will cause restart
-
-        supervisedThrower.tell(PleaseReply())
-        try p.expectMessage(PleaseReply())
-        #endif
-    }
-
     func sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy failureMode: FailureMode) throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
@@ -934,14 +766,6 @@ class SupervisionTests: XCTestCase {
 
     func test_supervisor_throws_shouldCausePreRestartSignalBeforeRestarting() throws {
         try self.sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .throwing)
-    }
-
-    func test_supervisor_fatalError_shouldCausePreRestartSignalBeforeRestarting() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_shouldCausePreRestartSignalBeforeRestarting(failBy: .faulting)
-        #else
-        pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
-        #endif
     }
 
     func sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy failureMode: FailureMode, backoff: BackoffStrategy?) throws {
@@ -983,24 +807,8 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: nil)
     }
 
-    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .faulting, backoff: nil)
-        #else
-        pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
-        #endif
-    }
-
     func test_supervisor_throws_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
         try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .throwing, backoff: Backoff.constant(.milliseconds(10)))
-    }
-
-    func test_supervisor_fatalError_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal_withBackoff() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_shouldFailIrrecoverablyIfFailingToHandle_PreRestartSignal(failBy: .faulting, backoff: Backoff.constant(.milliseconds(10)))
-        #else
-        pinfo("Skipping test, SACT_DISABLE_FAULT_TESTING was set")
-        #endif
     }
 
     func test_supervisedActor_shouldNotRestartedWhenCrashingInPostStop() throws {
@@ -1062,12 +870,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .throwing)
     }
 
-    func test_supervisor_fatalError_shouldRestartWhenFailingInDispatcherClosure() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_shouldRestartWhenFailingInDispatchedClosure(failBy: .faulting)
-        #endif
-    }
-
     func sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy failureMode: FailureMode) throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -1103,12 +905,6 @@ class SupervisionTests: XCTestCase {
         try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .throwing)
     }
 
-    func test_supervisor_awaitResult_shouldInvokeSupervisionOnFault() throws {
-        #if !SACT_DISABLE_FAULT_TESTING
-        try self.sharedTestLogic_supervisor_awaitResult_shouldInvokeSupervisionWhenFailing(failBy: .faulting)
-        #endif
-    }
-
     func test_supervisor_awaitResultThrowing_shouldInvokeSupervisionOnFailure() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
@@ -1142,6 +938,5 @@ class SupervisionTests: XCTestCase {
     private struct PleaseReply: Error, Equatable {}
     private struct EasilyCatchable: Error, Equatable {}
     private struct CantTouchThis: Error, Equatable {}
-    private struct PleaseFatalError: Error, Equatable {}
     private struct CatchMe: Error, Equatable {}
 }
