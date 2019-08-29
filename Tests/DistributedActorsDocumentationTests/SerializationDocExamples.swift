@@ -23,6 +23,39 @@ enum ParkingSpotStatus: String, Codable {
 
 // end::serialization_codable_messages[]
 
+// tag::serialization_protobuf_representable[]
+extension ParkingSpotStatus: ProtobufRepresentable {
+    typealias ProtobufRepresentation = ProtoParkingSpotStatus
+
+    func toProto(context: ActorSerializationContext) throws -> ProtoParkingSpotStatus {
+        var proto = ProtoParkingSpotStatus()
+        switch self {
+        case .available:
+            proto.type = .available
+        case .taken:
+            proto.type = .taken
+        }
+        return proto
+    }
+
+    init(fromProto proto: ProtoParkingSpotStatus, context: ActorSerializationContext) throws {
+        switch proto.type {
+        case .available:
+            self = .available
+        case .taken:
+            self = .taken
+        case .UNRECOGNIZED(let num):
+            throw ParkingSpotError.unknownStatusValue(num)
+        }
+    }
+
+    enum ParkingSpotError: Error {
+        case unknownStatusValue(Int)
+    }
+}
+
+// end::serialization_protobuf_representable[]
+
 // tag::serialization_custom_messages[]
 enum CustomlyEncodedMessage: String {
     case available
@@ -40,6 +73,15 @@ class SerializationDocExamples {
             settings.serialization.registerCodable(for: ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
         }
         // end::prepare_system_codable[]
+        _ = system // silence not-used warnings
+    }
+
+    func prepare_system_protobuf() throws {
+        // tag::prepare_system_protobuf[]
+        let system = ActorSystem("ProtobufExample") { settings in
+            settings.serialization.registerProtobufRepresentable(for: ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
+        }
+        // end::prepare_system_protobuf[]
         _ = system // silence not-used warnings
     }
 

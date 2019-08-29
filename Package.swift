@@ -156,7 +156,7 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/ianpartridge/swift-backtrace.git", .branch("master")),
 
     // ~~~ only for samples ~~~
-    .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master"))
+    .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
 ]
 
 let package = Package(
