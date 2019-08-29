@@ -43,6 +43,9 @@ public struct ActorSystemSettings {
         }
     }
 
+    /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
+    public var installSwiftBacktrace: Bool = true
+
     // FIXME: should have more proper config section
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }

@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Backtrace
 import CDistributedActorsMailbox
 import Dispatch
 import DistributedActorsConcurrencyHelpers
@@ -123,6 +124,11 @@ public final class ActorSystem {
     public init(settings: ActorSystemSettings) {
         var settings = settings
         self.name = settings.cluster.node.systemName
+
+        // rely on swift-backtrace for pretty backtraces on crashes
+        if settings.installSwiftBacktrace {
+            Backtrace.install()
+        }
 
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
