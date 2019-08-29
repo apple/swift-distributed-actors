@@ -29,7 +29,9 @@ else
 fi
 echo "Project version: ${version}"
 
-modules=(DistributedActors)
+modules=(
+    DistributedActors
+)
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   # build code if required
@@ -68,11 +70,13 @@ if [[ "$(jazzy --version)" != "jazzy version: 0.10.0" ]]; then
     exit 1
 fi
 
-module_switcher="api/$version/README.md"
+module_switcher="${root_path}/api/$version/README.md"
+mkdir -p "${root_path}/api/$version/"
+touch $module_switcher
 jazzy_args=(--clean
             --readme "$module_switcher"
             --config "$my_path/.jazzy.json"
-            --documentation=$root_path/Docs/*.md
+            --documentation=${root_path}/Docs/*.md
             --github-file-prefix https://github.com/apple/swift-distributed-actors/blob/$doc_link_version
             --theme fullwidth
            )
