@@ -132,9 +132,45 @@ This will cause the _sending_ actor (or process, in case of sending messages fro
      Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`.
      This check was performed since `settings.serialization.allMessages` was enabled.: file Mailbox.swift, line 260
 
-=== Using Protocol Buffers
+=== Serializing Protocol Buffers
 
-#TODO: Show example how to use protobuf for messages.#
+#TODO: Explain protobuf is the recommended message format. Move this before Codable?#
+
+To use protocol buffers as the message format:
+
+==== Step 1: Define protocol buffers and generate Swift output
+
+Let's define a protocol buffer for the `ParkingSpotStatus` enum used in the `Codable` serialization example:
+
+.Example protobuf buffers
+[source]
+----
+include::{dir_sact_doc_tests}/DocumentationProtos/SerializationDocExamples.proto[tag=serialization_protobuf_buffers]
+----
+
+Then generate the Swift output (in our case the type is named `ProtoParkingSpotStatus`). With it we can conform `ParkingSpotStatus` to `ProtobufRepresentable`.
+
+==== Step 2: Conform messages to ProtobufRepresentable
+
+`ProtobufRepresentable` is a helper protocol for conversion between Swift and protobuf messages.
+
+To conform implement the `toProto` and `init` methods:
+
+.Example messages
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_protobuf_representable]
+----
+
+==== Step 3: Register ProtobufRepresentable types for serialization
+
+As with `Codable`, `ProtobufRepresentable` message types _must_ be registered.
+
+.Configuring ActorSystem to use protobuf serializers for the passed in types
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_protobuf]
+----
 
 === Using Custom Serialization
 
