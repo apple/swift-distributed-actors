@@ -31,6 +31,7 @@ extension ActorAskTests {
             ("test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout", test_askResult_shouldBePossibleTo_contextOnResultAsyncOn_withInfiniteTimeout),
             ("test_askResult_whenContextAwaitedOn_shouldRespectTimeout", test_askResult_whenContextAwaitedOn_shouldRespectTimeout),
             ("test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters", test_ask_onDeadLetters_shouldPutMessageIntoDeadLetters),
+            ("test_ask_withTerminatedSystem_shouldNotCauseCrash", test_ask_withTerminatedSystem_shouldNotCauseCrash),
         ]
     }
 }
