@@ -1,0 +1,57 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "ActorAddress.proto";
+
+// TODO: consider making this file or part of it public since it contains proto types that can be used for custom CRDTs
+
+// ===== CRDT.Identity =====
+
+message CRDTIdentity {
+    string id = 1;
+}
+
+// ===== CRDT.ReplicaId =====
+
+message CRDTReplicaId {
+    oneof value {
+        CRDTReplicaId_ActorAddress actorAddress = 1;
+    }
+}
+
+message CRDTReplicaId_ActorAddress {
+    ActorAddress actorAddress = 1;
+}
+
+// ===== CRDT.GCounter =====
+
+message CRDTGCounter {
+    message ReplicaState {
+        CRDTReplicaId replicaId = 1;
+        uint64 count = 2;
+    }
+
+    message Delta {
+        repeated ReplicaState state = 1;
+    }
+
+    CRDTReplicaId replicaId = 1;
+    // Not a map because only integral or string type can be keys
+    repeated ReplicaState state = 2;
+}

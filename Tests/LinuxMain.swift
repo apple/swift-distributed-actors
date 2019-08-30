@@ -48,6 +48,7 @@ XCTMain([
     testCase(CMailboxTests.allTests),
     testCase(CRDTActorOwnedTests.allTests),
     testCase(CRDTCoreTypeTests.allTests),
+    testCase(CRDTReplicationSerializationTests.allTests),
     testCase(CRDTReplicatorInstanceTests.allTests),
     testCase(CRDTReplicatorShellTests.allTests),
     testCase(CRDTVersioningTests.allTests),
