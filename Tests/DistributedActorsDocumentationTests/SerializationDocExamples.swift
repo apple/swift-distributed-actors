@@ -15,6 +15,9 @@
 import DistributedActors
 import NIO
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization example - Codable messages
+
 // tag::serialization_codable_messages[]
 enum ParkingSpotStatus: String, Codable {
     case available
@@ -23,38 +26,52 @@ enum ParkingSpotStatus: String, Codable {
 
 // end::serialization_codable_messages[]
 
-// tag::serialization_protobuf_representable[]
-extension ParkingSpotStatus: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoParkingSpotStatus
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization example - protobuf messages
 
-    func toProto(context: ActorSerializationContext) throws -> ProtoParkingSpotStatus {
-        var proto = ProtoParkingSpotStatus()
+// tag::serialization_protobuf_messages[]
+enum ParkingGarageStatus {
+    case available
+    case full
+}
+
+// end::serialization_protobuf_messages[]
+
+// tag::serialization_protobuf_representable[]
+extension ParkingGarageStatus: ProtobufRepresentable {
+    typealias ProtobufRepresentation = ProtoParkingGarageStatus
+
+    func toProto(context: ActorSerializationContext) throws -> ProtoParkingGarageStatus {
+        var proto = ProtoParkingGarageStatus()
         switch self {
         case .available:
             proto.type = .available
-        case .taken:
-            proto.type = .taken
+        case .full:
+            proto.type = .full
         }
         return proto
     }
 
-    init(fromProto proto: ProtoParkingSpotStatus, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoParkingGarageStatus, context: ActorSerializationContext) throws {
         switch proto.type {
         case .available:
             self = .available
-        case .taken:
-            self = .taken
+        case .full:
+            self = .full
         case .UNRECOGNIZED(let num):
-            throw ParkingSpotError.unknownStatusValue(num)
+            throw ParkingGarageError.unknownStatusValue(num)
         }
     }
 
-    enum ParkingSpotError: Error {
+    enum ParkingGarageError: Error {
         case unknownStatusValue(Int)
     }
 }
 
 // end::serialization_protobuf_representable[]
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Serialization example - custom messages
 
 // tag::serialization_custom_messages[]
 enum CustomlyEncodedMessage: String {
@@ -67,6 +84,9 @@ enum CustomlyEncodedMessage: String {
 class SerializationDocExamples {
     lazy var system: ActorSystem = undefined(hint: "Examples, not intended to be run")
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Serialized Codable messages
+
     func prepare_system_codable() throws {
         // tag::prepare_system_codable[]
         let system = ActorSystem("CodableExample") { settings in
@@ -76,18 +96,9 @@ class SerializationDocExamples {
         _ = system // silence not-used warnings
     }
 
-    func prepare_system_protobuf() throws {
-        // tag::prepare_system_protobuf[]
-        let system = ActorSystem("ProtobufExample") { settings in
-            settings.serialization.registerProtobufRepresentable(for: ParkingSpotStatus.self, underId: 1002) // TODO: simplify this
-        }
-        // end::prepare_system_protobuf[]
-        _ = system // silence not-used warnings
-    }
-
-    func sending_serialized_messages() throws {
+    func sending_serialized_codable_messages() throws {
         let spotAvailable = false
-        // tag::sending_serialized_messages[]
+        // tag::sending_serialized_codable_messages[]
         func replyParkingSpotAvailability(driver: ActorRef<ParkingSpotStatus>) {
             if spotAvailable {
                 driver.tell(.available)
@@ -95,17 +106,36 @@ class SerializationDocExamples {
                 driver.tell(.taken)
             }
         }
-        // end::sending_serialized_messages[]
+        // end::sending_serialized_codable_messages[]
     }
 
-    func configure_serialize_all() {
-        // tag::configure_serialize_all[]
-        let system = ActorSystem("SerializeAll") { settings in
-            settings.serialization.allMessages = true
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Serialized protobuf messages
+
+    func prepare_system_protobuf() throws {
+        // tag::prepare_system_protobuf[]
+        let system = ActorSystem("ProtobufExample") { settings in
+            settings.serialization.registerProtobufRepresentable(for: ParkingGarageStatus.self, underId: 1002) // TODO: simplify this
         }
-        // end::configure_serialize_all[]
-        _ = system
+        // end::prepare_system_protobuf[]
+        _ = system // silence not-used warnings
     }
+
+    func sending_serialized_protobuf_messages() throws {
+        let garageAvailable = false
+        // tag::sending_serialized_protobuf_messages[]
+        func replyParkingGarageAvailability(driver: ActorRef<ParkingGarageStatus>) {
+            if garageAvailable {
+                driver.tell(.available)
+            } else {
+                driver.tell(.full)
+            }
+        }
+        // end::sending_serialized_protobuf_messages[]
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Serialized custom messages
 
     func prepare_system_custom() throws {
         // tag::prepare_system_custom[]
@@ -204,4 +234,16 @@ class SerializationDocExamples {
     }
 
     // end::custom_actorRef_serializer[]
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Other configurations
+
+    func configure_serialize_all() {
+        // tag::configure_serialize_all[]
+        let system = ActorSystem("SerializeAll") { settings in
+            settings.serialization.allMessages = true
+        }
+        // end::configure_serialize_all[]
+        _ = system
+    }
 }

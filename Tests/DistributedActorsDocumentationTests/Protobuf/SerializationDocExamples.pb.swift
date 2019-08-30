@@ -20,6 +20,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// tag::serialization_protobuf[]
+
 import Foundation
 import SwiftProtobuf
 
@@ -33,20 +35,19 @@ private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVer
     typealias Version = _2
 }
 
-/// tag::serialization_protobuf_messages[]
-struct ProtoParkingSpotStatus {
+struct ProtoParkingGarageStatus {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    var type: ProtoParkingSpotStatus.TypeEnum = .available
+    var type: ProtoParkingGarageStatus.TypeEnum = .available
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
     enum TypeEnum: SwiftProtobuf.Enum {
         typealias RawValue = Int
         case available // = 0
-        case taken // = 1
+        case full // = 1
         case UNRECOGNIZED(Int)
 
         init() {
@@ -56,7 +57,7 @@ struct ProtoParkingSpotStatus {
         init?(rawValue: Int) {
             switch rawValue {
             case 0: self = .available
-            case 1: self = .taken
+            case 1: self = .full
             default: self = .UNRECOGNIZED(rawValue)
             }
         }
@@ -64,7 +65,7 @@ struct ProtoParkingSpotStatus {
         var rawValue: Int {
             switch self {
             case .available: return 0
-            case .taken: return 1
+            case .full: return 1
             case .UNRECOGNIZED(let i): return i
             }
         }
@@ -75,11 +76,11 @@ struct ProtoParkingSpotStatus {
 
 #if swift(>=4.2)
 
-extension ProtoParkingSpotStatus.TypeEnum: CaseIterable {
+extension ProtoParkingGarageStatus.TypeEnum: CaseIterable {
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static var allCases: [ProtoParkingSpotStatus.TypeEnum] = [
+    static var allCases: [ProtoParkingGarageStatus.TypeEnum] = [
         .available,
-        .taken,
+        .full,
     ]
 }
 
@@ -87,8 +88,8 @@ extension ProtoParkingSpotStatus.TypeEnum: CaseIterable {
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
-extension ProtoParkingSpotStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    static let protoMessageName: String = "ParkingSpotStatus"
+extension ProtoParkingGarageStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+    static let protoMessageName: String = "ParkingGarageStatus"
     static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "type"),
     ]
@@ -109,16 +110,16 @@ extension ProtoParkingSpotStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    static func == (lhs: ProtoParkingSpotStatus, rhs: ProtoParkingSpotStatus) -> Bool {
+    static func == (lhs: ProtoParkingGarageStatus, rhs: ProtoParkingGarageStatus) -> Bool {
         if lhs.type != rhs.type { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
         return true
     }
 }
 
-extension ProtoParkingSpotStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
+extension ProtoParkingGarageStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
     static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         0: .same(proto: "AVAILABLE"),
-        1: .same(proto: "TAKEN"),
+        1: .same(proto: "FULL"),
     ]
 }

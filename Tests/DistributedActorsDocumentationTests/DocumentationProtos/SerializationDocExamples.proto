@@ -12,18 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::serialization_protobuf[]
 syntax = "proto3";
 
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-// tag::serialization_protobuf_buffers[]
-message ParkingSpotStatus {
+message ParkingGarageStatus {
     enum Type {
         AVAILABLE = 0;
-        TAKEN = 1;
+        FULL = 1;
     }
 
     Type type = 1;
 }
-// end::serialization_protobuf_buffers[]
+// end::serialization_protobuf[]
