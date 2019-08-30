@@ -199,7 +199,10 @@ public class ActorContext<Message>: ActorRefFactory {
 
     /// Spawn a child actor and start watching it to get notified about termination.
     ///
-    /// - SeeAlso: `spawn` and `watch`.
+    /// For a detailed explanation of the both concepts refer to the `spawn` and `watch` documentation.
+    ///
+    /// - SeeAlso: `spawn`
+    /// - SeeAlso: `watch`
     public func spawnWatch<M>(_ naming: ActorNaming, of type: M.Type = M.self, props: Props = Props(), _ behavior: Behavior<M>) throws -> ActorRef<M> {
         return undefined()
     }

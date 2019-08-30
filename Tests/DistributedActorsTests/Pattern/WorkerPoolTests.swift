@@ -34,9 +34,9 @@ final class WorkerPoolTests: XCTestCase {
     func test_workerPool_registerNewlyStartedActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
@@ -79,9 +79,9 @@ final class WorkerPoolTests: XCTestCase {
     func test_workerPool_dynamic_removeDeadActors() throws {
         let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
 
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
@@ -146,9 +146,9 @@ final class WorkerPoolTests: XCTestCase {
     }
 
     func test_workerPool_ask() throws {
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
-        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe(name: "pW")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
+        let pW: ActorTestProbe<WorkerPoolQuestion> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<WorkerPoolQuestion> {
             return .receive { context, work in
@@ -187,10 +187,10 @@ final class WorkerPoolTests: XCTestCase {
     }
 
     func test_workerPool_static_removeDeadActors_terminateItselfWhenNoWorkers() throws {
-        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pA")
-        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pB")
-        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pC")
-        let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "pW")
+        let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
+        let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
+        let pC: ActorTestProbe<String> = self.testKit.spawnTestProbe("pC")
+        let pW: ActorTestProbe<String> = self.testKit.spawnTestProbe("pW")
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .receive { context, work in

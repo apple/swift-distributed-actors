@@ -13,6 +13,13 @@
 ##
 ##===----------------------------------------------------------------------===##
 
+RED='\033[0;31m'
+RST='\033[0m'
+
+function echoerr() {
+    echo "${RED}$@${RST}" 1>&2;
+}
+
 function _killall() {
     set +e
     local killall_app_name="$1"

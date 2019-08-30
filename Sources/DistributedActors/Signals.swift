@@ -62,8 +62,10 @@ public enum Signals {
 
     /// Signal sent to all watchers of an actor once the `watchee` has terminated.
     ///
+    /// The actual reason for the terminated message being sent may vary from the actor terminating, to the entire `Node`
+    /// hosting this actor having been marked as `.down` and thus any actors residing on it have to be assumed terminated.
+    ///
     /// - SeeAlso: `ChildTerminated` which is sent specifically to a parent-actor once its child has terminated.
-    /// - Warning: Do not inherit, as termination as well-defined and very specific meaning.
     public class Terminated: Signal, CustomStringConvertible {
         /// Address of the terminated actor.
         public let address: ActorAddress
@@ -88,12 +90,41 @@ public enum Signals {
     }
 
     /// Signal sent to a parent actor when an actor it has spawned, i.e. its child, has terminated.
+    /// Upon processing this signal, the parent MAY choose to spawn another child with the _same_ name as the now terminated child --
+    /// a guarantee which is not enjoyed by watching actors from any other actor.
     ///
-    /// This signal is sent and can be handled regardless if the child was watched (using `context.watch()`) or not.
+    /// This signal is sent to the parent _always_, i.e. both for the child stopping naturally as well as failing.
+    ///
+    /// ### Death Pacts with Children
+    ///
     /// If the child is NOT being watched by the parent, this signal will NOT cause the parent (recipient of this signal)
     /// to kill kill itself by throwing an [DeathPactError], as this is reserved only to when a death pact is formed.
     /// In other words, if the parent spawns child actors but does not watch them, this is taken as not caring enough about
     /// their lifetime as to trigger termination itself if one of them terminates.
+    ///
+    /// ### Failure Escalation
+    ///
+    /// It is possible, because of the special relationship parent-child actors enjoy, to spawn a child actor using the
+    /// `.escalate` strategy, which means that if the child fails, it will populate the `escalation` failure reason of
+    /// the `ChildTerminated` signal. Propagating failure reasons is not supported through `watch`-ed actors, and is only
+    /// available to parent-child pairs.
+    ///
+    /// This `escalation` failure can be used by the parent to manually decide if it should also fail, spawn a replacement child,
+    /// or perform any other action. Not that spawning another actor in response to `ChildTerminated` means losing
+    /// the child's mailbox; unlike using the `.restart` supervision strategy, which keeps the mailbox, but instantiates
+    /// a new instance of the child behavior.
+    ///
+    /// It is NOT recommended to perform deep inspection of the escalated failure to perform complex logic, however it
+    /// may be used to determine if a specific error is "very bad" or "not bad enough" and we should start a replacement child.
+    ///
+    /// #### "Bubbling-up" Escalated Failures
+    ///
+    /// Escalated failures which are not handled will cause the parent to crash as well (!).
+    /// This enables spawning a hierarchy of actors, all of which use the `.escalate` strategy, meaning that the entire
+    /// section of the tree will be torn down upon failure of one of the workers. A higher level supervisor may then decide to
+    /// restart one of the higher actors, causing a "sub tree" to be restarted in response to a worker failure. Alternatively,
+    /// this pattern is useful when one wants to bubble up failures all the way to the guardian actors (`/user`, or `/system`),
+    /// in which case the system will issue a configured termination action (see `ActorSystemSettings.guardianFailureHandling`).
     ///
     /// - Note: Note that `ChildTerminated` IS-A `Terminated` so unless you need to specifically react to a child terminating,
     ///         you may choose to handle all `Terminated` signals the same way.
@@ -104,17 +135,17 @@ public enum Signals {
         /// This kind of information is only known to the parent, which may decide to perform
         /// some action based on the error, i.e. proactively stop other children or spawn another worker
         /// targeting a different resource URI (e.g. if error indicates that the previously used resource is too busy).
-        public let cause: Error?
+        public let escalation: Supervision.Failure?
 
-        public init(address: ActorAddress, error: Error?) {
-            self.cause = error
+        public init(address: ActorAddress, escalation: Supervision.Failure?) {
+            self.escalation = escalation
             super.init(address: address, existenceConfirmed: true)
         }
 
         public override var description: String {
             let reason: String
-            if case .some(let r) = self.cause {
-                reason = ", cause: \(r)"
+            if case .some(let r) = self.escalation {
+                reason = ", escalation: \(r)"
             } else {
                 reason = ""
             }

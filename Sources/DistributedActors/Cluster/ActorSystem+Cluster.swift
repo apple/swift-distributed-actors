@@ -61,6 +61,6 @@ extension ActorSystem {
     }
 
     internal var clusterEvents: EventStream<ClusterEvent> {
-        return self._clusterEventStream ?? EventStream(ref: self.deadLetters.adapted())
+        return self._clusterEvents ?? EventStream(ref: self.deadLetters.adapted())
     }
 }

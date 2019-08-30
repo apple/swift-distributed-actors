@@ -36,7 +36,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
 
-        let probe = self.testKit.spawnTestProbe(name: "p1", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("p1", expecting: String.self)
 
         try probe.expectMessage("awaiting-forever")
     }
@@ -48,7 +48,7 @@ class ActorTestProbeTests: XCTestCase {
         #endif
         _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
 
-        let probe = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
 
         probe.tell("one")
 
@@ -56,7 +56,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
-        let probe = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
 
         probe.tell("one")
 
@@ -64,7 +64,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded() throws {
-        let probe = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
 
         probe.tell("one")
 
@@ -72,7 +72,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p = self.testKit.spawnTestProbe(name: "p3", expecting: String.self)
+        let p = self.testKit.spawnTestProbe("p3", expecting: String.self)
 
         try p.expectNoMessage(for: .milliseconds(100))
         p.stop()

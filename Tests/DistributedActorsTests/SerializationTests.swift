@@ -273,7 +273,7 @@ class SerializationTests: XCTestCase {
         }
 
         do {
-            let p = self.testKit.spawnTestProbe(name: "p1", expecting: String.self)
+            let p = self.testKit.spawnTestProbe("p1", expecting: String.self)
             let echo: ActorRef<String> = try s2.spawn("echo", .receiveMessage { msg in
                 p.ref.tell("echo:\(msg)")
                 return .same

@@ -138,11 +138,11 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         self.supervisor = Supervision.supervisorFor(system, initialBehavior: behavior, props: props.supervision)
 
-        if let failureDetectorRef = system._cluster?._nodeDeathWatcher {
-            self._deathWatch = DeathWatch(failureDetectorRef: failureDetectorRef)
+        if let nodeDeathWatcher = system._nodeDeathWatcher {
+            self._deathWatch = DeathWatch(nodeDeathWatcher: nodeDeathWatcher)
         } else {
             // FIXME; we could see if `myself` is the right one actually... rather than dead letters; if we know the FIRST actor ever is the failure detector one?
-            self._deathWatch = DeathWatch(failureDetectorRef: system.deadLetters.adapted())
+            self._deathWatch = DeathWatch(nodeDeathWatcher: system.deadLetters.adapted())
         }
 
         self.namingContext = ActorNamingContext()
@@ -312,9 +312,23 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         case .terminated(let ref, let existenceConfirmed, let nodeTerminated):
             let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
             try self.interpretTerminatedSignal(who: ref, terminated: terminated)
-        case .childTerminated(let ref):
-            let terminated = Signals.ChildTerminated(address: ref.address, error: nil) // TODO: what about the errors
-            try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+
+        case .childTerminated(let ref, let circumstances):
+            switch circumstances {
+            // escalation takes precedence over death watch in terms of how we report errors
+            case .escalating(let failure):
+                // we only populate `escalation` if the child is escalating
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: failure)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+
+            case .stopped:
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+            case .failed:
+                let terminated = Signals.ChildTerminated(address: ref.address, escalation: nil)
+                try self.interpretChildTerminatedSignal(who: ref, terminated: terminated)
+            }
+
         case .nodeTerminated(let remoteNode):
             self.interpretNodeTerminated(remoteNode)
 
@@ -357,7 +371,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
         case .suspended: return false
-        case .stop: return self.children.nonEmpty
+        case .stop, .failed: return self.children.nonEmpty
         default: return true
         }
     }
@@ -377,20 +391,28 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// We only FORCE the sending of a tombstone if we know we have parked the thread because an actual failure happened,
     /// thus this run *will never complete* and we have to make sure that we run the cleanup that the tombstone causes.
     /// This means that while the current thread is parked forever, we will enter the mailbox with another last run (!), to process the cleanups.
+    @usableFromInline
     internal func fail(_ error: Error) {
         self._myCell.mailbox.setFailed()
         self.behavior = self.behavior.fail(cause: .error(error))
-        // TODO: we could handle here "wait for children to terminate"
 
-        // we only finishTerminating() here and not right away in message handling in order to give the Mailbox
-        // a chance to react to the problem as well; I.e. 1) we throw 2) mailbox sets terminating 3) we get fail() 4) we REALLY terminate
         switch error {
         case DeathPactError.unhandledDeathPact(_, _, let message):
             self.log.error("\(message)") // TODO: configurable logging? in props?
 
         default:
-            self.log.error("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO: configurable logging? in props?
+            self.log.warning("Actor threw error, reason: [\(error)]:\(type(of: error)). Terminating.") // TODO: configurable logging? in props?
         }
+    }
+
+    @usableFromInline
+    internal func _escalate(failure: Supervision.Failure) -> Behavior<Message> {
+        self.behavior = self.behavior.fail(cause: failure)
+
+        // FIXME: should not be needed since we'll signal when we finishTerminating
+        // self._parent.ref.sendSystemMessage(.childTerminated(ref: self.asAddressable, .escalating(failure)), file: #file, line: #line)
+
+        return self.behavior
     }
 
     /// Similar to `fail` however assumes that the current mailbox run will never complete, which can happen when we crashed,
@@ -486,8 +508,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         // note that even though the parent can (and often does) `watch(child)`, we filter it out from
         // our `watchedBy` set, since otherwise we would have to filter it out when sending the terminated back.
         // correctness is ensured though, since the parent always receives the `ChildTerminated`.
-        self.notifyParentWeDied()
-        self.notifyWatchersWeDied()
+        self.notifyParentOfTermination()
+        self.notifyWatchersOfTermination()
 
         self.invokePendingDeferredClosuresWhileTerminating()
 
@@ -504,6 +526,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // become stopped, if not already
         switch self.behavior.underlying {
+        case .failed(_, let failure):
+            self.behavior = .stop(reason: .failure(failure))
         case .stop(_, let reason):
             self.behavior = .stop(reason: reason)
         default:
@@ -517,15 +541,26 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // Implementation note: bridge method so Mailbox can call this when needed
-    func notifyWatchersWeDied() {
+    func notifyWatchersOfTermination() {
         traceLog_DeathWatch("NOTIFY WATCHERS WE ARE DEAD self: \(self.address)")
         self.deathWatch.notifyWatchersWeDied(myself: self.myself)
     }
 
-    func notifyParentWeDied() {
+    func notifyParentOfTermination() {
         let parent: AddressableActorRef = self._parent
         traceLog_DeathWatch("NOTIFY PARENT WE ARE DEAD, myself: [\(self.address)], parent [\(parent.address)]")
-        parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable()))
+
+        guard case .failed(_, let failure) = self.behavior.underlying else {
+            // we are not failed, so no need to further check for .escalate supervision
+            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .stopped))
+        }
+
+        guard self.supervisor is EscalatingSupervisor<Message> else {
+            // NOT escalating
+            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .failed(failure)))
+        }
+
+        parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
     }
 
     func invokePendingDeferredClosuresWhileTerminating() {
@@ -662,7 +697,7 @@ extension ActorShell {
         switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: self.myself.asAddressable(),
-                                                    message: "Death Pact error: [\(self.address)] has not handled [Terminated] signal received from watched [\(deadRef)] actor. " +
+                                                    message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(deadRef.address)]. " +
                                                         "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
         default:
             try self.becomeNext(behavior: next) // FIXME: make sure we don't drop the behavior...?
@@ -674,7 +709,8 @@ extension ActorShell {
     /// Results in signaling `Terminated` for all of the locally watched actors on the (now terminated) node.
     /// This action is performed concurrently by all actors who have watched remote actors on given node,
     /// and no ordering guarantees are made about which actors will get the Terminated signals first.
-    @inlinable internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
+    @inlinable
+    internal func interpretNodeTerminated(_ terminatedNode: UniqueNode) {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received address terminated: \(terminatedNode)")
         #endif
@@ -682,12 +718,14 @@ extension ActorShell {
         self.deathWatch.receiveNodeTerminated(terminatedNode, myself: self.asAddressable)
     }
 
-    @inlinable internal func interpretStop() throws {
+    @inlinable
+    internal func interpretStop() throws {
         self.children.stopAll()
         try self.becomeNext(behavior: .stop(reason: .stopByParent))
     }
 
-    @inlinable internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
+    @inlinable
+    internal func interpretChildTerminatedSignal(who terminatedRef: AddressableActorRef, terminated: Signals.ChildTerminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
         self.log.info("Received \(terminated)")
         #endif
@@ -711,9 +749,31 @@ extension ActorShell {
                 // TODO: we always want to call "through" the supervisor, make it more obvious that that should be the case internal API wise?
                 next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: terminated)
             } else {
-                // no signal handling installed is semantically equivalent to unhandled
-                // log.debug("No .signalHandling installed, yet \(message) arrived; Assuming .unhandled")
-                next = Behavior<Message>.unhandled
+                switch terminated.escalation {
+                case .some(let failure):
+                    // the child actor decided to `.escalate` the error and thus we are notified about it
+                    // escalation differs from plain termination that by default it DOES cause us to crash as well,
+                    // causing a chain reaction of crashing until someone handles or the guardian receives it and shuts down the system.
+                    self.log.warning("Failure escalated by [\(terminatedRef.path)] reached non-watching, non-signal handling parent, escalation will continue! Failure was: \(failure)")
+
+                    next = try self.supervisor.interpretSupervised(target: .signalHandling(
+                        handleMessage: self.behavior,
+                        handleSignal: { _, _ in
+                            switch failure {
+                            case .error(let error):
+                                throw error
+                            case .fault(let errorRepr):
+                                throw errorRepr
+                            }
+                        }
+                    ), context: self, signal: terminated)
+
+                case .none:
+                    // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?
+                    //
+                    // no signal handling installed is semantically equivalent to unhandled
+                    next = Behavior<Message>.unhandled
+                }
             }
 
             try self.becomeNext(behavior: next)

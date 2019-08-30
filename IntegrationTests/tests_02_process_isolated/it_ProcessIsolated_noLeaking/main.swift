@@ -31,10 +31,8 @@ let isolated = ProcessIsolated { boot in
 
 pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 
-let workersKey = Receptionist.RegistrationKey(String.self, id: "workers")
-
 // though one can ensure to only run if in a process of a given role:
-try isolated.run(on: .master) {
+isolated.run(on: .master) {
     // open some fds, hope to not leak them into children!
     var fds: [Int] = []
     for i in 1 ... 1000 {
@@ -45,7 +43,7 @@ try isolated.run(on: .master) {
 
     /// spawn a servant
 
-    isolated.spawnServantProcess(supervision: .restart(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
+    isolated.spawnServantProcess(supervision: .respawn(atMost: 100, within: .seconds(1)), args: ["ALPHA"])
 }
 
 // finally, once prepared, you have to invoke the following:

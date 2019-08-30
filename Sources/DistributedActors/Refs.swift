@@ -409,13 +409,13 @@ internal class Guardian {
 
     @usableFromInline
     func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
-        self.deadLetters.tell(DeadLetter(message, recipient: self.address))
+        self.deadLetters.tell(DeadLetter(message, recipient: self.address), file: file, line: line)
     }
 
     @usableFromInline
     func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
-        case .childTerminated(let ref):
+        case .childTerminated(let ref, let circumstances):
             self._childrenLock.synchronized {
                 _ = self._children.removeChild(identifiedBy: ref.address)
                 // if we are stopping and all children have been stopped,
@@ -423,6 +423,36 @@ internal class Guardian {
                 if self.stopping, self._children.isEmpty {
                     self.allChildrenRemoved.signalAll()
                 }
+            }
+
+            switch circumstances {
+            case .escalating(let failure):
+                guard let system = self.system else {
+                    // TODO: What else to do here? print to stderr? we are likely already shutting down or already shut down.")
+                    return
+                }
+                switch system.settings.failure.onGuardianFailure {
+                case .shutdownActorSystem:
+                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], shutting down ActorSystem! Failure was: \(failure)"
+                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
+                    print(message) // TODO: to stderr
+
+                    _ = try! Thread {
+                        system.shutdown() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
+                    }
+                case .systemExit(let code):
+                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
+                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
+                    print(message) // TODO: to stderr
+
+                    POSIXProcessUtils._exit(Int32(code))
+                }
+
+            case .failed:
+                () // ignore, we only react to escalations
+
+            case .stopped:
+                () // ignore, we only react to escalations
             }
         default:
             CDistributedActorsMailbox.sact_dump_backtrace()

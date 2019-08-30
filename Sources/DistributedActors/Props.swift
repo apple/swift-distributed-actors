@@ -15,7 +15,7 @@
 import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Actor Props
+// MARK: Props
 
 /// `Props` configure an Actors' properties such as mailbox, dispatcher as well as supervision semantics.
 ///

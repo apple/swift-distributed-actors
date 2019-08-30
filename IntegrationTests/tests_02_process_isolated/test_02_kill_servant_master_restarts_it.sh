@@ -58,7 +58,8 @@ await_n_processes "$app_name" 2
 
 if [[ $(ps aux | awk '{print $2}' | grep ${pid_servant}  | grep -v 'grep' | wc -l) -ne 0 ]]; then
     echo "ERROR: Seems the servant was not killed!!!"
-    exit -2
+    _killall ${app_name}
+    exit -1
 fi
 
 await_n_processes "$app_name" 2

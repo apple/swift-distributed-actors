@@ -68,6 +68,8 @@ internal enum POSIXProcessUtils {
         socketpair(AF_UNIX, Int32(SOCK_STREAM.rawValue), 0, &taskSocketPair)
         #endif
 
+        // ==== closing fds ------------------------------------------------
+        // We close all file descriptors in the child process.
         posix_spawn_file_actions_init(&childFDActions)
 
         // closing fds ------------

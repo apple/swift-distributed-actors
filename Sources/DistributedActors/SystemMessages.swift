@@ -58,7 +58,8 @@ internal enum SystemMessage: Equatable {
     case terminated(ref: AddressableActorRef, existenceConfirmed: Bool, addressTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
-    case childTerminated(ref: AddressableActorRef)
+    /// If the message carries an `escalated` failure, the failure should apply to the parent as well, potentially tearing it down as well.
+    case childTerminated(ref: AddressableActorRef, TerminationCircumstances)
 
     /// Node has terminated, and all actors of this node shall be considered as terminated.
     /// This system message does _not_ have a direct counter part as `Signal`, and instead results in the sending of multiple
@@ -84,6 +85,20 @@ internal enum SystemMessage: Equatable {
     ///     mailbox as terminating, and then sending the tombstone. Any system messages which were sent before the status change are fine,
     ///     and any which are sent after will be immediately be sent to the dead letters actor, where they will be logged.
     case tombstone
+}
+
+/// The circumstances under which a child actor has terminated.
+public enum TerminationCircumstances {
+    /// The actor stopped naturally, by becoming `.stop`
+    case stopped
+    /// The actor has failed during message processing.
+    case failed(Supervision.Failure)
+    /// The actor has failed and requests to escalate this failure.
+    /// Even if the parent did not watch the child, this failure should be taken as one that the parent is at least partially responsible for.
+    /// If nothing else, the parent may want to "bubble up" the failure either by throwing or if it was configured with `SupervisionStrategy.escalate` itself.
+    ///
+    /// Escalating takes precedence over `.failed`, in case the child was both watched and configured with `.escalate` supervision.
+    case escalating(Supervision.Failure)
 }
 
 internal extension SystemMessage {
@@ -112,10 +127,13 @@ extension SystemMessage {
             return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
         case (.unwatch(let lWatchee, let lWatcher), .unwatch(let rWatchee, let rWatcher)):
             return lWatchee.address == rWatchee.address && lWatcher.address == rWatcher.address
-        case (.terminated(let lRef, let lExisted, let lAddrTerminated), .terminated(let rRef, let rExisted, let rAddrTerminated)):
-            return lRef.address == rRef.address && lExisted == rExisted && lAddrTerminated == rAddrTerminated
-        case (.childTerminated(let lPath), .childTerminated(let rPath)):
-            return lPath.address == rPath.address
+
+        case (.terminated(let lRef, let lExisted, let lNodeTerminated), .terminated(let rRef, let rExisted, let rNodeTerminated)):
+            return lRef.address == rRef.address && lExisted == rExisted && lNodeTerminated == rNodeTerminated
+
+        case (.childTerminated(let lRef, _), .childTerminated(let rRef, _)):
+            return lRef.address == rRef.address // enough since address is an unique identifier
+
         case (.nodeTerminated(let lAddress), .nodeTerminated(let rAddress)):
             return lAddress == rAddress
 

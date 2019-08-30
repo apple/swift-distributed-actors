@@ -65,9 +65,9 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_fromMultipleActors_shouldTriggerTerminatedWhenWatchedActorStops() throws {
-        let p = self.testKit.spawnTestProbe(name: "p", expecting: String.self)
-        let p1 = self.testKit.spawnTestProbe(name: "p1", expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(name: "p2", expecting: String.self)
+        let p = self.testKit.spawnTestProbe("p", expecting: String.self)
+        let p1 = self.testKit.spawnTestProbe("p1", expecting: String.self)
+        let p2 = self.testKit.spawnTestProbe("p2", expecting: String.self)
 
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz1", self.stopOnAnyMessage(probe: p.ref))
 
@@ -90,12 +90,12 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_fromMultipleActors_shouldNotifyOfTerminationOnlyCurrentWatchers() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p")
-        let p1: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p1")
-        let p2: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p2")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("p")
+        let p1: ActorTestProbe<String> = self.testKit.spawnTestProbe("p1")
+        let p2: ActorTestProbe<String> = self.testKit.spawnTestProbe("p2")
 
         // p3 will not watch by itself, but serve as our observer for what our in-line defined watcher observes
-        let p3_partnerOfNotActuallyWatching: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p3-not-really")
+        let p3_partnerOfNotActuallyWatching: ActorTestProbe<String> = self.testKit.spawnTestProbe("p3-not-really")
 
         let stoppableRef: ActorRef<StoppableRefMessage> = try system.spawn("stopMePlz2", self.stopOnAnyMessage(probe: p.ref))
 
@@ -134,7 +134,7 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_minimized_deathPact_shouldTriggerForWatchedActor() throws {
-        let probe = self.testKit.spawnTestProbe(name: "pp", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
         let juliet = try system.spawn("juliet", Behavior<String>.receiveMessage { _ in
             .same
@@ -171,7 +171,7 @@ class DeathWatchTests: XCTestCase {
         // The .terminated message should also NOT be delivered to the .receiveSignal handler, it should be as if the watcher
         // never watched juliet to begin with. (This also is important so Swift Distributed Actors semantics are the same as what users would manually be able to to)
 
-        let probe = self.testKit.spawnTestProbe(name: "pp", expecting: String.self)
+        let probe = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
         let juliet = try system.spawn("juliet", Behavior<String>.receiveMessage { _ in
             .same
@@ -213,7 +213,7 @@ class DeathWatchTests: XCTestCase {
     }
 
     func test_watch_anAlreadyStoppedActorRefShouldReplyWithTerminated() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "alreadyDeadWatcherProbe")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("alreadyDeadWatcherProbe")
 
         let alreadyDead: ActorRef<String> = try system.spawn("alreadyDead", .stop)
 
@@ -221,7 +221,7 @@ class DeathWatchTests: XCTestCase {
         try p.expectTerminated(alreadyDead)
 
         // even if a new actor comes in and performs the watch, it also should notice that `alreadyDead` is dead
-        let p2: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "alreadyDeadWatcherProbe2")
+        let p2: ActorTestProbe<String> = self.testKit.spawnTestProbe("alreadyDeadWatcherProbe2")
         p2.watch(alreadyDead)
         try p2.expectTerminated(alreadyDead)
 
@@ -231,7 +231,7 @@ class DeathWatchTests: XCTestCase {
 
     // MARK: Death pact
 
-    func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeDies() throws {
+    func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeStops() throws {
         let romeo = try system.spawn("romeo", Behavior<RomeoMessage>.receive { context, message in
             switch message {
             case .pleaseWatch(let juliet, let probe):
@@ -244,11 +244,11 @@ class DeathWatchTests: XCTestCase {
         let juliet = try system.spawn("juliet", Behavior<JulietMessage>.receiveMessage { message in
             switch message {
             case .takePoison:
-                return .stop // "kill myself" // TODO: throw
+                return .stop // "stop myself"
             }
         })
 
-        let p = self.testKit.spawnTestProbe(name: "p", expecting: Done.self)
+        let p = self.testKit.spawnTestProbe("p", expecting: Done.self)
 
         p.watch(juliet)
         p.watch(romeo)
@@ -258,10 +258,42 @@ class DeathWatchTests: XCTestCase {
 
         juliet.tell(.takePoison)
 
-        try p.expectTerminated(juliet) // TODO: not actually guaranteed in the order here
-        try p.expectTerminated(romeo) // TODO: not actually guaranteed in the order here
+        try p.expectTerminatedInAnyOrder([juliet.asAddressable(), romeo.asAddressable()])
     }
 
+    func test_deathPact_shouldMakeWatcherKillItselfWhenWatcheeThrows() throws {
+        let romeo = try system.spawn("romeo", Behavior<RomeoMessage>.receive { context, message in
+            switch message {
+            case .pleaseWatch(let juliet, let probe):
+                context.watch(juliet)
+                probe.tell(.done)
+                return .same
+            }
+        } /* NOT handling signal on purpose, we are in a Death Pact */ )
+
+        let juliet = try system.spawn("juliet", Behavior<JulietMessage>.receiveMessage { message in
+            switch message {
+            case .takePoison:
+                throw TakePoisonError() // "stop myself"
+            }
+        })
+
+        let p = self.testKit.spawnTestProbe("p", expecting: Done.self)
+
+        p.watch(juliet)
+        p.watch(romeo)
+
+        romeo.tell(.pleaseWatch(juliet: juliet, probe: p.ref))
+        try p.expectMessage(.done)
+
+        juliet.tell(.takePoison)
+
+        try p.expectTerminatedInAnyOrder([juliet.asAddressable(), romeo.asAddressable()])
+    }
+
+    struct TakePoisonError: Error {}
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Watching dead letters ref
 
 //    // FIXME: Make deadLetters a real thing, currently it is too hacky (i.e. this will crash):

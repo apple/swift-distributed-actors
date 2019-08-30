@@ -95,7 +95,7 @@ class ActorLifecycleTests: XCTestCase {
     // MARK: Stopping actors
 
     func test_stopping_shouldDeinitTheBehavior() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "p1")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("p1")
         let chattyAboutLifecycle =
             try system.spawn("deinitLifecycleActor", .class { LifecycleDeinitClassBehavior(p.ref) })
 

@@ -93,21 +93,6 @@ internal class ClusterShell {
         return it
     }
 
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Node-Death Watcher
-
-    // Implementation notes: The `_failureDetectorRef` has to remain internally accessible.
-    // This is in order to solve a chicken-and-egg problem that we face during spawning of
-    // the first system actor that is the *failure detector* so it cannot reach to the systems
-    // value before it started...
-    var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
-    var nodeDeathWatcher: NodeDeathWatcherShell.Ref {
-        guard let it = self._nodeDeathWatcher else {
-            return fatalErrorBacktrace("Accessing ClusterShell.nodeDeathWatcher failed, was nil! This should never happen as access should only happen after start() was invoked.")
-        }
-        return it
-    }
-
     init() {
         self._associationsLock = Lock()
         self._associationsRegistry = [:]
@@ -116,21 +101,13 @@ internal class ClusterShell {
         // the single thing in the class it will modify is the associations registry, which we do to avoid actor queues when
         // remote refs need to obtain those
         //
-        // TODO: see if we can restructure this to avoid these nil/then-set dance
+        // FIXME: see if we can restructure this to avoid these nil/then-set dance
         self._ref = nil
-        self._nodeDeathWatcher = nil
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
     internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> ClusterShell.Ref {
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
-
-        self._nodeDeathWatcher = try system._spawnSystemActor(
-            NodeDeathWatcherShell.naming,
-            NodeDeathWatcherShell.behavior(),
-            perpetual: true
-        )
-
         self._events = eventStream
 
         // TODO: concurrency... lock the ref as others may read it?
@@ -155,7 +132,7 @@ internal class ClusterShell {
     }
 
     // this is basically our API internally for this system
-    enum CommandMessage: NoSerializationVerification {
+    enum CommandMessage: NoSerializationVerification, SilentDeadLetter {
         case join(Node)
 
         case handshakeWith(Node, replyTo: ActorRef<HandshakeResult>?)
@@ -197,7 +174,7 @@ internal class ClusterShell {
 
     private var props: Props =
         Props()
-        .addingSupervision(strategy: .stop) // always fail completely (may revisit this) // TODO: Escalate
+        .supervision(strategy: .escalate) // always fail completely
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -236,8 +213,6 @@ extension ClusterShell {
             )
 
             // TODO: configurable bind timeout?
-
-            //  TODO: crash everything, entire system, when bind fails
             return context.awaitResultThrowing(of: chanElf, timeout: .milliseconds(300)) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
@@ -269,6 +244,7 @@ extension ClusterShell {
                 return self.onReachabilityChange(context, state: state, node: node, reachability: reachability)
 
             case .unbind(let receptacle):
+                // TODO: should become shutdown
                 return self.unbind(context, state: state, signalOnceUnbound: receptacle)
 
             case .downCommand(let node):
@@ -279,7 +255,7 @@ extension ClusterShell {
         func receiveQuery(context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
             switch query {
             case .associatedNodes(let replyTo):
-                replyTo.tell(state.associatedAddresses()) // TODO: we'll want to put this into some nicer message wrapper?
+                replyTo.tell(state.associatedNodes()) // TODO: we'll want to put this into some nicer message wrapper?
                 return .same
             case .currentMembership(let replyTo):
                 replyTo.tell(state.membership)
@@ -330,7 +306,7 @@ extension ClusterShell {
 
         if let existingAssociation = state.association(with: remoteNode) {
             // TODO: we maybe could want to attempt and drop the other "old" one?
-            state.log.warning("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
+            state.log.debug("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
             switch existingAssociation {
             case .associated(let associationState):
                 replyTo?.tell(.success(associationState.remoteNode))
@@ -470,7 +446,7 @@ extension ClusterShell {
         case .initiated(var initiated):
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
-                state.log.info("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
+                state.log.debug("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
                 context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
@@ -504,7 +480,7 @@ extension ClusterShell {
         var state = state // local copy for mutation
 
         guard let completed = state.incomingHandshakeAccept(accept) else {
-            if state.associatedAddresses().contains(accept.from) {
+            if state.associatedNodes().contains(accept.from) {
                 // this seems to be a re-delivered accept, we already accepted association with this node.
                 return .ignore
             } else {
@@ -620,7 +596,8 @@ extension ClusterShell {
         var state = state
 
         if let change = state.onMembershipChange(node, toStatus: .down) {
-            self.nodeDeathWatcher.tell(.forceDown(change.node))
+            // self.nodeDeathWatcher.tell(.forceDown(change.node))
+            self._events.publish(.membership(.memberDown(Member(node: change.node, status: .down))))
 
             if let logChangeLevel = state.settings.logMembershipChanges {
                 context.log.log(level: logChangeLevel, "Cluster membership change: \(reflecting: change), membership: \(state.membership)")
@@ -698,29 +675,5 @@ extension ClusterShell {
                 return "RECV(from:\(from))"
             }
         }
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorSystem extensions
-
-extension ActorSystem {
-    internal var clusterShell: ActorRef<ClusterShell.Message> {
-        return self._cluster?.ref ?? self.deadLetters.adapt(from: ClusterShell.Message.self)
-    }
-
-    // TODO: not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func join(node: Node) {
-        self.clusterShell.tell(.command(.join(node)))
-    }
-
-    // TODO: not sure how to best expose, but for now this is better than having to make all internal messages public.
-    public func _dumpAssociations() {
-        let ref: ActorRef<Set<UniqueNode>> = try! self.spawn(.anonymous, .receive { context, nodes in
-            let stringlyNodes = nodes.map { String(reflecting: $0) }.joined(separator: "\n     ")
-            context.log.info("~~~~ ASSOCIATED NODES ~~~~~\n     \(stringlyNodes)")
-            return .stop
-        })
-        self.clusterShell.tell(.query(.associatedNodes(ref)))
     }
 }

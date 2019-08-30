@@ -27,14 +27,14 @@ import NIO
 // Implementation notes:
 // Care was taken to keep this implementation separate from the ActorCell however not require more storage space.
 @usableFromInline
-internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
+internal struct DeathWatch<Message> {
     private var watching = Set<AddressableActorRef>()
     private var watchedBy = Set<AddressableActorRef>()
 
-    private var failureDetectorRef: NodeDeathWatcherShell.Ref
+    private var nodeDeathWatcher: NodeDeathWatcherShell.Ref
 
-    init(failureDetectorRef: NodeDeathWatcherShell.Ref) {
-        self.failureDetectorRef = failureDetectorRef
+    init(nodeDeathWatcher: NodeDeathWatcherShell.Ref) {
+        self.nodeDeathWatcher = nodeDeathWatcher
     }
 
     // MARK: perform watch/unwatch
@@ -160,7 +160,7 @@ internal struct DeathWatch<Message> { // TODO: may want to change to a protocol
 
     private func subscribeNodeTerminatedEvents(myself: ActorRef<Message>, node: UniqueNode?) {
         if let remoteNode = node {
-            self.failureDetectorRef.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: remoteNode))
+            self.nodeDeathWatcher.tell(.remoteActorWatched(watcher: AddressableActorRef(myself), remoteNode: remoteNode))
         }
     }
 }

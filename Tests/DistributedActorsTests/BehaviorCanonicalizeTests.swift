@@ -31,7 +31,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe1")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe1")
 
         let b: Behavior<String> = .setup { _ in
             p.tell("outer-1")
@@ -58,7 +58,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe2")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
             return .setup { _ in
@@ -84,7 +84,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_unwrapInterceptBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "canonicalizeProbe3")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe3")
 
         let b: Behavior<String> = .intercept(behavior: .setup { _ in
             p.tell("outer-1")
@@ -170,7 +170,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "startBehaviorProbe")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("startBehaviorProbe")
 
         /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
         func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> Behavior<String> {

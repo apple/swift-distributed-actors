@@ -37,6 +37,7 @@ public struct ActorSystemSettings {
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
+    public var failure: FailureSettings = .default
     public var cluster: ClusterSettings = .default {
         didSet {
             self.serialization.localNode = self.cluster.uniqueBindNode
@@ -50,11 +51,37 @@ public struct ActorSystemSettings {
     public var threadPoolSize: Int = ProcessInfo.processInfo.activeProcessorCount
 }
 
-public struct ActorSettings {
-    public static var `default`: ActorSettings {
-        return .init()
-    }
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Failure Settings
 
-    // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
-    public var maxBehaviorNestingDepth: Int = 128
+public struct FailureSettings {
+    public static let `default` = FailureSettings()
+
+    /// Determines what action should be taken when a failure is escalated to a top level guardian (e.g. `/user` or `/system).
+    public var onGuardianFailure: GuardianFailureHandling = .shutdownActorSystem
+}
+
+/// Configures what guardians should do when an error reaches them.
+/// (Guardians are the top level actors, e.g. `/user` or `/system`).
+public enum GuardianFailureHandling {
+    /// Shut down the actor system when an error is escalated to a guardian.
+    case shutdownActorSystem
+
+    /// Immediately exit the process when an error is escalated to a guardian.
+    /// Best used with `ProcessIsolated` mode.
+    case systemExit(Int)
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor Settings
+
+extension ActorSystemSettings {
+    public struct ActorSettings {
+        public static var `default`: ActorSettings {
+            return .init()
+        }
+
+        // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
+        public var maxBehaviorNestingDepth: Int = 128
+    }
 }
