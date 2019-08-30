@@ -63,6 +63,9 @@ public struct ClusterSettings {
         return UniqueNode(node: self.node, nid: self.nid)
     }
 
+    /// Time after which a connection attempt will fail if no connection could be established
+    public var connectTimeout: TimeAmount = .milliseconds(500)
+
     /// Backoff to be applied when attempting a new connection and handshake with a remote system.
     public var handshakeBackoffStrategy: BackoffStrategy = Backoff.exponential(initialInterval: .milliseconds(100))
 

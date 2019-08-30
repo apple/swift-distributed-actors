@@ -707,6 +707,7 @@ extension ClusterShell {
 
         let bootstrap = ClientBootstrap(group: group)
             .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
+            .channelOption(ChannelOptions.connectTimeout, value: settings.connectTimeout.toNIO)
             .channelInitializer { channel in
                 var channelHandlers: [(String?, ChannelHandler)] = []
 
