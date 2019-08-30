@@ -389,7 +389,9 @@ extension ClusterShell {
             serializationPool: self.serializationPool
         )
 
-        return context.awaitResult(of: outboundChanElf, timeout: .milliseconds(500)) { result in
+        // the timeout is being handled by the `connectTimeout` socket option
+        // in NIO, so it is safe to use an infinite timeout here
+        return context.awaitResult(of: outboundChanElf, timeout: .effectivelyInfinite) { result in
             switch result {
             case .success(let chan):
                 return self.ready(state: state.onHandshakeChannelConnected(initiated: initiated, channel: chan))
@@ -471,18 +473,17 @@ extension ClusterShell {
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
                 state.log.info("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
+                _ = state.abortOutgoingHandshake(with: remoteNode, mayNotHaveChannel: true)
                 context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
                     delay: delay
                 )
             case .giveUpOnHandshake:
-                if let hsmState = state.abortOutgoingHandshake(with: remoteNode) {
+                if let hsmState = state.abortOutgoingHandshake(with: remoteNode, mayNotHaveChannel: true) {
                     self.notifyHandshakeFailure(state: hsmState, node: remoteNode, error: error)
                 }
             }
-
-            state._handshakes[remoteNode] = .initiated(initiated)
 
         case .wasOfferedHandshake(let state):
             preconditionFailure("Outbound connection error should never happen on receiving end. State was: [\(state)], error was: \(error)")
