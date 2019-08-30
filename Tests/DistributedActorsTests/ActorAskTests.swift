@@ -178,4 +178,19 @@ final class ActorAskTests: XCTestCase {
             try result.nioFuture.wait()
         }
     }
+
+    func test_ask_withTerminatedSystem_shouldNotCauseCrash() throws {
+        let system = ActorSystem("AskCrashSystem")
+
+        let ref = try system.spawn(.unique("responder"), of: TestMessage.self, .receiveMessage { message in
+            message.replyTo.tell("test")
+            return .same
+        })
+
+        system.shutdown()
+
+        _ = ref.ask(for: String.self, timeout: .milliseconds(300)) { replyTo in
+            TestMessage(replyTo: replyTo)
+        }
+    }
 }
