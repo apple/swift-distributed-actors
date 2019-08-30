@@ -6,7 +6,7 @@
 
 === Let it crash!
 
-The simplest way to explain failure handling with Actors is the _"Let it Crash!"_ motto. It means that rather trying to
+The simplest way to explain failure handling with Actors is the _"Let it Crash!"_ motto. It means that rather than trying to
 continue running in a (potentially) faulty state, the actor that ended up in some "wrong" state is meant to crash,
 and the system shall react to this by providing compensating actions. This model is simple at its core, but can be
 surprisingly powerful and liberating when applied to concurrent or distributed systems.
@@ -19,8 +19,8 @@ NOTE: Failure handling in actors leans itself more towards handling "panics" (dr
 
 In this chapter we will learn about <<actor_supervision>> and the various <<failure_isolation>> offered by this library.
 
-- By using <<actor_supervision>> it is possible to automate some of the otherwise mundane tasks of restarting with fresh state or backing off a few seconds before attempting resuming processing of messages.
-- And by utilizing some of the built-in stronger isolation capabilities it is possible isolate and deal with even faults such as fatalErrors, or node failures in a clustered environment.
+- By using <<actor_supervision>> it is possible to automate some of the otherwise mundane tasks of restarting with fresh state or backing off a few seconds before attempting to resume processing of messages.
+- And by utilizing some of the built-in stronger isolation capabilities it is possible to isolate and deal with even faults such as fatalErrors, or node failures in a clustered environment.
 
 [[supervision_vocabulary]]
 === Failure Vocabulary
@@ -165,13 +165,13 @@ h| When to use     2.+| Always; Always-on and complementary to other modes.
 h| Effort          2.+| None
 |===
 
-By design an actor is always ensure to "own" a thread during its execution, however no further isolation (of heap, nor otherwise) is currently provided.
+By design an actor is always ensured to "own" a thread during its execution, however no further isolation (of heap, nor otherwise) is currently provided.
 
 By convention, actors MUST NOT share mutable state between one another, as this breaks the underlying core assumption that an actor "owns" all of its state,
 and communicates with others only via (immutable) messages. It is highly recommended to achieve defacto isolation of state
 
 NOTE: Swift currently does not allow for stronger forms of isolation of faults. +
-      But if it did, the actor model's failure handling extends nicely over to isolating faults "in an specific actor."
+      But if it did, the actor model's failure handling extends nicely over to isolating faults "in a specific actor."
 
 ==== (Managed) Process Isolation
 
@@ -274,36 +274,78 @@ including (when using `.escalate` supervision) being able to inspect the cause o
 
 Other actors - be it siblings or other completely unrelated actors - may only _watch_ a given actor for termination.
 
-This leads to the formation of so called supervision hierarchies or supervision "trees".
+This leads to the formation of so-called supervision hierarchies or supervision "trees".
 It also allows us to structure our applications in ways that represent their _fault domains_.
 
 image::actor_tree.png[]
 
-TODO: explain bulk heading and compartmentalization.
+#TODO: explain bulk heading and compartmentalization.#
 
 ==== Escalating Failures
 
 The `.escalate` supervision strategy deserves a bit more discussion as it fulfils the useful pattern of escalating ("bubbling up")
 failures up a supervision tree until an actor prevents it from escalating.
 
-WARNING: If such escalation is not stopped at any level and reaches
+WARNING: If such escalation is not stopped at any level and reaches a guardian actor (e.g. `/user`, or `/system`),
+         it will react by performing the action configured in api:ActorSystemSettings[struct]`.failure.onGuardianFailure`,
+         which may result in shutting down the actor system, or forcefully exiting the process.
 
 
 [[death_watch]]
 === Death Watch and Terminated signals
 
-While supervision is very powerful, it is also (by design) limited to parent-child relationships. This is to guide system
-implementors towards structuring systems as supervision _trees_ where each parent makes an informed decision about how its
-children should be supervised.
+While supervision is very powerful, it is also (by design) limited to parent-child relationships. This is in order to simplify
+supervision schemes and confine them to _supervision trees_, where parent actors define the supervision scheme of their children,
+when they spawn them. In that sense, supervision strategies are part of the actor itself, rather than the parent. However,
+the parent is the place where this supervision is selected, as well as any parent being automatically terminations of their children.
 
-This however also means that this form of supervision is not dynamic -- i.e. it is not possible to supervise an actor
-started by a different parent, nor is it possible to supervise remote actors. This is a deliberate design choice based
-on years of experience with Akka based systems and a (now deprecated) feature called "remote deployment" which indeed
-allowed such remote supervision, however at an huge complexity -- both implementation and understandability -- cost.
+While supervision is enforced in _tree_ hierarchies, the _watch_ ("death watch") feature lifts this restriction,
+and any actor may `context.watch()` any other actor it has a reference to. Death watch however does not enable the watchee
+to take any part in the watched actors lifecycle, other than being notified when the watched actor has terminated (either
+by stopping gracefully, or crashing).
 
-Actors enforce the importance of "watch" mechanisms, which are strongly inspired by the `watch` mechanism in Akka and `link` mechanism in Erlang.
+Once an actor is watched, its termination will result in the watching actor receiving a api:Signals/Terminated[enum]
+signal, which may be handled using `Behavior.receiveSignal` or `Behavior.receiveSpecificSignal` behaviors.
 
 TIP: Any actor can `watch` any other actor, if it has obtained its api:ActorRef<Message>[struct].
+
+==== Death Pact
+
+Upon _watching_ another actor, the watcher enters a so-called "death pact" with the watchee. In other words, if the watchee
+terminates, the watcher will receive a api:Signals/Terminated[enum] signal, and if that signal is _not handled_ the watcher
+will fail itself with a api:DeathPactError[enum].
+
+This pattern is tremendously useful to bind lifecycles of multiple actors to one another. For example, if a `player` actor
+signifies the presence of the player in a game match, and other actors represent its various actions, tasks, or units it is controlling,
+it makes sense, for all the auxiliary actors to only exist while the player remains active. This can be achieved by having each of
+those actors api:ActorContext[class]`.watch` the `player` they belong to. Without any further modifications, if the player actor
+terminates (for whatever reason), all of its actions, tasks and units would terminate automatically:
+
+[source]
+----
+include::{dir_sact_doc_tests}/DeathWatchDocExamples.swift[tag=simple_death_watch]
+----
+<1> Whenever creating a game unit, we pair it with its owning player; the unit immediately _watches_ the `player` upon starting
+<2> Once setup is complete, we become the unit's main behavior, along with handling the player _termination signal_
+<3> By _not_ handling any termination signals, whenever the `player` terminates, the `gameUnit` will automatically fail with a death pact error; ensuring we won't leak the unit.
+
+The above scenario can be performed more gracefully as well.  All actors watching the `player` could explicitly handle
+the player termination signal and decide on how they want to deal with this individually.
+
+Perhaps a game match in an multilayer game would want to wait for the player to reconnect for a few seconds,
+before they indeed signal termination and concede the game to the opponent. Or perhaps, any ongoing workers related to given player
+should run to completion their current work, but not accept any new requests, and eventually terminate as well?
+
+In the example below, if the `player` terminates, the `GameMatch` gives it a few seconds reconnect to the game, and otherwise we terminate the match,
+effectively giving up the match by withdrawal of one of the players.
+
+[source]
+----
+include::{dir_sact_doc_tests}/DeathWatchDocExamples.swift[tag=handling_termination_deathwatch]
+----
+
+TIP: Use death pacts to bind lifecycles of various actors to one another. +
+     A death pact error is thrown whenever an api:Signals/Terminated[enum] is received but left `.unhandled`.
 
 ==== Death Watch Guarantees
 
@@ -313,15 +355,15 @@ Romeo performs a `context.watch(juliet)` during its `setup`.
 It is by Swift Distributed Actors guaranteed that:
 
 - if Juliet terminated Romeo will receive a `.terminated` signal which it can handle by using an `Behavior.receiveSignal`,
-- the `.terminated` message will never be duplicated not lost. As it goes with system messages, one can assume "exactly once" processing for them,
+- the `.terminated` message will never be duplicated or lost. As it goes with system messages, one can assume "exactly once" processing for them,
 including in distributed settings (which is a stronger guarantee than given for plain user messages),
 -
 
 Furthermore, if we imagine the above two actors be in the actual play of Shakespeare, then there would also be an audience,
-which would be watching both of these actors. This means that many actors (the audience) can be watching out "stage" actors.
+which would be watching both of these actors. This means that many actors (the audience) can be watching our "stage" actors.
 For this situation the following is guaranteed:
 
-- if an actor (any actor) is watching any of the terminating actors it WILL receive an `.terminated` message,
+- if an actor (any actor) is watching any of the terminating actors it WILL receive a `.terminated` message,
 - all of the actors watching a terminating actor WILL receive the `.terminated` message,
 - even in distributed settings, if a watcher has "not noticed immediately" what was going on on stage (e.g. due to lack of network connectivity),
 once it is informed by other actors (handled internally via cluster gossip), it will receive the outstanding `.terminated` as-if it had observed the death with its own eyes.
@@ -401,14 +443,14 @@ Spawning actors in a specific process is done like this:
 ----
 include::{dir_sact_doc_tests}/ProcessIsolatedDocExamples.swift[tag=spawn_in_domain]
 ----
-<1> Every process isolated application needs to start off with creating an Isolated actor system for its own. +
+<1> Every process isolated application needs to start off with creating an isolated actor system for its own. +
     The returned `isolated` contains the actor system and additional control functions.
-<2> In general, any code not enclosed in a `isolated.run` will execute on _any_ spawned process, including the master. Use this to prepare things common for master and servant processes.
-<3> Any code enclosed in a `isolated.run(on: ProcessIsolated.Role)` will execute only on given process role. Default roles are `.master` and `.servant`, however you can add additional roles.
-<4> Inside the `.master` process, we spawn one servant process; This will execute "the same" application, however with different configuration, such that it will automatically connect to the master.
+<2> In general, any code not enclosed in an `isolated.run` will execute on _any_ spawned process, including the master. Use this to prepare things common for master and servant processes.
+<3> Any code enclosed in an `isolated.run(on: ProcessIsolated.Role)` will execute only on given process role. Default roles are `.master` and `.servant`, however you can add additional roles.
+<4> Inside the `.master` process, we spawn one servant process. This will execute "the same" application, however with different configuration, such that it will automatically connect to the master.
 <5> We decide to _supervise_ the servant _process_ using a _respawn_ strategy with exponential backoff as well as at most 5 faults within its lifetime. Upon process fault, the master will re-spawn another process with the same configuration as the terminated process.
-<6> We spawn an actor in the master node; as there is always only one master node, this actor will also _definitely_ only exist once on the master process.
-<7> Finally, we run a block _only_ on servant processes, in which we spawn another actor; if we spawned more servant processes, each would get its own "alfredPennyworth" actor on its own process/node.
+<6> We spawn an actor in the master node. As there is always only one master node, this actor will also _definitely_ only exist once on the master process.
+<7> Finally, we run a block _only_ on servant processes, in which we spawn another actor. If we spawned more servant processes, each would get its own "alfredPennyworth" actor on its own process/node.
 <8> Last but not least, we park the main thread of the applications in a loop that is used for handling process spawning. #TODO this may be simplified in the future#
 
 The above example shows how to use api:ProcessIsolated[class] to build a simple 2 process application. If either a failure
@@ -429,7 +471,7 @@ or other mechanisms such as gossip.
 TIP: Since actors spawned in different processes have to serialize messages when they communicate with each other,
      you have to ensure that messages they exchange are serializable using <<serialization,serialization infrastructure>>.
 
-==== All for one, and one for all
+==== One for all and, all for one
 
 Using the previous code snippet, showing how to use `ProcessIsolated`, let us now discuss the various failure situations this
 setup is able to deal with. We will discuss 3 situations, roughly depicted by the following points of failure:
@@ -441,8 +483,9 @@ image::process_isolated_servants.png[]
 
 Actor failure, shall (currently) be discussed in two categories: a _fault_ and an _error_.
 
-INFO: In the future, we hope to unify those two failure handling schemes under the same scheme, the same which currency applies to error supervision, however right now this is not possible. +
-      In this scenario, let us focus on the escalating errors pattern, and the fault scenario will be analysed in depth in <<process_isolated_scenario_b>>.
+TIP: In the future, we hope to unify those two failure handling schemes under the same scheme, the same which currency applies
+     to error supervision, however right now this is not possible. In this scenario, let us focus on the escalating errors pattern,
+     and the fault scenario will be analysed in depth in <<process_isolated_scenario_b>>.
 
 When the actor throws an error which causes it to crash, its <<supervision_strategies, supervision strategy>> is applied.
 If this happens to result in an `.escalate` decision, the error is _bubbled up_ through the actor hierarchy, and if it reached

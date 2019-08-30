@@ -12,18 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(OSX)
-import Darwin.C
-#else
-import Glibc
-#endif
-
 import DistributedActorsConcurrencyHelpers
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Servant Supervision
 
-/// Configures supervision for a specific su
+/// Configures supervision for a specific servant process.
 ///
 /// Similar to `SupervisionStrategy` (which is for actors), however in effect for servant processes.
 ///

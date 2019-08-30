@@ -5,7 +5,7 @@
 
 This section contains links and explanations of simple and more advanced examples.
 
-INFO: Contributions are very welcome, please reach out if you'd like to show off an example app you have built.
+TIP: Contributions are very welcome, please reach out if you'd like to show off an example app you have built.
 
 === Dining Philosophers
 

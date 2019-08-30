@@ -344,13 +344,6 @@ extension ProcessIsolated {
             let replacementNode = self.makeServantNode()
             replacement.node = replacementNode
 
-//            var effectiveArgs: [String] = []
-//            effectiveArgs.append(replacement.command)
-//            effectiveArgs.append(KnownServantParameters.role.render(value: ProcessIsolated.Role.servant.name))
-//            effectiveArgs.append(KnownServantParameters.port.render(value: "\(replacement.node.port)"))
-//            effectiveArgs.append(KnownServantParameters.masterNode.render(value: String(reflecting: self.system.settings.cluster.uniqueBindNode)))
-//            effectiveArgs.append(contentsOf: replacement.args)
-
             do {
                 let pid = try POSIXProcessUtils.spawn(command: replacement.command, args: replacement.args)
                 self.storeServant(pid: pid, servant: replacement)

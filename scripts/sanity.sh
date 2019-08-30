@@ -19,8 +19,4 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 bash $here/validate_license_header.sh
 bash $here/validate_format.sh
 bash $here/validate_linux_tests_generated.sh
-<<<<<<< HEAD
 # bash $here/validate_docs.sh # broken on linux, FoundationXML move seems to have broken downstream deps for generate_api.sh
-=======
-# bash $here/validate_docs.sh
->>>>>>> can't yet validate docs on linux

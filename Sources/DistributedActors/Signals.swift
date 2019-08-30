@@ -109,8 +109,8 @@ public enum Signals {
     /// the `ChildTerminated` signal. Propagating failure reasons is not supported through `watch`-ed actors, and is only
     /// available to parent-child pairs.
     ///
-    /// This `escalation` failure can by used by the parent to decide if it should also fail, spawn a replacement child,
-    /// or perform any other action, manually. Not that spawning another actor in response to `ChildTerminated` means losing
+    /// This `escalation` failure can be used by the parent to manually decide if it should also fail, spawn a replacement child,
+    /// or perform any other action. Not that spawning another actor in response to `ChildTerminated` means losing
     /// the child's mailbox; unlike using the `.restart` supervision strategy, which keeps the mailbox, but instantiates
     /// a new instance of the child behavior.
     ///

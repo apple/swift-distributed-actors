@@ -768,19 +768,6 @@ extension ActorShell {
                         }
                     ), context: self, signal: terminated)
 
-//                    switch next.underlying {
-//                    case .failed(_, let failure):
-//                        self.log.warning("ESCALATE IT MORE:::: \(failure)")
-//                        switch failure {
-//                        case .error(let error):
-//                            throw error
-//                        case .fault(let errorRepr):
-//                            throw errorRepr
-//                        }
-//                    default:
-//                        () // maybe we should not escalate after all
-//                    }
-
                 case .none:
                     // the child actor has stopped without providing us with a reason // FIXME; does this need to carry manual stop as a reason?
                     //
