@@ -18,15 +18,7 @@ import DistributedActors
 
 // end::imports[]
 
-private struct BatSignal {
-    func becomeBatman() -> Batman {
-        return .init()
-    }
-}
-
-private struct Batman {
-    func saveGotham() {}
-}
+private struct WorkRequest {}
 
 private struct Requests {}
 
@@ -56,11 +48,10 @@ class ProcessIsolatedDocExamples {
                 )
             )
 
-            // spawn the "Bruce Wayne" actor on the master node <6>
-            try isolated.system.spawn("bruce", of: BatSignal.self, .receiveMessage { batSignal in
-                let batman = batSignal.becomeBatman()
-                batman.saveGotham()
-                return .same
+            // spawn the an actor on the master node <6>
+            try isolated.system.spawn("bruce", of: WorkRequest.self, .receiveMessage { _ in
+                // do something with the `work`
+                .same
             })
         }
         // end of executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

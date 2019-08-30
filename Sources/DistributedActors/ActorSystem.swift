@@ -202,7 +202,7 @@ public final class ActorSystem {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
                 let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents")
-                self._clusterEvents = clusterEvents // TODO: why stored on self here?
+                self._clusterEvents = clusterEvents
                 _ = try cluster.start(system: self, eventStream: self.clusterEvents) // only spawns when cluster is initialized
 
                 // Node watcher MUST be started AFTER cluster and clusterEvents
