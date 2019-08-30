@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import class NIO.EventLoopFuture
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -144,11 +145,19 @@ public enum CRDT {
 
     /// Wrap around a `CvRDT` instance to associate it with an owning actor.
     public class ActorOwned<DataType: CvRDT> {
+        let id: CRDT.Identity
+        var data: DataType
+
         // Must be an implicitly unwrapped optional variable property because it requires (`ActorOwned`) `self`
         // during initialization, and `ActorOwned`'s initializer has a dependency on `AnyOwnerCell`.
-        internal var owner: AnyOwnerCell<DataType>!
-        let id: CRDT.Identity
-        internal var data: DataType
+        var _owner: ActorOwnedContext<DataType>?
+        var owner: ActorOwnedContext<DataType> {
+            guard let o = self._owner else {
+                fatalError("Attempted to unwrap \(self)._owner, which was nil! This should never happen.")
+            }
+            return o
+        }
+
         public internal(set) var status: Status = .active
 
         private let delegate: ActorOwnedDelegate<DataType>
@@ -175,7 +184,21 @@ public enum CRDT {
                 }
             }
             let replicator = ownerContext.system.replicator
-            self.owner = AnyOwnerCell(subReceive: subReceive, replicator: replicator)
+            self._owner = ActorOwnedContext(ownerContext,
+                                            subReceive: subReceive,
+                                            replicator: replicator,
+                                            onWriteComplete: { future, continuation in
+                                                ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
+                                                    continuation(res)
+                                                    return .same
+                                                }
+                                            },
+                                            onReadComplete: { future, continuation in
+                                                ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
+                                                    continuation(res)
+                                                    return .same
+                                                }
+            })
 
             // Register as owner of the CRDT instance with local replicator
             replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
@@ -183,49 +206,69 @@ public enum CRDT {
 
         // TODO: handle error instead of throw? convert replicator error to something else?
 
-        internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<DataType> {
             let id = self.id
             let data = self.data
-            let askResponse = owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
+
+            let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
                 .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, replyTo: replyTo))
             }
-            // TODO: concurrency here is not safe (https://github.com/apple/swift-distributed-actors/pull/870#discussion_r2003206)
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
-                switch response {
+
+            self.owner.onWriteComplete(writeResponse) {
+                switch $0 {
                 case .success:
                     self.delegate.onWriteSuccess(actorOwned: self)
-                    return data
-                case .failed(let error):
-                    throw error
+                case .failure(let error):
+                    self.owner.log.warning("Failed to update \(self): \(error)") // TODO: CRDT metadata?
                 }
-            })
+            }
+
+            return DirectResult(writeResponse.nioFuture.map { _ in data })
         }
 
-        public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<DataType> {
             let id = self.id
-            let askResponse = owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
+
+            let readResponse = self.owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
                 .localCommand(.read(id, consistency: consistency, replyTo: replyTo))
             }
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
-                switch response {
+
+            // FIXME: inspect what happens to owning actor when we throw in here
+            self.owner.onReadComplete(readResponse) {
+                switch $0 {
+                case .success(.success(let data)):
+                    // guard let data = data as? DataType else {
+                    //     throw Error.replicatedDataDoesNotMatchExpectedType
+                    // }
+                    self.data = data as! DataType // FIXME: the cast // safe to write back to ActorOwner, we are ensured to be executing in the owner's context here
+                case .success(.failed(let readError)):
+                    self.owner.log.warning("Failed to read \(self): \(readError)")
+                case .failure(let executionError):
+                    self.owner.log.warning("Failed to read \(self): \(executionError)")
+                }
+            }
+
+            // TODO: A bit sub optimal that we perform the mapping in two spots (here and onReadComplete)
+            return DirectResult(readResponse.nioFuture.flatMapThrowing {
+                switch $0 {
                 case .success(let data):
                     guard let data = data as? DataType else {
                         throw Error.replicatedDataDoesNotMatchExpectedType
                     }
-                    self.data = data
                     return data
                 case .failed(let error):
                     throw error
                 }
+
             })
         }
 
-        public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<Void> {
+        public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<Void> {
             let id = self.id
             let askResponse = owner.replicator.ask(for: DeleteResult.self, timeout: timeout) { replyTo in
                 .localCommand(.delete(id, consistency: consistency, replyTo: replyTo))
             }
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> Void in
+            return DirectResult(askResponse.nioFuture.flatMapThrowing { (response) throws -> Void in
                 switch response {
                 case .success:
                     self.status = .deleted
@@ -236,12 +279,38 @@ public enum CRDT {
             })
         }
 
-        internal struct AnyOwnerCell<DataType: CvRDT> {
+        internal struct ActorOwnedContext<DataType: CvRDT> {
+            let log: Logger
             let subReceive: ActorRef<CRDT.Replication.DataOwnerMessage>
             let replicator: ActorRef<CRDT.Replicator.Message>
+
+            // TODO: maybe possible to express as one closure
+            private let _onWriteComplete: (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void
+            private let _onReadComplete: (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void
+
+            init<M>(_ ownerContext: ActorContext<M>,
+                    subReceive: ActorRef<Replication.DataOwnerMessage>,
+                    replicator: ActorRef<Replicator.Message>,
+                    onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void,
+                    onReadComplete: @escaping (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void) {
+                // not storing ownerContext on purpose; it always is a bit dangerous to store "someone's" context, for retain cycles and potential concurrency issues
+                self.log = ownerContext.log
+                self.subReceive = subReceive
+                self.replicator = replicator
+                self._onWriteComplete = onWriteComplete
+                self._onReadComplete = onReadComplete
+            }
+
+            func onWriteComplete(_ response: AskResponse<Replicator.LocalCommand.WriteResult>, _ onComplete: @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) {
+                self._onWriteComplete(response, onComplete)
+            }
+
+            func onReadComplete(_ response: AskResponse<Replicator.LocalCommand.ReadResult>, _ onComplete: @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) {
+                self._onReadComplete(response, onComplete)
+            }
         }
 
-        public struct Result<DataType>: AsyncResult {
+        public struct DirectResult<DataType>: AsyncResult {
             let dataFuture: EventLoopFuture<DataType>
 
             init(_ dataFuture: EventLoopFuture<DataType>) {
@@ -252,8 +321,8 @@ public enum CRDT {
                 self.dataFuture.onComplete(callback)
             }
 
-            public func withTimeout(after timeout: TimeAmount) -> Result<DataType> {
-                return Result(self.dataFuture.withTimeout(after: timeout))
+            public func withTimeout(after timeout: TimeAmount) -> DirectResult<DataType> {
+                return DirectResult(self.dataFuture.withTimeout(after: timeout))
             }
         }
 

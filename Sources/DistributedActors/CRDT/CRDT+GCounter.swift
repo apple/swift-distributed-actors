@@ -106,7 +106,7 @@ extension CRDT.ActorOwned where DataType == CRDT.GCounter {
         return self.data.value
     }
 
-    public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+    public func increment(by amount: Int, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<DataType> {
         // Increment locally then propagate
         self.data.increment(by: amount)
         return self.write(consistency: consistency, timeout: timeout)

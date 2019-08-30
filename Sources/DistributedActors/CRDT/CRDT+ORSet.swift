@@ -162,13 +162,13 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
         return self.data.elements
     }
 
-    public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+    public func add(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<DataType> {
         // Add element locally then propagate
         self.data.add(element)
         return self.write(consistency: consistency, timeout: timeout)
     }
 
-    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+    public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> DirectResult<DataType> {
         // Remove element locally then propagate
         self.data.remove(element)
         return self.write(consistency: consistency, timeout: timeout)

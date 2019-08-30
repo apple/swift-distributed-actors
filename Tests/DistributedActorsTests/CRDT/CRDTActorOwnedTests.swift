@@ -177,6 +177,8 @@ final class CRDTActorOwnedTests: XCTestCase {
         try g2Owner1EventP.expectNoMessage(for: .milliseconds(100))
     }
 
+    // TODO: test that a failure to write gets logged?
+
     func test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus() throws {
         let g1 = "gcounter-1"
 
