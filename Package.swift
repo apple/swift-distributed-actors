@@ -65,6 +65,13 @@ let targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
     .target(
+        name: "it_ProcessIsolated_escalatingWorkers",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_escalatingWorkers"
+    ),
+    .target(
         name: "it_ProcessIsolated_respawnsServants",
         dependencies: [
             "DistributedActors",
@@ -77,6 +84,13 @@ let targets: [PackageDescription.Target] = [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_noLeaking"
+    ),
+    .target(
+        name: "it_ProcessIsolated_backoffRespawn",
+        dependencies: [
+            "DistributedActors",
+        ],
+        path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------

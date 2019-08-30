@@ -41,7 +41,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_setup_executesImmediatelyOnStartOfActor() throws {
-        let p = self.testKit.spawnTestProbe(name: "testActor-1", expecting: String.self)
+        let p = self.testKit.spawnTestProbe("testActor-1", expecting: String.self)
 
         let message = "EHLO"
         let _: ActorRef<String> = try system.spawn(.anonymous, .setup { _ in
@@ -53,7 +53,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_single_actor_should_wakeUp_on_new_message_lockstep() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "testActor-2")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("testActor-2")
 
         var counter = 0
 
@@ -66,7 +66,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_two_actors_should_wakeUp_on_new_message_lockstep() throws {
-        let p = self.testKit.spawnTestProbe(name: "testActor-2", expecting: String.self)
+        let p = self.testKit.spawnTestProbe("testActor-2", expecting: String.self)
 
         var counter = 0
 
@@ -85,7 +85,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_receive_shouldReceiveManyMessagesInExpectedOrder() throws {
-        let p = self.testKit.spawnTestProbe(name: "testActor-3", expecting: Int.self)
+        let p = self.testKit.spawnTestProbe("testActor-3", expecting: Int.self)
 
         func countTillNThenDieBehavior(n: Int, currentlyAt at: Int = -1) -> Behavior<Int> {
             if at == n {
@@ -133,7 +133,7 @@ class BehaviorTests: XCTestCase {
 
     // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesMessages() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "testActor-5")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("testActor-5")
 
         let ref: ActorRef<TestMessage> = try system.spawn(.anonymous, .class { MyActorBehavior() })
 
@@ -175,7 +175,7 @@ class BehaviorTests: XCTestCase {
 
     // has to be ClassBehavior in test name, otherwise our generate_linux_tests is confused (and thinks this is an inner class)
     func test_ClassBehavior_receivesSignals() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe(name: "probe-6a")
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe("probe-6a")
         let ref: ActorRef<String> = try system.spawn(.anonymous, .class { MySignalActorBehavior(probe: p.ref) })
         ref.tell("do it")
 
@@ -199,9 +199,9 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_ClassBehavior_executesInitOnStartSignal() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "probe-7a")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-7a")
         let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     props: .addingSupervision(strategy: .restart(atMost: 1, within: nil)),
+                                                     props: .supervision(strategy: .restart(atMost: 1, within: nil)),
                                                      .class { MyStartingBehavior(probe: p.ref) })
         ref.tell("hello")
 
@@ -212,7 +212,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_receiveSpecificSignal_shouldReceiveAsExpected() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe(name: "probe-specificSignal-1")
+        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe("probe-specificSignal-1")
         let _: ActorRef<String> = try system.spawn(.anonymous, .setup { context in
             let _: ActorRef<Never> = try context.spawnWatch(.anonymous, .stop)
 
@@ -227,7 +227,7 @@ class BehaviorTests: XCTestCase {
     }
 
     func test_receiveSpecificSignal_shouldNotReceiveOtherSignals() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe(name: "probe-specificSignal-2")
+        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-specificSignal-2")
         let ref: ActorRef<String> = try system.spawn(.anonymous, Behavior<String>.receiveMessage { _ in
             .stop
         }.receiveSpecificSignal(Signals.PostStop.self) { _, postStop in

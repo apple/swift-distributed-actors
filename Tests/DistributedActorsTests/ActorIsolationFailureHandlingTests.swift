@@ -77,8 +77,8 @@ final class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe(name: "testProbe-master-1")
-        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "testProbeForWorker-1")
+        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe("testProbe-master-1")
+        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe("testProbeForWorker-1")
 
         let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 

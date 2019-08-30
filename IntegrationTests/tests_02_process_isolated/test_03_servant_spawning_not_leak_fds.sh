@@ -16,9 +16,6 @@
 set -e
 #set -x # verbose
 
-declare -r RED='\033[0;31m'
-declare -r RST='\033[0m'
-
 declare -r my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 declare -r root_path="$my_path/.."
 
@@ -52,7 +49,9 @@ for pid_servant in $pid_servants; do
     if [[ $(lsof -p $pid_servant | wc -l) -gt 100 ]]; then
         lsof -p $pid_servant
         printf "${RED}ERROR: Seems the servant [${pid_servant}] has too many FDs open, did the masters FD leak?${RST}\n"
-        exit -2
+
+        _killall ${app_name}
+        exit -1
     fi
 done
 

@@ -225,12 +225,20 @@ final class DeadLetterOffice {
             // are inherently racy in the during actor system shutdown:
             let ignored = recipient == ActorAddress._cluster
             return ignored
+//        case .terminated, .childTerminated:
+//            // we ignore terminated messages in dead letter logging, as those are often harmless side effects of "everyone is shutting down"
+//            return true
         default:
             // ignore other messages, no special handling needed
             return false
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Silent Dead Letter marker
+
+protocol SilentDeadLetter {}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Paths

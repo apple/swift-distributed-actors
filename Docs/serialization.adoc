@@ -1,4 +1,4 @@
-
+[[serialization]]
 == Serialization
 
 > Swift Distributed Actors offers a serialization layer which allows you to decouple where messages are sent and received,

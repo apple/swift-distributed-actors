@@ -156,7 +156,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
             $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
 
-        let probe = self.testKit(local).spawnTestProbe(name: "X", expecting: String.self)
+        let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
         let localRef: ActorRef<String> = try local.spawn("localRef", .receiveMessage { message in
             probe.tell("response:\(message)")
@@ -183,7 +183,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
             $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
 
-        let probe = self.testKit(local).spawnTestProbe(name: "X", expecting: String.self)
+        let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
         let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
             message.respondTo.tell("echo:\(message.string)")
@@ -215,7 +215,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
             $0.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
 
-        let probe = self.testKit(local).spawnTestProbe(name: "X", expecting: String.self)
+        let probe = self.testKit(local).spawnTestProbe("X", expecting: String.self)
 
         let refOnRemoteSystem: ActorRef<EchoTestMessage> = try remote.spawn("remoteAcquaintance", .receiveMessage { message in
             message.respondTo.tell("echo:\(message.string)")

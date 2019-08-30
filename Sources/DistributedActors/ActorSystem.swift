@@ -91,8 +91,10 @@ public final class ActorSystem {
 
     // initialized during startup
     internal var _cluster: ClusterShell?
-    internal var _clusterEventStream: EventStream<ClusterEvent>?
+    internal var _clusterEvents: EventStream<ClusterEvent>?
+    internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Logging
 
     public var log: Logger {
@@ -199,8 +201,16 @@ public final class ActorSystem {
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
-                self._clusterEventStream = try! EventStream(self, name: "clusterEvents")
+                let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents")
+                self._clusterEvents = clusterEvents
                 _ = try cluster.start(system: self, eventStream: self.clusterEvents) // only spawns when cluster is initialized
+
+                // Node watcher MUST be started AFTER cluster and clusterEvents
+                self._nodeDeathWatcher = try self._spawnSystemActor(
+                    NodeDeathWatcherShell.naming,
+                    NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
+                    perpetual: true
+                )
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
@@ -291,30 +301,26 @@ extension ActorSystem: ActorRefFactory {
     /// - throws: when the passed behavior is not a legal initial behavior
     /// - throws: when the passed actor name contains illegal characters (e.g. symbols other than "-" or "_")
     public func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return try self._spawnUserActor(naming, behavior, props: props)
-    }
-
-    internal func _spawnUserActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props()) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.userProvider, behavior, name: naming, props: props)
+        return try self._spawn(using: self.userProvider, behavior, name: naming, props: props)
     }
 
     // Implementation note:
-    // `isWellKnown` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
+    // `perpetual` here means that the actor always exists and must be addressable without receiving a reference / path to it. This is for example necessary
     // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
     internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
-        return try self._spawnActor(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
-    // spawnInternal is used by `spawn(.anonymous)` and others, which are privileged and may start with "$"
-    internal func _spawnActor<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
+    internal func _spawn<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
 
         // TODO: lock inside provider, not here
+        // FIXME: protect the naming context access and name reservation; add a test
         let address: ActorAddress = try self.withNamingContext { namingContext in
             let name = naming.makeName(&namingContext)
 
@@ -332,7 +338,7 @@ extension ActorSystem: ActorRefFactory {
         case .nio(let group):
             dispatcher = NIOEventLoopGroupDispatcher(group)
         default:
-            fatalError("not implemented yet, only default dispatcher and calling thread one work")
+            fatalError("selected dispacher [\(props.dispatcher)] not implemented yet; ") // FIXME: remove any not implemented ones simply from API
         }
 
         return try provider.spawn(

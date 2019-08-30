@@ -64,7 +64,7 @@ public struct ActorTestKitSettings {
 
 public extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    func spawnTestProbe<M>(name naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
+    func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -89,6 +89,7 @@ public extension ActorTestKit {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Eventually
 
 public extension ActorTestKit {

@@ -176,7 +176,7 @@ internal final class Mailbox<Message> {
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
             switch _shell {
-            case .some(let cell): cell.fail(error)
+            case .some(let shell): shell.fail(error)
             case .none: pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
@@ -192,7 +192,7 @@ internal final class Mailbox<Message> {
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
             switch _shell {
-            case .some(let cell): cell.fail(error)
+            case .some(let shell): shell.fail(error)
             case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
             }
         })
@@ -367,8 +367,6 @@ internal final class Mailbox<Message> {
         let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
-
-        var runPhase: SActMailboxRunPhase = .processingSystemMessages
 
         // Run the mailbox:
         let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,

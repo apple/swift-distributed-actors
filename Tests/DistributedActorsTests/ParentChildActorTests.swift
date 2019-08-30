@@ -281,9 +281,9 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawn_shouldWorkWithSameChildName() throws {
-        let p: ActorTestProbe<Never> = self.testKit.spawnTestProbe(name: "p")
-        let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe(name: "p1")
-        let p2: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe(name: "p2")
+        let p: ActorTestProbe<Never> = self.testKit.spawnTestProbe("p")
+        let p1: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe("p1")
+        let p2: ActorTestProbe<ParentChildProbeProtocol> = self.testKit.spawnTestProbe("p2")
 
         let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in
             switch msg {
@@ -496,7 +496,7 @@ class ParentChildActorTests: XCTestCase {
     }
 
     func test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren() throws {
-        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe(name: "p")
+        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe("p")
         let childCount = 100
 
         let parent: ActorRef<String> = try system.spawn(.anonymous, .receive { context, msg in

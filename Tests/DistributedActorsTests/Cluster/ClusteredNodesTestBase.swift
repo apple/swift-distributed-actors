@@ -165,7 +165,7 @@ extension ClusteredNodesTestBase {
 
         let testKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe(name: "probe-assertAssociated", expecting: Set<UniqueNode>.self, file: file, line: line)
+        let probe = testKit.spawnTestProbe("probe-assertAssociated", expecting: Set<UniqueNode>.self, file: file, line: line)
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
@@ -205,7 +205,7 @@ extension ClusteredNodesTestBase {
                              verbose: Bool = false) throws {
         let testKit: ActorTestKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe(name: .prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
+        let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
             system.cluster._shell.tell(.query(.associatedNodes(probe.ref)))

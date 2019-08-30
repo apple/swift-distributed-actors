@@ -79,7 +79,7 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         return self._associations[node]
     }
 
-    func associatedAddresses() -> Set<UniqueNode> {
+    func associatedNodes() -> Set<UniqueNode> {
         var set: Set<UniqueNode> = .init(minimumCapacity: self._associations.count)
 
         for asm in self._associations.values {
