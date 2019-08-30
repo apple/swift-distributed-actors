@@ -296,15 +296,15 @@ private final class SerializationHandler: ChannelDuplexHandler {
         // TODO: ensure message ordering. See comment in `write`.
         deserializationPromise.futureResult.whenComplete { deserializedResult in
             switch deserializedResult {
-            case .success(let message) where wireEnvelope.serializerId == Serialization.SystemMessageEnvelopeSerializerId:
+            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageEnvelope:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.serializerId == Serialization.SystemMessageACKSerializerId:
+            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! SystemMessage.ACK, recipient: wireEnvelope.recipient)))
-            case .success(let message) where wireEnvelope.serializerId == Serialization.SystemMessageNACKSerializerId:
+            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageNACK:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! SystemMessage.NACK, recipient: wireEnvelope.recipient)))
 
-            case .success(let message) where wireEnvelope.serializerId == Serialization.SystemMessageSerializerId:
+            case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessage:
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! SystemMessage, recipient: wireEnvelope.recipient)))
 
             case .success(let message):

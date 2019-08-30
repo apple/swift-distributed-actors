@@ -69,10 +69,10 @@ internal struct AnyCvRDT: CvRDT, AnyStateBasedCRDT {
     var underlying: StateBasedCRDT
     let _merge: (StateBasedCRDT, StateBasedCRDT) -> StateBasedCRDT
 
-    init<DataType: CvRDT>(_ data: DataType) {
-        self.metaType = MetaType(DataType.self)
+    init<T: CvRDT>(_ data: T) {
+        self.metaType = MetaType(T.self)
         self.underlying = data
-        self._merge = AnyCvRDT._merge(DataType.self)
+        self._merge = AnyCvRDT._merge(T.self)
     }
 }
 
@@ -104,30 +104,30 @@ internal struct AnyDeltaCRDT: DeltaCRDT, AnyStateBasedCRDT {
         return self._delta(self.underlying)
     }
 
-    init<DataType: DeltaCRDT>(_ data: DataType) {
-        self.metaType = MetaType(DataType.self)
+    init<T: DeltaCRDT>(_ data: T) {
+        self.metaType = MetaType(T.self)
         self.underlying = data
-        self._merge = AnyDeltaCRDT._merge(DataType.self)
+        self._merge = AnyDeltaCRDT._merge(T.self)
 
-        self.deltaMetaType = MetaType(DataType.Delta.self)
-        self._delta = { dt in
-            let dt: DataType = dt as! DataType // as! safe, since `dt` should be `self.underlying`
-            switch dt.delta {
+        self.deltaMetaType = MetaType(T.Delta.self)
+        self._delta = { data in
+            let data: T = data as! T // as! safe, since `data` should be `self.underlying`
+            switch data.delta {
             case .none:
                 return nil
             case .some(let d):
                 return d.asAnyCvRDT
             }
         }
-        self._mergeDelta = { dt, d in
-            let dt = dt as! DataType // as! safe, since `dt` should be `self.underlying`
-            let d: DataType.Delta = d.underlying as! DataType.Delta // as! safe, since invoking _mergeDelta is protected by checking the `deltaMetaType`
-            return dt.mergingDelta(d)
+        self._mergeDelta = { data, delta in
+            let data = data as! T // as! safe, since `data` should be `self.underlying`
+            let delta: T.Delta = delta.underlying as! T.Delta // as! safe, since invoking _mergeDelta is protected by checking the `deltaMetaType`
+            return data.mergingDelta(delta)
         }
-        self._resetDelta = { dt in
-            var dt: DataType = dt as! DataType // as! safe, since `dt` should be `self.underlying`
-            dt.resetDelta()
-            return dt
+        self._resetDelta = { data in
+            var data: T = data as! T // as! safe, since `data` should be `self.underlying`
+            data.resetDelta()
+            return data
         }
     }
 
