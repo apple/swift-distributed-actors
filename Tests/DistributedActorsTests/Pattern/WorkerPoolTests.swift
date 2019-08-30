@@ -108,17 +108,33 @@ final class WorkerPoolTests: XCTestCase {
 
         // since the workers joining the pool is still technically always a bit racy with the dynamic selection,
         // we try a few times to send a message and see it delivered at each worker. This would not be the case with a static selector.
+        //
+        // TODO: Go back to just `expectMessage(_: within:)` after #78 is fixed
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("a")
-            try pA.expectMessage("work:a at worker-a", within: .milliseconds(200))
+            guard let message = try pA.maybeExpectMessage(within: .milliseconds(50)) else {
+                throw testKit.error("Did not receive message within given timeout")
+            }
+
+            message.shouldEqual("work:a at worker-a")
         }
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("b")
-            try pB.expectMessage("work:b at worker-b", within: .milliseconds(200))
+            guard let message = try pB.maybeExpectMessage(within: .milliseconds(50)) else {
+                throw testKit.error("Did not receive message within given timeout")
+            }
+
+            guard message == "work:b at worker-b" else {
+                throw testKit.error("Did not receive message within given timeout")
+            }
         }
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("c")
-            try pC.expectMessage("work:c at worker-c", within: .milliseconds(200))
+            guard let message = try pC.maybeExpectMessage(within: .milliseconds(50)) else {
+                throw testKit.error("Did not receive message within given timeout")
+            }
+
+            message.shouldEqual("work:c at worker-c")
         }
         workerA.tell("stop")
         try pA.expectTerminated(workerA)
