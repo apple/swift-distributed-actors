@@ -2,21 +2,133 @@
 == Serialization
 
 > Swift Distributed Actors offers a serialization layer which allows you to decouple where messages are sent and received,
-> from how they are serialized. Build-in support for swift:Codable[] as well as custom serializers is provided.
+> from how they are serialized. Built-in support for swift:Codable[], https://developers.google.com/protocol-buffers/[Protocol Buffers],
+> as well as custom serializers is provided.
 
 In order to go distributed with actors you will have to give at least a little bit of thought (and for clustered
-production systems, actually quite a lot of thought!) about how the messages sent between the actors should be serialized.
+production systems, actually quite a lot of thought!) on how the messages sent between actors should be serialized.
 
 Swift Distributed Actors offers built-in support for https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types[Codable]
-messages. However, it does not restrict nor require the use of `Codable` messages. If you want to use a different serialization
-mechanism for messages, or a few specific messages, this is entirely possible thanks to the serializer registration mechanism.
+messages and serialization using https://developers.google.com/protocol-buffers/[Protocol Buffers]. However, it does
+not restrict or require the use of these. If you want to use a different serialization mechanism for all messages,
+or just a few specific messages, it is entirely possible thanks to the serializer registration mechanism.
+
+=== Which Serializer to Pick?
+
+There are a few things to consider while choosing a serializer:
+
+- Schema evolution capabilities
+- Backward compatibility
+- Performance
+
+Generally speaking, the recommendation is <<serialization_protobuf,Protocol Buffers>> or similar mechanisms for production use,
+whereas <<serialization_codable,Codable>> is more suitable for quick-start projects and experimentation.
 
 NOTE: It is not necessary to define any serialization format while developing in-process actors only. +
-      This goes hand-in-hand with Swift's concept of https://en.wikipedia.org/wiki/Progressive_disclosure[progressive disclosure]
-      - you only have to care about serialization once you need it.
+      This goes hand-in-hand with Swift's concept of https://en.wikipedia.org/wiki/Progressive_disclosure[progressive disclosure]--you
+      only have to care about serialization when you need it.
+
+Swift Distributed Actors does not enforce all messages to be serializable since some messages may never need to leave the local system,
+thus it would be too restrictive to require all messages to conform to a serializable format. Messages that are intended to cross
+node boundaries, however, must be serializable.
+
+[[serialization_protobuf]]
+=== Serializing Messages with Protocol Buffers
+
+https://developers.google.com/protocol-buffers/[Google's Protocol Buffers], or protobuf, are a popular serialization format due to
+its flexibility for schema evolution and superior performance. Using protobuf or a similar serialization mechanism with externally
+defined schema is recommended for production use of actors, as it enables simple and controlled schema changes.
+
+It is _not_ recommended to use the protobuf message types directly as your actor messages, but rather treat them as a transport-only layer,
+for translation to and from your domain objects (i.e., messages defined by yourself as `struct` or `enum`).
+
+#TODO: Example should include ActorRef<Response> to show how to use ActorAddress.proto#
+
+==== Step 1: Define protobuf message types and generate Swift output
+
+Suppose we have a `driver` actor and its message protocol consists of a single `ParkingGarageStatus` enum:
+
+.Example: Swift messages
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_protobuf_messages]
+----
+
+And we define the protobuf message type for it:
+
+.Example: Protobuf message types in Example.proto
+[source]
+----
+include::{dir_sact_doc_tests}/DocumentationProtos/SerializationDocExamples.proto[tag=serialization_protobuf]
+----
+
+Next we generate the Swift output using https://github.com/apple/swift-protobuf[Swift Protobuf]. For example: `protoc --swift_out=Sources/ Protos/Example.proto`
+
+It produces a `ProtoParkingGarageStatus` struct in `Example.pb.swift`, with which we can conform `ParkingGarageStatus` to api:ProtobufRepresentable[protocol].
+
+==== Step 2: Conform messages to `ProtobufRepresentable`
+
+api:ProtobufRepresentable[protocol] is a helper protocol for conversion between Swift and protobuf message types. To conform implement the `toProto` and `init` methods:
+
+.Example: Conform message to ProtobufRepresentable
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_protobuf_representable]
+----
+
+==== Step 3: Register `ProtobufRepresentable` types for serialization
+
+In order to let Swift Distributed Actors know which serialization engine to use, a serializer has to be registered for each type.
+Since it is very important that the _right_ serializer is picked up by another node in a cluster, serializers _must_ be
+given unique identifiers (which matters in case of upgrading your system where the message types change).
+
+To register the message types intended for use in the cluster they have to be registered at system bootstrap,
+using the optional trailing settings configuration closure:
+
+.Configuring ActorSystem to use protobuf serializers for the passed in types
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_protobuf]
+----
+
+The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
+configure various parts of the actor system.
+
+NOTE: While it would be nice to avoid this registration step, it does not seem possible, as `Codable` infrastructure
+      requires the type to be present for invoking the decoding phase. In order to be able to get the type back when
+      deserializing an incoming message, this mapping is used. +
+      +
+      #note: On the other hand, automatic ID assigning is inherently not entirely safe nor a good idea for building a production ready system,
+so in some ways, it is good that we teach immediately about this need. Needs more docs though#
+
+NOTE: Serialization identifiers until 1000 are reserved for Swift Distributed Actors's internal use. #TODO sadly we have to register for every specific type... This is the correct thing to do for protocol evolution, but makes getting started harder. We can't register for "any codable" (or I can't figure out how), due to how Swift's MetaTypes work.#
+
+==== Step 4: Send messages as usual
+
+And finally, we use our messages in an actor interaction. The following function snippet is meant to reply to a query about a parking garage.
+The sender of the query here is called a `driver` (as-in, a driver looking for a parking garage with empty spots near a popular theater or cinema),
+and according to some logic we reply to it with the parking garage's availability:
+
+.Sending messages to a (potentially) remote Actor
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=sending_serialized_protobuf_messages]
+----
+
+What is most notable here, is that the actor code needs not concern itself _at all_ about any serialization details
+of the messages and actors it interacts with. This is one of the many ways the property of _location transparency_ shows up.
+Regardless of the actor being local or remote, this allows us to focus on the interactions, rather than sprinkle serialization
+and/or network call concerns into the middle of our business logic.
 
 
-=== Serializing Codable messages
+WARNING: Due to this permissive style of sending messages, it technically is possible to accidentally send a message
+         intended only for local messaging to a remote actor, in which case such send would fail and a serialization
+         error would be logged. +
+         +
+         It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. <<verify-serialization>>
+
+[[serialization_codable]]
+=== Serializing Codable Messages
 
 The swift:Codable[] protocol can be used for automatic (although customizable) derivation of serializers for Swift data types.
 Refer to its reference documentation in https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types[Encoding and Decoding Custom Types]
@@ -24,25 +136,20 @@ to learn more about how to use the protocol and its extension points, as this gu
 
 ==== Step 1: Conform messages to `Codable`
 
-Swift Distributed Actors does not enforce all messages to be serializable, since maybe some messages are known to never leave the local system,
-and thus it would be too restrictive to require all messages conform to `Codable`. For messages that are intended to cross
-node boundaries however, we can conform them to `Codable`:
+Suppose we have a `driver` actor and its message protocol consists of a single `ParkingSpotStatus` enum:
 
-.Example messages
+.Example: Conform message to Codable
 [source]
 ----
 include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_codable_messages]
 ----
 
-The message protocol in the example above is not very complicated: it consists of a single `ParkingSpotStatus` enum
-which is the message protocol the `driver` actor is speaking.
-
-Note that we immediately conformed it to swift:Codable[], and since the type is a simple enum without associated values
+Note that we immediately conform it to swift:Codable[]. Since the type is a simple enum without associated values
 the serialization code for it is generated automatically.
 
-==== Step 2: Register Codable types for serialization
+==== Step 2: Register `Codable` types for serialization
 
-In order to let Swift Distributed Actors know which serialization engine to use for these messages, a serializer has to be registered for the type.
+In order to let Swift Distributed Actors know which serialization engine to use, a serializer has to be registered for each type.
 Since it is very important that the _right_ serializer is picked up by another node in a cluster, serializers _must_ be
 given unique identifiers (which matters in case of upgrading your system where the message types change).
 
@@ -56,12 +163,11 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_
 ----
 
 The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
-configure various parts of the actor system. In this section, the focus is entirely on the serializer registration,
-which has a simplified form for Codable types.
+configure various parts of the actor system.
 
-NOTE: While it would be nice to avoid this registration step, it does not seem possible (or I'm blind :-)), as `Codable`
-      infrastructure requires the type to be present for invoking the decoding phase. In order to be able to get the type
-      back when deserializing an incoming message, this mapping is used. +
+NOTE: While it would be nice to avoid this registration step, it does not seem possible, as `Codable` infrastructure
+      requires the type to be present for invoking the decoding phase. In order to be able to get the type back when
+      deserializing an incoming message, this mapping is used. +
       +
       #note: On the other hand, automatic ID assigning is inherently not entirely safe nor a good idea for building a production ready system,
       so in some ways, it is good that we teach immediately about this need. Needs more docs though#
@@ -70,15 +176,14 @@ NOTE: Serialization identifiers until 1000 are reserved for Swift Distributed Ac
 
 ==== Step 3: Send messages as usual
 
-
 And finally, we use our messages in an actor interaction. The following function snippet is meant to reply to a query about a specific parking spot.
 The sender of the query here is called a `driver` (as-in, a driver looking for a parking spot near a popular theater or cinema),
-and according to some logic we reply to it with the parking spots' availability:
+and according to some logic we reply to it with the parking spot's availability:
 
 .Sending messages to a (potentially) remote Actor
 [source]
 ----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=sending_serialized_messages]
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=sending_serialized_codable_messages]
 ----
 
 What is most notable here, is that the actor code needs not concern itself _at all_ about any serialization details
@@ -95,27 +200,85 @@ WARNING: Due to this permissive style of sending messages, it technically is pos
          +
          #TODO: Alternatively we could explore a mode where "all messages must be Codable" but I think this MUST be opt-in, since it makes a) getting started harder and b) not really true for internal things and c) not good if people wanted to use something else than Codable#
 
+=== Using Custom Serialization
 
+If for some reason `ProtobufRepresentable` and `Codable` are not the serialization mechanisms you want to employ to serialize your messages,
+it is possible to use any custom serialization mechanism by plugging it into Swift Distributed Actors' api:Serialization[struct] layer.
 
-=== Alternative serialization strategies
+NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `ProtobufRepresentable` or `Codable` types.
 
-While `Codable` is a fine way to serialize data, sometimes it may be necessary to use a serializer which does not
-operate on `Codable` types. Swift Distributed Actors allows transparently swapping in alternative serialization mechanisms
-using its api:Serialization[struct] layer.
+NOTE: When using `ProtobufRepresentable` or `Codable` messages, you don't need to do anything special. As long as the message containing your
+`ActorRef<Message>` and the `Message` type itself are registered as `ProtobufRepresentable` or `Codable` serializable, the serialization engine
+will "just work", and (de)serializing refs will work transparently. This section only matters for use cases where you
+implement your own serializers.
 
-The following sections will show how to use alternative serialization engines to serialize messages sent between Swift Distributed Actors.
+The following example will serialize a simple `enum` into a simple custom format.
 
-NOTE: Alternatively, you may also want to explore if it is possible and/or feasible to extend the alternative serialization engine to cooperate with `Codable` types.
+==== Step 1: Define custom messages
+
+.Example: Custom messages
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_custom_messages]
+----
+
+==== Step 2: Define custom serializer
+
+.Example: Custom serializers
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_serializer]
+----
+<1> Since the domain object can be represented by simple tokens, we pre-allocate the tokens and store them in the serializer.
+<2> `serialize` will be invoked whenever a message is about to be sent.
+<3> `deserialize` is called whenever an incoming message needs to be converted from bytes to an object.
+
+==== Step 3: Register custom types for serialization
+
+Next, we register the custom type and serializer by using the plain `register(:for:underId:)` function where the first parameter
+is a api:Serializer[class] factory which will be passed a system's configured nio:ByteBufferAllocator[struct].
+
+.Configuring ActorSystem to use custom serializers for the passed in types
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_custom]
+----
+
+The serializer which will be invoked to serialize a message is selected by the system based on the bindings performed during system startup.
+When a message is sent over the wire, the id of the serializer that was used to serialize the message will be carried with it,
+such that the receiving end can invoke the right serializer to deserialize the payload.
+
+NOTE: Great care should be taken so that the serializer ids are not changed without care when intending to perform rolling
+upgrades of nodes -- as otherwise an incorrect serializer might be selected to deserialize a message.
+
+NOTE: Serialization identifiers until 1000 are reserved for Swift Distributed Actors's internal use. #TODO sadly we have to register for every specific type... This is the correct thing to do for protocol evolution, but makes getting started harder. We can't register for "any codable" (or I can't figure out how), due to how Swift's MetaTypes work.#
+
+==== (De)Serializing `ActorRef`
+
+Serializing and deserializing actor references is somewhat special since an actor ref has to refer to an actual "live"
+entity, rather than simply be deserialized into a plain data structure.
+
+In order to hook into the api:ActorSystem[class] that invokes the serializer, a special `ActorSerializationContext`
+is injected into serializers when they are bound to a system. If your serializer needs to handle `ActorRef`s or similar
+actor specific types, you can accept this context like this:
+
+[source]
+----
+include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_actorRef_serializer]
+----
+<1> Implement `setSerializationContext` and store the context in a property.
+<2> Use the `context` to resolve the actor path to an `ActorRef`. If the path does not point to an _alive_ actor, the reference will automatically point to `/system/deadLetters`.
+
+#TODO: I think we don't constructor inject this because Codable things AFAIR... but we may want to double check if we could constructor inject anyway somehow?#
 
 [[verify-serialization]]
-=== Message serialization verification
+=== Message Serialization Verification
 
-Since messages may be serialized using various different techniques, the check if a message can be serialized has to be performed at runtime.
+Since messages may be serialized using various different techniques, the check to see if a message can be serialized has to be performed at runtime.
 
-In order to avoid situations where one forgets to register a serializer for a given with the system it is possible to run
-the actor system with the `settings.serialization.allMessages` option enabled. This causes all messages sent between actors
-to be serialized (even if they are not remote). This allows for catching mistakes of forgetting to enable a serializer
-for a specific type early.
+To avoid situations where one forgets to register a serializer for a given type, it is possible to run the actor system with
+the `settings.serialization.allMessages` option enabled. This causes all messages sent between actors to be serialized (even if they are not remote),
+which allows us to catch the mistake of forgetting to enable a serializer for a specific type early.
 
 TIP: This option is only intended for testing, as there is performance penalty associated with it.
 
@@ -131,105 +294,3 @@ This will cause the _sending_ actor (or process, in case of sending messages fro
      Fatal error: Serialization check failed for message [NotSerializable()]:NotSerializable.
      Make sure this type has either a serializer registered OR is marked as `NoSerializationVerificationNeeded`.
      This check was performed since `settings.serialization.allMessages` was enabled.: file Mailbox.swift, line 260
-
-=== Serializing Protocol Buffers
-
-#TODO: Explain protobuf is the recommended message format. Move this before Codable?#
-
-To use protocol buffers as the message format:
-
-==== Step 1: Define protocol buffers and generate Swift output
-
-Let's define a protocol buffer for the `ParkingSpotStatus` enum used in the `Codable` serialization example:
-
-.Example protobuf buffers
-[source]
-----
-include::{dir_sact_doc_tests}/DocumentationProtos/SerializationDocExamples.proto[tag=serialization_protobuf_buffers]
-----
-
-Then generate the Swift output (in our case the type is named `ProtoParkingSpotStatus`). With it we can conform `ParkingSpotStatus` to `ProtobufRepresentable`.
-
-==== Step 2: Conform messages to ProtobufRepresentable
-
-`ProtobufRepresentable` is a helper protocol for conversion between Swift and protobuf messages.
-
-To conform implement the `toProto` and `init` methods:
-
-.Example messages
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_protobuf_representable]
-----
-
-==== Step 3: Register ProtobufRepresentable types for serialization
-
-As with `Codable`, `ProtobufRepresentable` message types _must_ be registered.
-
-.Configuring ActorSystem to use protobuf serializers for the passed in types
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_protobuf]
-----
-
-=== Using Custom Serialization
-
-If, for some reason, `Codable` is not the serialization mechanism you want to employ to serialize your messages,
-it is possible to use any custom serialization mechanism by plugging it into the systems serialization
-
-NOTE: When using `Codable` messages, you don't need to do anything special. As long as the message containing your
-`ActorRef<Message>` and the `Message` type itself are registered as Codable serializable, the serialization engine
-will "just work", and (de)serializing refs will work transparently. This section only matters for use cases where you
-implement your own serializers.
-
-The following example will serialize a simple `enum` into a simple custom format, without using `Codable` only for purposes
-of showcasing how you could serialize things without going through `Codable` support.
-
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=serialization_custom_messages]
-----
-
-Next, rather than using the `registerCodable` function to register types using the built-in codable support,
-we use the plain `register(:for:underId:)` function where the first parameter is a api:Serializer[class] factory which
-will be passed a system's configured nio:ByteBufferAllocator[struct].
-
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_custom]
-----
-
-And finally, this is how the `CustomlyEncodedSerializer` can be implemented:
-
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_serializer]
-----
-<1> Since the domain object can be represented by simple tokens, we preallocate the tokens and store them in the serializer
-<2> `serialize` will be invoked whenever a message is about to be sent to
-<3> `deserialize` is called whenever an incoming message needs to be converted from bytes to the an object.
-
-The serializer which will be invoked to serialize a message is selected by the system based on the bindings performed during system startup.
-When a message is sent over the wire, the id of the serializer that was used to serialize the message will be carried with it,
-such that the receiving end can invoke the right serializer to deserialize the payload.
-
-NOTE: Great care should be taken so that the serializer ids are not changed without care when intending to perform rolling
-      upgrades of nodes -- as otherwise an incorrect serializer might be selected to deserialize a message.
-
-==== (De)Serializing `ActorRef`
-
-Serializing and deserializing actor references is somewhat special since an actor ref has to refer to an actual "live"
-entity, rather than simply be deserialized into a plain data structure.
-
-In order to hook into the api:ActorSystem[class] that invokes the serializer, a special `ActorSerializationContext`
-is injected into serializers when they are bound to a system. If your serializer needs to handle `ActorRef`s or similar
-actor specific types, you can accept this context like this:
-
-[source]
-----
-include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=custom_actorRef_serializer]
-----
-<1> Implement `setSerializationContext` and store the context in a property
-<2> Use the `context` to resolve the actor path to a ref, if the path does not point to an _alive_ actor, the reference will automatically point to `/system/deadLetters`
-
-#TODO: I think we don't constructor inject this because Codable things AFAIR... but we may want to double check if we could constructor inject anyway somehow?#

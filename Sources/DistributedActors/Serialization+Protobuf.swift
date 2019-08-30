@@ -24,7 +24,10 @@ import SwiftProtobuf
 public protocol ProtobufRepresentable {
     associatedtype ProtobufRepresentation: SwiftProtobuf.Message
 
+    /// Convert this `ProtobufRepresentable` instance to an instance of type `ProtobufRepresentation`.
     func toProto(context: ActorSerializationContext) throws -> ProtobufRepresentation
+
+    /// Initialize a `ProtobufRepresentable` instance from the given `ProtobufRepresentation` instance.
     init(fromProto proto: ProtobufRepresentation, context: ActorSerializationContext) throws
 }
 
