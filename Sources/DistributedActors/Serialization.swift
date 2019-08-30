@@ -24,28 +24,15 @@ import Foundation // for Codable
 
 /// Serialization engine, holding all key-ed serializers.
 public struct Serialization {
-    public static let ReservedSerializerIds = UInt32(0) ... 999 // arbitrary range, we definitely need more than just 100 though, since we have to register every single type
-
-    public typealias SerializerId = UInt32
     internal typealias MetaTypeKey = AnyHashable
 
     // TODO: with the new proto serializer... could we register all our types under the proto one?
 
-    // TODO: make a namespace called Id so people can put theirs here too
-    internal static let SystemMessageSerializerId: SerializerId = 1
-    internal static let SystemMessageACKSerializerId: SerializerId = 2
-    internal static let SystemMessageNACKSerializerId: SerializerId = 3
-    internal static let SystemMessageEnvelopeSerializerId: SerializerId = 4
-    internal static let StringSerializerId: SerializerId = 5
-    internal static let FullStateRequestSerializerId: SerializerId = 6
-    internal static let ReplicateSerializerId: SerializerId = 7
-    internal static let FullStateSerializerId: SerializerId = 8
-    internal static let SWIMMessageSerializerId: SerializerId = 9
-    internal static let SWIMAckSerializerId: SerializerId = 10
-
     // TODO: avoid 2 hops, we can do it in one, and enforce a serializer has an Id
     private var serializerIds: [MetaTypeKey: SerializerId] = [:]
     private var serializers: [SerializerId: AnySerializer] = [:]
+
+    internal var crdt: CRDTSerialization
 
     private let log: Logger
 
@@ -62,6 +49,8 @@ public struct Serialization {
         self.allocator = settings.allocator
         self.systemMessageSerializer = SystemMessageSerializer(self.allocator)
         self.stringSerializer = StringSerializer(self.allocator)
+
+        self.crdt = CRDTSerialization()
 
         var log = Logger(label: "serialization", factory: { id in
             let context = LoggingContext(identifier: id, useBuiltInFormatter: systemSettings.useBuiltInFormatter, dispatcher: nil)
@@ -82,19 +71,25 @@ public struct Serialization {
 
         // register all
         // TODO: change APIs here a bit, it does not read nice
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.SystemMessageSerializerId)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.SystemMessageACKSerializerId)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.SystemMessageNACKSerializerId)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.SystemMessageEnvelopeSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.Id.InternalSerializer.SystemMessage)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageACK)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageNACK)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.Id.InternalSerializer.SystemMessageEnvelope)
 
-        self.registerSystemSerializer(context, serializer: self.stringSerializer, for: String.self, underId: Serialization.StringSerializerId)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.FullStateRequestSerializerId)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.ReplicateSerializerId)
-        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullState.self, underId: Serialization.FullStateSerializerId)
+        self.registerSystemSerializer(context, serializer: self.stringSerializer, for: String.self, underId: Serialization.Id.InternalSerializer.String)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.Id.InternalSerializer.FullStateRequest)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.Id.InternalSerializer.Replicate)
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullState.self, underId: Serialization.Id.InternalSerializer.FullState)
 
         // SWIM serializers
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.SWIMMessageSerializerId)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.SWIMAckSerializerId)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.Id.InternalSerializer.SWIMMessage)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.Id.InternalSerializer.SWIMAck)
+
+        // CRDT serializers
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.Message>(allocator: self.allocator), for: CRDT.Replicator.Message.self, underId: Serialization.Id.InternalSerializer.CRDTReplicatorMessage)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<AnyCvRDT>(allocator: self.allocator), for: AnyCvRDT.self, underId: Serialization.Id.InternalSerializer.CRDTAnyCvRDT)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<AnyDeltaCRDT>(allocator: self.allocator), for: AnyDeltaCRDT.self, underId: Serialization.Id.InternalSerializer.CRDTAnyDeltaCRDT)
+        self.registerDeltaCRDTSerializer(context, serializer: InternalProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: Serialization.Id.InternalSerializer.CRDTGCounter)
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -110,7 +105,7 @@ public struct Serialization {
     }
 
     /// For use only by Swift Distributed Actors itself and serializers for its own messages.
-    private mutating func registerSystemSerializer<T>(
+    internal mutating func registerSystemSerializer<T>(
         _ serializationContext: ActorSerializationContext,
         serializer: Serializer<T>,
         for type: T.Type,
@@ -147,7 +142,7 @@ public struct Serialization {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: // MARK: Internal workings
+    // MARK: Internal workings
 
     internal func serializerIdFor<M>(message: M) throws -> SerializerId {
         let meta: MetaType<M> = MetaType(M.self)

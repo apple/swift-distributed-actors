@@ -1,0 +1,69 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "ActorAddress.proto";
+import "CRDT/CRDT.proto";
+import "CRDT/CRDTAny.proto";
+
+// ===== CRDT.Replicator.Message =====
+
+message CRDTReplicatorMessage {
+    oneof value {
+        CRDTWrite write = 1;
+    }
+}
+
+// ===== CRDT.Replicator.RemoteCommand.write =====
+
+message CRDTWrite {
+    CRDTIdentity identity = 1;
+    ReplicatedData data = 2;
+    ActorAddress replyTo = 3;
+}
+
+message CRDTWriteResult {
+    enum Type {
+        SUCCESS = 0;
+        FAILED = 1;
+    }
+
+    Type type = 1;
+    CRDTWriteError error = 2;
+}
+
+message CRDTWriteError {
+    enum Type {
+        MISSING_CRDT_FOR_DELTA = 0;
+        INCORRECT_DELTA_TYPE = 1;
+        CANNOT_WRITE_DELTA_FOR_NON_DELTA_CRDT = 2;
+        INPUT_AND_STORED_DATA_TYPE_MISMATCH = 3;
+        UNSUPPORTED_CRDT = 4;
+    }
+
+    Type type = 1;
+}
+
+// ===== Common =====
+
+message ReplicatedData {
+    oneof payload {
+        AnyCvRDT cvrdt = 1;
+        AnyDeltaCRDT deltaCrdt = 2;
+    }
+}
