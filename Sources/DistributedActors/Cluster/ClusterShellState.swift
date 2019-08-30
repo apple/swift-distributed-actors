@@ -171,14 +171,13 @@ extension ClusterShellState {
     ///
     /// - Faults: when called in wrong state of an ongoing handshake
     /// - Returns: if present, the (now removed) handshake state that was aborted, hil otherwise.
-    mutating func abortOutgoingHandshake(with node: Node, mayNotHaveChannel: Bool = false) -> HandshakeStateMachine.State? {
+    mutating func abortOutgoingHandshake(with node: Node) -> HandshakeStateMachine.State? {
         guard let state = self._handshakes.removeValue(forKey: node) else {
             return nil
         }
 
         switch state {
         case .initiated(let initiated):
-            assert(mayNotHaveChannel || initiated.channel != nil, "Channel should always be present after the initial initialization, state was: \(state)")
             _ = initiated.channel?.close()
         case .wasOfferedHandshake:
             fatalError("abortOutgoingHandshake was called in a context where the handshake was not an outgoing one! Was: \(state)")

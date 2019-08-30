@@ -473,14 +473,13 @@ extension ClusterShell {
             switch initiated.onHandshakeError(error) {
             case .scheduleRetryHandshake(let delay):
                 state.log.info("Schedule handshake retry to: [\(initiated.remoteNode)] delay: [\(delay)]")
-                _ = state.abortOutgoingHandshake(with: remoteNode, mayNotHaveChannel: true)
                 context.timers.startSingle(
                     key: TimerKey("handshake-timer-\(remoteNode)"),
                     message: .command(.retryHandshake(initiated)),
                     delay: delay
                 )
             case .giveUpOnHandshake:
-                if let hsmState = state.abortOutgoingHandshake(with: remoteNode, mayNotHaveChannel: true) {
+                if let hsmState = state.abortOutgoingHandshake(with: remoteNode) {
                     self.notifyHandshakeFailure(state: hsmState, node: remoteNode, error: error)
                 }
             }
