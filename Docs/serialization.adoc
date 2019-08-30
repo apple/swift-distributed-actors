@@ -94,9 +94,9 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_
 The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
 configure various parts of the actor system.
 
-NOTE: While it would be nice to avoid this registration step, it does not seem possible (or I'm blind :-)), as `Codable`
-infrastructure requires the type to be present for invoking the decoding phase. In order to be able to get the type
-back when deserializing an incoming message, this mapping is used. +
+NOTE: While it would be nice to avoid this registration step, it does not seem possible, as `Codable` infrastructure
+      requires the type to be present for invoking the decoding phase. In order to be able to get the type back when
+      deserializing an incoming message, this mapping is used. +
       +
       #note: On the other hand, automatic ID assigning is inherently not entirely safe nor a good idea for building a production ready system,
 so in some ways, it is good that we teach immediately about this need. Needs more docs though#
@@ -165,9 +165,9 @@ include::{dir_sact_doc_tests}/SerializationDocExamples.swift[tag=prepare_system_
 The `settings` argument passed to the configuration closure is an api:ActorSystemSettings[struct], which can be used to
 configure various parts of the actor system.
 
-NOTE: While it would be nice to avoid this registration step, it does not seem possible (or I'm blind :-)), as `Codable`
-      infrastructure requires the type to be present for invoking the decoding phase. In order to be able to get the type
-      back when deserializing an incoming message, this mapping is used. +
+NOTE: While it would be nice to avoid this registration step, it does not seem possible, as `Codable` infrastructure
+      requires the type to be present for invoking the decoding phase. In order to be able to get the type back when
+      deserializing an incoming message, this mapping is used. +
       +
       #note: On the other hand, automatic ID assigning is inherently not entirely safe nor a good idea for building a production ready system,
       so in some ways, it is good that we teach immediately about this need. Needs more docs though#
