@@ -122,8 +122,8 @@ and/or network call concerns into the middle of our business logic.
 
 
 WARNING: Due to this permissive style of sending messages, it technically is possible to accidentally send a message
-intended only for local messaging to a remote actor, in which case such send would fail and a serialization
-error would be logged. +
+         intended only for local messaging to a remote actor, in which case such send would fail and a serialization
+         error would be logged. +
          +
          It is possible to configure `Serialization` to always serialize all messages, so you would catch such mistakes even when testing locally. <<verify-serialization>>
 
