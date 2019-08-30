@@ -12,7 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import class NIO.EventLoopFuture
+import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Core CRDT protocols
@@ -144,11 +145,17 @@ public enum CRDT {
 
     /// Wrap around a `CvRDT` instance to associate it with an owning actor.
     public class ActorOwned<DataType: CvRDT> {
-        // Must be an implicitly unwrapped optional variable property because it requires (`ActorOwned`) `self`
-        // during initialization, and `ActorOwned`'s initializer has a dependency on `AnyOwnerCell`.
-        internal var owner: AnyOwnerCell<DataType>!
         let id: CRDT.Identity
-        internal var data: DataType
+        var data: DataType
+
+        var _owner: ActorOwnedContext<DataType>?
+        var owner: ActorOwnedContext<DataType> {
+            guard let o = self._owner else {
+                fatalError("Attempted to unwrap \(self)._owner, which was nil! This should never happen.")
+            }
+            return o
+        }
+
         public internal(set) var status: Status = .active
 
         private let delegate: ActorOwnedDelegate<DataType>
@@ -174,74 +181,188 @@ public enum CRDT {
                     self.delegate.onDelete(actorOwned: self)
                 }
             }
+
             let replicator = ownerContext.system.replicator
-            self.owner = AnyOwnerCell(subReceive: subReceive, replicator: replicator)
+
+            func continueOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, ExecutionError>) -> Void) {
+                ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
+                    continuation(res)
+                    return .same
+                }
+            }
+            self._owner = ActorOwnedContext(ownerContext,
+                                            subReceive: subReceive,
+                                            replicator: replicator,
+                                            onWriteComplete: continueOnActorContext,
+                                            onReadComplete: continueOnActorContext,
+                                            onDeleteComplete: continueOnActorContext)
 
             // Register as owner of the CRDT instance with local replicator
             replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
         }
 
-        // TODO: handle error instead of throw? convert replicator error to something else?
-
-        internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
             let data = self.data
-            let askResponse = owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
+
+            let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
                 .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, replyTo: replyTo))
             }
-            // TODO: concurrency here is not safe (https://github.com/apple/swift-distributed-actors/pull/870#discussion_r2003206)
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
-                switch response {
-                case .success:
+
+            return self.owner.onWriteComplete(writeResponse) {
+                switch $0 {
+                case .success(.success):
                     self.delegate.onWriteSuccess(actorOwned: self)
                     return data
-                case .failed(let error):
-                    throw error
+                case .success(.failed(let error)):
+                    self.owner.log.warning("Failed to update \(self.id): \(error)",
+                                           metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
+                    throw error // TODO: configure if it should or not crash the actor?
+                case .failure(let error):
+                    self.owner.log.warning("Failed to update \(self.id): \(error)",
+                                           metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
+                    throw error // TODO: configure if it should or not crash the actor?
                 }
-            })
+            }
         }
 
-        public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<DataType> {
+        public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
-            let askResponse = owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
+
+            let readResponse = self.owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
                 .localCommand(.read(id, consistency: consistency, replyTo: replyTo))
             }
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> DataType in
-                switch response {
-                case .success(let data):
+
+            // FIXME: inspect what happens to owning actor when we throw in here
+            return self.owner.onReadComplete(readResponse) {
+                switch $0 {
+                case .success(.success(let data)):
                     guard let data = data as? DataType else {
-                        throw Error.replicatedDataDoesNotMatchExpectedType
+                        throw Error.replicatedDataDoesNotMatchExpectedType // TODO: more info
                     }
                     self.data = data
                     return data
-                case .failed(let error):
-                    throw error
+                case .success(.failed(let readError)):
+                    self.owner.log.warning("Failed to read(atConsistency: \(consistency), timeout: \(timeout.prettyDescription)), id: \(self.id): \(readError)",
+                                           metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
+                    throw readError // TODO: configure if it should or not crash the actor?
+                case .failure(let executionError):
+                    self.owner.log.warning("Failed to read \(self.id): \(executionError)",
+                                           metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
+                    throw executionError // TODO: configure if it should or not crash the actor?
                 }
-            })
+            }
         }
 
-        public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> Result<Void> {
+        public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<Void> {
             let id = self.id
-            let askResponse = owner.replicator.ask(for: DeleteResult.self, timeout: timeout) { replyTo in
+            let deleteResponse = self.owner.replicator.ask(for: DeleteResult.self, timeout: timeout) { replyTo in
                 .localCommand(.delete(id, consistency: consistency, replyTo: replyTo))
             }
-            return Result(askResponse.nioFuture.flatMapThrowing { (response) throws -> Void in
-                switch response {
+
+            return self.owner.onDeleteComplete(deleteResponse) {
+                switch $0 {
                 case .success:
                     self.status = .deleted
-                    return ()
-                case .failed(let error):
-                    throw error
+                case .failure(let error):
+                    self.owner.log.warning("Failed to delete \(self): \(error)",
+                                           metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
+                    throw error // TODO: configure if it should or not crash the actor?
                 }
-            })
+            }
         }
 
-        internal struct AnyOwnerCell<DataType: CvRDT> {
+        internal struct ActorOwnedContext<DataType: CvRDT> {
+            let log: Logger
+            let eventLoopGroup: MultiThreadedEventLoopGroup
+
             let subReceive: ActorRef<CRDT.Replication.DataOwnerMessage>
             let replicator: ActorRef<CRDT.Replicator.Message>
+
+            // TODO: maybe possible to express as one closure?
+            private let _onWriteComplete: (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void
+            private let _onReadComplete: (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void
+            private let _onDeleteComplete: (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) -> Void) -> Void
+
+            init<M>(_ ownerContext: ActorContext<M>,
+                    subReceive: ActorRef<Replication.DataOwnerMessage>,
+                    replicator: ActorRef<Replicator.Message>,
+                    onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void,
+                    onReadComplete: @escaping (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void,
+                    onDeleteComplete: @escaping (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) -> Void) -> Void) {
+                // not storing ownerContext on purpose; it always is a bit dangerous to store "someone's" context, for retain cycles and potential concurrency issues
+                self.log = ownerContext.log
+                self.eventLoopGroup = ownerContext.system.eventLoopGroup
+
+                self.subReceive = subReceive
+                self.replicator = replicator
+                self._onWriteComplete = onWriteComplete
+                self._onReadComplete = onReadComplete
+                self._onDeleteComplete = onDeleteComplete
+            }
+
+            // Implementation note:
+            // the dance with the stored `_on*Complete` and invoking through here is necessary to safely:
+            // - keep type information of the results
+            // - protect from concurrently writing to self;
+            //
+            // This is achieved by the `_on*Complete` functions being implemented by passing through the actor context, see: `continueOnActorContext`.
+            // That guarantees we are "in the actor" when the callbacks run, which allows us to run the onComplete callbacks which DO modify the ActorOwned state
+            // e.g. changing the `data` to the latest data after a write, or changing the owned status to deleted etc.
+            //
+            // We potentially could simplify these a bit; though the style of API here is not that typical so we choose not to:
+            // we not only need to perform the callback on actor context, we also want to return a `OperationResult`, that users may await on if they wanted to.
+            // That `OperationResult` must fire _after_ we applied the callback, and it should fire with the updated state; thus the promise dance we do below here.
+
+            func onWriteComplete(_ response: AskResponse<Replicator.LocalCommand.WriteResult>,
+                                 _ onComplete: @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) throws -> DataType) -> OperationResult<DataType> {
+                let loop = self.eventLoopGroup.next()
+                let promise = loop.makePromise(of: DataType.self)
+                self._onWriteComplete(response) { result in
+                    do {
+                        let data = try onComplete(result)
+                        promise.succeed(data) // TODO: promise.completeWith(Result) once exists?
+                    } catch {
+                        promise.fail(error)
+                    }
+                }
+                return OperationResult(promise.futureResult)
+            }
+
+            func onReadComplete(_ response: AskResponse<Replicator.LocalCommand.ReadResult>,
+                                _ onComplete: @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) throws -> DataType) -> OperationResult<DataType> {
+                let loop = self.eventLoopGroup.next()
+                let promise = loop.makePromise(of: DataType.self)
+                self._onReadComplete(response) { result in
+                    // TODO: promise.completeWith(Result) once https://github.com/apple/swift-nio/pull/1124 lands
+                    do {
+                        let data = try onComplete(result)
+                        promise.succeed(data)
+                    } catch {
+                        promise.fail(error)
+                    }
+                }
+                return OperationResult(promise.futureResult)
+            }
+
+            func onDeleteComplete(_ response: AskResponse<Replicator.LocalCommand.DeleteResult>,
+                                  _ onComplete: @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) throws -> Void) -> OperationResult<Void> {
+                let loop = self.eventLoopGroup.next()
+                let promise = loop.makePromise(of: Void.self)
+                self._onDeleteComplete(response) { result in
+                    // TODO: promise.completeWith(Result) once https://github.com/apple/swift-nio/pull/1124 lands
+                    do {
+                        let void: Void = try onComplete(result)
+                        promise.succeed(void)
+                    } catch {
+                        promise.fail(error)
+                    }
+                }
+                return OperationResult(promise.futureResult.map { _ in () })
+            }
         }
 
-        public struct Result<DataType>: AsyncResult {
+        public struct OperationResult<DataType>: AsyncResult {
             let dataFuture: EventLoopFuture<DataType>
 
             init(_ dataFuture: EventLoopFuture<DataType>) {
@@ -252,8 +373,8 @@ public enum CRDT {
                 self.dataFuture.onComplete(callback)
             }
 
-            public func withTimeout(after timeout: TimeAmount) -> Result<DataType> {
-                return Result(self.dataFuture.withTimeout(after: timeout))
+            public func withTimeout(after timeout: TimeAmount) -> OperationResult<DataType> {
+                return OperationResult(self.dataFuture.withTimeout(after: timeout))
             }
         }
 
