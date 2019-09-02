@@ -171,7 +171,7 @@ public struct Serialization {
 
     internal func debugPrintSerializerTable(header: String = "") {
         var p = "\(header)\n"
-        for (key, id) in self.serializerIds {
+        for (key, id) in self.serializerIds.sorted(by: { $0.value < $1.value }) {
             p += "  Serializer (id:\(id)) key:\(key) = \(String(describing: self.serializers[id]))\n"
         }
         print(p)
