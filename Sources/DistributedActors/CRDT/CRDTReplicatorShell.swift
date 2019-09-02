@@ -19,7 +19,7 @@
 extension CRDT.Replicator {
     internal struct Shell {
         typealias Identity = CRDT.Identity
-        typealias ReplicatedData = CRDT.Replication.Data
+        typealias ReplicatedData = AnyStateBasedCRDT
         typealias OperationConsistency = CRDT.OperationConsistency
 
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage

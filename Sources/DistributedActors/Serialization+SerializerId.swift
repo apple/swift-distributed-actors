@@ -37,6 +37,7 @@ extension Serialization {
             internal static let CRDTAnyCvRDT: SerializerId = 12
             internal static let CRDTAnyDeltaCRDT: SerializerId = 13
             internal static let CRDTGCounter: SerializerId = 14
+            internal static let CRDTGCounterDelta: SerializerId = 15
         }
     }
 }

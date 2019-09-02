@@ -19,7 +19,21 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 import "CRDT/CRDT.proto";
-import "CRDT/CRDTAny.proto";
+
+// ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
+
+message CRDTEnvelope {
+    enum Type {
+        CRDT = 0;
+        DELTA = 1;
+    }
+
+    uint32 serializerId = 1;
+    Type type = 2;
+    bytes payload = 3;
+}
+
+// ==== CRDT Direct Replication ----------------------------------------------------------------------------------------
 
 // ===== CRDT.Replicator.Message =====
 
@@ -33,7 +47,7 @@ message CRDTReplicatorMessage {
 
 message CRDTWrite {
     CRDTIdentity identity = 1;
-    ReplicatedData data = 2;
+    CRDTEnvelope envelope = 2;
     ActorAddress replyTo = 3;
 }
 
@@ -57,13 +71,4 @@ message CRDTWriteError {
     }
 
     Type type = 1;
-}
-
-// ===== Common =====
-
-message ReplicatedData {
-    oneof payload {
-        AnyCvRDT cvrdt = 1;
-        AnyDeltaCRDT deltaCrdt = 2;
-    }
 }

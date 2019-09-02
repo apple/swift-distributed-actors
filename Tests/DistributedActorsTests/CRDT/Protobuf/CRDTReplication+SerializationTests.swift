@@ -35,26 +35,29 @@ final class CRDTReplicationSerializationTests: XCTestCase {
     typealias RemoteWriteResult = CRDT.Replicator.RemoteCommand.WriteResult
 
     func test_serializationOf_remoteCommand_write() throws {
-        let id = CRDT.Identity("gcounter-1")
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
-        g1.increment(by: 5)
+        try shouldNotThrow {
+            let id = CRDT.Identity("gcounter-1")
+            var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+            g1.increment(by: 5)
 
-        let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
-        let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
+            let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
+            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
 
-        let bytes = try system.serialization.serialize(message: write)
-        let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
+            let bytes = try system.serialization.serialize(message: write)
+            let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
-        guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
-            throw self.testKit.fail("Should be .write message")
+            guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
+                throw self.testKit.fail("Should be .write message")
+            }
+            guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
+                throw self.testKit.fail("Should be a GCounter")
+            }
+
+            dg1.value.shouldEqual(g1.value)
+            g1.delta.shouldNotBeNil()
+            dg1.delta.shouldNotBeNil()
+            deserializedId.shouldEqual(id)
+            deserializedReplyTo.shouldEqual(resultProbe.ref)
         }
-        guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
-            throw self.testKit.fail("Should be a GCounter")
-        }
-
-        dg1.value.shouldEqual(g1.value)
-        deserializedId.shouldEqual(id)
-
-        // TODO: assert deserializedReplyTo?
     }
 }

@@ -21,6 +21,8 @@ import "ActorAddress.proto";
 
 // TODO: consider making this file or part of it public since it contains proto types that can be used for custom CRDTs
 
+// ==== Common and Core CRDT parts -------------------------------------------------------------------------------------
+
 // ===== CRDT.Identity =====
 
 message CRDTIdentity {
@@ -31,13 +33,11 @@ message CRDTIdentity {
 
 message CRDTReplicaId {
     oneof value {
-        CRDTReplicaId_ActorAddress actorAddress = 1;
+        ActorAddress actorAddress = 1;
     }
 }
 
-message CRDTReplicaId_ActorAddress {
-    ActorAddress actorAddress = 1;
-}
+// ==== CRDT types -----------------------------------------------------------------------------------------------------
 
 // ===== CRDT.GCounter =====
 
@@ -54,4 +54,5 @@ message CRDTGCounter {
     CRDTReplicaId replicaId = 1;
     // Not a map because only integral or string type can be keys
     repeated ReplicaState state = 2;
+    Delta delta = 3;
 }

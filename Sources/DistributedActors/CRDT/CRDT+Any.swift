@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// Protocol adopted by any CRDT type, including their delta types
 internal protocol AnyStateBasedCRDT {
     var metaType: AnyMetaType { get }
     var underlying: StateBasedCRDT { get set }

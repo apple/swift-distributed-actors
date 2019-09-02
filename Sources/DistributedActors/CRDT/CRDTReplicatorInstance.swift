@@ -15,7 +15,7 @@
 extension CRDT.Replicator {
     internal final class Instance {
         typealias Identity = CRDT.Identity
-        typealias ReplicatedData = CRDT.Replication.Data
+        typealias ReplicatedData = AnyStateBasedCRDT
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage
 
         let settings: Settings

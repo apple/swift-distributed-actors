@@ -55,10 +55,10 @@ struct ProtoCRDTReplicaId {
         set { _uniqueStorage()._value = newValue }
     }
 
-    var actorAddress: ProtoCRDTReplicaId_ActorAddress {
+    var actorAddress: ProtoActorAddress {
         get {
             if case .actorAddress(let v)? = self._storage._value { return v }
-            return ProtoCRDTReplicaId_ActorAddress()
+            return ProtoActorAddress()
         }
         set { _uniqueStorage()._value = .actorAddress(newValue) }
     }
@@ -66,7 +66,7 @@ struct ProtoCRDTReplicaId {
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
     enum OneOf_Value: Equatable {
-        case actorAddress(ProtoCRDTReplicaId_ActorAddress)
+        case actorAddress(ProtoActorAddress)
 
         #if !swift(>=4.1)
         static func == (lhs: ProtoCRDTReplicaId.OneOf_Value, rhs: ProtoCRDTReplicaId.OneOf_Value) -> Bool {
@@ -76,28 +76,6 @@ struct ProtoCRDTReplicaId {
         }
         #endif
     }
-
-    init() {}
-
-    fileprivate var _storage = _StorageClass.defaultInstance
-}
-
-struct ProtoCRDTReplicaId_ActorAddress {
-    // SwiftProtobuf.Message conformance is added in an extension below. See the
-    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-    // methods supported on all messages.
-
-    var actorAddress: ProtoActorAddress {
-        get { return self._storage._actorAddress ?? ProtoActorAddress() }
-        set { _uniqueStorage()._actorAddress = newValue }
-    }
-
-    /// Returns true if `actorAddress` has been explicitly set.
-    var hasActorAddress: Bool { return _storage._actorAddress != nil }
-    /// Clears the value of `actorAddress`. Subsequent reads from it will return its default value.
-    mutating func clearActorAddress() { _uniqueStorage()._actorAddress = nil }
-
-    var unknownFields = SwiftProtobuf.UnknownStorage()
 
     init() {}
 
@@ -124,6 +102,16 @@ struct ProtoCRDTGCounter {
         get { return self._storage._state }
         set { _uniqueStorage()._state = newValue }
     }
+
+    var delta: ProtoCRDTGCounter.Delta {
+        get { return self._storage._delta ?? ProtoCRDTGCounter.Delta() }
+        set { _uniqueStorage()._delta = newValue }
+    }
+
+    /// Returns true if `delta` has been explicitly set.
+    var hasDelta: Bool { return _storage._delta != nil }
+    /// Clears the value of `delta`. Subsequent reads from it will return its default value.
+    mutating func clearDelta() { _uniqueStorage()._delta = nil }
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -233,7 +221,7 @@ extension ProtoCRDTReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
             while let fieldNumber = try decoder.nextFieldNumber() {
                 switch fieldNumber {
                 case 1:
-                    var v: ProtoCRDTReplicaId_ActorAddress?
+                    var v: ProtoActorAddress?
                     if let current = _storage._value {
                         try decoder.handleConflictingOneOf()
                         if case .actorAddress(let m) = current { v = m }
@@ -270,77 +258,18 @@ extension ProtoCRDTReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     }
 }
 
-extension ProtoCRDTReplicaId_ActorAddress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    static let protoMessageName: String = "CRDTReplicaId_ActorAddress"
-    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "actorAddress"),
-    ]
-
-    fileprivate class _StorageClass {
-        var _actorAddress: ProtoActorAddress?
-
-        static let defaultInstance = _StorageClass()
-
-        private init() {}
-
-        init(copying source: _StorageClass) {
-            self._actorAddress = source._actorAddress
-        }
-    }
-
-    fileprivate mutating func _uniqueStorage() -> _StorageClass {
-        if !isKnownUniquelyReferenced(&self._storage) {
-            self._storage = _StorageClass(copying: self._storage)
-        }
-        return self._storage
-    }
-
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        _ = self._uniqueStorage()
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            while let fieldNumber = try decoder.nextFieldNumber() {
-                switch fieldNumber {
-                case 1: try decoder.decodeSingularMessageField(value: &_storage._actorAddress)
-                default: break
-                }
-            }
-        }
-    }
-
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            if let v = _storage._actorAddress {
-                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-            }
-        }
-        try self.unknownFields.traverse(visitor: &visitor)
-    }
-
-    static func == (lhs: ProtoCRDTReplicaId_ActorAddress, rhs: ProtoCRDTReplicaId_ActorAddress) -> Bool {
-        if lhs._storage !== rhs._storage {
-            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-                let _storage = _args.0
-                let rhs_storage = _args.1
-                if _storage._actorAddress != rhs_storage._actorAddress { return false }
-                return true
-            }
-            if !storagesAreEqual { return false }
-        }
-        if lhs.unknownFields != rhs.unknownFields { return false }
-        return true
-    }
-}
-
 extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
     static let protoMessageName: String = "CRDTGCounter"
     static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "replicaId"),
         2: .same(proto: "state"),
+        3: .same(proto: "delta"),
     ]
 
     fileprivate class _StorageClass {
         var _replicaID: ProtoCRDTReplicaId?
         var _state: [ProtoCRDTGCounter.ReplicaState] = []
+        var _delta: ProtoCRDTGCounter.Delta?
 
         static let defaultInstance = _StorageClass()
 
@@ -349,6 +278,7 @@ extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         init(copying source: _StorageClass) {
             self._replicaID = source._replicaID
             self._state = source._state
+            self._delta = source._delta
         }
     }
 
@@ -366,6 +296,7 @@ extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
                 switch fieldNumber {
                 case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
                 case 2: try decoder.decodeRepeatedMessageField(value: &_storage._state)
+                case 3: try decoder.decodeSingularMessageField(value: &_storage._delta)
                 default: break
                 }
             }
@@ -380,6 +311,9 @@ extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
             if !_storage._state.isEmpty {
                 try visitor.visitRepeatedMessageField(value: _storage._state, fieldNumber: 2)
             }
+            if let v = _storage._delta {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+            }
         }
         try self.unknownFields.traverse(visitor: &visitor)
     }
@@ -391,6 +325,7 @@ extension ProtoCRDTGCounter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
                 let rhs_storage = _args.1
                 if _storage._replicaID != rhs_storage._replicaID { return false }
                 if _storage._state != rhs_storage._state { return false }
+                if _storage._delta != rhs_storage._delta { return false }
                 return true
             }
             if !storagesAreEqual { return false }
