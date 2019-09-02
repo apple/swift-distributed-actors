@@ -237,13 +237,15 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func shutdown() {
         self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        let receptacle = BlockingReceptacle<Void>()
-        self.cluster._shell.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
+        if self.settings.cluster.enabled {
+            let receptacle = BlockingReceptacle<Void>()
+            self.cluster._shell.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
+            receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
+        }
         self.userProvider.stopAll()
         self.systemProvider.stopAll()
         self.dispatcher.shutdown()
         try! self.eventLoopGroup.syncShutdownGracefully()
-        receptacle.wait(atMost: .milliseconds(100)) // FIXME: configure
         self.serialization = nil
         self._cluster = nil
         self._receptionist = self.deadLetters.adapted()
