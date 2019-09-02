@@ -39,9 +39,7 @@ extension CRDT.ReplicaId: InternalProtobufRepresentable {
         var proto = ProtoCRDTReplicaId()
         switch self {
         case .actorAddress(let actorAddress):
-            var aa = ProtoCRDTReplicaId_ActorAddress()
-            aa.actorAddress = actorAddress.toProto(context: context)
-            proto.actorAddress = aa
+            proto.actorAddress = actorAddress.toProto(context: context)
         }
         return proto
     }
@@ -52,11 +50,8 @@ extension CRDT.ReplicaId: InternalProtobufRepresentable {
         }
 
         switch value {
-        case .actorAddress(let aa):
-            guard aa.hasActorAddress else {
-                throw SerializationError.missingField("actorAddress", type: "CRDT.ReplicaId.actorAddress")
-            }
-            let actorAddress = try ActorAddress(fromProto: aa.actorAddress, context: context)
+        case .actorAddress(let address):
+            let actorAddress = try ActorAddress(fromProto: address, context: context)
             self = .actorAddress(actorAddress)
         }
     }
@@ -97,12 +92,21 @@ extension CRDT.GCounter: InternalProtobufRepresentable {
         var proto = ProtoCRDTGCounter()
         proto.replicaID = self.replicaId.toProto(context: context)
         proto.state = CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
+        if let delta = self.delta {
+            proto.delta = try delta.toProto(context: context)
+        }
         return proto
     }
 
     init(fromProto proto: ProtoCRDTGCounter, context: ActorSerializationContext) throws {
+        guard proto.hasReplicaID else {
+            throw SerializationError.missingField("replicaID", type: String(describing: CRDT.GCounter.self))
+        }
         self.init(replicaId: try CRDT.ReplicaId(fromProto: proto.replicaID, context: context))
         self.state = try CRDT.GCounter.State(fromProto: proto.state, context: context)
+        if proto.hasDelta {
+            self.delta = try .init(fromProto: proto.delta, context: context)
+        }
     }
 }
 
