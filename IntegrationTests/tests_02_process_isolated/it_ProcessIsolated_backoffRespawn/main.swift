@@ -47,18 +47,19 @@ isolated.run(on: .master) {
 try isolated.run(on: .servant) {
     isolated.system.log.info("ISOLATED RUNNING: \(CommandLine.arguments)")
 
+    // swiftformat:disable indent unusedArguments wrapArguments
     _ = try isolated.system.spawn("failed", of: String.self,
-                                  props: Props().supervision(strategy: .escalate),
-                                  .setup { context in
-                                      context.log.info("Spawned \(context.path) on servant node it will fail soon...")
-                                      context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
+        props: Props().supervision(strategy: .escalate),
+        .setup { context in
+            context.log.info("Spawned \(context.path) on servant node it will fail soon...")
+            context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
 
-                                      return .receiveMessage { _ in
-                                          context.log.error("Time to crash with: fatalError")
-                                          // crashes process since we do not isolate faults
-                                          fatalError("FATAL ERROR ON PURPOSE")
-                                      }
-    })
+            return .receiveMessage { message in
+                context.log.error("Time to crash with: fatalError")
+                // crashes process since we do not isolate faults
+                fatalError("FATAL ERROR ON PURPOSE")
+            }
+        })
 }
 
 // finally, once prepared, you have to invoke the following:

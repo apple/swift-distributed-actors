@@ -42,27 +42,28 @@ try isolated.run(on: .servant) {
 
     // TODO: assert command line arguments are the expected ones
 
+    // swiftformat:disable indent unusedArguments wrapArguments
     _ = try isolated.system.spawn("failed", of: String.self,
-                                  props: Props().supervision(strategy: .escalate),
-                                  .setup { context in
-                                      context.log.info("Spawned \(context.path) on servant node it will fail soon...")
-                                      context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
+        props: Props().supervision(strategy: .escalate),
+        .setup { context in
+            context.log.info("Spawned \(context.path) on servant node it will fail soon...")
+            context.timers.startSingle(key: "explode", message: "Boom", delay: .seconds(1))
 
-                                      return .receiveMessage { _ in
-                                          if CommandLine.arguments.contains("fatalError") {
-                                              context.log.error("Time to crash with: fatalError")
-                                              // crashes process since we do not isolate faults
-                                              fatalError("FATAL ERROR ON PURPOSE")
-                                          } else if CommandLine.arguments.contains("escalateError") {
-                                              context.log.error("Time to crash with: throwing an error, escalated to top level")
-                                              // since we .escalate and are a top-level actor, this will cause the process to die as well
-                                              throw OnPurposeBoom()
-                                          } else {
-                                              context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
-                                              fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
-                                          }
-                                      }
-    })
+            return .receiveMessage { message in
+                if CommandLine.arguments.contains("fatalError") {
+                    context.log.error("Time to crash with: fatalError")
+                    // crashes process since we do not isolate faults
+                    fatalError("FATAL ERROR ON PURPOSE")
+                } else if CommandLine.arguments.contains("escalateError") {
+                    context.log.error("Time to crash with: throwing an error, escalated to top level")
+                    // since we .escalate and are a top-level actor, this will cause the process to die as well
+                    throw OnPurposeBoom()
+                } else {
+                    context.log.error("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
+                    fatalError("MISSING FAILURE MODE ARGUMENT!!! Test is constructed not properly, or arguments were not passed properly. \(CommandLine.arguments)")
+                }
+            }
+        })
 }
 
 // finally, once prepared, you have to invoke the following:
