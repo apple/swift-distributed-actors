@@ -40,14 +40,12 @@ public struct Serialization {
 
     // MARK: Built-in serializers
 
-    @usableFromInline internal let systemMessageSerializer: SystemMessageSerializer
     @usableFromInline internal let stringSerializer: StringSerializer
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem, traversable: _ActorTreeTraversable) { // TODO: should take the top level actors
         let settings = systemSettings.serialization
 
         self.allocator = settings.allocator
-        self.systemMessageSerializer = SystemMessageSerializer(self.allocator)
         self.stringSerializer = StringSerializer(self.allocator)
 
         self.crdt = CRDTSerialization()
@@ -167,6 +165,10 @@ public struct Serialization {
         return self.serializerIds[metaType.asHashable()]
     }
 
+    internal func serializer(for id: SerializerId) -> AnySerializer? {
+        return self.serializers[id]
+    }
+
     internal func debugPrintSerializerTable(header: String = "") {
         var p = "\(header)\n"
         for (key, id) in self.serializerIds {
@@ -188,11 +190,8 @@ extension Serialization {
             traceLog_Serialization("Serialize(\(message)) as ENCODABLE")
             bytes = try serializeEncodableMessage(enc: enc, message: message)
 
-        case let sys as SystemMessage:
-            traceLog_Serialization("Serialize(\(message)) as SYSTEM MESSAGE")
-            bytes = try serializeSystemMessage(sys: sys, message: message)
-
         default:
+            traceLog_Serialization("Serialize(\(message)) as ...")
             guard let serializerId = self.serializerIdFor(type: M.self) else {
                 self.debugPrintSerializerTable()
                 throw SerializationError.noSerializerRegisteredFor(hint: String(reflecting: M.self))
@@ -202,6 +201,7 @@ extension Serialization {
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers) WANTED: \(serializerId)")
                 throw SerializationError.noSerializerRegisteredFor(hint: "\(M.self)")
             }
+            traceLog_Serialization("Serialize(\(message)) using \(serializer) for serializer id [\(serializerId)]")
             bytes = try serializer.unsafeAsSerializerOf(M.self).serialize(message: message)
         }
 
@@ -226,10 +226,6 @@ extension Serialization {
     }
 
     public func deserialize<M>(_ type: M.Type, from bytes: ByteBuffer) throws -> M {
-        if type is SystemMessage.Type {
-            let systemMessage = try deserializeSystemMessage(bytes: bytes)
-            return systemMessage as! M // guaranteed that M is SystemMessage
-        } else {
             guard let serializerId = self.serializerIdFor(type: type) else {
                 traceLog_Serialization("FAILING; Available serializers: \(self.serializers)")
                 throw SerializationError.noSerializerKeyAvailableFor(hint: String(reflecting: type))
@@ -243,7 +239,6 @@ extension Serialization {
             let deserialized: M = try serializer.unsafeAsSerializerOf(type).deserialize(bytes: bytes)
             traceLog_Serialization("Deserialize to:[\(type)], bytes:\(bytes), key: \(serializerId)")
             return deserialized
-        }
     }
 
     public func deserialize(serializerId: SerializerId, from bytes: ByteBuffer) throws -> Any {
@@ -348,15 +343,6 @@ public struct ActorSerializationContext {
 // MARK: Serialize specializations
 
 extension Serialization {
-    private func serializeSystemMessage<M>(sys: SystemMessage, message: M) throws -> ByteBuffer {
-        traceLog_Serialization("Serialize SystemMessage: \(sys)")
-        guard let m = message as? SystemMessage else {
-            fatalError("Only system messages for now")
-        }
-
-        let serializer = self.systemMessageSerializer
-        return try serializer.serialize(message: m)
-    }
 
     private func serializeEncodableMessage<M>(enc: Encodable, message: M) throws -> ByteBuffer {
         let id = try self.serializerIdFor(message: message)
@@ -368,16 +354,6 @@ extension Serialization {
         let ser: Serializer<M> = serializer.unsafeAsSerializerOf(M.self)
         traceLog_Serialization("Serialize Encodable: \(enc), with serializer id: \(id), serializer [\(ser)]")
         return try ser.serialize(message: message)
-    }
-}
-
-// MARK: Deserialize specializations
-
-extension Serialization {
-    func deserializeSystemMessage(bytes: ByteBuffer) throws -> SystemMessage {
-        let serializer = self.systemMessageSerializer
-        let message = try serializer.deserialize(bytes: bytes)
-        return message
     }
 }
 
@@ -677,75 +653,8 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
     }
 }
 
-// MARK: System message serializer
-
-// TODO: needs to include origin address
-// TODO: can we pull it off as structs?
-@usableFromInline
-internal class SystemMessageSerializer: Serializer<SystemMessage> {
-    enum SysMsgTypeId: Int, Codable {
-        case unknownRepr = 0
-
-        case startRepr = 1
-        case watchRepr = 2
-        case unwatchRepr = 3
-
-        case terminatedRepr = 4
-        case tombstoneRepr = 5
-    }
-
-    private let allocate: ByteBufferAllocator
-    private var context: ActorSerializationContext!
-
-    init(_ allocator: ByteBufferAllocator) {
-        self.allocate = allocator
-    }
-
-    public override func serialize(message: SystemMessage) throws -> ByteBuffer {
-        // we do this switch since we want to avoid depending on the order of how the messages are defined in the enum
-        switch message {
-        case .start:
-            var buffer = self.allocate.buffer(capacity: 8)
-            let msgTypeId = SysMsgTypeId.startRepr.rawValue
-            buffer.writeInteger(msgTypeId)
-            return buffer
-
-        case .watch:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .unwatch:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .stop:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .terminated:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .childTerminated:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .nodeTerminated:
-            return fatalErrorBacktrace("not implemented yet") // and should not really be, this message must only be sent locally
-
-        case .tombstone:
-            fatalError("Not implemented yet") // FIXME: implement me
-
-        case .resume:
-            fatalError("Not implemented yet") // FIXME: implement me
-        }
-    }
-
-    public override func deserialize(bytes: ByteBuffer) throws -> SystemMessage {
-        pprint("deserialize to \(SystemMessage.self) from \(bytes)")
-
-        fatalError("CANT DO THIS YET")
-    }
-
-    override func setSerializationContext(_ context: ActorSerializationContext) {
-        self.context = context
-    }
-}
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: String Serializer
 
 @usableFromInline
 internal class StringSerializer: Serializer<String> {
