@@ -346,7 +346,7 @@ SActMailboxRunResult cmailbox_run(
                 set_status_suspended(mailbox);
                 print_debug_status(mailbox, "MARKED SUSPENDED");
                 message = NULL;
-            } else if (processed_activations >= run_length) {
+            } else if (message_count(processed_activations) >= run_length) {
                 message = NULL; // break out of the loop
             } else {
                 // dequeue another message, if there are no more messages left, message
