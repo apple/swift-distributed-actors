@@ -55,7 +55,7 @@ public struct ActorAddress: Equatable, Hashable {
     public var node: UniqueNode? {
         switch self._location {
         case .local:
-            return nil
+            return nil // TODO: we could make it such that we return the owning address :thinking:
         case .remote(let remote):
             return remote
         }

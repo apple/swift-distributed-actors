@@ -21,7 +21,9 @@ final class CRDTSerializationTests: XCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.serialization.registerInternalProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
+        }
         self.testKit = ActorTestKit(self.system)
     }
 
@@ -37,7 +39,7 @@ final class CRDTSerializationTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: GCounter
 
-    func test_serializationOf_gcounter_crdt() throws {
+    func test_serializationOf_GCounter_crdt() throws {
         try shouldNotThrow {
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
             g1.increment(by: 2)
@@ -52,7 +54,7 @@ final class CRDTSerializationTests: XCTestCase {
         }
     }
 
-    func test_serializationOf_gcounter_delta() throws {
+    func test_serializationOf_GCounter_delta() throws {
         try shouldNotThrow {
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
             g1.increment(by: 13)
@@ -61,6 +63,33 @@ final class CRDTSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(CRDT.GCounter.Delta.self, from: bytes)
 
             "\(deserialized)".shouldContain("[actor:sact://CRDTSerializationTests@localhost:7337/user/alpha: 13]")
+        }
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: ORSet
+
+    func test_serializationOf_ORSet() throws {
+        try shouldNotThrow {
+            var set: CRDT.ORSet<String> = CRDT.ORSet(replicaId: .actorAddress(self.ownerAlpha))
+            set.add("hello")
+            set.add("world")
+            set.remove("nein")
+
+            let bytes = try system.serialization.serialize(message: set)
+            let deserialized: CRDT.ORSet<String> = try system.serialization.deserialize(CRDT.ORSet<String>.self, from: bytes)
+
+            // pinfo("set          == \(set)")
+            // pinfo("~~~~~~~~~~~~~~~")
+            // pinfo("deserialized == \(deserialized)")
+
+            set.delta.shouldNotBeNil()
+            deserialized.delta.shouldNotBeNil()
+            deserialized.elements.shouldEqual(set.elements)
+            deserialized.delta!.elementByBirthDot.count.shouldEqual(set.delta!.elementByBirthDot.count)
+            "\(deserialized)".shouldContain("vv:[actor:sact://CRDTSerializationTests@localhost:7337/user/alpha: 2]")
+            "\(deserialized)".shouldContain("/user/alpha,1): \"hello\"")
+            "\(deserialized)".shouldContain("/user/alpha,2): \"world\"") // order in version vector kept right
         }
     }
 }

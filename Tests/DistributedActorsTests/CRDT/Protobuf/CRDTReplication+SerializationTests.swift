@@ -21,7 +21,11 @@ final class CRDTReplicationSerializationTests: XCTestCase {
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
+            // self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
+            // self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in AnyDeltaCRDT(set) }
+        }
         self.testKit = ActorTestKit(self.system)
     }
 
@@ -34,7 +38,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
 
     typealias RemoteWriteResult = CRDT.Replicator.RemoteCommand.WriteResult
 
-    func test_serializationOf_remoteCommand_write() throws {
+    func test_serializationOf_remoteCommand_write_gcounter() throws {
         try shouldNotThrow {
             let id = CRDT.Identity("gcounter-1")
             var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
@@ -56,6 +60,32 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             dg1.value.shouldEqual(g1.value)
             g1.delta.shouldNotBeNil()
             dg1.delta.shouldNotBeNil()
+            deserializedId.shouldEqual(id)
+            deserializedReplyTo.shouldEqual(resultProbe.ref)
+        }
+    }
+
+    func test_serializationOf_remoteCommand_write_ORSet() throws {
+        try shouldNotThrow {
+            let id = CRDT.Identity("set-1")
+            var set = CRDT.ORSet<String>(replicaId: .actorAddress(self.ownerAlpha))
+            set.add("hello")
+            set.add("world")
+
+            let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
+            let write: CRDT.Replicator.Message = .remoteCommand(.write(id, set.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
+
+            let bytes = try system.serialization.serialize(message: write)
+            let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
+
+            guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
+                throw self.testKit.fail("Should be .write message")
+            }
+            guard let deserializedSet = deserializedData.underlying as? CRDT.ORSet<String> else {
+                throw self.testKit.fail("Should be a ORSet<String>")
+            }
+
+            deserializedSet.elements.shouldEqual(set.elements)
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
         }

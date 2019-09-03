@@ -114,7 +114,7 @@ extension DeltaCRDT {
 ///
 /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
 public protocol NamedDeltaCRDT: DeltaCRDT {
-    var replicaId: CRDT.ReplicaId { get }
+    var replicaId: ReplicaId { get }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ public enum CRDT {
                 switch message {
                 case .updated(let data):
                     guard let data = data as? DataType else {
-                        throw Error.replicatedDataDoesNotMatchExpectedType
+                        throw Error.AnyStateBasedCRDTDoesNotMatchExpectedType
                     }
                     self.delegate.onUpdate(actorOwned: self, data: data)
                 case .deleted:
@@ -200,6 +200,8 @@ public enum CRDT {
             // Register as owner of the CRDT instance with local replicator
             replicator.tell(.localCommand(.register(ownerRef: subReceive, id: id, data: data.asAnyStateBasedCRDT, replyTo: nil)))
         }
+
+        // TODO: handle error instead of throw? convert replicator error to something else?
 
         internal func write(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
@@ -238,7 +240,7 @@ public enum CRDT {
                 switch $0 {
                 case .success(.success(let data)):
                     guard let data = data as? DataType else {
-                        throw Error.replicatedDataDoesNotMatchExpectedType // TODO: more info
+                        throw Error.AnyStateBasedCRDTDoesNotMatchExpectedType
                     }
                     self.data = data
                     return data
@@ -379,7 +381,7 @@ public enum CRDT {
         }
 
         public enum Error: Swift.Error {
-            case replicatedDataDoesNotMatchExpectedType
+            case AnyStateBasedCRDTDoesNotMatchExpectedType
         }
     }
 }
@@ -459,42 +461,5 @@ extension CRDT {
 extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: CRDT.ReplicaId
-
-extension CRDT {
-    // TODO: actor address only? node? (https://github.com/apple/swift-distributed-actors/pull/870#discussion_r2003227)
-    // The CRDT in ActorOwned should use actor address, but in Replicator we could potentially use node as an
-    // optimization to save space. A drawback though is we would lose information about who did the updates.
-    public enum ReplicaId: Hashable {
-        case actorAddress(ActorAddress)
-    }
-}
-
-extension CRDT.ReplicaId: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .actorAddress(let address):
-            return "actor:\(address)"
-        }
-    }
-}
-
-extension CRDT.ReplicaId: Comparable {
-    public static func < (lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
-        switch (lhs, rhs) {
-        case (.actorAddress(let l), .actorAddress(let r)):
-            return l < r
-        }
-    }
-
-    public static func == (lhs: CRDT.ReplicaId, rhs: CRDT.ReplicaId) -> Bool {
-        switch (lhs, rhs) {
-        case (.actorAddress(let l), .actorAddress(let r)):
-            return l == r
-        }
     }
 }

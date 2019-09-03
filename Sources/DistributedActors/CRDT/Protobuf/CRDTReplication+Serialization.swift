@@ -32,7 +32,11 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
             var write = ProtoCRDTWrite()
             write.identity = id.toProto(context: context)
             write.replyTo = replyTo.toProto(context: context)
-            write.envelope = try CRDTEnvelope(serializerId: context.system.serialization.serializerIdFor(metaType: crdtOrDelta.metaType)!, crdtOrDelta).toProto(context: context)
+
+            guard let serializerId = context.system.serialization.serializerIdFor(metaType: crdtOrDelta.metaType) else {
+                throw SerializationError.noSerializerRegisteredFor(hint: "\(crdtOrDelta.metaType)")
+            }
+            write.envelope = try CRDTEnvelope(serializerId: serializerId, crdtOrDelta).toProto(context: context)
             proto.write = write
 
         case .writeDelta(let id, let delta, let replyTo):

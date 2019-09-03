@@ -143,7 +143,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.delta.shouldNotBeNil()
         s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(1)
         s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1)
+        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
 
         // version 2
         s1.add(3)
@@ -151,8 +151,8 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.delta.shouldNotBeNil()
         s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.delta!.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
-        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1)
-        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3)
+        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
+        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
 
         // `remove` doesn't increment version
         s1.remove(1)
@@ -160,7 +160,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.delta.shouldNotBeNil()
         s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3)
+        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
 
         // version 3 - duplicate element, previous version(s) deleted
         s1.add(3)
@@ -169,7 +169,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(3)
         // Any existing dots for the element are removed before inserting, which means there is a single dot per element
         s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[Dot(s1.replicaId, 3)]!.shouldEqual(3)
+        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 3)]!.shouldEqual(3)
     }
 
     func test_ORSet_merge_shouldMutate() throws {
@@ -188,11 +188,11 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
         s1.state.elementByBirthDot.count.shouldEqual(5)
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
 
         s1.delta.shouldBeNil() // delta reset after `merge`
@@ -206,7 +206,7 @@ final class CRDTCoreTypeTests: XCTestCase {
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
         s1.contains(7).shouldBeTrue()
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
 
         s1.add(1)
         s1.add(3)
@@ -221,11 +221,11 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
         s1.state.elementByBirthDot.count.shouldEqual(4)
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
 
         s1.delta.shouldBeNil() // delta reset after `merge`
     }
@@ -249,11 +249,11 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
         s1.state.elementByBirthDot.count.shouldEqual(5)
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)]!.shouldEqual(3) // (B,1): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
 
         s1.delta.shouldBeNil() // delta reset after `mergeDelta`
@@ -267,7 +267,7 @@ final class CRDTCoreTypeTests: XCTestCase {
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
         s1.contains(7).shouldBeTrue()
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)]!.shouldEqual(7) // (B,1): 7
 
         s1.add(1)
         s1.add(3)
@@ -285,11 +285,11 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.versionContext.vv[s1.replicaId].shouldEqual(2)
         s1.state.versionContext.vv[s2.replicaId].shouldEqual(3)
         s1.state.elementByBirthDot.count.shouldEqual(4)
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
-        s1.state.elementByBirthDot[Dot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
-        s1.state.elementByBirthDot[Dot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1) // (A,1): 1
+        s1.state.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3) // (A,2): 3
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
+        s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
 
         s1.delta.shouldBeNil() // delta reset after `mergeDelta`
     }

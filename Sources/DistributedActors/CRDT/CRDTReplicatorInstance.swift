@@ -15,13 +15,12 @@
 extension CRDT.Replicator {
     internal final class Instance {
         typealias Identity = CRDT.Identity
-        typealias ReplicatedData = AnyStateBasedCRDT
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage
 
         let settings: Settings
 
         // CRDT store
-        private var dataStore: [Identity: ReplicatedData] = [:]
+        private var dataStore: [Identity: AnyStateBasedCRDT] = [:]
         // Tombstones for deleted CRDTs
         // TODO: tombstone should have TTL
         private var tombstones: Set<Identity> = []
@@ -57,7 +56,7 @@ extension CRDT.Replicator {
 
         enum WriteDirective {
             // Return the updated full CRDT
-            case applied(_ updatedData: ReplicatedData)
+            case applied(_ updatedData: AnyStateBasedCRDT)
 
             case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
             case unsupportedCRDT
@@ -65,7 +64,7 @@ extension CRDT.Replicator {
 
         enum WriteDeltaDirective {
             // Return the updated full CRDT
-            case applied(_ updatedData: ReplicatedData)
+            case applied(_ updatedData: AnyStateBasedCRDT)
 
             case missingCRDTForDelta
             case incorrectDeltaType(expected: AnyMetaType)
@@ -79,7 +78,7 @@ extension CRDT.Replicator {
         /// - Parameter data: The full CRDT to write.
         /// - Parameter deltaMerge: True if merge can be done with the delta only; false if full state merge is required.
         /// - Returns: `WriteDirective` indicating if the write has succeeded or failed.
-        func write(_ id: Identity, _ data: ReplicatedData, deltaMerge: Bool = true) -> WriteDirective {
+        func write(_ id: Identity, _ data: AnyStateBasedCRDT, deltaMerge: Bool = true) -> WriteDirective {
             switch self.dataStore[id] {
             case .none: // New CRDT; just add to store
                 var data = data
@@ -135,7 +134,7 @@ extension CRDT.Replicator {
         /// - Parameter id: Identity of the CRDT.
         /// - Parameter delta: The delta of the CRDT.
         /// - Returns: `WriteDeltaDirective` indicating if the write has succeeded or failed.
-        func writeDelta(_ id: Identity, _ delta: ReplicatedData) -> WriteDeltaDirective {
+        func writeDelta(_ id: Identity, _ delta: AnyStateBasedCRDT) -> WriteDeltaDirective {
             switch self.dataStore[id] {
             case .none:
                 // Cannot do anything if delta (i.e., partial state) is sent and full CRDT is unknown.
@@ -163,7 +162,7 @@ extension CRDT.Replicator {
         // MARK: Read CRDT
 
         enum ReadDirective {
-            case data(ReplicatedData)
+            case data(AnyStateBasedCRDT)
 
             case notFound
         }

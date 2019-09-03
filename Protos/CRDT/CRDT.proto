@@ -17,9 +17,7 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-import "ActorAddress.proto";
-
-// TODO: consider making this file or part of it public since it contains proto types that can be used for custom CRDTs
+import "Clocks/VersionVector.proto";
 
 // ==== Common and Core CRDT parts -------------------------------------------------------------------------------------
 
@@ -29,12 +27,23 @@ message CRDTIdentity {
     string id = 1;
 }
 
-// ===== CRDT.ReplicaId =====
+// ===== Versioned Container =====
 
-message CRDTReplicaId {
-    oneof value {
-        ActorAddress actorAddress = 1;
-    }
+message CRDTVersionedContainer {
+    VersionReplicaId replicaId = 1;
+    CRDTVersionContext versionContext = 2;
+    repeated VersionDottedElementEnvelope elementByBirthDot = 3;
+    CRDTVersionedContainerDelta delta = 4;
+}
+
+message CRDTVersionContext {
+    VersionVector versionVector = 1;
+    repeated VersionDot gaps = 2;
+}
+
+message CRDTVersionedContainerDelta {
+    CRDTVersionContext versionContext = 1;
+    repeated VersionDottedElementEnvelope elementByBirthDot = 2;
 }
 
 // ==== CRDT types -----------------------------------------------------------------------------------------------------
@@ -43,7 +52,7 @@ message CRDTReplicaId {
 
 message CRDTGCounter {
     message ReplicaState {
-        CRDTReplicaId replicaId = 1;
+        VersionReplicaId replicaId = 1;
         uint64 count = 2;
     }
 
@@ -51,8 +60,15 @@ message CRDTGCounter {
         repeated ReplicaState state = 1;
     }
 
-    CRDTReplicaId replicaId = 1;
+    VersionReplicaId replicaId = 1;
     // Not a map because only integral or string type can be keys
     repeated ReplicaState state = 2;
     Delta delta = 3;
+}
+
+// ===== CRDT.ORSet =====
+
+message CRDTORSet {
+    VersionReplicaId replicaId = 1;
+    CRDTVersionedContainer state = 2;
 }
