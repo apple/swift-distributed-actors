@@ -181,13 +181,13 @@ class RemotingTLSTests: ClusteredNodesTestBase {
     """
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabled() throws {
-        let testCertificate1 = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
+        let testCertificate1 = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource1: NIOSSLCertificateSource = .certificate(testCertificate1)
-        let testKeySource1: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
+        let testKeySource1: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
-        let testCertificate2 = try NIOSSLCertificate(buffer: [Int8](testCert2.utf8CString), format: .pem)
+        let testCertificate2 = try NIOSSLCertificate(bytes: [UInt8](testCert2.utf8), format: .pem)
         let testCertificateSource2: NIOSSLCertificateSource = .certificate(testCertificate2)
-        let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey2.utf8CString), format: .pem))
+        let testKeySource2: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey2.utf8), format: .pem))
 
         let local = self.setUpNode("local") { settings in
             settings.cluster.tls = TLSConfiguration.forServer(
@@ -213,9 +213,9 @@ class RemotingTLSTests: ClusteredNodesTestBase {
     }
 
     func test_boundServer_shouldFailWithSSLEnabledOnHostnameVerificationWithIP() throws {
-        let testCertificate = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
+        let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
-        let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
+        let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
 
         let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
@@ -261,9 +261,9 @@ class RemotingTLSTests: ClusteredNodesTestBase {
     }
 
     func test_boundServer_shouldAcceptAssociateWithSSLEnabledOnNoHostnameVerificationWithIP() throws {
-        let testCertificate = try NIOSSLCertificate(buffer: [Int8](testCert1.utf8CString), format: .pem)
+        let testCertificate = try NIOSSLCertificate(bytes: [UInt8](testCert1.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
-        let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(buffer: [Int8](testKey1.utf8CString), format: .pem))
+        let testKey: NIOSSLPrivateKeySource = .privateKey(try NIOSSLPrivateKey(bytes: [UInt8](testKey1.utf8), format: .pem))
         let local = self.setUpNode("local") { settings in
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.tls = TLSConfiguration.forServer(
@@ -297,7 +297,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
             } catch {}
         }
         try self.passwordProtectedKey.write(to: tmpKeyFile, atomically: false, encoding: .utf8)
-        let testCertificate = try NIOSSLCertificate(buffer: [Int8](passordProtectedCert.utf8CString), format: .pem)
+        let testCertificate = try NIOSSLCertificate(bytes: [UInt8](passordProtectedCert.utf8), format: .pem)
         let testCertificateSource: NIOSSLCertificateSource = .certificate(testCertificate)
         let testKey: NIOSSLPrivateKeySource = .file(tmpKeyFile.path)
         let local = self.setUpNode("local") { settings in
