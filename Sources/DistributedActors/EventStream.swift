@@ -22,11 +22,19 @@ public struct EventStream<Event> {
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {
-        self.ref = try system.spawn(.unique(name), EventStreamShell.behavior(type))
+        try self.init(system, name: name, of: type, systemStream: false)
     }
 
     internal init(ref: ActorRef<EventStreamShell.Message<Event>>) {
         self.ref = ref
+    }
+
+    internal init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self, systemStream: Bool) throws {
+        if systemStream {
+            self.ref = try system._spawnSystemActor(.unique(name), EventStreamShell.behavior(type))
+        } else {
+            self.ref = try system.spawn(.unique(name), EventStreamShell.behavior(type))
+        }
     }
 
     public func subscribe(_ ref: ActorRef<Event>) {

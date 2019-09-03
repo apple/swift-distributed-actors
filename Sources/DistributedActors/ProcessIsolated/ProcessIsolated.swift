@@ -111,7 +111,7 @@ public class ProcessIsolated {
             let funKillServantProcess: (Int) -> Void = { (pid: Int) in
                 self.lock.withLockVoid {
                     if let servant = self._servants[pid] {
-                        self.system.cluster._shell.tell(.command(.downCommand(servant.node.node)))
+                        self.system.cluster.down(node: servant.node.node)
                         self._servants.removeValue(forKey: pid)
                     }
                 }

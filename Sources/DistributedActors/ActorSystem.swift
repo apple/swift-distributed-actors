@@ -91,7 +91,7 @@ public final class ActorSystem {
 
     // initialized during startup
     internal var _cluster: ClusterShell?
-    internal var _clusterEvents: EventStream<ClusterEvent>?
+    internal var _clusterControl: ClusterControl?
     internal var _nodeDeathWatcher: NodeDeathWatcherShell.Ref?
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -201,9 +201,9 @@ public final class ActorSystem {
         do {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
-                let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents")
-                self._clusterEvents = clusterEvents
-                _ = try cluster.start(system: self, eventStream: self.clusterEvents) // only spawns when cluster is initialized
+                let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
+                self._clusterControl = ClusterControl(settings.cluster, shell: cluster, eventStream: clusterEvents)
+                _ = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
 
                 // Node watcher MUST be started AFTER cluster and clusterEvents
                 self._nodeDeathWatcher = try self._spawnSystemActor(
@@ -237,9 +237,9 @@ public final class ActorSystem {
     ///            Do not call from within actors or you may deadlock shutting down the system.
     public func shutdown() {
         self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        if self.settings.cluster.enabled {
+        if let cluster = self._cluster {
             let receptacle = BlockingReceptacle<Void>()
-            self.cluster._shell.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
+            cluster.ref.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
             receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
         }
         self.userProvider.stopAll()
@@ -249,6 +249,18 @@ public final class ActorSystem {
         self.serialization = nil
         self._cluster = nil
         self._receptionist = self.deadLetters.adapted()
+    }
+
+    public var cluster: ClusterControl {
+        guard self.settings.cluster.enabled else {
+            fatalError("Tried to access cluster control, but clustering is not enabled.")
+        }
+
+        guard let clusterControl = self._clusterControl else {
+            fatalError("BUG! Tried to access clusterControl on \(self) and it was nil! Please report this on the issue tracker.")
+        }
+
+        return clusterControl
     }
 }
 

@@ -245,16 +245,16 @@ class RemotingTLSTests: ClusteredNodesTestBase {
 
         do {
             let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
-            local.cluster._shell.tell(.query(.associatedNodes(pSystem.ref)))
-            remote.cluster._shell.tell(.query(.associatedNodes(pSystem.ref)))
+            local.cluster._shell.ref.tell(.query(.associatedNodes(pSystem.ref)))
+            remote.cluster._shell.ref.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }
 
         do {
             let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
-            local.cluster._shell.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
-            remote.cluster._shell.tell(.query(.associatedNodes(pRemote.ref)))
+            local.cluster._shell.ref.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
+            remote.cluster._shell.ref.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()
             associatedNodes.shouldBeEmpty() // means we have not associated to _someone_
         }

@@ -101,7 +101,7 @@ extension ClusteredNodesTestBase {
 
         var infos: [String] = []
         for node in self._nodes {
-            node.cluster._shell.tell(.query(.currentMembership(p.ref)))
+            node.cluster._shell.ref.tell(.query(.currentMembership(p.ref)))
             let membership = try! p.expectMessage()
             infos.append(membership.prettyDescription(label: "\(node.cluster.node)"))
         }
@@ -169,7 +169,7 @@ extension ClusteredNodesTestBase {
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
-            system.cluster._shell.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
+            system.cluster._shell.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 
             if verbose {
@@ -208,7 +208,7 @@ extension ClusteredNodesTestBase {
         let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
-            system.cluster._shell.tell(.query(.associatedNodes(probe.ref)))
+            system.cluster._shell.ref.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage() // TODO: use interval here
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
@@ -228,7 +228,7 @@ extension ClusteredNodesTestBase {
     func assertMemberStatus(_ testKit: ActorTestKit, on system: ActorSystem, member memberSystem: ActorSystem, is expectedStatus: MemberStatus,
                             file: StaticString = #file, line: UInt = #line) throws {
         let p = testKit.spawnTestProbe(expecting: Membership.self)
-        system.cluster._shell.tell(.query(.currentMembership(p.ref)))
+        system.cluster._shell.ref.tell(.query(.currentMembership(p.ref)))
 
         let membership = try p.expectMessage()
         guard let foundMember = membership.member(memberSystem.cluster.node) else {
