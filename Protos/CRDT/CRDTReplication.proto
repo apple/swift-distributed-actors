@@ -23,14 +23,16 @@ import "CRDT/CRDT.proto";
 // ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
 
 message CRDTEnvelope {
-    enum Type {
-        CRDT = 0;
-        DELTA = 1;
+    enum Boxed {
+        /// Box as `AnyCvRDT` when deserializing
+        ANY_CVRDT = 0;
+        /// Box as `AnyDeltaCRDT` when deserializing
+        ANY_DELTA_CRDT = 1;
     }
 
     uint32 serializerId = 1;
-    Type type = 2;
-    bytes payload = 3;
+    bytes payload = 2;
+    Boxed boxed = 3;
 }
 
 // ==== CRDT Direct Replication ----------------------------------------------------------------------------------------

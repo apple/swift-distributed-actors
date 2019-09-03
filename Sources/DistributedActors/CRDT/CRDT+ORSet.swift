@@ -29,7 +29,7 @@ extension CRDT {
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
     public struct ORSet<Element: Hashable>: NamedDeltaCRDT, ORSetOperations {
-        public typealias ORSetDelta = VersionedContainer<Element>.Delta
+        public typealias ORSetDelta = VersionedContainerDelta<Element>
         public typealias Delta = ORSetDelta
 
         public let replicaId: ReplicaId
@@ -104,7 +104,7 @@ extension CRDT {
                 // Birth dots of duplicate elements within a replica.
                 // e.g., suppose `elementByBirthDot` contains [(A,1): 3, (A,2): 5, (A,3): 3], then (A,1) would be added
                 // to this because it contains the same element (i.e., 3) as (A,3) and is older, so it can be deleted.
-                var birthDotsToDelete: Set<Dot<ReplicaId>> = []
+                var birthDotsToDelete: Set<VersionDot> = []
 
                 for birthDot in sortedBirthDots.dropFirst() {
                     // Replica changed - reset

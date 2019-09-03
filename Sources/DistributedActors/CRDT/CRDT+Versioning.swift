@@ -41,12 +41,12 @@ extension CRDT {
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
     public struct VersionContext: CvRDT {
         // Contiguous causal past
-        internal var vv: VersionVector<ReplicaId>
+        internal var vv: VersionVector
 
         // Discrete events ("gaps") that do not fit in `vv`
-        internal var gaps: Set<Dot<ReplicaId>>
+        internal var gaps: Set<VersionDot>
 
-        public init(vv: VersionVector<ReplicaId> = VersionVector(), gaps: Set<Dot<ReplicaId>> = []) {
+        public init(vv: VersionVector = VersionVector(), gaps: Set<VersionDot> = []) {
             self.vv = vv
             self.gaps = gaps
         }
@@ -54,7 +54,7 @@ extension CRDT {
         /// Add dot to this `VersionContext`.
         ///
         /// - Parameter dot: The `Dot` to add.
-        mutating func add(_ dot: Dot<ReplicaId>) {
+        mutating func add(_ dot: VersionDot) {
             self.gaps.insert(dot)
         }
 
@@ -89,7 +89,7 @@ extension CRDT {
         ///
         /// Dots that are NOT contained in `VersionContext` are important because they are likely changes that have not
         /// been processed yet.
-        public func contains(_ dot: Dot<ReplicaId>) -> Bool {
+        public func contains(_ dot: VersionDot) -> Bool {
             return self.vv.contains(dot.replicaId, dot.version) || self.gaps.contains(dot)
         }
     }
@@ -114,7 +114,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [Optimizing state-based CRDTs (part 2)](https://bartoszsypytkowski.com/optimizing-state-based-crdts-part-2/)
     public struct VersionedContainer<Element: Hashable>: NamedDeltaCRDT {
-        public typealias Delta = VersionedContainerDelta
+        public typealias Delta = VersionedContainerDelta<Element>
 
         public let replicaId: ReplicaId
 
@@ -124,7 +124,8 @@ extension CRDT {
         // Birth dots and their associated elements. This dictionary contains active elements only (i.e., not removed).
         // Keys are birth dots because they are globally unique and an element may have multiple birth dots if added
         // repeatedly. Using elements as keys instead might lead to lost dots and consequently broken causal history.
-        internal var elementByBirthDot: [Dot<ReplicaId>: Element]
+        typealias VersionDottedElements = [VersionDot: Element]
+        internal var elementByBirthDot: VersionDottedElements
 
         public var delta: Delta?
 
@@ -140,7 +141,7 @@ extension CRDT {
             return self.elementByBirthDot.isEmpty
         }
 
-        public init(replicaId: ReplicaId, versionContext: VersionContext = VersionContext(), elementByBirthDot: [Dot<ReplicaId>: Element] = [:]) {
+        public init(replicaId: ReplicaId, versionContext: VersionContext = VersionContext(), elementByBirthDot: [VersionDot: Element] = [:]) {
             self.replicaId = replicaId
             self.versionContext = versionContext
             self.elementByBirthDot = elementByBirthDot
@@ -155,7 +156,7 @@ extension CRDT {
 
             // Increment version vector and create a birth dot with the new version
             let nextVersion = self.versionContext.vv.increment(at: self.replicaId)
-            let birthDot = Dot(self.replicaId, nextVersion)
+            let birthDot = VersionDot(self.replicaId, nextVersion)
             // An element may have multiple birth dots if added multiple times
             self.elementByBirthDot[birthDot] = element
 
@@ -178,7 +179,7 @@ extension CRDT {
             self.remove(Set(birthDots))
         }
 
-        internal mutating func remove(_ birthDots: Set<Dot<ReplicaId>>) {
+        internal mutating func remove(_ birthDots: Set<VersionDot>) {
             // Prepare to update delta
             if self.delta == nil {
                 self.delta = Delta()
@@ -240,22 +241,22 @@ extension CRDT {
         public mutating func resetDelta() {
             self.delta = nil
         }
+    }
 
-        public struct VersionedContainerDelta: CvRDT {
-            // Version context of the delta, containing new versions/dots associated with updates captured in this delta.
-            internal var versionContext: VersionContext = VersionContext()
+    public struct VersionedContainerDelta<Element: Hashable>: CvRDT {
+        // Version context of the delta, containing new versions/dots associated with updates captured in this delta.
+        internal var versionContext: VersionContext = VersionContext()
 
-            // Birth dots and their associated elements. This dictionary contains active elements only (i.e., not removed).
-            internal var elementByBirthDot: [Dot<ReplicaId>: Element] = [:]
+        // Birth dots and their associated elements. This dictionary contains active elements only (i.e., not removed).
+        internal var elementByBirthDot: [VersionDot: Element] = [:]
 
-            init() {}
+        init() {}
 
-            public mutating func merge(other: VersionedContainerDelta) {
-                let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)
-                    .merging(other: VersionContextAndElements(other.versionContext, other.elementByBirthDot))
-                self.versionContext = merged.versionContext
-                self.elementByBirthDot = merged.elementByBirthDot
-            }
+        public mutating func merge(other: VersionedContainerDelta) {
+            let merged = VersionContextAndElements(self.versionContext, self.elementByBirthDot)
+                .merging(other: VersionContextAndElements(other.versionContext, other.elementByBirthDot))
+            self.versionContext = merged.versionContext
+            self.elementByBirthDot = merged.elementByBirthDot
         }
     }
 }
@@ -266,9 +267,9 @@ extension CRDT {
     /// to use `VersionedContainer` as the `Delta` type.
     internal struct VersionContextAndElements<Element: Hashable> {
         internal let versionContext: VersionContext
-        internal let elementByBirthDot: [Dot<CRDT.ReplicaId>: Element]
+        internal let elementByBirthDot: [VersionDot: Element]
 
-        init(_ versionContext: VersionContext, _ elementByBirthDot: [Dot<CRDT.ReplicaId>: Element]) {
+        init(_ versionContext: VersionContext, _ elementByBirthDot: [VersionDot: Element]) {
             self.versionContext = versionContext
             self.elementByBirthDot = elementByBirthDot
         }

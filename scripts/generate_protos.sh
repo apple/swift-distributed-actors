@@ -23,7 +23,12 @@ proto_path="$root_path/Protos"
 pushd $proto_path >> /dev/null
 
 declare -a public_protos
-public_protos=( -name 'ActorAddress.proto' )
+public_protos=(
+    -name 'ActorAddress.proto'
+    -or -name 'CRDT.proto'
+    -or -name 'CRDTReplication.proto'
+    -or -name 'VersionVector.proto'
+)
 
 # There are two visibility options: Public, Internal (default)
 # https://github.com/apple/swift-protobuf/blob/master/Documentation/PLUGIN.md#generation-option-visibility---visibility-of-generated-types

@@ -17,11 +17,11 @@ import DistributedActorsTestKit
 import XCTest
 
 final class VersionVectorTests: XCTestCase {
-    private typealias VV = VersionVector<String>
+    private typealias VV = VersionVector
 
-    private let replicaA = "A"
-    private let replicaB = "B"
-    private let replicaC = "C"
+    private let replicaA = ReplicaId.actorAddress(try! ActorPath._user.appending("A").makeLocalAddress(incarnation: .random()))
+    private let replicaB = ReplicaId.actorAddress(try! ActorPath._user.appending("B").makeLocalAddress(incarnation: .random()))
+    private let replicaC = ReplicaId.actorAddress(try! ActorPath._user.appending("C").makeLocalAddress(incarnation: .random()))
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: VersionVector tests
@@ -184,11 +184,11 @@ final class VersionVectorTests: XCTestCase {
     // MARK: Dot tests
 
     func test_Dot_sort_shouldBeByReplicaThenByVersion() throws {
-        let dot1 = Dot(replicaB, 2)
-        let dot2 = Dot(replicaA, 3)
-        let dot3 = Dot(replicaB, 1)
-        let dot4 = Dot(replicaC, 5)
-        let dots: Set<Dot> = [dot1, dot2, dot3, dot4]
+        let dot1 = VersionDot(replicaB, 2)
+        let dot2 = VersionDot(replicaA, 3)
+        let dot3 = VersionDot(replicaB, 1)
+        let dot4 = VersionDot(replicaC, 5)
+        let dots: Set<VersionDot> = [dot1, dot2, dot3, dot4]
 
         let sortedDots = dots.sorted()
         sortedDots.shouldEqual([dot2, dot3, dot1, dot4])

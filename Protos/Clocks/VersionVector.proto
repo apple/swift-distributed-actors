@@ -1,0 +1,50 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "ActorAddress.proto";
+
+message ReplicaVersion {
+    VersionReplicaId replicaId = 1;
+    uint32 version = 2;
+}
+
+message VersionVector {
+    // not a map since we cannot use `replicaId` as key
+    repeated ReplicaVersion state = 1;
+}
+
+message VersionDottedElementEnvelope {
+    VersionDot dot = 1;
+
+    // ~~ element ~~
+    uint32 serializerId = 2;
+    bytes payload = 3;
+}
+
+message VersionDot {
+    VersionReplicaId replicaId = 1;
+    uint64 version = 2;
+}
+
+message VersionReplicaId {
+    oneof value {
+        ActorAddress actorAddress = 1;
+    }
+}

@@ -18,9 +18,9 @@ import Logging
 
 extension CRDT {
     internal enum Replication {
-//        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `AnyDeltaCRDT`) because protocols `CvRDT` and
-//        // `DeltaCRDT` can be used as generic constraint only due to `Self` or associated type requirements.
-//        typealias Data = AnyStateBasedCRDT
+        // Replicator works with type-erased CRDTs (i.e., `AnyCvRDT`, `AnyDeltaCRDT`) because protocols `CvRDT` and
+        // `DeltaCRDT` can be used as generic constraint only due to `Self` or associated type requirements.
+        typealias Data = AnyStateBasedCRDT
 
         // Messages from replicator to CRDT instance owner
         internal enum DataOwnerMessage {
@@ -42,8 +42,6 @@ extension CRDT {
     internal enum Replicator {
         static let naming: ActorNaming = "replicator"
 
-        typealias ReplicatedData = AnyStateBasedCRDT
-
         enum Message {
             // The API for CRDT instance owner (e.g., actor) to call local replicator
             case localCommand(LocalCommand)
@@ -53,11 +51,11 @@ extension CRDT {
 
         enum LocalCommand: NoSerializationVerification {
             // Register owner for CRDT instance
-            case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<RegisterResult>?)
+            case register(ownerRef: ActorRef<CRDT.Replication.DataOwnerMessage>, id: Identity, data: AnyStateBasedCRDT, replyTo: ActorRef<RegisterResult>?)
 
             // Perform write to at least `consistency` members
             // `data` is expected to be the full CRDT. Do not send delta even if it is a delta-CRDT.
-            case write(_ id: Identity, _ data: ReplicatedData, consistency: OperationConsistency, replyTo: ActorRef<WriteResult>)
+            case write(_ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, replyTo: ActorRef<WriteResult>)
             // Perform read from at least `consistency` members
             case read(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<ReadResult>)
             // Perform delete to at least `consistency` members

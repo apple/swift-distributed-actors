@@ -31,7 +31,7 @@
 ///
 /// - SeeAlso: [Why Logical Clocks are Easy](https://queue.acm.org/detail.cfm?id=2917756)
 /// - SeeAlso: [Version Vectors are not Vector Clocks](https://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/)
-public struct VersionVector<ReplicaId: Hashable> {
+public struct VersionVector {
     public typealias ReplicaVersion = (replicaId: ReplicaId, version: Int)
 
     // Internal state is a dictionary of replicas and their corresponding version
@@ -161,13 +161,45 @@ extension VersionVector: CustomStringConvertible {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Dot
+// MARK: Replica ID
 
-/// A dot is a (replica, version) pair that represents a single, globally unique event.
+public enum ReplicaId: Hashable {
+    case actorAddress(ActorAddress)
+}
+
+extension ReplicaId: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .actorAddress(let address):
+            return "actor:\(address)"
+        }
+    }
+}
+
+extension ReplicaId: Comparable {
+    public static func < (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+        switch (lhs, rhs) {
+        case (.actorAddress(let l), .actorAddress(let r)):
+            return l < r
+        }
+    }
+
+    public static func == (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+        switch (lhs, rhs) {
+        case (.actorAddress(let l), .actorAddress(let r)):
+            return l == r
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: VersionDot
+
+/// A "dot" is a (replica, version) pair that represents a single, globally unique event.
 ///
-/// `Dot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Dot` needs
+/// `VersionDot` is in essence `VersionVector.ReplicaVersion` but since tuples cannot conform to protocols and `Version` needs
 /// to be `Hashable` we have to define a type.
-public struct Dot<ReplicaId> where ReplicaId: Hashable, ReplicaId: Comparable {
+public struct VersionDot {
     public let replicaId: ReplicaId
 
     public let version: Int
@@ -178,11 +210,11 @@ public struct Dot<ReplicaId> where ReplicaId: Hashable, ReplicaId: Comparable {
     }
 }
 
-extension Dot: Hashable {}
+extension VersionDot: Hashable {}
 
-extension Dot: Comparable {
+extension VersionDot: Comparable {
     /// Lexical, NOT causal ordering of two dots.
-    public static func < (lhs: Dot, rhs: Dot) -> Bool {
+    public static func < (lhs: VersionDot, rhs: VersionDot) -> Bool {
         if lhs.replicaId == rhs.replicaId {
             return lhs.version < rhs.version
         }
@@ -190,7 +222,7 @@ extension Dot: Comparable {
     }
 }
 
-extension Dot: CustomStringConvertible {
+extension VersionDot: CustomStringConvertible {
     public var description: String {
         return "dot:(\(self.replicaId),\(self.version))"
     }

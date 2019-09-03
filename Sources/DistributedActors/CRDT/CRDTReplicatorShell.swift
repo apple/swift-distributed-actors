@@ -19,7 +19,6 @@
 extension CRDT.Replicator {
     internal struct Shell {
         typealias Identity = CRDT.Identity
-        typealias ReplicatedData = AnyStateBasedCRDT
         typealias OperationConsistency = CRDT.OperationConsistency
 
         typealias OwnerMessage = CRDT.Replication.DataOwnerMessage
@@ -74,7 +73,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleLocalRegisterCommand(_ context: ActorContext<Message>, ownerRef: ActorRef<OwnerMessage>, id: Identity, data: ReplicatedData, replyTo: ActorRef<LocalRegisterResult>?) {
+        private func handleLocalRegisterCommand(_ context: ActorContext<Message>, ownerRef: ActorRef<OwnerMessage>, id: Identity, data: AnyStateBasedCRDT, replyTo: ActorRef<LocalRegisterResult>?) {
             // Register the owner first
             switch self.replicator.registerOwner(dataId: id, owner: ownerRef) {
             case .registered:
@@ -93,7 +92,7 @@ extension CRDT.Replicator {
             // owners or propagate change to the cluster (i.e., local only).
         }
 
-        private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData, consistency: OperationConsistency, replyTo: ActorRef<LocalWriteResult>) {
+        private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, replyTo: ActorRef<LocalWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: true) {
             case .applied(let updatedData):
                 // Propagate change to the cluster if needed
@@ -177,7 +176,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData, replyTo: ActorRef<RemoteWriteResult>) {
+        private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: false) {
             case .applied(let updatedData):
                 replyTo.tell(.success)
@@ -189,7 +188,7 @@ extension CRDT.Replicator {
             }
         }
 
-        private func handleRemoteWriteDeltaCommand(_ context: ActorContext<Message>, _ id: Identity, _ delta: ReplicatedData, replyTo: ActorRef<RemoteWriteResult>) {
+        private func handleRemoteWriteDeltaCommand(_ context: ActorContext<Message>, _ id: Identity, _ delta: AnyStateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.replicator.writeDelta(id, delta) {
             case .applied(let updatedData):
                 replyTo.tell(.success)
@@ -226,7 +225,7 @@ extension CRDT.Replicator {
         // ==== ------------------------------------------------------------------------------------------------------------
         // MARK: Notify owners
 
-        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: ReplicatedData) {
+        private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT) {
             if let owners = self.replicator.owners(for: id) {
                 let message: OwnerMessage = .updated(data.underlying)
                 for owner in owners {

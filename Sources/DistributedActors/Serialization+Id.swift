@@ -19,13 +19,19 @@ extension Serialization {
 
     enum Id {
         enum InternalSerializer {
-            // TODO: make a namespace called Id so people can put theirs here too
             internal static let SystemMessage: SerializerId = 1
             internal static let SystemMessageACK: SerializerId = 2
             internal static let SystemMessageNACK: SerializerId = 3
             internal static let SystemMessageEnvelope: SerializerId = 4
 
             internal static let String: SerializerId = 5
+            internal static let Int: SerializerId = 100
+            internal static let UInt: SerializerId = 101
+            internal static let Int32: SerializerId = 102
+            internal static let UInt32: SerializerId = 103
+            internal static let Int64: SerializerId = 104
+            internal static let UInt64: SerializerId = 105
+
             internal static let FullStateRequest: SerializerId = 6
             internal static let Replicate: SerializerId = 7
             internal static let FullState: SerializerId = 8

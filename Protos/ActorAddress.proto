@@ -17,8 +17,6 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-// TODO: how do we distribute public .proto such as this so that framework users can import it in their .proto?
-
 message ActorAddress {
     UniqueNode node        = 1; // TODO oneof { senderNode | recipientNode | node }
     ActorPath path         = 2;
