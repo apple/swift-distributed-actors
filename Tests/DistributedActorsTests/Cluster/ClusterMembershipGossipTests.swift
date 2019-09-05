@@ -39,10 +39,14 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         // third and second should join up via SWIM gossip discovery:
         try assertAssociated(first, withAtLeast: nodeToBeDowned)
 
+//        self.pinfoAllMemberships(testKit: testKit)
+
         first.cluster.down(node: nodeToBeDowned)
 
         // this information should reach the remote node via gossip
         try testKit.eventually(within: .seconds(3), interval: .milliseconds(150)) {
+//            self.pinfoAllMemberships(testKit: testKit)
+
             try self.assertMemberStatus(testKit, on: third, member: third, is: .down)
 
             try self.assertMemberStatus(testKit, on: first, member: third, is: .down)

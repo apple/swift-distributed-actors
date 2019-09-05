@@ -629,6 +629,7 @@ extension ClusterShell {
         case .associated(let associated):
             self._swimRef.tell(.local(.confirmDead(associated.remoteNode)))
             state.log.info("Marked node [\(associated.remoteNode)] as: DOWN")
+            // STONITH - Shoot The Other Node In The Head
             // case tombstone ???
         }
 

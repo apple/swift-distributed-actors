@@ -278,6 +278,7 @@ internal struct SWIMShell {
     // TODO: test in isolation
     func handleConfirmDead(_ context: ActorContext<SWIM.Message>, deadNode node: UniqueNode) {
         if let member = self.swim.member(for: node) {
+            context.log.info("Confirming .dead member [\(member)]")
             // It is important to not infinitely loop cluster.down + confirmDead messages;
             // See: `.confirmDead` for more rationale
             if member.isDead {
@@ -312,6 +313,10 @@ internal struct SWIMShell {
                 // TODO: make sure a fatal error in SWIM.Shell causes a system shutdown?
                 fatalError("Marking [\(member)] as DEAD failed! This should never happen, dead is the terminal status. SWIM instance: \(self.swim)")
             }
+        } else {
+            context.log.warning("Attempted to .confirmDead(\(node)), yet no such member known to \(self)!") // TODO: would want to see if this happens when we fail these tests
+            // even if not known, we invent such node and store it as dead
+            // self.swim.addMember(context.system._resolve(context: .init(address: SWIMShell.address(on: node), system: context.system)), status: .dead)
         }
     }
 
