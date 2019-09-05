@@ -124,7 +124,7 @@ private func supervisorBehavior() -> Behavior<PingPongCommand> {
         switch message {
         case .startPingPong(let numMessagesPerActorPair, let numActors, let throughput, _, let replyTo):
             let numPairs = numActors / 2
-            let totalNumMessages = numPairs * numMessagesPerActorPair / 2
+            let totalNumMessages = numPairs * numMessagesPerActorPair
 
             let latch = CountDownLatch(from: numActors)
 
