@@ -254,7 +254,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 
 internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     private let target: ActorRef<OwnerMessage>
-    private let closure: (Message) throws -> Void
+    private let identifier: AnyHashable
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = Mutex()
@@ -265,10 +265,10 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
 
     let deadLetters: ActorRef<DeadLetter>
 
-    init(_ ref: ActorRef<OwnerMessage>, address: ActorAddress, closure: @escaping (Message) throws -> Void) {
+    init(_ type: Message.Type, owner ref: ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnyHashable) {
         self.target = ref
         self.adapterAddress = address
-        self.closure = closure
+        self.identifier = identifier
         self.watchers = []
 
         // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
@@ -299,9 +299,7 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
 
     @usableFromInline
     func _sendUserMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-        self.target._unsafeUnwrapCell.sendClosure(file: file, line: line) { [closure = self.closure] in
-            try closure(message)
-        }
+        self.target._unsafeUnwrapCell.sendSubMessage(message, identifier: self.identifier, subReceiveAddress: self.adapterAddress)
     }
 
     @usableFromInline

@@ -367,6 +367,20 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
+    func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> SActActorRunResult {
+        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, subMessage: subMessage)
+
+        traceLog_Cell("Applied subMessage, becoming: \(next)")
+
+        try self.becomeNext(behavior: next)
+
+        if !self.behavior.isStillAlive {
+            self.children.stopAll()
+        }
+
+        return self.runState
+    }
+
     @inlinable
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
@@ -618,6 +632,13 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
+    var subFunctions: [AnyHashable: ((Any) throws -> Void, AbstractAdapter)] = [:]
+
+    @usableFromInline
+    func subFunction(identifiedBy identifier: AnyHashable) -> ((Any) throws -> Void)? {
+        return self.subFunctions[identifier]?.0
+    }
+
     private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]
 
     override func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
@@ -637,14 +658,31 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         }
     }
 
+    // FIXME: SubReceiveId should have SubMessage as type parameter
     override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         do {
+            let wrappedClosure: (Any) throws -> Void = { msg in
+                guard let message = msg as? SubMessage else {
+                    throw ActorContextError.alreadyStopping // FIXME: use proper error type or maybe just deadletters?
+                }
+
+                try closure(message)
+            }
+
+            let identifier = AnyHashable(id)
+            if let (_, existingRef) = self.subFunctions[identifier] {
+                self.subFunctions[identifier] = (wrappedClosure, existingRef)
+                let adapter = existingRef as! SubReceiveAdapter<SubMessage, Message>
+                return .init(.adapter(adapter))
+            }
+
             let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
-            let ref = SubReceiveAdapter(self.myself, address: adaptedAddress, closure: closure)
+            let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
 
             self._children.insert(ref) // TODO: separate adapters collection?
+            self.subFunctions[id] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
             fatalError("""

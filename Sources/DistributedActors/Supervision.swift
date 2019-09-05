@@ -380,6 +380,7 @@ internal enum ProcessingType {
     case signal
     case closure
     case continuation
+    case subMessage
 }
 
 @usableFromInline
@@ -389,6 +390,7 @@ internal enum ProcessingAction<Message> {
     case signal(Signal)
     case closure(ActorClosureCarry)
     case continuation(() throws -> Behavior<Message>)
+    case subMessage(SubMessageCarry)
 }
 
 extension ProcessingAction {
@@ -400,6 +402,7 @@ extension ProcessingAction {
         case .signal: return .signal
         case .closure: return .closure
         case .continuation: return .continuation
+        case .subMessage: return .subMessage
         }
     }
 }
@@ -428,6 +431,12 @@ internal class Supervisor<Message> {
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: ActorClosureCarry) throws -> Behavior<Message> {
         traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .closure(closure))
+    }
+
+    @inlinable
+    internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, subMessage: SubMessageCarry) throws -> Behavior<Message> {
+        traceLog_Supervision("CALLING CLOSURE: \(target)")
+        return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
     }
 
     @inlinable
@@ -465,6 +474,14 @@ internal class Supervisor<Message> {
                 return .same
             case .continuation(let continuation):
                 return try continuation()
+            case .subMessage(let carry):
+                guard let subFunction = context._downcastUnsafe.subFunction(identifiedBy: carry.identifier) else {
+                    context.log.warning("Received sub message \(carry.message) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Ignoring.")
+                    return .same
+                }
+
+                try subFunction(carry.message)
+                return .same
             }
         } catch {
             return try self.handleError(context: context, target: target, processingAction: processingAction, error: error)

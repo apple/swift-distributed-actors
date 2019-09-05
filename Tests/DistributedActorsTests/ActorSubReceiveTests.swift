@@ -40,7 +40,7 @@ class ActorSubReceiveTests: XCTestCase {
             }
             refProbe.tell(subRef)
 
-            return .unhandled
+            return .receiveMessage { _ in .same }
         }
 
         _ = try system.spawn("test-parent", behavior)
@@ -165,6 +165,8 @@ class ActorSubReceiveTests: XCTestCase {
 
         _ = try refProbe.expectMessage() // this means the actor was restarted
     }
+
+    // TODO: Add test around changing the subReceive and validating that the old ref still works and uses the new function
 
     func test_subReceive_shouldTriggerSupervisionOnError() throws {
         try self.shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: .throwing)

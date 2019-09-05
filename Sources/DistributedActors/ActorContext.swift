@@ -427,7 +427,7 @@ public class ActorContext<Message>: ActorRefFactory {
 }
 
 // Used to identify a `subReceive`
-public struct SubReceiveId {
+public struct SubReceiveId: Hashable, Equatable {
     public let id: String
 
     public init<T>(for type: T.Type) {

@@ -24,6 +24,7 @@ import Logging
 internal enum WrappedMessage {
     case message(Any)
     case closure(ActorClosureCarry)
+    case subMessage(SubMessageCarry)
 }
 
 extension WrappedMessage: NoSerializationVerification {}
@@ -74,6 +75,56 @@ internal struct ActorClosureCarry {
     @usableFromInline
     var function: () throws -> Void {
         return self._storage.function
+    }
+
+    @usableFromInline
+    var location: String {
+        return self._storage.location
+    }
+}
+
+@usableFromInline
+internal struct SubMessageCarry {
+    @usableFromInline
+    class _Storage {
+        @usableFromInline
+        let identifier: AnyHashable
+        @usableFromInline
+        let message: Any
+        @usableFromInline
+        let subReceiveAddress: ActorAddress
+        @usableFromInline
+        let location: String
+
+        @usableFromInline
+        init(identifier: AnyHashable, message: Any, subReceiveAddress: ActorAddress, location: String) {
+            self.identifier = identifier
+            self.message = message
+            self.subReceiveAddress = subReceiveAddress
+            self.location = location
+        }
+    }
+
+    let _storage: _Storage
+
+    @usableFromInline
+    init(identifier: AnyHashable, message: Any, subReceiveAddress: ActorAddress, location: String) {
+        self._storage = .init(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: location)
+    }
+
+    @usableFromInline
+    var identifier: AnyHashable {
+        return self._storage.identifier
+    }
+
+    @usableFromInline
+    var message: Any {
+        return self._storage.message
+    }
+
+    @usableFromInline
+    var subReceiveAddress: ActorAddress {
+        return self._storage.subReceiveAddress
     }
 
     @usableFromInline
@@ -169,9 +220,12 @@ internal final class Mailbox<Message> {
             case .message(let message):
                 traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
                 return try shell.interpretMessage(message: message as! Message)
-            case .closure(let closure):
-                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: closure.function)) defined at \(closure.location)")
-                return try shell.interpretClosure(closure)
+            case .closure(let carry):
+                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.location)")
+                return try shell.interpretClosure(carry)
+            case .subMessage(let carry):
+                traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier) defined at \(carry.location)")
+                return try shell.interpretSubMessage(carry)
             }
         }, fail: { [weak _shell = shell, path = self.address.path] error in
             traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
@@ -207,6 +261,8 @@ internal final class Mailbox<Message> {
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
             case .closure(let carry):
                 deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.location)", recipient: address))
+            case .subMessage(let carry):
+                deadLetters.tell(DeadLetter(carry.message, recipient: carry.subReceiveAddress))
             }
         })
         self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: {
