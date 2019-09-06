@@ -146,8 +146,6 @@ final class ActorAddressTests: XCTestCase {
         addresses.append(b)
         addresses.append(a)
 
-        ["a", "c", "b"].sorted().shouldEqual(["a", "b", "c"])
-
         // sorting should not be impacted by the random incarnation numbers
         addresses.sorted().shouldEqual([a, b, c])
     }
