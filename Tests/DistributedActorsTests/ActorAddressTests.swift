@@ -109,7 +109,7 @@ final class ActorAddressTests: XCTestCase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Equality
+    // MARK: Equality & Sorting
 
     func test_equalityOf_addressWithSameSegmentsButDifferentIncarnation() throws {
         let addressA = try ActorPath(root: "test").makeChildPath(name: "foo").makeLocalAddress(incarnation: .random())
@@ -135,5 +135,18 @@ final class ActorAddressTests: XCTestCase {
         let addressA2 = try ActorPath(root: "test").makeChildPath(name: "foo2").makeLocalAddress(incarnation: addressA.incarnation)
 
         addressA.shouldNotEqual(addressA2)
+    }
+
+    func test_sortingOf_ActorAddresses() throws {
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .random())
+        let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .random())
+        let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .random())
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
     }
 }

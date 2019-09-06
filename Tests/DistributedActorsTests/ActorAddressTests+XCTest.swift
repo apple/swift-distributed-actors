@@ -35,6 +35,7 @@ extension ActorAddressTests {
             ("test_equalityOf_addressWithSameSegmentsButDifferentIncarnation", test_equalityOf_addressWithSameSegmentsButDifferentIncarnation),
             ("test_equalityOf_addressWithDifferentSystemNameOnly", test_equalityOf_addressWithDifferentSystemNameOnly),
             ("test_equalityOf_addressWithDifferentSegmentsButSameUID", test_equalityOf_addressWithDifferentSegmentsButSameUID),
+            ("test_sortingOf_ActorAddresses", test_sortingOf_ActorAddresses),
         ]
     }
 }

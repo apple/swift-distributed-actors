@@ -201,7 +201,6 @@ extension ReplicaId: Comparable {
 /// to be `Hashable` we have to define a type.
 public struct VersionDot {
     public let replicaId: ReplicaId
-
     public let version: Int
 
     init(_ replicaId: ReplicaId, _ version: Int) {
@@ -217,8 +216,9 @@ extension VersionDot: Comparable {
     public static func < (lhs: VersionDot, rhs: VersionDot) -> Bool {
         if lhs.replicaId == rhs.replicaId {
             return lhs.version < rhs.version
+        } else {
+            return lhs.replicaId < rhs.replicaId
         }
-        return lhs.replicaId < rhs.replicaId
     }
 }
 

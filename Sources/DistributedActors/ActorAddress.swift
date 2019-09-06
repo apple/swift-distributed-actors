@@ -169,7 +169,9 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        return lhs.node < rhs.node || lhs.path < rhs.path || lhs.incarnation < rhs.incarnation
+        return lhs.node < lhs.node ||
+            (lhs.node == rhs.node && lhs.path < rhs.path) ||
+            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
 }
 
