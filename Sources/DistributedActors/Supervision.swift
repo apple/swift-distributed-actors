@@ -441,7 +441,7 @@ internal class Supervisor<Message> {
 
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: @escaping () throws -> Behavior<Message>) throws -> Behavior<Message> {
-        traceLog_Supervision("CALLING CLOSURE: \(target)")
+        traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .continuation(closure))
     }
 
@@ -475,9 +475,8 @@ internal class Supervisor<Message> {
             case .continuation(let continuation):
                 return try continuation()
             case .subMessage(let carry):
-                guard let subFunction = context._downcastUnsafe.subFunction(identifiedBy: carry.identifier) else {
-                    context.log.warning("Received sub message \(carry.message) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Ignoring.")
-                    return .same
+                guard let subFunction = context.subFunction(identifiedBy: carry.identifier) else {
+                    fatalError("BUG! Received sub message [\(carry.message)]:\(type(of: carry.message)) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Please report this on the issue tracker.")
                 }
 
                 try subFunction(carry)

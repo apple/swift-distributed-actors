@@ -48,6 +48,21 @@ internal struct Envelope {
     // TODO: let trace: TraceMetadata
 }
 
+@usableFromInline
+internal struct SourceLocation {
+    @usableFromInline
+    let file: String
+    @usableFromInline
+    let line: UInt
+}
+
+extension SourceLocation: CustomStringConvertible {
+    @usableFromInline
+    var description: String {
+        return "\(self.file):\(self.line)"
+    }
+}
+
 /// Can carry a closure for later execution on specific actor context.
 @usableFromInline
 internal struct ActorClosureCarry {
@@ -56,10 +71,10 @@ internal struct ActorClosureCarry {
         @usableFromInline
         let function: () throws -> Void
         @usableFromInline
-        let location: String
+        let location: SourceLocation
 
         @usableFromInline
-        init(function: @escaping () throws -> Void, location: String) {
+        init(function: @escaping () throws -> Void, location: SourceLocation) {
             self.function = function
             self.location = location
         }
@@ -68,7 +83,7 @@ internal struct ActorClosureCarry {
     let _storage: _Storage
 
     @usableFromInline
-    init(function: @escaping () throws -> Void, location: String) {
+    init(function: @escaping () throws -> Void, location: SourceLocation) {
         self._storage = .init(function: function, location: location)
     }
 
@@ -78,7 +93,7 @@ internal struct ActorClosureCarry {
     }
 
     @usableFromInline
-    var location: String {
+    var location: SourceLocation {
         return self._storage.location
     }
 }
@@ -88,16 +103,16 @@ internal struct SubMessageCarry {
     @usableFromInline
     class _Storage {
         @usableFromInline
-        let identifier: AnyHashable
+        let identifier: AnySubReceiveId
         @usableFromInline
         let message: Any
         @usableFromInline
         let subReceiveAddress: ActorAddress
         @usableFromInline
-        let location: String
+        let location: SourceLocation
 
         @usableFromInline
-        init(identifier: AnyHashable, message: Any, subReceiveAddress: ActorAddress, location: String) {
+        init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress, location: SourceLocation) {
             self.identifier = identifier
             self.message = message
             self.subReceiveAddress = subReceiveAddress
@@ -108,12 +123,12 @@ internal struct SubMessageCarry {
     let _storage: _Storage
 
     @usableFromInline
-    init(identifier: AnyHashable, message: Any, subReceiveAddress: ActorAddress, location: String) {
+    init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress, location: SourceLocation) {
         self._storage = .init(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: location)
     }
 
     @usableFromInline
-    var identifier: AnyHashable {
+    var identifier: AnySubReceiveId {
         return self._storage.identifier
     }
 
@@ -128,7 +143,7 @@ internal struct SubMessageCarry {
     }
 
     @usableFromInline
-    var location: String {
+    var location: SourceLocation {
         return self._storage.location
     }
 }

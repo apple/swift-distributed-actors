@@ -254,7 +254,7 @@ internal final class _DeadLetterAdapterPersonality: AbstractAdapter {
 
 internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
     private let target: ActorRef<OwnerMessage>
-    private let identifier: AnyHashable
+    private let identifier: AnySubReceiveId
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = Mutex()
@@ -265,7 +265,7 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
 
     let deadLetters: ActorRef<DeadLetter>
 
-    init(_ type: Message.Type, owner ref: ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnyHashable) {
+    init(_ type: Message.Type, owner ref: ActorRef<OwnerMessage>, address: ActorAddress, identifier: AnySubReceiveId) {
         self.target = ref
         self.adapterAddress = address
         self.identifier = identifier

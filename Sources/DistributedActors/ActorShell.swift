@@ -632,10 +632,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
-    var subFunctions: [AnyHashable: ((SubMessageCarry) throws -> Void, AbstractAdapter)] = [:]
+    var subFunctions: [AnySubReceiveId: ((SubMessageCarry) throws -> Void, AbstractAdapter)] = [:]
 
     @usableFromInline
-    func subFunction(identifiedBy identifier: AnyHashable) -> ((SubMessageCarry) throws -> Void)? {
+    override func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Void)? {
         return self.subFunctions[identifier]?.0
     }
 
@@ -670,10 +670,12 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
                 try closure(message)
             }
 
-            let identifier = AnyHashable(id)
+            let identifier = AnySubReceiveId(id)
             if let (_, existingRef) = self.subFunctions[identifier] {
                 self.subFunctions[identifier] = (wrappedClosure, existingRef)
-                let adapter = existingRef as! SubReceiveAdapter<SubMessage, Message>
+                guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
+                    fatalError("Existing ref for sub receive id [\(id)] has unexpected type [\(String(reflecting: type(of: existingRef)))], expected [\(String(reflecting: SubMessage.self))]")
+                }
                 return .init(.adapter(adapter))
             }
 
@@ -683,7 +685,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
 
             self._children.insert(ref) // TODO: separate adapters collection?
-            self.subFunctions[id] = (wrappedClosure, ref)
+            self.subFunctions[identifier] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
             fatalError("""

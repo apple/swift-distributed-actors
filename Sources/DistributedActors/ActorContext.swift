@@ -407,7 +407,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return undefined()
     }
 
@@ -421,8 +421,13 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return self.subReceive(SubReceiveId(for: type), type, closure)
+    }
+
+    @usableFromInline
+    func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Void)? {
+        return undefined()
     }
 }
 
@@ -446,6 +451,15 @@ public struct SubReceiveId<SubMessage>: Hashable, Equatable {
 extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.init(value)
+    }
+}
+
+@usableFromInline
+struct AnySubReceiveId: Hashable, Equatable {
+    let underlying: AnyHashable
+
+    init<SubMessage>(_ id: SubReceiveId<SubMessage>) {
+        self.underlying = AnyHashable(id)
     }
 }
 

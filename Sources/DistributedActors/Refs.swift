@@ -287,14 +287,14 @@ internal final class ActorCell<Message> {
     @usableFromInline
     func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> Void) {
         traceLog_Mailbox(self.address.path, "sendClosure from \(file):\(line) to: \(self)")
-        let carry = ActorClosureCarry(function: f, location: "\(file):\(line)")
+        let carry = ActorClosureCarry(function: f, location: SourceLocation(file: file, line: line))
         self.mailbox.sendMessage(envelope: Envelope(payload: .closure(carry)), file: file, line: line)
     }
 
     @usableFromInline
-    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnyHashable, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
         traceLog_Mailbox(self.address.path, "sendSubMessage from \(file):\(line) to: \(self)")
-        let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: "\(file):\(line)")
+        let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: SourceLocation(file: file, line: line))
         self.mailbox.sendMessage(envelope: Envelope(payload: .subMessage(carry)), file: file, line: line)
     }
 }
