@@ -480,7 +480,7 @@ internal class Supervisor<Message> {
                     return .same
                 }
 
-                try subFunction(carry.message)
+                try subFunction(carry)
                 return .same
             }
         } catch {

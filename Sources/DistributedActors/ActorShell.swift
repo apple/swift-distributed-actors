@@ -632,10 +632,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
-    var subFunctions: [AnyHashable: ((Any) throws -> Void, AbstractAdapter)] = [:]
+    var subFunctions: [AnyHashable: ((SubMessageCarry) throws -> Void, AbstractAdapter)] = [:]
 
     @usableFromInline
-    func subFunction(identifiedBy identifier: AnyHashable) -> ((Any) throws -> Void)? {
+    func subFunction(identifiedBy identifier: AnyHashable) -> ((SubMessageCarry) throws -> Void)? {
         return self.subFunctions[identifier]?.0
     }
 
@@ -658,12 +658,13 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         }
     }
 
-    // FIXME: SubReceiveId should have SubMessage as type parameter
-    override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         do {
-            let wrappedClosure: (Any) throws -> Void = { msg in
-                guard let message = msg as? SubMessage else {
-                    throw ActorContextError.alreadyStopping // FIXME: use proper error type or maybe just deadletters?
+            let wrappedClosure: (SubMessageCarry) throws -> Void = { carry in
+                guard let message = carry.message as? SubMessage else {
+                    self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
+
+                    return
                 }
 
                 try closure(message)
@@ -686,7 +687,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             return .init(.adapter(ref))
         } catch {
             fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(type)]. This should never happen, since sub receives have unique names
+            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
             generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
             Error: \(error)
             """)

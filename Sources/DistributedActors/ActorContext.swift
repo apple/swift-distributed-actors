@@ -407,7 +407,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_: SubReceiveId, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return undefined()
     }
 
@@ -427,10 +427,10 @@ public class ActorContext<Message>: ActorRefFactory {
 }
 
 // Used to identify a `subReceive`
-public struct SubReceiveId: Hashable, Equatable {
+public struct SubReceiveId<SubMessage>: Hashable, Equatable {
     public let id: String
 
-    public init<T>(for type: T.Type) {
+    public init(for type: SubMessage.Type) {
         self.id = String(reflecting: type)
     }
 
@@ -438,7 +438,7 @@ public struct SubReceiveId: Hashable, Equatable {
         self.id = id
     }
 
-    public init<T>(for type: T.Type, id: String) {
+    public init(for type: SubMessage.Type, id: String) {
         self.id = "\(String(reflecting: type))-\(id)"
     }
 }
