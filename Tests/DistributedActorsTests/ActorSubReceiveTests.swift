@@ -166,9 +166,50 @@ class ActorSubReceiveTests: XCTestCase {
         _ = try refProbe.expectMessage() // this means the actor was restarted
     }
 
-    // TODO: Add test around changing the subReceive and validating that the old ref still works and uses the new function
-
     func test_subReceive_shouldTriggerSupervisionOnError() throws {
         try self.shared_subReceive_shouldTriggerSupervisionOnFailure(failureMode: .throwing)
+    }
+
+    func test_subReceive_shouldBeReplacedIfRegisteredAgainUnderSameKey() throws {
+        struct TestMessage {
+            let replyTo: ActorRef<String>
+            let message: String
+        }
+
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<TestMessage>.self)
+
+        let behavior: Behavior<String> = .setup { context in
+            var subReceiveCounter = 0
+            return .receiveMessage { message in
+                if message == "install" {
+                    let count = subReceiveCounter
+                    subReceiveCounter += 1
+                    let subRef = context.subReceive("test-sub", TestMessage.self) { message in
+                        message.replyTo.tell("subReceive-\(count):\(message.message)")
+                    }
+                    refProbe.tell(subRef)
+                }
+
+                return .same
+            }
+        }
+
+        let ref = try system.spawn("test", behavior)
+
+        ref.tell("install")
+        let subRef = try refProbe.expectMessage()
+
+        subRef.tell(TestMessage(replyTo: p.ref, message: "test"))
+        try p.expectMessage("subReceive-0:test")
+
+        ref.tell("install")
+        let subRef2 = try refProbe.expectMessage()
+
+        subRef.tell(TestMessage(replyTo: p.ref, message: "test"))
+        try p.expectMessage("subReceive-1:test") // subReceive has been replaced, so we should get an incremented count
+
+        subRef2.tell(TestMessage(replyTo: p.ref, message: "test"))
+        try p.expectMessage("subReceive-1:test") // second sub ref should also work
     }
 }
