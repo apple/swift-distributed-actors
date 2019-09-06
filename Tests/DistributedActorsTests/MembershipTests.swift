@@ -101,7 +101,7 @@ final class MembershipTests: XCTestCase {
         res1!.reachability.shouldEqual(.unreachable)
 
         membership.mark(member.node, reachability: .unreachable).shouldEqual(nil) // no change
-        let res2 = membership.mark(member.node, reachability: .unreachable)
+        _ = membership.mark(member.node, reachability: .unreachable)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

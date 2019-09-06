@@ -249,11 +249,11 @@ class ActorDocExamples: XCTestCase {
 
             return .same // (a)
             // or
-            return .stop // (b)
+            // return .stop // (b)
             // or
-            throw TestError("Whoops!") // (c)
+            // throw TestError("Whoops!") // (c)
             // or
-            fatalError("Whoops!") // (d)
+            // fatalError("Whoops!") // (d)
         }
         // end::defer_simple[]
 
@@ -282,6 +282,7 @@ class ActorDocExamples: XCTestCase {
 
         let result = try response.nioFuture.wait() // <3>
         // end::ask_outside[]
+        _ = result
     }
 
     func example_ask_inside() throws {

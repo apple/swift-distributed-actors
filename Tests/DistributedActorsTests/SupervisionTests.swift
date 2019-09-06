@@ -641,7 +641,6 @@ class SupervisionTests: XCTestCase {
         let pm = self.testKit.spawnTestProbe("pm", expecting: ActorRef<String>.self)
         let pab = self.testKit.spawnTestProbe("pab", expecting: ActorRef<String>.self)
         let pb = self.testKit.spawnTestProbe("pb", expecting: ActorRef<String>.self)
-        let pp = self.testKit.spawnTestProbe("pp", expecting: String.self)
 
         _ = try self.system.spawn("top", of: String.self, .setup { c in
             pt.tell(c.myself)

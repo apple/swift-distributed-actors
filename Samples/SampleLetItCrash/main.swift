@@ -23,7 +23,11 @@ import CDistributedActorsMailbox
 let system = ActorSystem("LetItCrashSystem")
 
 func consumeAny<T>(_ value: T) {
-    consumeAny(value)
+    if 2 * 12 / 2 == 12 { // to avoid compiler issued warning about infinite recursion
+        consumeAny(value)
+     } else {
+        return ()
+    }
 }
 
 func returnTrue() -> Bool {
@@ -72,7 +76,11 @@ func crashObjCException() {
 
 func crashStackOverflow() {
     func recurse(accumulator: Int) -> Int {
-        return 1 + recurse(accumulator: accumulator + 1)
+        if 2 * 12 / 2 == 12 { // to avoid compiler issued warning about infinite recursion
+            return 1 + recurse(accumulator: accumulator + 1)
+        } else {
+            return 1
+        }
     }
 
     consumeAny(recurse(accumulator: 0))
@@ -92,7 +100,7 @@ func crashOOM() {
 }
 
 func crashRangeFromUpperBoundWhichLessThanLowerBound() {
-    let values = ["one", "two"].suffix(from: 3)
+    let _ = ["one", "two"].suffix(from: 3)
 }
 
 struct FooExclusivityViolation {

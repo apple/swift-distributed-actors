@@ -21,9 +21,7 @@ extension VersionVector: InternalProtobufRepresentable {
     func toProto(context: ActorSerializationContext) throws -> ProtoVersionVector {
         var proto = ProtoVersionVector()
 
-        var replicaVersions: [ProtoReplicaVersion] = []
-        replicaVersions.reserveCapacity(self.state.count)
-        for (replicaId, version) in self.state {
+        let replicaVersions: [ProtoReplicaVersion] = self.state.map { replicaId, version in
             var p = ProtoReplicaVersion()
             p.version = UInt32(version)
 
@@ -34,7 +32,7 @@ extension VersionVector: InternalProtobufRepresentable {
             }
             p.replicaID = id
 
-            replicaVersions.append(p)
+            return p
         }
         proto.state = replicaVersions
         return proto

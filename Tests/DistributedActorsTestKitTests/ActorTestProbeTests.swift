@@ -29,32 +29,6 @@ class ActorTestProbeTests: XCTestCase {
         self.system.shutdown()
     }
 
-    func test_expectMessage_shouldFailWhenNoMessageSentWithinTimeout() throws {
-        #if !SACT_TESTS_CRASH
-        pnote("Skipping test \(#function), can't test assert(); To see it crash run with `-D SACT_TESTS_CRASH`")
-        return ()
-        #endif
-        _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
-
-        let probe = self.testKit.spawnTestProbe("p1", expecting: String.self)
-
-        try probe.expectMessage("awaiting-forever")
-    }
-
-    func test_expectMessage_shouldFailWhenWrongMessageReceived() throws {
-        #if !SACT_TESTS_CRASH
-        pnote("Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`")
-        return ()
-        #endif
-        _ = "Skipping test \(#function), can't test the 'test assertions' being emitted; To see it crash run with `-D SACT_TESTS_CRASH`"
-
-        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
-
-        probe.tell("one")
-
-        try probe.expectMessage("two")
-    }
-
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
         let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
 

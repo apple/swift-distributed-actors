@@ -49,7 +49,7 @@ class ProcessIsolatedDocExamples {
             )
 
             // spawn the an actor on the master node <6>
-            try isolated.system.spawn("bruce", of: WorkRequest.self, .receiveMessage { _ in
+            _ = try isolated.system.spawn("bruce", of: WorkRequest.self, .receiveMessage { _ in
                 // do something with the `work`
                 .same
             })
@@ -57,8 +57,8 @@ class ProcessIsolatedDocExamples {
         // end of executes only on .master process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         // executes only on .servant process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        try isolated.run(on: .servant) { // <7>
-            try isolated.system.spawn("alfred", of: Requests.self, .ignore)
+        _ = try isolated.run(on: .servant) { // <7>
+            _ = try isolated.system.spawn("alfred", of: Requests.self, .ignore)
         }
         // end of: executes only on .servant process ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
