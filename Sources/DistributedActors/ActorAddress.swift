@@ -172,9 +172,9 @@ extension ActorAddress: Comparable {
         switch (lhs.node?.node, rhs.node?.node) {
         case (.some(let lhsNode), .some(let rhsNode)):
             // we do this to avoid using the random node id to impact how we sort actors by the "visible" section of a node address
-            return lhsNode < rhsNode || lhs.path < rhs.path
+            return lhsNode < rhsNode || lhs.path < rhs.path || lhs.incarnation < rhs.incarnation
         default:
-            return lhs.path < rhs.path
+            return lhs.path < rhs.path || lhs.incarnation < rhs.incarnation
         }
     }
 }
