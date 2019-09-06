@@ -63,7 +63,7 @@ class DeathWatchDocExamples {
         // tag::handling_termination_deathwatch[]
         let concedeTimer: TimerKey = "concede-timer"
 
-        Behavior<GameMatch.Command>.receive { context, command in
+        _ = Behavior<GameMatch.Command>.receive { context, command in
             switch command {
             case .playerConnected(let player):
                 context.timers.cancel(for: concedeTimer)

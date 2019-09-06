@@ -21,7 +21,7 @@ final class ActorNamingTests: XCTestCase {
         var context = ActorNamingContext()
         let naming = ActorNaming.unique("hello")
 
-        for i in 0 ... 3 {
+        for _ in 0 ... 3 {
             let name = naming.makeName(&context)
             name.shouldEqual("hello")
         }

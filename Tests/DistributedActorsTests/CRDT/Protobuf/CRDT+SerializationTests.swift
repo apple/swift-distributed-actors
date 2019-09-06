@@ -22,7 +22,7 @@ final class CRDTSerializationTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
-            settings.serialization.registerInternalProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
+            settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
         }
         self.testKit = ActorTestKit(self.system)
     }

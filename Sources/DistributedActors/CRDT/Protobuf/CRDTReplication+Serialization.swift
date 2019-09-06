@@ -39,13 +39,13 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
             write.envelope = try CRDTEnvelope(serializerId: serializerId, crdtOrDelta).toProto(context: context)
             proto.write = write
 
-        case .writeDelta(let id, let delta, let replyTo):
+        case .writeDelta:
             fatalError("to be implemented")
 
-        case .read(let id, let replyTo):
+        case .read:
             fatalError("to be implemented")
 
-        case .delete(let id, let replyTo):
+        case .delete:
             fatalError("to be implemented")
         }
 

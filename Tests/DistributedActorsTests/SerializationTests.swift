@@ -76,7 +76,7 @@ class SerializationTests: XCTestCase {
             let address = try ActorPath(root: "user").appending("hello").makeLocalAddress(incarnation: .random())
 
             let encoder = JSONEncoder()
-            let encoded = try encoder.encode(address)
+            _ = try encoder.encode(address)
         }
 
         "\(err)".shouldStartWith(prefix: """
@@ -285,32 +285,6 @@ class SerializationTests: XCTestCase {
             s2.shutdown()
             throw error
         }
-        s2.shutdown()
-    }
-
-    func test_verifySerializable_shouldFault_forNotSerializableMessage() throws {
-        pnote("Fault handling is not implemented, so we cannot test for the fault ocurring when no serializer defined.")
-        return
-
-        /// if we had fault handling, this test should work:
-        let s2 = ActorSystem("SerializeMessages") { settings in
-            settings.serialization.allMessages = true
-        }
-
-        let testKit2 = ActorTestKit(s2)
-        let p = testKit2.spawnTestProbe(expecting: NotSerializable.self)
-
-        let recipient: ActorRef<NotSerializable> = try s2.spawn("recipient", .ignore)
-
-        let senderOfNotSerializableMessage: ActorRef<String> = try s2.spawn("expected-to-fault-due-to-serialization-check", .receiveMessage { _ in
-            recipient.tell(NotSerializable("\(#file):\(#line)"))
-            return .same
-        })
-
-        p.watch(senderOfNotSerializableMessage)
-        senderOfNotSerializableMessage.tell("send it now!")
-
-        try p.expectTerminated(senderOfNotSerializableMessage)
         s2.shutdown()
     }
 }

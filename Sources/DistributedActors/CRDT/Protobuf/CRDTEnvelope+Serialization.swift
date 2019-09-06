@@ -58,7 +58,6 @@ extension CRDTEnvelope: ProtobufRepresentable {
         var proto = ProtoCRDTEnvelope()
         switch self._boxed {
         case .crdt(let data):
-            fatalError()
             let (serializerId, _bytes) = try context.system.serialization.serialize(message: data.underlying, metaType: data.metaType)
             var bytes = _bytes
             proto.boxed = .anyCvrdt
@@ -67,7 +66,7 @@ extension CRDTEnvelope: ProtobufRepresentable {
             return proto
 
         case .delta(let delta):
-            var (serializerId, _bytes) = try context.system.serialization.serialize(message: delta.underlying, metaType: delta.metaType)
+            let (serializerId, _bytes) = try context.system.serialization.serialize(message: delta.underlying, metaType: delta.metaType)
             var bytes = _bytes
             proto.boxed = .anyDeltaCrdt
             proto.serializerID = serializerId

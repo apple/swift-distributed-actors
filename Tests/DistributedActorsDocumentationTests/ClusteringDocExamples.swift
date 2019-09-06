@@ -23,7 +23,7 @@ class ClusteringDocExamples: XCTestCase {
         let system = ActorSystem("TestSystem") { settings in
             // ...
             settings.cluster.tls = TLSConfiguration.forServer( // <1>
-                certificateChain: [.file("/path/to/certificate.pem")], // <2>
+                certificateChain: try! NIOSSLCertificate.fromPEMFile("/path/to/certificate.pem").map { NIOSSLCertificateSource.certificate($0) }, // <2>
                 privateKey: .file("/path/to/private-key.pem"), // <3>
                 certificateVerification: .fullVerification, // <4>
                 trustRoots: .file("/path/to/certificateChain.pem")
