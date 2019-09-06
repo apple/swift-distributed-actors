@@ -51,11 +51,11 @@ final class CRDTActorOwnedTests: XCTestCase {
         return .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: id)
             g.onUpdate { id, gg in
-                context.log.info("GCounter \(id) updated with new value: \(gg.value)")
+                context.log.trace("GCounter \(id) updated with new value: \(gg.value)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
             }
             g.onDelete { id in
-                context.log.info("GCounter \(id) deleted")
+                context.log.trace("GCounter \(id) deleted")
                 ownerEventProbe.tell(.ownerDefinedOnDelete)
             }
 
@@ -177,6 +177,8 @@ final class CRDTActorOwnedTests: XCTestCase {
         try g2Owner1EventP.expectNoMessage(for: .milliseconds(100))
     }
 
+    // TODO: test that a failure to write gets logged?
+
     func test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus() throws {
         let g1 = "gcounter-1"
 
@@ -226,11 +228,11 @@ final class CRDTActorOwnedTests: XCTestCase {
         return .setup { context in
             let s = CRDT.ORSet<Int>.owned(by: context, id: id)
             s.onUpdate { id, ss in
-                context.log.info("ORSet \(id) updated with new value: \(ss.elements)")
+                context.log.trace("ORSet \(id) updated with new value: \(ss.elements)")
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
             }
             s.onDelete { id in
-                context.log.info("ORSet \(id) deleted")
+                context.log.trace("ORSet \(id) deleted")
                 ownerEventProbe.tell(.ownerDefinedOnDelete)
             }
 
@@ -314,5 +316,25 @@ final class CRDTActorOwnedTests: XCTestCase {
         try s2Owner1IntSetP.expectMessage([])
         // As a result owner should not have received any events
         try s2Owner1IntSetP.expectNoMessage(for: .milliseconds(100))
+    }
+
+    // This test would uncover concurrency issues if the Owned updates were to fire concurrently, and not looped through the actor
+    func test_actorOwned_ORSet_add_many_times() throws {
+        let s1 = "set"
+
+        let ignore: ActorRef<Set<Int>> = try system.spawn("ignore", .receiveMessage { _ in .same })
+        let ignoreOEP: ActorRef<OwnerEventProbeMessage> = try system.spawn("ignoreOEP", .receiveMessage { _ in .same })
+
+        let owner = try system.spawn("set-owner-1", self.actorOwnedORSetBehavior(id: s1, oep: ignoreOEP))
+        let probe = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+
+        // we issue many writes, and want to see that
+        for i in 1 ... 100 {
+            owner.tell(.add(i, consistency: .local, timeout: .seconds(1), replyTo: ignore))
+        }
+        owner.tell(.add(1000, consistency: .local, timeout: .seconds(1), replyTo: probe.ref))
+
+        let msg = try probe.expectMessage()
+        msg.count.shouldEqual(101)
     }
 }

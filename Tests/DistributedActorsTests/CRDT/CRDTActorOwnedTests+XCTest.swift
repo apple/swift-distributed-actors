@@ -27,6 +27,7 @@ extension CRDTActorOwnedTests {
             ("test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers", test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers),
             ("test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus", test_actorOwned_GCounter_deleteFromCluster_shouldChangeStatus),
             ("test_actorOwned_ORSet_add_remove_shouldResetDelta_shouldNotifyOthers", test_actorOwned_ORSet_add_remove_shouldResetDelta_shouldNotifyOthers),
+            ("test_actorOwned_ORSet_add_many_times", test_actorOwned_ORSet_add_many_times),
         ]
     }
 }
