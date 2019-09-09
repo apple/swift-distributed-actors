@@ -20,6 +20,7 @@ import SwiftProtobuf
 
 import Foundation // for Codable
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Serialization sub-system
 
 /// Serialization engine, holding all key-ed serializers.
@@ -81,14 +82,16 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Message>(allocator: self.allocator), for: SWIM.Message.self, underId: Serialization.Id.InternalSerializer.SWIMMessage)
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SWIM.Ack>(allocator: self.allocator), for: SWIM.Ack.self, underId: Serialization.Id.InternalSerializer.SWIMAck)
 
-        // CRDT serializers
+        // CRDT replication
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.Message>(allocator: self.allocator), for: CRDT.Replicator.Message.self, underId: Serialization.Id.InternalSerializer.CRDTReplicatorMessage)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: Serialization.Id.InternalSerializer.CRDTGCounter)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.GCounter.Delta>(allocator: self.allocator), for: CRDT.GCounter.Delta.self, underId: Serialization.Id.InternalSerializer.CRDTGCounterDelta)
-        self.registerBoxing(from: CRDT.GCounter.self, into: AnyCvRDT.self) { counter in AnyCvRDT(counter) }
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDTEnvelope>(allocator: self.allocator), for: CRDTEnvelope.self, underId: Serialization.Id.InternalSerializer.CRDTEnvelope)
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: Serialization.Id.InternalSerializer.CRDTGCounter)
+        self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter.Delta>(allocator: self.allocator), for: CRDT.GCounter.Delta.self, underId: Serialization.Id.InternalSerializer.CRDTGCounterDelta)
+        // CRDTs and their deltas are boxed with AnyDeltaCRDT or AnyCvRDT
         self.registerBoxing(from: CRDT.GCounter.self, into: AnyDeltaCRDT.self) { counter in AnyDeltaCRDT(counter) }
-        self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
+        self.registerBoxing(from: CRDT.GCounter.Delta.self, into: AnyCvRDT.self) { delta in AnyCvRDT(delta) }
         self.registerBoxing(from: CRDT.ORSet<String>.self, into: AnyDeltaCRDT.self) { set in AnyDeltaCRDT(set) }
+        self.registerBoxing(from: CRDT.ORSet<String>.Delta.self, into: AnyCvRDT.self) { set in AnyCvRDT(set) }
 
         // register user-defined serializers
         for (metaKey, id) in settings.userSerializerIds {
@@ -103,16 +106,6 @@ public struct Serialization {
         #if SACT_TRACE_SERIALIZATION
         self.debugPrintSerializerTable(header: "SACT_TRACE_SERIALIZATION: Registered serializers")
         #endif
-    }
-
-    internal final class CRDTSerializer<T: InternalProtobufRepresentable>: BaseProtobufSerializer<T, T.InternalProtobufRepresentation> {
-        public override func toProto(_ message: T, context: ActorSerializationContext) throws -> T.InternalProtobufRepresentation {
-            return try message.toProto(context: self.serializationContext)
-        }
-
-        public override func fromProto(_ proto: T.InternalProtobufRepresentation, context: ActorSerializationContext) throws -> T {
-            return try T(fromProto: proto, context: self.serializationContext)
-        }
     }
 
     /// Boxing may be necessary when we carry a Type serialized as "the real thing" but when deserializing need to box it into an `Any...` type,
@@ -493,20 +486,6 @@ public struct SerializationSettings {
 
         self.register(makeSerializer, for: metaTypeKey, underId: id)
     }
-
-    // FIXME: be the InternalProtobufRepresentable
-    /// - Faults: when serializer `id` is reused
-    internal mutating func registerInternalProtobufRepresentable<T: ProtobufRepresentable>(for type: T.Type, underId id: Serialization.SerializerId) {
-        let metaTypeKey: Serialization.MetaTypeKey = MetaType(type).asHashable()
-
-        self.validateSerializer(for: type, metaTypeKey: metaTypeKey, underId: id)
-
-        let makeSerializer: (ByteBufferAllocator) -> Serializer<T> = { allocator in
-            ProtobufSerializer<T>(allocator: allocator)
-        }
-
-        self.register(makeSerializer, for: metaTypeKey, underId: id)
-    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -553,43 +532,6 @@ extension Serializer: AnySerializer {
 
     func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
         return try self.deserialize(bytes: bytes)
-    }
-}
-
-final class JSONCodableSerializer<T: Codable>: Serializer<T> {
-    private let allocate: ByteBufferAllocator
-    internal var encoder: JSONEncoder = JSONEncoder()
-    internal var decoder: JSONDecoder = JSONDecoder()
-
-    // TODO: expose the encoder/decoder
-    init(allocator: ByteBufferAllocator) {
-        self.allocate = allocator
-        super.init()
-    }
-
-    override func serialize(message: T) throws -> ByteBuffer {
-        let data = try encoder.encode(message)
-        traceLog_Serialization("serialized to: \(data)")
-
-        // FIXME: can be better?
-        var buffer = self.allocate.buffer(capacity: data.count)
-        buffer.writeBytes(data)
-
-        return buffer
-    }
-
-    override func deserialize(bytes: ByteBuffer) throws -> T {
-        guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
-            fatalError("Could not read data! Was: \(bytes), trying to deserialize for \(T.self)")
-        }
-
-        return try self.decoder.decode(T.self, from: data)
-    }
-
-    override func setSerializationContext(_ context: ActorSerializationContext) {
-        // same context shared for encoding/decoding is safe
-        self.decoder.userInfo[.actorSerializationContext] = context
-        self.encoder.userInfo[.actorSerializationContext] = context
     }
 }
 

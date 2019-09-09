@@ -23,9 +23,15 @@ import XCTest
 extension CRDTSerializationTests {
     static var allTests: [(String, (CRDTSerializationTests) -> () throws -> Void)] {
         return [
-            ("test_serializationOf_GCounter_crdt", test_serializationOf_GCounter_crdt),
+            ("test_serializationOf_Identity", test_serializationOf_Identity),
+            ("test_serializationOf_VersionContext", test_serializationOf_VersionContext),
+            ("test_serializationOf_VersionContext_empty", test_serializationOf_VersionContext_empty),
+            ("test_serializationOf_VersionedContainer_VersionedContainerDelta", test_serializationOf_VersionedContainer_VersionedContainerDelta),
+            ("test_serializationOf_VersionedContainer_empty", test_serializationOf_VersionedContainer_empty),
+            ("test_serializationOf_GCounter", test_serializationOf_GCounter),
             ("test_serializationOf_GCounter_delta", test_serializationOf_GCounter_delta),
             ("test_serializationOf_ORSet", test_serializationOf_ORSet),
+            ("test_serializationOf_ORSet_delta", test_serializationOf_ORSet_delta),
         ]
     }
 }

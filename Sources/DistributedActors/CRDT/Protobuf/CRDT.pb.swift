@@ -45,6 +45,33 @@ public struct ProtoCRDTIdentity {
     public init() {}
 }
 
+public struct ProtoCRDTVersionContext {
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
+
+    public var versionVector: ProtoVersionVector {
+        get { return self._storage._versionVector ?? ProtoVersionVector() }
+        set { _uniqueStorage()._versionVector = newValue }
+    }
+
+    /// Returns true if `versionVector` has been explicitly set.
+    public var hasVersionVector: Bool { return self._storage._versionVector != nil }
+    /// Clears the value of `versionVector`. Subsequent reads from it will return its default value.
+    public mutating func clearVersionVector() { _uniqueStorage()._versionVector = nil }
+
+    public var gaps: [ProtoVersionDot] {
+        get { return self._storage._gaps }
+        set { _uniqueStorage()._gaps = newValue }
+    }
+
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct ProtoCRDTVersionedContainer {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -84,33 +111,6 @@ public struct ProtoCRDTVersionedContainer {
     public var hasDelta: Bool { return self._storage._delta != nil }
     /// Clears the value of `delta`. Subsequent reads from it will return its default value.
     public mutating func clearDelta() { _uniqueStorage()._delta = nil }
-
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    public init() {}
-
-    fileprivate var _storage = _StorageClass.defaultInstance
-}
-
-public struct ProtoCRDTVersionContext {
-    // SwiftProtobuf.Message conformance is added in an extension below. See the
-    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-    // methods supported on all messages.
-
-    public var versionVector: ProtoVersionVector {
-        get { return self._storage._versionVector ?? ProtoVersionVector() }
-        set { _uniqueStorage()._versionVector = newValue }
-    }
-
-    /// Returns true if `versionVector` has been explicitly set.
-    public var hasVersionVector: Bool { return self._storage._versionVector != nil }
-    /// Clears the value of `versionVector`. Subsequent reads from it will return its default value.
-    public mutating func clearVersionVector() { _uniqueStorage()._versionVector = nil }
-
-    public var gaps: [ProtoVersionDot] {
-        get { return self._storage._gaps }
-        set { _uniqueStorage()._gaps = newValue }
-    }
 
     public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -161,7 +161,7 @@ public struct ProtoCRDTGCounter {
     /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
     public mutating func clearReplicaID() { _uniqueStorage()._replicaID = nil }
 
-    /// Not a map because only integral or string type can be keys
+    /// Not a map since we cannot use `replicaId` as key
     public var state: [ProtoCRDTGCounter.ReplicaState] {
         get { return self._storage._state }
         set { _uniqueStorage()._state = newValue }
@@ -238,6 +238,7 @@ public struct ProtoCRDTORSet {
     /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
     public mutating func clearReplicaID() { _uniqueStorage()._replicaID = nil }
 
+    /// Includes delta
     public var state: ProtoCRDTVersionedContainer {
         get { return self._storage._state ?? ProtoCRDTVersionedContainer() }
         set { _uniqueStorage()._state = newValue }
@@ -281,6 +282,75 @@ extension ProtoCRDTIdentity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
     public static func == (lhs: ProtoCRDTIdentity, rhs: ProtoCRDTIdentity) -> Bool {
         if lhs.id != rhs.id { return false }
+        if lhs.unknownFields != rhs.unknownFields { return false }
+        return true
+    }
+}
+
+extension ProtoCRDTVersionContext: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+    public static let protoMessageName: String = "CRDTVersionContext"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "versionVector"),
+        2: .same(proto: "gaps"),
+    ]
+
+    fileprivate class _StorageClass {
+        var _versionVector: ProtoVersionVector?
+        var _gaps: [ProtoVersionDot] = []
+
+        static let defaultInstance = _StorageClass()
+
+        private init() {}
+
+        init(copying source: _StorageClass) {
+            self._versionVector = source._versionVector
+            self._gaps = source._gaps
+        }
+    }
+
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&self._storage) {
+            self._storage = _StorageClass(copying: self._storage)
+        }
+        return self._storage
+    }
+
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = self._uniqueStorage()
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._versionVector)
+                case 2: try decoder.decodeRepeatedMessageField(value: &_storage._gaps)
+                default: break
+                }
+            }
+        }
+    }
+
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            if let v = _storage._versionVector {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if !_storage._gaps.isEmpty {
+                try visitor.visitRepeatedMessageField(value: _storage._gaps, fieldNumber: 2)
+            }
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
+    }
+
+    public static func == (lhs: ProtoCRDTVersionContext, rhs: ProtoCRDTVersionContext) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._versionVector != rhs_storage._versionVector { return false }
+                if _storage._gaps != rhs_storage._gaps { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
         if lhs.unknownFields != rhs.unknownFields { return false }
         return true
     }
@@ -362,75 +432,6 @@ extension ProtoCRDTVersionedContainer: SwiftProtobuf.Message, SwiftProtobuf._Mes
                 if _storage._versionContext != rhs_storage._versionContext { return false }
                 if _storage._elementByBirthDot != rhs_storage._elementByBirthDot { return false }
                 if _storage._delta != rhs_storage._delta { return false }
-                return true
-            }
-            if !storagesAreEqual { return false }
-        }
-        if lhs.unknownFields != rhs.unknownFields { return false }
-        return true
-    }
-}
-
-extension ProtoCRDTVersionContext: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTVersionContext"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "versionVector"),
-        2: .same(proto: "gaps"),
-    ]
-
-    fileprivate class _StorageClass {
-        var _versionVector: ProtoVersionVector?
-        var _gaps: [ProtoVersionDot] = []
-
-        static let defaultInstance = _StorageClass()
-
-        private init() {}
-
-        init(copying source: _StorageClass) {
-            self._versionVector = source._versionVector
-            self._gaps = source._gaps
-        }
-    }
-
-    fileprivate mutating func _uniqueStorage() -> _StorageClass {
-        if !isKnownUniquelyReferenced(&self._storage) {
-            self._storage = _StorageClass(copying: self._storage)
-        }
-        return self._storage
-    }
-
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        _ = self._uniqueStorage()
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            while let fieldNumber = try decoder.nextFieldNumber() {
-                switch fieldNumber {
-                case 1: try decoder.decodeSingularMessageField(value: &_storage._versionVector)
-                case 2: try decoder.decodeRepeatedMessageField(value: &_storage._gaps)
-                default: break
-                }
-            }
-        }
-    }
-
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            if let v = _storage._versionVector {
-                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-            }
-            if !_storage._gaps.isEmpty {
-                try visitor.visitRepeatedMessageField(value: _storage._gaps, fieldNumber: 2)
-            }
-        }
-        try self.unknownFields.traverse(visitor: &visitor)
-    }
-
-    public static func == (lhs: ProtoCRDTVersionContext, rhs: ProtoCRDTVersionContext) -> Bool {
-        if lhs._storage !== rhs._storage {
-            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-                let _storage = _args.0
-                let rhs_storage = _args.1
-                if _storage._versionVector != rhs_storage._versionVector { return false }
-                if _storage._gaps != rhs_storage._gaps { return false }
                 return true
             }
             if !storagesAreEqual { return false }

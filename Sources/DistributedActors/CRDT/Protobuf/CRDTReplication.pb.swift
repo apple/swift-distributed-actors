@@ -33,21 +33,21 @@ private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVer
     typealias Version = _2
 }
 
-public struct ProtoCRDTEnvelope {
+struct ProtoCRDTEnvelope {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var serializerID: UInt32 = 0
+    var boxed: ProtoCRDTEnvelope.Boxed = .anyCvrdt
 
-    public var payload: Data = SwiftProtobuf.Internal.emptyData
+    var serializerID: UInt32 = 0
 
-    public var boxed: ProtoCRDTEnvelope.Boxed = .anyCvrdt
+    var payload: Data = SwiftProtobuf.Internal.emptyData
 
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    public enum Boxed: SwiftProtobuf.Enum {
-        public typealias RawValue = Int
+    enum Boxed: SwiftProtobuf.Enum {
+        typealias RawValue = Int
 
         //// Box as `AnyCvRDT` when deserializing
         case anyCvrdt // = 0
@@ -56,11 +56,11 @@ public struct ProtoCRDTEnvelope {
         case anyDeltaCrdt // = 1
         case UNRECOGNIZED(Int)
 
-        public init() {
+        init() {
             self = .anyCvrdt
         }
 
-        public init?(rawValue: Int) {
+        init?(rawValue: Int) {
             switch rawValue {
             case 0: self = .anyCvrdt
             case 1: self = .anyDeltaCrdt
@@ -68,7 +68,7 @@ public struct ProtoCRDTEnvelope {
             }
         }
 
-        public var rawValue: Int {
+        var rawValue: Int {
             switch self {
             case .anyCvrdt: return 0
             case .anyDeltaCrdt: return 1
@@ -77,14 +77,14 @@ public struct ProtoCRDTEnvelope {
         }
     }
 
-    public init() {}
+    init() {}
 }
 
 #if swift(>=4.2)
 
 extension ProtoCRDTEnvelope.Boxed: CaseIterable {
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    public static var allCases: [ProtoCRDTEnvelope.Boxed] = [
+    static var allCases: [ProtoCRDTEnvelope.Boxed] = [
         .anyCvrdt,
         .anyDeltaCrdt,
     ]
@@ -92,17 +92,17 @@ extension ProtoCRDTEnvelope.Boxed: CaseIterable {
 
 #endif // swift(>=4.2)
 
-public struct ProtoCRDTReplicatorMessage {
+struct ProtoCRDTReplicatorMessage {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var value: OneOf_Value? {
+    var value: OneOf_Value? {
         get { return self._storage._value }
         set { _uniqueStorage()._value = newValue }
     }
 
-    public var write: ProtoCRDTWrite {
+    var write: ProtoCRDTWrite {
         get {
             if case .write(let v)? = self._storage._value { return v }
             return ProtoCRDTWrite()
@@ -110,13 +110,13 @@ public struct ProtoCRDTReplicatorMessage {
         set { _uniqueStorage()._value = .write(newValue) }
     }
 
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    public enum OneOf_Value: Equatable {
+    enum OneOf_Value: Equatable {
         case write(ProtoCRDTWrite)
 
         #if !swift(>=4.1)
-        public static func == (lhs: ProtoCRDTReplicatorMessage.OneOf_Value, rhs: ProtoCRDTReplicatorMessage.OneOf_Value) -> Bool {
+        static func == (lhs: ProtoCRDTReplicatorMessage.OneOf_Value, rhs: ProtoCRDTReplicatorMessage.OneOf_Value) -> Bool {
             switch (lhs, rhs) {
             case (.write(let l), .write(let r)): return l == r
             }
@@ -124,86 +124,86 @@ public struct ProtoCRDTReplicatorMessage {
         #endif
     }
 
-    public init() {}
+    init() {}
 
     fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoCRDTWrite {
+struct ProtoCRDTWrite {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var identity: ProtoCRDTIdentity {
+    var identity: ProtoCRDTIdentity {
         get { return self._storage._identity ?? ProtoCRDTIdentity() }
         set { _uniqueStorage()._identity = newValue }
     }
 
     /// Returns true if `identity` has been explicitly set.
-    public var hasIdentity: Bool { return self._storage._identity != nil }
+    var hasIdentity: Bool { return _storage._identity != nil }
     /// Clears the value of `identity`. Subsequent reads from it will return its default value.
-    public mutating func clearIdentity() { _uniqueStorage()._identity = nil }
+    mutating func clearIdentity() { _uniqueStorage()._identity = nil }
 
-    public var envelope: ProtoCRDTEnvelope {
+    var envelope: ProtoCRDTEnvelope {
         get { return self._storage._envelope ?? ProtoCRDTEnvelope() }
         set { _uniqueStorage()._envelope = newValue }
     }
 
     /// Returns true if `envelope` has been explicitly set.
-    public var hasEnvelope: Bool { return self._storage._envelope != nil }
+    var hasEnvelope: Bool { return _storage._envelope != nil }
     /// Clears the value of `envelope`. Subsequent reads from it will return its default value.
-    public mutating func clearEnvelope() { _uniqueStorage()._envelope = nil }
+    mutating func clearEnvelope() { _uniqueStorage()._envelope = nil }
 
-    public var replyTo: ProtoActorAddress {
+    var replyTo: ProtoActorAddress {
         get { return self._storage._replyTo ?? ProtoActorAddress() }
         set { _uniqueStorage()._replyTo = newValue }
     }
 
     /// Returns true if `replyTo` has been explicitly set.
-    public var hasReplyTo: Bool { return self._storage._replyTo != nil }
+    var hasReplyTo: Bool { return _storage._replyTo != nil }
     /// Clears the value of `replyTo`. Subsequent reads from it will return its default value.
-    public mutating func clearReplyTo() { _uniqueStorage()._replyTo = nil }
+    mutating func clearReplyTo() { _uniqueStorage()._replyTo = nil }
 
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    public init() {}
+    init() {}
 
     fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct ProtoCRDTWriteResult {
+struct ProtoCRDTWriteResult {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var type: ProtoCRDTWriteResult.TypeEnum {
+    var type: ProtoCRDTWriteResult.TypeEnum {
         get { return self._storage._type }
         set { _uniqueStorage()._type = newValue }
     }
 
-    public var error: ProtoCRDTWriteError {
+    var error: ProtoCRDTWriteError {
         get { return self._storage._error ?? ProtoCRDTWriteError() }
         set { _uniqueStorage()._error = newValue }
     }
 
     /// Returns true if `error` has been explicitly set.
-    public var hasError: Bool { return self._storage._error != nil }
+    var hasError: Bool { return _storage._error != nil }
     /// Clears the value of `error`. Subsequent reads from it will return its default value.
-    public mutating func clearError() { _uniqueStorage()._error = nil }
+    mutating func clearError() { _uniqueStorage()._error = nil }
 
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    public enum TypeEnum: SwiftProtobuf.Enum {
-        public typealias RawValue = Int
+    enum TypeEnum: SwiftProtobuf.Enum {
+        typealias RawValue = Int
         case success // = 0
         case failed // = 1
         case UNRECOGNIZED(Int)
 
-        public init() {
+        init() {
             self = .success
         }
 
-        public init?(rawValue: Int) {
+        init?(rawValue: Int) {
             switch rawValue {
             case 0: self = .success
             case 1: self = .failed
@@ -211,7 +211,7 @@ public struct ProtoCRDTWriteResult {
             }
         }
 
-        public var rawValue: Int {
+        var rawValue: Int {
             switch self {
             case .success: return 0
             case .failed: return 1
@@ -220,7 +220,7 @@ public struct ProtoCRDTWriteResult {
         }
     }
 
-    public init() {}
+    init() {}
 
     fileprivate var _storage = _StorageClass.defaultInstance
 }
@@ -229,7 +229,7 @@ public struct ProtoCRDTWriteResult {
 
 extension ProtoCRDTWriteResult.TypeEnum: CaseIterable {
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    public static var allCases: [ProtoCRDTWriteResult.TypeEnum] = [
+    static var allCases: [ProtoCRDTWriteResult.TypeEnum] = [
         .success,
         .failed,
     ]
@@ -237,17 +237,17 @@ extension ProtoCRDTWriteResult.TypeEnum: CaseIterable {
 
 #endif // swift(>=4.2)
 
-public struct ProtoCRDTWriteError {
+struct ProtoCRDTWriteError {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    public var type: ProtoCRDTWriteError.TypeEnum = .missingCrdtForDelta
+    var type: ProtoCRDTWriteError.TypeEnum = .missingCrdtForDelta
 
-    public var unknownFields = SwiftProtobuf.UnknownStorage()
+    var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    public enum TypeEnum: SwiftProtobuf.Enum {
-        public typealias RawValue = Int
+    enum TypeEnum: SwiftProtobuf.Enum {
+        typealias RawValue = Int
         case missingCrdtForDelta // = 0
         case incorrectDeltaType // = 1
         case cannotWriteDeltaForNonDeltaCrdt // = 2
@@ -255,11 +255,11 @@ public struct ProtoCRDTWriteError {
         case unsupportedCrdt // = 4
         case UNRECOGNIZED(Int)
 
-        public init() {
+        init() {
             self = .missingCrdtForDelta
         }
 
-        public init?(rawValue: Int) {
+        init?(rawValue: Int) {
             switch rawValue {
             case 0: self = .missingCrdtForDelta
             case 1: self = .incorrectDeltaType
@@ -270,7 +270,7 @@ public struct ProtoCRDTWriteError {
             }
         }
 
-        public var rawValue: Int {
+        var rawValue: Int {
             switch self {
             case .missingCrdtForDelta: return 0
             case .incorrectDeltaType: return 1
@@ -282,14 +282,14 @@ public struct ProtoCRDTWriteError {
         }
     }
 
-    public init() {}
+    init() {}
 }
 
 #if swift(>=4.2)
 
 extension ProtoCRDTWriteError.TypeEnum: CaseIterable {
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    public static var allCases: [ProtoCRDTWriteError.TypeEnum] = [
+    static var allCases: [ProtoCRDTWriteError.TypeEnum] = [
         .missingCrdtForDelta,
         .incorrectDeltaType,
         .cannotWriteDeltaForNonDeltaCrdt,
@@ -303,56 +303,56 @@ extension ProtoCRDTWriteError.TypeEnum: CaseIterable {
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTEnvelope"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "serializerId"),
-        2: .same(proto: "payload"),
-        3: .same(proto: "boxed"),
+    static let protoMessageName: String = "CRDTEnvelope"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "boxed"),
+        2: .same(proto: "serializerId"),
+        3: .same(proto: "payload"),
     ]
 
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
             switch fieldNumber {
-            case 1: try decoder.decodeSingularUInt32Field(value: &self.serializerID)
-            case 2: try decoder.decodeSingularBytesField(value: &self.payload)
-            case 3: try decoder.decodeSingularEnumField(value: &self.boxed)
+            case 1: try decoder.decodeSingularEnumField(value: &self.boxed)
+            case 2: try decoder.decodeSingularUInt32Field(value: &self.serializerID)
+            case 3: try decoder.decodeSingularBytesField(value: &self.payload)
             default: break
             }
         }
     }
 
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        if self.boxed != .anyCvrdt {
+            try visitor.visitSingularEnumField(value: self.boxed, fieldNumber: 1)
+        }
         if self.serializerID != 0 {
-            try visitor.visitSingularUInt32Field(value: self.serializerID, fieldNumber: 1)
+            try visitor.visitSingularUInt32Field(value: self.serializerID, fieldNumber: 2)
         }
         if !self.payload.isEmpty {
-            try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 2)
-        }
-        if self.boxed != .anyCvrdt {
-            try visitor.visitSingularEnumField(value: self.boxed, fieldNumber: 3)
+            try visitor.visitSingularBytesField(value: self.payload, fieldNumber: 3)
         }
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    public static func == (lhs: ProtoCRDTEnvelope, rhs: ProtoCRDTEnvelope) -> Bool {
+    static func == (lhs: ProtoCRDTEnvelope, rhs: ProtoCRDTEnvelope) -> Bool {
+        if lhs.boxed != rhs.boxed { return false }
         if lhs.serializerID != rhs.serializerID { return false }
         if lhs.payload != rhs.payload { return false }
-        if lhs.boxed != rhs.boxed { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
         return true
     }
 }
 
 extension ProtoCRDTEnvelope.Boxed: SwiftProtobuf._ProtoNameProviding {
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         0: .same(proto: "ANY_CVRDT"),
         1: .same(proto: "ANY_DELTA_CRDT"),
     ]
 }
 
 extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTReplicatorMessage"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let protoMessageName: String = "CRDTReplicatorMessage"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "write"),
     ]
 
@@ -375,7 +375,7 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
         return self._storage
     }
 
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
         _ = self._uniqueStorage()
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             while let fieldNumber = try decoder.nextFieldNumber() {
@@ -394,7 +394,7 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
         }
     }
 
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             if case .write(let v)? = _storage._value {
                 try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -403,7 +403,7 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    public static func == (lhs: ProtoCRDTReplicatorMessage, rhs: ProtoCRDTReplicatorMessage) -> Bool {
+    static func == (lhs: ProtoCRDTReplicatorMessage, rhs: ProtoCRDTReplicatorMessage) -> Bool {
         if lhs._storage !== rhs._storage {
             let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
                 let _storage = _args.0
@@ -419,8 +419,8 @@ extension ProtoCRDTReplicatorMessage: SwiftProtobuf.Message, SwiftProtobuf._Mess
 }
 
 extension ProtoCRDTWrite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTWrite"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let protoMessageName: String = "CRDTWrite"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "identity"),
         2: .same(proto: "envelope"),
         3: .same(proto: "replyTo"),
@@ -449,7 +449,7 @@ extension ProtoCRDTWrite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         return self._storage
     }
 
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
         _ = self._uniqueStorage()
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             while let fieldNumber = try decoder.nextFieldNumber() {
@@ -463,7 +463,7 @@ extension ProtoCRDTWrite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         }
     }
 
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             if let v = _storage._identity {
                 try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
@@ -478,7 +478,7 @@ extension ProtoCRDTWrite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    public static func == (lhs: ProtoCRDTWrite, rhs: ProtoCRDTWrite) -> Bool {
+    static func == (lhs: ProtoCRDTWrite, rhs: ProtoCRDTWrite) -> Bool {
         if lhs._storage !== rhs._storage {
             let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
                 let _storage = _args.0
@@ -496,8 +496,8 @@ extension ProtoCRDTWrite: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
 }
 
 extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTWriteResult"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let protoMessageName: String = "CRDTWriteResult"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "type"),
         2: .same(proto: "error"),
     ]
@@ -523,7 +523,7 @@ extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         return self._storage
     }
 
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
         _ = self._uniqueStorage()
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             while let fieldNumber = try decoder.nextFieldNumber() {
@@ -536,7 +536,7 @@ extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         }
     }
 
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
         try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
             if _storage._type != .success {
                 try visitor.visitSingularEnumField(value: _storage._type, fieldNumber: 1)
@@ -548,7 +548,7 @@ extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    public static func == (lhs: ProtoCRDTWriteResult, rhs: ProtoCRDTWriteResult) -> Bool {
+    static func == (lhs: ProtoCRDTWriteResult, rhs: ProtoCRDTWriteResult) -> Bool {
         if lhs._storage !== rhs._storage {
             let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
                 let _storage = _args.0
@@ -565,19 +565,19 @@ extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 }
 
 extension ProtoCRDTWriteResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         0: .same(proto: "SUCCESS"),
         1: .same(proto: "FAILED"),
     ]
 }
 
 extension ProtoCRDTWriteError: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    public static let protoMessageName: String = "CRDTWriteError"
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let protoMessageName: String = "CRDTWriteError"
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         1: .same(proto: "type"),
     ]
 
-    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
         while let fieldNumber = try decoder.nextFieldNumber() {
             switch fieldNumber {
             case 1: try decoder.decodeSingularEnumField(value: &self.type)
@@ -586,14 +586,14 @@ extension ProtoCRDTWriteError: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         }
     }
 
-    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
         if self.type != .missingCrdtForDelta {
             try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
         }
         try self.unknownFields.traverse(visitor: &visitor)
     }
 
-    public static func == (lhs: ProtoCRDTWriteError, rhs: ProtoCRDTWriteError) -> Bool {
+    static func == (lhs: ProtoCRDTWriteError, rhs: ProtoCRDTWriteError) -> Bool {
         if lhs.type != rhs.type { return false }
         if lhs.unknownFields != rhs.unknownFields { return false }
         return true
@@ -601,7 +601,7 @@ extension ProtoCRDTWriteError: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 }
 
 extension ProtoCRDTWriteError.TypeEnum: SwiftProtobuf._ProtoNameProviding {
-    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
         0: .same(proto: "MISSING_CRDT_FOR_DELTA"),
         1: .same(proto: "INCORRECT_DELTA_TYPE"),
         2: .same(proto: "CANNOT_WRITE_DELTA_FOR_NON_DELTA_CRDT"),

@@ -20,7 +20,7 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 
-// === Handshake --------------------------------------------------------------
+// === Handshake -------------------------------------------------------------------------------------------------------
 
 message HandshakeOffer {
     ProtocolVersion version = 1;
@@ -55,7 +55,7 @@ message HandshakeReject {
     string reason            = 4;
 }
 
-// === Envelope --------------------------------------------------------------
+// === Envelope --------------------------------------------------------------------------------------------------------
 
 message Envelope {
     ActorAddress recipient = 1;

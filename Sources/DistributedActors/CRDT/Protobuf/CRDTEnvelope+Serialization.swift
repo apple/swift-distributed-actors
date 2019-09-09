@@ -14,14 +14,19 @@
 
 import NIO
 
-/// An envelope representing `AnyStateBasedCRDT` while carrying information if it was the full CRDT or "only" a delta.
+/// An envelope representing `AnyStateBasedCRDT` type such as `AnyCvRDT`, `AnyDeltaCRDT`.
 ///
-/// E.g. a `CRDT.GCounter`'s delta type is also a `CRDT.GCounter`, however when gossiping or writing information,
-/// we may want to keep the information if the piece of data is a delta update, or the full state of the CRDT - and thanks to the envelope, we can.
-struct CRDTEnvelope {
+/// Due to Swift language restriction, `CvRDT` and `DeltaCRDT` types can only be used as generic constraints. As a
+/// result the type-erasing `AnyCvRDT` and `AnyDeltaCRDT` were introduced and used in CRDT replication and gossiping.
+/// We have to distinguish between CvRDT and delta-CRDT in order to take advantage of optimizations offered by the
+/// latter (i.e., replicate partial state or delta instead of full state).
+///
+/// We must also keep the underlying CRDT intact during de/serialization, and thanks to the envelope, we can do that.
+/// The "boxing" serialization mechanism allows restoration of the `AnyStateBasedCRDT` instance given the underlying CRDT.
+internal struct CRDTEnvelope {
     enum Boxed {
-        case crdt(AnyCvRDT)
-        case delta(AnyDeltaCRDT)
+        case CvRDT(AnyCvRDT)
+        case DeltaCRDT(AnyDeltaCRDT)
     }
 
     let serializerId: Serialization.SerializerId
@@ -30,9 +35,9 @@ struct CRDTEnvelope {
     init(serializerId: Serialization.SerializerId, _ data: AnyStateBasedCRDT) {
         switch data {
         case let data as AnyCvRDT:
-            self._boxed = .crdt(data)
+            self._boxed = .CvRDT(data)
         case let data as AnyDeltaCRDT:
-            self._boxed = .delta(data)
+            self._boxed = .DeltaCRDT(data)
         default:
             fatalError("Unsupported \(data)")
         }
@@ -43,30 +48,29 @@ struct CRDTEnvelope {
 
     var underlying: AnyStateBasedCRDT {
         switch self._boxed {
-        case .crdt(let dataType):
-            return dataType
-        case .delta(let delta):
-            return delta
+        case .CvRDT(let data):
+            return data
+        case .DeltaCRDT(let data):
+            return data
         }
     }
 }
 
-extension CRDTEnvelope: ProtobufRepresentable {
-    typealias ProtobufRepresentation = ProtoCRDTEnvelope
+extension CRDTEnvelope: InternalProtobufRepresentable {
+    typealias InternalProtobufRepresentation = ProtoCRDTEnvelope
 
     func toProto(context: ActorSerializationContext) throws -> ProtoCRDTEnvelope {
         var proto = ProtoCRDTEnvelope()
         switch self._boxed {
-        case .crdt(let data):
+        case .CvRDT(let data):
             let (serializerId, _bytes) = try context.system.serialization.serialize(message: data.underlying, metaType: data.metaType)
             var bytes = _bytes
             proto.boxed = .anyCvrdt
             proto.serializerID = serializerId
             proto.payload = bytes.readData(length: bytes.readableBytes)! // !-safe because we read exactly the number of readable bytes
             return proto
-
-        case .delta(let delta):
-            let (serializerId, _bytes) = try context.system.serialization.serialize(message: delta.underlying, metaType: delta.metaType)
+        case .DeltaCRDT(let data):
+            let (serializerId, _bytes) = try context.system.serialization.serialize(message: data.underlying, metaType: data.metaType)
             var bytes = _bytes
             proto.boxed = .anyDeltaCrdt
             proto.serializerID = serializerId
@@ -75,7 +79,7 @@ extension CRDTEnvelope: ProtobufRepresentable {
         }
     }
 
-    public init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
+    init(fromProto proto: ProtoCRDTEnvelope, context: ActorSerializationContext) throws {
         // TODO: avoid having to alloc, but deser from Data directly
         var bytes = context.allocator.buffer(capacity: proto.payload.count)
         bytes.writeBytes(proto.payload)
@@ -85,14 +89,14 @@ extension CRDTEnvelope: ProtobufRepresentable {
 
         switch proto.boxed {
         case .anyCvrdt:
-            if let anyCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
-                self._boxed = .crdt(anyCRDT)
+            if let anyCvRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyCvRDT.self) {
+                self._boxed = .CvRDT(anyCvRDT)
             } else {
                 fatalError("Unable to box [\(payload)] to [\(AnyCvRDT.self)]")
             }
         case .anyDeltaCrdt:
-            if let anyDelta = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
-                self._boxed = .delta(anyDelta)
+            if let anyDeltaCRDT = context.box(payload, ofKnownType: type(of: payload), as: AnyDeltaCRDT.self) {
+                self._boxed = .DeltaCRDT(anyDeltaCRDT)
             } else {
                 fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
             }

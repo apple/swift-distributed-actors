@@ -26,7 +26,6 @@ declare -a public_protos
 public_protos=(
     -name 'ActorAddress.proto'
     -or -name 'CRDT.proto'
-    -or -name 'CRDTReplication.proto'
     -or -name 'VersionVector.proto'
 )
 

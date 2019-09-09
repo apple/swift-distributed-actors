@@ -20,7 +20,7 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 
-// === System Message --------------------------------------------------------------
+// === System Message --------------------------------------------------------------------------------------------------
 
 message SystemMessage {
     oneof payload {
@@ -46,7 +46,7 @@ message SystemMessage_Terminated {
     bool addressTerminated  = 3;
 }
 
-// === Redelivery --------------------------------------------------------------
+// === Redelivery ------------------------------------------------------------------------------------------------------
 
 message SystemMessageACK {
     uint64 sequenceNr = 1;

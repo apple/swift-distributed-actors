@@ -20,31 +20,38 @@ option swift_prefix = "Proto";
 
 import "ActorAddress.proto";
 
+// === Replica ID ------------------------------------------------------------------------------------------------------
+
+message VersionReplicaId {
+    oneof value {
+        ActorAddress actorAddress = 1;
+    }
+}
+
+// === Version vector --------------------------------------------------------------------------------------------------
+
 message ReplicaVersion {
     VersionReplicaId replicaId = 1;
-    uint32 version = 2;
+    uint64 version = 2;
 }
 
 message VersionVector {
-    // not a map since we cannot use `replicaId` as key
+    // Not a map since we cannot use `replicaId` as key
     repeated ReplicaVersion state = 1;
 }
 
-message VersionDottedElementEnvelope {
-    VersionDot dot = 1;
-
-    // ~~ element ~~
-    uint32 serializerId = 2;
-    bytes payload = 3;
-}
+// === Dot -------------------------------------------------------------------------------------------------------------
 
 message VersionDot {
     VersionReplicaId replicaId = 1;
     uint64 version = 2;
 }
 
-message VersionReplicaId {
-    oneof value {
-        ActorAddress actorAddress = 1;
-    }
+// A dot and its arbitrary, serialized element
+message VersionDottedElementEnvelope {
+    VersionDot dot = 1;
+
+    // ~~ element ~~
+    uint32 serializerId = 2;
+    bytes payload = 3;
 }
