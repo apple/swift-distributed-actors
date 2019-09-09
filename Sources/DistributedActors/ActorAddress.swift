@@ -40,8 +40,8 @@
 /// The address consists of the following parts:
 ///
 /// ```
-/// |              node                | path              | incarnation |
-/// ( protocol | (name) | host | port ) ( [segments] name ) (   uint32   )
+/// |              node                 | path              | incarnation |
+///  ( protocol | (name) | host | port ) ( [segments] name ) (   uint32  )
 /// ```
 ///
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
@@ -169,23 +169,19 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        return lhs.node < lhs.node ||
-            (lhs.node == rhs.node && lhs.path < rhs.path) ||
-            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
-    }
-}
-
-extension Optional: Comparable where Wrapped == UniqueNode {
-    public static func < (lhs: UniqueNode?, rhs: UniqueNode?) -> Bool {
-        switch (lhs, rhs) {
-        case (.some, .none):
-            return false
+        switch (lhs.node, rhs.node) {
         case (.none, .some):
             return true
-        case (.some(let l), .some(let r)):
-            return l < r
-        case (.none, .none):
+        case (.some, .none):
             return false
+        case (.none, .none):
+            // both are local addresses
+            return (lhs.path < rhs.path) || (lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+        case (.some(let lhsNode), .some(let rhsNode)) where lhsNode == rhsNode:
+            // both are on the same node
+            return (lhs.path < rhs.path) || (lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+        case (.some(let lhsNode), .some(let rhsNode)):
+            return lhsNode < rhsNode
         }
     }
 }
