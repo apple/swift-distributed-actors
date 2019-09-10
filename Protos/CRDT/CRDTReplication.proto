@@ -20,7 +20,7 @@ option swift_prefix = "Proto";
 import "ActorAddress.proto";
 import "CRDT/CRDT.proto";
 
-// === Wire envelope for CRDT types ------------------------------------------------------------------------------------
+// ==== Wire envelope for CRDT types -----------------------------------------------------------------------------------
 
 message CRDTEnvelope {
     enum Boxed {
@@ -35,7 +35,7 @@ message CRDTEnvelope {
     bytes payload = 3;
 }
 
-// === CRDT Direct Replication -----------------------------------------------------------------------------------------
+// ==== CRDT Direct Replication ----------------------------------------------------------------------------------------
 
 // ***** CRDT.Replicator.Message *****
 

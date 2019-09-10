@@ -19,7 +19,7 @@ option swift_prefix = "Proto";
 
 import "Clocks/VersionVector.proto";
 
-// === Common and Core CRDT parts --------------------------------------------------------------------------------------
+// ==== Common and Core CRDT parts -------------------------------------------------------------------------------------
 
 // ***** CRDT.Identity *****
 
@@ -48,7 +48,7 @@ message CRDTVersionedContainerDelta {
     repeated VersionDottedElementEnvelope elementByBirthDot = 2;
 }
 
-// === CRDT types ------------------------------------------------------------------------------------------------------
+// ==== CRDT types -----------------------------------------------------------------------------------------------------
 
 // ***** CRDT.GCounter *****
 
