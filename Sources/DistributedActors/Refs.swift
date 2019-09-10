@@ -297,6 +297,13 @@ internal final class ActorCell<Message> {
         let carry = SubMessageCarry(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: SourceLocation(file: file, line: line))
         self.mailbox.sendMessage(envelope: Envelope(payload: .subMessage(carry)), file: file, line: line)
     }
+
+    @usableFromInline
+    func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+        traceLog_Mailbox(self.address.path, "sendAdaptedMessage from \(file):\(line) to: \(self)")
+        let carry = AdaptedMessageCarry(message: message, location: SourceLocation(file: file, line: line))
+        self.mailbox.sendMessage(envelope: Envelope(payload: .adaptedMessage(carry)), file: file, line: line)
+    }
 }
 
 extension ActorCell: CustomDebugStringConvertible {

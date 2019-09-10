@@ -673,6 +673,10 @@ struct MetaType<T>: Hashable {
         self.base = base
     }
 
+    init(from value: T) {
+        self.base = type(of: value)
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self.base))
     }
@@ -690,6 +694,8 @@ protocol AnyMetaType {
 
     /// Performs equality check of the underlying meta type object identifiers.
     func `is`(_ other: AnyMetaType) -> Bool
+
+    func isInstance(_ obj: Any) -> Bool
 }
 
 extension MetaType: AnyMetaType {
@@ -700,8 +706,13 @@ extension MetaType: AnyMetaType {
     func `is`(_ other: AnyMetaType) -> Bool {
         return self.asHashable() == other.asHashable()
     }
+
+    func isInstance(_ obj: Any) -> Bool {
+        return obj is T
+    }
 }
 
+@usableFromInline
 internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
     private let meta: AnyMetaType
 
@@ -709,12 +720,14 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
         self.meta = meta
     }
 
+    @usableFromInline
     func hash(into hasher: inout Hasher) {
         self.meta.asHashable().hash(into: &hasher)
     }
 
+    @usableFromInline
     static func == (lhs: BoxedHashableAnyMetaType, rhs: BoxedHashableAnyMetaType) -> Bool {
-        return lhs.asHashable() == rhs.asHashable()
+        return lhs.is(rhs.meta)
     }
 
     func asHashable() -> AnyHashable {
@@ -727,6 +740,10 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
 
     func `is`(_ other: AnyMetaType) -> Bool {
         return self.meta.asHashable() == other.asHashable()
+    }
+
+    func isInstance(_ obj: Any) -> Bool {
+        return self.meta.isInstance(obj)
     }
 }
 

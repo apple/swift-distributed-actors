@@ -426,7 +426,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     @usableFromInline
-    func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Void)? {
+    func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
         return undefined()
     }
 }

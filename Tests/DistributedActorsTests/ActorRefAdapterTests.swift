@@ -206,9 +206,9 @@ class ActorRefAdapterTests: XCTestCase {
         adaptedRef2.tell("test")
         try probe.expectMessage("received:adapter-1:test")
 
-        // existing ref stays valid
+        // existing ref stays valid, but uses new adapter
         adaptedRef.tell("test")
-        try probe.expectMessage("received:adapter-0:test")
+        try probe.expectMessage("received:adapter-1:test")
     }
 
     func test_adaptedRef_shouldDeadLetter_whenOwnerTerminated() throws {

@@ -832,6 +832,8 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
             self.storage = .message(message)
         case .closure:
             fatalError("Attempted to send .closure to remote actor, this is illegal and can not be made to work. Envelope: \(envelope), recipient: \(recipient)")
+        case .adaptedMessage:
+            fatalError("Attempted to send .adaptedMessage to remote actor, this is illegal and can not be made to work. Envelope: \(envelope), recipient: \(recipient)")
         case .subMessage:
             fatalError("Attempted to send .subMessage to remote actor, this is illegal and can not be made to work. Envelope: \(envelope), recipient: \(recipient)")
         }

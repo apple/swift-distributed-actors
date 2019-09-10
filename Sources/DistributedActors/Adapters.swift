@@ -35,9 +35,8 @@ internal protocol AbstractAdapter: _ActorTreeTraversable {
 /// The adapter can be watched and shares the lifecycle with the adapted actor,
 /// meaning that it will terminate when the actor terminates. It will survive
 /// restarts after failures.
-internal final class ActorRefAdapter<From, To>: AbstractAdapter {
+internal final class ActorRefAdapter<To>: AbstractAdapter {
     private let target: ActorRef<To>
-    private let converter: (From) -> To
     private let adapterAddress: ActorAddress
     private var watchers: Set<AddressableActorRef>?
     private let lock = Mutex()
@@ -48,10 +47,9 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
 
     let deadLetters: ActorRef<DeadLetter>
 
-    init(_ ref: ActorRef<To>, address: ActorAddress, converter: @escaping (From) -> To) {
+    init(_ ref: ActorRef<To>, address: ActorAddress) {
         self.target = ref
         self.adapterAddress = address
-        self.converter = converter
         self.watchers = []
 
         // since we are an adapter, we must be attached to some "real" actor ref (be it local, remote or dead),
@@ -59,7 +57,7 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
         self.deadLetters = self.target._deadLetters
     }
 
-    private var myself: ActorRef<From> {
+    private var myself: ActorRef<Any> {
         return ActorRef(.adapter(self))
     }
 
@@ -81,23 +79,8 @@ internal final class ActorRefAdapter<From, To>: AbstractAdapter {
     }
 
     @usableFromInline
-    func _sendUserMessage(_ message: From, file: String, line: UInt) {
-        self.target.tell(self.converter(message), file: file, line: line)
-    }
-
-    @usableFromInline
     func trySendUserMessage(_ message: Any, file: String = #file, line: UInt = #line) {
-        if let message = message as? From {
-            self._sendUserMessage(message, file: file, line: line)
-        } else {
-            if let directMessage = message as? To {
-                fatalError("trySendUserMessage on adapter \(self.myself) was attempted with `To = \(To.self)` message [\(directMessage)], " +
-                    "which is the original adapted-to message type. This should never happen, as on compile-level the message type should have been enforced to be `From = \(From.self)`.")
-            } else {
-                traceLog_Mailbox(self.address.path, "trySendUserMessage: [\(message)] failed because of invalid message type, to: \(self)")
-                return // TODO: "drop" the message
-            }
-        }
+        self.target._unsafeUnwrapCell.sendAdaptedMessage(message, file: file, line: line)
     }
 
     private func addWatcher(watchee: AddressableActorRef, watcher: AddressableActorRef) {
@@ -184,12 +167,7 @@ extension ActorRefAdapter {
             return context.personalDeadLetters
         }
 
-        switch self.myself {
-        case let myself as ActorRef<Message>:
-            return myself
-        default:
-            return context.personalDeadLetters
-        }
+        return .init(.adapter(self))
     }
 
     func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {

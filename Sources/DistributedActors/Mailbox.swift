@@ -24,6 +24,7 @@ import Logging
 internal enum WrappedMessage {
     case message(Any)
     case closure(ActorClosureCarry)
+    case adaptedMessage(AdaptedMessageCarry)
     case subMessage(SubMessageCarry)
 }
 
@@ -148,6 +149,40 @@ internal struct SubMessageCarry {
     }
 }
 
+@usableFromInline
+internal struct AdaptedMessageCarry {
+    @usableFromInline
+    class _Storage {
+        @usableFromInline
+        let message: Any
+        @usableFromInline
+        let location: SourceLocation
+
+        @usableFromInline
+        init(message: Any, location: SourceLocation) {
+            self.message = message
+            self.location = location
+        }
+    }
+
+    let _storage: _Storage
+
+    @usableFromInline
+    init(message: Any, location: SourceLocation) {
+        self._storage = .init(message: message, location: location)
+    }
+
+    @usableFromInline
+    var message: Any {
+        return self._storage.message
+    }
+
+    @usableFromInline
+    var location: SourceLocation {
+        return self._storage.location
+    }
+}
+
 internal final class Mailbox<Message> {
     private var mailbox: UnsafeMutablePointer<CSActMailbox>
 
@@ -238,6 +273,8 @@ internal final class Mailbox<Message> {
             case .closure(let carry):
                 traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.location)")
                 return try shell.interpretClosure(carry)
+            case .adaptedMessage(let carry):
+                return try shell.interpretAdaptedMessage(carry: carry)
             case .subMessage(let carry):
                 traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier) defined at \(carry.location)")
                 return try shell.interpretSubMessage(carry)
@@ -276,6 +313,8 @@ internal final class Mailbox<Message> {
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
             case .closure(let carry):
                 deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.location)", recipient: address))
+            case .adaptedMessage(let message):
+                deadLetters.tell(DeadLetter(message, recipient: address))
             case .subMessage(let carry):
                 deadLetters.tell(DeadLetter(carry.message, recipient: carry.subReceiveAddress))
             }
