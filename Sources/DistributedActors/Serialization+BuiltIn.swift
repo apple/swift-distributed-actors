@@ -69,3 +69,43 @@ internal class NumberSerializer<Number: FixedWidthInteger>: Serializer<Number> {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: JSON Codable Serializer
+
+internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
+    private let allocate: ByteBufferAllocator
+    internal var encoder: JSONEncoder = JSONEncoder()
+    internal var decoder: JSONDecoder = JSONDecoder()
+
+    // TODO: expose the encoder/decoder
+    init(allocator: ByteBufferAllocator) {
+        self.allocate = allocator
+        super.init()
+    }
+
+    override func serialize(message: T) throws -> ByteBuffer {
+        let data = try encoder.encode(message)
+        traceLog_Serialization("serialized to: \(data)")
+
+        // FIXME: can be better?
+        var buffer = self.allocate.buffer(capacity: data.count)
+        buffer.writeBytes(data)
+
+        return buffer
+    }
+
+    override func deserialize(bytes: ByteBuffer) throws -> T {
+        guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
+            fatalError("Could not read data! Was: \(bytes), trying to deserialize for \(T.self)")
+        }
+
+        return try self.decoder.decode(T.self, from: data)
+    }
+
+    override func setSerializationContext(_ context: ActorSerializationContext) {
+        // same context shared for encoding/decoding is safe
+        self.decoder.userInfo[.actorSerializationContext] = context
+        self.encoder.userInfo[.actorSerializationContext] = context
+    }
+}

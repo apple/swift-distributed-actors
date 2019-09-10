@@ -40,10 +40,9 @@ extension Serialization {
             internal static let SWIMAck: SerializerId = 10
 
             internal static let CRDTReplicatorMessage: SerializerId = 11
-            internal static let CRDTAnyCvRDT: SerializerId = 12
-            internal static let CRDTAnyDeltaCRDT: SerializerId = 13
-            internal static let CRDTGCounter: SerializerId = 14
-            internal static let CRDTGCounterDelta: SerializerId = 15
+            internal static let CRDTEnvelope: SerializerId = 12
+            internal static let CRDTGCounter: SerializerId = 13
+            internal static let CRDTGCounterDelta: SerializerId = 14
         }
     }
 }

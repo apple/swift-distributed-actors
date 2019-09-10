@@ -134,8 +134,8 @@ extension VersionVector: Comparable {
             return rhs.isNotEmpty
         }
 
-        // If every entry in version vector X is less than or equal to the corresponding entry in version vector Y,
-        // and at least one entry is strictly smaller.
+        // If every entry in version vector X is less than or equal to the corresponding entry in
+        // version vector Y, and at least one entry is strictly smaller, then X < Y.
         var hasEqual = false
         for (replicaId, lVersion) in lhs.state {
             let rVersion = rhs[replicaId]
@@ -156,39 +156,7 @@ extension VersionVector: Comparable {
 
 extension VersionVector: CustomStringConvertible {
     public var description: String {
-        return "vv:\(self.state)"
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Replica ID
-
-public enum ReplicaId: Hashable {
-    case actorAddress(ActorAddress)
-}
-
-extension ReplicaId: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .actorAddress(let address):
-            return "actor:\(address)"
-        }
-    }
-}
-
-extension ReplicaId: Comparable {
-    public static func < (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
-        switch (lhs, rhs) {
-        case (.actorAddress(let l), .actorAddress(let r)):
-            return l < r
-        }
-    }
-
-    public static func == (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
-        switch (lhs, rhs) {
-        case (.actorAddress(let l), .actorAddress(let r)):
-            return l == r
-        }
+        return "\(self.state)"
     }
 }
 
@@ -224,6 +192,38 @@ extension VersionDot: Comparable {
 
 extension VersionDot: CustomStringConvertible {
     public var description: String {
-        return "dot:(\(self.replicaId),\(self.version))"
+        return "Dot(\(self.replicaId),\(self.version))"
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Replica ID
+
+public enum ReplicaId: Hashable {
+    case actorAddress(ActorAddress)
+}
+
+extension ReplicaId: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .actorAddress(let address):
+            return "actor:\(address)"
+        }
+    }
+}
+
+extension ReplicaId: Comparable {
+    public static func < (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+        switch (lhs, rhs) {
+        case (.actorAddress(let l), .actorAddress(let r)):
+            return l < r
+        }
+    }
+
+    public static func == (lhs: ReplicaId, rhs: ReplicaId) -> Bool {
+        switch (lhs, rhs) {
+        case (.actorAddress(let l), .actorAddress(let r)):
+            return l == r
+        }
     }
 }

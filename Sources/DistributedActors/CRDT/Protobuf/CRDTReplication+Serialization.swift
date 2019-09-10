@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import NIO
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.Replicator.Message
 
@@ -27,18 +25,19 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
         }
 
         switch message {
-        case .write(let id, let crdtOrDelta, let replyTo):
+        case .write(let id, let data, let replyTo):
             traceLog_Serialization("\(self)")
+
             var write = ProtoCRDTWrite()
             write.identity = id.toProto(context: context)
             write.replyTo = replyTo.toProto(context: context)
 
-            guard let serializerId = context.system.serialization.serializerIdFor(metaType: crdtOrDelta.metaType) else {
-                throw SerializationError.noSerializerRegisteredFor(hint: "\(crdtOrDelta.metaType)")
+            guard let serializerId = context.system.serialization.serializerIdFor(metaType: data.metaType) else {
+                throw SerializationError.noSerializerRegisteredFor(hint: "\(data.metaType)")
             }
-            write.envelope = try CRDTEnvelope(serializerId: serializerId, crdtOrDelta).toProto(context: context)
-            proto.write = write
+            write.envelope = try CRDTEnvelope(serializerId: serializerId, data).toProto(context: context)
 
+            proto.write = write
         case .writeDelta:
             fatalError("to be implemented")
 
@@ -58,21 +57,21 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
         }
 
         switch value {
-        case .write(let write):
-            guard write.hasIdentity else {
+        case .write(let protoWrite):
+            guard protoWrite.hasIdentity else {
                 throw SerializationError.missingField("identity", type: String(describing: CRDT.Replicator.Message.self))
             }
-            let id = CRDT.Identity(fromProto: write.identity, context: context)
+            let id = CRDT.Identity(fromProto: protoWrite.identity, context: context)
 
-            guard write.hasReplyTo else {
+            guard protoWrite.hasReplyTo else {
                 throw SerializationError.missingField("replyTo", type: String(describing: CRDT.Replicator.Message.self))
             }
-            let replyTo = try ActorRef<CRDT.Replicator.RemoteCommand.WriteResult>(fromProto: write.replyTo, context: context)
+            let replyTo = try ActorRef<CRDT.Replicator.RemoteCommand.WriteResult>(fromProto: protoWrite.replyTo, context: context)
 
-            guard write.hasEnvelope else {
+            guard protoWrite.hasEnvelope else {
                 throw SerializationError.missingField("envelope", type: String(describing: CRDT.Replicator.Message.self))
             }
-            let envelope = try CRDTEnvelope(fromProto: write.envelope, context: context)
+            let envelope = try CRDTEnvelope(fromProto: protoWrite.envelope, context: context)
 
             self = .remoteCommand(.write(id, envelope.underlying, replyTo: replyTo))
         }

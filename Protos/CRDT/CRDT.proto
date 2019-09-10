@@ -21,24 +21,26 @@ import "Clocks/VersionVector.proto";
 
 // ==== Common and Core CRDT parts -------------------------------------------------------------------------------------
 
-// ===== CRDT.Identity =====
+// ***** CRDT.Identity *****
 
 message CRDTIdentity {
     string id = 1;
 }
 
-// ===== Versioned Container =====
+// ***** CRDT.VersionContext *****
+
+message CRDTVersionContext {
+    VersionVector versionVector = 1;
+    repeated VersionDot gaps = 2;
+}
+
+// ***** CRDT.VersionedContainer *****
 
 message CRDTVersionedContainer {
     VersionReplicaId replicaId = 1;
     CRDTVersionContext versionContext = 2;
     repeated VersionDottedElementEnvelope elementByBirthDot = 3;
     CRDTVersionedContainerDelta delta = 4;
-}
-
-message CRDTVersionContext {
-    VersionVector versionVector = 1;
-    repeated VersionDot gaps = 2;
 }
 
 message CRDTVersionedContainerDelta {
@@ -48,7 +50,7 @@ message CRDTVersionedContainerDelta {
 
 // ==== CRDT types -----------------------------------------------------------------------------------------------------
 
-// ===== CRDT.GCounter =====
+// ***** CRDT.GCounter *****
 
 message CRDTGCounter {
     message ReplicaState {
@@ -61,14 +63,15 @@ message CRDTGCounter {
     }
 
     VersionReplicaId replicaId = 1;
-    // Not a map because only integral or string type can be keys
+    // Not a map since we cannot use `replicaId` as key
     repeated ReplicaState state = 2;
     Delta delta = 3;
 }
 
-// ===== CRDT.ORSet =====
+// ***** CRDT.ORSet *****
 
 message CRDTORSet {
     VersionReplicaId replicaId = 1;
+    // Includes delta
     CRDTVersionedContainer state = 2;
 }

@@ -30,14 +30,14 @@ message CRDTEnvelope {
         ANY_DELTA_CRDT = 1;
     }
 
-    uint32 serializerId = 1;
-    bytes payload = 2;
-    Boxed boxed = 3;
+    Boxed boxed = 1;
+    uint32 serializerId = 2;
+    bytes payload = 3;
 }
 
 // ==== CRDT Direct Replication ----------------------------------------------------------------------------------------
 
-// ===== CRDT.Replicator.Message =====
+// ***** CRDT.Replicator.Message *****
 
 message CRDTReplicatorMessage {
     oneof value {
@@ -45,7 +45,7 @@ message CRDTReplicatorMessage {
     }
 }
 
-// ===== CRDT.Replicator.RemoteCommand.write =====
+// ***** CRDT.Replicator.RemoteCommand.write *****
 
 message CRDTWrite {
     CRDTIdentity identity = 1;
