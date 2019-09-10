@@ -17,7 +17,23 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-final class UniqueNodeTests: XCTestCase {
+final class NodeTests: XCTestCase {
+
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Node
+
+    func test_nodes_equal_whenHostPortMatch() {
+        let alpha = Node(systemName: "SystemNameAlpha", host: "111.111.11.1", port: 1111)
+        let beta = Node(systemName: "SystemNameBeta", host: "111.111.11.1", port: 1111)
+
+        // system names are only for human readability / debugging, not equality
+        alpha.shouldEqual(beta)
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: UniqueNode
+
     func test_uniqueNode_shouldRenderProperly() {
         let node = Node(systemName: "SystemName", host: "188.121.122.3", port: 1111)
         let uniqueNode = UniqueNode(node: node, nid: NodeID(2222))

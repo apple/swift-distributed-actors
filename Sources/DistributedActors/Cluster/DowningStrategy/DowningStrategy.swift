@@ -13,14 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 internal protocol DowningStrategy {
-    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirective.MemberUnreachableDirective
-    func onLeaderChange(to: UniqueNode?) -> DowningStrategyDirective.LeaderChangeDirective
-    func onTimeout(_ member: Member) -> DowningStrategyDirective.TimeoutDirective
-    func onMemberRemoved(_ member: Member) -> DowningStrategyDirective.MemberRemovedDirective
-    func onMemberReachable(_ member: Member) -> DowningStrategyDirective.MemberReachableDirective
+    func onLeaderChange(to: Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective
+    func onTimeout(_ member: Member) -> DowningStrategyDirectives.TimeoutDirective
+
+    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirectives.MemberUnreachableDirective
+    func onMemberReachable(_ member: Member) -> DowningStrategyDirectives.MemberReachableDirective
+
+    func onMemberRemoved(_ member: Member) -> DowningStrategyDirectives.MemberRemovedDirective
 }
 
-internal enum DowningStrategyDirective {
+internal enum DowningStrategyDirectives {
     enum LeaderChangeDirective {
         case none
         case markAsDown(Set<UniqueNode>)
@@ -51,21 +53,24 @@ internal enum DowningStrategyMessage {
     case timeout(Member)
 }
 
-internal struct DowningStrategyShell<Strategy: DowningStrategy> {
+internal struct DowningStrategyShell {
     typealias Message = DowningStrategyMessage
-
     var naming: ActorNaming = "downingStrategy"
 
-    let strategy: Strategy
+    let strategy: DowningStrategy
 
-    init(_ strategy: Strategy) {
+    init(_ strategy: DowningStrategy) {
         self.strategy = strategy
     }
 
     var behavior: Behavior<Message> {
         return .setup { context in
             let clusterEventSubRef = context.subReceive(ClusterEvent.self) { event in
-                self.receiveClusterEvent(context, event: event)
+                do {
+                    try self.receiveClusterEvent(context, event: event)
+                } catch {
+                    context.log.warning("Error while handling cluster event: [\(error)]\(type(of: error))")
+                }
             }
             context.system.cluster.events.subscribe(clusterEventSubRef)
 
@@ -97,10 +102,10 @@ internal struct DowningStrategyShell<Strategy: DowningStrategy> {
         context.system.cluster.down(node: member)
     }
 
-    func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) {
+    func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) throws {
         switch event {
-        case .leaderChanged(let leaderOpt):
-            let directive = self.strategy.onLeaderChange(to: leaderOpt)
+        case .leadershipChange(let change):
+            let directive = try self.strategy.onLeaderChange(to: change.newLeader)
             switch directive {
             case .markAsDown(let downMembers):
                 self.markAsDown(context, members: downMembers)
@@ -108,37 +113,37 @@ internal struct DowningStrategyShell<Strategy: DowningStrategy> {
                 () // no members to mark down
             }
 
-        case .reachability(.memberReachable(let member)):
-            context.log.debug("Member [\(member)] has become reachable")
-            let directive = self.strategy.onMemberReachable(member)
+        case .membershipChange(let change) where change.isRemoval:
+            context.log.debug("Member [\(change.member)] has been removed")
+            let directive = self.strategy.onMemberRemoved(change.member)
             switch directive {
             case .cancelTimer:
-                context.timers.cancel(for: TimerKey(member))
+                context.timers.cancel(for: TimerKey(change.member))
             case .none:
                 () // this member was not marked unreachable, so ignore
             }
+        case .membershipChange: // TODO: actually store and act based on membership
+            () //
 
-        case .reachability(.memberUnreachable(let member)):
-            context.log.debug("Member [\(member)] has become unreachable")
-            switch self.strategy.onMemberUnreachable(member) {
-            case .startTimer(let key, let message, let delay):
-                context.timers.startSingle(key: key, message: message, delay: delay)
-            case .none:
-                () // nothing to be done
+        case .reachabilityChange(let change):
+            context.log.debug("Member [\(change)] has become \(change.member.reachability)")
+
+            if change.toReachable {
+                let directive = self.strategy.onMemberReachable(change.member)
+                switch directive {
+                case .cancelTimer:
+                    context.timers.cancel(for: TimerKey(change.member.node))
+                case .none:
+                    () // this member was not marked unreachable, so ignore
+                }
+            } else {
+                switch self.strategy.onMemberUnreachable(change.member) {
+                case .startTimer(let key, let message, let delay):
+                    context.timers.startSingle(key: key, message: message, delay: delay)
+                case .none:
+                    () // nothing to be done
+                }
             }
-
-        case .membership(.memberRemoved(let member)):
-            context.log.debug("Member [\(member)] has been removed")
-            let directive = self.strategy.onMemberRemoved(member)
-            switch directive {
-            case .cancelTimer:
-                context.timers.cancel(for: TimerKey(member))
-            case .none:
-                () // this member was not marked unreachable, so ignore
-            }
-
-        default:
-            () // no need to handle the other events
         }
     }
 }

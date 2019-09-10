@@ -28,17 +28,13 @@ public final class Lock {
 
     /// Create a new lock.
     public init() {
-        var attr = pthread_mutexattr_t()
-        pthread_mutexattr_init(&attr)
-        pthread_mutexattr_settype(&attr, .init(PTHREAD_MUTEX_ERRORCHECK))
-
-        let err = pthread_mutex_init(self.mutex, &attr)
-        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
+        let err = pthread_mutex_init(self.mutex, nil)
+        precondition(err == 0)
     }
 
     deinit {
         let err = pthread_mutex_destroy(self.mutex)
-        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
+        precondition(err == 0)
         mutex.deallocate()
     }
 
@@ -48,7 +44,7 @@ public final class Lock {
     /// `unlock`, to simplify lock handling.
     public func lock() {
         let err = pthread_mutex_lock(self.mutex)
-        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
+        precondition(err == 0)
     }
 
     /// Release the lock.
@@ -57,7 +53,7 @@ public final class Lock {
     /// `lock`, to simplify lock handling.
     public func unlock() {
         let err = pthread_mutex_unlock(self.mutex)
-        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
+        precondition(err == 0)
     }
 }
 
@@ -102,12 +98,12 @@ public final class ConditionLock<T: Equatable> {
         self._value = value
         self.mutex = Lock()
         let err = pthread_cond_init(self.cond, nil)
-        precondition(err == 0, "\(#function) failed in pthread_cond with error \(err)")
+        precondition(err == 0)
     }
 
     deinit {
         let err = pthread_cond_destroy(self.cond)
-        precondition(err == 0, "\(#function) failed in pthread_cond with error \(err)")
+        precondition(err == 0)
         self.cond.deallocate()
     }
 

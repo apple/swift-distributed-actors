@@ -138,31 +138,15 @@ final class ActorAddressTests: XCTestCase {
     }
 
     func test_sortingOf_ActorAddresses() throws {
-        let node100 = UniqueNode(systemName: "X", host: "localhost", port: 22, nid: NodeID(100))
-        let node200 = UniqueNode(systemName: "X", host: "localhost", port: 22, nid: NodeID(200))
-        let node200p1 = UniqueNode(systemName: "X", host: "localhost", port: 1, nid: NodeID(200))
-
-        let pathA: ActorPath = try ActorPath._user.appending("a")
-        let a10: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(10))
-        let a11: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(11))
-        let a20: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(20))
-        [a20, a10, a11].sorted().shouldEqual([a10, a11, a20]) // on equal nodes and paths, incarnations matter
-
-        let pathB: ActorPath = try ActorPath._user.appending("b")
-        let b10: ActorAddress = ActorAddress(node: node100, path: pathB, incarnation: .random())
-        let b20: ActorAddress = ActorAddress(node: node200, path: pathB, incarnation: .random())
-        [b20, b10].sorted().shouldEqual([b10, b20])
-
-        let pathC: ActorPath = try ActorPath._user.appending("b")
-        let cp22: ActorAddress = ActorAddress(node: node200, path: pathC, incarnation: .perpetual)
-        let cp1i0: ActorAddress = ActorAddress(node: node200p1, path: pathC, incarnation: .perpetual)
-        let cp1i1000: ActorAddress = ActorAddress(node: node200p1, path: pathC, incarnation: ActorIncarnation(1000))
-        [cp1i1000, cp1i0, cp22].sorted().shouldEqual([cp1i0, cp1i1000, cp22])
-
-        let a: ActorAddress = try ActorAddress(node: node100, path: ActorPath._user.appending("a"), incarnation: ActorIncarnation(10))
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .random())
         let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .random())
         let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .random())
-        // sorting should not be impacted by the random incarnation numbers, as node or path segments already decide order
-        [b, a, c].sorted().shouldEqual([b, c, a]) // local refs sorted first
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
     }
 }

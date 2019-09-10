@@ -31,6 +31,9 @@ public struct ClusterSettings {
         return ClusterSettings(node: defaultNode)
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Connection establishment, protocol settings
+
     /// If `true` the ActorSystem start the cluster subsystem upon startup.
     /// The address bound to will be `bindAddress`.
     public var enabled: Bool = false
@@ -63,6 +66,9 @@ public struct ClusterSettings {
         return UniqueNode(node: self.node, nid: self.nid)
     }
 
+    /// Time after which a the binding of the server port should fail
+    public var bindTimeout: TimeAmount = .seconds(3)
+
     /// Time after which a connection attempt will fail if no connection could be established
     public var connectTimeout: TimeAmount = .milliseconds(500)
 
@@ -72,11 +78,6 @@ public struct ClusterSettings {
     /// `NodeID` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var nid: NodeID
 
-    /// If set, all communication with other nodes will be secured using TLS
-    public var tls: TLSConfiguration?
-
-    public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
-
     /// `ProtocolVersion` to be used when exposing `UniqueNode` for node configured by using these settings.
     public var protocolVersion: DistributedActors.Version {
         return self._protocolVersion
@@ -85,13 +86,38 @@ public struct ClusterSettings {
     // Exposed for testing handshake negotiation while joining nodes of different versions
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Leader Selection
+
+    var autoLeaderSelection: LeadershipSelectionSettings = .none
+    enum LeadershipSelectionSettings {
+        case none
+        case lowestAddress(minNrOfMembers: Int)
+
+        func make(_: ClusterSettings) -> LeaderSelection? {
+            switch self {
+            case .none:
+                return nil
+            case .lowestAddress(let nr):
+                return Leadership.NaiveLowestAmongReachables(minimumNrOfMembers: nr)
+            }
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: TLS & security settings
+
+    /// If set, all communication with other nodes will be secured using TLS
+    public var tls: TLSConfiguration?
+
+    public var tlsPassphraseCallback: NIOSSLPassphraseCallback<[UInt8]>?
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: NIO
+
     /// If set, this event loop group will be used by the cluster infrastructure.
     // TODO: do we need to separate server and client sides? Sounds like a reasonable thing to do.
     public var eventLoopGroup: EventLoopGroup?
-
-    // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
-    /// Interval with which the receptionists will sync their state with the other nodes.
-    public var receptionistSyncInterval: TimeAmount = .seconds(5)
 
     /// Unless the `eventLoopGroup` property is set, this function is used to create a new event loop group
     /// for the underlying NIO pipelines.
@@ -99,14 +125,17 @@ public struct ClusterSettings {
         return MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount) // TODO: share pool with others
     }
 
+    // TODO: Can be removed once we have an implementation based on CRDTs with more robust replication
+    /// Interval with which the receptionists will sync their state with the other nodes.
+    public var receptionistSyncInterval: TimeAmount = .seconds(5)
+
     /// Allocator to be used for allocating byte buffers for coding/decoding messages.
     public var allocator: ByteBufferAllocator = NIO.ByteBufferAllocator()
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-
     // MARK: Cluster membership and failure detection
 
-    public var downingStrategy: DowningStrategySettings = .noop
+    public var downingStrategy: DowningStrategySettings = .none
 
     /// Configures the SWIM failure failure detector.
     public var swim: SWIM.Settings = .default
@@ -133,6 +162,15 @@ public struct ClusterSettings {
 }
 
 public enum DowningStrategySettings {
-    case noop
+    case none
     case timeout(TimeoutBasedDowningStrategySettings)
+
+    func make(_ clusterSettings: ClusterSettings) -> DowningStrategy? {
+        switch self {
+        case .none:
+            return nil
+        case .timeout(let settings):
+            return TimeoutBasedDowningStrategy(settings, selfNode: clusterSettings.uniqueBindNode)
+        }
+    }
 }

@@ -639,8 +639,6 @@ private final class DumpRawBytesDebugHandler: ChannelInboundHandler {
 // MARK: "Server side" / accepting connections
 
 extension ClusterShell {
-    // TODO: abstract into `Transport`?
-
     internal func bootstrapServerSide(system: ActorSystem, shell: ClusterShell.Ref, bindAddress: UniqueNode, settings: ClusterSettings, serializationPool: SerializationPool) -> EventLoopFuture<Channel> {
         let group: EventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup() // TODO: share the loop with client side?
 

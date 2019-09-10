@@ -102,9 +102,14 @@ internal struct SWIMShell {
             context.log.trace("Received request to ping [\(target)] from [\(replyTo)] with payload [\(payload)]")
 
             if !self.swim.isMember(target) {
-                self.ensureAssociated(context, remoteNode: target.address.node?.node) { _ in
-                    self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
-                    self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
+                self.ensureAssociated(context, remoteNode: target.address.node) { result in
+                    switch result {
+                    case .success(let remoteAddress):
+                        self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
+                        self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
+                    case .failure(let error):
+                        context.log.warning("Unable to obtain association for remote \(target.address.node)... Maybe it was tombstoned?")
+                    }
                 }
             } else {
                 self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
@@ -216,9 +221,9 @@ internal struct SWIMShell {
         switch result {
         case .failure(let err):
             if let timeoutError = err as? TimeoutError {
-                context.log.warning("Did not receive ack from [\(pingedMember)] within [\(timeoutError.timeout.prettyDescription)]. Sending ping requests to other members.")
+                context.log.warning("Did not receive ack from \(reflecting: pingedMember.address) within [\(timeoutError.timeout.prettyDescription)]. Sending ping requests to other members.")
             } else {
-                context.log.warning("\(err) Did not receive ack from [\(pingedMember)] within configured timeout. Sending ping requests to other members.")
+                context.log.warning("\(err) Did not receive ack from \(reflecting: pingedMember.address) within configured timeout. Sending ping requests to other members.")
             }
             // TODO: when adding lifeguard extensions, reply with .nack
             let originOfPingWasPingRequest = pingReqOrigin != nil
@@ -265,13 +270,18 @@ internal struct SWIMShell {
     }
 
     func handleMonitor(_ context: ActorContext<SWIM.Message>, node: Node) {
-        self.ensureAssociated(context, remoteNode: node) { uniqueNode in
-            guard let uniqueNode = uniqueNode else {
-                return // seems we were about to handleJoin to our own node, thus: nothing to do
-            }
+        guard context.system.cluster.node.node != node else {
+            return // no need to monitor ourselves
+        }
 
-            assert(uniqueNode.node == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell.")
-            self.sendFirstRemotePing(context, on: uniqueNode)
+        self.requestAssociation(context, remoteNode: node) { uniqueNodeResult in
+            switch uniqueNodeResult {
+            case .success(let associatedNode):
+                assert(associatedNode.node == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell. Was: \(associatedNode), \(node)")
+                self.sendFirstRemotePing(context, on: associatedNode)
+            case .failure(let error):
+                context.log.warning("Error: \(error)")
+            }
         }
     }
 
@@ -347,18 +357,14 @@ internal struct SWIMShell {
                 case .applied:
                     () // ok, nothing to do
 
-                case .connect(let address, let continueAddingMember):
+                case .connect(let node, let continueAddingMember):
                     // ensuring a connection is asynchronous, but executes callback in actor context
-                    self.ensureAssociated(context, remoteNode: address) { uniqueAddress in
-                        // it COULD happen that we kick off connecting to a node based on this connection
-                        // TODO: test for this
-                        if let uniqueRemoteAddress = uniqueAddress {
-                            continueAddingMember(uniqueRemoteAddress)
-                            return
-                        } else {
-                            // was a local address... weird
-                            continueAddingMember(context.system.cluster.node)
-                            return
+                    self.ensureAssociated(context, remoteNode: node) { uniqueAddressResult in
+                        switch uniqueAddressResult {
+                        case .success(let uniqueAddress):
+                            continueAddingMember(uniqueAddress)
+                        case .failure(let error):
+                            context.log.warning("Unable ensure association with \(node), could it have been tombstoned? Error: \(error)")
                         }
                     }
 
@@ -366,12 +372,10 @@ internal struct SWIMShell {
                     if let level = level, let message = message {
                         context.log.log(level: level, message)
                     }
-                    return
 
                 case .confirmedDead(let member):
-                    context.log.info("Detected [DEAD] node. Information received: \(member).")
+                    context.log.info("Detected [.dead] node. Information received: \(member).")
                     context.system.cluster.down(node: member.node.node)
-                    return
                 }
             }
 
@@ -380,32 +384,49 @@ internal struct SWIMShell {
         }
     }
 
-    func ensureAssociated(_ context: ActorContext<SWIM.Message>, remoteNode: Node?, onceConnected: @escaping (UniqueNode?) -> Void) {
+    /// Use to ensure an association to given remote node exists; as one may not always be sure a connection has been already established,
+    /// when a remote ref is discovered through other means (such as SWIM's gossiping).
+    func ensureAssociated(_ context: ActorContext<SWIM.Message>, remoteNode: UniqueNode?, onceConnected: @escaping (Result<UniqueNode, Error>) -> Void) {
+        // this is a local node, so we don't need to connect first
+        guard let uniqueNode = remoteNode else {
+            onceConnected(.success(context.system.cluster.node))
+            return
+        }
+
+        guard let associationState = context.system._cluster?.associationRemoteControl(with: uniqueNode) else {
+            return
+        }
+
+        switch associationState {
+        case .unknown:
+            self.requestAssociation(context, remoteNode: uniqueNode.node, onceConnected: onceConnected)
+        case .associated(let control):
+            onceConnected(.success(control.remoteNode))
+        case .tombstone:
+            return // we shall not associate with this tombstoned node (!)
+        }
+    }
+    func requestAssociation(_ context: ActorContext<SWIM.Message>, remoteNode: Node?, onceConnected: @escaping (Result<UniqueNode, Error>) -> Void) {
         // this is a local node, so we don't need to connect first
         guard let remoteNode = remoteNode else {
-            onceConnected(nil)
+            onceConnected(.success(context.system.cluster.node))
             return
         }
 
-        guard remoteNode != context.system.settings.cluster.node else {
-            // TODO: handle old incarnations of self properly?
-            onceConnected(nil)
-            return
-        }
-
-        let handshakeTimeout = TimeAmount.seconds(3)
+        // TODO: might need a cache in the swim shell? // actual solution being a shared concurrent hashmap...
         // FIXME: use reasonable timeout and back off? issue #724
-        let handshakeResultAnswer = context.system.cluster._clusterRef.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
+        let handshakeTimeout = TimeAmount.seconds(3)
+        let handshakeResultAnswer = context.system.cluster.ref.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
             .command(.handshakeWith(remoteNode, replyTo: $0))
         }
         context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in
             switch handshakeResultResult {
-            case .success(.success(let remoteUniqueAddress)):
-                onceConnected(remoteUniqueAddress)
-            case .success(.failure):
-                context.log.warning("Failed to connect to remote node [\(remoteNode)]")
+            case .success(.success(let uniqueNode)):
+                onceConnected(.success(uniqueNode))
+            case .success(.failure(let error)):
+                context.log.warning("Failed to connect to remote node [\(remoteNode)], error: \(error)")
             case .failure:
-                context.log.warning("Connecting to remote node [\(remoteNode)] timed out after [\(handshakeTimeout)]")
+                context.log.warning("Connecting to remote node \(reflecting: remoteNode) timed out after [\(handshakeTimeout.prettyDescription)]")
             }
 
             return .same

@@ -43,13 +43,11 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
 
         // this information should reach the remote node via gossip
         try testKit.eventually(within: .seconds(3), interval: .milliseconds(150)) {
-            try self.assertMemberStatus(testKit, on: third, member: third, is: .down)
+            try self.assertMemberStatus(on: third, node: third.cluster.node, is: .down)
 
-            try self.assertMemberStatus(testKit, on: first, member: third, is: .down)
-            try self.assertMemberStatus(testKit, on: second, member: third, is: .down)
+            try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
+            try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
         }
-
-        self.pinfoAllMemberships(testKit: testKit)
     }
 
     func test_join_swimDiscovered_thirdNode() throws {
@@ -63,14 +61,6 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
             settings.cluster.node.port = 9333
         }
 
-        defer {
-            if self.testRun?.failureCount ?? 1 > 0 {
-                self.printCapturedLogs(first)
-                self.printCapturedLogs(second)
-                self.printCapturedLogs(third)
-            }
-        }
-
         // 1. first join second
         first.cluster.join(node: second.cluster.node.node)
 
@@ -78,25 +68,59 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         third.cluster.join(node: second.cluster.node.node)
 
         // confirm 1
-        try assertAssociated(first, withAtLeast: second.settings.cluster.uniqueBindNode)
-        try assertAssociated(second, withAtLeast: first.settings.cluster.uniqueBindNode)
+        try assertAssociated(first, withAtLeast: second.cluster.node)
+        try assertAssociated(second, withAtLeast: first.cluster.node)
         pinfo("Associated: first <~> second")
         // confirm 2
-        try assertAssociated(third, withAtLeast: second.settings.cluster.uniqueBindNode)
-        try assertAssociated(second, withAtLeast: third.settings.cluster.uniqueBindNode)
+        try assertAssociated(third, withAtLeast: second.cluster.node)
+        try assertAssociated(second, withAtLeast: third.cluster.node)
         pinfo("Associated: second <~> third")
 
         // 3.1. first should discover third
         // confirm 3.1
-        try assertAssociated(first, withAtLeast: third.settings.cluster.uniqueBindNode)
+        try assertAssociated(first, withAtLeast: third.cluster.node)
         pinfo("Associated: first ~> third")
 
         // 3.2. third should discover first
         // confirm 3.2
-        try assertAssociated(third, withAtLeast: first.settings.cluster.uniqueBindNode)
+        try assertAssociated(third, withAtLeast: first.cluster.node)
         pinfo("Associated: third ~> first")
 
         // excellent, all nodes know each other
         pinfo("Associated: third <~> first")
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: leader decision: .joining -> .up
+
+    func test_joining_to_up_decisionByLeader() throws {
+        let first = self.setUpNode("first") { settings in
+            settings.cluster.node.port = 7111
+        }
+        let second = self.setUpNode("second") { settings in
+            settings.cluster.node.port = 8222
+        }
+        let third = self.setUpNode("third") { settings in
+            settings.cluster.node.port = 9333
+        }
+
+        let eventsProbe = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+        first.cluster.events.subscribe(eventsProbe.ref)
+
+        sleep(2)
+
+        first.cluster.join(node: second.cluster.node.node)
+        third.cluster.join(node: second.cluster.node.node)
+
+        try assertAssociated(first, withAtLeast: second.cluster.node)
+        try assertAssociated(second, withAtLeast: third.cluster.node)
+        try assertAssociated(first, withAtLeast: third.cluster.node)
+
+        let joinsOnFirst = try eventsProbe.expectMessages(count: 4)
+        joinsOnFirst.shouldContain(.membershipChange(.init(member: Member(node: second.cluster.node, status: .joining))))
+        joinsOnFirst.shouldContain(.membershipChange(.init(member: Member(node: third.cluster.node, status: .joining))))
+
+        joinsOnFirst.shouldContain(.membershipChange(.init(member: Member(node: second.cluster.node, status: .up))))
+        joinsOnFirst.shouldContain(.membershipChange(.init(member: Member(node: third.cluster.node, status: .up))))
     }
 }

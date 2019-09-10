@@ -453,7 +453,7 @@ extension SWIM.Instance {
                         message: "Ignoring gossip about member [\(member)] due to older status, incoming: [\(member.status)], current: [\(currentStatus)]"
                     )
                 }
-            } else if let remoteMemberNode = member.ref.address.node?.node {
+            } else if let remoteMemberNode = member.ref.address.node {
                 // TODO: store that we're now handshaking with it already?
                 return .connect(node: remoteMemberNode, onceConnected: { _ in
                     self.addMember(member.ref, status: member.status)
@@ -475,11 +475,14 @@ extension SWIM.Instance {
         case applied(level: Logger.Level?, message: Logger.Message?)
         /// Ignoring a gossip update is perfectly fine: it may be "too old" or other reasons
         case ignored(level: Logger.Level?, message: Logger.Message?)
+        /// Warning! Even though we have an `UniqueNode` here, we need to ensure that we are actually connected to the node,
+        /// hosting this swim actor.
+        ///
         /// It can happen that a gossip payload informs us about a node that we have not heard about before,
         /// and do not have a connection to it either (e.g. we joined only seed nodes, and more nodes joined them later
         /// we could get information through the seed nodes about the new members; but we still have never talked to them,
         /// thus we need to ensure we have a connection to them, before we consider adding them to the membership).
-        case connect(node: Node, onceConnected: (UniqueNode) -> Void)
+        case connect(node: UniqueNode, onceConnected: (UniqueNode) -> Void)
         /// Meaning the node is now marked `DEAD`.
         /// SWIM will continue to gossip about the dead node for a while.
         /// We should also notify the high-level membership that the node shall be considered `DOWN`.

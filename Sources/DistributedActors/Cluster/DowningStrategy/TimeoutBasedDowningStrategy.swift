@@ -20,10 +20,11 @@
 internal final class TimeoutBasedDowningStrategy {
     let settings: TimeoutBasedDowningStrategySettings
     let selfNode: UniqueNode
-    var _leader: Bool = false // TODO: keep membership and know if `isLeader(selfNode)`
+
+    var membership: Membership
 
     var isLeader: Bool {
-        return self._leader
+        return self.membership.leader?.node == self.selfNode
     }
 
     // unreachable members will be marked down after the timeout expires
@@ -37,18 +38,19 @@ internal final class TimeoutBasedDowningStrategy {
         self.selfNode = selfNode
         self._unreachable = []
         self._markAsDown = []
+        self.membership = Membership().joining(selfNode)
     }
 }
 
 extension TimeoutBasedDowningStrategy: DowningStrategy {
-    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirective.MemberUnreachableDirective {
+    func onMemberUnreachable(_ member: Member) -> DowningStrategyDirectives.MemberUnreachableDirective {
         self._unreachable.insert(member.node)
 
         return .startTimer(key: TimerKey(member.node), message: .timeout(member), delay: self.settings.downUnreachableMembersAfter)
     }
 
-    func onLeaderChange(to: UniqueNode?) -> DowningStrategyDirective.LeaderChangeDirective {
-        self._leader = to == self.selfNode
+    func onLeaderChange(to leader: Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective {
+        try self.membership.applyLeadershipChange(to: leader)
 
         if self.isLeader, !self._markAsDown.isEmpty {
             defer { self._markAsDown = [] }
@@ -58,7 +60,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
         }
     }
 
-    func onTimeout(_ member: Member) -> DowningStrategyDirective.TimeoutDirective {
+    func onTimeout(_ member: Member) -> DowningStrategyDirectives.TimeoutDirective {
         guard let address = self._unreachable.remove(member.node) else {
             return .none
         }
@@ -71,7 +73,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
         }
     }
 
-    func onMemberRemoved(_ member: Member) -> DowningStrategyDirective.MemberRemovedDirective {
+    func onMemberRemoved(_ member: Member) -> DowningStrategyDirectives.MemberRemovedDirective {
         self._markAsDown.remove(member.node)
 
         if self._unreachable.remove(member.node) != nil {
@@ -81,7 +83,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
         return .none
     }
 
-    func onMemberReachable(_ member: Member) -> DowningStrategyDirective.MemberReachableDirective {
+    func onMemberReachable(_ member: Member) -> DowningStrategyDirectives.MemberReachableDirective {
         self._markAsDown.remove(member.node)
 
         if self._unreachable.remove(member.node) != nil {

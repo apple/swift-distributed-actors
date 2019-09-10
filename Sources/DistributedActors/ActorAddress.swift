@@ -40,8 +40,8 @@
 /// The address consists of the following parts:
 ///
 /// ```
-/// |              node                 | path              | incarnation |
-///  ( protocol | (name) | host | port ) ( [segments] name ) (   uint32  )
+/// |              node                | path              | incarnation |
+/// ( protocol | (name) | host | port ) ( [segments] name ) (   uint32  )
 /// ```
 ///
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
@@ -101,7 +101,6 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
         case .local:
             () // ok
         case .remote(let addr):
-            res.reserveCapacity(64) // estimate based on fact that we'll have an node address part
             res += "\(addr)"
         }
 
@@ -111,10 +110,20 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
     }
 
     public var debugDescription: String {
+         var res = ""
+        switch self._location {
+        case .local:
+            () // ok
+        case .remote(let node):
+            res += String(reflecting: node)
+        }
+
+        res += "\(self.path)"
+
         if self.incarnation == ActorIncarnation.perpetual {
-            return "\(self.description)"
+            return res
         } else {
-            return "\(self.description)#\(self.incarnation.value)"
+            return "\(res)#\(self.incarnation.value)"
         }
     }
 }
@@ -169,19 +178,23 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        switch (lhs.node, rhs.node) {
-        case (.none, .some):
-            return true
+        return lhs.node < lhs.node ||
+            (lhs.node == rhs.node && lhs.path < rhs.path) ||
+            (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
+    }
+}
+
+extension Optional: Comparable where Wrapped == UniqueNode {
+    public static func < (lhs: UniqueNode?, rhs: UniqueNode?) -> Bool {
+        switch (lhs, rhs) {
         case (.some, .none):
             return false
+        case (.none, .some):
+            return true
+        case (.some(let l), .some(let r)):
+            return l < r
         case (.none, .none):
-            // both are local addresses
-            return (lhs.path < rhs.path) || (lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
-        case (.some(let lhsNode), .some(let rhsNode)) where lhsNode == rhsNode:
-            // both are on the same node
-            return (lhs.path < rhs.path) || (lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
-        case (.some(let lhsNode), .some(let rhsNode)):
-            return lhsNode < rhsNode
+            return false
         }
     }
 }
@@ -500,10 +513,26 @@ extension ActorIncarnation: Comparable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Node
 
+// TODO: Would want to rename; this is really protocol + host + port, and a "cute name for humans" we on purpose do not take the name as part or identity
+/// A `Node` is a triplet of protocol, host and port that a node is bound to.
+///
+/// Unlike `UniqueNode`, it does not carry identity (`NodeID`) of a specific incarnation of an actor system node,
+/// and represents an address of _any_ node that could live under this address. During the handshake process between two nodes,
+/// the remote `Node` that the local side started out to connect with is "upgraded" to a `UniqueNode`, as soon as we discover
+/// the remote side's unique node identifier (`NodeID`).
+///
+/// ### System name / human readable name
+/// The `systemName` is NOT taken into account when comparing nodes. The system name is only utilized for human readability
+/// and debugging purposes and participates neither in hashcode or equality of a `Node`, as a node specifically is meant
+/// to represent any unique node that can live on specific host & port. System names are useful for human operators,
+/// intending to use some form of naming scheme, e.g. adopted from a cloud provider, to make it easier to map nodes in
+/// actor system logs, to other external systems. TODO: Note also node roles, which we do not have yet... those are dynamic key/value pairs paired to a unique node.
+///
+/// - SeeAlso: For more details on unique node ids, refer to: `UniqueNode`.
 public struct Node: Hashable {
     // TODO: collapse into one String and index into it?
     public let `protocol`: String
-    public var systemName: String
+    public var systemName: String // TODO: some other name, to signify "this is just for humans"?
     public var host: String
     public var port: Int
 
@@ -535,6 +564,16 @@ extension Node: Comparable {
     // as we only use those for "tie-breakers" any ordering is fine to be honest here.
     public static func < (lhs: Node, rhs: Node) -> Bool {
         return "\(lhs)" < "\(rhs)"
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(`protocol`)
+        hasher.combine(host)
+        hasher.combine(port)
+    }
+
+    public static func ==(lhs: Node, rhs: Node) -> Bool {
+        return lhs.protocol == rhs.protocol && lhs.host == rhs.host && lhs.port == rhs.port
     }
 }
 

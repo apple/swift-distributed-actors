@@ -96,7 +96,10 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
     func toContain(_ el: T.Element) {
         if !self.it.contains(el) {
             // fancy printout:
-            var m = "Expected [\(it)] to contain: ["
+            var m = "Expected \(T.self):\n    "
+            m += self.it.map { "\($0)" }.joined(separator: "\n    ")
+            m += "\n"
+            m += "to contain: ["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(el)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
