@@ -49,21 +49,6 @@ internal struct Envelope {
     // TODO: let trace: TraceMetadata
 }
 
-@usableFromInline
-internal struct SourceLocation {
-    @usableFromInline
-    let file: String
-    @usableFromInline
-    let line: UInt
-}
-
-extension SourceLocation: CustomStringConvertible {
-    @usableFromInline
-    var description: String {
-        return "\(self.file):\(self.line)"
-    }
-}
-
 /// Can carry a closure for later execution on specific actor context.
 @usableFromInline
 internal struct ActorClosureCarry {
@@ -72,20 +57,23 @@ internal struct ActorClosureCarry {
         @usableFromInline
         let function: () throws -> Void
         @usableFromInline
-        let location: SourceLocation
+        let file: String
+        @usableFromInline
+        let line: UInt
 
         @usableFromInline
-        init(function: @escaping () throws -> Void, location: SourceLocation) {
+        init(function: @escaping () throws -> Void, file: String, line: UInt) {
             self.function = function
-            self.location = location
+            self.file = file
+            self.line = line
         }
     }
 
     let _storage: _Storage
 
     @usableFromInline
-    init(function: @escaping () throws -> Void, location: SourceLocation) {
-        self._storage = .init(function: function, location: location)
+    init(function: @escaping () throws -> Void, file: String, line: UInt) {
+        self._storage = .init(function: function, file: file, line: line)
     }
 
     @usableFromInline
@@ -94,8 +82,13 @@ internal struct ActorClosureCarry {
     }
 
     @usableFromInline
-    var location: SourceLocation {
-        return self._storage.location
+    var file: String {
+        return self._storage.file
+    }
+
+    @usableFromInline
+    var line: UInt {
+        return self._storage.line
     }
 }
 
@@ -109,23 +102,20 @@ internal struct SubMessageCarry {
         let message: Any
         @usableFromInline
         let subReceiveAddress: ActorAddress
-        @usableFromInline
-        let location: SourceLocation
 
         @usableFromInline
-        init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress, location: SourceLocation) {
+        init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
             self.identifier = identifier
             self.message = message
             self.subReceiveAddress = subReceiveAddress
-            self.location = location
         }
     }
 
     let _storage: _Storage
 
     @usableFromInline
-    init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress, location: SourceLocation) {
-        self._storage = .init(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress, location: location)
+    init(identifier: AnySubReceiveId, message: Any, subReceiveAddress: ActorAddress) {
+        self._storage = .init(identifier: identifier, message: message, subReceiveAddress: subReceiveAddress)
     }
 
     @usableFromInline
@@ -142,45 +132,12 @@ internal struct SubMessageCarry {
     var subReceiveAddress: ActorAddress {
         return self._storage.subReceiveAddress
     }
-
-    @usableFromInline
-    var location: SourceLocation {
-        return self._storage.location
-    }
 }
 
 @usableFromInline
 internal struct AdaptedMessageCarry {
     @usableFromInline
-    class _Storage {
-        @usableFromInline
-        let message: Any
-        @usableFromInline
-        let location: SourceLocation
-
-        @usableFromInline
-        init(message: Any, location: SourceLocation) {
-            self.message = message
-            self.location = location
-        }
-    }
-
-    let _storage: _Storage
-
-    @usableFromInline
-    init(message: Any, location: SourceLocation) {
-        self._storage = .init(message: message, location: location)
-    }
-
-    @usableFromInline
-    var message: Any {
-        return self._storage.message
-    }
-
-    @usableFromInline
-    var location: SourceLocation {
-        return self._storage.location
-    }
+    let message: Any
 }
 
 internal final class Mailbox<Message> {
@@ -271,12 +228,13 @@ internal final class Mailbox<Message> {
                 traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
                 return try shell.interpretMessage(message: message as! Message)
             case .closure(let carry):
-                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.location)")
+                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")
                 return try shell.interpretClosure(carry)
             case .adaptedMessage(let carry):
+                traceLog_Mailbox(self.address.path, "INVOKE ADAPTED MESSAGE: \(carry.message)")
                 return try shell.interpretAdaptedMessage(carry: carry)
             case .subMessage(let carry):
-                traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier) defined at \(carry.location)")
+                traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier)")
                 return try shell.interpretSubMessage(carry)
             }
         }, fail: { [weak _shell = shell, path = self.address.path] error in
@@ -312,7 +270,7 @@ internal final class Mailbox<Message> {
             case .message(let userMessage):
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
             case .closure(let carry):
-                deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.location)", recipient: address))
+                deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.file):\(carry.line)", recipient: address))
             case .adaptedMessage(let message):
                 deadLetters.tell(DeadLetter(message, recipient: address))
             case .subMessage(let carry):

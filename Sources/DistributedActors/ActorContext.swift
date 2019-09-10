@@ -383,8 +383,8 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public final func messageAdapter<From>(_ adapter: @escaping (From) -> Message) -> ActorRef<From> {
-        return self.messageAdapter(from: From.self, with: adapter)
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message) -> ActorRef<From> {
+        return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
@@ -393,7 +393,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
         return undefined()
     }
 
@@ -426,7 +426,7 @@ public class ActorContext<Message>: ActorRefFactory {
     }
 
     @usableFromInline
-    func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
         return undefined()
     }
 }
@@ -455,7 +455,7 @@ extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpola
 }
 
 @usableFromInline
-struct AnySubReceiveId: Hashable, Equatable {
+internal struct AnySubReceiveId: Hashable, Equatable {
     let underlying: AnyHashable
 
     init<SubMessage>(_ id: SubReceiveId<SubMessage>) {

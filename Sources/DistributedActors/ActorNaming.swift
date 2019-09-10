@@ -61,7 +61,7 @@ extension ActorNaming {
     internal static var ask: ActorNaming = .init(unchecked: .prefixed(prefix: "$ask", suffixScheme: .letters))
 
     /// Naming for adapters (`context.messageAdapter`)
-    internal static let adapter: ActorNaming = .init(unchecked: .prefixed(prefix: "$adapter", suffixScheme: .letters))
+    internal static let adapter: ActorNaming = .init(unchecked: .unique("$messageAdapter"))
 }
 
 /// Used while spawning actors to identify how its name should be created.

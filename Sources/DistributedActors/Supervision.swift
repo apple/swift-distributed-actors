@@ -435,13 +435,13 @@ internal class Supervisor<Message> {
 
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, subMessage: SubMessageCarry) throws -> Behavior<Message> {
-        traceLog_Supervision("CALLING CLOSURE: \(target)")
+        traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .subMessage(subMessage))
     }
 
     @inlinable
     internal final func interpretSupervised(target: Behavior<Message>, context: ActorContext<Message>, closure: @escaping () throws -> Behavior<Message>) throws -> Behavior<Message> {
-        traceLog_Supervision("INTERPRETING SUB MESSAGE: \(target)")
+        traceLog_Supervision("CALLING CLOSURE: \(target)")
         return try self.interpretSupervised0(target: target, context: context, processingAction: .continuation(closure))
     }
 
@@ -475,12 +475,11 @@ internal class Supervisor<Message> {
             case .continuation(let continuation):
                 return try continuation()
             case .subMessage(let carry):
-                guard let subFunction = context.subFunction(identifiedBy: carry.identifier) else {
+                guard let subFunction = context.subReceive(identifiedBy: carry.identifier) else {
                     fatalError("BUG! Received sub message [\(carry.message)]:\(type(of: carry.message)) for unknown identifier \(carry.identifier) on address \(carry.subReceiveAddress). Please report this on the issue tracker.")
                 }
 
-                try subFunction(carry)
-                return .same
+                return try subFunction(carry)
             }
         } catch {
             return try self.handleError(context: context, target: target, processingAction: processingAction, error: error)
@@ -511,7 +510,7 @@ internal class Supervisor<Message> {
         repeat {
             switch processingAction {
             case .closure(let closure):
-                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.location)], handling with \(self.descriptionForLogs)")
+                context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting [closure defined at \(closure.file):\(closure.line)], handling with \(self.descriptionForLogs)")
             default:
                 context.log.warning("Actor has THROWN [\(errorToHandle)]:\(type(of: errorToHandle)) while interpreting \(processingAction), handling with \(self.descriptionForLogs)")
             }

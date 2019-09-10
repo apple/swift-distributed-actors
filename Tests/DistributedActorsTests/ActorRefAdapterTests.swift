@@ -252,4 +252,49 @@ class ActorRefAdapterTests: XCTestCase {
             expectedFile: expectedFile, expectedLine: expectedLine
         )
     }
+
+    func test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet() throws {
+        class TopExample {}
+        class BottomExample: TopExample {}
+
+        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let probeTop = self.testKit.spawnTestProbe(expecting: ActorRef<TopExample>.self)
+        let probeBottom = self.testKit.spawnTestProbe(expecting: ActorRef<BottomExample>.self)
+
+        let behavior: Behavior<LifecycleTestMessage> = .setup { context in
+            let topRef: ActorRef<TopExample> = context.messageAdapter { .message("adapter-top:\($0)") }
+            probeTop.tell(topRef)
+            let bottomRef: ActorRef<BottomExample> = context.messageAdapter { .message("adapter-bottom:\($0)") }
+            probeBottom.tell(bottomRef)
+
+            return .receiveMessage {
+                switch $0 {
+                case .message(let string):
+                    probe.tell("received:\(string)")
+                    return .same
+                default:
+                    return .same
+                }
+            }
+        }
+
+        _ = try system.spawn(.anonymous, behavior)
+
+        let topRef: ActorRef<TopExample> = try probeTop.expectMessage()
+        let bottomRef: ActorRef<BottomExample> = try probeBottom.expectMessage()
+
+        let top = TopExample()
+        let bottom = BottomExample()
+
+        topRef.tell(top)
+        try probe.expectMessage("received:adapter-top:\(top)")
+
+        bottomRef.tell(bottom)
+        try probe.expectMessage("received:adapter-bottom:\(bottom)")
+
+        topRef.tell(bottom)
+        try probe.expectMessage("received:adapter-bottom:\(bottom)")
+    }
+
 }

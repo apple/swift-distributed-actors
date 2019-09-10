@@ -368,11 +368,11 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     func interpretAdaptedMessage(carry: AdaptedMessageCarry) throws -> SActActorRunResult {
-        let maybeAdapter = self.messageAdapters.first(where: { (key, _) in
-            key.isInstance(carry.message)
+        let maybeAdapter = self.messageAdapters.first(where: { adapter in
+            adapter.metaType.isInstance(carry.message)
         })
 
-        guard let adapter = maybeAdapter?.value else {
+        guard let adapter = maybeAdapter?.closure else {
             self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message)) for which no adapter was registered.")
             try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
             return self.runState
@@ -394,7 +394,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> SActActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, subMessage: subMessage)
 
-        traceLog_Cell("Applied subMessage, becoming: \(next)")
+        traceLog_Cell("Applied subMessage \(subMessage.message), becoming: \(next)")
 
         try self.becomeNext(behavior: next)
 
@@ -560,7 +560,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // TODO: validate all the niling out; can we null out the cell itself?
         self._deathWatch = nil
-        self.messageAdapters = [:]
+        self.messageAdapters = []
 
         // become stopped, if not already
         switch self.behavior.underlying {
@@ -656,29 +656,40 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
-    var subFunctions: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
+    var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
 
     @usableFromInline
-    override func subFunction(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
-        return self.subFunctions[identifier]?.0
+    override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+        return self.subReceives[identifier]?.0
     }
 
-    private var messageAdapterRef: ActorRefAdapter<Message>? = nil
-    private var messageAdapters: [BoxedHashableAnyMetaType: (Any) -> Message] = [:]
+    private var messageAdapterRef: ActorRefAdapter<Message>?
+    struct MessageAdapter {
+        let metaType: AnyMetaType
+        let closure: (Any) -> Message
+    }
+    private var messageAdapters: [MessageAdapter] = []
 
-    override func messageAdapter<From>(from fromType: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
         do {
-            self.messageAdapters[BoxedHashableAnyMetaType(MetaType(fromType))] = { message in
+            let metaType = MetaType(fromType)
+            let anyAdapter: (Any) -> Message = { message in
                 guard let typedMessage = message as? From else {
                     fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
                         "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")
                 }
 
-                return adapter(typedMessage)
+                return adapt(typedMessage)
             }
 
+            self.messageAdapters.removeAll(where: { adapter in
+                return adapter.metaType.is(metaType)
+            })
+
+            self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+
             guard let adapterRef = self.messageAdapterRef else {
-                let adaptedAddress = try self.address.makeChildAddress(name: "$$messageAdapter", incarnation: .perpetual)
+                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)
                 let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
                 self.messageAdapterRef = ref
 
@@ -709,8 +720,8 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             }
 
             let identifier = AnySubReceiveId(id)
-            if let (_, existingRef) = self.subFunctions[identifier] {
-                self.subFunctions[identifier] = (wrappedClosure, existingRef)
+            if let (_, existingRef) = self.subReceives[identifier] {
+                self.subReceives[identifier] = (wrappedClosure, existingRef)
                 guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
                     fatalError("Existing ref for sub receive id [\(id)] has unexpected type [\(String(reflecting: type(of: existingRef)))], expected [\(String(reflecting: SubMessage.self))]")
                 }
@@ -723,7 +734,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
 
             self._children.insert(ref) // TODO: separate adapters collection?
-            self.subFunctions[identifier] = (wrappedClosure, ref)
+            self.subReceives[identifier] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
             fatalError("""
