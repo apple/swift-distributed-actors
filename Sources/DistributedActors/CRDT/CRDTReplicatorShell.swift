@@ -182,7 +182,7 @@ extension CRDT.Replicator {
                 replyTo.tell(.success)
                 self.notifyOwnersOnUpdate(context, id, updatedData)
             case .inputAndStoredDataTypeMismatch(let stored):
-                replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))
+                replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(hint: "\(stored)")))
             case .unsupportedCRDT:
                 replyTo.tell(.failed(.unsupportedCRDT))
             }
@@ -196,7 +196,7 @@ extension CRDT.Replicator {
             case .missingCRDTForDelta:
                 replyTo.tell(.failed(.missingCRDTForDelta))
             case .incorrectDeltaType(let expected):
-                replyTo.tell(.failed(.incorrectDeltaType(expected: expected)))
+                replyTo.tell(.failed(.incorrectDeltaType(hint: "\(expected)")))
             case .cannotWriteDeltaForNonDeltaCRDT:
                 replyTo.tell(.failed(.cannotWriteDeltaForNonDeltaCRDT))
             }

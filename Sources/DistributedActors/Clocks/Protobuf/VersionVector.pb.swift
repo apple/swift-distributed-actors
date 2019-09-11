@@ -28,456 +28,459 @@ import SwiftProtobuf
 // incompatible with the version of SwiftProtobuf to which you are linking.
 // Please ensure that your are building against the same version of the API
 // that was used to generate this file.
-fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
-  typealias Version = _2
+private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
+    struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+    typealias Version = _2
 }
 
 public struct ProtoVersionReplicaId {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  public var value: OneOf_Value? {
-    get {return _storage._value}
-    set {_uniqueStorage()._value = newValue}
-  }
-
-  public var actorAddress: ProtoActorAddress {
-    get {
-      if case .actorAddress(let v)? = _storage._value {return v}
-      return ProtoActorAddress()
+    public var value: OneOf_Value? {
+        get { return self._storage._value }
+        set { _uniqueStorage()._value = newValue }
     }
-    set {_uniqueStorage()._value = .actorAddress(newValue)}
-  }
 
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public enum OneOf_Value: Equatable {
-    case actorAddress(ProtoActorAddress)
-
-  #if !swift(>=4.1)
-    public static func ==(lhs: ProtoVersionReplicaId.OneOf_Value, rhs: ProtoVersionReplicaId.OneOf_Value) -> Bool {
-      switch (lhs, rhs) {
-      case (.actorAddress(let l), .actorAddress(let r)): return l == r
-      }
+    public var actorAddress: ProtoActorAddress {
+        get {
+            if case .actorAddress(let v)? = self._storage._value { return v }
+            return ProtoActorAddress()
+        }
+        set { _uniqueStorage()._value = .actorAddress(newValue) }
     }
-  #endif
-  }
 
-  public init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    public enum OneOf_Value: Equatable {
+        case actorAddress(ProtoActorAddress)
+
+        #if !swift(>=4.1)
+        public static func == (lhs: ProtoVersionReplicaId.OneOf_Value, rhs: ProtoVersionReplicaId.OneOf_Value) -> Bool {
+            switch (lhs, rhs) {
+            case (.actorAddress(let l), .actorAddress(let r)): return l == r
+            }
+        }
+        #endif
+    }
+
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct ProtoReplicaVersion {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  public var replicaID: ProtoVersionReplicaId {
-    get {return _storage._replicaID ?? ProtoVersionReplicaId()}
-    set {_uniqueStorage()._replicaID = newValue}
-  }
-  /// Returns true if `replicaID` has been explicitly set.
-  public var hasReplicaID: Bool {return _storage._replicaID != nil}
-  /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
-  public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
+    public var replicaID: ProtoVersionReplicaId {
+        get { return self._storage._replicaID ?? ProtoVersionReplicaId() }
+        set { _uniqueStorage()._replicaID = newValue }
+    }
 
-  public var version: UInt64 {
-    get {return _storage._version}
-    set {_uniqueStorage()._version = newValue}
-  }
+    /// Returns true if `replicaID` has been explicitly set.
+    public var hasReplicaID: Bool { return self._storage._replicaID != nil }
+    /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
+    public mutating func clearReplicaID() { _uniqueStorage()._replicaID = nil }
 
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var version: UInt64 {
+        get { return self._storage._version }
+        set { _uniqueStorage()._version = newValue }
+    }
 
-  public init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct ProtoVersionVector {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  /// Not a map since we cannot use `replicaId` as key
-  public var state: [ProtoReplicaVersion] = []
+    /// Not a map since we cannot use `replicaId` as key
+    public var state: [ProtoReplicaVersion] = []
 
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  public init() {}
+    public init() {}
 }
 
 public struct ProtoVersionDot {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  public var replicaID: ProtoVersionReplicaId {
-    get {return _storage._replicaID ?? ProtoVersionReplicaId()}
-    set {_uniqueStorage()._replicaID = newValue}
-  }
-  /// Returns true if `replicaID` has been explicitly set.
-  public var hasReplicaID: Bool {return _storage._replicaID != nil}
-  /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
-  public mutating func clearReplicaID() {_uniqueStorage()._replicaID = nil}
+    public var replicaID: ProtoVersionReplicaId {
+        get { return self._storage._replicaID ?? ProtoVersionReplicaId() }
+        set { _uniqueStorage()._replicaID = newValue }
+    }
 
-  public var version: UInt64 {
-    get {return _storage._version}
-    set {_uniqueStorage()._version = newValue}
-  }
+    /// Returns true if `replicaID` has been explicitly set.
+    public var hasReplicaID: Bool { return self._storage._replicaID != nil }
+    /// Clears the value of `replicaID`. Subsequent reads from it will return its default value.
+    public mutating func clearReplicaID() { _uniqueStorage()._replicaID = nil }
 
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var version: UInt64 {
+        get { return self._storage._version }
+        set { _uniqueStorage()._version = newValue }
+    }
 
-  public init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 /// A dot and its arbitrary, serialized element
 public struct ProtoVersionDottedElementEnvelope {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
+    // SwiftProtobuf.Message conformance is added in an extension below. See the
+    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+    // methods supported on all messages.
 
-  public var dot: ProtoVersionDot {
-    get {return _storage._dot ?? ProtoVersionDot()}
-    set {_uniqueStorage()._dot = newValue}
-  }
-  /// Returns true if `dot` has been explicitly set.
-  public var hasDot: Bool {return _storage._dot != nil}
-  /// Clears the value of `dot`. Subsequent reads from it will return its default value.
-  public mutating func clearDot() {_uniqueStorage()._dot = nil}
+    public var dot: ProtoVersionDot {
+        get { return self._storage._dot ?? ProtoVersionDot() }
+        set { _uniqueStorage()._dot = newValue }
+    }
 
-  /// ~~ element ~~
-  public var serializerID: UInt32 {
-    get {return _storage._serializerID}
-    set {_uniqueStorage()._serializerID = newValue}
-  }
+    /// Returns true if `dot` has been explicitly set.
+    public var hasDot: Bool { return self._storage._dot != nil }
+    /// Clears the value of `dot`. Subsequent reads from it will return its default value.
+    public mutating func clearDot() { _uniqueStorage()._dot = nil }
 
-  public var payload: Data {
-    get {return _storage._payload}
-    set {_uniqueStorage()._payload = newValue}
-  }
+    /// ~~ element ~~
+    public var serializerID: UInt32 {
+        get { return self._storage._serializerID }
+        set { _uniqueStorage()._serializerID = newValue }
+    }
 
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
+    public var payload: Data {
+        get { return self._storage._payload }
+        set { _uniqueStorage()._payload = newValue }
+    }
 
-  public init() {}
+    public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+    public init() {}
+
+    fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoVersionReplicaId: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "VersionReplicaId"
-  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "actorAddress"),
-  ]
+    public static let protoMessageName: String = "VersionReplicaId"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "actorAddress"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _value: ProtoVersionReplicaId.OneOf_Value?
+    fileprivate class _StorageClass {
+        var _value: ProtoVersionReplicaId.OneOf_Value?
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _value = source._value
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1:
-          var v: ProtoActorAddress?
-          if let current = _storage._value {
-            try decoder.handleConflictingOneOf()
-            if case .actorAddress(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {_storage._value = .actorAddress(v)}
-        default: break
+        init(copying source: _StorageClass) {
+            self._value = source._value
         }
-      }
     }
-  }
 
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if case .actorAddress(let v)? = _storage._value {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&self._storage) {
+            self._storage = _StorageClass(copying: self._storage)
+        }
+        return self._storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  public static func ==(lhs: ProtoVersionReplicaId, rhs: ProtoVersionReplicaId) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._value != rhs_storage._value {return false}
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = self._uniqueStorage()
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1:
+                    var v: ProtoActorAddress?
+                    if let current = _storage._value {
+                        try decoder.handleConflictingOneOf()
+                        if case .actorAddress(let m) = current { v = m }
+                    }
+                    try decoder.decodeSingularMessageField(value: &v)
+                    if let v = v { _storage._value = .actorAddress(v) }
+                default: break
+                }
+            }
+        }
+    }
+
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            if case .actorAddress(let v)? = _storage._value {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
+    }
+
+    public static func == (lhs: ProtoVersionReplicaId, rhs: ProtoVersionReplicaId) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._value != rhs_storage._value { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension ProtoReplicaVersion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "ReplicaVersion"
-  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replicaId"),
-    2: .same(proto: "version"),
-  ]
+    public static let protoMessageName: String = "ReplicaVersion"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "replicaId"),
+        2: .same(proto: "version"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
-    var _version: UInt64 = 0
+    fileprivate class _StorageClass {
+        var _replicaID: ProtoVersionReplicaId?
+        var _version: UInt64 = 0
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _replicaID = source._replicaID
-      _version = source._version
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
-        case 2: try decoder.decodeSingularUInt64Field(value: &_storage._version)
-        default: break
+        init(copying source: _StorageClass) {
+            self._replicaID = source._replicaID
+            self._version = source._version
         }
-      }
     }
-  }
 
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._replicaID {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if _storage._version != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._version, fieldNumber: 2)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&self._storage) {
+            self._storage = _StorageClass(copying: self._storage)
+        }
+        return self._storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  public static func ==(lhs: ProtoReplicaVersion, rhs: ProtoReplicaVersion) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._replicaID != rhs_storage._replicaID {return false}
-        if _storage._version != rhs_storage._version {return false}
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = self._uniqueStorage()
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
+                case 2: try decoder.decodeSingularUInt64Field(value: &_storage._version)
+                default: break
+                }
+            }
+        }
+    }
+
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            if let v = _storage._replicaID {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if _storage._version != 0 {
+                try visitor.visitSingularUInt64Field(value: _storage._version, fieldNumber: 2)
+            }
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
+    }
+
+    public static func == (lhs: ProtoReplicaVersion, rhs: ProtoReplicaVersion) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._replicaID != rhs_storage._replicaID { return false }
+                if _storage._version != rhs_storage._version { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension ProtoVersionVector: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "VersionVector"
-  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "state"),
-  ]
+    public static let protoMessageName: String = "VersionVector"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "state"),
+    ]
 
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      switch fieldNumber {
-      case 1: try decoder.decodeRepeatedMessageField(value: &self.state)
-      default: break
-      }
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        while let fieldNumber = try decoder.nextFieldNumber() {
+            switch fieldNumber {
+            case 1: try decoder.decodeRepeatedMessageField(value: &self.state)
+            default: break
+            }
+        }
     }
-  }
 
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.state.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.state, fieldNumber: 1)
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        if !self.state.isEmpty {
+            try visitor.visitRepeatedMessageField(value: self.state, fieldNumber: 1)
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  public static func ==(lhs: ProtoVersionVector, rhs: ProtoVersionVector) -> Bool {
-    if lhs.state != rhs.state {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
+    public static func == (lhs: ProtoVersionVector, rhs: ProtoVersionVector) -> Bool {
+        if lhs.state != rhs.state { return false }
+        if lhs.unknownFields != rhs.unknownFields { return false }
+        return true
+    }
 }
 
 extension ProtoVersionDot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "VersionDot"
-  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "replicaId"),
-    2: .same(proto: "version"),
-  ]
+    public static let protoMessageName: String = "VersionDot"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "replicaId"),
+        2: .same(proto: "version"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _replicaID: ProtoVersionReplicaId? = nil
-    var _version: UInt64 = 0
+    fileprivate class _StorageClass {
+        var _replicaID: ProtoVersionReplicaId?
+        var _version: UInt64 = 0
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _replicaID = source._replicaID
-      _version = source._version
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
-        case 2: try decoder.decodeSingularUInt64Field(value: &_storage._version)
-        default: break
+        init(copying source: _StorageClass) {
+            self._replicaID = source._replicaID
+            self._version = source._version
         }
-      }
     }
-  }
 
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._replicaID {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if _storage._version != 0 {
-        try visitor.visitSingularUInt64Field(value: _storage._version, fieldNumber: 2)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&self._storage) {
+            self._storage = _StorageClass(copying: self._storage)
+        }
+        return self._storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  public static func ==(lhs: ProtoVersionDot, rhs: ProtoVersionDot) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._replicaID != rhs_storage._replicaID {return false}
-        if _storage._version != rhs_storage._version {return false}
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = self._uniqueStorage()
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._replicaID)
+                case 2: try decoder.decodeSingularUInt64Field(value: &_storage._version)
+                default: break
+                }
+            }
+        }
+    }
+
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            if let v = _storage._replicaID {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if _storage._version != 0 {
+                try visitor.visitSingularUInt64Field(value: _storage._version, fieldNumber: 2)
+            }
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
+    }
+
+    public static func == (lhs: ProtoVersionDot, rhs: ProtoVersionDot) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._replicaID != rhs_storage._replicaID { return false }
+                if _storage._version != rhs_storage._version { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension ProtoVersionDottedElementEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = "VersionDottedElementEnvelope"
-  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "dot"),
-    2: .same(proto: "serializerId"),
-    3: .same(proto: "payload"),
-  ]
+    public static let protoMessageName: String = "VersionDottedElementEnvelope"
+    public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+        1: .same(proto: "dot"),
+        2: .same(proto: "serializerId"),
+        3: .same(proto: "payload"),
+    ]
 
-  fileprivate class _StorageClass {
-    var _dot: ProtoVersionDot? = nil
-    var _serializerID: UInt32 = 0
-    var _payload: Data = SwiftProtobuf.Internal.emptyData
+    fileprivate class _StorageClass {
+        var _dot: ProtoVersionDot?
+        var _serializerID: UInt32 = 0
+        var _payload: Data = SwiftProtobuf.Internal.emptyData
 
-    static let defaultInstance = _StorageClass()
+        static let defaultInstance = _StorageClass()
 
-    private init() {}
+        private init() {}
 
-    init(copying source: _StorageClass) {
-      _dot = source._dot
-      _serializerID = source._serializerID
-      _payload = source._payload
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        switch fieldNumber {
-        case 1: try decoder.decodeSingularMessageField(value: &_storage._dot)
-        case 2: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
-        case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
-        default: break
+        init(copying source: _StorageClass) {
+            self._dot = source._dot
+            self._serializerID = source._serializerID
+            self._payload = source._payload
         }
-      }
     }
-  }
 
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      if let v = _storage._dot {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      }
-      if _storage._serializerID != 0 {
-        try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 2)
-      }
-      if !_storage._payload.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
-      }
+    fileprivate mutating func _uniqueStorage() -> _StorageClass {
+        if !isKnownUniquelyReferenced(&self._storage) {
+            self._storage = _StorageClass(copying: self._storage)
+        }
+        return self._storage
     }
-    try unknownFields.traverse(visitor: &visitor)
-  }
 
-  public static func ==(lhs: ProtoVersionDottedElementEnvelope, rhs: ProtoVersionDottedElementEnvelope) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._dot != rhs_storage._dot {return false}
-        if _storage._serializerID != rhs_storage._serializerID {return false}
-        if _storage._payload != rhs_storage._payload {return false}
+    public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+        _ = self._uniqueStorage()
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            while let fieldNumber = try decoder.nextFieldNumber() {
+                switch fieldNumber {
+                case 1: try decoder.decodeSingularMessageField(value: &_storage._dot)
+                case 2: try decoder.decodeSingularUInt32Field(value: &_storage._serializerID)
+                case 3: try decoder.decodeSingularBytesField(value: &_storage._payload)
+                default: break
+                }
+            }
+        }
+    }
+
+    public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
+            if let v = _storage._dot {
+                try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+            }
+            if _storage._serializerID != 0 {
+                try visitor.visitSingularUInt32Field(value: _storage._serializerID, fieldNumber: 2)
+            }
+            if !_storage._payload.isEmpty {
+                try visitor.visitSingularBytesField(value: _storage._payload, fieldNumber: 3)
+            }
+        }
+        try self.unknownFields.traverse(visitor: &visitor)
+    }
+
+    public static func == (lhs: ProtoVersionDottedElementEnvelope, rhs: ProtoVersionDottedElementEnvelope) -> Bool {
+        if lhs._storage !== rhs._storage {
+            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+                let _storage = _args.0
+                let rhs_storage = _args.1
+                if _storage._dot != rhs_storage._dot { return false }
+                if _storage._serializerID != rhs_storage._serializerID { return false }
+                if _storage._payload != rhs_storage._payload { return false }
+                return true
+            }
+            if !storagesAreEqual { return false }
+        }
+        if lhs.unknownFields != rhs.unknownFields { return false }
         return true
-      }
-      if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }

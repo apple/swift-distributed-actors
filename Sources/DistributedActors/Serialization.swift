@@ -85,6 +85,9 @@ public struct Serialization {
         // CRDT replication
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.Message>(allocator: self.allocator), for: CRDT.Replicator.Message.self, underId: Serialization.Id.InternalSerializer.CRDTReplicatorMessage)
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDTEnvelope>(allocator: self.allocator), for: CRDTEnvelope.self, underId: Serialization.Id.InternalSerializer.CRDTEnvelope)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.WriteResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.WriteResult.self, underId: Serialization.Id.InternalSerializer.CRDTWriteResult)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.ReadResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.ReadResult.self, underId: Serialization.Id.InternalSerializer.CRDTReadResult)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<CRDT.Replicator.RemoteCommand.DeleteResult>(allocator: self.allocator), for: CRDT.Replicator.RemoteCommand.DeleteResult.self, underId: Serialization.Id.InternalSerializer.CRDTDeleteResult)
         self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter>(allocator: self.allocator), for: CRDT.GCounter.self, underId: Serialization.Id.InternalSerializer.CRDTGCounter)
         self.registerSystemSerializer(context, serializer: ProtobufSerializer<CRDT.GCounter.Delta>(allocator: self.allocator), for: CRDT.GCounter.Delta.self, underId: Serialization.Id.InternalSerializer.CRDTGCounterDelta)
         // CRDTs and their deltas are boxed with AnyDeltaCRDT or AnyCvRDT

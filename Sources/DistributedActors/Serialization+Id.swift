@@ -41,8 +41,11 @@ extension Serialization {
 
             internal static let CRDTReplicatorMessage: SerializerId = 11
             internal static let CRDTEnvelope: SerializerId = 12
-            internal static let CRDTGCounter: SerializerId = 13
-            internal static let CRDTGCounterDelta: SerializerId = 14
+            internal static let CRDTWriteResult: SerializerId = 13
+            internal static let CRDTReadResult: SerializerId = 14
+            internal static let CRDTDeleteResult: SerializerId = 15
+            internal static let CRDTGCounter: SerializerId = 16
+            internal static let CRDTGCounterDelta: SerializerId = 17
         }
     }
 }

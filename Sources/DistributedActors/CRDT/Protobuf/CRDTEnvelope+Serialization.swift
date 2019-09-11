@@ -100,8 +100,19 @@ extension CRDTEnvelope: InternalProtobufRepresentable {
             } else {
                 fatalError("Unable to box [\(payload)] to [\(AnyDeltaCRDT.self)]")
             }
+        case .unspecified:
+            throw SerializationError.missingField("type", type: String(describing: CRDTEnvelope.self))
         case .UNRECOGNIZED:
             throw SerializationError.notAbleToDeserialize(hint: "UNRECOGNIZED value in ProtoCRDTEnvelope.boxed field.")
         }
+    }
+}
+
+extension AnyStateBasedCRDT {
+    internal func asCRDTEnvelope(_ context: ActorSerializationContext) throws -> CRDTEnvelope {
+        guard let serializerId = context.system.serialization.serializerIdFor(metaType: self.metaType) else {
+            throw SerializationError.noSerializerRegisteredFor(hint: "\(self.metaType)")
+        }
+        return CRDTEnvelope(serializerId: serializerId, self)
     }
 }

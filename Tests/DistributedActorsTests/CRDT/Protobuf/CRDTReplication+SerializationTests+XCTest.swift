@@ -23,8 +23,16 @@ import XCTest
 extension CRDTReplicationSerializationTests {
     static var allTests: [(String, (CRDTReplicationSerializationTests) -> () throws -> Void)] {
         return [
-            ("test_serializationOf_remoteCommand_write_GCounter", test_serializationOf_remoteCommand_write_GCounter),
-            ("test_serializationOf_remoteCommand_write_ORSet", test_serializationOf_remoteCommand_write_ORSet),
+            ("test_serializationOf_RemoteCommand_write_GCounter", test_serializationOf_RemoteCommand_write_GCounter),
+            ("test_serializationOf_RemoteCommand_write_ORSet", test_serializationOf_RemoteCommand_write_ORSet),
+            ("test_serializationOf_RemoteCommand_writeDelta_GCounter", test_serializationOf_RemoteCommand_writeDelta_GCounter),
+            ("test_serializationOf_RemoteCommand_WriteResult_success", test_serializationOf_RemoteCommand_WriteResult_success),
+            ("test_serializationOf_RemoteCommand_WriteResult_failed", test_serializationOf_RemoteCommand_WriteResult_failed),
+            ("test_serializationOf_RemoteCommand_read", test_serializationOf_RemoteCommand_read),
+            ("test_serializationOf_RemoteCommand_ReadResult_success", test_serializationOf_RemoteCommand_ReadResult_success),
+            ("test_serializationOf_RemoteCommand_ReadResult_failed", test_serializationOf_RemoteCommand_ReadResult_failed),
+            ("test_serializationOf_RemoteCommand_delete", test_serializationOf_RemoteCommand_delete),
+            ("test_serializationOf_RemoteCommand_DeleteResult_success", test_serializationOf_RemoteCommand_DeleteResult_success),
         ]
     }
 }
