@@ -91,7 +91,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Defer
 
     @usableFromInline
-    internal var deferred = DefersContainer()
+    internal let deferred = DefersContainer()
 
     public override func `defer`(until: DeferUntilWhen,
                                  file: String = #file, line: UInt = #line,
