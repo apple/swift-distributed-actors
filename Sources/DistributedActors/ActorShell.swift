@@ -668,6 +668,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         let metaType: AnyMetaType
         let closure: (Any) -> Message
     }
+
     private var messageAdapters: [MessageAdapter] = []
 
     override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
@@ -683,7 +684,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             }
 
             self.messageAdapters.removeAll(where: { adapter in
-                return adapter.metaType.is(metaType)
+                adapter.metaType.is(metaType)
             })
 
             self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
