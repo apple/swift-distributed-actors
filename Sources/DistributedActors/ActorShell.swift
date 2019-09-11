@@ -367,6 +367,44 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
+    func interpretAdaptedMessage(carry: AdaptedMessageCarry) throws -> SActActorRunResult {
+        let maybeAdapter = self.messageAdapters.first(where: { adapter in
+            adapter.metaType.isInstance(carry.message)
+        })
+
+        guard let adapter = maybeAdapter?.closure else {
+            self.log.warning("Received adapted message [\(carry.message)]:\(type(of: carry.message)) for which no adapter was registered.")
+            try self.becomeNext(behavior: .ignore) // TODO: make .drop once implemented
+            return self.runState
+        }
+
+        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapter(carry.message))
+
+        traceLog_Cell("Applied adapted message \(carry.message), becoming: \(next)")
+
+        try self.becomeNext(behavior: next)
+
+        if !self.behavior.isStillAlive {
+            self.children.stopAll()
+        }
+
+        return self.runState
+    }
+
+    func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> SActActorRunResult {
+        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, subMessage: subMessage)
+
+        traceLog_Cell("Applied subMessage \(subMessage.message), becoming: \(next)")
+
+        try self.becomeNext(behavior: next)
+
+        if !self.behavior.isStillAlive {
+            self.children.stopAll()
+        }
+
+        return self.runState
+    }
+
     @inlinable
     internal var continueRunning: Bool {
         switch self.behavior.underlying {
@@ -522,7 +560,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         // TODO: validate all the niling out; can we null out the cell itself?
         self._deathWatch = nil
-        self.messageAdapters = [:]
+        self.messageAdapters = []
 
         // become stopped, if not already
         switch self.behavior.underlying {
@@ -618,37 +656,90 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Message Adapters API
 
-    private var messageAdapters: [FullyQualifiedTypeName: AddressableActorRef] = [:]
+    var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
 
-    override func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    @usableFromInline
+    override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+        return self.subReceives[identifier]?.0
+    }
+
+    private var messageAdapterRef: ActorRefAdapter<Message>?
+    struct MessageAdapter {
+        let metaType: AnyMetaType
+        let closure: (Any) -> Message
+    }
+
+    private var messageAdapters: [MessageAdapter] = []
+
+    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
         do {
-            let name = ActorNaming.adapter.makeName(&self.namingContext)
-            let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
-            let ref = ActorRefAdapter(self.myself, address: adaptedAddress, converter: adapter)
+            let metaType = MetaType(fromType)
+            let anyAdapter: (Any) -> Message = { message in
+                guard let typedMessage = message as? From else {
+                    fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
+                        "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")
+                }
 
-            self._children.insert(ref) // TODO: separate adapters collection?
-            return .init(.adapter(ref))
+                return adapt(typedMessage)
+            }
+
+            self.messageAdapters.removeAll(where: { adapter in
+                adapter.metaType.is(metaType)
+            })
+
+            self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+
+            guard let adapterRef = self.messageAdapterRef else {
+                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)
+                let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
+                self.messageAdapterRef = ref
+
+                self._children.insert(ref) // TODO: separate adapters collection?
+                return .init(.adapter(ref))
+            }
+
+            return .init(.adapter(adapterRef))
         } catch {
             fatalError("""
-            Failed while creating message adapter. This should never happen, since message adapters have unique names 
-            generated for them using sequential names. Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)? 
+            Failed while creating message adapter. This should never happen, since message adapters have a unique name.
+            Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
             Error: \(error)
             """)
         }
     }
 
-    override func subReceive<SubMessage>(_ id: SubReceiveId, _ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         do {
+            let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
+                guard let message = carry.message as? SubMessage else {
+                    self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
+                    return .ignore // TODO: make .drop once implemented
+                }
+
+                try closure(message)
+                return .same
+            }
+
+            let identifier = AnySubReceiveId(id)
+            if let (_, existingRef) = self.subReceives[identifier] {
+                self.subReceives[identifier] = (wrappedClosure, existingRef)
+                guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
+                    fatalError("Existing ref for sub receive id [\(id)] has unexpected type [\(String(reflecting: type(of: existingRef)))], expected [\(String(reflecting: SubMessage.self))]")
+                }
+                return .init(.adapter(adapter))
+            }
+
             let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
             let name = naming.makeName(&self.namingContext)
             let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
-            let ref = SubReceiveAdapter(self.myself, address: adaptedAddress, closure: closure)
+            let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
 
             self._children.insert(ref) // TODO: separate adapters collection?
+            self.subReceives[identifier] = (wrappedClosure, ref)
             return .init(.adapter(ref))
         } catch {
             fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(type)]. This should never happen, since sub receives have unique names
+            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
             generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
             Error: \(error)
             """)

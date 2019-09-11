@@ -29,6 +29,7 @@ extension ActorRefAdapterTests {
             ("test_adaptedRef_shouldShareTheSameLifecycleAsItsActor", test_adaptedRef_shouldShareTheSameLifecycleAsItsActor),
             ("test_adaptedRef_newAdapterShouldReplaceOld", test_adaptedRef_newAdapterShouldReplaceOld),
             ("test_adaptedRef_shouldDeadLetter_whenOwnerTerminated", test_adaptedRef_shouldDeadLetter_whenOwnerTerminated),
+            ("test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet", test_adaptedRef_useSpecificEnoughAdapterMostRecentlySet),
         ]
     }
 }

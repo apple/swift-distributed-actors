@@ -383,8 +383,8 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public final func messageAdapter<From>(_ adapter: @escaping (From) -> Message) -> ActorRef<From> {
-        return self.messageAdapter(from: From.self, with: adapter)
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message) -> ActorRef<From> {
+        return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
     /// Adapts this `ActorRef` to accept messages of another type by applying the conversion
@@ -393,7 +393,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public func messageAdapter<From>(from type: From.Type, with adapter: @escaping (From) -> Message) -> ActorRef<From> {
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
         return undefined()
     }
 
@@ -407,7 +407,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per `SubReceiveId`. When installing a new `subReceive`
     /// with an existing `SubReceiveId`, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_: SubReceiveId, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_: SubReceiveId<SubMessage>, _: SubMessage.Type, _: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return undefined()
     }
 
@@ -421,16 +421,21 @@ public class ActorContext<Message>: ActorRefFactory {
     /// There can only be one `subReceive` per type. When installing a new `subReceive`
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
-    func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         return self.subReceive(SubReceiveId(for: type), type, closure)
+    }
+
+    @usableFromInline
+    func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
+        return undefined()
     }
 }
 
 // Used to identify a `subReceive`
-public struct SubReceiveId {
+public struct SubReceiveId<SubMessage>: Hashable, Equatable {
     public let id: String
 
-    public init<T>(for type: T.Type) {
+    public init(for type: SubMessage.Type) {
         self.id = String(reflecting: type)
     }
 
@@ -438,7 +443,7 @@ public struct SubReceiveId {
         self.id = id
     }
 
-    public init<T>(for type: T.Type, id: String) {
+    public init(for type: SubMessage.Type, id: String) {
         self.id = "\(String(reflecting: type))-\(id)"
     }
 }
@@ -446,6 +451,15 @@ public struct SubReceiveId {
 extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.init(value)
+    }
+}
+
+@usableFromInline
+internal struct AnySubReceiveId: Hashable, Equatable {
+    let underlying: AnyHashable
+
+    init<SubMessage>(_ id: SubReceiveId<SubMessage>) {
+        self.underlying = AnyHashable(id)
     }
 }
 
