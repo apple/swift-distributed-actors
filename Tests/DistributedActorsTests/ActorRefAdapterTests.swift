@@ -296,5 +296,4 @@ class ActorRefAdapterTests: XCTestCase {
         topRef.tell(bottom)
         try probe.expectMessage("received:adapter-bottom:\(bottom)")
     }
-
 }
