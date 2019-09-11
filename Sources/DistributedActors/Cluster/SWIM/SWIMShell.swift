@@ -390,7 +390,7 @@ internal struct SWIMShell {
 
         let handshakeTimeout = TimeAmount.seconds(3)
         // FIXME: use reasonable timeout and back off? issue #724
-        let handshakeResultAnswer = context.system.cluster._shell.ref.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
+        let handshakeResultAnswer = context.system.cluster._clusterRef.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
             .command(.handshakeWith(remoteNode, replyTo: $0))
         }
         context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in

@@ -176,6 +176,7 @@ public final class ActorSystem {
             effectiveSystemProvider = RemoteActorRefProvider(settings: settings, cluster: cluster, localProvider: localSystemProvider)
         } else {
             self._cluster = nil
+            self._clusterControl = ClusterControl(self.settings.cluster, clusterRef: self.deadLetters.adapted(), eventStream: EventStream(ref: self.deadLetters.adapted()))
         }
 
         self.systemProvider = effectiveSystemProvider
@@ -202,8 +203,9 @@ public final class ActorSystem {
             // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
                 let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
-                self._clusterControl = ClusterControl(settings.cluster, shell: cluster, eventStream: clusterEvents)
                 _ = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
+
+                self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
 
                 // Node watcher MUST be started AFTER cluster and clusterEvents
                 self._nodeDeathWatcher = try self._spawnSystemActor(
@@ -252,10 +254,6 @@ public final class ActorSystem {
     }
 
     public var cluster: ClusterControl {
-        guard self.settings.cluster.enabled else {
-            fatalError("Tried to access cluster control, but clustering is not enabled.")
-        }
-
         guard let clusterControl = self._clusterControl else {
             fatalError("BUG! Tried to access clusterControl on \(self) and it was nil! Please report this on the issue tracker.")
         }
