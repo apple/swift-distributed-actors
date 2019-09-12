@@ -34,7 +34,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let (local, remote) = self.setUpPair()
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertAssociated(local, withExactly: remote.cluster.node)
         try assertAssociated(remote, withExactly: local.cluster.node)
@@ -46,14 +46,14 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let (local, remote) = self.setUpPair()
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertAssociated(local, withExactly: remote.cluster.node)
         try assertAssociated(remote, withExactly: local.cluster.node)
 
         try p.expectMessage(.success(remote.cluster.node))
 
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try p.expectMessage(.success(remote.cluster.node))
     }
@@ -128,8 +128,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
-        remote.cluster._shell.tell(.command(.handshakeWith(local.cluster.node.node, replyTo: p8228.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        remote.cluster._clusterRef.tell(.command(.handshakeWith(local.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
@@ -145,8 +145,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let p8228 = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
         // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p8228.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
@@ -196,7 +196,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._shell.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
         try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
@@ -243,7 +243,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         var node = local.cluster.node.node
         node.port = node.port + 10
 
-        local.cluster._shell.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
+        local.cluster._clusterRef.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
 
         switch try p.expectMessage(within: .seconds(1)) {
         case ClusterShell.HandshakeResult.failure:
@@ -267,7 +267,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         // we we down local on local, it should become down there:
         try self.testKit(local).eventually(within: .seconds(3)) {
-            local.cluster._shell.tell(.query(.currentMembership(localProbe.ref)))
+            local.cluster._clusterRef.tell(.query(.currentMembership(localProbe.ref)))
             let localMembership = try localProbe.expectMessage()
 
             guard let selfMember = localMembership.member(local.cluster.node.node) else {
@@ -281,7 +281,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             // although this may be a best effort since the local can just shut down if it wanted to,
             // this scenario assumes a graceful leave though:
 
-            remote.cluster._shell.tell(.query(.currentMembership(localProbe.ref)))
+            remote.cluster._clusterRef.tell(.query(.currentMembership(localProbe.ref)))
             let remoteMembership = try localProbe.expectMessage()
 
             guard let localMemberObservedOnRemote = remoteMembership.member(local.cluster.node.node) else {
