@@ -368,6 +368,15 @@ internal final class Mailbox<Message> {
     }
 
     @inlinable
+    func schedule() {
+        guard let shell = self.shell else {
+            traceLog_Mailbox(self.address.path, "has already released the actor cell, ignoring scheduling attempt")
+            return
+        }
+        shell.dispatcher.execute(self._run)
+    }
+
+    @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)

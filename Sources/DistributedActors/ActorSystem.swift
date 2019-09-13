@@ -191,43 +191,45 @@ public final class ActorSystem {
         self._receptionist = deadLetters.adapted()
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        self._receptionist = try! self._spawnSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true, startImmediately: false)
+        let delayedReceptionist = try! self._spawnSystemActorDelayed(Receptionist.naming, receptionistBehavior, perpetual: true)
+        self._receptionist = delayedReceptionist.ref
 
-        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true, startImmediately: false)
+        let delayedReplicator = try! self._spawnSystemActorDelayed(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
+        self._replicator = delayedReplicator.ref
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
         #endif
 
+        var delayedCluster: StartDelayed<ClusterShell.Message>?
+        var delayedNodeDeathWatcher: StartDelayed<NodeDeathWatcherShell.Message>?
         do {
-            // Cluster MUST be the last thing we initialize, since once we're bound, we may receive incoming messages from other nodes
             if let cluster = self._cluster {
                 let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
-                _ = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
+                delayedCluster = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
 
                 self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
 
                 // Node watcher MUST be started AFTER cluster and clusterEvents
-                self._nodeDeathWatcher = try self._spawnSystemActor(
+                delayedNodeDeathWatcher = try self._spawnSystemActorDelayed(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    perpetual: true, startImmediately: false
-                )
+                    perpetual: true)
+                self._nodeDeathWatcher = delayedNodeDeathWatcher?.ref
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
         }
 
-        self.dispatcher.execute(self.receptionist._unsafeUnwrapCell.mailbox.run)
-        self.dispatcher.execute(self.replicator._unsafeUnwrapCell.mailbox.run)
-        if let cluster = self._cluster {
-            self.dispatcher.execute(cluster.ref._unsafeUnwrapCell.mailbox.run)
-        }
-        if let nodeDeathWatcher = self._nodeDeathWatcher {
-            self.dispatcher.execute(nodeDeathWatcher._unsafeUnwrapCell.mailbox.run)
-        }
-
         _ = self.metrics // force init of metrics
+
+        // Wake up all the delayed actors. This MUST be the last thing to happen
+        // in the initialization of the actor system, as we will start receiving
+        // messages and all field on the system have to be initialized beforehand.
+        delayedReceptionist.wakeUp()
+        delayedReplicator.wakeUp()
+        delayedCluster?.wakeUp()
+        delayedNodeDeathWatcher?.wakeUp()
     }
 
     public convenience init() {
@@ -330,8 +332,24 @@ extension ActorSystem: ActorRefFactory {
     // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false, startImmediately: Bool = true) throws -> ActorRef<Message> {
-        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual, startImmediately: startImmediately)
+    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
+    }
+
+    /// Initializes a system actor and enqueues the `.start` message in the mailbox, but does not schedule
+    /// the actor. The actor must be manually scheduled later by calling `wakeUp` on the returned `StartDelayed`.
+    ///
+    /// Delaying the start of an actor is necessary when creating actors from within `ActorSystem.init`
+    /// to prevent them from running before the system has been fully initialized, which could lead to accessing
+    /// uninitialized fields and cause system crashes.
+    ///
+    /// Otherwise this function behaves the same as `_spawnSystemActor`.
+    ///
+    /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
+    internal func _spawnSystemActorDelayed<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> StartDelayed<Message> {
+        let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual, startImmediately: false)
+
+        return StartDelayed(ref: ref)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
@@ -462,4 +480,21 @@ extension ActorSystem: _ActorTreeTraversable {
 
 public enum ActorSystemError: Error {
     case shuttingDown(String)
+}
+
+/// Represents an actor that has been initialized, but not yet scheduled to run. Calling `wakeUp` will
+/// cause the actor to be scheduled.
+///
+/// **CAUTION** Not calling `wakeUp` will prevent the actor from ever running
+/// and can cause leaks.
+internal struct StartDelayed<Message> {
+    let ref: ActorRef<Message>
+
+    init (ref: ActorRef<Message>) {
+        self.ref = ref
+    }
+
+    func wakeUp() {
+        self.ref._unsafeUnwrapCell.mailbox.schedule()
+    }
 }
