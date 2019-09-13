@@ -106,19 +106,21 @@ internal class ClusterShell {
     }
 
     /// Actually starts the shell which kicks off binding to a port, and all further cluster work
-    internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> ClusterShell.Ref {
+    internal func start(system: ActorSystem, eventStream: EventStream<ClusterEvent>) throws -> LazyStart<Message> {
         self._serializationPool = try SerializationPool(settings: .default, serialization: system.serialization)
         self._events = eventStream
 
         // TODO: concurrency... lock the ref as others may read it?
-        self._ref = try system._spawnSystemActor(
+        let delayed = try system._prepareSystemActor(
             ClusterShell.naming,
             self.bind(),
             props: self.props,
             perpetual: true
         )
 
-        return self.ref
+        self._ref = delayed.ref
+
+        return delayed
     }
 
     // Due to lack of Union Types, we have to emulate them
