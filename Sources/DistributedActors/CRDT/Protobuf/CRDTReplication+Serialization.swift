@@ -46,11 +46,15 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
             protoWrite.replyTo = replyTo.toProto(context: context)
             proto.writeDelta = protoWrite
         case .read(let id, let replyTo):
+            traceLog_Serialization("\(self)")
+
             var protoRead = ProtoCRDTRead()
             protoRead.identity = id.toProto(context: context)
             protoRead.replyTo = replyTo.toProto(context: context)
             proto.read = protoRead
         case .delete(let id, let replyTo):
+            traceLog_Serialization("\(self)")
+
             var protoDelete = ProtoCRDTDelete()
             protoDelete.identity = id.toProto(context: context)
             protoDelete.replyTo = replyTo.toProto(context: context)
@@ -137,8 +141,8 @@ extension CRDT.Replicator.RemoteCommand.WriteResult: InternalProtobufRepresentab
         switch self {
         case .success:
             proto.type = .success
-        case .failed(let error):
-            proto.type = .failed
+        case .failure(let error):
+            proto.type = .failure
             proto.error = error.toProto(context: context)
         }
         return proto
@@ -148,13 +152,13 @@ extension CRDT.Replicator.RemoteCommand.WriteResult: InternalProtobufRepresentab
         switch proto.type {
         case .success:
             self = .success
-        case .failed:
+        case .failure:
             guard proto.hasError else {
                 throw SerializationError.missingField("error", type: String(describing: CRDT.Replicator.RemoteCommand.WriteResult.self))
             }
             let error = try CRDT.Replicator.RemoteCommand.WriteError(fromProto: proto.error, context: context)
 
-            self = .failed(error)
+            self = .failure(error)
         case .unspecified:
             throw SerializationError.missingField("type", type: String(describing: CRDT.Replicator.RemoteCommand.WriteResult.self))
         case .UNRECOGNIZED:
@@ -217,8 +221,8 @@ extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentabl
         case .success(let data):
             proto.type = .success
             proto.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
-        case .failed(let error):
-            proto.type = .failed
+        case .failure(let error):
+            proto.type = .failure
             proto.error = error.toProto(context: context)
         }
         return proto
@@ -233,13 +237,13 @@ extension CRDT.Replicator.RemoteCommand.ReadResult: InternalProtobufRepresentabl
             let envelope = try CRDTEnvelope(fromProto: proto.envelope, context: context)
 
             self = .success(envelope.underlying)
-        case .failed:
+        case .failure:
             guard proto.hasError else {
                 throw SerializationError.missingField("error", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
             }
             let error = try CRDT.Replicator.RemoteCommand.ReadError(fromProto: proto.error, context: context)
 
-            self = .failed(error)
+            self = .failure(error)
         case .unspecified:
             throw SerializationError.missingField("type", type: String(describing: CRDT.Replicator.RemoteCommand.ReadResult.self))
         case .UNRECOGNIZED:

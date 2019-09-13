@@ -26,9 +26,20 @@ extension CRDTReplicatorShellTests {
             ("test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore", test_localCommand_register_shouldAddActorRefToOwnersSet_shouldWriteCRDTToLocalStore),
             ("test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_localCommand_write_localConsistency_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
             ("test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_localCommand_delete_localConsistency_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
-            ("test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
-            ("test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
-            ("test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
+            ("test_receive_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_receive_remoteCommand_write_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
+            ("test_receive_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners", test_receive_remoteCommand_writeDelta_shouldUpdateDeltaCRDTInLocalStore_shouldNotifyOwners),
+            ("test_receive_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners", test_receive_remoteCommand_delete_shouldDeleteCRDTFromLocalStore_shouldNotifyOwners),
+            ("test_localCommand_write_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners", test_localCommand_write_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners),
+            ("test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners", test_localCommand_read_allConsistency_shouldUpdateLocalStoreWithRemoteData_shouldNotifyOwners),
+            ("test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData", test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData),
+            ("test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners", test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners),
+            ("test_OperationExecution_consistency_local", test_OperationExecution_consistency_local),
+            ("test_OperationExecution_consistency_atLeast", test_OperationExecution_consistency_atLeast),
+            ("test_OperationExecution_consistency_atLeast_exceedAllowedRemoteFailures", test_OperationExecution_consistency_atLeast_exceedAllowedRemoteFailures),
+            ("test_OperationExecution_consistency_atLeast_shouldThrowErrorForInvalidInput", test_OperationExecution_consistency_atLeast_shouldThrowErrorForInvalidInput),
+            ("test_OperationExecution_consistency_atLeast_shouldThrowInsufficientReplicasError", test_OperationExecution_consistency_atLeast_shouldThrowInsufficientReplicasError),
+            ("test_OperationExecution_consistency_quorum", test_OperationExecution_consistency_quorum),
+            ("test_OperationExecution_consistency_all", test_OperationExecution_consistency_all),
         ]
     }
 }
