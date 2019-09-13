@@ -19,7 +19,7 @@ public protocol AsyncResult {
     associatedtype Value
 
     /// Registers a callback that is executed when the `AsyncResult` is available.
-    func onComplete(_ callback: @escaping (Result<Value, ExecutionError>) -> Void)
+    func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
 
     /// Returns a new `AsyncResult` that is completed with the value of this
     /// `AsyncResult`, or a `TimeoutError` when it is not completed within
@@ -36,10 +36,8 @@ public protocol AsyncResult {
 }
 
 extension EventLoopFuture: AsyncResult {
-    public func onComplete(_ callback: @escaping (Result<Value, ExecutionError>) -> Void) {
-        self.map { Result<Value, ExecutionError>.success($0) }
-            .recover { Result<Value, ExecutionError>.failure(ExecutionError(underlying: $0)) }
-            .whenSuccess(callback)
+    public func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+        self.whenComplete(callback)
     }
 
     public func withTimeout(after timeout: TimeAmount) -> EventLoopFuture<Value> {
@@ -51,13 +49,9 @@ extension EventLoopFuture: AsyncResult {
         let timeoutTask = self.eventLoop.scheduleTask(in: timeout.toNIO) {
             promise.fail(TimeoutError(message: "\(type(of: self)) timed out after \(timeout.prettyDescription)", timeout: timeout))
         }
-        self.whenFailure {
+        self.whenComplete {
             timeoutTask.cancel()
-            promise.fail($0)
-        }
-        self.whenSuccess {
-            timeoutTask.cancel()
-            promise.succeed($0)
+            promise.completeWith($0)
         }
 
         return promise.futureResult

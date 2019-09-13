@@ -184,7 +184,7 @@ public enum CRDT {
 
             let replicator = ownerContext.system.replicator
 
-            func continueOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, ExecutionError>) -> Void) {
+            func continueOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
                 ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
                     continuation(res)
                     return .same
@@ -215,15 +215,15 @@ public enum CRDT {
                 switch $0 {
                 case .success(.success):
                     self.delegate.onWriteSuccess(actorOwned: self)
-                    return data
+                    return .success(data)
                 case .success(.failed(let error)):
                     self.owner.log.warning("Failed to update \(self.id): \(error)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
-                    throw error // TODO: configure if it should or not crash the actor?
+                    return .failure(error) // TODO: configure if it should or not crash the actor?
                 case .failure(let error):
                     self.owner.log.warning("Failed to update \(self.id): \(error)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
-                    throw error // TODO: configure if it should or not crash the actor?
+                    return .failure(error) // TODO: configure if it should or not crash the actor?
                 }
             }
         }
@@ -240,18 +240,18 @@ public enum CRDT {
                 switch $0 {
                 case .success(.success(let data)):
                     guard let data = data as? DataType else {
-                        throw Error.AnyStateBasedCRDTDoesNotMatchExpectedType
+                        return .failure(Error.AnyStateBasedCRDTDoesNotMatchExpectedType)
                     }
                     self.data = data
-                    return data
+                    return .success(data)
                 case .success(.failed(let readError)):
                     self.owner.log.warning("Failed to read(atConsistency: \(consistency), timeout: \(timeout.prettyDescription)), id: \(self.id): \(readError)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
-                    throw readError // TODO: configure if it should or not crash the actor?
+                    return .failure(readError) // TODO: configure if it should or not crash the actor?
                 case .failure(let executionError):
                     self.owner.log.warning("Failed to read \(self.id): \(executionError)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
-                    throw executionError // TODO: configure if it should or not crash the actor?
+                    return .failure(executionError) // TODO: configure if it should or not crash the actor?
                 }
             }
         }
@@ -266,10 +266,11 @@ public enum CRDT {
                 switch $0 {
                 case .success:
                     self.status = .deleted
+                    return .success(())
                 case .failure(let error):
                     self.owner.log.warning("Failed to delete \(self): \(error)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
-                    throw error // TODO: configure if it should or not crash the actor?
+                    return .failure(error) // TODO: configure if it should or not crash the actor?
                 }
             }
         }
@@ -282,16 +283,16 @@ public enum CRDT {
             let replicator: ActorRef<CRDT.Replicator.Message>
 
             // TODO: maybe possible to express as one closure?
-            private let _onWriteComplete: (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void
-            private let _onReadComplete: (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void
-            private let _onDeleteComplete: (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) -> Void) -> Void
+            private let _onWriteComplete: (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void
+            private let _onReadComplete: (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, Swift.Error>) -> Void) -> Void
+            private let _onDeleteComplete: (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Void) -> Void
 
             init<M>(_ ownerContext: ActorContext<M>,
                     subReceive: ActorRef<Replication.DataOwnerMessage>,
                     replicator: ActorRef<Replicator.Message>,
-                    onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) -> Void) -> Void,
-                    onReadComplete: @escaping (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) -> Void) -> Void,
-                    onDeleteComplete: @escaping (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) -> Void) -> Void) {
+                    onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void,
+                    onReadComplete: @escaping (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, Swift.Error>) -> Void) -> Void,
+                    onDeleteComplete: @escaping (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Void) -> Void) {
                 // not storing ownerContext on purpose; it always is a bit dangerous to store "someone's" context, for retain cycles and potential concurrency issues
                 self.log = ownerContext.log
                 self.eventLoopGroup = ownerContext.system.eventLoopGroup
@@ -317,48 +318,34 @@ public enum CRDT {
             // That `OperationResult` must fire _after_ we applied the callback, and it should fire with the updated state; thus the promise dance we do below here.
 
             func onWriteComplete(_ response: AskResponse<Replicator.LocalCommand.WriteResult>,
-                                 _ onComplete: @escaping (Result<Replicator.LocalCommand.WriteResult, ExecutionError>) throws -> DataType) -> OperationResult<DataType> {
+                                 _ onComplete: @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Result<DataType, Swift.Error>) -> OperationResult<DataType> {
                 let loop = self.eventLoopGroup.next()
                 let promise = loop.makePromise(of: DataType.self)
                 self._onWriteComplete(response) { result in
-                    do {
-                        let data = try onComplete(result)
-                        promise.succeed(data) // TODO: promise.completeWith(Result) once exists?
-                    } catch {
-                        promise.fail(error)
-                    }
+                    let result = onComplete(result)
+                    promise.completeWith(result)
                 }
                 return OperationResult(promise.futureResult)
             }
 
             func onReadComplete(_ response: AskResponse<Replicator.LocalCommand.ReadResult>,
-                                _ onComplete: @escaping (Result<Replicator.LocalCommand.ReadResult, ExecutionError>) throws -> DataType) -> OperationResult<DataType> {
+                                _ onComplete: @escaping (Result<Replicator.LocalCommand.ReadResult, Swift.Error>) -> Result<DataType, Swift.Error>) -> OperationResult<DataType> {
                 let loop = self.eventLoopGroup.next()
                 let promise = loop.makePromise(of: DataType.self)
                 self._onReadComplete(response) { result in
-                    // TODO: promise.completeWith(Result) once https://github.com/apple/swift-nio/pull/1124 lands
-                    do {
-                        let data = try onComplete(result)
-                        promise.succeed(data)
-                    } catch {
-                        promise.fail(error)
-                    }
+                    let result = onComplete(result)
+                    promise.completeWith(result)
                 }
                 return OperationResult(promise.futureResult)
             }
 
             func onDeleteComplete(_ response: AskResponse<Replicator.LocalCommand.DeleteResult>,
-                                  _ onComplete: @escaping (Result<Replicator.LocalCommand.DeleteResult, ExecutionError>) throws -> Void) -> OperationResult<Void> {
+                                  _ onComplete: @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Result<Void, Swift.Error>) -> OperationResult<Void> {
                 let loop = self.eventLoopGroup.next()
                 let promise = loop.makePromise(of: Void.self)
                 self._onDeleteComplete(response) { result in
-                    // TODO: promise.completeWith(Result) once https://github.com/apple/swift-nio/pull/1124 lands
-                    do {
-                        let void: Void = try onComplete(result)
-                        promise.succeed(void)
-                    } catch {
-                        promise.fail(error)
-                    }
+                    let result = onComplete(result)
+                    promise.completeWith(result)
                 }
                 return OperationResult(promise.futureResult.map { _ in () })
             }
@@ -371,7 +358,7 @@ public enum CRDT {
                 self.dataFuture = dataFuture
             }
 
-            public func onComplete(_ callback: @escaping (Swift.Result<DataType, ExecutionError>) -> Void) {
+            public func onComplete(_ callback: @escaping (Swift.Result<DataType, Swift.Error>) -> Void) {
                 self.dataFuture.onComplete(callback)
             }
 

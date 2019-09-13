@@ -159,11 +159,9 @@ final class ActorAskTests: XCTestCase {
             }
         })
 
-        var msg = "ExecutionError(underlying: "
-        msg += "DistributedActors.TimeoutError("
+        var msg = "TimeoutError("
         msg += "message: \"AskResponse<String> timed out after 100ms\", "
         msg += "timeout: TimeAmount(100ms, nanoseconds: 100000000))"
-        msg += ")"
         try p.expectMessage(msg)
     }
 
