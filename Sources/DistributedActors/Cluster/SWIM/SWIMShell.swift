@@ -316,7 +316,7 @@ internal struct SWIMShell {
         } else {
             context.log.warning("Attempted to .confirmDead(\(node)), yet no such member known to \(self)!") // TODO: would want to see if this happens when we fail these tests
             // even if not known, we invent such node and store it as dead
-            // self.swim.addMember(context.system._resolve(context: .init(address: SWIMShell.address(on: node), system: context.system)), status: .dead)
+            self.swim.addMember(context.system._resolve(context: .init(address: SWIMShell.address(on: node), system: context.system)), status: .dead)
         }
     }
 
