@@ -191,32 +191,32 @@ public final class ActorSystem {
         self._receptionist = deadLetters.adapted()
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        let delayedReceptionist = try! self._spawnSystemActorDelayed(Receptionist.naming, receptionistBehavior, perpetual: true)
-        self._receptionist = delayedReceptionist.ref
+        let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
+        self._receptionist = lazyReceptionist.ref
 
-        let delayedReplicator = try! self._spawnSystemActorDelayed(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
-        self._replicator = delayedReplicator.ref
+        let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
+        self._replicator = lazyReplicator.ref
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
         #endif
 
-        var delayedCluster: StartDelayed<ClusterShell.Message>?
-        var delayedNodeDeathWatcher: StartDelayed<NodeDeathWatcherShell.Message>?
+        var lazyCluster: LazyStart<ClusterShell.Message>?
+        var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
         do {
             if let cluster = self._cluster {
                 let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
-                delayedCluster = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
+                lazyCluster = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
 
                 self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
 
                 // Node watcher MUST be started AFTER cluster and clusterEvents
-                delayedNodeDeathWatcher = try self._spawnSystemActorDelayed(
+                lazyNodeDeathWatcher = try self._prepareSystemActor(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
                     perpetual: true
                 )
-                self._nodeDeathWatcher = delayedNodeDeathWatcher?.ref
+                self._nodeDeathWatcher = lazyNodeDeathWatcher?.ref
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
@@ -227,10 +227,10 @@ public final class ActorSystem {
         // Wake up all the delayed actors. This MUST be the last thing to happen
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
-        delayedReceptionist.wakeUp()
-        delayedReplicator.wakeUp()
-        delayedCluster?.wakeUp()
-        delayedNodeDeathWatcher?.wakeUp()
+        lazyReceptionist.wakeUp()
+        lazyReplicator.wakeUp()
+        lazyCluster?.wakeUp()
+        lazyNodeDeathWatcher?.wakeUp()
     }
 
     public convenience init() {
@@ -338,7 +338,7 @@ extension ActorSystem: ActorRefFactory {
     }
 
     /// Initializes a system actor and enqueues the `.start` message in the mailbox, but does not schedule
-    /// the actor. The actor must be manually scheduled later by calling `wakeUp` on the returned `StartDelayed`.
+    /// the actor. The actor must be manually scheduled later by calling `wakeUp` on the returned `LazyStart`.
     ///
     /// Delaying the start of an actor is necessary when creating actors from within `ActorSystem.init`
     /// to prevent them from running before the system has been fully initialized, which could lead to accessing
@@ -347,10 +347,10 @@ extension ActorSystem: ActorRefFactory {
     /// Otherwise this function behaves the same as `_spawnSystemActor`.
     ///
     /// **CAUTION** This methods MUST NOT be used from outside of `ActorSystem.init`.
-    internal func _spawnSystemActorDelayed<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> StartDelayed<Message> {
+    internal func _prepareSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> LazyStart<Message> {
         let ref = try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual, startImmediately: false)
 
-        return StartDelayed(ref: ref)
+        return LazyStart(ref: ref)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
@@ -487,8 +487,9 @@ public enum ActorSystemError: Error {
 /// cause the actor to be scheduled.
 ///
 /// **CAUTION** Not calling `wakeUp` will prevent the actor from ever running
-/// and can cause leaks.
-internal struct StartDelayed<Message> {
+/// and can cause leaks. Also `wakeUp` MUST NOT be called more than once,
+/// as that would violate the single-threaded execution guaranteed of actors.
+internal struct LazyStart<Message> {
     let ref: ActorRef<Message>
 
     init(ref: ActorRef<Message>) {
