@@ -191,9 +191,9 @@ public final class ActorSystem {
         self._receptionist = deadLetters.adapted()
 
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
-        self._receptionist = try! self._spawnSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
+        self._receptionist = try! self._spawnSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true, startImmediately: false)
 
-        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
+        self._replicator = try! self._spawnSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true, startImmediately: false)
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -211,11 +211,20 @@ public final class ActorSystem {
                 self._nodeDeathWatcher = try self._spawnSystemActor(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    perpetual: true
+                    perpetual: true, startImmediately: false
                 )
             }
         } catch {
             fatalError("Failed while starting cluster subsystem! Error: \(error)")
+        }
+
+        self.dispatcher.execute(self.receptionist._unsafeUnwrapCell.mailbox.run)
+        self.dispatcher.execute(self.replicator._unsafeUnwrapCell.mailbox.run)
+        if let cluster = self._cluster {
+            self.dispatcher.execute(cluster.ref._unsafeUnwrapCell.mailbox.run)
+        }
+        if let nodeDeathWatcher = self._nodeDeathWatcher {
+            self.dispatcher.execute(nodeDeathWatcher._unsafeUnwrapCell.mailbox.run)
         }
 
         _ = self.metrics // force init of metrics
@@ -321,12 +330,12 @@ extension ActorSystem: ActorRefFactory {
     // to discover the receptionist actors on all nodes in order to replicate state between them. The incarnation of those actors will be `ActorIncarnation.perpetual`. This
     // also means that there will only be one instance of that actor that will stay alive for the whole lifetime of the system. Appropriate supervision strategies
     // should be configured for these types of actors.
-    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false) throws -> ActorRef<Message> {
-        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual)
+    internal func _spawnSystemActor<Message>(_ naming: ActorNaming, _ behavior: Behavior<Message>, props: Props = Props(), perpetual: Bool = false, startImmediately: Bool = true) throws -> ActorRef<Message> {
+        return try self._spawn(using: self.systemProvider, behavior, name: naming, props: props, isWellKnown: perpetual, startImmediately: startImmediately)
     }
 
     // Actual spawn implementation, minus the leading "$" check on names;
-    internal func _spawn<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false) throws -> ActorRef<Message> {
+    internal func _spawn<Message>(using provider: _ActorRefProvider, _ behavior: Behavior<Message>, name naming: ActorNaming, props: Props = Props(), isWellKnown: Bool = false, startImmediately: Bool = true) throws -> ActorRef<Message> {
         try behavior.validateAsInitial()
 
         let incarnation: ActorIncarnation = isWellKnown ? .perpetual : .random()
@@ -356,7 +365,8 @@ extension ActorSystem: ActorRefFactory {
         return try provider.spawn(
             system: self,
             behavior: behavior, address: address,
-            dispatcher: dispatcher, props: props
+            dispatcher: dispatcher, props: props,
+            startImmediately: startImmediately
         )
     }
 }

@@ -115,7 +115,8 @@ internal class ClusterShell {
             ClusterShell.naming,
             self.bind(),
             props: self.props,
-            perpetual: true
+            perpetual: true,
+            startImmediately: false
         )
 
         return self.ref

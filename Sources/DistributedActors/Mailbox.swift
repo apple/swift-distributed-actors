@@ -360,6 +360,14 @@ internal final class Mailbox<Message> {
     }
 
     @inlinable
+    func enqueueStart() {
+        let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
+        ptr.initialize(to: .start)
+
+        cmailbox_send_system_message(self.mailbox, ptr)
+    }
+
+    @inlinable
     func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
         let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
         ptr.initialize(to: systemMessage)

@@ -33,7 +33,8 @@ internal protocol _ActorRefProvider: _ActorTreeTraversable {
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
-        dispatcher: MessageDispatcher, props: Props
+        dispatcher: MessageDispatcher, props: Props,
+        startImmediately: Bool
     ) throws -> ActorRef<Message>
 
     /// Stops all actors created by this `ActorRefProvider` and blocks until they have all stopped.
@@ -71,9 +72,9 @@ extension RemoteActorRefProvider {
         return self.localProvider.rootAddress
     }
 
-    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, address: ActorAddress, dispatcher: MessageDispatcher, props: Props) throws -> ActorRef<Message> {
+    func spawn<Message>(system: ActorSystem, behavior: Behavior<Message>, address: ActorAddress, dispatcher: MessageDispatcher, props: Props, startImmediately: Bool) throws -> ActorRef<Message> {
         // spawn is always local, thus we delegate to the underlying provider
-        return try self.localProvider.spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props)
+        return try self.localProvider.spawn(system: system, behavior: behavior, address: address, dispatcher: dispatcher, props: props, startImmediately: startImmediately)
     }
 
     func stopAll() {
@@ -132,7 +133,8 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
     func spawn<Message>(
         system: ActorSystem,
         behavior: Behavior<Message>, address: ActorAddress,
-        dispatcher: MessageDispatcher, props: Props
+        dispatcher: MessageDispatcher, props: Props,
+        startImmediately: Bool
     ) throws -> ActorRef<Message> {
         return try self.root.makeChild(path: address.path) {
             // the cell that holds the actual "actor", though one could say the cell *is* the actor...
@@ -147,7 +149,12 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 
             let cell = actor._myCell
 
-            cell.sendSystemMessage(.start)
+            if (startImmediately) {
+                cell.sendSystemMessage(.start)
+            } else {
+                cell.mailbox.enqueueStart()
+            }
+
             return actor
         }
     }
