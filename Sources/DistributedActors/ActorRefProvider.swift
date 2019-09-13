@@ -152,6 +152,10 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
             if (startImmediately) {
                 cell.sendSystemMessage(.start)
             } else {
+                // If the start is delayed, we need to enqueue the `.start` message
+                // without actually scheduling it to run. This ensures that `.start`
+                // will still be the first message in the mailbox and also that
+                // enqueueing more messages will not schedule the actor prematurely.
                 cell.mailbox.enqueueStart()
             }
 
