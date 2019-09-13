@@ -28,406 +28,405 @@ import SwiftProtobuf
 // incompatible with the version of SwiftProtobuf to which you are linking.
 // Please ensure that your are building against the same version of the API
 // that was used to generate this file.
-private struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
-    struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
-    typealias Version = _2
+fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAPIVersionCheck {
+  struct _2: SwiftProtobuf.ProtobufAPIVersion_2 {}
+  typealias Version = _2
 }
 
 struct ProtoSmallMessage {
-    // SwiftProtobuf.Message conformance is added in an extension below. See the
-    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-    // methods supported on all messages.
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
 
-    var number: Int64 = 0
+  var number: Int64 = 0
 
-    var name: String = String()
+  var name: String = String()
 
-    var unknownFields = SwiftProtobuf.UnknownStorage()
+  var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    init() {}
+  init() {}
 }
 
 struct ProtoMediumMessage {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var field01: String {
+    get {return _storage._field01}
+    set {_uniqueStorage()._field01 = newValue}
+  }
+
+  var field02: String {
+    get {return _storage._field02}
+    set {_uniqueStorage()._field02 = newValue}
+  }
+
+  var field03: Int32 {
+    get {return _storage._field03}
+    set {_uniqueStorage()._field03 = newValue}
+  }
+
+  var field04: ProtoMediumMessage.NestedMessage {
+    get {return _storage._field04 ?? ProtoMediumMessage.NestedMessage()}
+    set {_uniqueStorage()._field04 = newValue}
+  }
+  /// Returns true if `field04` has been explicitly set.
+  var hasField04: Bool {return _storage._field04 != nil}
+  /// Clears the value of `field04`. Subsequent reads from it will return its default value.
+  mutating func clearField04() {_uniqueStorage()._field04 = nil}
+
+  var field05: Bool {
+    get {return _storage._field05}
+    set {_uniqueStorage()._field05 = newValue}
+  }
+
+  var field06: Int32 {
+    get {return _storage._field06}
+    set {_uniqueStorage()._field06 = newValue}
+  }
+
+  var field07: Int64 {
+    get {return _storage._field07}
+    set {_uniqueStorage()._field07 = newValue}
+  }
+
+  var field08: Int64 {
+    get {return _storage._field08}
+    set {_uniqueStorage()._field08 = newValue}
+  }
+
+  var field09: Int64 {
+    get {return _storage._field09}
+    set {_uniqueStorage()._field09 = newValue}
+  }
+
+  var field10: Int64 {
+    get {return _storage._field10}
+    set {_uniqueStorage()._field10 = newValue}
+  }
+
+  var field11: Bool {
+    get {return _storage._field11}
+    set {_uniqueStorage()._field11 = newValue}
+  }
+
+  var field12: String {
+    get {return _storage._field12}
+    set {_uniqueStorage()._field12 = newValue}
+  }
+
+  var field13: Bool {
+    get {return _storage._field13}
+    set {_uniqueStorage()._field13 = newValue}
+  }
+
+  var field14: String {
+    get {return _storage._field14}
+    set {_uniqueStorage()._field14 = newValue}
+  }
+
+  var field15: String {
+    get {return _storage._field15}
+    set {_uniqueStorage()._field15 = newValue}
+  }
+
+  var field16: Int64 {
+    get {return _storage._field16}
+    set {_uniqueStorage()._field16 = newValue}
+  }
+
+  var field17: Int64 {
+    get {return _storage._field17}
+    set {_uniqueStorage()._field17 = newValue}
+  }
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  struct NestedMessage {
     // SwiftProtobuf.Message conformance is added in an extension below. See the
     // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
     // methods supported on all messages.
 
-    var field01: String {
-        get { return self._storage._field01 }
-        set { _uniqueStorage()._field01 = newValue }
-    }
+    var field1: String = String()
 
-    var field02: String {
-        get { return self._storage._field02 }
-        set { _uniqueStorage()._field02 = newValue }
-    }
+    var field2: Int32 = 0
 
-    var field03: Int32 {
-        get { return self._storage._field03 }
-        set { _uniqueStorage()._field03 = newValue }
-    }
-
-    var field04: ProtoMediumMessage.NestedMessage {
-        get { return self._storage._field04 ?? ProtoMediumMessage.NestedMessage() }
-        set { _uniqueStorage()._field04 = newValue }
-    }
-
-    /// Returns true if `field04` has been explicitly set.
-    var hasField04: Bool { return _storage._field04 != nil }
-    /// Clears the value of `field04`. Subsequent reads from it will return its default value.
-    mutating func clearField04() { _uniqueStorage()._field04 = nil }
-
-    var field05: Bool {
-        get { return self._storage._field05 }
-        set { _uniqueStorage()._field05 = newValue }
-    }
-
-    var field06: Int32 {
-        get { return self._storage._field06 }
-        set { _uniqueStorage()._field06 = newValue }
-    }
-
-    var field07: Int64 {
-        get { return self._storage._field07 }
-        set { _uniqueStorage()._field07 = newValue }
-    }
-
-    var field08: Int64 {
-        get { return self._storage._field08 }
-        set { _uniqueStorage()._field08 = newValue }
-    }
-
-    var field09: Int64 {
-        get { return self._storage._field09 }
-        set { _uniqueStorage()._field09 = newValue }
-    }
-
-    var field10: Int64 {
-        get { return self._storage._field10 }
-        set { _uniqueStorage()._field10 = newValue }
-    }
-
-    var field11: Bool {
-        get { return self._storage._field11 }
-        set { _uniqueStorage()._field11 = newValue }
-    }
-
-    var field12: String {
-        get { return self._storage._field12 }
-        set { _uniqueStorage()._field12 = newValue }
-    }
-
-    var field13: Bool {
-        get { return self._storage._field13 }
-        set { _uniqueStorage()._field13 = newValue }
-    }
-
-    var field14: String {
-        get { return self._storage._field14 }
-        set { _uniqueStorage()._field14 = newValue }
-    }
-
-    var field15: String {
-        get { return self._storage._field15 }
-        set { _uniqueStorage()._field15 = newValue }
-    }
-
-    var field16: Int64 {
-        get { return self._storage._field16 }
-        set { _uniqueStorage()._field16 = newValue }
-    }
-
-    var field17: Int64 {
-        get { return self._storage._field17 }
-        set { _uniqueStorage()._field17 = newValue }
-    }
+    var field3: Int32 = 0
 
     var unknownFields = SwiftProtobuf.UnknownStorage()
 
-    struct NestedMessage {
-        // SwiftProtobuf.Message conformance is added in an extension below. See the
-        // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-        // methods supported on all messages.
-
-        var field1: String = String()
-
-        var field2: Int32 = 0
-
-        var field3: Int32 = 0
-
-        var unknownFields = SwiftProtobuf.UnknownStorage()
-
-        init() {}
-    }
-
     init() {}
+  }
 
-    fileprivate var _storage = _StorageClass.defaultInstance
+  init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoSmallMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    static let protoMessageName: String = "SmallMessage"
-    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "number"),
-        2: .same(proto: "name"),
-    ]
+  static let protoMessageName: String = "SmallMessage"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "number"),
+    2: .same(proto: "name"),
+  ]
 
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while let fieldNumber = try decoder.nextFieldNumber() {
-            switch fieldNumber {
-            case 1: try decoder.decodeSingularInt64Field(value: &self.number)
-            case 2: try decoder.decodeSingularStringField(value: &self.name)
-            default: break
-            }
-        }
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try decoder.decodeSingularInt64Field(value: &self.number)
+      case 2: try decoder.decodeSingularStringField(value: &self.name)
+      default: break
+      }
     }
+  }
 
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        if self.number != 0 {
-            try visitor.visitSingularInt64Field(value: self.number, fieldNumber: 1)
-        }
-        if !self.name.isEmpty {
-            try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
-        }
-        try self.unknownFields.traverse(visitor: &visitor)
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.number != 0 {
+      try visitor.visitSingularInt64Field(value: self.number, fieldNumber: 1)
     }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
 
-    static func == (lhs: ProtoSmallMessage, rhs: ProtoSmallMessage) -> Bool {
-        if lhs.number != rhs.number { return false }
-        if lhs.name != rhs.name { return false }
-        if lhs.unknownFields != rhs.unknownFields { return false }
-        return true
-    }
+  static func ==(lhs: ProtoSmallMessage, rhs: ProtoSmallMessage) -> Bool {
+    if lhs.number != rhs.number {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }
 
 extension ProtoMediumMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    static let protoMessageName: String = "MediumMessage"
-    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "field01"),
-        2: .same(proto: "field02"),
-        3: .same(proto: "field03"),
-        4: .same(proto: "field04"),
-        5: .same(proto: "field05"),
-        6: .same(proto: "field06"),
-        7: .same(proto: "field07"),
-        8: .same(proto: "field08"),
-        9: .same(proto: "field09"),
-        10: .same(proto: "field10"),
-        11: .same(proto: "field11"),
-        12: .same(proto: "field12"),
-        13: .same(proto: "field13"),
-        14: .same(proto: "field14"),
-        15: .same(proto: "field15"),
-        16: .same(proto: "field16"),
-        17: .same(proto: "field17"),
-    ]
+  static let protoMessageName: String = "MediumMessage"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "field01"),
+    2: .same(proto: "field02"),
+    3: .same(proto: "field03"),
+    4: .same(proto: "field04"),
+    5: .same(proto: "field05"),
+    6: .same(proto: "field06"),
+    7: .same(proto: "field07"),
+    8: .same(proto: "field08"),
+    9: .same(proto: "field09"),
+    10: .same(proto: "field10"),
+    11: .same(proto: "field11"),
+    12: .same(proto: "field12"),
+    13: .same(proto: "field13"),
+    14: .same(proto: "field14"),
+    15: .same(proto: "field15"),
+    16: .same(proto: "field16"),
+    17: .same(proto: "field17"),
+  ]
 
-    fileprivate class _StorageClass {
-        var _field01: String = String()
-        var _field02: String = String()
-        var _field03: Int32 = 0
-        var _field04: ProtoMediumMessage.NestedMessage?
-        var _field05: Bool = false
-        var _field06: Int32 = 0
-        var _field07: Int64 = 0
-        var _field08: Int64 = 0
-        var _field09: Int64 = 0
-        var _field10: Int64 = 0
-        var _field11: Bool = false
-        var _field12: String = String()
-        var _field13: Bool = false
-        var _field14: String = String()
-        var _field15: String = String()
-        var _field16: Int64 = 0
-        var _field17: Int64 = 0
+  fileprivate class _StorageClass {
+    var _field01: String = String()
+    var _field02: String = String()
+    var _field03: Int32 = 0
+    var _field04: ProtoMediumMessage.NestedMessage? = nil
+    var _field05: Bool = false
+    var _field06: Int32 = 0
+    var _field07: Int64 = 0
+    var _field08: Int64 = 0
+    var _field09: Int64 = 0
+    var _field10: Int64 = 0
+    var _field11: Bool = false
+    var _field12: String = String()
+    var _field13: Bool = false
+    var _field14: String = String()
+    var _field15: String = String()
+    var _field16: Int64 = 0
+    var _field17: Int64 = 0
 
-        static let defaultInstance = _StorageClass()
+    static let defaultInstance = _StorageClass()
 
-        private init() {}
+    private init() {}
 
-        init(copying source: _StorageClass) {
-            self._field01 = source._field01
-            self._field02 = source._field02
-            self._field03 = source._field03
-            self._field04 = source._field04
-            self._field05 = source._field05
-            self._field06 = source._field06
-            self._field07 = source._field07
-            self._field08 = source._field08
-            self._field09 = source._field09
-            self._field10 = source._field10
-            self._field11 = source._field11
-            self._field12 = source._field12
-            self._field13 = source._field13
-            self._field14 = source._field14
-            self._field15 = source._field15
-            self._field16 = source._field16
-            self._field17 = source._field17
-        }
+    init(copying source: _StorageClass) {
+      _field01 = source._field01
+      _field02 = source._field02
+      _field03 = source._field03
+      _field04 = source._field04
+      _field05 = source._field05
+      _field06 = source._field06
+      _field07 = source._field07
+      _field08 = source._field08
+      _field09 = source._field09
+      _field10 = source._field10
+      _field11 = source._field11
+      _field12 = source._field12
+      _field13 = source._field13
+      _field14 = source._field14
+      _field15 = source._field15
+      _field16 = source._field16
+      _field17 = source._field17
     }
+  }
 
-    fileprivate mutating func _uniqueStorage() -> _StorageClass {
-        if !isKnownUniquelyReferenced(&self._storage) {
-            self._storage = _StorageClass(copying: self._storage)
-        }
-        return self._storage
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
     }
+    return _storage
+  }
 
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        _ = self._uniqueStorage()
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            while let fieldNumber = try decoder.nextFieldNumber() {
-                switch fieldNumber {
-                case 1: try decoder.decodeSingularStringField(value: &_storage._field01)
-                case 2: try decoder.decodeSingularStringField(value: &_storage._field02)
-                case 3: try decoder.decodeSingularInt32Field(value: &_storage._field03)
-                case 4: try decoder.decodeSingularMessageField(value: &_storage._field04)
-                case 5: try decoder.decodeSingularBoolField(value: &_storage._field05)
-                case 6: try decoder.decodeSingularInt32Field(value: &_storage._field06)
-                case 7: try decoder.decodeSingularInt64Field(value: &_storage._field07)
-                case 8: try decoder.decodeSingularInt64Field(value: &_storage._field08)
-                case 9: try decoder.decodeSingularInt64Field(value: &_storage._field09)
-                case 10: try decoder.decodeSingularInt64Field(value: &_storage._field10)
-                case 11: try decoder.decodeSingularBoolField(value: &_storage._field11)
-                case 12: try decoder.decodeSingularStringField(value: &_storage._field12)
-                case 13: try decoder.decodeSingularBoolField(value: &_storage._field13)
-                case 14: try decoder.decodeSingularStringField(value: &_storage._field14)
-                case 15: try decoder.decodeSingularStringField(value: &_storage._field15)
-                case 16: try decoder.decodeSingularInt64Field(value: &_storage._field16)
-                case 17: try decoder.decodeSingularInt64Field(value: &_storage._field17)
-                default: break
-                }
-            }
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularStringField(value: &_storage._field01)
+        case 2: try decoder.decodeSingularStringField(value: &_storage._field02)
+        case 3: try decoder.decodeSingularInt32Field(value: &_storage._field03)
+        case 4: try decoder.decodeSingularMessageField(value: &_storage._field04)
+        case 5: try decoder.decodeSingularBoolField(value: &_storage._field05)
+        case 6: try decoder.decodeSingularInt32Field(value: &_storage._field06)
+        case 7: try decoder.decodeSingularInt64Field(value: &_storage._field07)
+        case 8: try decoder.decodeSingularInt64Field(value: &_storage._field08)
+        case 9: try decoder.decodeSingularInt64Field(value: &_storage._field09)
+        case 10: try decoder.decodeSingularInt64Field(value: &_storage._field10)
+        case 11: try decoder.decodeSingularBoolField(value: &_storage._field11)
+        case 12: try decoder.decodeSingularStringField(value: &_storage._field12)
+        case 13: try decoder.decodeSingularBoolField(value: &_storage._field13)
+        case 14: try decoder.decodeSingularStringField(value: &_storage._field14)
+        case 15: try decoder.decodeSingularStringField(value: &_storage._field15)
+        case 16: try decoder.decodeSingularInt64Field(value: &_storage._field16)
+        case 17: try decoder.decodeSingularInt64Field(value: &_storage._field17)
+        default: break
         }
+      }
     }
+  }
 
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try withExtendedLifetime(self._storage) { (_storage: _StorageClass) in
-            if !_storage._field01.isEmpty {
-                try visitor.visitSingularStringField(value: _storage._field01, fieldNumber: 1)
-            }
-            if !_storage._field02.isEmpty {
-                try visitor.visitSingularStringField(value: _storage._field02, fieldNumber: 2)
-            }
-            if _storage._field03 != 0 {
-                try visitor.visitSingularInt32Field(value: _storage._field03, fieldNumber: 3)
-            }
-            if let v = _storage._field04 {
-                try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-            }
-            if _storage._field05 != false {
-                try visitor.visitSingularBoolField(value: _storage._field05, fieldNumber: 5)
-            }
-            if _storage._field06 != 0 {
-                try visitor.visitSingularInt32Field(value: _storage._field06, fieldNumber: 6)
-            }
-            if _storage._field07 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field07, fieldNumber: 7)
-            }
-            if _storage._field08 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field08, fieldNumber: 8)
-            }
-            if _storage._field09 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field09, fieldNumber: 9)
-            }
-            if _storage._field10 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field10, fieldNumber: 10)
-            }
-            if _storage._field11 != false {
-                try visitor.visitSingularBoolField(value: _storage._field11, fieldNumber: 11)
-            }
-            if !_storage._field12.isEmpty {
-                try visitor.visitSingularStringField(value: _storage._field12, fieldNumber: 12)
-            }
-            if _storage._field13 != false {
-                try visitor.visitSingularBoolField(value: _storage._field13, fieldNumber: 13)
-            }
-            if !_storage._field14.isEmpty {
-                try visitor.visitSingularStringField(value: _storage._field14, fieldNumber: 14)
-            }
-            if !_storage._field15.isEmpty {
-                try visitor.visitSingularStringField(value: _storage._field15, fieldNumber: 15)
-            }
-            if _storage._field16 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field16, fieldNumber: 16)
-            }
-            if _storage._field17 != 0 {
-                try visitor.visitSingularInt64Field(value: _storage._field17, fieldNumber: 17)
-            }
-        }
-        try self.unknownFields.traverse(visitor: &visitor)
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if !_storage._field01.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._field01, fieldNumber: 1)
+      }
+      if !_storage._field02.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._field02, fieldNumber: 2)
+      }
+      if _storage._field03 != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._field03, fieldNumber: 3)
+      }
+      if let v = _storage._field04 {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      }
+      if _storage._field05 != false {
+        try visitor.visitSingularBoolField(value: _storage._field05, fieldNumber: 5)
+      }
+      if _storage._field06 != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._field06, fieldNumber: 6)
+      }
+      if _storage._field07 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field07, fieldNumber: 7)
+      }
+      if _storage._field08 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field08, fieldNumber: 8)
+      }
+      if _storage._field09 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field09, fieldNumber: 9)
+      }
+      if _storage._field10 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field10, fieldNumber: 10)
+      }
+      if _storage._field11 != false {
+        try visitor.visitSingularBoolField(value: _storage._field11, fieldNumber: 11)
+      }
+      if !_storage._field12.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._field12, fieldNumber: 12)
+      }
+      if _storage._field13 != false {
+        try visitor.visitSingularBoolField(value: _storage._field13, fieldNumber: 13)
+      }
+      if !_storage._field14.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._field14, fieldNumber: 14)
+      }
+      if !_storage._field15.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._field15, fieldNumber: 15)
+      }
+      if _storage._field16 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field16, fieldNumber: 16)
+      }
+      if _storage._field17 != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._field17, fieldNumber: 17)
+      }
     }
+    try unknownFields.traverse(visitor: &visitor)
+  }
 
-    static func == (lhs: ProtoMediumMessage, rhs: ProtoMediumMessage) -> Bool {
-        if lhs._storage !== rhs._storage {
-            let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-                let _storage = _args.0
-                let rhs_storage = _args.1
-                if _storage._field01 != rhs_storage._field01 { return false }
-                if _storage._field02 != rhs_storage._field02 { return false }
-                if _storage._field03 != rhs_storage._field03 { return false }
-                if _storage._field04 != rhs_storage._field04 { return false }
-                if _storage._field05 != rhs_storage._field05 { return false }
-                if _storage._field06 != rhs_storage._field06 { return false }
-                if _storage._field07 != rhs_storage._field07 { return false }
-                if _storage._field08 != rhs_storage._field08 { return false }
-                if _storage._field09 != rhs_storage._field09 { return false }
-                if _storage._field10 != rhs_storage._field10 { return false }
-                if _storage._field11 != rhs_storage._field11 { return false }
-                if _storage._field12 != rhs_storage._field12 { return false }
-                if _storage._field13 != rhs_storage._field13 { return false }
-                if _storage._field14 != rhs_storage._field14 { return false }
-                if _storage._field15 != rhs_storage._field15 { return false }
-                if _storage._field16 != rhs_storage._field16 { return false }
-                if _storage._field17 != rhs_storage._field17 { return false }
-                return true
-            }
-            if !storagesAreEqual { return false }
-        }
-        if lhs.unknownFields != rhs.unknownFields { return false }
+  static func ==(lhs: ProtoMediumMessage, rhs: ProtoMediumMessage) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._field01 != rhs_storage._field01 {return false}
+        if _storage._field02 != rhs_storage._field02 {return false}
+        if _storage._field03 != rhs_storage._field03 {return false}
+        if _storage._field04 != rhs_storage._field04 {return false}
+        if _storage._field05 != rhs_storage._field05 {return false}
+        if _storage._field06 != rhs_storage._field06 {return false}
+        if _storage._field07 != rhs_storage._field07 {return false}
+        if _storage._field08 != rhs_storage._field08 {return false}
+        if _storage._field09 != rhs_storage._field09 {return false}
+        if _storage._field10 != rhs_storage._field10 {return false}
+        if _storage._field11 != rhs_storage._field11 {return false}
+        if _storage._field12 != rhs_storage._field12 {return false}
+        if _storage._field13 != rhs_storage._field13 {return false}
+        if _storage._field14 != rhs_storage._field14 {return false}
+        if _storage._field15 != rhs_storage._field15 {return false}
+        if _storage._field16 != rhs_storage._field16 {return false}
+        if _storage._field17 != rhs_storage._field17 {return false}
         return true
+      }
+      if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }
 
 extension ProtoMediumMessage.NestedMessage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-    static let protoMessageName: String = ProtoMediumMessage.protoMessageName + ".NestedMessage"
-    static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-        1: .same(proto: "field1"),
-        2: .same(proto: "field2"),
-        3: .same(proto: "field3"),
-    ]
+  static let protoMessageName: String = ProtoMediumMessage.protoMessageName + ".NestedMessage"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "field1"),
+    2: .same(proto: "field2"),
+    3: .same(proto: "field3"),
+  ]
 
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while let fieldNumber = try decoder.nextFieldNumber() {
-            switch fieldNumber {
-            case 1: try decoder.decodeSingularStringField(value: &self.field1)
-            case 2: try decoder.decodeSingularInt32Field(value: &self.field2)
-            case 3: try decoder.decodeSingularInt32Field(value: &self.field3)
-            default: break
-            }
-        }
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      switch fieldNumber {
+      case 1: try decoder.decodeSingularStringField(value: &self.field1)
+      case 2: try decoder.decodeSingularInt32Field(value: &self.field2)
+      case 3: try decoder.decodeSingularInt32Field(value: &self.field3)
+      default: break
+      }
     }
+  }
 
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        if !self.field1.isEmpty {
-            try visitor.visitSingularStringField(value: self.field1, fieldNumber: 1)
-        }
-        if self.field2 != 0 {
-            try visitor.visitSingularInt32Field(value: self.field2, fieldNumber: 2)
-        }
-        if self.field3 != 0 {
-            try visitor.visitSingularInt32Field(value: self.field3, fieldNumber: 3)
-        }
-        try self.unknownFields.traverse(visitor: &visitor)
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.field1.isEmpty {
+      try visitor.visitSingularStringField(value: self.field1, fieldNumber: 1)
     }
+    if self.field2 != 0 {
+      try visitor.visitSingularInt32Field(value: self.field2, fieldNumber: 2)
+    }
+    if self.field3 != 0 {
+      try visitor.visitSingularInt32Field(value: self.field3, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
 
-    static func == (lhs: ProtoMediumMessage.NestedMessage, rhs: ProtoMediumMessage.NestedMessage) -> Bool {
-        if lhs.field1 != rhs.field1 { return false }
-        if lhs.field2 != rhs.field2 { return false }
-        if lhs.field3 != rhs.field3 { return false }
-        if lhs.unknownFields != rhs.unknownFields { return false }
-        return true
-    }
+  static func ==(lhs: ProtoMediumMessage.NestedMessage, rhs: ProtoMediumMessage.NestedMessage) -> Bool {
+    if lhs.field1 != rhs.field1 {return false}
+    if lhs.field2 != rhs.field2 {return false}
+    if lhs.field3 != rhs.field3 {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }
