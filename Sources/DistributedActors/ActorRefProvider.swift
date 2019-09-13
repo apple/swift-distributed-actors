@@ -149,7 +149,7 @@ internal struct LocalActorRefProvider: _ActorRefProvider {
 
             let cell = actor._myCell
 
-            if (startImmediately) {
+            if startImmediately {
                 cell.sendSystemMessage(.start)
             } else {
                 // If the start is delayed, we need to enqueue the `.start` message

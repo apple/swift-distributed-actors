@@ -214,7 +214,8 @@ public final class ActorSystem {
                 delayedNodeDeathWatcher = try self._spawnSystemActorDelayed(
                     NodeDeathWatcherShell.naming,
                     NodeDeathWatcherShell.behavior(clusterEvents: clusterEvents),
-                    perpetual: true)
+                    perpetual: true
+                )
                 self._nodeDeathWatcher = delayedNodeDeathWatcher?.ref
             }
         } catch {
@@ -490,7 +491,7 @@ public enum ActorSystemError: Error {
 internal struct StartDelayed<Message> {
     let ref: ActorRef<Message>
 
-    init (ref: ActorRef<Message>) {
+    init(ref: ActorRef<Message>) {
         self.ref = ref
     }
 
