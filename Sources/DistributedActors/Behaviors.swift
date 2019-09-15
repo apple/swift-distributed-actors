@@ -282,7 +282,7 @@ internal extension Behavior {
     ///
     /// MUST be canonicalized (to .suspended before storing in an `ActorCell`, as thr suspend behavior CAN NOT handle messages.
     @usableFromInline
-    static func suspend<T>(handler: @escaping (Result<T, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+    static func suspend<T>(handler: @escaping (Result<T, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .suspend(handler: { result in
             try handler(result.map { $0 as! T }) // cast here is okay, as user APIs are typed, so we should always get a T
         }))
@@ -294,7 +294,7 @@ internal extension Behavior {
     /// This usually happens when an async operation that caused the suspension
     /// is completed.
     @usableFromInline
-    static func suspended(previousBehavior: Behavior<Message>, handler: @escaping (Result<Any, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+    static func suspended(previousBehavior: Behavior<Message>, handler: @escaping (Result<Any, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
         return Behavior(underlying: .suspended(previousBehavior: previousBehavior, handler: handler))
     }
 
@@ -336,8 +336,8 @@ internal enum _Behavior<Message> {
 
     indirect case orElse(first: Behavior<Message>, second: Behavior<Message>)
 
-    case suspend(handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
-    indirect case suspended(previousBehavior: Behavior<Message>, handler: (Result<Any, ExecutionError>) throws -> Behavior<Message>)
+    case suspend(handler: (Result<Any, Error>) throws -> Behavior<Message>)
+    indirect case suspended(previousBehavior: Behavior<Message>, handler: (Result<Any, Error>) throws -> Behavior<Message>)
 }
 
 @usableFromInline

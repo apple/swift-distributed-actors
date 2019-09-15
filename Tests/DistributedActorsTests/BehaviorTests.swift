@@ -499,7 +499,7 @@ class BehaviorTests: XCTestCase {
 
         let behavior: Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                .suspend { (msg: Result<Int, ExecutionError>) in
+                .suspend { (msg: Result<Int, Error>) in
                     p.tell("unsuspended:\(msg)")
                     return .receiveMessage { msg in
                         p.tell("resumed:\(msg)")
@@ -531,9 +531,9 @@ class BehaviorTests: XCTestCase {
 
         let behavior: Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                .suspend { (msg: Result<Int, ExecutionError>) in
+                .suspend { (msg: Result<Int, Error>) in
                     p.tell("suspended:\(msg)")
-                    return .suspend { (msg: Result<String, ExecutionError>) in
+                    return .suspend { (msg: Result<String, Error>) in
                         p.tell("unsuspended:\(msg)")
                         return .receiveMessage { msg in
                             p.tell("resumed:\(msg)")
@@ -580,10 +580,10 @@ class BehaviorTests: XCTestCase {
 
         let behavior: Behavior<String> = .intercept(
             behavior: .receiveMessage { msg in
-                .suspend { (msg: Result<Int, ExecutionError>) in
+                .suspend { (msg: Result<Int, Error>) in
                     switch msg {
                     case .success(let res): p.tell("unsuspended:\(res)")
-                    case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                    case .failure(let error): p.tell("unsuspended:\(error)")
                     }
                     return .receiveMessage { msg in
                         p.tell("resumed:\(msg)")
@@ -604,13 +604,13 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.failure(ExecutionError(underlying: Boom()))))
+        ref.sendSystemMessage(.resume(.failure(Boom())))
 
         try p.expectMessage().shouldStartWith(prefix: "unsuspended:Boom")
         try p.expectMessage("resumed:something else")
     }
 
-    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, ExecutionError>>? = nil) -> Behavior<String> {
+    private func awaitResultBehavior(future: EventLoopFuture<Int>, timeout: DistributedActors.TimeAmount, probe: ActorTestProbe<String>? = nil, suspendProbe: ActorTestProbe<Result<Int, Error>>? = nil) -> Behavior<String> {
         return .receive { context, message in
             switch message {
             case "suspend":
@@ -644,7 +644,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
@@ -676,7 +676,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .seconds(1), probe: p, suspendProbe: suspendProbe)
@@ -692,7 +692,7 @@ class BehaviorTests: XCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard error.underlying is CallSiteError else {
+            guard error is CallSiteError else {
                 throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: CallSiteError())), got \(suspendResult)")
@@ -760,7 +760,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = self.awaitResultBehavior(future: future, timeout: .milliseconds(10), probe: p, suspendProbe: suspendProbe)
@@ -772,7 +772,7 @@ class BehaviorTests: XCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard error.underlying is TimeoutError else {
+            guard error is TimeoutError else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default: throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
@@ -786,7 +786,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
@@ -808,7 +808,7 @@ class BehaviorTests: XCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard error.underlying is TimeoutError else {
+            guard error is TimeoutError else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -825,7 +825,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let suspendProbe: ActorTestProbe<Result<Int, ExecutionError>> = self.testKit.spawnTestProbe()
+        let suspendProbe: ActorTestProbe<Result<Int, Error>> = self.testKit.spawnTestProbe()
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
@@ -844,7 +844,7 @@ class BehaviorTests: XCTestCase {
         let suspendResult = try suspendProbe.expectMessage()
         switch suspendResult {
         case .failure(let error):
-            guard error.underlying is TimeoutError else {
+            guard error is TimeoutError else {
                 throw p.error("Expected failure(ExecutionException(underlying: TimeoutError)), got \(suspendResult)")
             }
         default:
@@ -884,10 +884,10 @@ class BehaviorTests: XCTestCase {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
 
         let behavior: Behavior<String> = .receiveMessage { msg in
-            .suspend { (msg: Result<Int, ExecutionError>) in
+            .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
-                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                case .failure(let error): p.tell("unsuspended:\(error)")
                 }
                 return .receiveMessage { msg in
                     p.tell("resumed:\(msg)")
@@ -912,10 +912,10 @@ class BehaviorTests: XCTestCase {
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
             _ = try context.spawnWatch("child", Behavior<String>.stop)
-            return .suspend { (msg: Result<Int, ExecutionError>) in
+            return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
-                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                case .failure(let error): p.tell("unsuspended:\(error)")
                 }
                 return .same
             }
@@ -951,10 +951,10 @@ class BehaviorTests: XCTestCase {
         let behavior = Behavior<String>.receive { context, msg in
             p.tell("suspended")
             _ = try context.spawnWatch("child", Behavior<String>.stop)
-            return .suspend { (msg: Result<Int, ExecutionError>) in
+            return .suspend { (msg: Result<Int, Error>) in
                 switch msg {
                 case .success(let res): p.tell("unsuspended:\(res)")
-                case .failure(let error): p.tell("unsuspended:\(error.underlying)")
+                case .failure(let error): p.tell("unsuspended:\(error)")
                 }
                 return .same
             }
@@ -1001,7 +1001,7 @@ class BehaviorTests: XCTestCase {
         let eventLoop = self.eventLoopGroup.next()
         let promise: EventLoopPromise<Int> = eventLoop.makePromise()
         let future = promise.futureResult
-        let probe: ActorTestProbe<ExecutionError> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Error> = self.testKit.spawnTestProbe()
         let error = self.testKit.error()
 
         let behavior: Behavior<String> = .setup { context in

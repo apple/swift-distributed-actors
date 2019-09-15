@@ -207,7 +207,7 @@ internal struct SWIMShell {
     /// - parameter pingReqOrigin: is set only when the ping that this is a reply to was originated as a `pingReq`.
     func handlePingResponse(
         context: ActorContext<SWIM.Message>,
-        result: Result<SWIM.Ack, ExecutionError>,
+        result: Result<SWIM.Ack, Error>,
         pingedMember: ActorRef<SWIM.Message>,
         pingReqOrigin: ActorRef<SWIM.Ack>?
     ) {
@@ -215,7 +215,7 @@ internal struct SWIMShell {
 
         switch result {
         case .failure(let err):
-            if let timeoutError = err.extractUnderlying(as: TimeoutError.self) {
+            if let timeoutError = err as? TimeoutError {
                 context.log.warning("Did not receive ack from [\(pingedMember)] within [\(timeoutError.timeout.prettyDescription)]. Sending ping requests to other members.")
             } else {
                 context.log.warning("\(err) Did not receive ack from [\(pingedMember)] within configured timeout. Sending ping requests to other members.")
@@ -233,7 +233,7 @@ internal struct SWIMShell {
         }
     }
 
-    func handlePingRequestResult(context: ActorContext<SWIM.Message>, result: Result<SWIM.Ack, ExecutionError>, pingedMember: ActorRef<SWIM.Message>) {
+    func handlePingRequestResult(context: ActorContext<SWIM.Message>, result: Result<SWIM.Ack, Error>, pingedMember: ActorRef<SWIM.Message>) {
         self.tracelog(context, .receive(pinged: pingedMember), message: result)
         // TODO: do we know here WHO replied to us actually? We know who they told us about (with the ping-req), could be useful to know
 

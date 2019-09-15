@@ -291,7 +291,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) -> Behavior<Message> {
+    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
         asyncResult.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
@@ -320,7 +320,7 @@ public class ActorContext<Message>: ActorRefFactory {
         return self.awaitResult(of: asyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
-            case .failure(let error): throw error.underlying
+            case .failure(let error): throw error
             }
         }
     }
@@ -337,8 +337,8 @@ public class ActorContext<Message>: ActorRefFactory {
     ///   - timeout: time after which the asyncResult will be failed if it does not complete
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
-    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, ExecutionError>) throws -> Behavior<Message>) {
-        let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, ExecutionError>.self) {
+    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) {
+        let asyncCallback = self.makeAsynchronousCallback(for: Result<AR.Value, Error>.self) {
             let nextBehavior = try continuation($0)
             let shell = self._downcastUnsafe
             shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)
@@ -368,7 +368,7 @@ public class ActorContext<Message>: ActorRefFactory {
         self.onResultAsync(of: asyncResult, timeout: timeout) { res in
             switch res {
             case .success(let value): return try continuation(value)
-            case .failure(let error): throw error.underlying
+            case .failure(let error): throw error
             }
         }
     }

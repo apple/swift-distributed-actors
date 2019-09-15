@@ -846,7 +846,7 @@ internal enum SupervisionRestartDelayedBehavior<Message> {
         return .setup { context in
             context.timers._startResumeTimer(key: TimerKey("restartBackoff", isSystemTimer: true), delay: delay, resumeWith: WakeUp())
 
-            return .suspend { (result: Result<WakeUp, ExecutionError>) in
+            return .suspend { (result: Result<WakeUp, Error>) in
                 traceLog_Supervision("RESTART BACKOFF TRIGGER")
                 switch result {
                 case .failure(let error):

@@ -350,7 +350,7 @@ extension SWIM.Instance {
     }
 
     /// React to an `Ack` (or lack thereof within timeout)
-    func onPingRequestResponse(_ result: Result<SWIM.Ack, ExecutionError>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
+    func onPingRequestResponse(_ result: Result<SWIM.Ack, Error>, pingedMember member: ActorRef<SWIM.Message>) -> OnPingRequestResponseDirective {
         guard let lastKnownStatus = self.status(of: member) else {
             return .unknownMember
         }

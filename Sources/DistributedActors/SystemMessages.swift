@@ -70,7 +70,7 @@ internal enum SystemMessage: Equatable {
     case stop
 
     /// Sent to a suspended actor when the async operation it is waiting for completes
-    case resume(Result<Any, ExecutionError>)
+    case resume(Result<Any, Error>)
 
     /// WARNING: Sending a tombstone has very special meaning and should never be attempted outside of situations where
     /// the actor is semantically "done", i.e. it is currently terminating and is going to be released soon.
@@ -157,16 +157,4 @@ extension SystemMessage {
 
 extension SystemMessage {
     internal static let metaType: MetaType<SystemMessage> = MetaType(SystemMessage.self)
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Errors
-
-// TODO: document where this is intended to be used; supervision and suspension? should we separate the two?
-public struct ExecutionError: Error {
-    let underlying: Error
-
-    func extractUnderlying<ErrorType: Error>(as type: ErrorType.Type) -> ErrorType? {
-        return self.underlying as? ErrorType
-    }
 }
