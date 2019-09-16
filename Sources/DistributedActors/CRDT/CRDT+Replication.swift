@@ -93,10 +93,7 @@ extension CRDT {
 
             enum DeleteResult {
                 case success
-                case failed(DeleteError)
             }
-
-            enum DeleteError: Error {}
         }
 
         enum RemoteCommand {
@@ -116,9 +113,9 @@ extension CRDT {
 
             enum WriteError: Error {
                 case missingCRDTForDelta
-                case incorrectDeltaType(expected: AnyMetaType)
+                case incorrectDeltaType(hint: String)
                 case cannotWriteDeltaForNonDeltaCRDT
-                case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
+                case inputAndStoredDataTypeMismatch(hint: String)
                 case unsupportedCRDT
             }
 
@@ -133,7 +130,6 @@ extension CRDT {
 
             enum DeleteResult {
                 case success
-                case failed
             }
         }
     }
@@ -170,12 +166,12 @@ extension CRDT.Replicator.RemoteCommand.WriteError: Equatable {
         switch (lhs, rhs) {
         case (.missingCRDTForDelta, .missingCRDTForDelta):
             return true
-        case (.incorrectDeltaType(let lt), .incorrectDeltaType(let rt)):
-            return lt.asHashable() == rt.asHashable()
+        case (.incorrectDeltaType(let lHint), .incorrectDeltaType(let rHint)):
+            return lHint == rHint
         case (.cannotWriteDeltaForNonDeltaCRDT, .cannotWriteDeltaForNonDeltaCRDT):
             return true
-        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
-            return lt.asHashable() == rt.asHashable()
+        case (.inputAndStoredDataTypeMismatch(let lHint), .inputAndStoredDataTypeMismatch(let rHint)):
+            return lHint == rHint
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         default:

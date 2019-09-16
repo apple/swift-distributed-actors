@@ -99,6 +99,8 @@ extension SWIM.Status: InternalProtobufRepresentable {
             self = .unreachable(incarnation: proto.incarnation)
         case .dead:
             self = .dead
+        case .unspecified:
+            throw SerializationError.missingField("type", type: String(describing: SWIM.Status.self))
         case .UNRECOGNIZED(let num):
             throw SerializationError.unknownEnumValue(num)
         }

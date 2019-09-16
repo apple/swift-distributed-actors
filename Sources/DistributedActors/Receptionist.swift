@@ -163,7 +163,7 @@ public enum Receptionist {
             return self._subscriptions[key]
         }
 
-        /// - returns: `tru`e if the value was a newly inserted value, `fals`e otherwise
+        /// - returns: `true` if the value was a newly inserted value, `false` otherwise
         private func addTo<Value: Hashable>(dict: inout [AnyRegistrationKey: Set<Value>], key: AnyRegistrationKey, value: Value) -> Bool {
             guard !(dict[key]?.contains(value) ?? false) else {
                 return false

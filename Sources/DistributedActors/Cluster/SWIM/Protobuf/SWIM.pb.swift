@@ -208,7 +208,7 @@ struct ProtoSWIMStatus {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var type: ProtoSWIMStatus.TypeEnum = .alive
+  var type: ProtoSWIMStatus.TypeEnum = .unspecified
 
   var incarnation: UInt64 = 0
 
@@ -216,32 +216,35 @@ struct ProtoSWIMStatus {
 
   enum TypeEnum: SwiftProtobuf.Enum {
     typealias RawValue = Int
-    case alive // = 0
-    case suspect // = 1
-    case unreachable // = 2
-    case dead // = 3
+    case unspecified // = 0
+    case alive // = 1
+    case suspect // = 2
+    case unreachable // = 3
+    case dead // = 4
     case UNRECOGNIZED(Int)
 
     init() {
-      self = .alive
+      self = .unspecified
     }
 
     init?(rawValue: Int) {
       switch rawValue {
-      case 0: self = .alive
-      case 1: self = .suspect
-      case 2: self = .unreachable
-      case 3: self = .dead
+      case 0: self = .unspecified
+      case 1: self = .alive
+      case 2: self = .suspect
+      case 3: self = .unreachable
+      case 4: self = .dead
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
 
     var rawValue: Int {
       switch self {
-      case .alive: return 0
-      case .suspect: return 1
-      case .unreachable: return 2
-      case .dead: return 3
+      case .unspecified: return 0
+      case .alive: return 1
+      case .suspect: return 2
+      case .unreachable: return 3
+      case .dead: return 4
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -256,6 +259,7 @@ struct ProtoSWIMStatus {
 extension ProtoSWIMStatus.TypeEnum: CaseIterable {
   // The compiler won't synthesize support with the UNRECOGNIZED case.
   static var allCases: [ProtoSWIMStatus.TypeEnum] = [
+    .unspecified,
     .alive,
     .suspect,
     .unreachable,
@@ -647,7 +651,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.type != .alive {
+    if self.type != .unspecified {
       try visitor.visitSingularEnumField(value: self.type, fieldNumber: 1)
     }
     if self.incarnation != 0 {
@@ -666,10 +670,11 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
 extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "ALIVE"),
-    1: .same(proto: "SUSPECT"),
-    2: .same(proto: "UNREACHABLE"),
-    3: .same(proto: "DEAD"),
+    0: .same(proto: "UNSPECIFIED"),
+    1: .same(proto: "ALIVE"),
+    2: .same(proto: "SUSPECT"),
+    3: .same(proto: "UNREACHABLE"),
+    4: .same(proto: "DEAD"),
   ]
 }
 
