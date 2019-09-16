@@ -97,21 +97,23 @@ public extension ActorTestKit {
     /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
     /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
     ///
+    /// `eventually` is designed to be used with the `expectX` functions on `ActorTestProbe`.
+    ///
+    /// **CAUTION**: Using `shouldX` matchers in an `eventually` block will fail the test on the first failure.
+    ///
     // TODO: does not handle blocking longer than `within` well
     // TODO: should use default `within` from TestKit
     @discardableResult
     func eventually<T>(within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
                        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
                        _ block: () throws -> T) throws -> T {
-        ActorTestKit.enterRepetableContext()
-        defer { ActorTestKit.leaveRepetableContext() }
-
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 
         var lastError: Error?
         var polledTimes = 0
 
+        ActorTestKit.enterRepetableContext()
         while deadline.hasTimeLeft() {
             do {
                 polledTimes += 1
@@ -122,6 +124,7 @@ public extension ActorTestKit {
                 usleep(useconds_t(interval.microseconds))
             }
         }
+        ActorTestKit.leaveRepetableContext()
 
         // This dance is necessary to "nicely print" if we had an embedded call site error,
         // which include colour and formatting, so we have to print the \(msg) directly for that case.
@@ -140,7 +143,9 @@ public extension ActorTestKit {
         Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
         \(lastErrorMessage)
         """)
-        XCTFail(message, file: callSite.file, line: callSite.line)
+        if !ActorTestKit.isInRepeatableContext() {
+            XCTFail(message, file: callSite.file, line: callSite.line)
+        }
         throw EventuallyError(message: message, lastError: lastError)
     }
 }
@@ -155,6 +160,7 @@ public struct EventuallyError: Error {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: assertHolds
 
 public extension ActorTestKit {
@@ -189,6 +195,7 @@ public struct AssertionHoldsError: Error {
     let message: String
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal "power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
 extension ActorTestKit {
@@ -215,6 +222,7 @@ extension ActorTestKit {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Fake and mock contexts
 
 public extension ActorTestKit {
@@ -341,28 +349,47 @@ extension ActorTestKit {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: repeatable context
 
+// Used to mark a repeatable context, in which `ActorTestProbe.expectX` does not
+// immediately fail the test, but instead lets the eventually block handle it.
 internal extension ActorTestKit {
     static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
+    // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
+    // failing a test from within blocks that continuously check conditions,
+    // e.g. `eventually`. This is safe to use in nested calls.
     static func enterRepetableContext() {
-        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = true
+        let currentDepth = self.currentRepeatableContextDepth
+        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
     }
 
+    // Unsets the flag and causes `isInRepeatableContext` to return `false`.
+    // This is safe to use in nested calls.
     static func leaveRepetableContext() {
-        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = nil
+        let currentDepth = self.currentRepeatableContextDepth
+        precondition(currentDepth > 0, "Imbalanced `leaveRepeatableContext` detected. Depth was \(currentDepth)")
+        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth - 1
     }
 
+    // Returns `true` if we are currently executing a code clock that repeatedly
+    // checks conditions. Used in `ActorTestProbe.expectX` and `ActorTestKit.error`
+    // to avoid failing the test on the first iteration in e.g. an `eventually` block.
     static func isInRepeatableContext() -> Bool {
-        guard let value = Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] else {
-            return false // value is not present means we are not in a repeatable context
+        return self.currentRepeatableContextDepth > 0
+    }
+
+    // Returns the current depth of nested repeatable context calls.
+    static var currentRepeatableContextDepth: Int {
+        guard let currentValue = Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] else {
+            return 0
         }
 
-        guard let boolValue = value as? Bool else {
-            fatalError("Expected value under key [\(self.threadLocalContextKey)] to be [\(Bool.self)], but found [\(value)]:\(type(of: value))")
+        guard let intValue = currentValue as? Int else {
+            fatalError("Expected value under key [\(self.threadLocalContextKey)] to be [\(Int.self)], but found [\(currentValue)]:\(type(of: currentValue))")
         }
 
-        return boolValue
+        return intValue
     }
 }
