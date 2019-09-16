@@ -297,7 +297,9 @@ extension ActorTestProbe where Message: Equatable {
         do {
             let receivedMessage = try self.receiveMessage(within: timeout)
             self.lastMessageObserved = receivedMessage
-            receivedMessage.shouldEqual(message, file: callSite.file, line: callSite.line, column: callSite.column) // can fail
+            guard receivedMessage == message else {
+                throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: message))
+            }
         } catch {
             let message = "Did not receive expected [\(message)]:\(type(of: message)) within [\(timeout.prettyDescription)], error: \(error)"
             throw callSite.error(message)
@@ -309,9 +311,13 @@ extension ActorTestProbe where Message: Equatable {
     }
 
     public func expectMessageType<T>(_ type: T.Type, within timeout: TimeAmount, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
         let receivedMessage = try self.receiveMessage(within: timeout)
         self.lastMessageObserved = receivedMessage
-        receivedMessage.shouldBe(type)
+        guard receivedMessage is T else {
+            throw callSite.error(callSite.detailedMessage(got: receivedMessage, expected: type))
+        }
     }
 
     public func expectMessagesInAnyOrder(_ _messages: [Message], file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -502,8 +508,12 @@ extension ActorTestProbe {
     }
 
     public func expectSignal(expected: SystemMessage, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+        let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
+
         let got: SystemMessage = try self.expectSignal(file: file, line: line, column: column)
-        got.shouldEqual(expected, file: file, line: line, column: column)
+        if got != expected {
+            throw callSite.error(callSite.detailedMessage(got: got, expected: expected))
+        }
     }
 
     // MARK: Death watch methods

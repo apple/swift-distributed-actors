@@ -44,4 +44,34 @@ class ActorTestKitTests: XCTestCase {
         }
         message.contains("test").shouldBeTrue()
     }
+
+    func test_fail_shouldNotImmediatelyFailWithinEventuallyBlock() throws {
+        var counter = 0
+
+        try testKit.eventually(within: .seconds(1), interval: .milliseconds(10)) {
+            if counter < 5 {
+                counter += 1
+                throw testKit.fail("This should not fail the test")
+            }
+        }
+    }
+
+    func test_nestedEventually_shouldProperlyHandleFailures() throws {
+        var outerCounter = 0
+        var innerCounter = 0
+
+        try testKit.eventually(within: .seconds(1), interval: .milliseconds(11)) {
+            try testKit.eventually(within: .milliseconds(100)) {
+                if innerCounter < 5 {
+                    innerCounter += 1
+                    throw testKit.error("This should not fail the test")
+                }
+            }
+
+            if outerCounter < 5 {
+                outerCounter += 1
+                throw testKit.fail("This should not fail the test")
+            }
+        }
+    }
 }
