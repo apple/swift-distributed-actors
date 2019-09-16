@@ -34,6 +34,7 @@ XCTMain([
     testCase(ActorLeakingTests.allTests),
     testCase(ActorLifecycleTests.allTests),
     testCase(ActorLoggingTests.allTests),
+    testCase(ActorMemoryTests.allTests),
     testCase(ActorNamingTests.allTests),
     testCase(ActorRefAdapterTests.allTests),
     testCase(ActorSubReceiveTests.allTests),
