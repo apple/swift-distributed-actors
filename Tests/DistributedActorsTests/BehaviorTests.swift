@@ -934,13 +934,15 @@ class BehaviorTests: XCTestCase {
 
         let ref = try system.spawn("parent", behavior)
 
-        ref.tell("something") // this message causes the actor the suspend
+        ref.tell("something") // this message causes the actor to suspend
         try p.expectMessage("suspended")
 
         ref.tell("something else") // this message should not get processed until we resume, even though the behavior is changed by the signal
-        ref.sendSystemMessage(.resume(.success(1)))
 
         try p.expectMessage("signal:child")
+
+        ref.sendSystemMessage(.resume(.success(1)))
+
         try p.expectMessage("unsuspended:1")
         try p.expectMessage("changedBySignal:something else")
     }

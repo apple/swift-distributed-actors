@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
+import Foundation
 import Logging
 
 import XCTest
@@ -347,20 +347,20 @@ internal extension ActorTestKit {
     static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
     static func enterRepetableContext() {
-        Foundation.Thread.current.threadDictionary.setValue(true, forKey: threadLocalContextKey)
+        Foundation.Thread.current.threadDictionary.setValue(true, forKey: self.threadLocalContextKey)
     }
 
     static func leaveRepetableContext() {
-        Foundation.Thread.current.threadDictionary.setValue(nil, forKey: threadLocalContextKey)
+        Foundation.Thread.current.threadDictionary.setValue(nil, forKey: self.threadLocalContextKey)
     }
 
     static func isInRepeatableContext() -> Bool {
-        guard let value = Foundation.Thread.current.threadDictionary.object(forKey: threadLocalContextKey) else {
+        guard let value = Foundation.Thread.current.threadDictionary.object(forKey: self.threadLocalContextKey) else {
             return false // value is not present means we are not in a repeatable context
         }
 
         guard let boolValue = value as? Bool else {
-            fatalError("Expected value under key [\(threadLocalContextKey)] to be boolean, but found [\(value)]:\(type(of: value))")
+            fatalError("Expected value under key [\(self.threadLocalContextKey)] to be [\(Bool.self)], but found [\(value)]:\(type(of: value))")
         }
 
         return boolValue
