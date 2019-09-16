@@ -93,7 +93,7 @@ private func setUp(and postSetUp: () -> Void = { () in () }) {
 }
 
 private func tearDown() {
-    system.shutdown()
+    system.shutdown().wait()
     _system = nil
 }
 
@@ -257,6 +257,6 @@ private func bench_actors_ping_pong(numActors: Int) -> (Int) -> Void {
         let time = SwiftBenchmarkTools.Timer().getTimeAsInt() - startNanoTime
 
         pprint("    \(totalNumMessages) messages by \(numActors) actors took: \(time.milliseconds) ms (total: \(totalNumMessages / time.milliseconds * 1000) msg/s)")
-        system.shutdown()
+        system.shutdown().wait()
     }
 }

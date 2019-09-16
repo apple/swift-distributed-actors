@@ -38,7 +38,7 @@ class SerializationTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {
@@ -282,10 +282,10 @@ class SerializationTests: XCTestCase {
             echo.tell("hi!") // is a built-in serializable message
             try p.expectMessage("echo:hi!")
         } catch {
-            s2.shutdown()
+            s2.shutdown().wait()
             throw error
         }
-        s2.shutdown()
+        s2.shutdown().wait()
     }
 }
 

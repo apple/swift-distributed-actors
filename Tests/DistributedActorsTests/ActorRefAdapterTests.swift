@@ -27,7 +27,7 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_adaptedRef_shouldConvertMessages() throws {
@@ -61,7 +61,7 @@ class ActorRefAdapterTests: XCTestCase {
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 1881
         }
-        defer { systemOne.shutdown() }
+        defer { systemOne.shutdown().wait() }
         let firstTestKit = ActorTestKit(systemOne)
         let probe = firstTestKit.spawnTestProbe(expecting: String.self)
         let refProbe = firstTestKit.spawnTestProbe(expecting: ActorRef<Int>.self)
@@ -71,7 +71,7 @@ class ActorRefAdapterTests: XCTestCase {
             settings.cluster.node.host = "127.0.0.1"
             settings.cluster.node.port = 1991
         }
-        defer { systemTwo.shutdown() }
+        defer { systemTwo.shutdown().wait() }
 
         systemOne.cluster.join(node: systemTwo.settings.cluster.node)
 
@@ -216,7 +216,7 @@ class ActorRefAdapterTests: XCTestCase {
         let system = ActorSystem("\(type(of: self))-2") { settings in
             settings.overrideLogger = logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
         }
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
 
         let probe = self.testKit.spawnTestProbe(expecting: String.self)
         let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)

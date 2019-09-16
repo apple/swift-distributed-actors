@@ -75,7 +75,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         self.writeRecorder = nil
         self.handler = nil
 
-        self.system.shutdown()
+        self.system.shutdown().wait()
         self.system = nil
         self.testKit = nil
     }
@@ -147,7 +147,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         let outbound = OutboundSystemMessageRedelivery(settings: settings)
         let inbound = InboundSystemMessages()
         let system = ActorSystem("                        OtherSystem") // formatting is such specific to align names in printout
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
         let handler: SystemMessageRedeliveryHandler
         if self.printLossyNetworkTestLogs {
             handler = SystemMessageRedeliveryHandler(log: system.log, cluster: system.deadLetters.adapted(), outbound: outbound, inbound: inbound)

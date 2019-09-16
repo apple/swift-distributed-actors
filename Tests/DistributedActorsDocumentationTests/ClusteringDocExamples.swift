@@ -31,7 +31,7 @@ class ClusteringDocExamples: XCTestCase {
         }
         // end::config_tls[]
 
-        system.shutdown()
+        system.shutdown().wait()
     }
 
     func example_config_tls_passphrase() throws {
@@ -44,6 +44,6 @@ class ClusteringDocExamples: XCTestCase {
         }
         // end::config_tls_passphrase[]
 
-        system.shutdown()
+        system.shutdown().wait()
     }
 }

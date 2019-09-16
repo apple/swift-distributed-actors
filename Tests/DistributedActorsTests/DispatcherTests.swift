@@ -31,7 +31,7 @@ class DispatcherTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
         self.group.shutdownGracefully(queue: DispatchQueue.global()) { error in
             _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
         }

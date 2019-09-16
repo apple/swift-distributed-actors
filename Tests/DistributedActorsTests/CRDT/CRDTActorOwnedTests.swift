@@ -26,7 +26,7 @@ final class CRDTActorOwnedTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     private enum OwnerEventProbeMessage {

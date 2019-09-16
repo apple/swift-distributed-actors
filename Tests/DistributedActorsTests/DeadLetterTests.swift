@@ -31,7 +31,7 @@ final class DeadLetterTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

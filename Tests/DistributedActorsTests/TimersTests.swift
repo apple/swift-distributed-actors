@@ -28,7 +28,7 @@ class TimersTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_timerKey_shouldPrintNicely() {

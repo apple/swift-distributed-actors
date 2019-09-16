@@ -62,7 +62,7 @@ class InterceptorTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_interceptor_shouldConvertMessages() throws {

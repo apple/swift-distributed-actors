@@ -27,7 +27,7 @@ class ParentChildActorTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     typealias ParentRef = ActorRef<ParentProtocol>

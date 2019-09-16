@@ -29,7 +29,7 @@ class ActorSystemTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_system_spawn_shouldThrowOnDuplicateName() throws {
@@ -63,7 +63,7 @@ class ActorSystemTests: XCTestCase {
         }
     }
 
-    func test_terminate_shouldStopAllActors() throws {
+    func test_shutdown_shouldStopAllActors() throws {
         let system2 = ActorSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receiveMessage { message in
@@ -77,7 +77,7 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        system2.shutdown()
+        try system2.shutdown().wait()
 
         try p.expectTerminatedInAnyOrder([ref1.asAddressable(), ref2.asAddressable()])
 
@@ -87,7 +87,24 @@ class ActorSystemTests: XCTestCase {
         try p.expectNoMessage(for: .milliseconds(200))
     }
 
-    func test_terminate_selfSendingActorShouldNotDeadlockSystem() throws {
+    func test_shutdown_shouldCompleteReturnedHandleWhenDone() throws {
+        let system2 = ActorSystem("ShutdownSystem")
+        let shutdown = system2.shutdown()
+        try shutdown.wait(atMost: .seconds(5))
+    }
+
+    func test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes() throws {
+        let system2 = ActorSystem("ShutdownSystem")
+        let shutdown1 = system2.shutdown()
+        let shutdown2 = system2.shutdown()
+        let shutdown3 = system2.shutdown()
+
+        try shutdown1.wait(atMost: .seconds(5))
+        try shutdown2.wait(atMost: .milliseconds(1))
+        try shutdown3.wait(atMost: .milliseconds(1))
+    }
+
+    func test_shutdown_selfSendingActorShouldNotDeadlockSystem() throws {
         let system2 = ActorSystem("ShutdownSystem")
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receive { context, message in
@@ -99,7 +116,7 @@ class ActorSystemTests: XCTestCase {
 
         p.watch(selfSender)
 
-        system2.shutdown()
+        system2.shutdown().wait()
 
         try p.expectTerminated(selfSender)
     }

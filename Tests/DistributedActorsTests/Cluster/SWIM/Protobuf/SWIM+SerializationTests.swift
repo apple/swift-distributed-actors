@@ -26,7 +26,7 @@ final class SWIMSerializationTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_serializationOf_ping() throws {

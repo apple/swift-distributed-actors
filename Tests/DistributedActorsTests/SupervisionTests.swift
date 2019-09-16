@@ -34,7 +34,7 @@ class SupervisionTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     enum FaultyError: Error {

@@ -27,7 +27,7 @@ class InteropDocExamples: XCTestCase {
         // end::message_greetings[]
 
         let system = ActorSystem("System")
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
         let behavior: Behavior<Messages> = .receiveMessage { _ in
             // ...
             .same
@@ -58,7 +58,7 @@ class InteropDocExamples: XCTestCase {
         // end::asyncOp_sendResult_insideActor_enum_Messages[]
 
         let system = ActorSystem("System")
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
 
         func someComputation() -> String {
             return "test"
@@ -116,7 +116,7 @@ class InteropDocExamples: XCTestCase {
         // end::asyncOp_onResultAsync_enum_Messages[]
 
         let system = ActorSystem("System")
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchUser(_: String) -> EventLoopFuture<User?> {
@@ -167,7 +167,7 @@ class InteropDocExamples: XCTestCase {
         // end::asyncOp_awaitResult_enum_Messages[]
 
         let system = ActorSystem("System")
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {
@@ -205,7 +205,7 @@ class InteropDocExamples: XCTestCase {
         }
 
         let system = ActorSystem("System")
-        defer { system.shutdown() }
+        defer { system.shutdown().wait() }
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         let eventLoop = eventLoopGroup.next()
         func fetchDataAsync() -> EventLoopFuture<String> {

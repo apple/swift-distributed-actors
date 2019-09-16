@@ -28,7 +28,7 @@ final class ActorAskTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     struct TestMessage {
@@ -185,7 +185,7 @@ final class ActorAskTests: XCTestCase {
             return .same
         })
 
-        system.shutdown()
+        system.shutdown().wait()
 
         _ = ref.ask(for: String.self, timeout: .milliseconds(300)) { replyTo in
             TestMessage(replyTo: replyTo)

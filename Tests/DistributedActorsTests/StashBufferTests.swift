@@ -28,7 +28,7 @@ class StashBufferTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_stash_shouldStashMessages() throws {
