@@ -353,13 +353,14 @@ extension ActorTestKit {
 // MARK: repeatable context
 
 // Used to mark a repeatable context, in which `ActorTestProbe.expectX` does not
-// immediately fail the test, but instead lets the eventually block handle it.
+// immediately fail the test, but instead lets the `ActorTestKit.eventually`
+// block handle it.
 internal extension ActorTestKit {
     static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
     // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
     // failing a test from within blocks that continuously check conditions,
-    // e.g. `eventually`. This is safe to use in nested calls.
+    // e.g. `ActorTestKit.eventually`. This is safe to use in nested calls.
     static func enterRepetableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
@@ -375,7 +376,8 @@ internal extension ActorTestKit {
 
     // Returns `true` if we are currently executing a code clock that repeatedly
     // checks conditions. Used in `ActorTestProbe.expectX` and `ActorTestKit.error`
-    // to avoid failing the test on the first iteration in e.g. an `eventually` block.
+    // to avoid failing the test on the first iteration in e.g. an
+    // `ActorTestKit.eventually` block.
     static func isInRepeatableContext() -> Bool {
         return self.currentRepeatableContextDepth > 0
     }
