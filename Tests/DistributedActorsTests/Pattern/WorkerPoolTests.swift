@@ -112,32 +112,22 @@ final class WorkerPoolTests: XCTestCase {
         // TODO: Go back to just `expectMessage(_: within:)` after #78 is fixed
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("a")
-            guard let message = try pA.maybeExpectMessage(within: .milliseconds(50)) else {
-                throw testKit.error("Did not receive message within given timeout")
-            }
-
-            message.shouldEqual("work:a at worker-a")
+            try pA.expectMessage("work:a at worker-a", within: .milliseconds(50))
         }
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("b")
-            guard let message = try pB.maybeExpectMessage(within: .milliseconds(50)) else {
-                throw testKit.error("Did not receive message within given timeout")
-            }
-
-            guard message == "work:b at worker-b" else {
-                throw testKit.error("Did not receive message within given timeout")
-            }
+            try pB.expectMessage("work:b at worker-b", within: .milliseconds(50))
         }
         try self.testKit.eventually(within: .seconds(1)) {
             workers.tell("c")
-            guard let message = try pC.maybeExpectMessage(within: .milliseconds(50)) else {
-                throw testKit.error("Did not receive message within given timeout")
-            }
-
-            message.shouldEqual("work:c at worker-c")
+            try pC.expectMessage("work:c at worker-c", within: .milliseconds(50))
         }
         workerA.tell("stop")
         try pA.expectTerminated(workerA)
+        // clear all other messages to validate only the messages we send to the
+        // pool after workerA has terminated
+        pA.clearMessages()
+
         // inherently this is racy, if a worker dies it may have taken a message with it
         // TODO: may introduce work-pulling pool which never would drop a message.
 

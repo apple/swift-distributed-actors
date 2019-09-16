@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Foundation
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
 import Logging
@@ -102,6 +103,9 @@ public extension ActorTestKit {
     func eventually<T>(within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
                        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
                        _ block: () throws -> T) throws -> T {
+        ActorTestKit.enterRepetableContext()
+        defer { ActorTestKit.leaveRepetableContext() }
+
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 
@@ -334,5 +338,31 @@ extension ActorTestKit {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
         return callSite.error(fullMessage, failTest: true)
+    }
+}
+
+// MARK: repeatable context
+
+internal extension ActorTestKit {
+    static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
+
+    static func enterRepetableContext() {
+        Foundation.Thread.current.threadDictionary.setValue(true, forKey: threadLocalContextKey)
+    }
+
+    static func leaveRepetableContext() {
+        Foundation.Thread.current.threadDictionary.setValue(nil, forKey: threadLocalContextKey)
+    }
+
+    static func isInRepeatableContext() -> Bool {
+        guard let value = Foundation.Thread.current.threadDictionary.object(forKey: threadLocalContextKey) else {
+            return false // value is not present means we are not in a repeatable context
+        }
+
+        guard let boolValue = value as? Bool else {
+            fatalError("Expected value under key [\(threadLocalContextKey)] to be boolean, but found [\(value)]:\(type(of: value))")
+        }
+
+        return boolValue
     }
 }

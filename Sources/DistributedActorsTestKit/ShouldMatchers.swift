@@ -429,7 +429,7 @@ extension CallSiteInfo {
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
     public func error(_ message: String, failTest: Bool = true) -> Error {
         let details = self.detailedMessage(message)
-        if failTest {
+        if failTest && !ActorTestKit.isInRepeatableContext() {
             XCTFail(details, file: self.file, line: self.line)
         }
 
