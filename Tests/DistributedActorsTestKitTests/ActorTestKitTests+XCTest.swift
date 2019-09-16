@@ -26,6 +26,7 @@ extension ActorTestKitTests {
             ("test_error_withoutMessage", test_error_withoutMessage),
             ("test_error_withMessage", test_error_withMessage),
             ("test_fail_shouldNotImmediatelyFailWithinEventuallyBlock", test_fail_shouldNotImmediatelyFailWithinEventuallyBlock),
+            ("test_nestedEventually_shouldProperlyHandleFailures", test_nestedEventually_shouldProperlyHandleFailures),
         ]
     }
 }
