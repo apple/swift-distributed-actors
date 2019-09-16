@@ -347,15 +347,15 @@ internal extension ActorTestKit {
     static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
     static func enterRepetableContext() {
-        Foundation.Thread.current.threadDictionary.setValue(true, forKey: self.threadLocalContextKey)
+        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = true
     }
 
     static func leaveRepetableContext() {
-        Foundation.Thread.current.threadDictionary.setValue(nil, forKey: self.threadLocalContextKey)
+        Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = nil
     }
 
     static func isInRepeatableContext() -> Bool {
-        guard let value = Foundation.Thread.current.threadDictionary.object(forKey: self.threadLocalContextKey) else {
+        guard let value = Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] else {
             return false // value is not present means we are not in a repeatable context
         }
 
