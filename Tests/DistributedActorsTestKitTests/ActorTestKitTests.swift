@@ -61,7 +61,6 @@ class ActorTestKitTests: XCTestCase {
         var innerCounter = 0
 
         try testKit.eventually(within: .seconds(1), interval: .milliseconds(11)) {
-
             try testKit.eventually(within: .milliseconds(100)) {
                 if innerCounter < 5 {
                     innerCounter += 1
