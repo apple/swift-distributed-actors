@@ -24,7 +24,7 @@ import "CRDT/CRDT.proto";
 
 message CRDTEnvelope {
     enum Boxed {
-        BOXED_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         /// Box as `AnyCvRDT` when deserializing
         ANY_CVRDT = 1;
         /// Box as `AnyDeltaCRDT` when deserializing
@@ -59,7 +59,7 @@ message CRDTWrite {
 
 message CRDTWriteResult {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         SUCCESS = 1;
         FAILED = 2;
     }
@@ -70,7 +70,7 @@ message CRDTWriteResult {
 
 message CRDTWriteError {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         MISSING_CRDT_FOR_DELTA = 1;
         INCORRECT_DELTA_TYPE = 2;
         CANNOT_WRITE_DELTA_FOR_NON_DELTA_CRDT = 3;
@@ -91,7 +91,7 @@ message CRDTRead {
 
 message CRDTReadResult {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         SUCCESS = 1;
         FAILED = 2;
     }
@@ -104,7 +104,7 @@ message CRDTReadResult {
 
 message CRDTReadError {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         NOT_FOUND = 1;
     }
 
@@ -120,7 +120,7 @@ message CRDTDelete {
 
 message CRDTDeleteResult {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         SUCCESS = 1;
     }
 

@@ -48,7 +48,7 @@ message SWIMAck {
 
 message SWIMStatus {
     enum Type {
-        TYPE_UNSPECIFIED = 0;
+        UNSPECIFIED = 0;
         ALIVE = 1;
         SUSPECT = 2;
         UNREACHABLE = 3;

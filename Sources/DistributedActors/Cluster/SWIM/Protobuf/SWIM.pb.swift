@@ -670,7 +670,7 @@ extension ProtoSWIMStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
 extension ProtoSWIMStatus.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "ALIVE"),
     2: .same(proto: "SUSPECT"),
     3: .same(proto: "UNREACHABLE"),

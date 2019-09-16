@@ -632,7 +632,7 @@ extension ProtoCRDTEnvelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension ProtoCRDTEnvelope.Boxed: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "BOXED_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "ANY_CVRDT"),
     2: .same(proto: "ANY_DELTA_CRDT"),
   ]
@@ -889,7 +889,7 @@ extension ProtoCRDTWriteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension ProtoCRDTWriteResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "SUCCESS"),
     2: .same(proto: "FAILED"),
   ]
@@ -932,7 +932,7 @@ extension ProtoCRDTWriteError: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension ProtoCRDTWriteError.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "MISSING_CRDT_FOR_DELTA"),
     2: .same(proto: "INCORRECT_DELTA_TYPE"),
     3: .same(proto: "CANNOT_WRITE_DELTA_FOR_NON_DELTA_CRDT"),
@@ -1089,7 +1089,7 @@ extension ProtoCRDTReadResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension ProtoCRDTReadResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "SUCCESS"),
     2: .same(proto: "FAILED"),
   ]
@@ -1126,7 +1126,7 @@ extension ProtoCRDTReadError: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension ProtoCRDTReadError.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "NOT_FOUND"),
   ]
 }
@@ -1231,7 +1231,7 @@ extension ProtoCRDTDeleteResult: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension ProtoCRDTDeleteResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    0: .same(proto: "TYPE_UNSPECIFIED"),
+    0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "SUCCESS"),
   ]
 }
