@@ -288,7 +288,7 @@ public final class ActorSystem {
             return Shutdown(receptacle: receptacle)
         }
 
-        _ = try! Thread {
+        DispatchQueue.global().async {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
             if let cluster = self._cluster {
                 let receptacle = BlockingReceptacle<Void>()
