@@ -272,7 +272,7 @@ public final class ActorSystem {
     /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
     @discardableResult
     public func shutdown() -> Shutdown {
-        let (shutdownRunning, receptacle) = self.shutdownLock.withLock { () -> (Bool, BlockingReceptacle<Void>) in
+        let (shutdownAlreadyRunning, receptacle) = self.shutdownLock.withLock { () -> (Bool, BlockingReceptacle<Void>) in
             if let receptacle = self.shutdownReceptacle {
                 return (true, receptacle)
             } else {
@@ -284,7 +284,7 @@ public final class ActorSystem {
 
         // if the shutdown has previously been initiated, we just return the
         // existing receptacle
-        if shutdownRunning {
+        if shutdownAlreadyRunning {
             return Shutdown(receptacle: receptacle)
         }
 
