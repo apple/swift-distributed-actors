@@ -27,7 +27,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     enum ReductionReaction {

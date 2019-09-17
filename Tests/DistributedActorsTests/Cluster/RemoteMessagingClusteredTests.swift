@@ -252,7 +252,7 @@ class RemoteMessagingTests: ClusteredNodesTestBase {
             settings.cluster.bindPort = 9119
             settings.serialization.registerCodable(for: EchoTestMessage.self, underId: 1001)
         }
-        defer { thirdSystem.shutdown() }
+        defer { thirdSystem.shutdown().wait() }
 
         thirdSystem.cluster.join(node: local.cluster.node.node)
         thirdSystem.cluster.join(node: remote.cluster.node.node)

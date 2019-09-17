@@ -42,7 +42,7 @@ class ActorLoggingTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {

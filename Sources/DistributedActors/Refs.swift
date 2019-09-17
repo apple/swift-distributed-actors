@@ -452,7 +452,7 @@ internal class Guardian {
                     print(message) // TODO: to stderr
 
                     _ = try! Thread {
-                        system.shutdown() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
+                        system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
                     }
                 case .systemExit(let code):
                     let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"

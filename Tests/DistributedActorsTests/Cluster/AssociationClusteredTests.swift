@@ -73,7 +73,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         try assertAssociated(remote, withExactly: local.cluster.node)
 
         let oldRemote = remote
-        oldRemote.shutdown() // kill remote node
+        oldRemote.shutdown().wait() // kill remote node
 
         let replacementRemote = self.setUpNode(remoteName) { settings in
             settings.cluster.bindPort = remotePort
@@ -224,7 +224,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             settings.cluster.nid = remote.settings.cluster.nid
             settings.cluster.node.port = 9119
         }
-        defer { thirdSystem.shutdown() }
+        defer { thirdSystem.shutdown().wait() }
 
         thirdSystem.cluster.join(node: local.cluster.node.node)
         try assertAssociated(local, withExactly: [remote.cluster.node, thirdSystem.settings.cluster.uniqueBindNode])

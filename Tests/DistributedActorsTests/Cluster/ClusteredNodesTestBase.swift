@@ -71,7 +71,7 @@ open class ClusteredNodesTestBase: XCTestCase {
             }
         }
 
-        self._nodes.forEach { $0.shutdown() }
+        self._nodes.forEach { $0.shutdown().wait() }
     }
 
     func testKit(_ system: ActorSystem) -> ActorTestKit {

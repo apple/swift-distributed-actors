@@ -60,7 +60,7 @@ func bench_SpawnTopLevel(_ actorCount: Int) throws {
     print("Spawned \(actorCount) top-level actors in \(String(format: "%.3f", seconds)) seconds. (\(perSecond) actors/s)")
 
     let shutdownStart = timer.getTime()
-    system.shutdown()
+    system.shutdown().wait()
     let shutdownStop = timer.getTime()
     let shutdownTime = timer.diffTimeInNanoSeconds(from: shutdownStart, to: shutdownStop)
     let shutdownSeconds = (Double(shutdownTime) / 1_000_000_000)
@@ -99,7 +99,7 @@ func bench_SpawnChildren(_ actorCount: Int) throws {
     print("Spawned \(actorCount) child actors in \(String(format: "%.3f", seconds)) seconds. (\(perSecond) actors/s)")
 
     let shutdownStart = timer.getTime()
-    system.shutdown()
+    system.shutdown().wait()
     let shutdownStop = timer.getTime()
     let shutdownTime = timer.diffTimeInNanoSeconds(from: shutdownStart, to: shutdownStop)
     let shutdownSeconds = (Double(shutdownTime) / 1_000_000_000)

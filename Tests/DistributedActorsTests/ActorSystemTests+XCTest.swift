@@ -25,8 +25,10 @@ extension ActorSystemTests {
         return [
             ("test_system_spawn_shouldThrowOnDuplicateName", test_system_spawn_shouldThrowOnDuplicateName),
             ("test_system_spawn_shouldNotThrowOnNameReUse", test_system_spawn_shouldNotThrowOnNameReUse),
-            ("test_terminate_shouldStopAllActors", test_terminate_shouldStopAllActors),
-            ("test_terminate_selfSendingActorShouldNotDeadlockSystem", test_terminate_selfSendingActorShouldNotDeadlockSystem),
+            ("test_shutdown_shouldStopAllActors", test_shutdown_shouldStopAllActors),
+            ("test_shutdown_shouldCompleteReturnedHandleWhenDone", test_shutdown_shouldCompleteReturnedHandleWhenDone),
+            ("test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes", test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes),
+            ("test_shutdown_selfSendingActorShouldNotDeadlockSystem", test_shutdown_selfSendingActorShouldNotDeadlockSystem),
         ]
     }
 }

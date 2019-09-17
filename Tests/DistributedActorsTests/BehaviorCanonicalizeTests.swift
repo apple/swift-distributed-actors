@@ -27,7 +27,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {

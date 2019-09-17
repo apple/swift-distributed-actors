@@ -103,6 +103,11 @@ public final class ActorSystem {
         return l
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Shutdown
+    private var shutdownReceptacle: BlockingReceptacle<Void>?
+    private let shutdownLock: Lock = Lock()
+
     internal let eventLoopGroup: MultiThreadedEventLoopGroup
 
     #if SACT_TESTS_LEAKS
@@ -243,26 +248,64 @@ public final class ActorSystem {
         #endif
     }
 
-    // FIXME: make termination async and add an awaitable that signals completion of the termination
+    public struct Shutdown {
+        private let receptacle: BlockingReceptacle<Void>
 
-    /// Forcefully stops this actor system and all actors that live within.
-    ///
-    /// - Warning: Blocks current thread until the system has terminated.
-    ///            Do not call from within actors or you may deadlock shutting down the system.
-    public func shutdown() {
-        self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
-        if let cluster = self._cluster {
-            let receptacle = BlockingReceptacle<Void>()
-            cluster.ref.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
-            receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
+        init(receptacle: BlockingReceptacle<Void>) {
+            self.receptacle = receptacle
         }
-        self.userProvider.stopAll()
-        self.systemProvider.stopAll()
-        self.dispatcher.shutdown()
-        try! self.eventLoopGroup.syncShutdownGracefully()
-        self.serialization = nil
-        self._cluster = nil
-        self._receptionist = self.deadLetters.adapted()
+
+        public func wait(atMost timeout: TimeAmount) throws {
+            guard self.receptacle.wait(atMost: timeout) != nil else {
+                throw TimeoutError(message: "Shutdown did not complete", timeout: timeout)
+            }
+        }
+
+        public func wait() {
+            self.receptacle.wait()
+        }
+    }
+
+    /// Forcefully stops this actor system and all actors that live within. This is an asynchronous operation
+    /// and will be executed on a separate thread.
+    ///
+    /// - Returns: A `Shutdown` value that can be waited upon until the system has completed the shutdown.
+    @discardableResult
+    public func shutdown() -> Shutdown {
+        let (shutdownAlreadyRunning, receptacle) = self.shutdownLock.withLock { () -> (Bool, BlockingReceptacle<Void>) in
+            if let receptacle = self.shutdownReceptacle {
+                return (true, receptacle)
+            } else {
+                let receptacle = BlockingReceptacle<Void>()
+                self.shutdownReceptacle = receptacle
+                return (false, receptacle)
+            }
+        }
+
+        // if the shutdown has previously been initiated, we just return the
+        // existing receptacle
+        if shutdownAlreadyRunning {
+            return Shutdown(receptacle: receptacle)
+        }
+
+        DispatchQueue.global().async {
+            self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
+            if let cluster = self._cluster {
+                let receptacle = BlockingReceptacle<Void>()
+                cluster.ref.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
+                receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
+            }
+            self.userProvider.stopAll()
+            self.systemProvider.stopAll()
+            self.dispatcher.shutdown()
+            try! self.eventLoopGroup.syncShutdownGracefully()
+            self.serialization = nil
+            self._cluster = nil
+            self._receptionist = self.deadLetters.adapted()
+            receptacle.offerOnce(())
+        }
+
+        return Shutdown(receptacle: receptacle)
     }
 
     public var cluster: ClusterControl {

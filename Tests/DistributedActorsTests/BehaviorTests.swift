@@ -31,7 +31,7 @@ class BehaviorTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
         try! self.eventLoopGroup.syncShutdownGracefully()
     }
 
@@ -441,7 +441,7 @@ class BehaviorTests: XCTestCase {
             settings.overrideLogger = .some(capture.makeLogger(label: "mock"))
         }
         defer {
-            system.shutdown()
+            system.shutdown().wait()
         }
 
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()

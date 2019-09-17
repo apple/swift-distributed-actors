@@ -30,7 +30,7 @@ final class VersionVectorSerializationTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     let actorA = try! ActorAddress(path: ActorPath._user.appending("A"), incarnation: .perpetual)

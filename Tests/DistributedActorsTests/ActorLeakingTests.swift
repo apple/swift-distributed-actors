@@ -28,7 +28,7 @@ class ActorLeakingTests: XCTestCase {
     }
 
     override func tearDown() {
-        self.system.shutdown()
+        self.system.shutdown().wait()
     }
 
     // MARK: starting actors

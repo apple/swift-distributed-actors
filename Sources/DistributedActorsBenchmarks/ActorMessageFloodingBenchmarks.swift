@@ -38,7 +38,7 @@ private func setUp() {
 }
 
 private func tearDown() {
-    system.shutdown()
+    system.shutdown().wait()
     _system = nil
 }
 
