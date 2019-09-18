@@ -19,7 +19,6 @@ let targets: [PackageDescription.Target] = [
 
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
-            "CDistributedActorsRunQueue",
         ]
     ),
 
@@ -140,11 +139,6 @@ let targets: [PackageDescription.Target] = [
 
     .target(
         name: "CDistributedActorsMailbox",
-        dependencies: []
-    ),
-
-    .target(
-        name: "CDistributedActorsRunQueue",
         dependencies: []
     ),
 
