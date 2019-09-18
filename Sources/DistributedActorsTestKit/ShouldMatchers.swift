@@ -353,7 +353,13 @@ public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, co
     do {
         return try block()
     } catch {
-        let msg = callSiteInfo.detailedMessage("Unexpected throw captured: [\(error)]")
+        let msg: String
+        switch error {
+        case let eventuallyError as EventuallyError:
+            msg = callSiteInfo.detailedMessage("Unexpected throw captured") + "\(eventuallyError.message)"
+        default:
+            msg = callSiteInfo.detailedMessage("Unexpected throw captured: [\(error)]")
+        }
         XCTFail(msg, file: callSiteInfo.file, line: callSiteInfo.line)
         throw ShouldMatcherError.unexpectedErrorWasThrown
     }
