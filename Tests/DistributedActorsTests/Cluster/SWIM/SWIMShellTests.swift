@@ -428,7 +428,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         let remoteSwim: ActorRef<SWIM.Message> = remote._resolve(context: .init(address: swimAddress, system: remote))
         let localSwim: ActorRef<SWIM.Message> = local._resolve(context: .init(address: swimAddress, system: local))
 
-        localSwim.tell(.local(.monitor(remote.cluster.node.node)))
+        localSwim.tell(.local(.monitor(remote.cluster.node)))
 
         let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
         try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))

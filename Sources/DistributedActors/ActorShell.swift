@@ -715,12 +715,12 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Message Adapter
 
     private var messageAdapterRef: ActorRefAdapter<Message>?
-    struct MessageAdapter {
+    struct MessageAdapterClosure {
         let metaType: AnyMetaType
         let closure: (Any) -> Message?
     }
 
-    private var messageAdapters: [MessageAdapter] = []
+    private var messageAdapters: [MessageAdapterClosure] = []
 
     override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
         do {
@@ -738,7 +738,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
                 adapter.metaType.is(metaType)
             })
 
-            self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+            self.messageAdapters.insert(MessageAdapterClosure(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
 
             guard let adapterRef = self.messageAdapterRef else {
                 let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)

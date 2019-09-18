@@ -273,8 +273,8 @@ extension ClusterShell {
             case .initJoin(let node):
                 return self.onInitJoin(context, state: state, joining: node)
 
-            case .handshakeWith(let remoteAddress, let replyTo):
-                return self.beginHandshake(context, state, with: remoteAddress, replyTo: replyTo)
+            case .handshakeWith(let node, let replyTo):
+                return self.beginHandshake(context, state, with: node, replyTo: replyTo)
             case .retryHandshake(let initiated):
                 return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
@@ -378,10 +378,14 @@ extension ClusterShell {
     internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
         var state = state
 
+        context.log.info("BEGIN HANDSHAKE: remoteNode = \(remoteNode)")
         guard remoteNode != state.selfNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
+            replyTo?.tell(.failure(.init(node: remoteNode, message: "Would have attempted handshake with self node, aborted handshake.")))
             return .ignore
         }
+
+        // TODO: tombstone protection?
 
         if let existingAssociation = state.association(with: remoteNode) {
             // TODO: we maybe could want to attempt and drop the other "old" one?
@@ -676,10 +680,29 @@ extension ClusterShell {
 // MARK: Handling cluster membership changes
 
 extension ClusterShell {
-    /// Joining needs to inform SWIM about the new member; it in turn will ensure we associate with it, and inform us when it can be moved to joining/up
-    func onInitJoin(_ context: ActorContext<Message>, state: ClusterShellState, joining node: Node) -> Behavior<Message> {
-        self._swimRef.tell(.local(.monitor(node)))
-        return self.ready(state: state)
+    /// Ensure an association, and let SWIM know about it
+    func onInitJoin(_ context: ActorContext<Message>, state _: ClusterShellState, joining node: Node) -> Behavior<Message> {
+//        self._swimRef.tell(.local(.monitor(node)))
+//        return self.ready(state: state)
+
+        let handshakeResultAnswer: AskResponse<HandshakeResult> = context.myself.ask(for: HandshakeResult.self, timeout: .seconds(3)) {
+            Message.command(.handshakeWith(node, replyTo: $0))
+        }
+
+        context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { (res: Result<HandshakeResult, Error>) in
+            switch res {
+            case .success(.success(let uniqueNode)):
+                context.log.info("ASSOCIATED \(uniqueNode) TELLING SWIM ABOUT IT.")
+                self._swimRef.tell(.local(.monitor(uniqueNode)))
+                return .same // .same, since state was modified since inside the handshakeWith (!)
+            case .success(.failure(let error)):
+                fatalError("OH NO: \(error)") // FIXME
+            case .failure(let error):
+                fatalError("OH NO: \(error)") // FIXME
+            }
+        }
+
+        return .same
     }
 
     func onReachabilityChange(

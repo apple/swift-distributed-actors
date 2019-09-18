@@ -113,9 +113,9 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             while let event = try firstEventsProbe.maybeExpectMessage() {
                 pprint("first      EVT : \(String(reflecting: event))")
             }
-            while let event = try secondEventsProbe.maybeExpectMessage() {
-                pprint("second     EVT : \(String(reflecting: event))")
-            }
+//            while let event = try secondEventsProbe.maybeExpectMessage() {
+//                pprint("second     EVT : \(String(reflecting: event))")
+//            }
             while let event = try secondEventsProbe.maybeExpectMessage() {
                 pprint("secondREPL EVT : \(String(reflecting: event))")
             }

@@ -62,10 +62,15 @@ public enum SWIM {
     }
 
     internal enum LocalMessage: NoSerializationVerification {
+        /// Periodic message used to wake up SWIM and perform a random ping probe among its members.
         case pingRandomMember
-        /// Requests SWIM to monitor a node, which will also ensure an association to this node to be established and
+
+        /// Sent by `ClusterShell` when wanting to join a cluster node by `Node`.
+        ///
+        /// Requests SWIM to monitor a node, which also causes an association to this node to be requested
         /// start gossiping SWIM messages with the node once established.
-        case monitor(Node)
+        case monitor(UniqueNode)
+
         /// Sent by `ClusterShell` whenever a `cluster.down(node:)` command is issued.
         ///
         /// ### Warning
