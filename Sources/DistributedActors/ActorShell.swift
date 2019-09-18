@@ -668,6 +668,47 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.subReceives[identifier]?.0
     }
 
+    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+        do {
+            let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
+                guard let message = carry.message as? SubMessage else {
+                    self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
+                    return .ignore // TODO: make .drop once implemented
+                }
+
+                try closure(message)
+                return .same
+            }
+
+            let identifier = AnySubReceiveId(id)
+            if let (_, existingRef) = self.subReceives[identifier] {
+                self.subReceives[identifier] = (wrappedClosure, existingRef)
+                guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
+                    fatalError("Existing ref for sub receive id [\(id)] has unexpected type [\(String(reflecting: type(of: existingRef)))], expected [\(String(reflecting: SubMessage.self))]")
+                }
+                return .init(.adapter(adapter))
+            }
+
+            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
+            let name = naming.makeName(&self.namingContext)
+            let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
+            let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
+
+            self._children.insert(ref) // TODO: separate adapters collection?
+            self.subReceives[identifier] = (wrappedClosure, ref)
+            return .init(.adapter(ref))
+        } catch {
+            fatalError("""
+                       Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
+                       generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+                       Error: \(error)
+                       """)
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Message Adapter
+
     private var messageAdapterRef: ActorRefAdapter<Message>?
     struct MessageAdapter {
         let metaType: AnyMetaType
@@ -708,44 +749,6 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             fatalError("""
             Failed while creating message adapter. This should never happen, since message adapters have a unique name.
             Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
-            Error: \(error)
-            """)
-        }
-    }
-
-    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
-        do {
-            let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
-                guard let message = carry.message as? SubMessage else {
-                    self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
-                    return .ignore // TODO: make .drop once implemented
-                }
-
-                try closure(message)
-                return .same
-            }
-
-            let identifier = AnySubReceiveId(id)
-            if let (_, existingRef) = self.subReceives[identifier] {
-                self.subReceives[identifier] = (wrappedClosure, existingRef)
-                guard let adapter = existingRef as? SubReceiveAdapter<SubMessage, Message> else {
-                    fatalError("Existing ref for sub receive id [\(id)] has unexpected type [\(String(reflecting: type(of: existingRef)))], expected [\(String(reflecting: SubMessage.self))]")
-                }
-                return .init(.adapter(adapter))
-            }
-
-            let naming = ActorNaming(unchecked: .prefixed(prefix: "$sub-\(id.id)", suffixScheme: .letters))
-            let name = naming.makeName(&self.namingContext)
-            let adaptedAddress = try self.address.makeChildAddress(name: name, incarnation: .random()) // TODO: actor name to BE the identity
-            let ref = SubReceiveAdapter(SubMessage.self, owner: self.myself, address: adaptedAddress, identifier: identifier)
-
-            self._children.insert(ref) // TODO: separate adapters collection?
-            self.subReceives[identifier] = (wrappedClosure, ref)
-            return .init(.adapter(ref))
-        } catch {
-            fatalError("""
-            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
-            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
             Error: \(error)
             """)
         }
