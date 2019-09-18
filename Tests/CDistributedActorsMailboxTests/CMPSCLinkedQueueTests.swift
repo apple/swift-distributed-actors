@@ -17,26 +17,6 @@ import Foundation
 import XCTest
 
 class CMPSCLinkedQueueTests: XCTestCase {
-    func testIsEmptyWhenEmpty() {
-        let q = c_sact_mpsc_linked_queue_create()
-        let empty = c_sact_mpsc_linked_queue_is_empty(q)
-
-        XCTAssertNotEqual(empty, 0)
-    }
-
-    func testIsEmptyWhenNonEmpty() {
-        let q = c_sact_mpsc_linked_queue_create()
-        let p = UnsafeMutableRawPointer.allocate(byteCount: 0, alignment: 0)
-        defer {
-            p.deallocate()
-        }
-
-        c_sact_mpsc_linked_queue_enqueue(q, p)
-        let empty = c_sact_mpsc_linked_queue_is_empty(q)
-
-        XCTAssertEqual(empty, 0)
-    }
-
     func testDequeueWhenEmpty() {
         let q = c_sact_mpsc_linked_queue_create()
         let res = c_sact_mpsc_linked_queue_dequeue(q)
