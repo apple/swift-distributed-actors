@@ -60,12 +60,3 @@ void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q) {
     q->consumer = node;
     return item;
 }
-
-int c_sact_mpsc_linked_queue_non_empty(CSActMPSCLinkedQueue* q) {
-    return !c_sact_mpsc_linked_queue_is_empty(q);
-}
-
-int c_sact_mpsc_linked_queue_is_empty(CSActMPSCLinkedQueue* q) {
-    return atomic_load_explicit(&q->consumer->next, memory_order_acquire) == NULL
-           && atomic_load_explicit(&q->producer, memory_order_acquire) == q->consumer;
-}

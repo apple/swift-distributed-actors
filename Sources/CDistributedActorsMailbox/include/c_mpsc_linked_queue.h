@@ -39,7 +39,4 @@ void c_sact_mpsc_linked_queue_enqueue(CSActMPSCLinkedQueue* q, void* item);
 
 void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q);
 
-int c_sact_mpsc_linked_queue_is_empty(CSActMPSCLinkedQueue* q);
-int c_sact_mpsc_linked_queue_non_empty(CSActMPSCLinkedQueue* q);
-
 #endif /* CMPSCLinkedQueue_h */
