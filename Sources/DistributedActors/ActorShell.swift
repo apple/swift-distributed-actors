@@ -380,7 +380,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         let next: Behavior<Message>
         if let adapted = adapter(carry.message) {
-             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
+            next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
         } else {
             next = .unhandled // TODO: could be .drop
         }
@@ -699,10 +699,10 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             return .init(.adapter(ref))
         } catch {
             fatalError("""
-                       Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
-                       generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
-                       Error: \(error)
-                       """)
+            Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
+            generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+            Error: \(error)
+            """)
         }
     }
 

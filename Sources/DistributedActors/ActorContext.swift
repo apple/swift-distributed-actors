@@ -398,7 +398,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    /// 
+    ///
     /// ### Dropping messages
     /// It is possible to return `nil` as the result of an adaptation, which results in the message
     /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
