@@ -26,6 +26,7 @@ extension ActorRefAdapterTests {
             ("test_adaptedRef_shouldConvertMessages", test_adaptedRef_shouldConvertMessages),
             ("test_adaptedRef_overNetwork_shouldConvertMessages", test_adaptedRef_overNetwork_shouldConvertMessages),
             ("test_adaptedRef_shouldBeWatchable", test_adaptedRef_shouldBeWatchable),
+            ("test_adapter_shouldAllowDroppingMessages", test_adapter_shouldAllowDroppingMessages),
             ("test_adaptedRef_shouldShareTheSameLifecycleAsItsActor", test_adaptedRef_shouldShareTheSameLifecycleAsItsActor),
             ("test_adaptedRef_newAdapterShouldReplaceOld", test_adaptedRef_newAdapterShouldReplaceOld),
             ("test_adaptedRef_shouldDeadLetter_whenOwnerTerminated", test_adaptedRef_shouldDeadLetter_whenOwnerTerminated),

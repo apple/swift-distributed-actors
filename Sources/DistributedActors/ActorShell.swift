@@ -378,7 +378,12 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             return self.runState
         }
 
-        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapter(carry.message))
+        let next: Behavior<Message>
+        if let adapted = adapter(carry.message) {
+             next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
+        } else {
+            next = .unhandled // TODO: could be .drop
+        }
 
         traceLog_Cell("Applied adapted message \(carry.message), becoming: \(next)")
 
@@ -654,7 +659,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Message Adapters API
+    // MARK: Sub Receive
 
     var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
 
@@ -666,15 +671,15 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     private var messageAdapterRef: ActorRefAdapter<Message>?
     struct MessageAdapter {
         let metaType: AnyMetaType
-        let closure: (Any) -> Message
+        let closure: (Any) -> Message?
     }
 
     private var messageAdapters: [MessageAdapter] = []
 
-    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
+    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
         do {
             let metaType = MetaType(fromType)
-            let anyAdapter: (Any) -> Message = { message in
+            let anyAdapter: (Any) -> Message? = { message in
                 guard let typedMessage = message as? From else {
                     fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
                         "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")

@@ -119,6 +119,41 @@ class ActorRefAdapterTests: XCTestCase {
         try probe.expectTerminated(adaptedRef)
     }
 
+    func test_adapter_shouldAllowDroppingMessages() throws {
+        let probe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+
+        let pAdapted = self.testKit.spawnTestProbe(expecting: Int.self)
+
+        let behavior: Behavior<Int> = .setup { context in
+            probe.tell(context.messageAdapter { message in
+                if message.contains("drop") {
+                    return nil
+                } else {
+                    return message.count
+                }
+            })
+            return .receiveMessage { stringLength in
+                pAdapted.tell(stringLength)
+                return .same
+            }
+        }
+
+        _ = try system.spawn(.anonymous, behavior)
+
+        let adaptedRef = try probe.expectMessage()
+
+        probe.watch(adaptedRef)
+
+        adaptedRef.tell("hi")
+        adaptedRef.tell("drop")
+        adaptedRef.tell("hello")
+        adaptedRef.tell("drop-hello")
+
+        try pAdapted.expectMessage("hi".count)
+        try pAdapted.expectMessage("hello".count)
+        try pAdapted.expectNoMessage(for: .milliseconds(10))
+    }
+
     enum LifecycleTestMessage {
         case createAdapter(replyTo: ActorRef<ActorRef<String>>)
         case crash
@@ -296,4 +331,5 @@ class ActorRefAdapterTests: XCTestCase {
         topRef.tell(bottom)
         try probe.expectMessage("received:adapter-bottom:\(bottom)")
     }
+
 }
