@@ -357,6 +357,8 @@ public func shouldNotThrow<T>(file: StaticString = #file, line: UInt = #line, co
         switch error {
         case let eventuallyError as EventuallyError:
             msg = callSiteInfo.detailedMessage("Unexpected throw captured") + "\(eventuallyError.message)"
+        case CallSiteError.error(let message):
+            msg = callSiteInfo.detailedMessage("Unexpected throw captured") + "\(message)"
         default:
             msg = callSiteInfo.detailedMessage("Unexpected throw captured: [\(error)]")
         }
