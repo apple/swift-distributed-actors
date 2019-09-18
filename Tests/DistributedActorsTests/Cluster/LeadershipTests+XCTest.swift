@@ -23,8 +23,10 @@ import XCTest
 extension LeadershipTests {
     static var allTests: [(String, (LeadershipTests) -> () throws -> Void)] {
         return [
-            ("test_NaiveLowestAmongReachables_selectLeader", test_NaiveLowestAmongReachables_selectLeader),
-            ("test_NaiveLowestAmongReachables_notEnoughMembersToDecide", test_NaiveLowestAmongReachables_notEnoughMembersToDecide),
+            ("test_LowestReachableMember_selectLeader", test_LowestReachableMember_selectLeader),
+            ("test_LowestReachableMember_notEnoughMembersToDecide", test_LowestReachableMember_notEnoughMembersToDecide),
+            ("test_LowestReachableMember_whenCurrentLeaderDown", test_LowestReachableMember_whenCurrentLeaderDown),
+            ("test_LowestReachableMember_whenCurrentLeaderUnreachable", test_LowestReachableMember_whenCurrentLeaderUnreachable),
         ]
     }
 }

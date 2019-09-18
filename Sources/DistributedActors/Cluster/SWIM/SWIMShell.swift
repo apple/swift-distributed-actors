@@ -67,7 +67,6 @@ internal struct SWIMShell {
             case .testing(let message):
                 switch message {
                 case .getMembershipState(let replyTo):
-                    // NOT tracelogging it on purpose, it is a testing message
                     replyTo.tell(SWIM.MembershipState(membershipState: self.swim._allMembersDict))
                     return .same
                 }
@@ -108,7 +107,7 @@ internal struct SWIMShell {
                         self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
                         self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                     case .failure(let error):
-                        context.log.warning("Unable to obtain association for remote \(target.address.node)... Maybe it was tombstoned?")
+                        context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned?")
                     }
                 }
             } else {
@@ -256,7 +255,7 @@ internal struct SWIMShell {
     // MARK: Handling local messages
 
     func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
-        context.log.trace("Received periodic trigger to ping random member", metadata: self.swim.metadata)
+        context.log.trace("\(context.name): Received periodic trigger to ping random member", metadata: self.swim.metadata)
 
         // needs to be done first, so we can gossip out the most up to date state
         self.checkSuspicionTimeouts(context: context)
@@ -269,33 +268,24 @@ internal struct SWIMShell {
         self.swim.incrementProtocolPeriod()
     }
 
-
     func handleMonitor(_ context: ActorContext<SWIM.Message>, node: UniqueNode) {
         guard context.system.cluster.node.node != node.node else {
             return // no need to monitor ourselves, nor a replacement of us (if node is our replacement, we should have been dead already)
         }
 
-//        // TODO do we need the ensure? We make it such the initJoin makes sure we are connected and then invokes the .monitor rather
-//        self.ensureAssociated(context, remoteNode: node) { uniqueNodeResult in
-//            switch uniqueNodeResult {
-//            case .success(let associatedNode):
-//                assert(associatedNode == node, "We received a successful connection for other node than we asked to. This is a bug in the ClusterShell. Was: \(associatedNode), \(node)")
-                self.sendFirstRemotePing(context, on: node)
-//            case .failure(let error):
-//                context.log.warning("Error: \(error)")
-//            }
-//        }
+        self.sendFirstRemotePing(context, on: node)
     }
 
     // TODO: test in isolation
     func handleConfirmDead(_ context: ActorContext<SWIM.Message>, deadNode node: UniqueNode) {
         if let member = self.swim.member(for: node) {
-            context.log.info("Confirming .dead member [\(member)]")
             // It is important to not infinitely loop cluster.down + confirmDead messages;
             // See: `.confirmDead` for more rationale
             if member.isDead {
                 return // member is already dead, nothing else to do here.
             }
+
+            context.log.debug("Confirming .dead member \(reflecting: member.node)")
 
             // We are diverging from the SWIM paper here in that we store the `.dead` state, instead
             // of removing the node from the member list. We do that in order to prevent dead nodes
@@ -316,7 +306,7 @@ internal struct SWIMShell {
                     Node was previously alive, and now forced DEAD. Current period [\(self.swim.protocolPeriod)].
                     """)
                 }
-            case .applied:
+            case .applied(nil):
                 // TODO: marking is more about "marking a node as dead" should we rather log addresses and not actor paths?
                 context.log.warning("Marked [\(member)] as dead. Node was not previously known to SWIM.")
                 // TODO: add tracelog about marking a node dead here?
@@ -396,7 +386,7 @@ internal struct SWIMShell {
         }
 
         guard let clusterShell = context.system._cluster else {
-            context.log.debug("ClusterShell not available when trying to ensure associated with: \(reflecting: remoteNode)")
+            continueWithAssociation(.failure(EnsureAssociationError("ClusterShell not available when trying to ensure associated with: \(reflecting: remoteNode)")))
             return
         }
 
@@ -412,6 +402,9 @@ internal struct SWIMShell {
         case .associated(let control):
             continueWithAssociation(.success(control.remoteNode))
         case .tombstone:
+            context.log.info("TOMBSTONE: \(remoteNode)")
+            let msg = "Association target node is already .tombstoned, not associating. Node \(reflecting: remoteNode) likely to be removed from gossip shortly."
+            continueWithAssociation(.failure(EnsureAssociationError(msg)))
             return // we shall not associate with this tombstoned node (!)
         }
 
@@ -423,38 +416,15 @@ internal struct SWIMShell {
             case .success(let uniqueNode):
                 return SWIM.Message.local(.monitor(uniqueNode))
             case .failure(let error):
-                return nil
+                context.log.debug("Did not associate with \(reflecting: remoteNode), reason: \(error)")
+                return nil // drop the message
             }
         }
 
+        context.log.trace("Requesting handshake with \(remoteNode.node)")
         self.clusterRef.tell(.command(.handshakeWith(remoteNode.node, replyTo: ref)))
-        
-//        let handshakeTimeout = TimeAmount.seconds(3)
-//        let handshakeResultAnswer = context.system.cluster.ref.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
-//            .command(.handshakeWith(remoteNode.node, replyTo: $0))
-//        }
-//        context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in
-//            switch handshakeResultResult {
-//            case .success(.success(let associatedNode)):
-//                guard associatedNode == remoteNode else {
-//                    context.log.warning("Attempted to ensure association with \(remoteNode), but associated \(associatedNode)!")
-//                    continueWithAssociation(.failure(EnsureAssociationError("Attempted to ensure association with \(remoteNode), but associated \(associatedNode)!")))
-//                    return .same
-//                }
-//                continueWithAssociation(.success(associatedNode))
-//
-//            case .success(.failure(let error)):
-//                context.log.warning("Failed to connect to remote node \(reflecting: remoteNode), error: \(error)")
-//                continueWithAssociation(.failure(EnsureAssociationError("Failed to connect to remote node \(reflecting: remoteNode), error: \(error)")))
-//
-//            case .failure(let error):
-//                context.log.warning("Failed to request association to \(reflecting: remoteNode), error: \(error)")
-//                continueWithAssociation(.failure(EnsureAssociationError("Failed to request association to \(reflecting: remoteNode), error: \(error)")))
-//            }
-//
-//            return .same
-//        }
     }
+
     struct EnsureAssociationError: Error {
         let message: String
 
@@ -462,33 +432,6 @@ internal struct SWIMShell {
             self.message = message
         }
     }
-
-//    func requestAssociation(_ context: ActorContext<SWIM.Message>, remoteNode: Node?, onceConnected: @escaping (Result<UniqueNode, Error>) -> Void) {
-//        // this is a local node, so we don't need to connect first
-//        guard let remoteNode = remoteNode else {
-//            onceConnected(.success(context.system.cluster.node))
-//            return
-//        }
-//
-//        // TODO: might need a cache in the swim shell? // actual solution being a shared concurrent hashmap...
-//        // FIXME: use reasonable timeout and back off? issue #724
-//        let handshakeTimeout = TimeAmount.seconds(3)
-//        let handshakeResultAnswer = context.system.cluster.ref.ask(for: ClusterShell.HandshakeResult.self, timeout: handshakeTimeout) {
-//            .command(.handshakeWith(remoteNode, replyTo: $0))
-//        }
-//        context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { handshakeResultResult in
-//            switch handshakeResultResult {
-//            case .success(.success(let uniqueNode)):
-//                onceConnected(.success(uniqueNode))
-//            case .success(.failure(let error)):
-//                context.log.warning("Failed to connect to remote node \(reflecting: remoteNode), error: \(error)")
-//            case .failure(let error):
-//                context.log.warning("Failed to request association to \(reflecting: remoteNode), error: \(error)")
-//            }
-//
-//            return .same
-//        }
-//    }
 
     /// This is effectively joining the SWIM membership of the other member.
     func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on node: UniqueNode) {
@@ -511,6 +454,16 @@ extension SWIMShell {
     }
 
     static let periodicPingKey = TimerKey("swim/periodic-ping")
+}
+
+extension ActorAddress {
+    internal static func _swim(on node: UniqueNode) -> ActorAddress {
+        return .init(node: node, path: ActorPath._swim, incarnation: .perpetual)
+    }
+}
+
+extension ActorPath {
+    internal static let _swim: ActorPath = try! ActorPath._system.appending("swim")
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

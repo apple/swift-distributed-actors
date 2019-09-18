@@ -18,8 +18,6 @@ import Foundation
 import XCTest
 
 final class NodeTests: XCTestCase {
-
-
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Node
 

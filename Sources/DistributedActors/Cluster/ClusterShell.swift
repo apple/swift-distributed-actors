@@ -39,7 +39,6 @@ internal class ClusterShell {
     /// - Protected by: `_associationsLock`
     private var _associationTombstones: [UniqueNode]
 
-
     private var _swimRef: ActorRef<SWIM.Message>!
 
     private var clusterEvents: EventStream<ClusterEvent>!
@@ -68,6 +67,7 @@ internal class ClusterShell {
             }
         }
     }
+
     enum AssociationRemoteControlState {
         case unknown
         case associated(AssociationRemoteControl)
@@ -223,13 +223,13 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context.system._spawnSystemActor(SWIMShell.naming, swimBehavior, perpetual: true)
+            self._swimRef = try context.system._spawnSystemActor(SWIMShell.naming, swimBehavior, perpetual: true) // TODO: spawn as system/cluster/swim needs perpetual param there
 
             // subscribe to cluster events (which this shell might emit, like membership changes, but we can decouple processing them thanks to this in time and space)
             context.system.cluster.events.subscribe(context.messageAdapter { ClusterShell.Message.clusterEvent($0) })
 
             // automatic leader for .joining -> .up
-            if let leaderSelection = context.system.settings.cluster.autoLeaderSelection.make(context.system.cluster.settings) {
+            if let leaderSelection = context.system.settings.cluster.autoLeaderElection.make(context.system.cluster.settings) {
                 let leadershipShell = Leadership.Shell(leaderSelection)
                 _ = try context.spawn(Leadership.Shell.naming, leadershipShell.behavior)
             }
@@ -280,7 +280,7 @@ extension ClusterShell {
 
             // FIXME: this is now a cluster event !!!!!
             case .reachabilityChanged(let node, let reachability):
-                guard let member = state.membership.member(node) else {
+                guard let member = state.membership.uniqueMember(node) else {
                     return .ignore // reachability change of unknown node
                 }
                 switch reachability {
@@ -348,9 +348,25 @@ extension ClusterShell {
                 state.onMemberReachabilityChange(change)
             }
 
-            state.log.info("EVENT: \(event) ~ (leader: \(state.membership.leader))")
+            // TODO: remove or keep as trace
+            context.log.info("Membership updated \(state.membership.prettyDescription(label: "\(state.selfNode)"))")
+
             // TODO: where to log and act...
-            let takenActions = state.performLeaderTasks()
+            let takenActions = state.tryPerformLeaderTasks()
+
+            // HACK until Gossip() ~~~~~
+            for action in takenActions {
+                switch action {
+                case .moveMember(let change):
+                    for node in state.associatedNodes() {
+                        // FIXME: gossip these instead since membership has changed; take a diff of the membership and gossip that diff
+                        let remoteClusterShell = context.system._resolve(context: ResolveContext<ClusterShell.Message>(address: .__cluster(on: node), system: context.system))
+                        state.log.info("SENDING \(change) TO \(remoteClusterShell)")
+                        remoteClusterShell.tell(.clusterEvent(.membershipChange(change)))
+                    }
+                }
+            }
+            // END OF HACK until Gossip() ~~~~~
 
             return self.ready(state: state)
         }
@@ -378,14 +394,11 @@ extension ClusterShell {
     internal func beginHandshake(_ context: ActorContext<Message>, _ state: ClusterShellState, with remoteNode: Node, replyTo: ActorRef<HandshakeResult>?) -> Behavior<Message> {
         var state = state
 
-        context.log.info("BEGIN HANDSHAKE: remoteNode = \(remoteNode)")
         guard remoteNode != state.selfNode.node else {
             state.log.debug("Ignoring attempt to handshake with myself; Could have been issued as confused attempt to handshake as induced by discovery via gossip?")
             replyTo?.tell(.failure(.init(node: remoteNode, message: "Would have attempted handshake with self node, aborted handshake.")))
-            return .ignore
+            return .same // TODO: could be drop
         }
-
-        // TODO: tombstone protection?
 
         if let existingAssociation = state.association(with: remoteNode) {
             // TODO: we maybe could want to attempt and drop the other "old" one?
@@ -394,7 +407,7 @@ extension ClusterShell {
             case .associated(let associationState):
                 replyTo?.tell(.success(associationState.remoteNode))
             }
-            return .same
+            return .same // TODO: could be drop
         }
 
         let whenHandshakeComplete = state.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
@@ -491,7 +504,7 @@ extension ClusterShell {
                 promise.succeed(.accept(accept))
 
                 if let replaced = directive.membershipChange.replaced,
-                   let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
+                    let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
                     state.log.warning("TOMBSTONE ASSSOCIATION: \(reflecting: beingReplacedAssociation.remoteNode)")
                     self.terminateAndTombstoneAssociation(beingReplacedAssociation)
                     self.clusterEvents.publish(.membershipChange(.init(member: replaced, toStatus: .down)))
@@ -594,8 +607,8 @@ extension ClusterShell {
 
         // by emitting these `change`s, we not only let anyone interested know about this,
         // but we also enable the shell (or leadership) to update the leader if it needs changing.
-        if let replaced = directive.membershipChange.replaced ,
-           let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
+        if let replaced = directive.membershipChange.replaced,
+            let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
             state.log.warning("TOMBSTONE ASSSOCIATION: \(reflecting: beingReplacedAssociation.remoteNode)")
             self.terminateAndTombstoneAssociation(beingReplacedAssociation)
             self.clusterEvents.publish(.membershipChange(.init(member: replaced, toStatus: .down)))
@@ -604,7 +617,6 @@ extension ClusterShell {
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
         context.system.metrics.recordMembership(state.membership)
-
 
         completed.whenCompleted?.succeed(.accept(completed.makeAccept()))
         return self.ready(state: state)
@@ -655,7 +667,6 @@ extension ClusterShell {
 // MARK: Unbind
 
 extension ClusterShell {
-
     // TODO: become "shutdown" rather than just unbind
     fileprivate func unbind(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
@@ -682,9 +693,6 @@ extension ClusterShell {
 extension ClusterShell {
     /// Ensure an association, and let SWIM know about it
     func onInitJoin(_ context: ActorContext<Message>, state _: ClusterShellState, joining node: Node) -> Behavior<Message> {
-//        self._swimRef.tell(.local(.monitor(node)))
-//        return self.ready(state: state)
-
         let handshakeResultAnswer: AskResponse<HandshakeResult> = context.myself.ask(for: HandshakeResult.self, timeout: .seconds(3)) {
             Message.command(.handshakeWith(node, replyTo: $0))
         }
@@ -696,9 +704,11 @@ extension ClusterShell {
                 self._swimRef.tell(.local(.monitor(uniqueNode)))
                 return .same // .same, since state was modified since inside the handshakeWith (!)
             case .success(.failure(let error)):
-                fatalError("OH NO: \(error)") // FIXME
+                context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
+                return .same
             case .failure(let error):
-                fatalError("OH NO: \(error)") // FIXME
+                context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
+                return .same
             }
         }
 
@@ -726,7 +736,7 @@ extension ClusterShell {
     /// Convenience function for directly handling down command in shell.
     /// Attempts to locate which member to down and delegates further.
     func onDownCommand(_ context: ActorContext<Message>, state: ClusterShellState, node: Node) -> Behavior<Message> {
-        let membersToDown = state.membership.members(atMost: .up)
+        let membersToDown = state.membership.members(node).filter { $0.status < .down }
 
         guard !membersToDown.isEmpty else {
             state.log.info("No members to .down; Known members of non-unique node [\(node)]: \(state.membership.members(node))")
@@ -740,6 +750,7 @@ extension ClusterShell {
 
         return self.ready(state: state)
     }
+
     /// Returns `nil` if no change was made and we should ignore this command
     func onDownCommand0(_ context: ActorContext<Message>, state: ClusterShellState, member memberToDown: Member) -> ClusterShellState? {
         var state = state
@@ -757,7 +768,7 @@ extension ClusterShell {
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
 
             self._swimRef.tell(.local(.confirmDead(state.selfNode)))
-            context.log.warning("Self node was determined [.down].")
+            context.log.warning("Self node was determined [.down]. (TODO: initiate shutdown based on config)") // TODO: initiate a shutdown it configured to do so
 
             return state
         }

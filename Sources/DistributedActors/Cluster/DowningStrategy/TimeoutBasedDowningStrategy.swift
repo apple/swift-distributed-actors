@@ -42,6 +42,7 @@ internal final class TimeoutBasedDowningStrategy {
     }
 }
 
+// FIXME: Implement more in terms of "change" APIs
 extension TimeoutBasedDowningStrategy: DowningStrategy {
     func onMemberUnreachable(_ member: Member) -> DowningStrategyDirectives.MemberUnreachableDirective {
         self._unreachable.insert(member.node)

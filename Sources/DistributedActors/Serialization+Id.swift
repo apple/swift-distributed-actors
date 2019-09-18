@@ -32,6 +32,9 @@ extension Serialization {
             internal static let Int64: SerializerId = 104
             internal static let UInt64: SerializerId = 105
 
+            internal static let ClusterShellMessage: SerializerId = 200
+            internal static let ClusterEvent: SerializerId = 201
+
             internal static let FullStateRequest: SerializerId = 6
             internal static let Replicate: SerializerId = 7
             internal static let FullState: SerializerId = 8

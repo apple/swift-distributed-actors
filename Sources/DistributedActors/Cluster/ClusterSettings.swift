@@ -87,19 +87,21 @@ public struct ClusterSettings {
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Leader Selection
+    // MARK: Leader Election
 
-    var autoLeaderSelection: LeadershipSelectionSettings = .none
+    var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNrOfMembers: 2)
     enum LeadershipSelectionSettings {
+        /// No automatic leader selection, you can write your own logic and issue `LeadershipChange` at will.
         case none
+        /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
         case lowestAddress(minNrOfMembers: Int)
 
-        func make(_: ClusterSettings) -> LeaderSelection? {
+        func make(_: ClusterSettings) -> LeaderElection? {
             switch self {
             case .none:
                 return nil
             case .lowestAddress(let nr):
-                return Leadership.NaiveLowestAmongReachables(minimumNrOfMembers: nr)
+                return Leadership.LowestReachableMember(minimumNrOfMembers: nr)
             }
         }
     }

@@ -99,7 +99,7 @@ final class ActorAddressTests: XCTestCase {
         let node = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeID(11111))
         let remote = ActorAddress(node: node, path: address.path, incarnation: ActorIncarnation(8888))
 
-        String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello#8888")
+        String(reflecting: remote).shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
         "\(remote.path)".shouldEqual("/user/hello")
@@ -124,10 +124,10 @@ final class ActorAddressTests: XCTestCase {
 
     func test_equalityOf_addressWithDifferentSystemNameOnly() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let one = ActorAddress(node: .init(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
-        let two = ActorAddress(node: .init(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let one = ActorAddress(node: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let two = ActorAddress(node: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
 
-        one.shouldNotEqual(two)
+        one.shouldEqual(two)
     }
 
     func test_equalityOf_addressWithDifferentSegmentsButSameUID() throws {

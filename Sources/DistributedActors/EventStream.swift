@@ -18,7 +18,7 @@
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.
-public struct EventStream<Event> { // TODO: Discuss, EventBus?
+public struct EventStream<Event> {
     internal let ref: ActorRef<EventStreamShell.Message<Event>>
 
     public init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self) throws {

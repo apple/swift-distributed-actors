@@ -27,8 +27,7 @@ import NIO
 /// sending side of an association remains the "same exact node", or if it is a new instance on the same address.
 ///
 /// An `Association` can only be obtained by successfully completing a `HandshakeStateMachine` dance.
-struct Association { // TODO: associations should be as light as possible.
-
+struct Association {
     enum State {
         case associated(AssociatedState)
         // case leaving // so we can receive that another node saw us as DOWN

@@ -110,7 +110,7 @@ extension ActorAddress: CustomStringConvertible, CustomDebugStringConvertible {
     }
 
     public var debugDescription: String {
-         var res = ""
+        var res = ""
         switch self._location {
         case .local:
             () // ok
@@ -134,6 +134,14 @@ extension ActorAddress {
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
     internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .perpetual)
+    internal static func __cluster(on node: UniqueNode? = nil) -> ActorAddress {
+        switch node {
+        case .none:
+            return ._cluster
+        case .some(let node):
+            return ActorPath._cluster.makeRemoteAddress(on: node, incarnation: .perpetual)
+        }
+    }
 }
 
 extension ActorAddress {
@@ -567,12 +575,12 @@ extension Node: Comparable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(`protocol`)
-        hasher.combine(host)
-        hasher.combine(port)
+        hasher.combine(self.protocol)
+        hasher.combine(self.host)
+        hasher.combine(self.port)
     }
 
-    public static func ==(lhs: Node, rhs: Node) -> Bool {
+    public static func == (lhs: Node, rhs: Node) -> Bool {
         return lhs.protocol == rhs.protocol && lhs.host == rhs.host && lhs.port == rhs.port
     }
 }

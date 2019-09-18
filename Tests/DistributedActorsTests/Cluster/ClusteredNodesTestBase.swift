@@ -240,17 +240,18 @@ extension ClusteredNodesTestBase {
                             file: StaticString = #file, line: UInt = #line) throws {
         let testKit = self.testKit(system)
         let p = testKit.spawnTestProbe(expecting: Membership.self)
+        defer {
+            p.stop()
+        }
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
 
         let membership = try p.expectMessage()
-        guard let foundMember = membership.member(node) else {
+        guard let foundMember = membership.uniqueMember(node) else {
             throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
         }
 
-        p.stop()
-
         if foundMember.status != expectedStatus {
-            throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was \(foundMember.status)")
+            throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
         }
     }
 }

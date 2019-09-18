@@ -35,7 +35,7 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
             var protoWrite = ProtoCRDTWrite()
             protoWrite.identity = id.toProto(context: context)
             protoWrite.envelope = try data.asCRDTEnvelope(context).toProto(context: context)
-            protoWrite.replyTo = replyTo.toProto(context: context)
+            protoWrite.replyTo = try replyTo.toProto(context: context)
             proto.write = protoWrite
         case .writeDelta(let id, let delta, let replyTo):
             traceLog_Serialization("\(self)")
@@ -43,21 +43,21 @@ extension CRDT.Replicator.Message: InternalProtobufRepresentable {
             var protoWrite = ProtoCRDTWrite()
             protoWrite.identity = id.toProto(context: context)
             protoWrite.envelope = try delta.asCRDTEnvelope(context).toProto(context: context)
-            protoWrite.replyTo = replyTo.toProto(context: context)
+            protoWrite.replyTo = try replyTo.toProto(context: context)
             proto.writeDelta = protoWrite
         case .read(let id, let replyTo):
             traceLog_Serialization("\(self)")
 
             var protoRead = ProtoCRDTRead()
             protoRead.identity = id.toProto(context: context)
-            protoRead.replyTo = replyTo.toProto(context: context)
+            protoRead.replyTo = try replyTo.toProto(context: context)
             proto.read = protoRead
         case .delete(let id, let replyTo):
             traceLog_Serialization("\(self)")
 
             var protoDelete = ProtoCRDTDelete()
             protoDelete.identity = id.toProto(context: context)
-            protoDelete.replyTo = replyTo.toProto(context: context)
+            protoDelete.replyTo = try replyTo.toProto(context: context)
             proto.delete = protoDelete
         }
         return proto

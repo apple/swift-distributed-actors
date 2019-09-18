@@ -92,7 +92,7 @@ internal final class RemotePersonality<Message> {
             case .unknown:
                 return nil
             case .associated(let remoteControl):
-            self._cachedAssociationRemoteControl = remoteControl // TODO: atomically...
+                self._cachedAssociationRemoteControl = remoteControl // TODO: atomically...
                 return remoteControl
             case .tombstone:
                 return nil

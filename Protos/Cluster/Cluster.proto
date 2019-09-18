@@ -1,0 +1,48 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "ActorAddress.proto";
+
+// FIXME: this is not a 1:1 yet but shall become
+message ClusterShellMessage {
+    ClusterMembershipChange membershipChange = 1;
+}
+
+message ClusterEvent {
+    oneof event {
+        ClusterMembershipChange membershipChange = 1;
+    }
+}
+
+message ClusterMembershipChange {
+    UniqueNode node = 1;
+
+    ClusterMemberStatus fromStatus = 2;
+    ClusterMemberStatus toStatus = 3;
+}
+
+enum ClusterMemberStatus {
+    UNSPECIFIED = 0;
+    JOINING = 1;
+    UP = 2;
+    DOWN = 3;
+    LEAVING = 4;
+    REMOVED = 5;
+}

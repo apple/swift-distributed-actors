@@ -289,16 +289,9 @@ extension ClusterShellState {
             // TODO: perhaps we instead just warn and ignore this; since it should be harmless
         }
 
-        self.log.info("============================================")
-        self.log.info("membership before = \(self.membership)")
-        self.log.info("handshake = \(handshake)")
-
         guard let change = self.onMembershipChange(handshake.remoteNode, toStatus: .joining) else {
             fatalError("Attempted to mark [\(handshake.remoteNode)] .joining, but no change; has it already joined?") // TODO: make not fatal...
         }
-
-        self.log.info("change = \(change)")
-        self.log.info("membership after = \(self.membership)")
 
         func completeAssociation() -> Association.AssociatedState {
             let asm = Association.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
@@ -336,6 +329,7 @@ extension ClusterShellState {
         let association = completeAssociation()
         return AssociatedDirective(membershipChange: change, association: association, beingReplacedAssociationToTerminate: beingReplacedAssociationToTerminate)
     }
+
     struct AssociatedDirective {
         let membershipChange: MembershipChange
         let association: Association.AssociatedState
@@ -379,32 +373,29 @@ extension ClusterShellState {
     }
 
     /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
-    ///
-    /// If this is invoked on a non-leader node, the resulting actions are empty.
-    mutating func performLeaderTasks() -> [LeaderAction] {
+    mutating func tryPerformLeaderTasks() -> [LeaderAction] {
         guard self.membership.isLeader(self.selfNode) else {
-            return [] // not leader, no actions to perform
-        }
-
-        self.log.info("SEEMS IM THE LEADER \(self.selfNode)")
-
-        let joiningMembers = self.membership.members(withStatus: .joining, reachability: .reachable)
-
-        // TODO; do we really need seen tables here? Need to look at some more cases when "move to up" would be a potentially wrong decision... when really?
-        // TODO: can a seen table be a number of "every they at least know about membership in version X" -- TODO causality checking...
-        guard !joiningMembers.isEmpty else {
             return []
         }
 
         var leadershipActions: [LeaderAction] = []
-        leadershipActions.reserveCapacity(joiningMembers.count)
 
         func moveMembersUp() {
-            self.log.info("!!! LEADERSHIP DECISION TIME !!!")
+            let joiningMembers = self.membership.members(withStatus: .joining, reachability: .reachable)
+
+            // TODO; do we really need seen tables here? Need to look at some more cases when "move to up" would be a potentially wrong decision... when really?
+            // TODO: can a seen table be a number of "every they at least know about membership in version X" -- TODO causality checking...
+            guard !joiningMembers.isEmpty else {
+                return
+            }
+
             for joiningMember in joiningMembers {
                 let movingUp = MembershipChange(member: joiningMember, toStatus: .up)
                 leadershipActions.append(.moveMember(movingUp))
-                _ = self.membership.apply(movingUp) // FIXME: collect the changes
+                let change = self.membership.apply(movingUp)
+
+                // FIXME: the changes should be gossiped rather than sent directly
+                change.map { self.log.info("Leader moving member: \($0)") }
             }
         }
 

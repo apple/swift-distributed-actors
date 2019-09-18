@@ -53,21 +53,26 @@ final class MembershipTests: XCTestCase {
 
     func test_member_forNonUniqueNode() {
         var membership: Membership = [firstMember, secondMember]
-        let secondReplacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
+        var secondReplacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "2.2.2.2", port: 8228), nid: .random()), status: .up)
 
         let change = membership.join(secondReplacement.node)
         change.isReplacement.shouldBeTrue()
 
-        let mostUpToDateNodeAboutGivenNode = membership.member(self.secondMember.node)
+        membership.members(self.secondMember.node.node).count.shouldEqual(2)
+
+        let mostUpToDateNodeAboutGivenNode = membership.firstMember(self.secondMember.node.node)
         mostUpToDateNodeAboutGivenNode.shouldEqual(secondReplacement)
 
-        let nonUniqueNode = secondMember.node.node
+        let nonUniqueNode = self.secondMember.node.node
         let seconds = membership.members(nonUniqueNode)
-        seconds.shouldEqual([secondMember, secondReplacement])
-    }
-    func test_member_forNonUniqueNode_givenReplacementNodeStored() {
 
+        // the current status of members should be the following by now:
+
+        secondReplacement.status = .down
+        seconds.shouldEqual([secondReplacement, secondMember]) // first the replacement, then the (now down) previous incarnation
     }
+
+    func test_member_forNonUniqueNode_givenReplacementNodeStored() {}
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Applying changes
@@ -95,17 +100,36 @@ final class MembershipTests: XCTestCase {
         }
     }
 
-    func test_apply_memberReplacement() {
+    func test_join_memberReplacement() {
+        var membership = self.initialMembership
+
+        let replacesFirstNode = UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random())
+
+        let change = membership.join(replacesFirstNode)
+
+        change.isReplacement.shouldBeTrue()
+        change.replaced.shouldEqual(self.firstMember)
+        change.replaced!.status.shouldEqual(self.firstMember.status)
+        change.node.shouldEqual(replacesFirstNode)
+        change.toStatus.shouldEqual(.joining)
+    }
+
+    func test_apply_memberReplacement() throws {
         var membership = self.initialMembership
 
         let firstReplacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
 
-        let change = membership.join(firstReplacement.node)
-        change.isReplacement.shouldBeTrue()
-        change.replaced.shouldEqual(self.firstMember)
-        change.replaced!.status.shouldEqual(self.firstMember.status)
-        change.node.shouldEqual(firstReplacement.node)
-        change.toStatus.shouldEqual(firstReplacement.status)
+        try shouldNotThrow {
+            guard let change = membership.apply(MembershipChange(member: firstReplacement)) else {
+                throw TestError("Expected a change, but didn't get one")
+            }
+
+            change.isReplacement.shouldBeTrue()
+            change.replaced.shouldEqual(self.firstMember)
+            change.replaced!.status.shouldEqual(self.firstMember.status)
+            change.node.shouldEqual(firstReplacement.node)
+            change.toStatus.shouldEqual(firstReplacement.status)
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -180,6 +204,11 @@ final class MembershipTests: XCTestCase {
 
         let change1 = membership.mark(member.node, as: .up)
         change1.shouldNotBeNil()
+
+        // testing string output as well as field on purpose
+        // as if the fromStatus is not set we may infer it from other places; but in such change, we definitely want it in the `from`
+        change1?.fromStatus.shouldEqual(.joining)
+        change1?.toStatus.shouldEqual(.up)
         "\(change1!)".shouldContain("[joining] -> [     up]")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
@@ -187,6 +216,8 @@ final class MembershipTests: XCTestCase {
 
         let change2 = membership.mark(member.node, as: .down)
         change2.shouldNotBeNil()
+        change2?.fromStatus.shouldEqual(.up)
+        change2?.toStatus.shouldEqual(.down)
         "\(change2!)".shouldContain("[     up] -> [   down]")
 
         membership.mark(member.node, as: .joining).shouldBeNil() // can't move "back"
@@ -243,7 +274,7 @@ final class MembershipTests: XCTestCase {
         var existing = self.firstMember
         existing.status = .joining
 
-        var replacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
+        let replacement = Member(node: UniqueNode(node: Node(systemName: "System", host: "1.1.1.1", port: 7337), nid: .random()), status: .up)
 
         let change = MembershipChange(replaced: existing, by: replacement)
         change.isReplacement.shouldBeTrue()

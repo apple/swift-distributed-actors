@@ -12,18 +12,61 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import NIO // Future
 
-// FIXME: Terrible names and not sure on structure yet
-
-public protocol LeaderSelection {
+/// Leader election allows for determining a "leader" node among members.
+///
+/// Leaders can be useful to reduce the overhead and number of message round trips when making
+/// a decision involving many peers. For example, rather than have many actors vote on what we
+/// should have for lunch, we can elect a leader of the group, and have it decide today's lunch plan.
+/// It may remain the leader for an extended period of time, making selecting what to have for lunch
+/// always an coordination-free decision -- we trust that the leader always makes this decision for us.
+/// If the leader were to terminate, we could elect another one.
+///
+/// Implementations strategies can vary intensely, and may or may not need to coordinate
+/// between nodes for coming up with an election result; See the documentation of a specific
+/// implementation for exact semantics and guarantees.
+///
+/// ### Failure detection
+/// Leader election by itself does not implement not care about detecting failures; It is only tasked to select a member
+/// among the provided membership to fill the role of the leader. Failure detection is however crucial to knowing _when_
+/// to trigger an election, and this is handled by `SWIM`, which may detect a node to be unreachable or down, in reaction
+/// to which the leader election will be run again.
+///
+/// ### Split-brain and multiple leaders
+/// Be aware that leader election implementations often MAY want to allow for the existence of multiple leaders,
+/// e.g. when a partition in the cluster occurs. This is usually beneficial to _liveness_
+///
+/// ### Leadership Change Cluster Event
+/// If a new member is selected as leader, a `ClusterEvent` carrying `LeadershipChange` will be emitted.
+/// Other actors may subscribe to `system.cluster.events` in order to receive and react to such changes,
+/// e.g. if an actor should only perform its duties if it is residing on the current leader node.
+public protocol LeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
-    /// Decisions about selecting (or electing) a leader may be performed asynchronously.
-    func select(loop: EventLoop, membership: Membership) -> LeaderSelectionResult
-    // TODO: how could this run periodically;
+    /// Decisions about electing/selecting a leader may be performed asynchronously.
+    func select(context: LeaderSelectionContext, membership: Membership) -> LeaderSelectionResult
 }
 
+public struct LeaderSelectionContext {
+    public let log: Logger
+    public let loop: EventLoop
+
+    internal init<M>(_ ownerContext: ActorContext<M>) {
+        self.log = ownerContext.log
+        self.loop = ownerContext.system.eventLoopGroup.next()
+    }
+
+    internal init(log: Logger, eventLoop: EventLoop) {
+        self.log = log
+        self.loop = eventLoop
+    }
+}
+
+/// Result of running a `LeaderElection`, which may be performed asynchronously (or not).
+///
+/// A change in leadership will result in a `LeadershipChange` event being emitted in the system's cluster event stream.
 public struct LeaderSelectionResult: AsyncResult {
     public typealias Value = LeadershipChange?
     let future: EventLoopFuture<LeadershipChange?>
@@ -41,22 +84,41 @@ public struct LeaderSelectionResult: AsyncResult {
     }
 }
 
-// TODO: docs
-public struct Leadership {
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ClusterEvent: LeadershipChange
+
+/// Emitted when a change in leader is decided.
+public struct LeadershipChange: Equatable {
+    // let role: Role if this leader was of a specific role, carry the info here? same for DC?
+    let oldLeader: Member?
+    let newLeader: Member?
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Leadership
+
+/// Leadership encapsulates various `LeaderElection` strategies.
+///
+/// - SeeAlso: `LeaderElection`
+public struct Leadership {}
+
+extension Leadership {
     final class Shell {
         static let naming: ActorNaming = "leadership"
 
-        private var membership: Membership
-        private let leaderSelection: LeaderSelection
+        private var membership: Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
+        private let election: LeaderElection
 
-        init(_ leaderSelection: LeaderSelection) {
-            self.leaderSelection = leaderSelection
+        init(_ leaderSelection: LeaderElection) {
+            self.election = leaderSelection
             self.membership = .empty
         }
 
         var behavior: Behavior<ClusterEvent> {
             return .setup { context in
                 context.system.cluster.events.subscribe(context.myself)
+                // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
+                self.membership.apply(MembershipChange(node: context.system.cluster.node, fromStatus: nil, toStatus: .joining))
                 return self.ready
             }
         }
@@ -69,36 +131,42 @@ public struct Leadership {
                         return .same // nothing changed, no need to select anew
                     }
 
-                    let loop = context.system.eventLoopGroup.next()
-                    let selectionResult = self.leaderSelection.select(loop: loop, membership: self.membership)
+                    return self.runElection(context)
 
-                    // TODO: some reasonable timeout after which we drop the decision? Or really infinite patience here?
-                    return context.awaitResult(of: selectionResult, timeout: .effectivelyInfinite) {
-                        switch $0 {
-                        case .success(.some(let leadershipChange)):
-                            guard let changed = try self.membership.applyLeadershipChange(to: leadershipChange.newLeader) else {
-                                context.log.trace("The leadership change that was decided on by \(self.leaderSelection) results in no change from current leadership state.")
-                                return .same
-                            }
-                            // TODO: SubOnlyEventBus? such that only we internally can publish things? not worth it perhaps, just an idea
-                            context.system.cluster.events.publish(.leadershipChange(changed))
-                            return .same
+                case .reachabilityChange(let change):
+                    _ = self.membership.applyReachabilityChange(change)
 
-                        case .success(.none):
-                            // no change decided upon
-                            return .same
-
-                        case .failure(let err):
-                            context.log.warning("Failed to select leader... Error: \(err)")
-                            return .same
-                        }
-                    }
-
-                case .reachabilityChange:
-                    return .same
+                    return self.runElection(context)
 
                 case .leadershipChange:
                     return .ignore // we are the source of such events!
+                }
+            }
+        }
+
+        func runElection(_ context: ActorContext<ClusterEvent>) -> Behavior<ClusterEvent> {
+            let selectionContext = LeaderSelectionContext(context)
+            let selectionResult = self.election.select(context: selectionContext, membership: self.membership)
+
+            // TODO: some reasonable timeout after which we drop the decision? Or really infinite patience here?
+            return context.awaitResult(of: selectionResult, timeout: .effectivelyInfinite) {
+                switch $0 {
+                case .success(.some(let leadershipChange)):
+                    guard let changed = try self.membership.applyLeadershipChange(to: leadershipChange.newLeader) else {
+                        context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
+                        return .same
+                    }
+                    // TODO: SubOnlyEventBus? such that only we internally can publish things? not worth it perhaps, just an idea
+                    context.system.cluster.events.publish(.leadershipChange(changed))
+                    return .same
+
+                case .success(.none):
+                    // no change decided upon
+                    return .same
+
+                case .failure(let err):
+                    context.log.warning("Failed to select leader... Error: \(err)")
+                    return .same
                 }
             }
         }
@@ -106,12 +174,32 @@ public struct Leadership {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Selection strategies
+// MARK: LowestReachableMember election strategy
 
 extension Leadership {
-    /// Trivial, and quite silly leader selection method.
-    // TODO: docs
-    public struct NaiveLowestAmongReachables: LeaderSelection {
+    /// Simple strategy which does not require any additional coordination from members to select a leader.
+    ///
+    /// All `MemberStatus.joining`, `MemberStatus.up` _reachable_ members are sorted by their addresses,
+    /// and the "lowest" is selected as the leader. // TODO: to be extended to respect member roles as well
+    ///
+    /// ### Use cases
+    /// This strategy works well for non critical tasks, which nevertheless benefit from performing them more centrally
+    /// than either by all nodes at once, or by random nodes.
+    ///
+    /// ### Guarantees & discussion
+    /// - Always able to select a leader from a non-empty `Membership`.
+    ///   - Even if all members are unreachable, we always have "this member", which by definition always is reachable.
+    ///
+    /// - Does NOT guarantee leader uniqueness!
+    ///   - As the leader is decided strictly based on the known list of members and their reachability status, its
+    ///     correctness relies on this membership being "complete", i.e. if used in a partitioned cluster, where nodes `[a, b, c]`,
+    ///     all see each other as _reachable_, however view nodes `[x, y]` as _unreachable_ (as marked by e.g. SWIM failure detection),
+    ///     then this leader election will result in `a` being the leader in one side of the partition, and potentially `x` as the leader
+    ///     in the other "side" of the partition.
+    ///   - This can be advantageous -- perhaps a leader on each side should be responsible if the "side" of a partition
+    ///     should better terminate itself as it is the "smaller side of a partition" and may prefer to terminate
+    ///     rather than risk data corruption if the nodes `x, y` continued writing data.
+    public struct LowestReachableMember: LeaderElection {
         let minimumNrOfMembersToDecide: Int
 
         public init(minimumNrOfMembers: Int) {
@@ -119,36 +207,35 @@ extension Leadership {
         }
 
         // TODO: not group but context
-        public func select(loop: EventLoop, membership: Membership) -> LeaderSelectionResult {
-            // state.log.info("MEMBERS: \(self._membership)")
+        public func select(context: LeaderSelectionContext, membership: Membership) -> LeaderSelectionResult {
+            context.log.trace("Selecting leader among: \(membership)")
             var membership = membership
 
-            guard membership.count(atLeast: .joining) >= self.minimumNrOfMembersToDecide else {
+            let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
+
+            guard membersToSelectAmong.count >= self.minimumNrOfMembersToDecide else {
                 // not enough members to make a decision yet
-                pprint("NOT ENOUGH (want \(self.minimumNrOfMembersToDecide), was \(membership.count(atLeast: .joining))) membership = \(membership)")
-                return .init(loop.makeSucceededFuture(nil))
+                context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNrOfMembersToDecide)]")
+                return .init(context.loop.next().makeSucceededFuture(nil))
             }
 
             // select the leader, by lowest address
-            let leader = membership.members(atLeast: .joining, reachability: .reachable)
-                .lazy
-                .sorted {
-                    $0.node < $1.node
-                }
-                .filter { member in
-                    member.status < .leaving
-                }
+            let leader = membersToSelectAmong
+                .sorted { $0.node < $1.node }
                 .first
-
-            pprint("ENOUGH (\(self.minimumNrOfMembersToDecide) reachable) SELECT=\(leader); membership = \(membership)")
 
             // we return the change we are suggesting to take:
             let change = try! membership.applyLeadershipChange(to: leader) // try! safe, as we KNOW this member is part of membership
-
-            return .init(loop.makeSucceededFuture(change))
+            context.log.trace("Selected leader: \(leader)")
+            return .init(context.loop.next().makeSucceededFuture(change))
         }
     }
+}
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: BallotElection election strategy
+
+extension Leadership {
     // Actual election among the members    ; Members cast votes until a leader is decided.
     public struct BallotElection {
         // TODO: just placeholder; remove

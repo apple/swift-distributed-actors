@@ -71,7 +71,7 @@ extension LogCapture {
 
     public func printLogs() {
         for log in self.logs {
-            print("Captured log [\(self.label)]: [\(log.level)] \(log.message)")
+            print("Captured log [\(self.label)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)")
         }
     }
 

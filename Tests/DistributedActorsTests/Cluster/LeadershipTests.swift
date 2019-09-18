@@ -14,6 +14,7 @@
 
 @testable import DistributedActors
 import DistributedActorsTestKit
+import Logging
 import NIO
 import XCTest
 
@@ -23,38 +24,70 @@ final class LeadershipTests: XCTestCase {
     let thirdMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "3.3.3.3", port: 9119), nid: .random()), status: .up)
     let newMember = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .up)
 
+    let fakeContext = LeaderSelectionContext(log: Logger(label: "mock"), eventLoop: EmbeddedEventLoop())
+
     lazy var initialMembership: Membership = [
         firstMember, secondMember, thirdMember,
     ]
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: NaiveLowestAmongReachables
+    // MARK: LowestReachableMember
 
-    func test_NaiveLowestAmongReachables_selectLeader() throws {
-        let selection = Leadership.NaiveLowestAmongReachables(minimumNrOfMembers: 3)
+    func test_LowestReachableMember_selectLeader() throws {
+        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
         let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
 
-        let change: LeadershipChange? = try selection.select(loop: loop, membership: membership).future.wait()
+        let change: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
         change.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
     }
 
-    func test_NaiveLowestAmongReachables_notEnoughMembersToDecide() throws {
-        let selection = Leadership.NaiveLowestAmongReachables(minimumNrOfMembers: 3)
+    func test_LowestReachableMember_notEnoughMembersToDecide() throws {
+        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
         let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
         membership.remove(self.firstMember.node)
 
         // 2 members -> not enough to make decision anymore
-        let change1: LeadershipChange? = try selection.select(loop: loop, membership: membership).future.wait()
+        let change1: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
         membership.join(self.newMember.node)
 
         // 3 members again, should work
-        let change2: LeadershipChange? = try selection.select(loop: loop, membership: membership).future.wait()
+        let change2: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
         change2.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+    }
+
+    func test_LowestReachableMember_whenCurrentLeaderDown() throws {
+        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        let loop = EmbeddedEventLoop()
+
+        var membership = self.initialMembership
+        membership.join(self.newMember.node)
+
+        (try selection.select(context: self.fakeContext, membership: membership).future.wait())
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+
+        membership.mark(self.firstMember.node, as: .down)
+        (try selection.select(context: self.fakeContext, membership: membership).future.wait())
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
+    }
+
+    func test_LowestReachableMember_whenCurrentLeaderUnreachable() throws {
+        let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
+        let loop = EmbeddedEventLoop()
+
+        var membership = self.initialMembership
+        membership.join(self.newMember.node)
+
+        (try selection.select(context: self.fakeContext, membership: membership).future.wait())
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
+
+        membership.mark(self.firstMember.node, reachability: .unreachable)
+        (try selection.select(context: self.fakeContext, membership: membership).future.wait())
+            .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
 }

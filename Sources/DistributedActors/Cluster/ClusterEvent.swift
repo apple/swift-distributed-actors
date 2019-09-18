@@ -12,21 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Changes in the cluster membership state, are emitted
+/// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
 public enum ClusterEvent: Equatable {
     case leadershipChange(LeadershipChange)
     case membershipChange(MembershipChange)
     case reachabilityChange(ReachabilityChange)
-    // TODO: snapshot()?
+    // TODO: snapshot(Membership)
 }
 
-/// Emitted when a change in leader is decided.
-public struct LeadershipChange: Equatable {
-    // let role: Role if this leader was of a specific role, carry the info here? same for DC?
-    let oldLeader: Member?
-    let newLeader: Member?
-}
-
+/// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
 public struct ReachabilityChange: Equatable {
     let member: Member
 

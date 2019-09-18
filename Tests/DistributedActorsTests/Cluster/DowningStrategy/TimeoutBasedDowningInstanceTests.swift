@@ -45,14 +45,19 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         self.instance.isLeader.shouldBeTrue()
     }
 
+    // FIXME: has to be changed a bit when downing moved to subscribing to MembershipChange events
     func test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader() throws {
-        self.instance.isLeader.shouldBeFalse()
-        let directive = try self.instance.onLeaderChange(to: self.otherMember)
-        // we the node does not become the leader, the directive should be `.none`
-        guard case .none = directive else {
-            throw TestError("Expected directive to be .none")
+        try shouldNotThrow {
+            self.instance.isLeader.shouldBeFalse()
+
+            self.instance.membership.join(self.otherNode)
+            let directive = try self.instance.onLeaderChange(to: self.otherMember)
+            // we the node does not become the leader, the directive should be `.none`
+            guard case .none = directive else {
+                throw TestError("Expected directive to be .none")
+            }
+            self.instance.isLeader.shouldBeFalse()
         }
-        self.instance.isLeader.shouldBeFalse()
     }
 
     func test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership() throws {

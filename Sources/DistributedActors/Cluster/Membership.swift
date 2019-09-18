@@ -130,18 +130,21 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     ///
     /// This operation is guaranteed to return a member if it was added to the membership UNLESS the member has been `.removed`
     /// and dropped which happens only after an extended period of time. // FIXME: That period of time is not implemented
-    func member(_ node: UniqueNode) -> Member? {
+    func uniqueMember(_ node: UniqueNode) -> Member? {
         return self._members[node]
     }
 
     /// Picks "first", in terms of least progressed among its lifecycle member in presence of potentially multiple members
     /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
     /// previous node becomes immediately down.
-    func firstMember(nonUnique node: Node) -> Member? {
+    func firstMember(_ node: Node) -> Member? {
         return self._members.values.sorted(by: MemberStatus.Ordering).first(where: { $0.node.node == node })
     }
+
     func members(_ node: Node) -> [Member] {
-        return self._members.values.filter { $0.node.node == node }.sorted(by: MemberStatus.Ordering)
+        return self._members.values.filter {
+            $0.node.node == node
+        }.sorted(by: MemberStatus.Ordering)
     }
 
     /// More efficient than using `members(atLeast:)` followed by a `.count`
@@ -170,21 +173,27 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
-        return self._members.values.filter { $0.status == status && reachabilityFilter($0) }
+        return self._members.values.filter {
+            $0.status == status && reachabilityFilter($0)
+        }
     }
 
     func members(atLeast status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
-        return self._members.values.filter { status <= $0.status && reachabilityFilter($0) }
+        return self._members.values.filter {
+            status <= $0.status && reachabilityFilter($0)
+        }
     }
 
     func members(atMost status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
-        return self._members.values.filter { status >= $0.status && reachabilityFilter($0) }
+        return self._members.values.filter {
+            status >= $0.status && reachabilityFilter($0)
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -217,12 +226,12 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     func isLeader(_ member: Member) -> Bool {
         return self.isLeader(member.node)
     }
-
 }
 
 extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     public func prettyDescription(label: String) -> String {
         var res = "Membership \(label):"
+        res += "\n   LEADER: \(self.leader)"
         for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
             res += "\n   \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
@@ -242,22 +251,17 @@ extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: Membership operations, such as joining, leaving, removing
 
 extension Membership {
-
     /// Interpret and apply passed in membership change as the appropriate join/leave/down action.
+    /// Applying a new node status that becomes a "replacement" of an existing member, returns a `MembershipChange` that is a "replacement".
     ///
     /// Attempting to apply a change with regards to a member which is _not_ part of this `Membership` will return `nil`.
     ///
     /// - Returns: the resulting change that was applied to the membership; note that this may be `nil`,
     ///   if the change did not cause any actual change to the membership state (e.g. signaling a join of the same node twice).
     mutating func apply(_ change: MembershipChange) -> MembershipChange? {
-        // FIXME: MUST HANDLE REPLACEMENT IN ANY STATE!!!!!!!
         switch change.toStatus {
         case .joining:
             return self.join(change.node)
-//        case .up:
-//            // TODO: not entirely sure if we should do it like this... "should not happen"™
-//            _ = self.join(change.node)
-//            return self.mark(change.node, as: .up) // FIXME ???
         case let status:
             return self.mark(change.node, as: status)
         }
@@ -287,21 +291,20 @@ extension Membership {
         }
     }
 
-
     /// - Returns: the changed member if a the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
     mutating func applyReachabilityChange(_ change: ReachabilityChange) -> Member? {
         return self.mark(change.member.node, reachability: change.member.reachability)
     }
-
 }
+
 extension Membership {
     /// Returns the change; e.g. if we replaced a node the change `from` will be populated and perhaps a connection should
     /// be closed to that now-replaced node, since we have replaced it with a new node.
     mutating func join(_ node: UniqueNode) -> MembershipChange {
         let newMember = Member(node: node, status: .joining)
 
-        if let member = self.firstMember(nonUnique: node.node) {
+        if let member = self.firstMember(node.node) {
             // we are joining "over" an existing incarnation of a node; causing the existing node to become .down immediately
             self._members[member.node] = Member(node: member.node, status: .down)
             self._members[node] = newMember
@@ -325,7 +328,7 @@ extension Membership {
     ///
     /// If the membership not aware of this address the update is treated as a no-op.
     mutating func mark(_ node: UniqueNode, as status: MemberStatus) -> MembershipChange? {
-        if let existingExactMember = self.member(node) {
+        if let existingExactMember = self.uniqueMember(node) {
             guard existingExactMember.status < status else {
                 // this would be a "move backwards" which we do not do; membership only moves forward
                 return nil
@@ -336,7 +339,7 @@ extension Membership {
             self._members[existingExactMember.node] = updatedMember
 
             return MembershipChange(member: existingExactMember, toStatus: status)
-        } else if let beingReplacedMember = self.firstMember(nonUnique: node.node) {
+        } else if let beingReplacedMember = self.firstMember(node.node) {
             // We did not get a member by exact UniqueNode match, but we got one by Node match...
             // this means this new node that we are trying to mark is a "replacement" and the `beingReplacedNode` must be .downed!
 
@@ -427,7 +430,7 @@ extension Membership {
 
         // iterate over the original member set, and remove from the `to` set any seen members
         for member in from._members.values {
-            if let toMember = to.member(member.node) {
+            if let toMember = to.uniqueMember(member.node) {
                 to._members.removeValue(forKey: member.node)
                 if member.status != toMember.status {
                     entries.append(.init(node: member.node, fromStatus: member.status, toStatus: toMember.status))
@@ -463,7 +466,6 @@ extension MembershipDiff: CustomDebugStringConvertible {
     }
 }
 
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Errors
 
@@ -490,7 +492,7 @@ public struct MembershipChange: Equatable {
     init(member: Member, toStatus: MemberStatus? = nil) {
         self.node = member.node
         self.replaced = nil
-        self.fromStatus = nil
+        self.fromStatus = member.status
         self.toStatus = toStatus ?? member.status
     }
 

@@ -27,6 +27,7 @@ extension MembershipTests {
             ("test_member_forNonUniqueNode", test_member_forNonUniqueNode),
             ("test_member_forNonUniqueNode_givenReplacementNodeStored", test_member_forNonUniqueNode_givenReplacementNodeStored),
             ("test_apply_LeadershipChange", test_apply_LeadershipChange),
+            ("test_join_memberReplacement", test_join_memberReplacement),
             ("test_apply_memberReplacement", test_apply_memberReplacement),
             ("test_members_listing", test_members_listing),
             ("test_members_listing_filteringByReachability", test_members_listing_filteringByReachability),

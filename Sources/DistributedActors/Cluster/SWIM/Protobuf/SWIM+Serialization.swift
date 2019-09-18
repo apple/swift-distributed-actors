@@ -20,7 +20,7 @@ import Foundation
 extension SWIM.Message: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSWIMMessage
 
-    func toProto(context: ActorSerializationContext) -> ProtoSWIMMessage {
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMMessage {
         var proto = ProtoSWIMMessage()
         guard case SWIM.Message.remote(let message) = self else {
             fatalError("SWIM.Message.local should never be sent remotely.")
@@ -30,15 +30,15 @@ extension SWIM.Message: InternalProtobufRepresentable {
         case .ping(let lastKnownStatus, let replyTo, let payload):
             var ping = ProtoSWIMPing()
             ping.lastKnownStatus = lastKnownStatus.toProto(context: context)
-            ping.replyTo = replyTo.toProto(context: context)
-            ping.payload = payload.toProto(context: context)
+            ping.replyTo = try replyTo.toProto(context: context)
+            ping.payload = try payload.toProto(context: context)
             proto.ping = ping
         case .pingReq(let target, let lastKnownStatus, let replyTo, let payload):
             var pingRequest = ProtoSWIMPingRequest()
-            pingRequest.target = target.toProto(context: context)
+            pingRequest.target = try target.toProto(context: context)
             pingRequest.lastKnownStatus = lastKnownStatus.toProto(context: context)
-            pingRequest.replyTo = replyTo.toProto(context: context)
-            pingRequest.payload = payload.toProto(context: context)
+            pingRequest.replyTo = try replyTo.toProto(context: context)
+            pingRequest.payload = try payload.toProto(context: context)
             proto.pingRequest = pingRequest
         }
 
@@ -110,10 +110,10 @@ extension SWIM.Status: InternalProtobufRepresentable {
 extension SWIM.Payload: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSWIMPayload
 
-    func toProto(context: ActorSerializationContext) -> ProtoSWIMPayload {
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMPayload {
         var payload = ProtoSWIMPayload()
         if case .membership(let members) = self {
-            payload.member = members.map { $0.toProto(context: context) }
+            payload.member = try members.map { try $0.toProto(context: context) }
         }
 
         return payload
@@ -132,9 +132,9 @@ extension SWIM.Payload: InternalProtobufRepresentable {
 extension SWIM.Member: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSWIMMember
 
-    func toProto(context: ActorSerializationContext) -> ProtoSWIMMember {
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMMember {
         var proto = ProtoSWIMMember()
-        proto.address = self.ref.toProto(context: context)
+        proto.address = try self.ref.toProto(context: context)
         proto.status = self.status.toProto(context: context)
         return proto
     }
@@ -150,11 +150,11 @@ extension SWIM.Member: InternalProtobufRepresentable {
 extension SWIM.Ack: InternalProtobufRepresentable {
     typealias InternalProtobufRepresentation = ProtoSWIMAck
 
-    func toProto(context: ActorSerializationContext) -> ProtoSWIMAck {
+    func toProto(context: ActorSerializationContext) throws -> ProtoSWIMAck {
         var proto = ProtoSWIMAck()
-        proto.pinged = self.pinged.toProto(context: context)
+        proto.pinged = try self.pinged.toProto(context: context)
         proto.incarnation = self.incarnation
-        proto.payload = self.payload.toProto(context: context)
+        proto.payload = try self.payload.toProto(context: context)
         return proto
     }
 
