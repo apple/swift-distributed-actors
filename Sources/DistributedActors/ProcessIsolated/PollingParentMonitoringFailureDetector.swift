@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(iOS) || os(watchOS) || os(tvOS)
+// not supported on these operating systems
+#else
 internal final class PollingParentMonitoringFailureDetector {
     public static let name: ActorNaming = "processFailureDetector"
     public enum Message {
@@ -61,3 +64,4 @@ internal final class PollingParentMonitoringFailureDetector {
         }
     }
 }
+#endif

@@ -14,12 +14,15 @@
 
 import Foundation
 
-#if os(OSX)
+#if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
 #else
 import Glibc
 #endif
 
+#if os(iOS) || os(watchOS) || os(tvOS)
+// not supported on these operating systems
+#else
 /// Utilities to perform process management in an OS-agnostic way.
 internal enum POSIXProcessUtils {
     /// - SeeAlso: http://man7.org/linux/man-pages/man3/posix_spawn.3.html
@@ -32,7 +35,7 @@ internal enum POSIXProcessUtils {
         // pid
         var pid = pid_t()
 
-        #if os(OSX)
+        #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
         // var tid: pthread_t?
         var childFDActions: posix_spawn_file_actions_t?
         #else
@@ -62,7 +65,7 @@ internal enum POSIXProcessUtils {
         // TODO: use socket pair for failure detection rather than the current polling
 
         var taskSocketPair: [Int32] = [0, 0]
-        #if os(macOS) || os(iOS) || os(Android)
+        #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
         socketpair(AF_UNIX, SOCK_STREAM, 0, &taskSocketPair)
         #else
         socketpair(AF_UNIX, Int32(SOCK_STREAM.rawValue), 0, &taskSocketPair)
@@ -172,3 +175,4 @@ extension Array where Element == String {
         return appendPointer(self.startIndex, to: &elements)
     }
 }
+#endif

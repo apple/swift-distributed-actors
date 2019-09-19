@@ -64,6 +64,9 @@ public struct ServantProcessSupervisionStrategy {
     }
 }
 
+#if os(iOS) || os(watchOS) || os(tvOS)
+// not supported on these operating systems
+#else
 extension ProcessIsolated {
     func monitorServants() {
         let res = POSIXProcessUtils.nonBlockingWaitPID(pid: 0)
@@ -106,3 +109,4 @@ extension ProcessIsolated {
         }
     }
 }
+#endif

@@ -69,7 +69,11 @@ public enum GuardianFailureHandling {
 
     /// Immediately exit the process when an error is escalated to a guardian.
     /// Best used with `ProcessIsolated` mode.
+    #if os(iOS) || os(watchOS) || os(tvOS)
+    // not supported on these operating systems
+    #else
     case systemExit(Int)
+    #endif
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

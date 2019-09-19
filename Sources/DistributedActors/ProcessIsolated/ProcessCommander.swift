@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(iOS) || os(watchOS) || os(tvOS)
+// not supported on these operating systems
+#else
 /// EXPERIMENTAL.
 // Master (Process) and Commander (Actor): The Far Side of the World
 internal struct ProcessCommander {
@@ -84,3 +87,4 @@ extension ActorAddress {
         return try! .init(node: node, path: ActorPath._system.appending(ProcessCommander.name), incarnation: .perpetual)
     }
 }
+#endif
