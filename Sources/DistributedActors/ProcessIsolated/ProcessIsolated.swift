@@ -54,7 +54,7 @@ public class ProcessIsolated {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Master supervisor thread interactions
 
-    private let processSupervisorMailbox: ConcurrentBlockingQueue<_ProcessSupervisorMessage> = ConcurrentBlockingQueue()
+    private let processSupervisorMailbox: LinkedBlockingQueue<_ProcessSupervisorMessage> = LinkedBlockingQueue()
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Process Master and functions exposed to it
