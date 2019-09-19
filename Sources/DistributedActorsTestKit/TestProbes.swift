@@ -359,6 +359,7 @@ extension ActorTestProbe where Message: Equatable {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: TestProbes can ReceivesMessages
 
 extension ActorTestProbe: ReceivesMessages {
@@ -371,6 +372,7 @@ extension ActorTestProbe: ReceivesMessages {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: TestProbes can intercept all messages send to a Behavior
 
 public final class ProbeInterceptor<Message>: Interceptor<Message> {

@@ -378,7 +378,12 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             return self.runState
         }
 
-        let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapter(carry.message))
+        let next: Behavior<Message>
+        if let adapted = adapter(carry.message) {
+            next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, message: adapted)
+        } else {
+            next = .unhandled // TODO: could be .drop
+        }
 
         traceLog_Cell("Applied adapted message \(carry.message), becoming: \(next)")
 
@@ -654,58 +659,13 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: Message Adapters API
+    // MARK: Sub Receive
 
     var subReceives: [AnySubReceiveId: ((SubMessageCarry) throws -> Behavior<Message>, AbstractAdapter)] = [:]
 
     @usableFromInline
     override func subReceive(identifiedBy identifier: AnySubReceiveId) -> ((SubMessageCarry) throws -> Behavior<Message>)? {
         return self.subReceives[identifier]?.0
-    }
-
-    private var messageAdapterRef: ActorRefAdapter<Message>?
-    struct MessageAdapter {
-        let metaType: AnyMetaType
-        let closure: (Any) -> Message
-    }
-
-    private var messageAdapters: [MessageAdapter] = []
-
-    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
-        do {
-            let metaType = MetaType(fromType)
-            let anyAdapter: (Any) -> Message = { message in
-                guard let typedMessage = message as? From else {
-                    fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
-                        "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")
-                }
-
-                return adapt(typedMessage)
-            }
-
-            self.messageAdapters.removeAll(where: { adapter in
-                adapter.metaType.is(metaType)
-            })
-
-            self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
-
-            guard let adapterRef = self.messageAdapterRef else {
-                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)
-                let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
-                self.messageAdapterRef = ref
-
-                self._children.insert(ref) // TODO: separate adapters collection?
-                return .init(.adapter(ref))
-            }
-
-            return .init(.adapter(adapterRef))
-        } catch {
-            fatalError("""
-            Failed while creating message adapter. This should never happen, since message adapters have a unique name.
-            Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
-            Error: \(error)
-            """)
-        }
     }
 
     override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
@@ -741,6 +701,54 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             fatalError("""
             Failed while creating a sub receive with id [\(id.id)] and type [\(subType)]. This should never happen, since sub receives have unique names
             generated for them using sequential names. Maybe `ActorContext.subReceive` was accessed concurrently (which is unsafe!)?
+            Error: \(error)
+            """)
+        }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Message Adapter
+
+    private var messageAdapterRef: ActorRefAdapter<Message>?
+    struct MessageAdapter {
+        let metaType: AnyMetaType
+        let closure: (Any) -> Message?
+    }
+
+    private var messageAdapters: [MessageAdapter] = []
+
+    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+        do {
+            let metaType = MetaType(fromType)
+            let anyAdapter: (Any) -> Message? = { message in
+                guard let typedMessage = message as? From else {
+                    fatalError("messageAdapter was applied to message [\(message)] of incompatible type `\(String(reflecting: type(of: message)))` message." +
+                        "This should never happen, as at compile-time the message type should have been enforced to be `\(From.self)`.")
+                }
+
+                return adapt(typedMessage)
+            }
+
+            self.messageAdapters.removeAll(where: { adapter in
+                adapter.metaType.is(metaType)
+            })
+
+            self.messageAdapters.insert(MessageAdapter(metaType: metaType, closure: anyAdapter), at: self.messageAdapters.startIndex)
+
+            guard let adapterRef = self.messageAdapterRef else {
+                let adaptedAddress = try self.address.makeChildAddress(name: ActorNaming.adapter.makeName(&self.namingContext), incarnation: .perpetual)
+                let ref = ActorRefAdapter(self.myself, address: adaptedAddress)
+                self.messageAdapterRef = ref
+
+                self._children.insert(ref) // TODO: separate adapters collection?
+                return .init(.adapter(ref))
+            }
+
+            return .init(.adapter(adapterRef))
+        } catch {
+            fatalError("""
+            Failed while creating message adapter. This should never happen, since message adapters have a unique name.
+            Maybe `ActorContext.messageAdapter` was accessed concurrently (which is unsafe!)?
             Error: \(error)
             """)
         }

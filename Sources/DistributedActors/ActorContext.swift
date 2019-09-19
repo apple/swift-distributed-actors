@@ -383,7 +383,12 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message) -> ActorRef<From> {
+    ///
+    /// ### Dropping messages
+    /// It is possible to return `nil` as the result of an adaptation, which results in the message
+    /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
+    /// `Message`, or if not all `From` messages are of interest for this particular actor.
+    public final func messageAdapter<From>(_ adapt: @escaping (From) -> Message?) -> ActorRef<From> {
         return self.messageAdapter(from: From.self, adapt: adapt)
     }
 
@@ -393,7 +398,12 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// The returned `ActorRef` can be watched and the lifetime is bound to that of the owning actor, meaning
     /// that when the owning actor terminates, this `ActorRef` terminates as well.
-    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message) -> ActorRef<From> {
+    ///
+    /// ### Dropping messages
+    /// It is possible to return `nil` as the result of an adaptation, which results in the message
+    /// being silently dropped. This can be useful when not all messages `From` have a valid representation in
+    /// `Message`, or if not all `From` messages are of interest for this particular actor.
+    public func messageAdapter<From>(from type: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
         return undefined()
     }
 

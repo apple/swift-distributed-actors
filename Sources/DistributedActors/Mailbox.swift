@@ -271,8 +271,8 @@ internal final class Mailbox<Message> {
                 deadLetters.tell(DeadLetter(userMessage, recipient: address))
             case .closure(let carry):
                 deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.file):\(carry.line)", recipient: address))
-            case .adaptedMessage(let message):
-                deadLetters.tell(DeadLetter(message, recipient: address))
+            case .adaptedMessage(let carry):
+                deadLetters.tell(DeadLetter(carry, recipient: address))
             case .subMessage(let carry):
                 deadLetters.tell(DeadLetter(carry.message, recipient: carry.subReceiveAddress))
             }
