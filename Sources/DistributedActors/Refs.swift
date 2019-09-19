@@ -454,15 +454,15 @@ internal class Guardian {
                     _ = try! Thread {
                         system.shutdown().wait() // so we don't block anyone who sent us this signal (as we execute synchronously in the guardian)
                     }
-                #if os(iOS) || os(watchOS) || os(tvOS)
-                // not supported on these operating systems
-                #else
-                case .systemExit(let code):
-                    let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
-                    system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
-                    print(message) // TODO: to stderr
+                    #if os(iOS) || os(watchOS) || os(tvOS)
+                    // not supported on these operating systems
+                    #else
+                    case .systemExit(let code):
+                        let message = "Escalated failure from [\(ref.address)] reached top-level guardian [\(self.address.path)], exiting process (\(code))! Failure was: \(failure)"
+                        system.log.error("\(message)", metadata: ["actorPath": "\(self.address.path)"])
+                        print(message) // TODO: to stderr
 
-                    POSIXProcessUtils._exit(Int32(code))
+                        POSIXProcessUtils._exit(Int32(code))
                 #endif
                 }
 
