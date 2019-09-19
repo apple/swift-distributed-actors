@@ -12,12 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(OSX)
+#if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin.C
 #else
 import Glibc
 #endif
 
+#if os(iOS) || os(watchOS) || os(tvOS)
+// not supporte on these operating systems
+#else
 import DistributedActorsConcurrencyHelpers
 
 /// Simplifies bootstrapping multi-process same-host actor systems.
@@ -515,3 +518,4 @@ extension UniqueNode {
         return UniqueNode(node: Node(protocol: "sact", systemName: name, host: host, port: port), nid: nid)
     }
 }
+#endif

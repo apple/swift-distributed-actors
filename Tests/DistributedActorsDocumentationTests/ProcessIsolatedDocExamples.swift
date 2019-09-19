@@ -24,6 +24,9 @@ private struct Requests {}
 
 class ProcessIsolatedDocExamples {
     func x() throws {
+        #if os(iOS) || os(watchOS) || os(tvOS)
+        // feature not supported on iOS and similar, so in order to even compile on those platforms we #if it out
+        #else
         // tag::spawn_in_domain[]
         let isolated = ProcessIsolated { boot in // <1>
 
@@ -64,5 +67,6 @@ class ProcessIsolatedDocExamples {
 
         isolated.blockAndSuperviseServants() // <8>
         // end::spawn_in_domain[]
+        #endif
     }
 }
