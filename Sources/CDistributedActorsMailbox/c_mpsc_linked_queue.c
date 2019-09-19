@@ -45,13 +45,7 @@ void c_sact_mpsc_linked_queue_enqueue(CSActMPSCLinkedQueue* q, void* item) {
 void* c_sact_mpsc_linked_queue_dequeue(CSActMPSCLinkedQueue* q) {
     CSActMPSCLinkedQueueNode* node = atomic_load_explicit(&q->consumer->next, memory_order_acquire);
     if (node == NULL) {
-        if (q->consumer == atomic_load_explicit(&q->producer, memory_order_acquire)) {
-            return NULL;
-        }
-
-        do {
-            node = atomic_load_explicit(&q->consumer->next, memory_order_acquire);
-        } while (node == NULL);
+        return NULL;
     }
 
     atomic_store_explicit(&q->consumer->next, NULL, memory_order_release);
