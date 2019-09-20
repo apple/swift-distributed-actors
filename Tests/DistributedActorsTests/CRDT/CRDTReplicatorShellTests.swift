@@ -303,7 +303,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         }
         "\(gg1Remote.state)".shouldContain("/user/alpha: 1")
         gg1Remote.state[g1Remote.replicaId]!.shouldEqual(3)
-         gg1Remote.value.shouldEqual(4) // 1 + 3
+        gg1Remote.value.shouldEqual(4) // 1 + 3
 
         // Owner on remote node should have been notified
         guard case .updated(let updatedData) = try remoteOwnerP.expectMessage() else {
@@ -430,7 +430,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
             throw self.localTestKit.fail("Should be .deleted message")
         }
     }
-    
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: OperationConfirmations
 
