@@ -100,7 +100,6 @@ internal class ClusterShell {
         }
     }
 
-    // TODO: `dead` associations could be moved on to a smaller map, like an optimized Int Set or something, to keep less space
     // ~~~~~~ END OF HERE BE DRAGONS, shared concurrently modified concurrent state ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -155,7 +154,7 @@ internal class ClusterShell {
         case query(QueryMessage)
         /// Messages internally driving the state machines; timeouts, network inbound events etc.
         case inbound(InboundMessage)
-        /// Cluster events which we need to process; while we may ourselfes be the source of those events; this decouples processing them
+        /// Cluster events which we need to process; while we may ourselves be the source of those events; this decouples processing them
         case clusterEvent(ClusterEvent)
     }
 
@@ -346,6 +345,9 @@ extension ClusterShell {
                 state.membership.apply(change)
             case .reachabilityChange(let change):
                 state.onMemberReachabilityChange(change)
+            case .snapshot(let membership):
+                // ignore; we are the _source_ of all membership truth, and if we ever got a snapshot, it is meaningless
+                return .same
             }
 
             // TODO: remove or keep as trace
@@ -360,7 +362,7 @@ extension ClusterShell {
                 case .moveMember(let change):
                     for node in state.associatedNodes() {
                         // FIXME: gossip these instead since membership has changed; take a diff of the membership and gossip that diff
-                        let remoteClusterShell = context.system._resolve(context: ResolveContext<ClusterShell.Message>(address: .__cluster(on: node), system: context.system))
+                        let remoteClusterShell = context.system._resolve(context: ResolveContext<ClusterShell.Message>(address: ._cluster(on: node), system: context.system))
                         state.log.info("SENDING \(change) TO \(remoteClusterShell)")
                         remoteClusterShell.tell(.clusterEvent(.membershipChange(change)))
                     }

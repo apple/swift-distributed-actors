@@ -302,8 +302,8 @@ extension ClusterShellState {
         // Note: The following replace handling has to be done here - before we complete the association(!)
         //       As otherwise querying the associations by node would return the new one, leaving the old "replaced one" hanging (and channel not-closed).
         //
-        // if the change is a replacement of a previously associated note, i.e. the remote node died, we didn't notice yet,
-        // but a new instance was started on the same host:port and now has reached out to us to associate; we need to eject
+        // If the change is a replacement of a previously associated note, i.e. the remote node died, we didn't notice yet,
+        // but a new instance was started on the same host:port and now has reached out to us to associate. We need to eject
         // the previous "replaced" node, and mark it as down, while at the same time accepting the association from the new node.
         let beingReplacedAssociationToTerminate: Association.AssociatedState?
         if let replacedMember = change.replaced {
@@ -349,7 +349,7 @@ extension ClusterShellState {
     mutating func onLeadershipChange(change: LeadershipChange) -> LeadershipChange? {
         do {
             let appliedChange = try self.membership.applyLeadershipChange(to: change.newLeader)
-            self.log.info("Applied leadership change: \(appliedChange)")
+            self.log.info("Applied leadership change: \(reflecting: appliedChange)")
             return change // TODO: only if change actually happened
         } catch {
             self.log.warning("Leadership change failed: \(error)") // i.e. new leader was not a known member // TODO maybe always add such member then...
@@ -366,7 +366,7 @@ extension ClusterShellState {
         return self.membership.apply(MembershipChange(member: Member(node: node, status: toStatus)))
     }
 
-    /// - Returns: the changed member if a the change was a transition (unreachable -> reachable, or back),
+    /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
     mutating func onMemberReachabilityChange(_ change: ReachabilityChange) -> Member? {
         return self.membership.applyReachabilityChange(change)
@@ -395,7 +395,9 @@ extension ClusterShellState {
                 let change = self.membership.apply(movingUp)
 
                 // FIXME: the changes should be gossiped rather than sent directly
-                change.map { self.log.info("Leader moving member: \($0)") }
+                if let change = change {
+                    self.log.info("Leader moving member: \(change)")
+                }
             }
         }
 

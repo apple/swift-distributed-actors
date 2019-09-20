@@ -40,8 +40,8 @@
 /// The address consists of the following parts:
 ///
 /// ```
-/// |              node                | path              | incarnation |
-/// ( protocol | (name) | host | port ) ( [segments] name ) (   uint32  )
+/// |              node                 | path              | incarnation |
+///  (  protocol | name | host | port  ) ( [segments] name ) (  uint32   )
 /// ```
 ///
 /// For example: `sact://human-readable-name@127.0.0.1:7337/user/wallet/id-121242`.
@@ -134,7 +134,7 @@ extension ActorAddress {
     internal static let _localRoot: ActorAddress = ActorPath._root.makeLocalAddress(incarnation: .perpetual)
     internal static let _deadLetters: ActorAddress = ActorPath._deadLetters.makeLocalAddress(incarnation: .perpetual)
     internal static let _cluster: ActorAddress = ActorPath._cluster.makeLocalAddress(incarnation: .perpetual)
-    internal static func __cluster(on node: UniqueNode? = nil) -> ActorAddress {
+    internal static func _cluster(on node: UniqueNode? = nil) -> ActorAddress {
         switch node {
         case .none:
             return ._cluster
@@ -186,7 +186,7 @@ extension ActorAddress: PathRelationships {
 /// Offers arbitrary ordering for predictable ordered printing of things keyed by addresses.
 extension ActorAddress: Comparable {
     public static func < (lhs: ActorAddress, rhs: ActorAddress) -> Bool {
-        return lhs.node < lhs.node ||
+        return lhs.node < rhs.node ||
             (lhs.node == rhs.node && lhs.path < rhs.path) ||
             (lhs.node == rhs.node && lhs.path == rhs.path && lhs.incarnation < rhs.incarnation)
     }
@@ -479,7 +479,7 @@ struct ActorName {
 /// under this address, they would by that name realize that the postcard was intended for the previous tenant of the apartment,
 /// rather than being confused because they don't know you. In this scenario the "house address" is an `ActorPath` (like street name),
 /// and the `ActorAddress` is the "full intended recipient address" including not only street name, but also your friends unique name.
-public struct ActorIncarnation: Equatable, Hashable {
+public struct ActorIncarnation: Equatable, Hashable, ExpressibleByIntegerLiteral {
     let value: UInt32
 
     public init(_ value: Int) {
@@ -488,6 +488,10 @@ public struct ActorIncarnation: Equatable, Hashable {
 
     public init(_ value: UInt32) {
         self.value = value
+    }
+
+    public init(integerLiteral value: IntegerLiteralType) {
+        self.init(UInt32(value))
     }
 }
 
@@ -531,7 +535,7 @@ extension ActorIncarnation: Comparable {
 ///
 /// ### System name / human readable name
 /// The `systemName` is NOT taken into account when comparing nodes. The system name is only utilized for human readability
-/// and debugging purposes and participates neither in hashcode or equality of a `Node`, as a node specifically is meant
+/// and debugging purposes and participates neither in hashcode nor equality of a `Node`, as a node specifically is meant
 /// to represent any unique node that can live on specific host & port. System names are useful for human operators,
 /// intending to use some form of naming scheme, e.g. adopted from a cloud provider, to make it easier to map nodes in
 /// actor system logs, to other external systems. TODO: Note also node roles, which we do not have yet... those are dynamic key/value pairs paired to a unique node.

@@ -19,17 +19,17 @@ import NIO // Future
 ///
 /// Leaders can be useful to reduce the overhead and number of message round trips when making
 /// a decision involving many peers. For example, rather than have many actors vote on what we
-/// should have for lunch, we can elect a leader of the group, and have it decide today's lunch plan.
+/// should have for lunch, we can elect a leader of the group and have it decide today's lunch plan.
 /// It may remain the leader for an extended period of time, making selecting what to have for lunch
-/// always an coordination-free decision -- we trust that the leader always makes this decision for us.
+/// always a coordination-free decision. We trust that the leader always makes this decision for us.
 /// If the leader were to terminate, we could elect another one.
 ///
-/// Implementations strategies can vary intensely, and may or may not need to coordinate
-/// between nodes for coming up with an election result; See the documentation of a specific
+/// Implementations strategies can vary intensely and may or may not need to coordinate
+/// between nodes for coming up with an election result. See the documentation of a specific
 /// implementation for exact semantics and guarantees.
 ///
 /// ### Failure detection
-/// Leader election by itself does not implement not care about detecting failures; It is only tasked to select a member
+/// Leader election by itself does not implement detecting failures. It is only tasked to select a member
 /// among the provided membership to fill the role of the leader. Failure detection is however crucial to knowing _when_
 /// to trigger an election, and this is handled by `SWIM`, which may detect a node to be unreachable or down, in reaction
 /// to which the leader election will be run again.
@@ -46,7 +46,7 @@ public protocol LeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
     /// Decisions about electing/selecting a leader may be performed asynchronously.
-    func select(context: LeaderSelectionContext, membership: Membership) -> LeaderSelectionResult
+    func select(context: LeaderSelectionContext, membership: Membership) -> LeaderElectionResult
 }
 
 public struct LeaderSelectionContext {
@@ -66,8 +66,13 @@ public struct LeaderSelectionContext {
 
 /// Result of running a `LeaderElection`, which may be performed asynchronously (or not).
 ///
+/// Synchronous leader elections are usually implemented by predictably ordering the nodes, e.g. ordering them by address
+/// and picking the "lowest", which is a variant of "ranking" leader election. Asynchronous elections may involve having
+/// to reach out to the other members and them performing a "vote" about who shall become the leader. As this involves
+/// actor coordination, the result of such election is going to be provided asynchronously.
+///
 /// A change in leadership will result in a `LeadershipChange` event being emitted in the system's cluster event stream.
-public struct LeaderSelectionResult: AsyncResult {
+public struct LeaderElectionResult: AsyncResult {
     public typealias Value = LeadershipChange?
     let future: EventLoopFuture<LeadershipChange?>
 
@@ -79,8 +84,8 @@ public struct LeaderSelectionResult: AsyncResult {
         self.future.onComplete(callback)
     }
 
-    public func withTimeout(after timeout: TimeAmount) -> LeaderSelectionResult {
-        return LeaderSelectionResult(self.future.withTimeout(after: timeout))
+    public func withTimeout(after timeout: TimeAmount) -> LeaderElectionResult {
+        return LeaderElectionResult(self.future.withTimeout(after: timeout))
     }
 }
 
@@ -126,8 +131,12 @@ extension Leadership {
         private var ready: Behavior<ClusterEvent> {
             return .receive { context, event in
                 switch event {
+                case .snapshot(let membership):
+                    self.membership = membership
+                    return .same
+
                 case .membershipChange(let change):
-                    guard let actuallyChangesAnything = self.membership.apply(change) else {
+                    guard self.membership.apply(change) != nil else {
                         return .same // nothing changed, no need to select anew
                     }
 
@@ -139,7 +148,7 @@ extension Leadership {
                     return self.runElection(context)
 
                 case .leadershipChange:
-                    return .ignore // we are the source of such events!
+                    return .same // we are the source of such events!
                 }
             }
         }
@@ -148,7 +157,7 @@ extension Leadership {
             let selectionContext = LeaderSelectionContext(context)
             let selectionResult = self.election.select(context: selectionContext, membership: self.membership)
 
-            // TODO: some reasonable timeout after which we drop the decision? Or really infinite patience here?
+            // TODO: if/when we'd have some election scheme that is async, e.g. "vote" then this timeout should NOT be infinite and should be handled properly
             return context.awaitResult(of: selectionResult, timeout: .effectivelyInfinite) {
                 switch $0 {
                 case .success(.some(let leadershipChange)):
@@ -187,10 +196,14 @@ extension Leadership {
     /// than either by all nodes at once, or by random nodes.
     ///
     /// ### Guarantees & discussion
-    /// - Always able to select a leader from a non-empty `Membership`.
+    /// - Given at-least `minimumNumberOfMembersToDecide` members are present in the membership, is always able to select a leader.
     ///   - Even if all members are unreachable, we always have "this member", which by definition always is reachable.
+    /// - The `minimumNumberOfMembersToDecide` is used to delay moving members to `.up` until the cluster has at least
+    ///   the given number of nodes available. This is useful to only start clustered features or signal readiness once the cluster
+    ///   has enough nodes connected to absorb the anticipated incoming traffic (or ready from a correctness perspective, of at least
+    ///   having a few nodes to fallback to).
     ///
-    /// - Does NOT guarantee leader uniqueness!
+    /// - Does NOT guarantee global leader uniqueness!
     ///   - As the leader is decided strictly based on the known list of members and their reachability status, its
     ///     correctness relies on this membership being "complete", i.e. if used in a partitioned cluster, where nodes `[a, b, c]`,
     ///     all see each other as _reachable_, however view nodes `[x, y]` as _unreachable_ (as marked by e.g. SWIM failure detection),
@@ -200,22 +213,22 @@ extension Leadership {
     ///     should better terminate itself as it is the "smaller side of a partition" and may prefer to terminate
     ///     rather than risk data corruption if the nodes `x, y` continued writing data.
     public struct LowestReachableMember: LeaderElection {
-        let minimumNrOfMembersToDecide: Int
+        let minimumNumberOfMembersToDecide: Int
 
         public init(minimumNrOfMembers: Int) {
-            self.minimumNrOfMembersToDecide = minimumNrOfMembers
+            self.minimumNumberOfMembersToDecide = minimumNrOfMembers
         }
 
         // TODO: not group but context
-        public func select(context: LeaderSelectionContext, membership: Membership) -> LeaderSelectionResult {
+        public func select(context: LeaderSelectionContext, membership: Membership) -> LeaderElectionResult {
             context.log.trace("Selecting leader among: \(membership)")
             var membership = membership
 
             let membersToSelectAmong = membership.members(atMost: .up, reachability: .reachable)
 
-            guard membersToSelectAmong.count >= self.minimumNrOfMembersToDecide else {
+            guard membersToSelectAmong.count >= self.minimumNumberOfMembersToDecide else {
                 // not enough members to make a decision yet
-                context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNrOfMembersToDecide)]")
+                context.log.trace("Not enough members to select leader from, minimum nr of members [\(membersToSelectAmong.count)/\(self.minimumNumberOfMembersToDecide)]")
                 return .init(context.loop.next().makeSucceededFuture(nil))
             }
 
@@ -226,18 +239,8 @@ extension Leadership {
 
             // we return the change we are suggesting to take:
             let change = try! membership.applyLeadershipChange(to: leader) // try! safe, as we KNOW this member is part of membership
-            context.log.trace("Selected leader: \(leader)")
+            context.log.trace("Selected leader: \(reflecting: leader)")
             return .init(context.loop.next().makeSucceededFuture(change))
         }
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: BallotElection election strategy
-
-extension Leadership {
-    // Actual election among the members    ; Members cast votes until a leader is decided.
-    public struct BallotElection {
-        // TODO: just placeholder; remove
     }
 }

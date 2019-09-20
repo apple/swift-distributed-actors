@@ -68,8 +68,10 @@ extension ClusterShellState {
 
 extension ClusterShell {
     /// Optional "dump all messages" logging.
-    func tracelog(_ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
-                  file: String = #file, function: String = #function, line: UInt = #line) {
+    func tracelog(
+        _ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         if let level = context.system.settings.cluster.traceLogLevel {
             context.log.log(
                 level: level,
@@ -87,11 +89,11 @@ extension ClusterShell {
         var description: String {
             switch self {
             case .send(let to):
-                return "SEND(to:\(to))"
+                return "     SEND(to:\(to))"
             case .receive(let from):
-                return "RECV(from:\(from))"
+                return "     RECV(from:\(from))"
             case .receiveUnique(let from):
-                return "RECV(from:\(from))"
+                return "RECV_UNIQ(from:\(from))"
             }
         }
     }

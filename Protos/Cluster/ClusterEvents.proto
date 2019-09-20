@@ -1,0 +1,44 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the Swift Distributed Actors open source project
+//
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+option swift_prefix = "Proto";
+
+import "ActorAddress.proto";
+import "Cluster/Membership.proto";
+
+message ClusterEvent {
+    // other types of events are leadership and reachability changes,
+    // though those we do not need to send over the wire normally.
+    oneof event {
+        ClusterMembership snapshot = 1;
+        ClusterMembershipChange membershipChange = 2;
+        ClusterLeadershipChange leadershipChange = 3;
+    }
+}
+
+message ClusterMembershipChange {
+    UniqueNode node = 1;
+
+    ClusterMemberStatus fromStatus = 2;
+    ClusterMemberStatus toStatus = 3;
+}
+
+message ClusterLeadershipChange {
+    ClusterMember oldLeader = 1;
+    ClusterMember newLeader = 2;
+}

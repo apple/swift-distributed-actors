@@ -149,4 +149,30 @@ final class ActorAddressTests: XCTestCase {
         // sorting should not be impacted by the random incarnation numbers
         addresses.sorted().shouldEqual([a, b, c])
     }
+
+    func test_sortingOf_sameNode_ActorAddresses() throws {
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .perpetual)
+        let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .perpetual)
+        let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .perpetual)
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
+    }
+
+    func test_sortingOf_diffNodes_ActorAddresses() throws {
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 111, nid: NodeID(1)), incarnation: 1)
+        let b: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 222, nid: NodeID(1)), incarnation: 1)
+        let c: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 333, nid: NodeID(1)), incarnation: 1)
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
+    }
 }

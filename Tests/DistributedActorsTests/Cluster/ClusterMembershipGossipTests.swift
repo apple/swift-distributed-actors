@@ -102,15 +102,15 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNrOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
             }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNrOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
             }
             let third = self.setUpNode("third") { settings in
                 settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNrOfMembers: 3)
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
             }
 
             first.cluster.join(node: second.cluster.node.node)

@@ -14,10 +14,10 @@
 
 /// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
 public enum ClusterEvent: Equatable {
-    case leadershipChange(LeadershipChange)
+    case snapshot(Membership)
     case membershipChange(MembershipChange)
     case reachabilityChange(ReachabilityChange)
-    // TODO: snapshot(Membership)
+    case leadershipChange(LeadershipChange)
 }
 
 /// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).

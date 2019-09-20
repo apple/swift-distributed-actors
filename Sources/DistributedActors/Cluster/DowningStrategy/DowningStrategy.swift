@@ -104,6 +104,8 @@ internal struct DowningStrategyShell {
 
     func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) throws {
         switch event {
+        case .snapshot(let membership):
+            () // ignore, we don't need the full membership for decisions // TODO: or do we...
         case .leadershipChange(let change):
             let directive = try self.strategy.onLeaderChange(to: change.newLeader)
             switch directive {

@@ -410,7 +410,7 @@ internal struct SWIMShell {
 
         // ensure connection to new node ~~~
         // TODO: might need a cache in the swim shell? // actual solution being a shared concurrent hashmap...
-        // FIXME: use reasonable timeout and back off? issue #724
+        // FIXME: use reasonable timeout and back off? issue #141
         let ref = context.messageAdapter(from: ClusterShell.HandshakeResult.self) { (result: ClusterShell.HandshakeResult) in
             switch result {
             case .success(let uniqueNode):

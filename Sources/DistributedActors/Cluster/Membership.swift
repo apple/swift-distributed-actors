@@ -80,7 +80,7 @@ extension Member: CustomStringConvertible, CustomDebugStringConvertible {
 /// Leaving the cluster may be graceful or triggered by a `FailureDetector`.
 ///
 /// ### Replacement (Unique)Nodes
-/// A node (or member) is referred to as a "replacement" it is shares _the same protocol+host+address (i.e. `Node`),
+/// A node (or member) is referred to as a "replacement" if it shares _the same_ protocol+host+address (i.e. `Node`),
 /// with another member; It MAY join "over" an existing node and will immediately cause the previous node to be marked `MemberStatus.down`
 /// upon such transition. Such situations can take place when an actor system node is killed and started on the same host+port immediately,
 /// and attempts to connect to the same cluster as its previous "incarnation". Such situation is called a replacement, and by the assumption
@@ -104,7 +104,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     /// to track gracefully -- in order to tell all other nodes that those nodes are now down/leaving/removed, if a
     /// node took their place. This makes lookup by `Node` not nice, but realistically, that lookup is quite rare -- only
     /// when operator issued moves are induced e.g. "> down 1.1.1.1:3333", since operators do not care about `NodeID` most of the time.
-    private var _members: [UniqueNode: Member]
+    internal var _members: [UniqueNode: Member]
 
     // /// The `membership.log` is an optional feature that maintains the list of `n` last membership changes,
     // /// which can be used to observe and debug membership transitions.
@@ -142,31 +142,25 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     }
 
     func members(_ node: Node) -> [Member] {
-        return self._members.values.filter {
-            $0.node.node == node
-        }.sorted(by: MemberStatus.Ordering)
+        return self._members.values
+            .filter { $0.node.node == node }
+            .sorted(by: MemberStatus.Ordering)
     }
 
     /// More efficient than using `members(atLeast:)` followed by a `.count`
     func count(atLeast status: MemberStatus) -> Int {
-        return self._members.values.reduce(0) { acc, member in
-            if status <= member.status {
-                return acc + 1
-            } else {
-                return acc
-            }
-        }
+        return self._members.values
+            .lazy
+            .filter { member in status <= member.status }
+            .count
     }
 
     /// More efficient than using `members(withStatus:)` followed by a `.count`
     func count(withStatus status: MemberStatus) -> Int {
-        return self._members.values.reduce(0) { acc, member in
-            if status == member.status {
-                return acc + 1
-            } else {
-                return acc
-            }
-        }
+        return self._members.values
+            .lazy
+            .filter { member in status == member.status }
+            .count
     }
 
     func members(withStatus status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
@@ -202,14 +196,14 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     // TODO: leadership to be defined using various strategies... lowest address is akka style, though we'd also want raft-style where they elect perhaps
     /// # Leaders are not Masters
     /// Clustering, as offered by this project, is inherently master-less; yet sometimes a leader may be useful to make decisions more efficient or centralized.
-    /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest."
+    /// Leaders may be selected using various strategies, the most simple one being sorting members by their addresses and picking the "lowest".
     ///
     /// ### Leaders in partitions
     /// There CAN be multiple leaders in the same cluster, in face of cluster partitions,
     /// where certain parts of the cluster mark other groups as unreachable.
     ///
     /// Certain actions can only be performed by the "leader" of a group.
-    public private(set) var leader: Member?
+    public internal(set) var leader: Member?
 
     /// Returns a copy of the membership, though without any leaders assigned.
     var leaderless: Membership {
@@ -231,7 +225,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
 extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     public func prettyDescription(label: String) -> String {
         var res = "Membership \(label):"
-        res += "\n   LEADER: \(self.leader)"
+        res += "\n   LEADER: \(String(reflecting: self.leader))"
         for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
             res += "\n   \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
@@ -291,7 +285,7 @@ extension Membership {
         }
     }
 
-    /// - Returns: the changed member if a the change was a transition (unreachable -> reachable, or back),
+    /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
     mutating func applyReachabilityChange(_ change: ReachabilityChange) -> Member? {
         return self.mark(change.member.node, reachability: change.member.reachability)

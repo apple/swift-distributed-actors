@@ -264,10 +264,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Change membership on Down detected
 
-//    override var captureLogs: Bool {
-//        return false
-//    }
-
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {
         try shouldNotThrow {
             let (first, second) = setUpPair()
@@ -290,9 +286,9 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
                 }
 
                 try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
-//                guard selfMember.status == .down else {
-//                    throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
-//                }
+                guard selfMember.status == .down else {
+                    throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
+                }
             }
 
             // and the second node should also notice

@@ -89,12 +89,12 @@ public struct ClusterSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
-    var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNrOfMembers: 2)
+    var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)
     enum LeadershipSelectionSettings {
-        /// No automatic leader selection, you can write your own logic and issue `LeadershipChange` at will.
+        /// No automatic leader selection, you can write your own logic and issue a `LeadershipChange` `ClusterEvent` to the `system.cluster.events` event stream.
         case none
         /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
-        case lowestAddress(minNrOfMembers: Int)
+        case lowestAddress(minNumberOfMembers: Int)
 
         func make(_: ClusterSettings) -> LeaderElection? {
             switch self {
