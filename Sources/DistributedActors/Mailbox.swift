@@ -531,7 +531,7 @@ internal final class Mailbox<Message> {
     }
 
     private static func messageCount(_ status: UInt64) -> UInt64 {
-        self.activations(status) >> 2
+        return self.activations(status) >> 2
     }
 
     private static func hasSystemMessages(_ status: UInt64) -> Bool {
