@@ -367,7 +367,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretAdaptedMessage(carry: AdaptedMessageCarry) throws -> SActActorRunResult {
+    func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> SActActorRunResult {
         let maybeAdapter = self.messageAdapters.first(where: { adapter in
             adapter.metaType.isInstance(carry.message)
         })

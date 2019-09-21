@@ -12,10 +12,552 @@
 //
 //===----------------------------------------------------------------------===//
 
-import CDistributedActorsMailbox
 import DistributedActorsConcurrencyHelpers
-import Foundation
-import Logging
+
+internal enum MailboxBitMasks {
+    // Implementation notes:
+    // State should be operated on bitwise; where the specific bits signify states like the following:
+    //      0 - has system messages
+    //      1 - currently processing system messages
+    //   2-33 - user message count
+    //     34 - message count overflow (important because we increment the counter first and then check if the mailbox was already full)
+    //  35-60 - reserved
+    //     61 - mailbox is suspended and will not process any user messages
+    //     62 - terminating (or closed)
+    //     63 - closed, terminated (for sure)
+    // Activation count is special in the sense that we use it as follows, it's value being:
+    // 0 - inactive, not scheduled and no messages to process
+    // 1 - active without(!) normal messages, only system messages are to be processed
+    // n - there are (n >> 1) messages to process + system messages if LSB is set
+    //
+    // Note that this implementation allows, using one load, to know:
+    // - if the actor is running right now (so the mailbox size will be decremented shortly),
+    // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
+    // - if we need to schedule it or not since it was scheduled already etc.
+    static let activations: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0111_1111_1111_1111_1111_1111_1111_1111_1111
+
+    static let hasSystemMessages: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001
+    static let processingSystemMessages: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0010
+
+    // Implementation notes about Termination:
+    // Termination MUST first set TERMINATING and only after add the "final" CLOSED state.
+    // In other words, the only legal bit states a mailbox should observe are:
+    //  -> 0b000... alive,
+    //  -> 0b001... suspended (actor is waiting for completion of AsyncResult and will only process system messages until then),
+    //  -> 0b010... terminating,
+    //  -> 0b110... closed (also known as: "terminated", "dead")
+    //
+    // Meaning that `0b100...` is NOT legal.
+    static let suspended: UInt64 = 0b0010_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+    static let terminating: UInt64 = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+    static let closed: UInt64 = 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+
+    // user message count is stored in bits 2-61, so when incrementing or
+    // decrementing the message count, we need to add starting at bit 2
+    static let singleUserMessage: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0100
+
+    // Mask to use with XOR on the status to unset the 'has system messages' bit
+    // and set the 'is processing system messages' bit in a single atomic operation
+    static let becomeSysMsgProcessingXor: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0011
+
+    // used to unset the SUSPENDED bit by ANDing with status
+    //
+    // assume we are suspended and have some system messages and 7 user messages enqueued:
+    //      CURRENT STATUS                         0b0010000000000000000000000000000000000000000000000000000000011101
+    //      (operation)                          &
+    static let unsuspend: UInt64 = 0b1101_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111
+    //                                            --------------------------------------------------------------------
+    //                                           = 0b0000000000000000000000000000000000000000000000000000000000011101
+}
+
+internal final class Mailbox<Message> {
+    weak var shell: ActorShell<Message>?
+    let status: Atomic<UInt64> = Atomic(value: 0)
+    let userMessages: MPSCLinkedQueue<Envelope>
+    let systemMessages: MPSCLinkedQueue<SystemMessage>
+    let capacity: UInt32
+    let maxRunLength: UInt32
+    let deadLetters: ActorRef<DeadLetter>
+    let address: ActorAddress
+    let serializeAllMessages: Bool
+
+    init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+        self.shell = shell
+        self.userMessages = MPSCLinkedQueue()
+        self.systemMessages = MPSCLinkedQueue()
+        self.capacity = capacity
+        self.maxRunLength = maxRunLength
+        self.deadLetters = shell.system.deadLetters
+        self.address = shell._address
+        self.serializeAllMessages = shell.system.settings.serialization.allMessages
+    }
+
+    @inlinable
+    func sendMessage(envelope: Envelope, file: String, line: UInt) {
+        if self.serializeAllMessages {
+            var messageDescription = "[\(envelope.payload)]"
+            do {
+                if case .message(let message) = envelope.payload {
+                    messageDescription = "[\(message)]:\(type(of: message))"
+                    try self.shell?.system.serialization.verifySerializable(message: message as! Message)
+                }
+            } catch {
+                fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
+                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " +
+                    "This check was performed since `settings.serialization.allMessages` was enabled.")
+            }
+        }
+
+        func sendAndDropAsDeadLetter() {
+            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
+        }
+
+        switch self.enqueueUserMessage(envelope) {
+        case .needsScheduling:
+            traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
+            guard let shell = self.shell else {
+                traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
+                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
+                break
+            }
+            shell.dispatcher.execute(self.run)
+
+        case .alreadyScheduled:
+            traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), someone scheduled already")
+
+        case .mailboxTerminating:
+            // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
+            //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed
+            //       and we can immediately send things to dead letters then.
+            sendAndDropAsDeadLetter()
+
+        case .mailboxClosed:
+            traceLog_Mailbox(self.address.path, "is CLOSED, dropping message \(envelope)")
+            sendAndDropAsDeadLetter()
+
+        case .mailboxFull:
+            traceLog_Mailbox(self.address.path, "is full, dropping message \(envelope)")
+            sendAndDropAsDeadLetter() // TODO: "Drop" rather than DeadLetter
+        }
+    }
+
+    private func enqueueUserMessage(_ envelope: Envelope) -> EnqueueDirective {
+        let oldStatus = self.status.add(MailboxBitMasks.singleUserMessage)
+        guard Mailbox.messageCount(oldStatus) < self.capacity else {
+            // If we passed the maximum capacity of the user queue, we can't enqueue more
+            // items and have to decrement the activations count again. This is not racy,
+            // because we only process messages if the queue actually contains them (does
+            // not return NULL), so even if messages get processed concurrently, it's safe
+            // to decrement here.
+            _ = self.status.sub(1)
+            return .mailboxFull
+        }
+
+        guard !Mailbox.isTerminating(oldStatus) else {
+            _ = self.status.sub(1)
+            return .mailboxTerminating
+        }
+
+        guard !Mailbox.isClosed(oldStatus) else {
+            _ = self.status.sub(1)
+            return .mailboxClosed
+        }
+
+        // If the mailbox is not full, we insert it into the queue and return,
+        // whether this was the first activation, to signal the need to enqueue
+        // this mailbox.
+        self.userMessages.enqueue(envelope)
+
+        if Mailbox.activations(oldStatus) == 0, !Mailbox.isSuspended(oldStatus) {
+            return .needsScheduling
+        } else {
+            return .alreadyScheduled
+        }
+    }
+
+    @inlinable
+    func enqueueStart() {
+        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
+        guard oldStatus == 0 else {
+            // this method should only be called when creating a system actor
+            // and therefore the status MUST be 0
+            fatalError("!!! BUG !!! Status was \(oldStatus), expected 0.")
+        }
+        self.systemMessages.enqueue(.start)
+    }
+
+    @inlinable
+    func schedule() {
+        guard let shell = self.shell else {
+            traceLog_Mailbox(self.address.path, "has already released the actor cell, ignoring scheduling attempt")
+            return
+        }
+        shell.dispatcher.execute(self.run)
+    }
+
+    @inlinable
+    func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
+        func sendAndDropAsDeadLetter() {
+            // TODO: should deadLetters be special, since watching it is nonsense?
+            self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
+        }
+
+        switch self.enqueueSystemMessage(systemMessage) {
+        case .needsScheduling:
+            traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), scheduling for execution")
+            guard let shell = self.shell else {
+                self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
+                traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system message \(systemMessage)")
+                break
+            }
+            shell.dispatcher.execute(self.run)
+
+        case .alreadyScheduled:
+            traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), someone scheduled already")
+
+        case .mailboxTerminating:
+            traceLog_Mailbox(self.address.path, "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)")
+            sendAndDropAsDeadLetter()
+        case .mailboxClosed:
+            // not enqueued, mailbox is closed; it cannot and will not interact with any more messages.
+            //
+            // it is crucial for correctness of death watch that we drain messages to dead letters,
+            // which in turn is able to handle watch() automatically for us there;
+            // knowing that the watch() was sent to a terminating or dead actor.
+            traceLog_Mailbox(self.address.path, "Dead letter: \(systemMessage), since mailbox is CLOSED")
+            sendAndDropAsDeadLetter()
+        case .mailboxFull:
+            fatalError("Dropped system message because mailbox is full. This should never happen and is a mailbox bug, please report an issue.")
+        }
+    }
+
+    private func enqueueSystemMessage(_ systemMessage: SystemMessage) -> EnqueueDirective {
+        // The ordering of enqueue/activate calls is tremendously important here and MUST NOT be inversed.
+        //
+        // Unlike user messages, where the message count is stored, here we first enqueue and then activate.
+        // This MAY result in an enqueue into a terminating or even closed mailbox.
+        // This is only during the period of time between terminating->closed->cell-released however.
+        //
+        // We can enqueue "too much", and elements remain in the queue until we get deallocated.
+        //
+        // Note: The problem with `activate then enqueue` is that it allows for the following race condition to happen:
+        //   A0: is processing messages; before ending a run we see if any more system messages are to be processed
+        //   (A1 attempts sending message to A0)
+        //   A1: send_system_message, try_activate succeeds
+        //   A0: notices, that there's more system messages to run, so attempts to do so
+        //   !!: A1 did not yet enqueue the system message
+        //   A0: falls of a cliff, does not process the system message
+        //   A1: enqueues the system message and
+        //
+        // TODO: If we used some bits for system message queue count, we could avoid this issue... Consider this at some point perhaps
+        //
+        // TODO: Alternatively locking on system message things could be a solution... Though heavy one.
+
+        // TODO: This is not a full solution, however lessens the amount of instances in which we may enqueue to a terminating actor
+        // This additional atomic read on every system send helps to avoid enqueueing indefinitely to terminating/closed mailbox
+        // however is not strong enough guarantee to disallow that no such enqueue ever happens (status could be changed just
+        // after we check it and decide to enqueue, though then the try_activate will yield the right status so we will dead letter
+        // the message in any case -- although having enqueued the message already. Where it MAY remain until cell is deallocated,
+        // if the enqueue happened after terminated is set, but tombstone is enqueued.
+        self.systemMessages.enqueue(systemMessage)
+
+        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
+
+        if Mailbox.isTerminating(oldStatus) {
+            return .mailboxTerminating
+        } else if Mailbox.isClosed(oldStatus) {
+            return .mailboxClosed
+        } else if Mailbox.activations(oldStatus) == 0 {
+            return .needsScheduling
+        } else if !Mailbox.hasSystemMessages(oldStatus), !Mailbox.isProcessingSystemMessages(oldStatus), Mailbox.isSuspended(oldStatus) {
+            return .needsScheduling
+        } else {
+            return .alreadyScheduled
+        }
+    }
+
+    /// DANGER: Must ONLY be invoked synchronously from an aborted or closed run state.
+    /// No other messages may be enqueued concurrently; in other words the mailbox MUST be in terminating stare to enqueue the tombstone.
+    private func sendSystemTombstone() {
+        traceLog_Mailbox(self.address.path, "SEND SYSTEM TOMBSTONE")
+
+        guard let cell = self.shell else {
+            traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system tombstone")
+            return
+        }
+
+        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
+
+        guard Mailbox.isTerminating(oldStatus) else {
+            fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
+        }
+
+        self.systemMessages.enqueue(.tombstone)
+
+        // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
+        cell.dispatcher.execute(self.run)
+    }
+
+    func run() {
+        guard var shell = self.shell else {
+            traceLog_Mailbox(self.address.path, "has already stopped, ignoring run")
+            return
+        }
+
+        // Prepare failure context pointers:
+        // In case processing of a message fails, this pointer will point to the message that caused the failure
+        let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
+        failedMessagePtr.initialize(to: nil)
+        defer { failedMessagePtr.deallocate() }
+
+        let mailboxRunResult = self.doRun(shell)
+
+        // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
+        // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
+        // we could offer even more callbacks to C but that is also not quite nice...
+
+        switch mailboxRunResult {
+        case .reschedule:
+            // pending messages, and we are the one who should should reschedule
+            shell.dispatcher.execute(self.run)
+
+        case .done:
+            // No more messages to run, we are done here
+            return
+
+        case .close:
+            // termination has been set as mailbox status and we should send ourselves the .tombstone
+            // which serves as final system message after which termination will completely finish.
+            // We do this since while the mailbox was running, more messages could have been enqueued,
+            // and now we need to handle those that made it in, before the terminating status was set.
+            traceLog_Mailbox(self.address.path, "interpret CLOSE")
+            self.sendSystemTombstone() // Rest in Peace
+
+        case .closed:
+            // Meaning that the tombstone was processed and this mailbox will never again run any messages.
+            // Its actor and shell will be released, and the mailbox should also deinit; in order to vacillate this,
+            // we need to clean up any self references that we may still be holding (as we had to pass them to C).
+            // self.onTombstoneProcessedClosed()
+
+            traceLog_Mailbox(self.address.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
+        }
+    }
+
+    private func doRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
+        let status = self.setProcessingSystemMessages()
+        var processedActivations = Mailbox.hasSystemMessages(status) ? MailboxBitMasks.processingSystemMessages : 0
+        let runLength = min(Mailbox.messageCount(status), UInt64(self.maxRunLength))
+
+        // only an keep_running actor shall continue running;
+        // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
+        // TODO: rename ActorRunResult -- the mailbox run is "the run", this is more like the actors per reduction directive... need to not overload the name "run"
+        var runResult = SActActorRunResult.continueRunning // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
+        if Mailbox.isSuspended(status) {
+            runResult = .shouldSuspend
+        }
+
+        if Mailbox.hasSystemMessages(status) {
+            while runResult != .shouldStop, runResult != .closed, let message = self.systemMessages.dequeue() {
+                do {
+                    try runResult = shell.interpretSystemMessage(message: message)
+                } catch {
+                    shell.fail(error)
+                    runResult = .shouldStop
+                }
+            }
+
+            // was our run interrupted by a system message initiating a stop?
+            if runResult == .shouldStop || runResult == .closed {
+                if !Mailbox.isTerminating(status) {
+                    // avoid unnecessarily setting the terminating bit again
+                    self.setTerminating()
+                }
+
+                // Since we are terminating, and bailed out from a system run, there may be
+                // pending system messages in the queue still; we want to finish this run till they are drained.
+                //
+                // Never run user messages before draining system messages, system messages must be processed with priority,
+                // since they include setting up watch/unwatch as well as the tombstone which should be the last thing we process.
+                while let message = self.systemMessages.dequeue() {
+                    traceLog_Mailbox(shell.path, "CLOSED, yet pending system messages still made it in... draining...")
+                    // drain all messages to dead letters
+                    // this is very important since dead letters will handle any posthumous watches for us
+                    self.deadLetters.tell(DeadLetter(message, recipient: self.address))
+                }
+            }
+        }
+
+        // end of system messages run ----------------------------------------------------------------------------------
+
+        // suspension logic --------------------------------------------------------------------------------------------
+        if Mailbox.isSuspended(status) && runResult != .shouldSuspend {
+            self.resetStatusSuspended()
+        } else if !Mailbox.isSuspended(status) && runResult == .shouldSuspend {
+            self.setStatusSuspended()
+            traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
+        }
+
+        // run user messages -------------------------------------------------------------------------------------------
+
+        if runResult == .continueRunning {
+            while Mailbox.messageCount(processedActivations) < runLength, runResult == .continueRunning, let message = self.userMessages.dequeue() {
+                do {
+                    processedActivations += MailboxBitMasks.singleUserMessage
+                    switch message.payload {
+                    case .message(let _message):
+                        traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
+                        guard let message = _message as? Message else {
+                            fatalError("Received message [\(_message)]:\(type(of: _message)), expected \(Message.self)")
+                        }
+
+                        runResult = try shell.interpretMessage(message: message)
+                    case .closure(let carry):
+                        traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")
+                        runResult = try shell.interpretClosure(carry)
+                    case .adaptedMessage(let carry):
+                        traceLog_Mailbox(self.address.path, "INVOKE ADAPTED MESSAGE: \(carry.message)")
+                        runResult = try shell.interpretAdaptedMessage(carry)
+                    case .subMessage(let carry):
+                        traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier)")
+                        runResult = try shell.interpretSubMessage(carry)
+                    }
+                } catch {
+                    shell.fail(error)
+                    runResult = .shouldStop
+                }
+
+                if runResult == .shouldStop, !Mailbox.isTerminating(status) {
+                    // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
+                    self.setTerminating()
+                    traceLog_Mailbox(shell.path, "MARKED TERMINATING")
+                    break
+                } else if runResult == .shouldSuspend {
+                    self.setStatusSuspended()
+                    traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
+                    break
+                } else if Mailbox.messageCount(processedActivations) >= runLength {
+                    break
+                }
+            }
+        } else if runResult == .shouldSuspend {
+            traceLog_Mailbox(shell.path, "MAILBOX SUSPENDED, SKIPPING USER MESSAGE PROCESSING")
+        } else /* we are terminating and need to drain messages */ {
+            while let message = self.userMessages.dequeue() {
+                self.deadLetters.tell(DeadLetter(message, recipient: self.address))
+                processedActivations += MailboxBitMasks.singleUserMessage
+            }
+        }
+
+        // end of run user messages ------------------------------------------------------------------------------------
+
+        let oldStatus = self.status.sub(processedActivations)
+        let oldActivations = Mailbox.activations(oldStatus)
+
+        traceLog_Mailbox(shell.path, "Run complete...")
+
+        // issue directives to mailbox ---------------------------------------------------------------------------------
+        if runResult == .shouldStop {
+            // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
+            // as other conditions may hold, yet we really are ready to terminate immediately.
+            traceLog_Mailbox(shell.path, "Terminating...")
+            // self.setTerminating()
+            return .close
+        } else if (oldActivations > processedActivations && !Mailbox.isSuspended(oldStatus)) || Mailbox.hasSystemMessages(oldStatus) {
+            traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
+            // if we received new system messages during user message processing, or we could not process
+            // all user messages in this run, because we had more messages queued up than the maximum run
+            // length, return `Reschedule` to signal the queue should be re-scheduled
+            return .reschedule
+        } else if runResult == .closed {
+            traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
+            return .closed
+        } else {
+            traceLog_Mailbox(shell.path, "Run complete, shouldReschedule:false")
+            return .done
+        }
+    }
+
+    private enum MailboxRunResult {
+        case close
+        case closed
+        case done
+        case reschedule
+    }
+
+    private enum EnqueueDirective {
+        case needsScheduling
+        case alreadyScheduled
+        case mailboxTerminating
+        case mailboxClosed
+        case mailboxFull
+    }
+
+    // Checks if the 'has system messages' bit is set and if it is, unsets it and
+    // sets the 'is processing system messages' bit in one atomic operation. This is
+    // necessary to not race between unsetting the bit at the end of a run while
+    // another thread is enqueueing a new system message.
+    private func setProcessingSystemMessages() -> UInt64 {
+        let status = self.status.load(order: .acquire)
+        if Mailbox.hasSystemMessages(status) {
+            return self.status.xor(MailboxBitMasks.becomeSysMsgProcessingXor, order: .acq_rel)
+        }
+
+        return status
+    }
+
+    @discardableResult
+    private func setTerminating() -> UInt64 {
+        return self.status.or(MailboxBitMasks.terminating)
+    }
+
+    @discardableResult
+    func setFailed() -> UInt64 {
+        return self.setTerminating()
+    }
+
+    @discardableResult
+    func setClosed() -> UInt64 {
+        return self.status.or(MailboxBitMasks.closed)
+    }
+
+    @discardableResult
+    func setStatusSuspended() -> UInt64 {
+        return self.status.or(MailboxBitMasks.suspended)
+    }
+
+    @discardableResult
+    func resetStatusSuspended() -> UInt64 {
+        return self.status.and(MailboxBitMasks.unsuspend)
+    }
+
+    private static func messageCount(_ status: UInt64) -> UInt64 {
+        self.activations(status) >> 2
+    }
+
+    private static func hasSystemMessages(_ status: UInt64) -> Bool {
+        return (status & MailboxBitMasks.hasSystemMessages) != 0
+    }
+
+    private static func isProcessingSystemMessages(_ status: UInt64) -> Bool {
+        return (status & MailboxBitMasks.processingSystemMessages) != 0
+    }
+
+    private static func activations(_ status: UInt64) -> UInt64 {
+        return (status & MailboxBitMasks.activations)
+    }
+
+    private static func isSuspended(_ status: UInt64) -> Bool {
+        return (status & MailboxBitMasks.suspended) != 0
+    }
+
+    private static func isTerminating(_ status: UInt64) -> Bool {
+        return (status & MailboxBitMasks.terminating) != 0
+    }
+
+    private static func isClosed(_ status: UInt64) -> Bool {
+        return (status & MailboxBitMasks.closed) != 0
+    }
+}
 
 // this used to be typed according to the actor message type, but we found
 // that it added some runtime overhead when retrieving the messages from the
@@ -140,376 +682,12 @@ internal struct AdaptedMessageCarry {
     let message: Any
 }
 
-internal final class Mailbox<Message> {
-    private var mailbox: UnsafeMutablePointer<CSActMailbox>
-
-    internal let address: ActorAddress
-    private weak var shell: ActorShell<Message>?
-    internal let deadLetters: ActorRef<DeadLetter>
-
-    // Implementation note: context for closure callbacks used for C-interop
-    // They are never mutated, yet have to be `var` since passed to C (need inout semantics)
-    private var messageClosureContext: InterpretMessageClosureContext!
-    private var systemMessageClosureContext: InterpretMessageClosureContext!
-    private var deadLetterMessageClosureContext: DropMessageClosureContext!
-    private var deadLetterSystemMessageClosureContext: DropMessageClosureContext!
-
-    // Implementation note: closure callbacks passed to C-mailbox
-    private let interpretMessage: SActInterpretMessageCallback
-    private let deadLetterMessage: SActDropMessageCallback
-
-    /// If `true`, all messages should be attempted to be serialized before sending
-    private let serializeAllMessages: Bool
-    private var _run: () -> Void = {}
-
-    init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
-        #if SACT_TESTS_LEAKS
-        if shell.address.segments.first?.value == "user" {
-            _ = shell._system.userMailboxInitCounter.add(1)
-        }
-        #endif
-
-        self.mailbox = cmailbox_create(capacity, maxRunLength)
-        self.shell = shell
-        self.address = shell.address
-        self.deadLetters = shell.system.deadLetters
-
-        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
-        self.serializeAllMessages = shell.system.settings.serialization.allMessages
-
-        // We first need set the functions, in order to allow the context objects to close over self safely (and even compile)
-
-        self.interpretMessage = { ctxPtr, cellPtr, msgPtr, runPhase in
-            defer { msgPtr?.deallocate() }
-            guard let context = ctxPtr?.assumingMemoryBound(to: InterpretMessageClosureContext.self) else {
-                return .shouldStop
-            }
-
-            var shouldContinue: SActActorRunResult
-            do {
-                shouldContinue = try context.pointee.exec(cellPtr: cellPtr!, messagePtr: msgPtr!, runPhase: runPhase)
-            } catch {
-                traceLog_Mailbox(nil, "Error while processing message! Error was: [\(error)]:\(type(of: error))")
-
-                // TODO: supervision can decide to stop... we now stop always though
-                shouldContinue = context.pointee.fail(error: error) // TODO: supervision could be looped in here somehow...? fail returns the behavior to interpret etc, 2nd failure is a hard crash tho perhaps -- ktoso
-            }
-
-            return shouldContinue
-        }
-        self.deadLetterMessage = { ctxPtr, msgPtr in
-            defer { msgPtr?.deallocate() }
-            let context = ctxPtr?.assumingMemoryBound(to: DropMessageClosureContext.self)
-            do {
-                try context?.pointee.drop(with: msgPtr!)
-            } catch {
-                traceLog_Mailbox(nil, "Error while dropping message! Was: \(error) TODO supervision decisions...")
-            }
-        }
-
-        // Contexts aim to capture self.cell, but can't since we are not done initializing
-        // all self references so Swift does not allow us to write self.cell in them.
-
-        self.messageClosureContext = InterpretMessageClosureContext(exec: { cellPtr, envelopePtr, runPhase in
-            assert(runPhase == .processingUserMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
-            let shell = cellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
-            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
-            defer { envelopePtr.deinitialize(count: 1) }
-
-            let envelope = envelopePtr.pointee
-            let msg = envelope.payload
-
-            // TODO: Depends on https://github.com/apple/swift-log/issues/37
-            // let oldMetadata = Mailbox.populateLoggerMetadata(shell, from: envelope)
-            // defer { Mailbox.resetLoggerMetadata(shell, to: oldMetadata) }
-
-            switch msg {
-            case .message(let message):
-                traceLog_Mailbox(self.address.path, "INVOKE MSG: \(message)")
-                return try shell.interpretMessage(message: message as! Message)
-            case .closure(let carry):
-                traceLog_Mailbox(self.address.path, "INVOKE CLOSURE: \(String(describing: carry.function)) defined at \(carry.file):\(carry.line)")
-                return try shell.interpretClosure(carry)
-            case .adaptedMessage(let carry):
-                traceLog_Mailbox(self.address.path, "INVOKE ADAPTED MESSAGE: \(carry.message)")
-                return try shell.interpretAdaptedMessage(carry: carry)
-            case .subMessage(let carry):
-                traceLog_Mailbox(self.address.path, "INVOKE SUBMSG: \(carry.message) with identifier \(carry.identifier)")
-                return try shell.interpretSubMessage(carry)
-            }
-        }, fail: { [weak _shell = shell, path = self.address.path] error in
-            traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
-            switch _shell {
-            case .some(let shell): shell.fail(error)
-            case .none: pprint("Mailbox(\(path)) TRIED TO FAIL ON AN ALREADY DEAD CELL")
-            }
-        })
-        self.systemMessageClosureContext = InterpretMessageClosureContext(exec: { shellPtr, sysMsgPtr, runPhase in
-            assert(runPhase == .processingSystemMessages, "Expected to be in runPhase = ProcessingSystemMessages, but was not!")
-            let shell = shellPtr.assumingMemoryBound(to: ActorShell<Message>.self).pointee
-            let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
-            defer { envelopePtr.deinitialize(count: 1) }
-
-            let msg = envelopePtr.pointee
-            traceLog_Mailbox(self.address.path, "INVOKE SYSTEM MSG: \(msg)")
-            return try shell.interpretSystemMessage(message: msg)
-        }, fail: { [weak _shell = shell, path = self.address.path] error in
-            traceLog_Mailbox(_shell?.path, "FAIL THE MAILBOX")
-            switch _shell {
-            case .some(let shell): shell.fail(error)
-            case .none: pprint("\(path) TRIED TO FAIL ON AN ALREADY DEAD CELL")
-            }
-        })
-
-        self.deadLetterMessageClosureContext = DropMessageClosureContext(drop: {
-            [deadLetters = self.deadLetters, address = self.address] envelopePtr in
-            let envelopePtr = envelopePtr.assumingMemoryBound(to: Envelope.self)
-            let envelope = envelopePtr.move()
-            let wrapped = envelope.payload
-            switch wrapped {
-            case .message(let userMessage):
-                deadLetters.tell(DeadLetter(userMessage, recipient: address))
-            case .closure(let carry):
-                deadLetters.tell(DeadLetter("[\(String(describing: carry.function))]:closure defined at \(carry.file):\(carry.line)", recipient: address))
-            case .adaptedMessage(let carry):
-                deadLetters.tell(DeadLetter(carry, recipient: address))
-            case .subMessage(let carry):
-                deadLetters.tell(DeadLetter(carry.message, recipient: carry.subReceiveAddress))
-            }
-        })
-        self.deadLetterSystemMessageClosureContext = DropMessageClosureContext(drop: {
-            [deadLetters = self.deadLetters, address = self.address] sysMsgPtr in
-            let envelopePtr = sysMsgPtr.assumingMemoryBound(to: SystemMessage.self)
-            let msg = envelopePtr.move()
-            deadLetters.tell(DeadLetter(msg, recipient: address))
-        })
-
-        // cache `run`, seems to give performance benefit
-        self._run = self.run
-    }
-
-    deinit {
-        // TODO: maybe we can free the queues themselfes earlier, and only keep the status marker somehow?
-        // TODO: if Closed we know we'll never allow an enqueue ever again after all // FIXME: hard to pull off with the CMailbox...
-
-        #if SACT_TESTS_LEAKS
-
-        if self.address.segments.first?.value == "user" {
-            _ = self.deadLetters._system!.userMailboxInitCounter.sub(1)
-        }
-        #endif
-
-        // TODO: assert that no system messages in queue
-        traceLog_Mailbox(self.address.path, "Mailbox deinit")
-        cmailbox_destroy(mailbox)
-    }
-
-    @inlinable
-    func sendMessage(envelope: Envelope, file: String, line: UInt) {
-        if self.serializeAllMessages {
-            var messageDescription = "[\(envelope.payload)]"
-            do {
-                if case .message(let message) = envelope.payload {
-                    messageDescription = "[\(message)]:\(type(of: message))"
-                    try self.shell?.system.serialization.verifySerializable(message: message as! Message)
-                }
-            } catch {
-                fatalError("Serialization check failed for message \(messageDescription) sent at \(file):\(line). " +
-                    "Make sure this type has either a serializer registered OR is marked as `NoSerializationVerification`. " +
-                    "This check was performed since `settings.serialization.allMessages` was enabled.")
-            }
-        }
-
-        let ptr = UnsafeMutablePointer<Envelope>.allocate(capacity: 1)
-        ptr.initialize(to: envelope)
-
-        func sendAndDropAsDeadLetter() {
-            self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
-
-            _ = ptr.move()
-            ptr.deallocate()
-        }
-
-        switch cmailbox_send_message(self.mailbox, ptr) {
-        case .needsScheduling:
-            traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), scheduling for execution")
-            guard let shell = self.shell else {
-                traceLog_Mailbox(self.address.path, "ActorShell was released! Unable to complete sendMessage, dropping: \(envelope)")
-                self.deadLetters.tell(DeadLetter(envelope.payload, recipient: self.address, sentAtFile: file, sentAtLine: line))
-                break
-            }
-            shell.dispatcher.execute(self._run)
-
-        case .alreadyScheduled:
-            traceLog_Mailbox(self.address.path, "Enqueued message \(envelope.payload), someone scheduled already")
-
-        case .mailboxTerminating:
-            // TODO: Sanity check; we can't immediately send it to dead letters just yet since first all user messages
-            //       already enqueued must be dropped. This is done by the "tombstone run". After it mailbox becomes closed
-            //       and we can immediately send things to dead letters then.
-            sendAndDropAsDeadLetter()
-
-        case .mailboxClosed:
-            traceLog_Mailbox(self.address.path, "is CLOSED, dropping message \(envelope)")
-            sendAndDropAsDeadLetter()
-
-        case .mailboxFull:
-            traceLog_Mailbox(self.address.path, "is full, dropping message \(envelope)")
-            sendAndDropAsDeadLetter() // TODO: "Drop" rather than DeadLetter
-        }
-    }
-
-    @inlinable
-    func enqueueStart() {
-        let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
-        ptr.initialize(to: .start)
-
-        cmailbox_send_system_message(self.mailbox, ptr)
-    }
-
-    @inlinable
-    func schedule() {
-        guard let shell = self.shell else {
-            traceLog_Mailbox(self.address.path, "has already released the actor cell, ignoring scheduling attempt")
-            return
-        }
-        shell.dispatcher.execute(self._run)
-    }
-
-    @inlinable
-    func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
-        let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
-        ptr.initialize(to: systemMessage)
-
-        func sendAndDropAsDeadLetter() {
-            // TODO: should deadLetters be special, since watching it is nonsense?
-            self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
-        }
-
-        switch cmailbox_send_system_message(self.mailbox, ptr) {
-        case .needsScheduling:
-            traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), scheduling for execution")
-            guard let shell = self.shell else {
-                self.deadLetters.tell(DeadLetter(systemMessage, recipient: nil))
-                traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system message \(systemMessage)")
-                break
-            }
-            shell.dispatcher.execute(self._run)
-
-        case .alreadyScheduled:
-            traceLog_Mailbox(self.address.path, "Enqueued system message \(systemMessage), someone scheduled already")
-
-        case .mailboxTerminating:
-            traceLog_Mailbox(self.address.path, "Mailbox is terminating. This sendSystemMessage MUST be send to dead letters. System Message: \(systemMessage)")
-            sendAndDropAsDeadLetter()
-        case .mailboxClosed:
-            // not enqueued, mailbox is closed; it cannot and will not interact with any more messages.
-            //
-            // it is crucial for correctness of death watch that we drain messages to dead letters,
-            // which in turn is able to handle watch() automatically for us there;
-            // knowing that the watch() was sent to a terminating or dead actor.
-            traceLog_Mailbox(self.address.path, "Dead letter: \(systemMessage), since mailbox is CLOSED")
-            sendAndDropAsDeadLetter()
-        case .mailboxFull:
-            fatalError("Dropped system message because mailbox is full. This should never happen and is a mailbox bug, please report an issue.")
-        }
-    }
-
-    /// DANGER: Must ONLY be invoked synchronously from an aborted or closed run state.
-    /// No other messages may be enqueued concurrently; in other words the mailbox MUST be in terminating stare to enqueue the tombstone.
-    private func sendSystemTombstone() {
-        traceLog_Mailbox(self.address.path, "SEND SYSTEM TOMBSTONE")
-
-        let systemMessage: SystemMessage = .tombstone
-
-        guard let cell = self.shell else {
-            traceLog_Mailbox(self.address.path, "has already released the actor cell, dropping system tombstone \(systemMessage)")
-            return
-        }
-
-        let ptr = UnsafeMutablePointer<SystemMessage>.allocate(capacity: 1)
-        ptr.initialize(to: systemMessage)
-
-        let res = cmailbox_send_system_tombstone(self.mailbox, ptr)
-        switch res {
-        case .mailboxTerminating:
-            // Good. After all this function must only be called exactly once, exactly during the run causing the termination.
-            cell.dispatcher.execute(self._run)
-        default:
-            fatalError("!!! BUG !!! RES(\(res)) Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
-        }
-    }
-
-    @inlinable
-    func run() {
-        guard var cell = self.shell else {
-            traceLog_Mailbox(self.address.path, "has already stopped, ignoring run")
-            return
-        }
-
-        // Prepare failure context pointers:
-        // In case processing of a message fails, this pointer will point to the message that caused the failure
-        let failedMessagePtr = UnsafeMutablePointer<UnsafeMutableRawPointer?>.allocate(capacity: 1)
-        failedMessagePtr.initialize(to: nil)
-        defer { failedMessagePtr.deallocate() }
-
-        // Run the mailbox:
-        let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
-                                                                  &cell,
-                                                                  &self.messageClosureContext, &self.systemMessageClosureContext,
-                                                                  &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
-                                                                  self.interpretMessage, self.deadLetterMessage)
-
-        // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
-        // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
-        // we could offer even more callbacks to C but that is also not quite nice...
-
-        switch mailboxRunResult {
-        case .reschedule:
-            // pending messages, and we are the one who should should reschedule
-            cell.dispatcher.execute(self._run)
-
-        case .done:
-            // No more messages to run, we are done here
-            return
-
-        case .close:
-            // termination has been set as mailbox status and we should send ourselves the .tombstone
-            // which serves as final system message after which termination will completely finish.
-            // We do this since while the mailbox was running, more messages could have been enqueued,
-            // and now we need to handle those that made it in, before the terminating status was set.
-            traceLog_Mailbox(self.address.path, "interpret CLOSE")
-            self.sendSystemTombstone() // Rest in Peace
-
-        case .closed:
-            // Meaning that the tombstone was processed and this mailbox will never again run any messages.
-            // Its actor and shell will be released, and the mailbox should also deinit; in order to vacillate this,
-            // we need to clean up any self references that we may still be holding (as we had to pass them to C).
-            self.onTombstoneProcessedClosed()
-
-            traceLog_Mailbox(self.address.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
-        }
-    }
-
-    /// May only be invoked by the cell and puts the mailbox into TERMINATING state.
-    func setFailed() {
-        cmailbox_set_terminating(self.mailbox)
-        traceLog_Mailbox(self.address.path, "<<< SET_FAILED >>>")
-    }
-
-    /// May only be invoked when crossing TERMINATING->CLOSED states, only by the ActorCell.
-    func setClosed() {
-        cmailbox_set_closed(self.mailbox)
-        traceLog_Mailbox(self.address.path, "<<< SET_CLOSED >>>")
-    }
-
-    func onTombstoneProcessedClosed() {
-        self._run = {}
-        self.messageClosureContext = nil
-        self.systemMessageClosureContext = nil
-        self.deadLetterMessageClosureContext = nil
-        self.deadLetterSystemMessageClosureContext = nil
-    }
+@usableFromInline
+enum SActActorRunResult {
+    case continueRunning
+    case shouldSuspend
+    case shouldStop
+    case closed
 }
 
 internal struct MessageProcessingFailure: Error {
@@ -525,107 +703,5 @@ extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringCo
     public var debugDescription: String {
         let backtraceStr = self.backtrace.joined(separator: "\n")
         return "Actor faulted while processing message '\(self.messageDescription)':\n\(backtraceStr)"
-    }
-}
-
-// MARK: Closure contexts for interop with C-mailbox
-
-/// Wraps context for use in closures passed to C
-private struct InterpretMessageClosureContext {
-    private let _exec: (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult
-    private let _fail: (Error) -> Void
-
-    init(exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult,
-         fail: @escaping (Error) -> Void) {
-        self._exec = exec
-        self._fail = fail
-    }
-
-    @inlinable
-    func exec(cellPtr: UnsafeMutableRawPointer, messagePtr: UnsafeMutableRawPointer, runPhase: SActMailboxRunPhase) throws -> SActActorRunResult {
-        return try self._exec(cellPtr, messagePtr, runPhase)
-    }
-
-    @inlinable
-    func fail(error: Error) -> SActActorRunResult {
-        self._fail(error) // mutates ActorCell to become failed
-        return .shouldStop // TODO: cell to decide if to continue later on (supervision); cleanup how we use this return value
-    }
-}
-
-/// Wraps context for use in closures passed to C
-private struct DropMessageClosureContext {
-    private let _drop: (UnsafeMutableRawPointer) throws -> Void
-
-    init(drop: @escaping (UnsafeMutableRawPointer) throws -> Void) {
-        self._drop = drop
-    }
-
-    @inlinable
-    func drop(with ptr: UnsafeMutableRawPointer) throws {
-        return try self._drop(ptr)
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Custom string representations of C-defined enumerations
-
-/// Helper for rendering the C defined `SActMailboxRunResult` enum in human readable format
-extension SActMailboxRunResult: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .close:
-            return "MailboxRunResult.close"
-        case .closed:
-            return "MailboxRunResult.closed"
-        case .done:
-            return "MailboxRunResult.done"
-        case .reschedule:
-            return "MailboxRunResult.reschedule"
-        }
-    }
-}
-
-/// Helper for rendering the C defined `SActMailboxEnqueueResult` enum in human readable format
-extension SActMailboxEnqueueResult: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .needsScheduling:
-            return "SActMailboxEnqueueResult.needsScheduling"
-        case .alreadyScheduled:
-            return "SActMailboxEnqueueResult.alreadyScheduled"
-        case .mailboxTerminating:
-            return "SActMailboxEnqueueResult.mailboxTerminating"
-        case .mailboxClosed:
-            return "SActMailboxEnqueueResult.mailboxClosed"
-        case .mailboxFull:
-            return "SActMailboxEnqueueResult.mailboxFull"
-        }
-    }
-}
-
-/// Helper for rendering the C defined `SActActorRunResult` enum in human readable format
-extension SActActorRunResult: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .continueRunning:
-            return "ActorRunResult.continueRunning"
-        case .shouldSuspend:
-            return "ActorRunResult.shouldSuspend"
-        case .shouldStop:
-            return "ActorRunResult.shouldStop"
-        case .closed:
-            return "ActorRunResult.closed"
-        }
-    }
-}
-
-// Since the enum originates from C, we want to pretty render it more nicely
-extension SActMailboxRunPhase: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .processingUserMessages: return "MailboxRunPhase.processingUserMessages"
-        case .processingSystemMessages: return "MailboxRunPhase.processingSystemMessages"
-        }
     }
 }
