@@ -44,9 +44,11 @@ class SupervisionDocExamples {
         let context: ActorContext<String> = undefined()
 
         // tag::supervise_inline[]
-        let greeterRef = try context.spawn("greeter",
-                                           props: .supervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
-                                           greeterBehavior)
+        let greeterRef = try context.spawn(
+            "greeter",
+            props: .supervision(strategy: .restart(atMost: 2, within: .seconds(1))), // <1>
+            greeterBehavior
+        )
         // end::supervise_inline[]
         _ = greeterRef
     }
@@ -111,9 +113,11 @@ class SupervisionDocExamples {
             "Caplin": "Cucumbers",
         ]
 
-        let greeterRef = try system.spawn("favFruit",
-                                          props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
-                                          favouriteFruitBehavior(whoLikesWhat))
+        let greeterRef = try system.spawn(
+            "favFruit",
+            props: .supervision(strategy: .restart(atMost: 5, within: .seconds(1))),
+            favouriteFruitBehavior(whoLikesWhat)
+        )
 
         greeterRef.tell("Alice") // ok!
         greeterRef.tell("Boom!") // crash!

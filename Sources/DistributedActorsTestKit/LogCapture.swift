@@ -102,12 +102,14 @@ extension LogCapture {
     ///
     /// - Parameter message: can be surrounded like `*what*` to query as a "contains" rather than an == on the captured logs.
     @discardableResult
-    public func shouldContain(prefix: String? = nil,
-                              message: String? = nil,
-                              at level: Logger.Level? = nil,
-                              expectedFile: String? = nil,
-                              expectedLine: Int = -1,
-                              file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> CapturedLogMessage {
+    public func shouldContain(
+        prefix: String? = nil,
+        message: String? = nil,
+        at level: Logger.Level? = nil,
+        expectedFile: String? = nil,
+        expectedLine: Int = -1,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws -> CapturedLogMessage {
         precondition(prefix != nil || message != nil || level != nil, "At least one query parameter must be not `nil`!")
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
