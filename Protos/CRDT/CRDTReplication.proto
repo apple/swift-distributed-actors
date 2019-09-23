@@ -61,7 +61,7 @@ message CRDTWriteResult {
     enum Type {
         UNSPECIFIED = 0;
         SUCCESS = 1;
-        FAILED = 2;
+        FAILURE = 2;
     }
 
     Type type = 1;
@@ -93,7 +93,7 @@ message CRDTReadResult {
     enum Type {
         UNSPECIFIED = 0;
         SUCCESS = 1;
-        FAILED = 2;
+        FAILURE = 2;
     }
 
     Type type = 1;

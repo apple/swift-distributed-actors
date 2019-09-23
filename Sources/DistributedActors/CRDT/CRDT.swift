@@ -136,13 +136,6 @@ public enum CRDT {
         case deleted
     }
 
-    public enum OperationConsistency: Equatable {
-        case local
-        case atLeast(Int)
-        case quorum
-        case all
-    }
-
     /// Wrap around a `CvRDT` instance to associate it with an owning actor.
     public class ActorOwned<DataType: CvRDT> {
         let id: CRDT.Identity
@@ -207,8 +200,9 @@ public enum CRDT {
             let id = self.id
             let data = self.data
 
-            let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: timeout) { replyTo in
-                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, replyTo: replyTo))
+            // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
+            let writeResponse = self.owner.replicator.ask(for: WriteResult.self, timeout: .effectivelyInfinite) { replyTo in
+                .localCommand(.write(id, data.asAnyStateBasedCRDT, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             return self.owner.onWriteComplete(writeResponse) {
@@ -216,7 +210,7 @@ public enum CRDT {
                 case .success(.success):
                     self.delegate.onWriteSuccess(actorOwned: self)
                     return .success(data)
-                case .success(.failed(let error)):
+                case .success(.failure(let error)):
                     self.owner.log.warning("Failed to update \(self.id): \(error)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
                     return .failure(error) // TODO: configure if it should or not crash the actor?
@@ -231,8 +225,9 @@ public enum CRDT {
         public func read(atConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
             let id = self.id
 
-            let readResponse = self.owner.replicator.ask(for: ReadResult.self, timeout: timeout) { replyTo in
-                .localCommand(.read(id, consistency: consistency, replyTo: replyTo))
+            // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
+            let readResponse = self.owner.replicator.ask(for: ReadResult.self, timeout: .effectivelyInfinite) { replyTo in
+                .localCommand(.read(id, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             // FIXME: inspect what happens to owning actor when we throw in here
@@ -244,7 +239,7 @@ public enum CRDT {
                     }
                     self.data = data
                     return .success(data)
-                case .success(.failed(let readError)):
+                case .success(.failure(let readError)):
                     self.owner.log.warning("Failed to read(atConsistency: \(consistency), timeout: \(timeout.prettyDescription)), id: \(self.id): \(readError)",
                                            metadata: ["crdt/id": "\(self.id)"]) // TODO: structure the metadata in one place
                     return .failure(readError) // TODO: configure if it should or not crash the actor?
@@ -258,8 +253,10 @@ public enum CRDT {
 
         public func deleteFromCluster(consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<Void> {
             let id = self.id
-            let deleteResponse = self.owner.replicator.ask(for: DeleteResult.self, timeout: timeout) { replyTo in
-                .localCommand(.delete(id, consistency: consistency, replyTo: replyTo))
+
+            // TODO: think more about timeouts: https://github.com/apple/swift-distributed-actors/issues/137
+            let deleteResponse = self.owner.replicator.ask(for: DeleteResult.self, timeout: .effectivelyInfinite) { replyTo in
+                .localCommand(.delete(id, consistency: consistency, timeout: timeout, replyTo: replyTo))
             }
 
             return self.owner.onDeleteComplete(deleteResponse) {
@@ -448,5 +445,62 @@ extension CRDT {
 extension CRDT.Identity: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: OperationConsistency
+
+extension CRDT {
+    public enum OperationConsistency {
+        /// Perform operation in the local replica only.
+        case local
+        /// Perform operation in `.atLeast` replicas, including the local replica.
+        case atLeast(Int)
+        /// Perform operation in at least `n/2 + 1` replicas, where `n` is the total number of replicas in the
+        /// cluster (at the moment the operation is issued), including the local replica.
+        case quorum
+        /// Perform operation in all replicas.
+        case all
+    }
+}
+
+extension CRDT.OperationConsistency: Equatable {
+    public static func == (lhs: CRDT.OperationConsistency, rhs: CRDT.OperationConsistency) -> Bool {
+        switch (lhs, rhs) {
+        case (.local, .local):
+            return true
+        case (.atLeast(let ln), .atLeast(let rn)):
+            return ln == rn
+        case (.quorum, .quorum):
+            return true
+        case (.all, .all):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+extension CRDT.OperationConsistency {
+    public enum Error: Swift.Error {
+        case invalidNumberOfReplicasRequested(Int)
+        case insufficientReplicas(needed: Int, actual: Int)
+        case failedToFulfill
+    }
+}
+
+extension CRDT.OperationConsistency.Error: Equatable {
+    public static func == (lhs: CRDT.OperationConsistency.Error, rhs: CRDT.OperationConsistency.Error) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidNumberOfReplicasRequested(let lNum), .invalidNumberOfReplicasRequested(let rNum)):
+            return lNum == rNum
+        case (.insufficientReplicas(let lNeeded, let lActual), .insufficientReplicas(let rNeeded, let rActual)):
+            return lNeeded == rNeeded && lActual == rActual
+        case (.failedToFulfill, .failedToFulfill):
+            return true
+        default:
+            return false
+        }
     }
 }

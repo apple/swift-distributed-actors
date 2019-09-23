@@ -56,7 +56,7 @@ extension CRDT.Replicator {
 
         enum WriteDirective {
             // Return the updated full CRDT
-            case applied(_ updatedData: AnyStateBasedCRDT)
+            case applied(_ updatedData: AnyStateBasedCRDT, isNew: Bool)
 
             case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
             case unsupportedCRDT
@@ -92,7 +92,7 @@ extension CRDT.Replicator {
 
                 // TODO: check tombstone with same id
                 self.dataStore[id] = data
-                return .applied(data)
+                return .applied(data, isNew: true)
             case .some(let stored):
                 // The logic is the same for both CvRDT and delta-CRDT since input is a full CRDT:
                 // 1. validate data type
@@ -107,7 +107,7 @@ extension CRDT.Replicator {
                     stored.merge(other: input)
                     self.dataStore[id] = stored
 
-                    return .applied(stored)
+                    return .applied(stored, isNew: false)
                 case var stored as AnyDeltaCRDT:
                     guard let input = data as? AnyDeltaCRDT, input.metaType.is(stored.metaType) else {
                         return .inputAndStoredDataTypeMismatch(stored: stored.metaType)
@@ -122,7 +122,7 @@ extension CRDT.Replicator {
                     }
                     self.dataStore[id] = stored
 
-                    return .applied(stored)
+                    return .applied(stored, isNew: false)
                 default:
                     return .unsupportedCRDT
                 }

@@ -229,7 +229,7 @@ struct ProtoCRDTWriteResult {
     typealias RawValue = Int
     case unspecified // = 0
     case success // = 1
-    case failed // = 2
+    case failure // = 2
     case UNRECOGNIZED(Int)
 
     init() {
@@ -240,7 +240,7 @@ struct ProtoCRDTWriteResult {
       switch rawValue {
       case 0: self = .unspecified
       case 1: self = .success
-      case 2: self = .failed
+      case 2: self = .failure
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
@@ -249,7 +249,7 @@ struct ProtoCRDTWriteResult {
       switch self {
       case .unspecified: return 0
       case .success: return 1
-      case .failed: return 2
+      case .failure: return 2
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -268,7 +268,7 @@ extension ProtoCRDTWriteResult.TypeEnum: CaseIterable {
   static var allCases: [ProtoCRDTWriteResult.TypeEnum] = [
     .unspecified,
     .success,
-    .failed,
+    .failure,
   ]
 }
 
@@ -408,7 +408,7 @@ struct ProtoCRDTReadResult {
     typealias RawValue = Int
     case unspecified // = 0
     case success // = 1
-    case failed // = 2
+    case failure // = 2
     case UNRECOGNIZED(Int)
 
     init() {
@@ -419,7 +419,7 @@ struct ProtoCRDTReadResult {
       switch rawValue {
       case 0: self = .unspecified
       case 1: self = .success
-      case 2: self = .failed
+      case 2: self = .failure
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
@@ -428,7 +428,7 @@ struct ProtoCRDTReadResult {
       switch self {
       case .unspecified: return 0
       case .success: return 1
-      case .failed: return 2
+      case .failure: return 2
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -447,7 +447,7 @@ extension ProtoCRDTReadResult.TypeEnum: CaseIterable {
   static var allCases: [ProtoCRDTReadResult.TypeEnum] = [
     .unspecified,
     .success,
-    .failed,
+    .failure,
   ]
 }
 
@@ -891,7 +891,7 @@ extension ProtoCRDTWriteResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "SUCCESS"),
-    2: .same(proto: "FAILED"),
+    2: .same(proto: "FAILURE"),
   ]
 }
 
@@ -1091,7 +1091,7 @@ extension ProtoCRDTReadResult.TypeEnum: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
     0: .same(proto: "UNSPECIFIED"),
     1: .same(proto: "SUCCESS"),
-    2: .same(proto: "FAILED"),
+    2: .same(proto: "FAILURE"),
   ]
 }
 

@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,12 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-// ==== ------------------------------------------------------------------------------------------------------------
+import Foundation
+import NIO
 
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ReplicatorShell
 
 extension CRDT.Replicator {
-    internal struct Shell {
+    internal class Shell {
         typealias Identity = CRDT.Identity
         typealias OperationConsistency = CRDT.OperationConsistency
 
@@ -36,40 +38,76 @@ extension CRDT.Replicator {
             return self.replicator.settings
         }
 
+        private var remoteReplicators: Set<ActorRef<Message>> = []
+
         init(_ replicator: Instance) {
             self.replicator = replicator
         }
 
-        init(settings: Settings) {
+        convenience init(settings: Settings) {
             self.init(Instance(settings))
         }
 
         var behavior: Behavior<Message> {
-            return .receive { context, message in
-                switch message {
-                case .localCommand(let command):
-                    self.receiveLocalCommand(context, command: command)
-                    return .same
-                case .remoteCommand(let command):
-                    self.receiveRemoteCommand(context, command: command)
-                    return .same
+            return .setup { context in
+                // Not getting replicators listing through receptionist to prevent potential circular dependency
+                context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
+                    self.receiveClusterEvent(context, event: event)
+                })
+
+                return .receive { context, message in
+                    switch message {
+                    case .localCommand(let command):
+                        self.receiveLocalCommand(context, command: command)
+                        return .same
+                    case .remoteCommand(let command):
+                        self.receiveRemoteCommand(context, command: command)
+                        return .same
+                    }
                 }
             }
         }
 
-        // ==== ------------------------------------------------------------------------------------------------------------
+        // ==== --------------------------------------------------------------------------------------------------------
+        // MARK: Track replicators in the cluster
+
+        private func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) {
+            let makeReplicatorRef: (UniqueNode) -> ActorRef<Message> = { node in
+                let remoteReplicatorAddress = try! ActorAddress(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("replicator")]), incarnation: .perpetual)
+                let resolveContext = ResolveContext<Message>(address: remoteReplicatorAddress, system: context.system)
+                return context.system._resolve(context: resolveContext)
+            }
+
+            switch event {
+            case .membership(.memberUp(let member)):
+                if member.node != context.system.cluster.node { // exclude this (local) node
+                    let remoteReplicatorRef = makeReplicatorRef(member.node)
+                    self.remoteReplicators.insert(remoteReplicatorRef)
+                    self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+                }
+            // TODO: should be `if change.status >= .down` (see https://github.com/apple/swift-distributed-actors/pull/117/files#r324448462)
+            case .membership(.memberDown(let member)):
+                let remoteReplicatorRef = makeReplicatorRef(member.node)
+                self.remoteReplicators.remove(remoteReplicatorRef)
+                self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+            default:
+                () // ignore other events
+            }
+        }
+
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Local command
 
         private func receiveLocalCommand(_ context: ActorContext<Message>, command: LocalCommand) {
             switch command {
             case .register(let ownerRef, let id, let data, let replyTo):
                 self.handleLocalRegisterCommand(context, ownerRef: ownerRef, id: id, data: data, replyTo: replyTo)
-            case .write(let id, let data, let consistency, let replyTo):
-                self.handleLocalWriteCommand(context, id, data, consistency: consistency, replyTo: replyTo)
-            case .read(let id, let consistency, let replyTo):
-                self.handleLocalReadCommand(context, id, consistency: consistency, replyTo: replyTo)
-            case .delete(let id, let consistency, let replyTo):
-                self.handleLocalDeleteCommand(context, id, consistency: consistency, replyTo: replyTo)
+            case .write(let id, let data, let consistency, let timeout, let replyTo):
+                self.handleLocalWriteCommand(context, id, data, consistency: consistency, timeout: timeout, replyTo: replyTo)
+            case .read(let id, let consistency, let timeout, let replyTo):
+                self.handleLocalReadCommand(context, id, consistency: consistency, timeout: timeout, replyTo: replyTo)
+            case .delete(let id, let consistency, let timeout, let replyTo):
+                self.handleLocalDeleteCommand(context, id, consistency: consistency, timeout: timeout, replyTo: replyTo)
             }
         }
 
@@ -82,9 +120,9 @@ extension CRDT.Replicator {
                 case .applied:
                     replyTo?.tell(.success)
                 case .inputAndStoredDataTypeMismatch(let stored):
-                    replyTo?.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))
+                    replyTo?.tell(.failure(.inputAndStoredDataTypeMismatch(stored: stored)))
                 case .unsupportedCRDT:
-                    replyTo?.tell(.failed(.unsupportedCRDT))
+                    replyTo?.tell(.failure(.unsupportedCRDT))
                 }
             }
 
@@ -92,71 +130,262 @@ extension CRDT.Replicator {
             // owners or propagate change to the cluster (i.e., local only).
         }
 
-        private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, replyTo: ActorRef<LocalWriteResult>) {
+        private func handleLocalWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: true) {
-            case .applied(let updatedData):
-                // Propagate change to the cluster if needed
+            // `isNew` should always be false. See details in `makeRemoteWriteCommand`.
+            case .applied(let updatedData, let isNew):
                 switch consistency {
-                case .local: // We are done
+                case .local: // we are done; no need to replicate
                     replyTo.tell(.success)
+                    self.notifyOwnersOnUpdate(context, id, updatedData)
                 case .atLeast, .quorum, .all:
-                    // TODO: send update to a subset of remote replicators based on consistency then send reply
-                    // if CvRDT send full CRDT (`RemoteCommand.write`); if DeltaCRDT send data.delta (not replicator's
-                    // delta, but the received CRDT's) (`ClusterCommand.writeDelta`)
-                    // if CRDT is new locally, send full regardless if it is a DeltaCRDT. the id might be unknown to
-                    // remote replicator as well and sending just the delta would not work in that case.
-                    replyTo.tell(.success)
-                }
+                    do {
+                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
+                            // Use `data`, NOT `updatedData`, to make `RemoteCommand`!!!
+                            // We are replicating a specific change (e.g., `GCounter.increment`) made to a specific
+                            // actor-owned CRDT (represented either by `data` as a whole or `data.delta`), not the
+                            // collected changes made to the CRDT with the given `id` (represented by `updatedData`)--
+                            // that would be done with gossip.
+                            .remoteCommand(self.makeRemoteWriteCommand(context, id, data, isNewIdLocally: isNew, replyTo: $0))
+                        }
 
-                self.notifyOwnersOnUpdate(context, id, updatedData)
+                        // This uses `onResultAsync` and not `awaitResult` on purpose (see https://github.com/apple/swift-distributed-actors/pull/117#discussion_r324453628).
+                        // With `onResultAsync` we might potentially run into a race here. Suppose there is a CRDT 'g1'
+                        // and 5 nodes in the cluster:
+                        // 1. g1 is updated locally and `LocalCommand.write` is sent to the local replicator.
+                        // 2. Local replicator performs direct replication and sends `RemoteCommand` to 3 of 5 nodes ("update #1").
+                        // 3. Local replicator only receives confirmations from 2 out of 3 nodes, so the operation
+                        //    is not complete yet.
+                        // 4. g1 is updated locally again and the local replicator receives another `LocalCommand.write`.
+                        //    The local replicator repeats step 2 (i.e., "update #2"), but this time it gets all 3
+                        //    confirmations right away. Meanwhile, "update #1" is still pending on that third confirmation...
+                        //
+                        // The question then is: should we guarantee ordering for local updates such that update #2
+                        // cannot complete before #1? Can we offer the same guarantee for updates sent by other
+                        // nodes? While it might be nice to have such guarantee because it provides predictability, is
+                        // this what users expect with CRDTs in general?
+                        //
+                        // The current implementation does NOT guarantee ordering.
+                        // Opened https://github.com/apple/swift-distributed-actors/issues/136 to track in case we do in the future.
+                        //
+                        // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
+                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                            switch result {
+                            case .success:
+                                replyTo.tell(.success)
+                                self.notifyOwnersOnUpdate(context, id, updatedData)
+                            case .failure(let error):
+                                context.log.warning("Failed to write \(id) with consistency \(consistency): \(error)")
+                                throw error
+                            }
+                            return .same
+                        }
+                    } catch let error as OperationConsistency.Error {
+                        replyTo.tell(.failure(.consistencyError(error)))
+                    } catch {
+                        fatalError("Unexpected error while writing \(updatedData) to remote nodes")
+                    }
+                }
             case .inputAndStoredDataTypeMismatch(let stored):
-                replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(stored: stored)))
+                replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(stored: stored)))
             case .unsupportedCRDT:
-                replyTo.tell(.failed(.unsupportedCRDT))
+                replyTo.tell(.failure(.unsupportedCRDT))
             }
         }
 
-        private func handleLocalReadCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<LocalReadResult>) {
-            switch self.replicator.read(id) {
-            case .data(let stored):
-                switch consistency {
-                case .local:
-                    replyTo.tell(.success(stored.underlying))
-                case .atLeast, .quorum, .all:
-                    // TODO: read (RemoteCommand.read) from a subset of remote replicators based on consistency then send reply
-                    // remote replicator sends full CRDT
+        private func makeRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, isNewIdLocally: Bool, replyTo: ActorRef<RemoteWriteResult>) -> RemoteCommand {
+            // Technically, `isNewIdLocally` should always be false because all CRDTs are `ActorOwned`, and therefore
+            // must be registered (automatically done by the initializer calling `LocalCommand.register`). Since
+            // `register` writes the CRDT to the local store, the `id` must exist by the time a `LocalCommand.write` is
+            // issued. If, for whatever reasons, registration was not done on a remote node, then
+            // `RemoteCommand.writeDelta` would fail with `.missingCRDTForDelta` error, but the overall result for the
+            // direct replication might still be ok depending on the `OperationConsistency`--we send the `RemoteCommand`
+            // to all remote nodes but it might not be necessary for all of them to succeed, so a failure might potentially
+            // be compensated.
+            // See https://github.com/apple/swift-distributed-actors/pull/117#discussion_r324449127
 
-                    // TODO: local merge of all responses
-                    // TODO: write CRDT to dataStore
-                    // TODO: insert real implementation then delete this code
-                    replyTo.tell(.success(stored.underlying))
-
-                    // Notify owners about the change
-                    // TODO: this notifies owners even when the CRDT hasn't changed
-                    self.notifyOwnersOnUpdate(context, id, stored)
+            let remoteCommand: RemoteCommand
+            switch data {
+            case let data as AnyCvRDT:
+                remoteCommand = .write(id, data, replyTo: replyTo)
+            case let data as AnyDeltaCRDT:
+                if isNewIdLocally {
+                    // Send full CRDT because remote replicator probably doesn't know about this CRDT
+                    // either and sending just the delta would not work.
+                    remoteCommand = .write(id, data, replyTo: replyTo)
+                } else {
+                    // Not new, so send delta only. `delta` shouldn't be nil but we will just send the full CRDT instead.
+                    if let delta = data.delta {
+                        // Note that for `.writeDelta` to succeed, the CRDT must be registered on the remote node!!!
+                        remoteCommand = .writeDelta(id, delta: delta, replyTo: replyTo)
+                    } else {
+                        context.log.warning("The delta for \(id) is nil, which is not expected")
+                        remoteCommand = .write(id, data, replyTo: replyTo)
+                    }
                 }
-            case .notFound:
-                replyTo.tell(.failed(.notFound))
+            default: // neither AnyCvRDT nor AnyDeltaCRDT
+                fatalError("Cannot replicate to remote nodes. Unknown data type: \(data)")
+            }
+            return remoteCommand
+        }
+
+        private func handleLocalReadCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalReadResult>) {
+            switch consistency {
+            case .local: // doesn't rely on remote members at all
+                switch self.replicator.read(id) {
+                case .data(let stored):
+                    replyTo.tell(.success(stored.underlying))
+                // No need to notify owners since it's a read-only operation
+                case .notFound:
+                    replyTo.tell(.failure(.notFound))
+                }
+            case .atLeast, .quorum, .all:
+                let localConfirmed: Bool
+                switch self.replicator.read(id) {
+                case .data:
+                    localConfirmed = true
+                case .notFound:
+                    // Not found locally but we can make it up by reading from an additional remote member
+                    localConfirmed = false
+                }
+
+                do {
+                    // swiftformat:disable indent unusedArguments wrapArguments
+                    let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
+                        isSuccessful: {
+                            // TODO: is there a way to not use if-else?
+                            if case .success = $0 {
+                                return true
+                            } else {
+                                return false
+                            }
+                        }
+                    ) {
+                        .remoteCommand(.read(id, replyTo: $0))
+                    }
+                    // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
+                    context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                        switch result {
+                        case .success(let remoteResults):
+                            // We've read from the remote replicators, now merge their versions of the CRDT to local
+                            for (_, remoteReadResult) in remoteResults {
+                                guard case .success(let data) = remoteReadResult else {
+                                    fatalError("Remote results should contain .success value only")
+                                }
+                                guard case .applied = self.replicator.write(id, data) else {
+                                    fatalError("Failed to update \(id) locally with remote data \(remoteReadResult)")
+                                }
+                            }
+
+                            // Read the updated CRDT from the local data store
+                            guard case .data(let updatedData) = self.replicator.read(id) else {
+                                fatalError("Expected \(id) to be found locally but it is not")
+                            }
+
+                            replyTo.tell(.success(updatedData.underlying))
+                            // Notify owners since the CRDT might have been updated
+                            // TODO: this notifies owners even when the CRDT hasn't changed
+                            self.notifyOwnersOnUpdate(context, id, updatedData)
+                        case .failure(let error):
+                            context.log.warning("Failed to read \(id) with consistency \(consistency): \(error)")
+                            throw error
+                        }
+                        return .same
+                    }
+                } catch let error as OperationConsistency.Error {
+                    replyTo.tell(.failure(.consistencyError(error)))
+                } catch {
+                    fatalError("Unexpected error while reading \(id) from remote nodes")
+                }
             }
         }
 
-        private func handleLocalDeleteCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<LocalDeleteResult>) {
+        private func handleLocalDeleteCommand(_ context: ActorContext<Message>, _ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<LocalDeleteResult>) {
             switch self.replicator.delete(id) {
             case .applied:
-                // Propagate change to the cluster if needed
                 switch consistency {
-                case .local:
+                case .local: // we are done; no need to replicate
                     replyTo.tell(.success)
+                    self.notifyOwnersOnDelete(context, id)
                 case .atLeast, .quorum, .all:
-                    // TODO: send delete (RemoteCommand.delete) to a subset of remote replicators based on consistency then send reply
-                    replyTo.tell(.success)
+                    do {
+                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
+                            .remoteCommand(.delete(id, replyTo: $0))
+                        }
+                        // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
+                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                            switch result {
+                            case .success:
+                                replyTo.tell(.success)
+                                self.notifyOwnersOnDelete(context, id)
+                            case .failure(let error):
+                                context.log.warning("Failed to delete \(id) with consistency \(consistency): \(error)")
+                                throw error
+                            }
+                            return .same
+                        }
+                    } catch let error as OperationConsistency.Error {
+                        replyTo.tell(.failure(.consistencyError(error)))
+                    } catch {
+                        fatalError("Unexpected error while deleting \(id) on remote nodes")
+                    }
                 }
-
-                self.notifyOwnersOnDelete(context, id)
             }
         }
 
-        // ==== ------------------------------------------------------------------------------------------------------------
+        private func performOnRemoteMembers<RemoteCommandResult>(_ context: ActorContext<Message>,
+                                                                 for id: CRDT.Identity,
+                                                                 with consistency: OperationConsistency,
+                                                                 localConfirmed: Bool = true,
+                                                                 isSuccessful: @escaping (RemoteCommandResult) -> Bool,
+                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopPromise<[ActorRef<Message>: RemoteCommandResult]> {
+            let promise = context.system.eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
+
+            // Determine the number of successful responses needed to satisfy consistency requirement.
+            // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
+            // requirement succeeds as long as this threshold is met.
+            var execution = try OperationExecution<RemoteCommandResult>(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
+
+            // It's possible for operation to be fulfilled without actually calling remote members.
+            // e.g., when consistency = .atLeast(1) and localConfirmed = true
+            if execution.fulfilled {
+                promise.succeed(execution.remoteConfirmationsReceived) // empty
+                return promise
+            }
+
+            // Send `RemoteCommand` to every remote replicator and wait for as many successful responses as needed
+            for remoteReplicator: ActorRef<Message> in self.remoteReplicators {
+                let remoteCommandResult = remoteReplicator.ask(for: RemoteCommandResult.self, timeout: .effectivelyInfinite, makeRemoteCommand)
+
+                context.onResultAsync(of: remoteCommandResult, timeout: .effectivelyInfinite) { result in
+                    switch result {
+                    case .success(let remoteCommandResult):
+                        if isSuccessful(remoteCommandResult) {
+                            execution.confirm(from: remoteReplicator, result: remoteCommandResult)
+                        } else {
+                            context.log.warning("Operation failed for \(id) at \(remoteReplicator): \(remoteCommandResult)")
+                            execution.failed(at: remoteReplicator)
+                        }
+                    case .failure(let error):
+                        context.log.warning("Operation failed for \(id) at \(remoteReplicator): \(error)")
+                        execution.failed(at: remoteReplicator)
+                    }
+
+                    // Check if we can mark promise succeed/fail
+                    if execution.fulfilled {
+                        promise.succeed(execution.remoteConfirmationsReceived)
+                    } else if execution.failed {
+                        promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
+                    }
+
+                    return .same
+                }
+            }
+
+            return promise
+        }
+
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Remote command
 
         private func receiveRemoteCommand(_ context: ActorContext<Message>, command: RemoteCommand) {
@@ -178,13 +407,13 @@ extension CRDT.Replicator {
 
         private func handleRemoteWriteCommand(_ context: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT, replyTo: ActorRef<RemoteWriteResult>) {
             switch self.replicator.write(id, data, deltaMerge: false) {
-            case .applied(let updatedData):
+            case .applied(let updatedData, _):
                 replyTo.tell(.success)
                 self.notifyOwnersOnUpdate(context, id, updatedData)
             case .inputAndStoredDataTypeMismatch(let stored):
-                replyTo.tell(.failed(.inputAndStoredDataTypeMismatch(hint: "\(stored)")))
+                replyTo.tell(.failure(.inputAndStoredDataTypeMismatch(hint: "\(stored)")))
             case .unsupportedCRDT:
-                replyTo.tell(.failed(.unsupportedCRDT))
+                replyTo.tell(.failure(.unsupportedCRDT))
             }
         }
 
@@ -194,11 +423,11 @@ extension CRDT.Replicator {
                 replyTo.tell(.success)
                 self.notifyOwnersOnUpdate(context, id, updatedData)
             case .missingCRDTForDelta:
-                replyTo.tell(.failed(.missingCRDTForDelta))
+                replyTo.tell(.failure(.missingCRDTForDelta))
             case .incorrectDeltaType(let expected):
-                replyTo.tell(.failed(.incorrectDeltaType(hint: "\(expected)")))
+                replyTo.tell(.failure(.incorrectDeltaType(hint: "\(expected)")))
             case .cannotWriteDeltaForNonDeltaCRDT:
-                replyTo.tell(.failed(.cannotWriteDeltaForNonDeltaCRDT))
+                replyTo.tell(.failure(.cannotWriteDeltaForNonDeltaCRDT))
             }
         }
 
@@ -208,7 +437,7 @@ extension CRDT.Replicator {
                 // Send full CRDT back
                 replyTo.tell(.success(stored))
             case .notFound:
-                replyTo.tell(.failed(.notFound))
+                replyTo.tell(.failure(.notFound))
             }
 
             // Read-only command; nothing has changed so no need to notify anyone
@@ -222,7 +451,7 @@ extension CRDT.Replicator {
             }
         }
 
-        // ==== ------------------------------------------------------------------------------------------------------------
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Notify owners
 
         private func notifyOwnersOnUpdate(_: ActorContext<Message>, _ id: Identity, _ data: AnyStateBasedCRDT) {
@@ -240,6 +469,71 @@ extension CRDT.Replicator {
                     owner.tell(.deleted)
                 }
             }
+        }
+    }
+}
+
+extension CRDT.Replicator {
+    /// Track execution of an operation by tallying confirmations and failures received. "Confirm" implies successful
+    /// execution of the operation in a replica. The number of confirmations needed is derived based on `OperationConsistency`,
+    /// the number of members involved, and whether or not the operation has succeeded in the local replica. The number
+    /// of failures allowed is the difference between this and the total remote members count.
+    ///
+    /// An operation is "fulfilled" when the number of received confirmations reaches or goes beyond what is required.
+    /// An operation has failed if the failures count is greater than what is allowed.
+    ///
+    /// It is the responsibility of the caller to decide if the operation must succeed in the local replica or not
+    /// (e.g., it might be ok for `read` because we can make it up by reading from an additional remote member).
+    internal struct OperationExecution<Result> {
+        let remoteConfirmationsNeeded: Int
+        var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
+
+        let remoteFailuresAllowed: Int
+        var remoteFailuresCount: Int = 0
+
+        var fulfilled: Bool {
+            return self.remoteConfirmationsReceived.count >= self.remoteConfirmationsNeeded // >= rather than == is deliberate
+        }
+
+        var failed: Bool {
+            return self.remoteFailuresCount > self.remoteFailuresAllowed
+        }
+
+        init(with consistency: CRDT.OperationConsistency, remoteMembersCount: Int, localConfirmed: Bool) throws {
+            let membersCount = remoteMembersCount + 1 // + 1 for local
+
+            switch consistency {
+            case .local: // doesn't need any remote confirmation
+                self.remoteConfirmationsNeeded = 0
+                self.remoteFailuresAllowed = 0
+            case .atLeast(let asked):
+                guard asked > 0 else {
+                    throw CRDT.OperationConsistency.Error.invalidNumberOfReplicasRequested(asked)
+                }
+
+                self.remoteConfirmationsNeeded = localConfirmed ? asked - 1 : asked
+                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+
+                guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
+                    throw CRDT.OperationConsistency.Error.insufficientReplicas(needed: asked, actual: membersCount)
+                }
+            case .quorum:
+                // When total = 4, quorum = 3. When total = 5, quorum = 3.
+                let quorum = membersCount / 2 + 1
+                self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum
+                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+            case .all:
+                self.remoteConfirmationsNeeded = remoteMembersCount
+                self.remoteFailuresAllowed = 0
+            }
+        }
+
+        mutating func confirm(from remoteMember: ActorRef<Message>, result: Result) {
+            self.remoteConfirmationsReceived[remoteMember] = result
+        }
+
+        mutating func failed(at remoteMember: ActorRef<Message>, result: Result? = nil, error: Error? = nil) {
+            self.remoteFailuresCount = self.remoteFailuresCount + 1
         }
     }
 }
@@ -263,11 +557,14 @@ extension CRDT.Replicator.Shell {
 
     internal enum TraceLogType: CustomStringConvertible {
         case receive
+        case remoteReplicators
 
         var description: String {
             switch self {
             case .receive:
                 return "RECV"
+            case .remoteReplicators:
+                return "REMOTE-REPLICATORS"
             }
         }
     }

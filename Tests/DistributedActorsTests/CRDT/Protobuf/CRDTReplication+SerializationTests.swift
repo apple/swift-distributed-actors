@@ -138,13 +138,13 @@ final class CRDTReplicationSerializationTests: XCTestCase {
     func test_serializationOf_RemoteCommand_WriteResult_failed() throws {
         try shouldNotThrow {
             let hint = "should be this other type"
-            let result = WriteResult.failed(.inputAndStoredDataTypeMismatch(hint: hint))
+            let result = WriteResult.failure(.inputAndStoredDataTypeMismatch(hint: hint))
 
             let bytes = try system.serialization.serialize(message: result)
             let deserialized = try system.serialization.deserialize(WriteResult.self, from: bytes)
 
-            guard case .failed(.inputAndStoredDataTypeMismatch(let deserializedHint)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.WriteResult.failed message with .inputAndStoredDataTypeMismatch error")
+            guard case .failure(.inputAndStoredDataTypeMismatch(let deserializedHint)) = deserialized else {
+                throw self.testKit.fail("Should be RemoteCommand.WriteResult.failure message with .inputAndStoredDataTypeMismatch error")
             }
             deserializedHint.shouldEqual(hint)
         }
@@ -195,13 +195,13 @@ final class CRDTReplicationSerializationTests: XCTestCase {
 
     func test_serializationOf_RemoteCommand_ReadResult_failed() throws {
         try shouldNotThrow {
-            let result = ReadResult.failed(.notFound)
+            let result = ReadResult.failure(.notFound)
 
             let bytes = try system.serialization.serialize(message: result)
             let deserialized = try system.serialization.deserialize(ReadResult.self, from: bytes)
 
-            guard case .failed(.notFound) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.ReadResult.failed message with .notFound error")
+            guard case .failure(.notFound) = deserialized else {
+                throw self.testKit.fail("Should be RemoteCommand.ReadResult.failure message with .notFound error")
             }
         }
     }
