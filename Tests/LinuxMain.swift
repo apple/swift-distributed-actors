@@ -69,6 +69,7 @@ XCTMain([
     testCase(InterceptorTests.allTests),
     testCase(LamportClockTests.allTests),
     testCase(MPSCLinkedQueueTests.allTests),
+    testCase(MailboxTests.allTests),
     testCase(MembershipTests.allTests),
     testCase(NIOExtensionTests.allTests),
     testCase(NodeDeathWatcherTests.allTests),

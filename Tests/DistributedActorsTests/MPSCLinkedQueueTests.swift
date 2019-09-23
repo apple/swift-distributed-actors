@@ -12,21 +12,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import Foundation
 import XCTest
 
 class MPSCLinkedQueueTests: XCTestCase {
-    func testDequeueWhenEmpty() {
+    func test_dequeueWhenEmpty() {
         let q = MPSCLinkedQueue<Int>()
 
         XCTAssertNil(q.dequeue())
     }
 
-    func testEnqueueDequeue() {
+    func test_enqueueDequeue() {
         let q = MPSCLinkedQueue<Int>()
         q.enqueue(1)
 
         XCTAssertEqual(1, q.dequeue()!)
+    }
+
+    func test_concurrentEnqueueDequeue() throws {
+        let writerCount = 6
+        let messageCountPerWriter = 10000
+        let totalMessageCount = writerCount * messageCountPerWriter
+        let q = MPSCLinkedQueue<Int>()
+
+        for _ in 1 ... writerCount {
+            _ = try Thread {
+                for i in 0 ..< messageCountPerWriter {
+                    q.enqueue(i)
+                }
+            }
+        }
+
+        var dequeued = 0
+        while dequeued < totalMessageCount {
+            if q.dequeue() != nil {
+                dequeued += 1
+            }
+        }
     }
 }

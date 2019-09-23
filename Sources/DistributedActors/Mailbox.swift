@@ -64,15 +64,15 @@ internal enum MailboxBitMasks {
     //
     // assume we are suspended and have some system messages and 7 user messages enqueued:
     //      CURRENT STATUS                         0b0010000000000000000000000000000000000000000000000000000000011101
-    //      (operation)                          &
-    static let unsuspend: UInt64 = 0b1101_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111
-    //                                            --------------------------------------------------------------------
+    //      (operation)                          & 0b1101111111111111111111111111111111111111111111111111111111111111
+    //                                           --------------------------------------------------------------------
     //                                           = 0b0000000000000000000000000000000000000000000000000000000000011101
+    static let unsuspend: UInt64 = 0b1101_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111
 }
 
 internal final class Mailbox<Message> {
     weak var shell: ActorShell<Message>?
-    let status: Atomic<UInt64> = Atomic(value: 0)
+    let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Envelope>
     let systemMessages: MPSCLinkedQueue<SystemMessage>
     let capacity: UInt32
@@ -89,7 +89,23 @@ internal final class Mailbox<Message> {
         self.maxRunLength = maxRunLength
         self.deadLetters = shell.system.deadLetters
         self.address = shell._address
+
+        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         self.serializeAllMessages = shell.system.settings.serialization.allMessages
+    }
+
+    /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
+    init(system: ActorSystem, capacity: UInt32, maxRunLength: UInt32 = 100) {
+        self.shell = nil
+        self.userMessages = MPSCLinkedQueue()
+        self.systemMessages = MPSCLinkedQueue()
+        self.capacity = capacity
+        self.maxRunLength = maxRunLength
+        self.deadLetters = system.deadLetters
+        self.address = system.deadLetters.address
+
+        // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
+        self.serializeAllMessages = system.settings.serialization.allMessages
     }
 
     @inlinable
@@ -141,25 +157,26 @@ internal final class Mailbox<Message> {
         }
     }
 
-    private func enqueueUserMessage(_ envelope: Envelope) -> EnqueueDirective {
-        let oldStatus = self.status.add(MailboxBitMasks.singleUserMessage)
-        guard Mailbox.messageCount(oldStatus) < self.capacity else {
+    @inlinable
+    func enqueueUserMessage(_ envelope: Envelope) -> EnqueueDirective {
+        let oldStatus = self.incrementMessageCount()
+        guard oldStatus.messageCount < self.capacity else {
             // If we passed the maximum capacity of the user queue, we can't enqueue more
             // items and have to decrement the activations count again. This is not racy,
             // because we only process messages if the queue actually contains them (does
             // not return NULL), so even if messages get processed concurrently, it's safe
             // to decrement here.
-            _ = self.status.sub(1)
+            _ = self.decrementMessageCount()
             return .mailboxFull
         }
 
-        guard !Mailbox.isTerminating(oldStatus) else {
-            _ = self.status.sub(1)
+        guard !oldStatus.isTerminating else {
+            _ = self.decrementMessageCount()
             return .mailboxTerminating
         }
 
-        guard !Mailbox.isClosed(oldStatus) else {
-            _ = self.status.sub(1)
+        guard !oldStatus.isClosed else {
+            _ = self.decrementMessageCount()
             return .mailboxClosed
         }
 
@@ -168,19 +185,20 @@ internal final class Mailbox<Message> {
         // this mailbox.
         self.userMessages.enqueue(envelope)
 
-        if Mailbox.activations(oldStatus) == 0, !Mailbox.isSuspended(oldStatus) {
+        if oldStatus.activations == 0, !oldStatus.isSuspended {
             return .needsScheduling
         } else {
             return .alreadyScheduled
         }
     }
 
+    /// Enqueues `.start` but does NOT activate the actor. Used for LazyStart and MUST be called as
+    /// the first thing before the ref is exposed, thus the status MUST be 0, as noone else should have had
+    /// any chance to interact with this mailbox yet
     @inlinable
     func enqueueStart() {
-        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
-        guard oldStatus == 0 else {
-            // this method should only be called when creating a system actor
-            // and therefore the status MUST be 0
+        let oldStatus = self.setHasSystemMessages()
+        guard oldStatus.activations == 0 else {
             fatalError("!!! BUG !!! Status was \(oldStatus), expected 0.")
         }
         self.systemMessages.enqueue(.start)
@@ -261,15 +279,15 @@ internal final class Mailbox<Message> {
         // if the enqueue happened after terminated is set, but tombstone is enqueued.
         self.systemMessages.enqueue(systemMessage)
 
-        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
+        let oldStatus = self.setHasSystemMessages()
 
-        if Mailbox.isTerminating(oldStatus) {
+        if oldStatus.isTerminating {
             return .mailboxTerminating
-        } else if Mailbox.isClosed(oldStatus) {
+        } else if oldStatus.isClosed {
             return .mailboxClosed
-        } else if Mailbox.activations(oldStatus) == 0 {
+        } else if oldStatus.activations == 0 {
             return .needsScheduling
-        } else if !Mailbox.hasSystemMessages(oldStatus), !Mailbox.isProcessingSystemMessages(oldStatus), Mailbox.isSuspended(oldStatus) {
+        } else if !oldStatus.hasSystemMessages, !oldStatus.isProcessingSystemMessages, oldStatus.isSuspended {
             return .needsScheduling
         } else {
             return .alreadyScheduled
@@ -286,9 +304,9 @@ internal final class Mailbox<Message> {
             return
         }
 
-        let oldStatus = self.status.or(MailboxBitMasks.hasSystemMessages)
+        let oldStatus = self.setHasSystemMessages()
 
-        guard Mailbox.isTerminating(oldStatus) else {
+        guard oldStatus.isTerminating else {
             fatalError("!!! BUG !!! Tombstone was attempted to be enqueued at not terminating actor \(self.address). THIS IS A BUG.")
         }
 
@@ -299,7 +317,7 @@ internal final class Mailbox<Message> {
     }
 
     func run() {
-        guard var shell = self.shell else {
+        guard let shell = self.shell else {
             traceLog_Mailbox(self.address.path, "has already stopped, ignoring run")
             return
         }
@@ -310,7 +328,7 @@ internal final class Mailbox<Message> {
         failedMessagePtr.initialize(to: nil)
         defer { failedMessagePtr.deallocate() }
 
-        let mailboxRunResult = self.doRun(shell)
+        let mailboxRunResult = self.mailboxRun(shell)
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -334,29 +352,29 @@ internal final class Mailbox<Message> {
             self.sendSystemTombstone() // Rest in Peace
 
         case .closed:
-            // Meaning that the tombstone was processed and this mailbox will never again run any messages.
-            // Its actor and shell will be released, and the mailbox should also deinit; in order to vacillate this,
-            // we need to clean up any self references that we may still be holding (as we had to pass them to C).
-            // self.onTombstoneProcessedClosed()
-
             traceLog_Mailbox(self.address.path, "finishTerminating has completed, and the final run has completed. We are CLOSED.")
         }
     }
 
-    private func doRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
+    private func mailboxRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
         let status = self.setProcessingSystemMessages()
-        var processedActivations = Mailbox.hasSystemMessages(status) ? MailboxBitMasks.processingSystemMessages : 0
-        let runLength = min(Mailbox.messageCount(status), UInt64(self.maxRunLength))
+        var processedActivations = status.hasSystemMessages ? MailboxBitMasks.processingSystemMessages : 0
+        // User message count is shifted by two, so we need to shift this as well to make the check easier
+        // we also need to add the `processedActivations` in case we are processing system messages, because
+        // that is encoded in this value as well.
+        let runLength = ((min(status.messageCount, UInt64(self.maxRunLength))) << 2) + processedActivations
 
-        // only an keep_running actor shall continue running;
-        // e.g. once .terminate is received, the actor should drain all messages to the dead letters queue
+        // Initial state has to be `.continueRunning`, so messages are being processed. Anything else would
+        // mean we are not supposed to run.
         // TODO: rename ActorRunResult -- the mailbox run is "the run", this is more like the actors per reduction directive... need to not overload the name "run"
-        var runResult = SActActorRunResult.continueRunning // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
-        if Mailbox.isSuspended(status) {
+        var runResult = ActorRunResult.continueRunning // TODO: hijack the run_length, and reformulate it as "fuel", and set it to zero when we need to stop
+        if status.isSuspended {
             runResult = .shouldSuspend
         }
 
-        if Mailbox.hasSystemMessages(status) {
+        // system messages run -----------------------------------------------------------------------------------------
+
+        if status.hasSystemMessages {
             while runResult != .shouldStop, runResult != .closed, let message = self.systemMessages.dequeue() {
                 do {
                     try runResult = shell.interpretSystemMessage(message: message)
@@ -368,7 +386,7 @@ internal final class Mailbox<Message> {
 
             // was our run interrupted by a system message initiating a stop?
             if runResult == .shouldStop || runResult == .closed {
-                if !Mailbox.isTerminating(status) {
+                if !status.isTerminating {
                     // avoid unnecessarily setting the terminating bit again
                     self.setTerminating()
                 }
@@ -390,9 +408,9 @@ internal final class Mailbox<Message> {
         // end of system messages run ----------------------------------------------------------------------------------
 
         // suspension logic --------------------------------------------------------------------------------------------
-        if Mailbox.isSuspended(status) && runResult != .shouldSuspend {
+        if status.isSuspended && runResult != .shouldSuspend {
             self.resetStatusSuspended()
-        } else if !Mailbox.isSuspended(status) && runResult == .shouldSuspend {
+        } else if !status.isSuspended && runResult == .shouldSuspend {
             self.setStatusSuspended()
             traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
         }
@@ -400,7 +418,7 @@ internal final class Mailbox<Message> {
         // run user messages -------------------------------------------------------------------------------------------
 
         if runResult == .continueRunning {
-            while Mailbox.messageCount(processedActivations) < runLength, runResult == .continueRunning, let message = self.userMessages.dequeue() {
+            while processedActivations < runLength, runResult == .continueRunning, let message = self.userMessages.dequeue() {
                 do {
                     processedActivations += MailboxBitMasks.singleUserMessage
                     switch message.payload {
@@ -426,8 +444,7 @@ internal final class Mailbox<Message> {
                     runResult = .shouldStop
                 }
 
-                if runResult == .shouldStop, !Mailbox.isTerminating(status) {
-                    // printf("[SACT_TRACE_MAILBOX][c] STOPPING BASED ON MESSAGE INTERPRETATION\n");
+                if runResult == .shouldStop, !status.isTerminating {
                     self.setTerminating()
                     traceLog_Mailbox(shell.path, "MARKED TERMINATING")
                     break
@@ -435,7 +452,7 @@ internal final class Mailbox<Message> {
                     self.setStatusSuspended()
                     traceLog_Mailbox(shell.path, "MARKED SUSPENDED")
                     break
-                } else if Mailbox.messageCount(processedActivations) >= runLength {
+                } else if processedActivations >= runLength {
                     break
                 }
             }
@@ -450,8 +467,8 @@ internal final class Mailbox<Message> {
 
         // end of run user messages ------------------------------------------------------------------------------------
 
-        let oldStatus = self.status.sub(processedActivations)
-        let oldActivations = Mailbox.activations(oldStatus)
+        let oldStatus = self.decrementActivations(by: processedActivations)
+        let oldActivations = oldStatus.activations
 
         traceLog_Mailbox(shell.path, "Run complete...")
 
@@ -460,9 +477,8 @@ internal final class Mailbox<Message> {
             // MUST be the first check, as we may want to stop immediately (e.g. reacting to system .start a with .stop),
             // as other conditions may hold, yet we really are ready to terminate immediately.
             traceLog_Mailbox(shell.path, "Terminating...")
-            // self.setTerminating()
             return .close
-        } else if (oldActivations > processedActivations && !Mailbox.isSuspended(oldStatus)) || Mailbox.hasSystemMessages(oldStatus) {
+        } else if (oldActivations > processedActivations && !oldStatus.isSuspended) || oldStatus.hasSystemMessages {
             traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
@@ -484,7 +500,7 @@ internal final class Mailbox<Message> {
         case reschedule
     }
 
-    private enum EnqueueDirective {
+    internal enum EnqueueDirective {
         case needsScheduling
         case alreadyScheduled
         case mailboxTerminating
@@ -492,74 +508,102 @@ internal final class Mailbox<Message> {
         case mailboxFull
     }
 
+    internal struct Status {
+        private let _status: UInt64
+
+        init(_ status: UInt64) {
+            self._status = status
+        }
+
+        var messageCount: UInt64 {
+            return self.activations >> 2
+        }
+
+        var hasSystemMessages: Bool {
+            return (self._status & MailboxBitMasks.hasSystemMessages) != 0
+        }
+
+        var isProcessingSystemMessages: Bool {
+            return (self._status & MailboxBitMasks.processingSystemMessages) != 0
+        }
+
+        var activations: UInt64 {
+            return (self._status & MailboxBitMasks.activations)
+        }
+
+        var isSuspended: Bool {
+            return (self._status & MailboxBitMasks.suspended) != 0
+        }
+
+        var isTerminating: Bool {
+            return (self._status & MailboxBitMasks.terminating) != 0
+        }
+
+        var isClosed: Bool {
+            return (self._status & MailboxBitMasks.closed) != 0
+        }
+    }
+
+    func incrementMessageCount() -> Status {
+        return Status(self._status.add(MailboxBitMasks.singleUserMessage))
+    }
+
+    func decrementMessageCount() -> Status {
+        return Status(self._status.sub(MailboxBitMasks.singleUserMessage))
+    }
+
+    func decrementActivations(by count: UInt64) -> Status {
+        return Status(self._status.sub(count))
+    }
+
+    var status: Status {
+        return Status(self._status.load())
+    }
+
+    func setHasSystemMessages() -> Status {
+        return Status(self._status.or(MailboxBitMasks.hasSystemMessages))
+    }
+
     // Checks if the 'has system messages' bit is set and if it is, unsets it and
     // sets the 'is processing system messages' bit in one atomic operation. This is
     // necessary to not race between unsetting the bit at the end of a run while
     // another thread is enqueueing a new system message.
-    private func setProcessingSystemMessages() -> UInt64 {
-        let status = self.status.load(order: .acquire)
-        if Mailbox.hasSystemMessages(status) {
-            return self.status.xor(MailboxBitMasks.becomeSysMsgProcessingXor, order: .acq_rel)
+    func setProcessingSystemMessages() -> Status {
+        let status = self.status
+        if status.hasSystemMessages {
+            return Status(self._status.xor(MailboxBitMasks.becomeSysMsgProcessingXor, order: .acq_rel))
         }
 
         return status
     }
 
     @discardableResult
-    private func setTerminating() -> UInt64 {
-        return self.status.or(MailboxBitMasks.terminating)
+    func setTerminating() -> Status {
+        return Status(self._status.or(MailboxBitMasks.terminating))
     }
 
     @discardableResult
-    func setFailed() -> UInt64 {
+    func setFailed() -> Status {
         return self.setTerminating()
     }
 
     @discardableResult
-    func setClosed() -> UInt64 {
-        return self.status.or(MailboxBitMasks.closed)
+    func setClosed() -> Status {
+        return Status(self._status.or(MailboxBitMasks.closed))
     }
 
     @discardableResult
-    func setStatusSuspended() -> UInt64 {
-        return self.status.or(MailboxBitMasks.suspended)
+    func setStatusSuspended() -> Status {
+        return Status(self._status.or(MailboxBitMasks.suspended))
     }
 
     @discardableResult
-    func resetStatusSuspended() -> UInt64 {
-        return self.status.and(MailboxBitMasks.unsuspend)
-    }
-
-    private static func messageCount(_ status: UInt64) -> UInt64 {
-        return self.activations(status) >> 2
-    }
-
-    private static func hasSystemMessages(_ status: UInt64) -> Bool {
-        return (status & MailboxBitMasks.hasSystemMessages) != 0
-    }
-
-    private static func isProcessingSystemMessages(_ status: UInt64) -> Bool {
-        return (status & MailboxBitMasks.processingSystemMessages) != 0
-    }
-
-    private static func activations(_ status: UInt64) -> UInt64 {
-        return (status & MailboxBitMasks.activations)
-    }
-
-    private static func isSuspended(_ status: UInt64) -> Bool {
-        return (status & MailboxBitMasks.suspended) != 0
-    }
-
-    private static func isTerminating(_ status: UInt64) -> Bool {
-        return (status & MailboxBitMasks.terminating) != 0
-    }
-
-    private static func isClosed(_ status: UInt64) -> Bool {
-        return (status & MailboxBitMasks.closed) != 0
+    func resetStatusSuspended() -> Status {
+        return Status(self._status.and(MailboxBitMasks.unsuspend))
     }
 }
 
-// this used to be typed according to the actor message type, but we found
+// This used to be typed according to the actor message type, but we found
 // that it added some runtime overhead when retrieving the messages from the
 // queue, because additional metatype information was retrieved, therefore
 // we removed it
@@ -683,7 +727,7 @@ internal struct AdaptedMessageCarry {
 }
 
 @usableFromInline
-enum SActActorRunResult {
+internal enum ActorRunResult {
     case continueRunning
     case shouldSuspend
     case shouldStop

@@ -15,7 +15,8 @@
 import CDistributedActorsMailbox
 import DistributedActorsConcurrencyHelpers
 
-public final class MPSCLinkedQueue<A> {
+@usableFromInline
+internal final class MPSCLinkedQueue<A> {
     public let q: UnsafeMutablePointer<CSActMPSCLinkedQueue>
 
     public init() {

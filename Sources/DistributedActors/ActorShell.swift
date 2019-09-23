@@ -252,7 +252,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Warning: Mutates the cell's behavior.
     /// Returns: `true` if the actor remains alive, and `false` if it now is becoming `.stop`
     @inlinable
-    func interpretMessage(message: Message) throws -> SActActorRunResult {
+    func interpretMessage(message: Message) throws -> ActorRunResult {
         #if SACT_TRACE_ACTOR_SHELL
         pprint("Interpret: [\(message)]:\(type(of: message)) with: \(self.behavior)")
         #endif
@@ -277,7 +277,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     }
 
     @inlinable
-    var runState: SActActorRunResult {
+    var runState: ActorRunResult {
         if self.continueRunning {
             return .continueRunning
         } else if self.isSuspended {
@@ -296,7 +296,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Throws:
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
-    func interpretSystemMessage(message: SystemMessage) throws -> SActActorRunResult {
+    func interpretSystemMessage(message: SystemMessage) throws -> ActorRunResult {
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
@@ -353,7 +353,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretClosure(_ closure: ActorClosureCarry) throws -> SActActorRunResult {
+    func interpretClosure(_ closure: ActorClosureCarry) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, closure: closure)
 
         traceLog_Cell("Applied closure, becoming: \(next)")
@@ -367,7 +367,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> SActActorRunResult {
+    func interpretAdaptedMessage(_ carry: AdaptedMessageCarry) throws -> ActorRunResult {
         let maybeAdapter = self.messageAdapters.first(where: { adapter in
             adapter.metaType.isInstance(carry.message)
         })
@@ -396,7 +396,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.runState
     }
 
-    func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> SActActorRunResult {
+    func interpretSubMessage(_ subMessage: SubMessageCarry) throws -> ActorRunResult {
         let next = try self.supervisor.interpretSupervised(target: self.behavior, context: self, subMessage: subMessage)
 
         traceLog_Cell("Applied subMessage \(subMessage.message), becoming: \(next)")
@@ -532,7 +532,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// This is coordinated with its mailbox, which by then becomes closed, and shall no more accept any messages, not even system ones.
     ///
     /// Any remaining system messages are to be drained to deadLetters by the mailbox in its current run.
-    private func finishTerminating() -> SActActorRunResult {
+    private func finishTerminating() -> ActorRunResult {
         self._myCell.mailbox.setClosed()
 
         let myAddress: ActorAddress? = self._myCell.address
