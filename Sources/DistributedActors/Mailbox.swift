@@ -362,7 +362,7 @@ internal final class Mailbox<Message> {
         // User message count is shifted by two, so we need to shift this as well to make the check easier
         // we also need to add the `processedActivations` in case we are processing system messages, because
         // that is encoded in this value as well.
-        let runLength = ((min(status.messageCount, UInt64(self.maxRunLength))) << 2) + processedActivations
+        let runLength = (min(status.messageCount, UInt64(self.maxRunLength)) << 2) + processedActivations
 
         // Initial state has to be `.continueRunning`, so messages are being processed. Anything else would
         // mean we are not supposed to run.
