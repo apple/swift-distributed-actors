@@ -46,7 +46,7 @@ internal final class MPSCLinkedQueue<A> {
     /// queue, but is not connected yet, this call will spin until the item
     /// is visible.
     ///
-    /// - Returns: The head of the queue if it is non-empty, nil otherwise.
+    /// - Returns: The head of the queue if it is non-empty, `nil` otherwise.
     @inlinable
     public func dequeue() -> A? {
         if let p = c_sact_mpsc_linked_queue_dequeue(self.q) {
