@@ -230,10 +230,12 @@ public struct WorkerPoolRef<Message>: ReceivesMessages {
 extension WorkerPoolRef: ReceivesQuestions {
     public typealias Question = Message
 
-    public func ask<Answer>(for type: Answer.Type,
-                            timeout: TimeAmount,
-                            file: String = #file, function: String = #function, line: UInt = #line,
-                            _ makeQuestion: @escaping (ActorRef<Answer>) -> Question) -> AskResponse<Answer> {
+    public func ask<Answer>(
+        for type: Answer.Type,
+        timeout: TimeAmount,
+        file: String = #file, function: String = #function, line: UInt = #line,
+        _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
+    ) -> AskResponse<Answer> {
         return self._ref.ask(for: type, timeout: timeout, file: file, function: function, line: line) { replyTo in
             .forward(makeQuestion(replyTo))
         }

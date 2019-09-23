@@ -93,9 +93,11 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     @usableFromInline
     internal let deferred = DefersContainer()
 
-    public override func `defer`(until: DeferUntilWhen,
-                                 file: String = #file, line: UInt = #line,
-                                 _ closure: @escaping () -> Void) {
+    public override func `defer`(
+        until: DeferUntilWhen,
+        file: String = #file, line: UInt = #line,
+        _ closure: @escaping () -> Void
+    ) {
         do {
             let deferred = ActorDeferredClosure(until: until, closure, file: file, line: line)
             try self.deferred.push(deferred)
@@ -125,9 +127,11 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ActorShell implementation
 
-    internal init(system: ActorSystem, parent: AddressableActorRef,
-                  behavior: Behavior<Message>, address: ActorAddress,
-                  props: Props, dispatcher: MessageDispatcher) {
+    internal init(
+        system: ActorSystem, parent: AddressableActorRef,
+        behavior: Behavior<Message>, address: ActorAddress,
+        props: Props, dispatcher: MessageDispatcher
+    ) {
         self._system = system
         self._parent = parent
 
@@ -795,9 +799,11 @@ extension ActorShell {
 
         switch next.underlying {
         case .unhandled:
-            throw DeathPactError.unhandledDeathPact(terminated: deadRef, myself: self.myself.asAddressable(),
-                                                    message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(deadRef.address)]. " +
-                                                        "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination.")
+            throw DeathPactError.unhandledDeathPact(
+                terminated: deadRef, myself: self.myself.asAddressable(),
+                message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(deadRef.address)]. " +
+                    "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination."
+            )
         default:
             try self.becomeNext(behavior: next) // FIXME: make sure we don't drop the behavior...?
         }

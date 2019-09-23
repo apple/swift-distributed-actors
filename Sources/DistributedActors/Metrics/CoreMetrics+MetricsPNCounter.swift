@@ -29,8 +29,10 @@ internal struct MetricsPNCounter {
     let negative: Counter
 
     init(label: String, positive positiveDimensions: [(String, String)] = [], negative negativeDimensions: [(String, String)] = []) {
-        assert(positiveDimensions.map { "\($0)\($1)" }.joined() != negativeDimensions.map { "\($0)\($1)" }.joined(),
-               "Dimensions for MetricsPNCounter pair [\(label)] MUST NOT be equal.")
+        assert(
+            positiveDimensions.map { "\($0)\($1)" }.joined() != negativeDimensions.map { "\($0)\($1)" }.joined(),
+            "Dimensions for MetricsPNCounter pair [\(label)] MUST NOT be equal."
+        )
 
         self.positive = Counter(label: label, dimensions: positiveDimensions)
         self.negative = Counter(label: label, dimensions: negativeDimensions)

@@ -123,9 +123,11 @@ public class ActorContext<Message>: ActorRefFactory {
     ///
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
-    public func `defer`(until: DeferUntilWhen,
-                        file: String = #file, line: UInt = #line,
-                        _ closure: @escaping () -> Void) {
+    public func `defer`(
+        until: DeferUntilWhen,
+        file: String = #file, line: UInt = #line,
+        _ closure: @escaping () -> Void
+    ) {
         return undefined()
     }
 

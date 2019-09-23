@@ -137,11 +137,13 @@ public class ProcessIsolated {
 
             system.cluster.join(node: uniqueMasterNode.node)
 
-            self.parentProcessFailureDetector = try! system._spawnSystemActor(PollingParentMonitoringFailureDetector.name,
-                                                                              PollingParentMonitoringFailureDetector(
-                                                                                  parentNode: uniqueMasterNode,
-                                                                                  parentPID: POSIXProcessUtils.getParentPID()
-                                                                              ).behavior)
+            self.parentProcessFailureDetector = try! system._spawnSystemActor(
+                PollingParentMonitoringFailureDetector.name,
+                PollingParentMonitoringFailureDetector(
+                    parentNode: uniqueMasterNode,
+                    parentPID: POSIXProcessUtils.getParentPID()
+                ).behavior
+            )
 
             let resolveContext = ResolveContext<ProcessCommander.Command>(address: ActorAddress.ofProcessMaster(on: uniqueMasterNode), system: system)
             self.processCommander = system._resolve(context: resolveContext)

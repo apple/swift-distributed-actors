@@ -53,9 +53,11 @@ internal struct RemoteActorRefProvider: _ActorRefProvider {
     // TODO: should cache perhaps also associations to inject them eagerly to actor refs?
 
     // TODO: restructure it somehow, perhaps we dont need the full abstraction like this
-    init(settings: ActorSystemSettings,
-         cluster: ClusterShell,
-         localProvider: LocalActorRefProvider) {
+    init(
+        settings: ActorSystemSettings,
+        cluster: ClusterShell,
+        localProvider: LocalActorRefProvider
+    ) {
         precondition(settings.cluster.enabled, "Remote actor provider should only be used when clustering is enabled")
 
         self.localNode = settings.cluster.uniqueBindNode
