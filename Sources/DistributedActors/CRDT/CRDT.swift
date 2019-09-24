@@ -479,6 +479,7 @@ extension CRDT {
         case atLeast(Int)
         /// Perform operation in at least `n/2 + 1` replicas, where `n` is the total number of replicas in the
         /// cluster (at the moment the operation is issued), including the local replica.
+        /// For example, when `n` is `4`, quorum would be `4/2 + 1 = 3`; when `n` is `5`, quorum would be `5/2 + 1 = 3`.
         case quorum
         /// Perform operation in all replicas.
         case all
