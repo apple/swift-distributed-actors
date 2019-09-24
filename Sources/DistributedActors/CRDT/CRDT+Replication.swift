@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -55,15 +55,17 @@ extension CRDT {
 
             // Perform write to at least `consistency` members
             // `data` is expected to be the full CRDT. Do not send delta even if it is a delta-CRDT.
-            case write(_ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, replyTo: ActorRef<WriteResult>)
+            case write(_ id: Identity, _ data: AnyStateBasedCRDT, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<WriteResult>)
             // Perform read from at least `consistency` members
-            case read(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<ReadResult>)
+            case read(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<ReadResult>)
             // Perform delete to at least `consistency` members
-            case delete(_ id: Identity, consistency: OperationConsistency, replyTo: ActorRef<DeleteResult>)
+            case delete(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<DeleteResult>)
+
+            // TODO: failed => failure to be consistent with Swift-NIO?
 
             enum RegisterResult {
                 case success
-                case failed(RegisterError)
+                case failure(RegisterError)
             }
 
             enum RegisterError: Error {
@@ -73,26 +75,33 @@ extension CRDT {
 
             enum WriteResult {
                 case success
-                case failed(WriteError)
+                case failure(WriteError)
             }
 
             enum WriteError: Error {
                 case inputAndStoredDataTypeMismatch(stored: AnyMetaType)
                 case unsupportedCRDT
+                case consistencyError(CRDT.OperationConsistency.Error)
             }
 
             enum ReadResult {
                 // Returns the underlying CRDT
                 case success(StateBasedCRDT)
-                case failed(ReadError)
+                case failure(ReadError)
             }
 
             enum ReadError: Error {
                 case notFound
+                case consistencyError(CRDT.OperationConsistency.Error)
             }
 
             enum DeleteResult {
                 case success
+                case failure(DeleteError)
+            }
+
+            enum DeleteError: Error {
+                case consistencyError(CRDT.OperationConsistency.Error)
             }
         }
 
@@ -108,7 +117,7 @@ extension CRDT {
 
             enum WriteResult {
                 case success
-                case failed(WriteError)
+                case failure(WriteError)
             }
 
             enum WriteError: Error {
@@ -121,7 +130,7 @@ extension CRDT {
 
             enum ReadResult {
                 case success(AnyStateBasedCRDT)
-                case failed(ReadError)
+                case failure(ReadError)
             }
 
             enum ReadError: Error {
@@ -138,8 +147,8 @@ extension CRDT {
 extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.RegisterError, rhs: CRDT.Replicator.LocalCommand.RegisterError) -> Bool {
         switch (lhs, rhs) {
-        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
-            return lt.asHashable() == rt.asHashable()
+        case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
+            return lType.asHashable() == rType.asHashable()
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
         default:
@@ -151,10 +160,49 @@ extension CRDT.Replicator.LocalCommand.RegisterError: Equatable {
 extension CRDT.Replicator.LocalCommand.WriteError: Equatable {
     public static func == (lhs: CRDT.Replicator.LocalCommand.WriteError, rhs: CRDT.Replicator.LocalCommand.WriteError) -> Bool {
         switch (lhs, rhs) {
-        case (.inputAndStoredDataTypeMismatch(let lt), .inputAndStoredDataTypeMismatch(let rt)):
-            return lt.asHashable() == rt.asHashable()
+        case (.inputAndStoredDataTypeMismatch(let lType), .inputAndStoredDataTypeMismatch(let rType)):
+            return lType.asHashable() == rType.asHashable()
         case (.unsupportedCRDT, .unsupportedCRDT):
             return true
+        case (.consistencyError(let lError), .consistencyError(let rError)):
+            return lError == rError
+        default:
+            return false
+        }
+    }
+}
+
+extension CRDT.Replicator.LocalCommand.ReadError: Equatable {
+    public static func == (lhs: CRDT.Replicator.LocalCommand.ReadError, rhs: CRDT.Replicator.LocalCommand.ReadError) -> Bool {
+        switch (lhs, rhs) {
+        case (.notFound, .notFound):
+            return true
+        case (.consistencyError(let lError), .consistencyError(let rError)):
+            return lError == rError
+        default:
+            return false
+        }
+    }
+}
+
+extension CRDT.Replicator.LocalCommand.DeleteError: Equatable {
+    public static func == (lhs: CRDT.Replicator.LocalCommand.DeleteError, rhs: CRDT.Replicator.LocalCommand.DeleteError) -> Bool {
+        switch (lhs, rhs) {
+        case (.consistencyError(let lError), .consistencyError(let rError)):
+            return lError == rError
+        default:
+            return false
+        }
+    }
+}
+
+extension CRDT.Replicator.RemoteCommand.WriteResult: Equatable {
+    public static func == (lhs: CRDT.Replicator.RemoteCommand.WriteResult, rhs: CRDT.Replicator.RemoteCommand.WriteResult) -> Bool {
+        switch (lhs, rhs) {
+        case (.success, .success):
+            return true
+        case (.failure(let lError), .failure(let rError)):
+            return lError == rError
         default:
             return false
         }

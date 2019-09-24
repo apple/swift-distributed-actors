@@ -50,8 +50,10 @@ internal struct ActorDeferredClosure {
     let file: String
     let line: UInt
 
-    init(until: DeferUntilWhen, _ closure: @escaping () -> Void,
-         file: String = #file, line: UInt = #line) {
+    init(
+        until: DeferUntilWhen, _ closure: @escaping () -> Void,
+        file: String = #file, line: UInt = #line
+    ) {
         self.when = until
         self.closure = closure
 

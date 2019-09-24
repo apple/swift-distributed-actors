@@ -30,9 +30,11 @@ internal struct ProcessCommander {
     private let funSpawnServantProcess: (ServantProcessSupervisionStrategy, [String]) -> Void
     private let funRespawnServantProcess: (ServantProcess) -> Void
 
-    init(funSpawnServantProcess: @escaping (ServantProcessSupervisionStrategy, [String]) -> Void,
-         funRespawnServantProcess: @escaping (ServantProcess) -> Void,
-         funKillServantProcess: @escaping (Int) -> Void) {
+    init(
+        funSpawnServantProcess: @escaping (ServantProcessSupervisionStrategy, [String]) -> Void,
+        funRespawnServantProcess: @escaping (ServantProcess) -> Void,
+        funKillServantProcess: @escaping (Int) -> Void
+    ) {
         self.funSpawnServantProcess = funSpawnServantProcess
         self.funRespawnServantProcess = funRespawnServantProcess
         self.funRemoveServantByPID = funKillServantProcess

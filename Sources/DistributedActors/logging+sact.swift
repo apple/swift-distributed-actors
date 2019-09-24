@@ -146,14 +146,16 @@ public struct ActorOriginLogHandler: LogHandler {
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, file: String, function: String, line: UInt) {
         // TODO: this actually would be dispatching to the logging infra (has ticket)
 
-        let logMessage = LogMessage(identifier: self.context.identifier,
-                                    time: Date(),
-                                    level: level,
-                                    message: message,
-                                    effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO: should force lazies
-                                    file: file,
-                                    function: function,
-                                    line: line)
+        let logMessage = LogMessage(
+            identifier: self.context.identifier,
+            time: Date(),
+            level: level,
+            message: message,
+            effectiveMetadata: self.context.effectiveMetadata(overrides: metadata), // TODO: should force lazies
+            file: file,
+            function: function,
+            line: line
+        )
 
         self.invokeConfiguredLoggingInfra(logMessage)
     }
@@ -328,10 +330,12 @@ internal class LazyMetadataBox: CustomStringConvertible {
 extension Logger {
     /// Allows passing in a `Logger.Level?` and not log if it was `nil`.
     @inlinable
-    public func log(level: Logger.Level?,
-                    _ message: @autoclosure () -> Logger.Message,
-                    metadata: @autoclosure () -> Logger.Metadata? = nil,
-                    file: String = #file, function: String = #function, line: UInt = #line) {
+    public func log(
+        level: Logger.Level?,
+        _ message: @autoclosure () -> Logger.Message,
+        metadata: @autoclosure () -> Logger.Metadata? = nil,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         if let level = level {
             self.log(level: level, message(), metadata: metadata(), file: file, function: function, line: line)
         }

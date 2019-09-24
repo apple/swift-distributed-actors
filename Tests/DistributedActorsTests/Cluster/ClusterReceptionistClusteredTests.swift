@@ -28,11 +28,13 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         local.cluster.join(node: remote.cluster.node.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
 
-        let ref: ActorRef<String> = try local.spawn(.anonymous,
-                                                    .receiveMessage {
-                                                        probe.tell("received:\($0)")
-                                                        return .same
-        })
+        let ref: ActorRef<String> = try local.spawn(
+            .anonymous,
+            .receiveMessage {
+                probe.tell("received:\($0)")
+                return .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -62,11 +64,13 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
-        let ref: ActorRef<String> = try local.spawn(.anonymous,
-                                                    .receiveMessage {
-                                                        probe.tell("received:\($0)")
-                                                        return .same
-        })
+        let ref: ActorRef<String> = try local.spawn(
+            .anonymous,
+            .receiveMessage {
+                probe.tell("received:\($0)")
+                return .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 

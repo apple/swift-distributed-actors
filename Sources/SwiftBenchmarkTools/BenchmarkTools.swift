@@ -101,11 +101,13 @@ public struct BenchmarkInfo {
 
     public var legacyFactor: Int?
 
-    public init(name: String, runFunction: @escaping (Int) -> Void, tags: [BenchmarkCategory],
-                setUpFunction: (() -> Void)? = nil,
-                tearDownFunction: (() -> Void)? = nil,
-                unsupportedPlatforms: BenchmarkPlatformSet = [],
-                legacyFactor: Int? = nil) {
+    public init(
+        name: String, runFunction: @escaping (Int) -> Void, tags: [BenchmarkCategory],
+        setUpFunction: (() -> Void)? = nil,
+        tearDownFunction: (() -> Void)? = nil,
+        unsupportedPlatforms: BenchmarkPlatformSet = [],
+        legacyFactor: Int? = nil
+    ) {
         self.name = name
         self._runFunction = runFunction
         self.tags = Set(tags)

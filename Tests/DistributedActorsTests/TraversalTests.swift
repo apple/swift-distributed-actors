@@ -76,7 +76,7 @@ class TraversalTests: XCTestCase {
         var seen: Set<String> = []
 
         self.system._traverseAllVoid { _, ref in
-            if ref.address.name != "traversalProbe" {
+            if ref.address.name != "traversalProbe", !ref.address.name.starts(with: "$") { // skip subReceive, etc.
                 seen.insert(ref.address.name)
             }
             return .continue

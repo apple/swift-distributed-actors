@@ -326,8 +326,10 @@ internal enum _Behavior<Message> {
     indirect case stop(postStop: Behavior<Message>?, reason: StopReason)
     indirect case failed(behavior: Behavior<Message>, cause: Supervision.Failure)
 
-    indirect case signalHandling(handleMessage: Behavior<Message>,
-                                 handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>)
+    indirect case signalHandling(
+        handleMessage: Behavior<Message>,
+        handleSignal: (ActorContext<Message>, Signal) throws -> Behavior<Message>
+    )
     case same
     case ignore
     case unhandled
@@ -582,9 +584,11 @@ public extension Behavior {
 /// Internal operations for behavior manipulation
 internal extension Behavior {
     @inlinable
-    func interpretOrElse(context: ActorContext<Message>,
-                         first: Behavior<Message>, orElse second: Behavior<Message>, message: Message,
-                         file: StaticString = #file, line: UInt = #line) throws -> Behavior<Message> {
+    func interpretOrElse(
+        context: ActorContext<Message>,
+        first: Behavior<Message>, orElse second: Behavior<Message>, message: Message,
+        file: StaticString = #file, line: UInt = #line
+    ) throws -> Behavior<Message> {
         var nextBehavior = try first.interpretMessage(context: context, message: message, file: file, line: line)
         if nextBehavior.isUnhandled {
             nextBehavior = try second.interpretMessage(context: context, message: message, file: file, line: line)

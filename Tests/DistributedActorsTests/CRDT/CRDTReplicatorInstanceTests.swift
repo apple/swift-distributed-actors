@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -67,9 +67,10 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         }
 
         // Write g1 (as new so `deltaMerge` ignored)
-        guard case .applied(let writeResult) = replicator.write(id, g1.asAnyStateBasedCRDT) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1.asAnyStateBasedCRDT) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
+        isNew.shouldBeTrue()
 
         // Return value should match g1
         guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
@@ -107,9 +108,10 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         g1.resetDelta()
 
         // Write the updated g1
-        guard case .applied(let writeResult) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: false) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: false) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
+        isNew.shouldBeFalse()
 
         // Return value should match g1
         guard let wg1 = writeResult.underlying as? CRDT.GCounter else {
@@ -144,7 +146,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         g1.delta.shouldNotBeNil()
 
         // Write the updated g1
-        guard case .applied(let writeResult) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -181,7 +183,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         g1.resetDelta()
 
         // Write g1 with deltaMerge == true but g1.delta is nil; code should fallback to `merge`
-        guard case .applied(let writeResult) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let writeResult, _) = replicator.write(id, g1.asAnyStateBasedCRDT, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
@@ -215,7 +217,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
             throw self.testKit.fail("The write operation should have been applied")
         }
         // Write g1Beta (with `mergeDelta`)
-        guard case .applied(let bResult) = replicator.write(id, g1Beta.asAnyStateBasedCRDT, deltaMerge: true) else {
+        guard case .applied(let bResult, _) = replicator.write(id, g1Beta.asAnyStateBasedCRDT, deltaMerge: true) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 

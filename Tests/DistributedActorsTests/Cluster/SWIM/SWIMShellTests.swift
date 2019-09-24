@@ -449,9 +449,11 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func expectPing(on probe: ActorTestProbe<SWIM.Message>, reply: Bool, incarnation: SWIM.Incarnation = 0,
-                    file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                    assertPayload: (SWIM.Payload) throws -> Void = { _ in }) throws {
+    func expectPing(
+        on probe: ActorTestProbe<SWIM.Message>, reply: Bool, incarnation: SWIM.Incarnation = 0,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        assertPayload: (SWIM.Payload) throws -> Void = { _ in }
+    ) throws {
         switch try probe.expectMessage(file: file, line: line, column: column) {
         case .remote(.ping(_, let replyTo, let payload)):
             try assertPayload(payload)
@@ -463,10 +465,12 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func expectPingRequest(for: ActorRef<SWIM.Message>, on probe: ActorTestProbe<SWIM.Message>,
-                           reply: Bool, incarnation: SWIM.Incarnation = 0,
-                           file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                           assertPayload: (SWIM.Payload) throws -> Void = { _ in }) throws {
+    func expectPingRequest(
+        for: ActorRef<SWIM.Message>, on probe: ActorTestProbe<SWIM.Message>,
+        reply: Bool, incarnation: SWIM.Incarnation = 0,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        assertPayload: (SWIM.Payload) throws -> Void = { _ in }
+    ) throws {
         switch try probe.expectMessage(file: file, line: line, column: column) {
         case .remote(.pingReq(let toPing, _, let replyTo, let payload)):
             toPing.shouldEqual(`for`)
@@ -479,9 +483,11 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func awaitStatus(_ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
-                     on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
-                     file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    func awaitStatus(
+        _ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
+        on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 
@@ -496,9 +502,11 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    func holdStatus(_ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
-                    on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
-                    file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    func holdStatus(
+        _ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
+        on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 

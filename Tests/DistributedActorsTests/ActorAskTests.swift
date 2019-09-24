@@ -107,11 +107,13 @@ final class ActorAskTests: XCTestCase {
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
         let p = testKit.spawnTestProbe(expecting: String.self)
 
-        let greeter: ActorRef<AnswerMePlease> = try system.spawn("greeterAskReply",
-                                                                 .receiveMessage { message in
-                                                                     message.replyTo.tell("Hello there")
-                                                                     return .stop
-        })
+        let greeter: ActorRef<AnswerMePlease> = try system.spawn(
+            "greeterAskReply",
+            .receiveMessage { message in
+                message.replyTo.tell("Hello there")
+                return .stop
+            }
+        )
 
         let _: ActorRef<Never> = try system.spawn("askingAndOnResultAsyncThrowing", .setup { context in
             let askResult = greeter.ask(for: String.self, timeout: timeout) { replyTo in

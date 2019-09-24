@@ -36,8 +36,10 @@ public struct BenchResults {
     /// Equivalent to quantile estimate type R-1, SAS-3. See:
     /// https://en.wikipedia.org/wiki/Quantile#Estimating_quantiles_from_a_sample
     subscript(_ quantile: Double) -> T {
-        let index = Swift.max(0,
-                              Int((Double(self.samples.count) * quantile).rounded(.up)) - 1)
+        let index = Swift.max(
+            0,
+            Int((Double(self.samples.count) * quantile).rounded(.up)) - 1
+        )
         return self.samples[index]
     }
 
@@ -133,49 +135,75 @@ struct TestConfig {
 
         // Configure the command line argument parser
         let p = ArgumentParser(into: PartialTestConfig())
-        p.addArgument("--num-samples", \.numSamples,
-                      help: "number of samples to take per benchmark;\n" +
-                          "default: 1 or auto-scaled to measure for\n" +
-                          "`sample-time` if num-iters is also specified\n",
-                      parser: { UInt($0) })
-        p.addArgument("--num-iters", \.numIters,
-                      help: "number of iterations averaged in the sample;\n" +
-                          "default: auto-scaled to measure for `sample-time`",
-                      parser: { UInt($0) })
-        p.addArgument("--quantile", \.quantile,
-                      help: "report quantiles instead of normal dist. stats;\n" +
-                          "use 4 to get a five-number summary with quartiles,\n" +
-                          "10 (deciles), 20 (ventiles), 100 (percentiles), etc.",
-                      parser: { UInt($0) })
-        p.addArgument("--time-unit", \.timeUnit,
-                      help: "time unit to be used for reported measurements;\n" +
-                          "supported values: ns, us, ms; default: ns",
-                      parser: { $0 })
-        p.addArgument("--delta", \.delta, defaultValue: true,
-                      help: "report quantiles with delta encoding")
-        p.addArgument("--sample-time", \.sampleTime,
-                      help: "duration of test measurement in seconds\ndefault: 1",
-                      parser: finiteDouble)
-        p.addArgument("--verbose", \.verbose, defaultValue: true,
-                      help: "increase output verbosity")
-        p.addArgument("--memory", \.logMemory, defaultValue: true,
-                      help: "log the change in maximum resident set size (MAX_RSS)")
-        p.addArgument("--delim", \.delim,
-                      help: "value delimiter used for log output; default: ,",
-                      parser: { $0 })
-        p.addArgument("--tags", \PartialTestConfig.tags,
-                      help: "run tests matching all the specified categories",
-                      parser: tags)
-        p.addArgument("--skip-tags", \PartialTestConfig.skipTags, defaultValue: [],
-                      help: "don't run tests matching any of the specified\n" +
-                          "categories; default: unstable,skip",
-                      parser: tags)
-        p.addArgument("--sleep", \.afterRunSleep,
-                      help: "number of seconds to sleep after benchmarking",
-                      parser: { UInt32($0) })
-        p.addArgument("--list", \.action, defaultValue: .listTests,
-                      help: "don't run the tests, just log the list of test \n" +
-                          "numbers, names and tags (respects specified filters)")
+        p.addArgument(
+            "--num-samples", \.numSamples,
+            help: "number of samples to take per benchmark;\n" +
+                "default: 1 or auto-scaled to measure for\n" +
+                "`sample-time` if num-iters is also specified\n",
+            parser: { UInt($0) }
+        )
+        p.addArgument(
+            "--num-iters", \.numIters,
+            help: "number of iterations averaged in the sample;\n" +
+                "default: auto-scaled to measure for `sample-time`",
+            parser: { UInt($0) }
+        )
+        p.addArgument(
+            "--quantile", \.quantile,
+            help: "report quantiles instead of normal dist. stats;\n" +
+                "use 4 to get a five-number summary with quartiles,\n" +
+                "10 (deciles), 20 (ventiles), 100 (percentiles), etc.",
+            parser: { UInt($0) }
+        )
+        p.addArgument(
+            "--time-unit", \.timeUnit,
+            help: "time unit to be used for reported measurements;\n" +
+                "supported values: ns, us, ms; default: ns",
+            parser: { $0 }
+        )
+        p.addArgument(
+            "--delta", \.delta, defaultValue: true,
+            help: "report quantiles with delta encoding"
+        )
+        p.addArgument(
+            "--sample-time", \.sampleTime,
+            help: "duration of test measurement in seconds\ndefault: 1",
+            parser: finiteDouble
+        )
+        p.addArgument(
+            "--verbose", \.verbose, defaultValue: true,
+            help: "increase output verbosity"
+        )
+        p.addArgument(
+            "--memory", \.logMemory, defaultValue: true,
+            help: "log the change in maximum resident set size (MAX_RSS)"
+        )
+        p.addArgument(
+            "--delim", \.delim,
+            help: "value delimiter used for log output; default: ,",
+            parser: { $0 }
+        )
+        p.addArgument(
+            "--tags", \PartialTestConfig.tags,
+            help: "run tests matching all the specified categories",
+            parser: tags
+        )
+        p.addArgument(
+            "--skip-tags", \PartialTestConfig.skipTags, defaultValue: [],
+            help: "don't run tests matching any of the specified\n" +
+                "categories; default: unstable,skip",
+            parser: tags
+        )
+        p.addArgument(
+            "--sleep", \.afterRunSleep,
+            help: "number of seconds to sleep after benchmarking",
+            parser: { UInt32($0) }
+        )
+        p.addArgument(
+            "--list", \.action, defaultValue: .listTests,
+            help: "don't run the tests, just log the list of test \n" +
+                "numbers, names and tags (respects specified filters)"
+        )
         p.addArgument(nil, \.tests) // positional arguments
         let c = p.parse()
 
@@ -191,10 +219,12 @@ struct TestConfig {
         self.logMemory = c.logMemory ?? false
         self.afterRunSleep = c.afterRunSleep
         self.action = c.action ?? .run
-        self.tests = TestConfig.filterTests(registeredBenchmarks,
-                                            specifiedTests: Set(c.tests ?? []),
-                                            tags: c.tags ?? [],
-                                            skipTags: c.skipTags ?? [.unstable, .skip])
+        self.tests = TestConfig.filterTests(
+            registeredBenchmarks,
+            specifiedTests: Set(c.tests ?? []),
+            tags: c.tags ?? [],
+            skipTags: c.skipTags ?? [.unstable, .skip]
+        )
 
         if self.logMemory, self.tests.count > 1 {
             print(
@@ -243,9 +273,13 @@ struct TestConfig {
         skipTags: Set<BenchmarkCategory>
     ) -> [(index: String, info: BenchmarkInfo)] {
         let allTests = registeredBenchmarks.sorted()
-        let indices = Dictionary(uniqueKeysWithValues:
-            zip(allTests.map { $0.name },
-                (1...).lazy.map { String($0) }))
+        let indices = Dictionary(
+            uniqueKeysWithValues:
+            zip(
+                allTests.map { $0.name },
+                (1...).lazy.map { String($0) }
+            )
+        )
 
         func byTags(b: BenchmarkInfo) -> Bool {
             return b.tags.isSuperset(of: tags) &&
@@ -567,8 +601,10 @@ final class TestRunner {
             c.numIters ?? calibrateMeasurements()
         )
 
-        let numSamples = c.numSamples ?? min(200, // Cap the number of samples
-                                             c.numIters == nil ? 1 : calibrateMeasurements())
+        let numSamples = c.numSamples ?? min(
+            200, // Cap the number of samples
+            c.numIters == nil ? 1 : calibrateMeasurements()
+        )
 
         samples.reserveCapacity(numSamples)
         logVerbose("    Collecting \(numSamples) samples.")

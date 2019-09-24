@@ -59,8 +59,10 @@ public final class ActorTestProbe<Message> {
     private var lastMessageObserved: Message?
 
     /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
-    internal init(spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
-                  file: StaticString = #file, line: UInt = #line) {
+    internal init(
+        spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+        file: StaticString = #file, line: UInt = #line
+    ) {
         self.settings = settings
 
         let behavior: Behavior<ProbeCommands> = ActorTestProbe.behavior(
@@ -83,9 +85,11 @@ public final class ActorTestProbe<Message> {
         self.exposedRef = self.internalRef._unsafeUnwrapCell.actor!.messageAdapter(wrapRealMessages)
     }
 
-    private static func behavior(messageQueue: LinkedBlockingQueue<Message>,
-                                 signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
-                                 terminationsQueue: LinkedBlockingQueue<Signals.Terminated>) -> Behavior<ProbeCommands> {
+    private static func behavior(
+        messageQueue: LinkedBlockingQueue<Message>,
+        signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
+        terminationsQueue: LinkedBlockingQueue<Signals.Terminated>
+    ) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { context, message in
             guard let cell = context.myself._unsafeUnwrapCell.actor else {
                 throw TestProbeInitializationError.failedToObtainUnderlyingCell

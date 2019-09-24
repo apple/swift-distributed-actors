@@ -97,19 +97,23 @@ class SupervisionTests: XCTestCase {
             _ = try self.system.spawn("example", props: .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)), behavior)
 
             // chaining
-            _ = try self.system.spawn("example",
-                                      props: Props()
-                                          .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                                          .dispatcher(.pinnedThread)
-                                          .mailbox(.default(capacity: 122, onOverflow: .crash)),
-                                      behavior)
+            _ = try self.system.spawn(
+                "example",
+                props: Props()
+                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
+                    .dispatcher(.pinnedThread)
+                    .mailbox(.default(capacity: 122, onOverflow: .crash)),
+                behavior
+            )
 
-            _ = try self.system.spawn("example",
-                                      props: Props()
-                                          .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
-                                          .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
-                                          .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)),
-                                      behavior)
+            _ = try self.system.spawn(
+                "example",
+                props: Props()
+                    .supervision(strategy: .restart(atMost: 5, within: .seconds(1)), forErrorType: EasilyCatchable.self)
+                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite))
+                    .supervision(strategy: .restart(atMost: 5, within: .effectivelyInfinite)),
+                behavior
+            )
         }
     }
 
@@ -123,9 +127,11 @@ class SupervisionTests: XCTestCase {
         let parentBehavior: Behavior<Never> = .setup { context in
             let strategy: SupervisionStrategy = .stop
             let behavior = self.faulty(probe: p.ref)
-            let _: ActorRef<FaultyMessage> = try context.spawn("\(runName)-erroring-1",
-                                                               props: .supervision(strategy: strategy),
-                                                               behavior)
+            let _: ActorRef<FaultyMessage> = try context.spawn(
+                "\(runName)-erroring-1",
+                props: .supervision(strategy: strategy),
+                behavior
+            )
             return .same
         }
         let interceptedParent = pp.interceptAllMessages(sentTo: parentBehavior) // TODO: intercept not needed
@@ -200,9 +206,11 @@ class SupervisionTests: XCTestCase {
         let pp = self.testKit.spawnTestProbe(expecting: Never.self)
 
         let parentBehavior: Behavior<Never> = .setup { context in
-            let _: ActorRef<FaultyMessage> = try context.spawn("\(runName)-failing-2",
-                                                               props: Props().supervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)),
-                                                               self.faulty(probe: p.ref))
+            let _: ActorRef<FaultyMessage> = try context.spawn(
+                "\(runName)-failing-2",
+                props: Props().supervision(strategy: .restart(atMost: 3, within: .seconds(1), backoff: backoff)),
+                self.faulty(probe: p.ref)
+            )
 
             return .same
         }
@@ -721,11 +729,13 @@ class SupervisionTests: XCTestCase {
     func test_compositeSupervisor_shouldHandleUsingTheRightHandler() throws {
         let probe = self.testKit.spawnTestProbe(expecting: WorkerMessages.self)
 
-        let faultyWorker = try system.spawn("compositeFailures-1",
-                                            props: Props()
-                                                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
-                                                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self),
-                                            self.faulty(probe: probe.ref))
+        let faultyWorker = try system.spawn(
+            "compositeFailures-1",
+            props: Props()
+                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: CatchMe.self)
+                .supervision(strategy: .restart(atMost: 1, within: nil), forErrorType: EasilyCatchable.self),
+            self.faulty(probe: probe.ref)
+        )
 
         probe.watch(faultyWorker)
 

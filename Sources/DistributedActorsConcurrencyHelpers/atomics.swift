@@ -595,10 +595,12 @@ public class AtomicBox<T: AnyObject> {
             let expectedBitPtr: UInt = expectedPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
             let desiredBitPtr: UInt = desiredPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
 
-            if self.storage.compareAndExchange(expected: expectedBitPtr,
-                                               desired: desiredBitPtr,
-                                               succ: succ,
-                                               fail: fail) {
+            if self.storage.compareAndExchange(
+                expected: expectedBitPtr,
+                desired: desiredBitPtr,
+                succ: succ,
+                fail: fail
+            ) {
                 _ = desiredPtr?.retain()
                 expectedPtr?.release()
                 return true
@@ -633,10 +635,12 @@ public class AtomicBox<T: AnyObject> {
             let expectedBitPtr: UInt = expectedPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
             let desiredBitPtr: UInt = desiredPtr.map { UInt(bitPattern: $0.toOpaque()) } ?? 0
 
-            if self.storage.compareAndExchangeWeak(expected: expectedBitPtr,
-                                                   desired: desiredBitPtr,
-                                                   succ: succ,
-                                                   fail: fail) {
+            if self.storage.compareAndExchangeWeak(
+                expected: expectedBitPtr,
+                desired: desiredBitPtr,
+                succ: succ,
+                fail: fail
+            ) {
                 _ = desiredPtr?.retain()
                 expectedPtr?.release()
                 return true
