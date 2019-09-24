@@ -186,8 +186,10 @@ internal enum ClusterReceptionist {
         _ = try context.spawn(.anonymous, behavior)
     }
 
-    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey,
-                                                       ref: AddressableActorRef, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
+    private static func makeRemoveRegistrationCallback(
+        context: ActorContext<Receptionist.Message>, key: AnyRegistrationKey,
+        ref: AddressableActorRef, storage: Receptionist.Storage
+    ) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
             let remainingRegistrations = storage.removeRegistration(key: key, ref: ref) ?? []
 

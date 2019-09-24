@@ -91,11 +91,13 @@ class SerializationTests: XCTestCase {
             let encoder = JSONEncoder()
             let decoder = JSONDecoder()
 
-            let context = ActorSerializationContext(log: self.system.log,
-                                                    localNode: self.system.settings.cluster.uniqueBindNode,
-                                                    system: self.system,
-                                                    allocator: ByteBufferAllocator(),
-                                                    traversable: self.system)
+            let context = ActorSerializationContext(
+                log: self.system.log,
+                localNode: self.system.settings.cluster.uniqueBindNode,
+                system: self.system,
+                allocator: ByteBufferAllocator(),
+                traversable: self.system
+            )
 
             encoder.userInfo[.actorSerializationContext] = context
             decoder.userInfo[.actorSerializationContext] = context

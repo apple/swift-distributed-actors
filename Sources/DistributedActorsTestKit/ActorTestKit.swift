@@ -104,9 +104,11 @@ public extension ActorTestKit {
     // TODO: does not handle blocking longer than `within` well
     // TODO: should use default `within` from TestKit
     @discardableResult
-    func eventually<T>(within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
-                       file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                       _ block: () throws -> T) throws -> T {
+    func eventually<T>(
+        within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ block: () throws -> T
+    ) throws -> T {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 
@@ -166,9 +168,11 @@ public struct EventuallyError: Error {
 public extension ActorTestKit {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an `AssertionHoldsError` when the block fails within the specified tiem amount.
-    func assertHolds(for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
-                     file: StaticString = #file, line: UInt = #line, column: UInt = #column,
-                     _ block: () throws -> Void) throws {
+    func assertHolds(
+        for timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
+        file: StaticString = #file, line: UInt = #line, column: UInt = #column,
+        _ block: () throws -> Void
+    ) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let deadline = self.system.deadline(fromNow: timeAmount) // TODO: system time source?
 

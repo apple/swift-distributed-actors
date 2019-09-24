@@ -454,11 +454,13 @@ internal final class Mailbox<Message> {
         defer { failedMessagePtr.deallocate() }
 
         // Run the mailbox:
-        let mailboxRunResult: SActMailboxRunResult = cmailbox_run(mailbox,
-                                                                  &cell,
-                                                                  &self.messageClosureContext, &self.systemMessageClosureContext,
-                                                                  &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
-                                                                  self.interpretMessage, self.deadLetterMessage)
+        let mailboxRunResult: SActMailboxRunResult = cmailbox_run(
+            mailbox,
+            &cell,
+            &self.messageClosureContext, &self.systemMessageClosureContext,
+            &self.deadLetterMessageClosureContext, &self.deadLetterSystemMessageClosureContext,
+            self.interpretMessage, self.deadLetterMessage
+        )
 
         // TODO: not in love that we have to do logic like this here... with a plain book to continue running or not it is easier
         // but we have to signal the .tombstone AFTER the mailbox has set status to terminating, so we have to do it here... and can't do inside interpretMessage
@@ -535,8 +537,10 @@ private struct InterpretMessageClosureContext {
     private let _exec: (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult
     private let _fail: (Error) -> Void
 
-    init(exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult,
-         fail: @escaping (Error) -> Void) {
+    init(
+        exec: @escaping (UnsafeMutableRawPointer, UnsafeMutableRawPointer, SActMailboxRunPhase) throws -> SActActorRunResult,
+        fail: @escaping (Error) -> Void
+    ) {
         self._exec = exec
         self._fail = fail
     }

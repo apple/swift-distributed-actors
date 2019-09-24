@@ -200,9 +200,11 @@ class BehaviorTests: XCTestCase {
 
     func test_ClassBehavior_executesInitOnStartSignal() throws {
         let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("probe-7a")
-        let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     props: .supervision(strategy: .restart(atMost: 1, within: nil)),
-                                                     .class { MyStartingBehavior(probe: p.ref) })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            props: .supervision(strategy: .restart(atMost: 1, within: nil)),
+            .class { MyStartingBehavior(probe: p.ref) }
+        )
         ref.tell("hello")
 
         try p.expectMessage("init")

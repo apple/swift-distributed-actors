@@ -94,8 +94,10 @@ class ArgumentParser<U> {
     init(into result: U) {
         self.result = result
         self.arguments += [
-            Argument(name: "--help", help: "show this help message and exit",
-                     apply: printUsage),
+            Argument(
+                name: "--help", help: "show this help message and exit",
+                apply: printUsage
+            ),
         ]
     }
 

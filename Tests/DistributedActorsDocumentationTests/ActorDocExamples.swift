@@ -172,9 +172,11 @@ class ActorDocExamples: XCTestCase {
         let system = ActorSystem("ExampleSystem")
 
         // tag::props_inline[]
-        let worker = try system.spawn("worker",
-                                      props: .dispatcher(.default),
-                                      behavior)
+        let worker = try system.spawn(
+            "worker",
+            props: .dispatcher(.default),
+            behavior
+        )
         // end::props_inline[]
         _ = worker // silence not-used warning
     }

@@ -272,11 +272,13 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 let wireEnvelope = Wire.Envelope(recipient: transportEnvelope.recipient, serializerId: serializerId, payload: bytes)
                 context.write(self.wrapOutboundOut(wireEnvelope), promise: promise)
             case .failure(let error):
-                self.log.error("Serialization of outgoing message failed: \(error)",
-                               metadata: [
-                                   "recipient": "\(transportEnvelope.recipient)",
-                                   "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
-                               ])
+                self.log.error(
+                    "Serialization of outgoing message failed: \(error)",
+                    metadata: [
+                        "recipient": "\(transportEnvelope.recipient)",
+                        "serializerId": "\(self.serializationPool.serialization.serializerIdFor(metaType: transportEnvelope.underlyingMessageMetaType), orElse: "<no-serializer>")",
+                    ]
+                )
                 // TODO: drop message when it fails to be serialized?
                 promise?.fail(error)
             }
@@ -495,8 +497,10 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
 
 extension SystemMessageRedeliveryHandler {
     /// Optional "dump all messages" logging.
-    private func tracelog(_ type: TraceLogType, message: Any,
-                          file: String = #file, function: String = #function, line: UInt = #line) {
+    private func tracelog(
+        _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         let level: Logger.Level?
         switch type {
         case .outbound, .outboundRedelivery:

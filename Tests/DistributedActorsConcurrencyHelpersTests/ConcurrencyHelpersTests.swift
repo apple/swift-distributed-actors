@@ -389,8 +389,10 @@ class ConcurrencyHelpersTests: XCTestCase {
         }
 
         sem1.wait()
-        XCTAssertEqual(DispatchTimeoutResult.timedOut,
-                       g.wait(timeout: .now() + 0.1))
+        XCTAssertEqual(
+            DispatchTimeoutResult.timedOut,
+            g.wait(timeout: .now() + 0.1)
+        )
         XCTAssertEqual(1, x)
 
         l.unlock()
@@ -420,8 +422,10 @@ class ConcurrencyHelpersTests: XCTestCase {
             }
 
             sem1.wait()
-            XCTAssertEqual(DispatchTimeoutResult.timedOut,
-                           g.wait(timeout: .now() + 0.1))
+            XCTAssertEqual(
+                DispatchTimeoutResult.timedOut,
+                g.wait(timeout: .now() + 0.1)
+            )
             XCTAssertEqual(1, x)
         }
         sem2.wait()
@@ -451,8 +455,10 @@ class ConcurrencyHelpersTests: XCTestCase {
         }
 
         sem1.wait()
-        XCTAssertEqual(DispatchTimeoutResult.timedOut,
-                       g.wait(timeout: .now() + 0.1))
+        XCTAssertEqual(
+            DispatchTimeoutResult.timedOut,
+            g.wait(timeout: .now() + 0.1)
+        )
         XCTAssertEqual(1, x)
 
         l.unlock()

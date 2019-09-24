@@ -145,9 +145,11 @@ public struct Serialization {
         for type: T.Type = T.self,
         underId id: SerializerId
     ) {
-        assert(Serialization.ReservedSerializerIds.contains(id),
-               "System serializers should be defined within their dedicated range. " +
-                   "Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!")
+        assert(
+            Serialization.ReservedSerializerIds.contains(id),
+            "System serializers should be defined within their dedicated range. " +
+                "Id [\(id)] was outside of \(Serialization.ReservedSerializerIds)!"
+        )
         serializer.setSerializationContext(serializationContext)
         self.serializerIds[MetaType(type).asHashable()] = id
         self.serializers[id] = BoxedAnySerializer(serializer)
@@ -156,9 +158,11 @@ public struct Serialization {
     /// Register serializer under specified identifier.
     /// The `id` identifier MUST be outside of `Serialization.ReservedSerializerIds`, i.e. greater than `1000`.
     private mutating func registerUserSerializer(_ serializer: AnySerializer, key: MetaTypeKey, underId id: SerializerId) {
-        precondition(id.isOutside(of: Serialization.ReservedSerializerIds),
-                     "User provided serializer identifier MUST NOT " +
-                         "be within the system reserved serializer ids range (\(Serialization.ReservedSerializerIds)), was: [\(id)]")
+        precondition(
+            id.isOutside(of: Serialization.ReservedSerializerIds),
+            "User provided serializer identifier MUST NOT " +
+                "be within the system reserved serializer ids range (\(Serialization.ReservedSerializerIds)), was: [\(id)]"
+        )
 
         switch self.serializerIds[key] {
         case .none:
@@ -342,11 +346,13 @@ public struct ActorSerializationContext {
     /// Address to be included in serialized actor refs if they are local references.
     public let localNode: UniqueNode
 
-    internal init(log: Logger,
-                  localNode: UniqueNode,
-                  system: ActorSystem,
-                  allocator: ByteBufferAllocator,
-                  traversable: _ActorTreeTraversable) {
+    internal init(
+        log: Logger,
+        localNode: UniqueNode,
+        system: ActorSystem,
+        allocator: ByteBufferAllocator,
+        traversable: _ActorTreeTraversable
+    ) {
         self.log = log
         self.localNode = localNode
         self.system = system

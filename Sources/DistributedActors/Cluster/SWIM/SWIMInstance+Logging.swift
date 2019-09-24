@@ -36,8 +36,10 @@ extension SWIMShell {
     /// Optional "dump all messages" logging.
     ///
     /// Enabled by `SWIM.Settings.traceLogLevel` or `-DSACT_TRACELOG_SWIM`
-    func tracelog(_ context: ActorContext<SWIM.Message>, _ type: TraceLogType, message: Any,
-                  file: String = #file, function: String = #function, line: UInt = #line) {
+    func tracelog(
+        _ context: ActorContext<SWIM.Message>, _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         if let level = self.settings.traceLogLevel {
             context.log.log(
                 level: level,

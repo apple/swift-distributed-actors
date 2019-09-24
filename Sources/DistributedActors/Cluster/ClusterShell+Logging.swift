@@ -23,8 +23,10 @@ extension ClusterShellState {
     /// Optional "dump all messages" logging.
     ///
     /// Enabled with `-DSACT_TRACELOG_CLUSTER`
-    internal func tracelog(_ type: TraceLogType, message: Any,
-                           file: String = #file, function: String = #function, line: UInt = #line) {
+    internal func tracelog(
+        _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         let level: Logger.Level?
         #if SACT_TRACELOG_CLUSTER
         level = .warning

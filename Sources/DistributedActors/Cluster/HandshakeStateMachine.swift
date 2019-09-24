@@ -80,8 +80,10 @@ internal struct HandshakeStateMachine {
 
         // TODO: counter for how many times to retry associating (timeouts)
 
-        init(settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node,
-             whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?) {
+        init(
+            settings: ClusterSettings, localNode: UniqueNode, connectTo remoteNode: Node,
+            whenCompleted: EventLoopPromise<Wire.HandshakeResponse>?
+        ) {
             precondition(localNode.node != remoteNode, "MUST NOT attempt connecting to own bind address. Address: \(remoteNode)")
             self.settings = settings
             self.backoff = settings.handshakeBackoffStrategy

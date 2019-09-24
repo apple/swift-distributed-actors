@@ -386,8 +386,10 @@ extension ClusterShell {
 
 extension ClusterShell {
     /// Initial entry point for accepting a new connection; Potentially allocates new handshake state machine.
-    internal func onHandshakeOffer(_ context: ActorContext<Message>, _ state: ClusterShellState,
-                                   _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>) -> Behavior<Message> {
+    internal func onHandshakeOffer(
+        _ context: ActorContext<Message>, _ state: ClusterShellState,
+        _ offer: Wire.HandshakeOffer, channel: Channel, replyInto promise: EventLoopPromise<Wire.HandshakeResponse>
+    ) -> Behavior<Message> {
         var state = state
 
         switch state.onIncomingHandshakeOffer(offer: offer) {
@@ -575,8 +577,10 @@ extension ClusterShell {
         return .same
     }
 
-    func onReachabilityChange(_ context: ActorContext<Message>, state: ClusterShellState,
-                              node: UniqueNode, reachability: MemberReachability) -> Behavior<Message> {
+    func onReachabilityChange(
+        _ context: ActorContext<Message>, state: ClusterShellState,
+        node: UniqueNode, reachability: MemberReachability
+    ) -> Behavior<Message> {
         var state = state
 
         if let changedMember = state.onMemberReachabilityChange(node, toReachability: reachability) {
@@ -652,8 +656,10 @@ enum ActorsProtocolError: Error {
 
 extension ClusterShell {
     /// Optional "dump all messages" logging.
-    private func tracelog(_ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
-                          file: String = #file, function: String = #function, line: UInt = #line) {
+    private func tracelog(
+        _ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
         if let level = context.system.settings.cluster.traceLogLevel {
             context.log.log(
                 level: level,

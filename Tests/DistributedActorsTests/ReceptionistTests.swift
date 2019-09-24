@@ -35,17 +35,21 @@ class ReceptionistTests: XCTestCase {
         let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawn(.anonymous,
-                                                      .receiveMessage { message in
-                                                          probe.tell("forwardedA:\(message)")
-                                                          return .same
-        })
+        let refA: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probe.tell("forwardedA:\(message)")
+                return .same
+            }
+        )
 
-        let refB: ActorRef<String> = try system.spawn(.anonymous,
-                                                      .receiveMessage { message in
-                                                          probe.tell("forwardedB:\(message)")
-                                                          return .same
-        })
+        let refB: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { message in
+                probe.tell("forwardedB:\(message)")
+                return .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -67,10 +71,12 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     .receiveMessage { _ in
-                                                         .same
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -88,10 +94,12 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     .receiveMessage { _ in
-                                                         .same
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -109,10 +117,12 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let probe: ActorTestProbe<Receptionist.Registered<String>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     .receiveMessage { _ in
-                                                         .same
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .same
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -128,10 +138,12 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let ref: ActorRef<String> = try system.spawn(.anonymous,
-                                                     .receiveMessage { _ in
-                                                         .stop
-        })
+        let ref: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .stop
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 
@@ -154,15 +166,19 @@ class ReceptionistTests: XCTestCase {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
         let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
 
-        let refA: ActorRef<String> = try system.spawn(.anonymous,
-                                                      .receiveMessage { _ in
-                                                          .same
-        })
+        let refA: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .same
+            }
+        )
 
-        let refB: ActorRef<String> = try system.spawn(.anonymous,
-                                                      .receiveMessage { _ in
-                                                          .stop
-        })
+        let refB: ActorRef<String> = try system.spawn(
+            .anonymous,
+            .receiveMessage { _ in
+                .stop
+            }
+        )
 
         let key = Receptionist.RegistrationKey(String.self, id: "test")
 

@@ -136,18 +136,26 @@ extension ClusteredNodesTestBase {
 // MARK: Assertions
 
 extension ClusteredNodesTestBase {
-    func assertAssociated(_ system: ActorSystem, withAtLeast node: UniqueNode,
-                          timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                          verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        try self.assertAssociated(system, withAtLeast: [node], timeout: timeout, interval: interval,
-                                  verbose: verbose, file: file, line: line, column: column)
+    func assertAssociated(
+        _ system: ActorSystem, withAtLeast node: UniqueNode,
+        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws {
+        try self.assertAssociated(
+            system, withAtLeast: [node], timeout: timeout, interval: interval,
+            verbose: verbose, file: file, line: line, column: column
+        )
     }
 
-    func assertAssociated(_ system: ActorSystem, withExactly node: UniqueNode,
-                          timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                          verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
-        try self.assertAssociated(system, withExactly: [node], timeout: timeout, interval: interval,
-                                  verbose: verbose, file: file, line: line, column: column)
+    func assertAssociated(
+        _ system: ActorSystem, withExactly node: UniqueNode,
+        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws {
+        try self.assertAssociated(
+            system, withExactly: [node], timeout: timeout, interval: interval,
+            verbose: verbose, file: file, line: line, column: column
+        )
     }
 
     /// Query associated state of `system` for at-most `timeout` amount of time, and verify it contains exactly the passed in `nodes`.
@@ -155,11 +163,13 @@ extension ClusteredNodesTestBase {
     /// - Parameters:
     ///   - withExactly: specific set of nodes that must exactly match the associated nodes on `system`; i.e. no extra associated nodes are allowed
     ///   - withAtLeast: sub-set of nodes that must be associated
-    func assertAssociated(_ system: ActorSystem,
-                          withExactly exactlyNodes: [UniqueNode] = [],
-                          withAtLeast atLeastNodes: [UniqueNode] = [],
-                          timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                          verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    func assertAssociated(
+        _ system: ActorSystem,
+        withExactly exactlyNodes: [UniqueNode] = [],
+        withAtLeast atLeastNodes: [UniqueNode] = [],
+        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        verbose: Bool = false, file: StaticString = #file, line: UInt = #line, column: UInt = #column
+    ) throws {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once issue #458 lands
 
@@ -200,9 +210,11 @@ extension ClusteredNodesTestBase {
         }
     }
 
-    func assertNotAssociated(system: ActorSystem, expectAssociatedNode node: UniqueNode,
-                             timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
-                             verbose: Bool = false) throws {
+    func assertNotAssociated(
+        system: ActorSystem, expectAssociatedNode node: UniqueNode,
+        timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
+        verbose: Bool = false
+    ) throws {
         let testKit: ActorTestKit = self.testKit(system)
 
         let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
@@ -225,8 +237,10 @@ extension ClusteredNodesTestBase {
     /// Asserts the given member node has the expected `status`.
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
-    func assertMemberStatus(_ testKit: ActorTestKit, on system: ActorSystem, member memberSystem: ActorSystem, is expectedStatus: MemberStatus,
-                            file: StaticString = #file, line: UInt = #line) throws {
+    func assertMemberStatus(
+        _ testKit: ActorTestKit, on system: ActorSystem, member memberSystem: ActorSystem, is expectedStatus: MemberStatus,
+        file: StaticString = #file, line: UInt = #line
+    ) throws {
         let p = testKit.spawnTestProbe(expecting: Membership.self)
         system.cluster._clusterRef.tell(.query(.currentMembership(p.ref)))
 

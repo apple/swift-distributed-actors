@@ -169,8 +169,10 @@ public final class ConditionLock<T: Equatable> {
         gettimeofday(&curTime, nil)
 
         let allNSecs: Int64 = timeoutNS + Int64(curTime.tv_usec) * 1000
-        var timeoutAbs = timespec(tv_sec: curTime.tv_sec + Int(allNSecs / nsecPerSec),
-                                  tv_nsec: Int(allNSecs % nsecPerSec))
+        var timeoutAbs = timespec(
+            tv_sec: curTime.tv_sec + Int(allNSecs / nsecPerSec),
+            tv_nsec: Int(allNSecs % nsecPerSec)
+        )
         assert(timeoutAbs.tv_nsec >= 0 && timeoutAbs.tv_nsec < Int(nsecPerSec))
         assert(timeoutAbs.tv_sec >= curTime.tv_sec)
         while true {
