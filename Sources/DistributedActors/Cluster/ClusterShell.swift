@@ -156,8 +156,8 @@ internal class ClusterShell {
         case inbound(InboundMessage)
         /// Cluster events which we need to process; while we may ourselves be the source of those events; this decouples processing them
         case clusterEvent(ClusterEvent)
-        /// Gossip
-        case gossip(from: UniqueNode, [ClusterEvent])
+        /// Messages from "high-level" gossip mechanism, sharing Member status among cluster members.
+        case gossip(MembershipGossip)
     }
 
     // this is basically our API internally for this system
@@ -273,15 +273,6 @@ extension ClusterShell {
         func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: command)
 
-            // ==== Update membership information to gossip to our latest "view" ---------------------------------------
-            let changes = state.membership.members(atMost: .removed).map { member -> ClusterEvent in
-                if state.selfNode != member.node {
-                    state.gossip.ref.tell(.introduce(peer: context.system._resolve(context: .init(address: ._cluster(on: member.node), system: context.system))))
-                }
-                return ClusterEvent.membershipChange(MembershipChange(node: member.node, fromStatus: member.status, toStatus: member.status))
-            }
-            state.gossip.set(.gossip(from: state.selfNode, changes))
-
             switch command {
             case .initJoin(let node):
                 return self.onInitJoin(context, state: state, joining: node)
@@ -294,7 +285,7 @@ extension ClusterShell {
             // FIXME: this is now a cluster event !!!!!
             case .reachabilityChanged(let node, let reachability):
                 guard let member = state.membership.uniqueMember(node) else {
-                    return .ignore // reachability change of unknown node
+                    return .same // reachability change of unknown node
                 }
                 switch reachability {
                 case .reachable:
@@ -313,11 +304,14 @@ extension ClusterShell {
         }
 
         func receiveQuery(context: ActorContext<Message>, query: QueryMessage) -> Behavior<Message> {
+            state.tracelog(.inbound, message: query)
+
             switch query {
             case .associatedNodes(let replyTo):
                 replyTo.tell(state.associatedNodes()) // TODO: we'll want to put this into some nicer message wrapper?
                 return .same
             case .currentMembership(let replyTo):
+                context.log.info("currentMembership >>>>>> \(replyTo)")
                 replyTo.tell(state.membership)
                 return .same
             }
@@ -350,27 +344,44 @@ extension ClusterShell {
             state.onClusterEvent(event)
             return self.ready(state: state)
         }
-        func receiveClusterGossip(context: ActorContext<Message>, from gossipOrigin: UniqueNode, events: [ClusterEvent]) -> Behavior<Message> {
-            context.log.warning("INCOMING GOSSIP\(gossipOrigin): \(events)")
-            tracelog(context, .gossip(from: gossipOrigin), message: events)
+        func receiveClusterGossip(context: ActorContext<Message>, from gossipOrigin: UniqueNode, members: [Member]) -> Behavior<Message> {
+            tracelog(context, .gossip(from: gossipOrigin), message: MembershipGossip.update(from: gossipOrigin, members))
 
             // TODO: this might differ more in the future; a gossip will perform diffing of "known, their observation" etc.
             var state = state
-            for event in events {
-                state.onClusterEvent(event)
+            for member in members {
+                state.onClusterEvent(.membershipChange(.init(member: member)))
             }
 
             return self.ready(state: state)
         }
 
-        // TODO: would be nice with some form of subReceive...
-        return .receive { context, message in
-            switch message {
-            case .command(let command): return receiveShellCommand(context: context, command: command)
-            case .query(let query): return receiveQuery(context: context, query: query)
-            case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
-            case .clusterEvent(let event): return receiveClusterEvent(context: context, event: event)
-            case .gossip(let from, let events): return receiveClusterGossip(context: context, from: from, events: events)
+        // TODO: maybe sub receive them?
+
+        func updateGossip(context: ActorContext<Message>) {
+            // ==== Update membership information to gossip to our latest "view" ---------------------------------------
+            // TODO: make it cleaner, where the Gossip itself manages what and where to gossip when we change membership.
+            // the State can have a willChange {} perhaps on membership and notify the Gossip with change there...
+            let members = state.membership.members(atMost: .removed)
+            for member in members {
+                if state.selfNode != member.node {
+                    state.gossip.ref.tell(.introduce(peer: context.system._resolve(context: .init(address: ._cluster(on: member.node), system: context.system))))
+                }
+            }
+            state.gossip.set(.gossip(.update(from: state.selfNode, members)))
+        }
+
+        return .setup { context in
+            updateGossip(context: context)
+
+            return .receive { context, message in
+                switch message {
+                case .command(let command): return receiveShellCommand(context: context, command: command)
+                case .query(let query): return receiveQuery(context: context, query: query)
+                case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
+                case .clusterEvent(let event): return receiveClusterEvent(context: context, event: event)
+                case .gossip(.update(let from, let members)): return receiveClusterGossip(context: context, from: from, members: members)
+                }
             }
         }
     }
@@ -546,7 +557,7 @@ extension ClusterShell {
 
         guard let handshakeState = state.handshakeInProgress(with: remoteNode) else {
             state.log.warning("Connection error for handshake which is not in progress, this should not happen, but is harmless.") // TODO: meh or fail hard
-            return .ignore
+            return .same
         }
 
         switch handshakeState {
@@ -587,7 +598,7 @@ extension ClusterShell {
         guard let completed = state.incomingHandshakeAccept(accept) else {
             if state.associatedNodes().contains(accept.from) {
                 // this seems to be a re-delivered accept, we already accepted association with this node.
-                return .ignore
+                return .same
             } else {
                 state.log.error("Illegal handshake accept received. No handshake was in progress with \(accept.from)") // TODO: tests and think this through more
                 return .same
@@ -732,7 +743,7 @@ extension ClusterShell {
 
         guard !membersToDown.isEmpty else {
             state.log.info("No members to .down; Known members of non-unique node [\(node)]: \(state.membership.members(node))")
-            return .ignore
+            return .same
         }
 
         var state: ClusterShellState = state

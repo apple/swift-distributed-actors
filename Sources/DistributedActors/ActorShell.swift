@@ -678,7 +678,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
                     self.log.warning("Received message [\(carry.message)] of type [\(String(reflecting: type(of: carry.message)))] for identifier [\(carry.identifier)] and address [\(carry.subReceiveAddress)] ")
-                    return .ignore // TODO: make .drop once implemented
+                    return .same // TODO: make .drop once implemented
                 }
 
                 try closure(message)

@@ -63,7 +63,7 @@ public final class Fork {
             case .take(let who):
                 context.log.info("\(uniquePath: who) attempted to take \(uniquePath: context.myself), yet already taken by \(uniquePath: owner)...")
                 who.tell(.busy(fork: context.myself))
-                return .ignore
+                return .same
             }
         }
     }

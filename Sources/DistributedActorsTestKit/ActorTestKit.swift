@@ -345,7 +345,7 @@ extension ActorTestKit {
     ///
     /// Examples:
     ///
-    ///     guard ... else { throw testKit.failure("failed to extract expected information") }
+    ///     guard ... else { throw testKit.fail("failed to extract expected information") }
     public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"

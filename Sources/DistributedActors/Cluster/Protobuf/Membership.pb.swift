@@ -190,6 +190,36 @@ struct ProtoClusterMember {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+/// TODO: MembershipGossip?
+/// TODO restructure that it should be more about who saw what node in what state, not the ClusterEvents, as the "from" status does not matter
+struct ProtoClusterMembershipGossip {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// origin of the gossip
+  var from: ProtoUniqueNode {
+    get {return _storage._from ?? ProtoUniqueNode()}
+    set {_uniqueStorage()._from = newValue}
+  }
+  /// Returns true if `from` has been explicitly set.
+  var hasFrom: Bool {return _storage._from != nil}
+  /// Clears the value of `from`. Subsequent reads from it will return its default value.
+  mutating func clearFrom() {_uniqueStorage()._from = nil}
+
+  /// TODO: Something else, "membership diff"?
+  var members: [ProtoClusterMember] {
+    get {return _storage._members}
+    set {_uniqueStorage()._members = newValue}
+  }
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 extension ProtoClusterMemberReachability: SwiftProtobuf._ProtoNameProviding {
@@ -348,6 +378,75 @@ extension ProtoClusterMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._node != rhs_storage._node {return false}
         if _storage._status != rhs_storage._status {return false}
         if _storage._reachability != rhs_storage._reachability {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension ProtoClusterMembershipGossip: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = "ClusterMembershipGossip"
+  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "from"),
+    2: .same(proto: "members"),
+  ]
+
+  fileprivate class _StorageClass {
+    var _from: ProtoUniqueNode? = nil
+    var _members: [ProtoClusterMember] = []
+
+    static let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _from = source._from
+      _members = source._members
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        switch fieldNumber {
+        case 1: try decoder.decodeSingularMessageField(value: &_storage._from)
+        case 2: try decoder.decodeRepeatedMessageField(value: &_storage._members)
+        default: break
+        }
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if let v = _storage._from {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      }
+      if !_storage._members.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._members, fieldNumber: 2)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: ProtoClusterMembershipGossip, rhs: ProtoClusterMembershipGossip) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._from != rhs_storage._from {return false}
+        if _storage._members != rhs_storage._members {return false}
         return true
       }
       if !storagesAreEqual {return false}

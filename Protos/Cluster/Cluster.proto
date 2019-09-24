@@ -18,22 +18,13 @@ syntax = "proto3";
 option optimize_for = SPEED;
 option swift_prefix = "Proto";
 
-import "ActorAddress.proto";
 import "Cluster/ClusterEvents.proto";
+import "Cluster/Membership.proto";
 
-// FIXME: this is not a 1:1 yet but shall become
 message ClusterShellMessage {
     oneof message {
         // Not all messages are serializable, on purpose, as they are not intended to cross over the network
         ClusterEvent clusterEvent = 1;
-        ClusterGossip gossip = 2;
+        ClusterMembershipGossip gossip = 2;
     }
-}
-
-// TODO: MembershipGossip?
-// TODO restructure that it should be more about who saw what node in what state, not the ClusterEvents, as the "from" status does not matter
-message ClusterGossip {
-    // origin of the gossip
-    UniqueNode from = 1;
-    repeated ClusterEvent clusterEvents = 2; // TODO: Something else, "membership diff"
 }

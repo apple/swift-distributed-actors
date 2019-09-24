@@ -169,7 +169,7 @@ extension Behavior {
     ///     if terminated.address.name == "Juliet" {
     ///         return .stop // if Juliet died, we end ourselves as well
     ///     } else {
-    ///         return .ignore
+    ///         return .same
     ///     }
     /// }
     /// ```

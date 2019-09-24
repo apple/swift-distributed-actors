@@ -45,3 +45,9 @@ enum ClusterMemberStatus {
     CLUSTER_MEMBER_STATUS_LEAVING = 4;
     CLUSTER_MEMBER_STATUS_REMOVED = 5;
 }
+
+message ClusterMembershipGossip {
+    // origin of the gossip
+    UniqueNode from = 1;
+    repeated ClusterMember members = 2; // TODO: Something else, "membership diff"?
+}

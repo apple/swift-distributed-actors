@@ -33,32 +33,30 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
             let third = self.setUpNode("third") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
             }
-            let fourth = self.setUpNode("fourth") { settings in
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-            }
 
             first.cluster.join(node: second.cluster.node.node)
             third.cluster.join(node: second.cluster.node.node)
-            fourth.cluster.join(node: second.cluster.node.node)
 
             try assertAssociated(first, withAtLeast: second.cluster.node)
             try assertAssociated(second, withAtLeast: third.cluster.node)
             try assertAssociated(first, withAtLeast: third.cluster.node)
-            try assertAssociated(fourth, withAtLeast: third.cluster.node)
 
             try self.testKit(second).eventually(within: .seconds(10)) {
                 try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: fourth.cluster.node, is: .up)
             }
 
             second.cluster.down(node: third.cluster.node)
 
-            try self.testKit(fourth).eventually(within: .seconds(10)) {
+            try self.testKit(first).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
+            }
+            try self.testKit(second).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
-                try self.assertMemberStatus(on: fourth, node: third.cluster.node, is: .down)
+            }
+            try self.testKit(third).eventually(within: .seconds(5)) {
+                try self.assertMemberStatus(on: third, node: third.cluster.node, is: .down)
             }
         }
     }

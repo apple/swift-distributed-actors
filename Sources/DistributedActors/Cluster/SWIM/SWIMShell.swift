@@ -67,6 +67,7 @@ internal struct SWIMShell {
             case .testing(let message):
                 switch message {
                 case .getMembershipState(let replyTo):
+                    context.log.trace("getMembershipState from \(replyTo), state: \(self.swim._allMembersDict)")
                     replyTo.tell(SWIM.MembershipState(membershipState: self.swim._allMembersDict))
                     return .same
                 }
@@ -255,7 +256,7 @@ internal struct SWIMShell {
     // MARK: Handling local messages
 
     func handlePingRandomMember(_ context: ActorContext<SWIM.Message>) {
-        context.log.trace("\(context.name): Received periodic trigger to ping random member", metadata: self.swim.metadata)
+        context.log.trace("Received periodic trigger to ping random member, among: \(self.swim._allMembersDict.count)", metadata: self.swim.metadata)
 
         // needs to be done first, so we can gossip out the most up to date state
         self.checkSuspicionTimeouts(context: context)

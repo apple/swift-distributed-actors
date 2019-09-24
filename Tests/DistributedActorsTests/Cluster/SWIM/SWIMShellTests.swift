@@ -375,48 +375,58 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
-    override var captureLogs: Bool {
-        return false
-    }
-
     func test_swim_shouldConvergeStateThroughGossip() throws {
-        let first = self.setUpFirst()
-        let second = self.setUpSecond()
 
-        let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
-        let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
+        try shouldNotThrow {
+            let first = self.setUpFirst()
+            let second = self.setUpSecond()
 
-        var settings: SWIMSettings = .default
-        settings.failureDetector.probeInterval = .milliseconds(100)
-
-        let firstSwim = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
-        let secondSwim = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
-
-        let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
-
-        secondSwim.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
-
-        try self.testKit(first).eventually(within: .seconds(10)) {
-            firstSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
-            let statusA = try membershipProbe.expectMessage(within: .seconds(1))
-
-            secondSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
-            let statusB = try membershipProbe.expectMessage(within: .seconds(1))
-
-            guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
-                throw self.testKit(first).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
+            defer {
+                self.printCapturedLogs(first)
+                self.printCapturedLogs(second)
             }
 
-            for (ref, status) in statusA.membershipState {
-                // there has to be a better way to do this, but that paths are
-                // different, because they reside on different nodes, so we
-                // compare only the segments, which are unique per instance
-                guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
-                    throw self.testKit(first).error("Did not get status for [\(ref)] in statusB")
+            let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
+            let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
+
+            var settings: SWIMSettings = .default
+            settings.failureDetector.probeInterval = .milliseconds(100)
+
+            var firstSwim: ActorRef<SWIM.Message> = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
+            var secondSwim: ActorRef<SWIM.Message> = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
+
+            while firstSwim.path.starts(with: ._dead) || secondSwim.path.starts(with: ._dead) {
+                pprint("Resolved a dead SWIM... trying again")
+                firstSwim = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
+                secondSwim = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
+            }
+
+            let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
+
+            secondSwim.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
+
+            try self.testKit(first).eventually(within: .seconds(10)) {
+                firstSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
+                let statusA = try membershipProbe.expectMessage(within: .seconds(1))
+
+                secondSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
+                let statusB = try membershipProbe.expectMessage(within: .seconds(1))
+
+                guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
+                    throw self.testKit(first).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
                 }
 
-                guard otherStatus == status else {
-                    throw self.testKit(first).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
+                for (ref, status) in statusA.membershipState {
+                    // there has to be a better way to do this, but that paths are
+                    // different, because they reside on different nodes, so we
+                    // compare only the segments, which are unique per instance
+                    guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
+                        throw self.testKit(first).error("Did not get status for [\(ref)] in statusB")
+                    }
+
+                    guard otherStatus == status else {
+                        throw self.testKit(first).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
+                    }
                 }
             }
         }

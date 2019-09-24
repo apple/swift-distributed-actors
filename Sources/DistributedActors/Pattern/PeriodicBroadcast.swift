@@ -87,6 +87,7 @@ internal class PeriodicBroadcastShell<Payload> {
 
     private func onBroadcastTick(_ context: ActorContext<Message>, peers: Set<ActorRef<Payload>>, payload: Payload) {
         for peer in peers {
+            context.log.info("SEND BROADCAST TO \(peer): \(payload)")
             peer.tell(payload)
         }
     }
