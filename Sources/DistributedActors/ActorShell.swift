@@ -570,6 +570,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         // TODO: validate all the niling out; can we null out the cell itself?
         self._deathWatch = nil
         self.messageAdapters = []
+        self.subReceives = [:]
 
         // become stopped, if not already
         switch self.behavior.underlying {
