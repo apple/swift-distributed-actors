@@ -87,6 +87,11 @@ public struct ClusterSettings {
     internal var _protocolVersion: DistributedActors.Version = DistributedActorsProtocolVersion
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Membership Gossip
+
+    var membershipGossipInterval: TimeAmount = .milliseconds(500)
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
     var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)

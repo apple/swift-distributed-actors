@@ -225,7 +225,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
 extension Membership: CustomStringConvertible, CustomDebugStringConvertible {
     public func prettyDescription(label: String) -> String {
         var res = "Membership \(label):"
-        res += "\n   LEADER: \(String(reflecting: self.leader))"
+        res += "\n   LEADER: \(self.leader, orElse: ".none")"
         for member in self._members.values.sorted(by: { $0.node.node.port < $1.node.node.port }) {
             res += "\n   \(reflecting: member.node) STATUS: [\(member.status.rawValue, leftPadTo: MemberStatus.maxStrLen)]"
         }
@@ -255,7 +255,12 @@ extension Membership {
     mutating func apply(_ change: MembershipChange) -> MembershipChange? {
         switch change.toStatus {
         case .joining:
-            return self.join(change.node)
+            if self.uniqueMember(change.node) != nil {
+                // If we actually already have this node, it is a MARK, not a join "over"
+                return self.mark(change.node, as: change.toStatus)
+            } else {
+                return self.join(change.node)
+            }
         case let status:
             return self.mark(change.node, as: status)
         }

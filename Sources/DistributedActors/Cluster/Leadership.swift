@@ -239,7 +239,7 @@ extension Leadership {
 
             // we return the change we are suggesting to take:
             let change = try! membership.applyLeadershipChange(to: leader) // try! safe, as we KNOW this member is part of membership
-            context.log.trace("Selected leader: \(reflecting: leader)")
+            context.log.trace("Selected leader: [\(reflecting: leader)], out of \(membership)")
             return .init(context.loop.next().makeSucceededFuture(change))
         }
     }

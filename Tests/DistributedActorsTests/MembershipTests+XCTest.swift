@@ -32,6 +32,7 @@ extension MembershipTests {
             ("test_members_listing", test_members_listing),
             ("test_members_listing_filteringByReachability", test_members_listing_filteringByReachability),
             ("test_mark_shouldOnlyProceedForwardInStatuses", test_mark_shouldOnlyProceedForwardInStatuses),
+            ("test_mark_shouldNotReturnChangeForMarkingAsSameStatus", test_mark_shouldNotReturnChangeForMarkingAsSameStatus),
             ("test_mark_reachability", test_mark_reachability),
             ("test_join_overAnExistingMode_replacement", test_join_overAnExistingMode_replacement),
             ("test_mark_replacement", test_mark_replacement),

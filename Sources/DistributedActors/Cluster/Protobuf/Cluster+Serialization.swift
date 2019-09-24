@@ -27,8 +27,12 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         switch self {
         case .clusterEvent(let event):
             proto.clusterEvent = try event.toProto(context: context)
+        case .gossip(let from, let events):
+            proto.gossip = ProtoClusterGossip()
+            proto.gossip.from = try from.toProto(context: context)
+            proto.gossip.clusterEvents = try events.map { try $0.toProto(context: context) }
         default:
-            fatalError("NOT IMPLEMENTED")
+            fatalError("Serializer not implemented for: \(self)")
         }
         return proto
     }
@@ -37,6 +41,11 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         switch proto.message {
         case .some(.clusterEvent(let protoEvent)):
             self = try .clusterEvent(.init(fromProto: protoEvent, context: context))
+        case .some(.gossip(let protoGossip)):
+            self = try .gossip(
+                from: .init(fromProto: protoGossip.from, context: context),
+                protoGossip.clusterEvents.map { try ClusterEvent(fromProto: $0, context: context) }
+            )
         case .none:
             throw SerializationError.missingField("message", type: "\(InternalProtobufRepresentation.self)")
         }

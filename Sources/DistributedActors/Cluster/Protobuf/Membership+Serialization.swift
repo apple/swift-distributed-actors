@@ -52,7 +52,7 @@ extension Member: InternalProtobufRepresentable {
     func toProto(context: ActorSerializationContext) throws -> ProtoClusterMember {
         var proto = InternalProtobufRepresentation()
         proto.node = try self.node.toProto(context: context)
-        proto.status = try self.status.toProto(context: context)
+        proto.status = self.status.toProto(context: context)
         proto.reachability = try self.reachability.toProto(context: context)
         return proto
     }

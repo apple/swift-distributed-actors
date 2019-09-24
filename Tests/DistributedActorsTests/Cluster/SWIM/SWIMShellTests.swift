@@ -375,6 +375,10 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         }
     }
 
+    override var captureLogs: Bool {
+        return false
+    }
+
     func test_swim_shouldConvergeStateThroughGossip() throws {
         let first = self.setUpFirst()
         let second = self.setUpSecond()
@@ -383,7 +387,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
 
         var settings: SWIMSettings = .default
-        settings.failureDetector.probeInterval = .milliseconds(50)
+        settings.failureDetector.probeInterval = .milliseconds(100)
 
         let firstSwim = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
         let secondSwim = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
@@ -392,7 +396,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
         secondSwim.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
 
-        try self.testKit(first).eventually(within: .seconds(6)) {
+        try self.testKit(first).eventually(within: .seconds(10)) {
             firstSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
             let statusA = try membershipProbe.expectMessage(within: .seconds(1))
 

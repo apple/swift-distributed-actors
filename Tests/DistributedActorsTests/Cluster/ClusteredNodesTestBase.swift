@@ -236,8 +236,9 @@ extension ClusteredNodesTestBase {
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     func assertMemberStatus(
-    func assertMemberStatus(on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
-                            file: StaticString = #file, line: UInt = #line) throws {
+        on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
+        file: StaticString = #file, line: UInt = #line
+    ) throws {
         let testKit = self.testKit(system)
         let p = testKit.spawnTestProbe(expecting: Membership.self)
         defer {

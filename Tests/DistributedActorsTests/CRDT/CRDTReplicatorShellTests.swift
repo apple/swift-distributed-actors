@@ -589,9 +589,9 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
 
         switch memberStatus {
         case .down:
-            system.cluster.events.publish(.membership(.memberDown(Member(node: memberNode, status: .down))))
+            system.cluster.events.publish(.membershipChange(.init(member: Member(node: memberNode, status: .down))))
         case .up:
-            system.cluster.events.publish(.membership(.memberUp(Member(node: memberNode, status: .up))))
+            system.cluster.events.publish(.membershipChange(.init(member: Member(node: memberNode, status: .up))))
         default:
             throw Boom("\(memberStatus) not supported")
         }

@@ -19,36 +19,52 @@ import NIOSSL
 import XCTest
 
 final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
-    func test_gossip_down_node_shouldReachAllNodes() throws {
-        let first = self.setUpNode("first") { settings in
-            settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
-        }
-        let second = self.setUpNode("second") { settings in
-            settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
-        }
-        let third = self.setUpNode("third") { settings in
-            settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
-        }
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Marking .down
 
-        let nodeToBeDowned = third.cluster.node
+    func test_down_beGossipedToOtherNodes() throws {
+        try shouldNotThrow {
+            let first = self.setUpNode("first") { settings in
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+            }
+            let second = self.setUpNode("second") { settings in
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+            }
+            let third = self.setUpNode("third") { settings in
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+            }
+            let fourth = self.setUpNode("fourth") { settings in
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
+            }
 
-        let testKit = ActorTestKit(first)
+            first.cluster.join(node: second.cluster.node.node)
+            third.cluster.join(node: second.cluster.node.node)
+            fourth.cluster.join(node: second.cluster.node.node)
 
-        first.cluster.join(node: second.cluster.node.node)
-        second.cluster.join(node: third.cluster.node.node)
-        // third and second should join up via SWIM gossip discovery:
-        try assertAssociated(first, withAtLeast: nodeToBeDowned)
+            try assertAssociated(first, withAtLeast: second.cluster.node)
+            try assertAssociated(second, withAtLeast: third.cluster.node)
+            try assertAssociated(first, withAtLeast: third.cluster.node)
+            try assertAssociated(fourth, withAtLeast: third.cluster.node)
 
-        first.cluster.down(node: nodeToBeDowned)
+            try self.testKit(second).eventually(within: .seconds(10)) {
+                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
+                try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
+                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
+                try self.assertMemberStatus(on: second, node: fourth.cluster.node, is: .up)
+            }
 
-        // this information should reach the remote node via gossip
-        try testKit.eventually(within: .seconds(3), interval: .milliseconds(150)) {
-            try self.assertMemberStatus(on: third, node: third.cluster.node, is: .down)
+            second.cluster.down(node: third.cluster.node)
 
-            try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
-            try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
+            try self.testKit(fourth).eventually(within: .seconds(10)) {
+                try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
+                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
+                try self.assertMemberStatus(on: fourth, node: third.cluster.node, is: .down)
+            }
         }
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: SWIM + joining
 
     func test_join_swimDiscovered_thirdNode() throws {
         let first = self.setUpNode("first") { settings in
@@ -88,51 +104,5 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
 
         // excellent, all nodes know each other
         pinfo("Associated: third <~> first")
-    }
-
-    // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: leader decision: .joining -> .up
-
-    // TODO: more tests about leadership here? I.e. 4 nodes, then remove one; etc
-    override var captureLogs: Bool {
-        return false
-    }
-
-    func test_joining_to_up_decisionByLeader() throws {
-        try shouldNotThrow {
-            let first = self.setUpNode("first") { settings in
-                settings.cluster.node.port = 7111
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-            }
-            let second = self.setUpNode("second") { settings in
-                settings.cluster.node.port = 8222
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-            }
-            let third = self.setUpNode("third") { settings in
-                settings.cluster.node.port = 9333
-                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 3)
-            }
-
-            first.cluster.join(node: second.cluster.node.node)
-            third.cluster.join(node: second.cluster.node.node)
-
-            try assertAssociated(first, withAtLeast: second.cluster.node)
-            try assertAssociated(second, withAtLeast: third.cluster.node)
-            try assertAssociated(first, withAtLeast: third.cluster.node)
-
-            try self.testKit(first).eventually(within: .seconds(10)) {
-                try self.assertMemberStatus(on: first, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: first, node: third.cluster.node, is: .up)
-
-                try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
-
-                try self.assertMemberStatus(on: third, node: first.cluster.node, is: .up)
-                try self.assertMemberStatus(on: third, node: second.cluster.node, is: .up)
-                try self.assertMemberStatus(on: third, node: third.cluster.node, is: .up)
-            }
-        }
     }
 }

@@ -156,6 +156,8 @@ internal class ClusterShell {
         case inbound(InboundMessage)
         /// Cluster events which we need to process; while we may ourselves be the source of those events; this decouples processing them
         case clusterEvent(ClusterEvent)
+        /// Gossip
+        case gossip(from: UniqueNode, [ClusterEvent])
     }
 
     // this is basically our API internally for this system
@@ -253,7 +255,10 @@ extension ClusterShell {
             return context.awaitResultThrowing(of: chanElf, timeout: clusterSettings.bindTimeout) { (chan: Channel) in
                 context.log.info("Bound to \(chan.localAddress.map { $0.description } ?? "<no-local-address>")")
 
-                let state = ClusterShellState(settings: clusterSettings, channel: chan, log: context.log)
+                // TODO: make it actual gossip, not broadcast
+                let gossip = try PeriodicBroadcast.start(context, of: ClusterShell.Message.self)
+                let state = ClusterShellState(settings: clusterSettings, channel: chan, gossip: gossip, log: context.log)
+
                 context.myself.tell(.clusterEvent(.membershipChange(.init(member: Member(node: state.selfNode, status: .joining)))))
 
                 return self.ready(state: state)
@@ -267,6 +272,15 @@ extension ClusterShell {
     private func ready(state: ClusterShellState) -> Behavior<Message> {
         func receiveShellCommand(context: ActorContext<Message>, command: CommandMessage) -> Behavior<Message> {
             state.tracelog(.inbound, message: command)
+
+            // ==== Update membership information to gossip to our latest "view" ---------------------------------------
+            let changes = state.membership.members(atMost: .removed).map { member -> ClusterEvent in
+                if state.selfNode != member.node {
+                    state.gossip.ref.tell(.introduce(peer: context.system._resolve(context: .init(address: ._cluster(on: member.node), system: context.system))))
+                }
+                return ClusterEvent.membershipChange(MembershipChange(node: member.node, fromStatus: member.status, toStatus: member.status))
+            }
+            state.gossip.set(.gossip(from: state.selfNode, changes))
 
             switch command {
             case .initJoin(let node):
@@ -333,42 +347,18 @@ extension ClusterShell {
         func receiveClusterEvent(context: ActorContext<Message>, event: ClusterEvent) -> Behavior<Message> {
             self.tracelog(context, .receive(from: state.selfNode.node), message: event)
             var state = state
-            // Note: technically this could be another actor driving all those things (!), but keeping it in the shell is nice... It could grow to become /cluster/leadership tho
-            switch event {
-            case .leadershipChange(let change):
-                do {
-                    try state.membership.applyLeadershipChange(to: change.newLeader)
-                } catch {
-                    context.log.warning("Unable to apply leadership change: \(change), error: \(error)")
-                }
-            case .membershipChange(let change):
-                state.membership.apply(change)
-            case .reachabilityChange(let change):
-                state.onMemberReachabilityChange(change)
-            case .snapshot(let membership):
-                // ignore; we are the _source_ of all membership truth, and if we ever got a snapshot, it is meaningless
-                return .same
+            state.onClusterEvent(event)
+            return self.ready(state: state)
+        }
+        func receiveClusterGossip(context: ActorContext<Message>, from gossipOrigin: UniqueNode, events: [ClusterEvent]) -> Behavior<Message> {
+            context.log.warning("INCOMING GOSSIP\(gossipOrigin): \(events)")
+            tracelog(context, .gossip(from: gossipOrigin), message: events)
+
+            // TODO: this might differ more in the future; a gossip will perform diffing of "known, their observation" etc.
+            var state = state
+            for event in events {
+                state.onClusterEvent(event)
             }
-
-            // TODO: remove or keep as trace
-            context.log.info("Membership updated \(state.membership.prettyDescription(label: "\(state.selfNode)"))")
-
-            // TODO: where to log and act...
-            let takenActions = state.tryPerformLeaderTasks()
-
-            // HACK until Gossip() ~~~~~
-            for action in takenActions {
-                switch action {
-                case .moveMember(let change):
-                    for node in state.associatedNodes() {
-                        // FIXME: gossip these instead since membership has changed; take a diff of the membership and gossip that diff
-                        let remoteClusterShell = context.system._resolve(context: ResolveContext<ClusterShell.Message>(address: ._cluster(on: node), system: context.system))
-                        state.log.info("SENDING \(change) TO \(remoteClusterShell)")
-                        remoteClusterShell.tell(.clusterEvent(.membershipChange(change)))
-                    }
-                }
-            }
-            // END OF HACK until Gossip() ~~~~~
 
             return self.ready(state: state)
         }
@@ -380,6 +370,7 @@ extension ClusterShell {
             case .query(let query): return receiveQuery(context: context, query: query)
             case .inbound(let inbound): return try receiveInbound(context: context, message: inbound)
             case .clusterEvent(let event): return receiveClusterEvent(context: context, event: event)
+            case .gossip(let from, let events): return receiveClusterGossip(context: context, from: from, events: events)
             }
         }
     }
@@ -404,7 +395,7 @@ extension ClusterShell {
 
         if let existingAssociation = state.association(with: remoteNode) {
             // TODO: we maybe could want to attempt and drop the other "old" one?
-            state.log.debug("Attempted associating with already associated node: [\(remoteNode)], existing association: [\(existingAssociation)]")
+            state.log.debug("Attempted associating with already associated node: \(reflecting: remoteNode), existing association: [\(existingAssociation)]")
             switch existingAssociation {
             case .associated(let associationState):
                 replyTo?.tell(.success(associationState.remoteNode))
@@ -702,7 +693,7 @@ extension ClusterShell {
         context.onResultAsync(of: handshakeResultAnswer, timeout: .effectivelyInfinite) { (res: Result<HandshakeResult, Error>) in
             switch res {
             case .success(.success(let uniqueNode)):
-                context.log.info("ASSOCIATED \(uniqueNode) TELLING SWIM ABOUT IT.")
+                context.log.debug("Associated \(uniqueNode), informing SWIM to monitor this node.")
                 self._swimRef.tell(.local(.monitor(uniqueNode)))
                 return .same // .same, since state was modified since inside the handshakeWith (!)
             case .success(.failure(let error)):
@@ -718,15 +709,14 @@ extension ClusterShell {
     }
 
     func onReachabilityChange(
-    func onReachabilityChange(
-        _ context: ActorContext<Message>, 
-        state: ClusterShellState, 
+        _ context: ActorContext<Message>,
+        state: ClusterShellState,
         change: ReachabilityChange
     ) -> Behavior<Message> {
         var state = state
 
         // TODO: make sure we don't end up infinitely spamming reachability events
-        if let changedMember = state.onMemberReachabilityChange(change) {
+        if state.onMemberReachabilityChange(change) != nil {
             self.clusterEvents.publish(.reachabilityChange(change))
             context.system.metrics.recordMembership(state.membership)
             return self.ready(state: state) // TODO: return membershipChanged() where we can do the publish + record in one spot

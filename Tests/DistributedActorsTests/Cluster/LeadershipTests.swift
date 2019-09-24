@@ -35,7 +35,6 @@ final class LeadershipTests: XCTestCase {
 
     func test_LowestReachableMember_selectLeader() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
-        let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
 
@@ -45,16 +44,15 @@ final class LeadershipTests: XCTestCase {
 
     func test_LowestReachableMember_notEnoughMembersToDecide() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
-        let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
-        membership.remove(self.firstMember.node)
+        _ = membership.remove(self.firstMember.node)
 
         // 2 members -> not enough to make decision anymore
         let change1: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
         change1.shouldBeNil()
 
-        membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.node)
 
         // 3 members again, should work
         let change2: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
@@ -63,10 +61,9 @@ final class LeadershipTests: XCTestCase {
 
     func test_LowestReachableMember_whenCurrentLeaderDown() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
-        let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
-        membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.node)
 
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
@@ -78,10 +75,9 @@ final class LeadershipTests: XCTestCase {
 
     func test_LowestReachableMember_whenCurrentLeaderUnreachable() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
-        let loop = EmbeddedEventLoop()
 
         var membership = self.initialMembership
-        membership.join(self.newMember.node)
+        _ = membership.join(self.newMember.node)
 
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))

@@ -224,6 +224,14 @@ final class MembershipTests: XCTestCase {
         membership.mark(member.node, as: .up).shouldBeNil() // can't move "back", from down
     }
 
+    func test_mark_shouldNotReturnChangeForMarkingAsSameStatus() {
+        let member = self.firstMember
+        var membership: Membership = [member]
+
+        let noChange = membership.mark(member.node, as: member.status)
+        noChange.shouldBeNil()
+    }
+
     func test_mark_reachability() {
         let member = Member(node: UniqueNode(node: Node(systemName: "System", host: "4.4.4.4", port: 1001), nid: .random()), status: .joining)
 

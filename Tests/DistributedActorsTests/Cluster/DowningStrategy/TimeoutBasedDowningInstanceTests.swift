@@ -77,7 +77,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
     }
 
     func test_onLeaderChange_whenNonMemberSelectedAsLeader_shouldThrow() throws {
-        let err = try shouldThrow {
+        let err = shouldThrow {
             try self.instance.membership.applyLeadershipChange(to: self.nonMember)
         }
         "\(err)".shouldStartWith(prefix: "nonMemberLeaderSelected")
