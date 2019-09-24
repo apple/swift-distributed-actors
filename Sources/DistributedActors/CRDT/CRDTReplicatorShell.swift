@@ -253,7 +253,7 @@ extension CRDT.Replicator {
                     // swiftformat:disable indent unusedArguments wrapArguments
                     let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
                         isSuccessful: {
-                            // TODO: is there a way to not use if-else?
+                            // TODO: is there a way to make this less verbose?
                             if case .success = $0 {
                                 return true
                             } else {
@@ -564,7 +564,7 @@ extension CRDT.Replicator.Shell {
             case .receive:
                 return "RECV"
             case .remoteReplicators:
-                return "REMOTE-REPLICATORS"
+                return "REMOTE"
             }
         }
     }

@@ -324,7 +324,6 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         // FIXME: shouldn't need to do this
         try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
 
-        let writeP = self.localTestKit.spawnTestProbe(expecting: LocalWriteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
@@ -336,7 +335,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
         let localOwnerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local.asAnyStateBasedCRDT)
-        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        let _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
 
         // Tell local replicator to read g1 with .all consistency. Remote copies of g1 should be merged with local.
         self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .all, timeout: self.timeout, replyTo: readP.ref)))
@@ -369,7 +368,6 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         // FIXME: shouldn't need to do this
         try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
 
-        let writeP = self.localTestKit.spawnTestProbe(expecting: LocalWriteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
         let id = CRDT.Identity("gcounter-1")
@@ -378,7 +376,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
-        let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
+        let _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
 
         // Tell local replicator to read g1 with .all consistency. Remote copies of g1 should be merged with local.
         self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .all, timeout: self.timeout, replyTo: readP.ref)))
@@ -413,7 +411,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         g1Remote.increment(by: 3)
 
         // Register owner so replicator will notify it on g1 updates
-        let localOwnerP = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local.asAnyStateBasedCRDT)
+        let _ = try self.makeCRDTOwnerTestProbe(system: self.localSystem, testKit: self.localTestKit, id: id, data: g1Local.asAnyStateBasedCRDT)
         let remoteOwnerP = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
 
         // Tell local replicator to delete g1
