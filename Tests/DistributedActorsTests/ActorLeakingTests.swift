@@ -254,7 +254,7 @@ class ActorLeakingTests: XCTestCase {
 
         for _ in 1 ... 5 {
             let system = ActorSystem("Test")
-            system.shutdown()
+            system.shutdown().wait()
         }
 
         ActorSystem.actorSystemInitCounter.load().shouldEqual(initialSystemCount)
