@@ -15,25 +15,6 @@
 import DistributedActorsConcurrencyHelpers
 
 internal enum MailboxBitMasks {
-    // Implementation notes:
-    // State should be operated on bitwise; where the specific bits signify states like the following:
-    //      0 - has system messages
-    //      1 - currently processing system messages
-    //   2-33 - user message count
-    //     34 - message count overflow (important because we increment the counter first and then check if the mailbox was already full)
-    //  35-60 - reserved
-    //     61 - mailbox is suspended and will not process any user messages
-    //     62 - terminating (or closed)
-    //     63 - closed, terminated (for sure)
-    // Activation count is special in the sense that we use it as follows, it's value being:
-    // 0 - inactive, not scheduled and no messages to process
-    // 1 - active without(!) normal messages, only system messages are to be processed
-    // n - there are (n >> 1) messages to process + system messages if LSB is set
-    //
-    // Note that this implementation allows, using one load, to know:
-    // - if the actor is running right now (so the mailbox size will be decremented shortly),
-    // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
-    // - if we need to schedule it or not since it was scheduled already etc.
     static let activations: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0111_1111_1111_1111_1111_1111_1111_1111_1111
 
     static let hasSystemMessages: UInt64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001
@@ -63,11 +44,11 @@ internal enum MailboxBitMasks {
     // used to unset the SUSPENDED bit by ANDing with status
     //
     // assume we are suspended and have some system messages and 7 user messages enqueued:
-    //      CURRENT STATUS                         0b0010000000000000000000000000000000000000000000000000000000011101
-    //      (operation)                          & 0b1101111111111111111111111111111111111111111111111111111111111111
-    //                                           --------------------------------------------------------------------
-    //                                           = 0b0000000000000000000000000000000000000000000000000000000000011101
+    //      CURRENT STATUS         0b0010_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
+    //      (operation)          &
     static let unsuspend: UInt64 = 0b1101_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111
+    //                             --------------------------------------------------------------------
+    //                           = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001_1101
 }
 
 internal final class Mailbox<Message> {
@@ -82,6 +63,11 @@ internal final class Mailbox<Message> {
     let serializeAllMessages: Bool
 
     init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
+        #if SACT_TESTS_LEAKS
+        if shell.address.segments.first?.value == "user" {
+            _ = shell._system.userMailboxInitCounter.add(1)
+        }
+        #endif
         self.shell = shell
         self.userMessages = MPSCLinkedQueue()
         self.systemMessages = MPSCLinkedQueue()
@@ -93,6 +79,16 @@ internal final class Mailbox<Message> {
         // TODO: not entirely happy about the added weight, but I suppose avoiding going all the way "into" the settings on each send is even worse?
         self.serializeAllMessages = shell.system.settings.serialization.allMessages
     }
+
+    #if SACT_TESTS_LEAKS
+    deinit {
+        #if SACT_TESTS_LEAKS
+        if self.address.segments.first?.value == "user" {
+            _ = self.deadLetters._system!.userMailboxInitCounter.sub(1)
+        }
+        #endif
+    }
+    #endif
 
     /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
     init(system: ActorSystem, capacity: UInt32, maxRunLength: UInt32 = 100) {
@@ -509,6 +505,25 @@ internal final class Mailbox<Message> {
     }
 
     internal struct Status {
+        // Implementation notes:
+        // State should be operated on bitwise; where the specific bits signify states like the following:
+        //      0 - has system messages
+        //      1 - currently processing system messages
+        //   2-33 - user message count
+        //     34 - message count overflow (important because we increment the counter first and then check if the mailbox was already full)
+        //  35-60 - reserved
+        //     61 - mailbox is suspended and will not process any user messages
+        //     62 - terminating (or closed)
+        //     63 - closed, terminated (for sure)
+        // Activation count is special in the sense that we use it as follows, it's value being:
+        // 0 - inactive, not scheduled and no messages to process
+        // 1 - active without(!) normal messages, only system messages are to be processed
+        // n - there are (n >> 1) messages to process + system messages if LSB is set
+        //
+        // Note that this implementation allows, using one load, to know:
+        // - if the actor is running right now (so the mailbox size will be decremented shortly),
+        // - current mailbox size (nr. of enqueued messages, which can be used for scheduling and/or metrics)
+        // - if we need to schedule it or not since it was scheduled already etc.
         private let _status: UInt64
 
         init(_ status: UInt64) {
