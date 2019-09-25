@@ -20,10 +20,5 @@
       "children": [
       ]
     }
-  ],
-  "string-replacements": {
-    "Docs/img": "img",
-    "http://reswift.github.io/ReSwift/master/getting-started-guide.html": "getting-started-guide.html",
-    "#contributing": "contributing.html"
-  }
+  ]
 }

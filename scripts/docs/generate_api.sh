@@ -29,39 +29,48 @@ else
 fi
 echo "Project version: ${version}"
 
+# all our public modules which we want to document, begin with `DistributedActors`
 modules=(
-    DistributedActors
+  DistributedActors
+  DistributedActorsTestKit
 )
 
 if [[ "$(uname -s)" == "Linux" ]]; then
-  # build code if required
-  if [[ ! -d "$root_path/.build/x86_64-unknown-linux" ]]; then
-    swift build
-  fi
-  # setup source-kitten if required
-  source_kitten_source_path="$root_path/.build/SourceKittenSource"
-  if [[ ! -d "$source_kitten_source_path" ]]; then
-    git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
-  fi
-  source_kitten_path="$source_kitten_source_path/.build/x86_64-unknown-linux/debug"
-  if [[ ! -d "$source_kitten_path" ]]; then
-    rm -rf "$source_kitten_source_path/.swift-version"
-    cd "$source_kitten_source_path" && swift build && cd "$root_path"
-  fi
-  # generate
-  mkdir -p "$root_path/.build/sourcekitten"
-  for module in "${modules[@]}"; do
-    if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-      "$source_kitten_path/sourcekitten" doc --spm-module $module > "$root_path/.build/sourcekitten/$module.json"
-    fi
-  done
+  os="x86_64-unknown-linux"
+else
+  os="x86_64-apple-macosx"
 fi
+
+# build code if required
+#if [[ ! -d "$root_path/.build/${os}" ]]; then
+  swift build
+#fi
+
+# setup source-kitten if required
+source_kitten_source_path="$root_path/.build/SourceKittenSource"
+if [[ ! -d "$source_kitten_source_path" ]]; then
+  git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
+fi
+source_kitten_path="$source_kitten_source_path/.build/${os}/debug"
+if [[ ! -d "$source_kitten_path" ]]; then
+  rm -rf "$source_kitten_source_path/.swift-version"
+  cd "$source_kitten_source_path" && swift build && cd "$root_path"
+fi
+
+# generate
+mkdir -p "$root_path/.build/sourcekitten"
+for module in "${modules[@]}"; do
+#  if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
+  echo "Parsing sources for module: ${module}"
+  "$source_kitten_path/sourcekitten" doc --spm --module-name $module > "$root_path/.build/sourcekitten/$module.json"
+#  fi
+done
 
 [[ -d swift-distributed-actors.xcodeproj ]] || swift package generate-xcodeproj
 
 # run jazzy
 if ! command -v jazzy > /dev/null; then
-  gem install jazzy --no-document
+  gem install jazzy --no-document -v 0.10.0
 fi
 
 if [[ "$(jazzy --version)" != "jazzy version: 0.10.0" ]]; then
@@ -80,11 +89,6 @@ jazzy_args=(--clean
             --github-file-prefix https://github.com/apple/swift-distributed-actors/blob/$doc_link_version
             --theme fullwidth
            )
-cat "$my_path/includes/api_docs_main.md" > "$module_switcher"
-
-for module in "${modules[@]}"; do
-  echo " - [$module](../$module/index.html)" >> "$module_switcher"
-done
 
 mkdir -p "$root_path/.build/docs/api/$version"
 mkdir -p "$root_path/.build/docs/docset/$version"
@@ -93,5 +97,13 @@ for module in "${modules[@]}"; do
   if [[ -f "$root_path/.build/sourcekitten/$module.json" ]]; then
     args+=(--sourcekitten-sourcefile "$root_path/.build/sourcekitten/$module.json")
   fi
+
+  cat "$my_path/includes/${module}_README.md" > "$module_switcher"
+  for module in "${modules[@]}"; do
+    echo " - [$module](../$module/index.html)" >> "$module_switcher"
+  done
+
   jazzy "${args[@]}"
 done
+
+echo "Done."
