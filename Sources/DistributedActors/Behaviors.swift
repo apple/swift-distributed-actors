@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// A `Behavior` is what executes then an `Actor` handles messages.
+/// A `Behavior` is what executes when an `Actor` handles messages.
 ///
 /// The most important behavior is `Behavior.receive` since it allows handling incoming messages with a simple block.
 /// Various other predefined behaviors exist, such as "stopping" or "ignoring" a message.
