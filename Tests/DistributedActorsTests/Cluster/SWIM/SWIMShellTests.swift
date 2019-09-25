@@ -376,7 +376,6 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldConvergeStateThroughGossip() throws {
-
         try shouldNotThrow {
             let first = self.setUpFirst()
             let second = self.setUpSecond()
