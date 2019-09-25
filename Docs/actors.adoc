@@ -292,16 +292,16 @@ To learn more about the semantics of these asynchronous result inter-op behavior
 
 === Actor Lifecycle
 
-Each actor follows a well-defined lifecycle from the moment it it spawned until the moment it terminates.
+Each actor follows a well-defined lifecycle from the moment it is spawned until the moment it terminates.
 
 The following diagram illustrates lifecycle transitions and signals which are delivered to an actor as it undergoes these
 transitions. Note that in normal situations, i.e. without faulty behaviors, the diagram is a simple linear transition from
-`Running` through `Stopped` to `Terminated`, all other states and transitions come into play only in face of faulty behaviors.
+`Running` through `Stopped` to `Terminated`. All other states and transitions come into play only in face of faulty behaviors.
 
 image::actor_lifecycle.png[Actor Lifecycle]
 
 1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing it to execute all nested `.setup` behaviors.
-2. Stop Myself: An actor may decide to stop itself by returning an api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
+2. Stop Myself: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
     See also <<Stopping the Current Actor (Myself)>>.
 3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
     Such stop signal _cannot_ be ignored by the child, and will take effect as soon as it is received by the child. See also <<Stopping Child Actors>>.
@@ -314,7 +314,7 @@ image::actor_lifecycle.png[Actor Lifecycle]
     before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
     from a clean slate, however _while preserving its mailbox and identity_.
 7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
-    the actor will transition to `Stopped` and `Terminated`, similarity to how it would have if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
+    the actor will transition to `Stopped` and `Terminated`, similar to how it would behave if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
 
 === Actor Lifecycle-bound defer statements
 
@@ -353,11 +353,11 @@ An actor can be stopped either by its own decision to do so, a failure occurring
 
 ==== Stopping the Current Actor (Myself)
 
-While an actor is running there exist only two ways in which it may decide end up _stopping itself_, either by:
+While an actor is running there exist only two ways in which it may decide to end up _stopping itself_, either by:
 
 - **stopping** – returning a api:Behavior[struct,alias='Behavior.stop'] as the next behavior.
 - **crashing** – by throwing an `Error` or causing a fault.
-** in which case <<supervision>> will handle the failure and determine what to do about it; by default stopping the actor.
+** In which case <<supervision>> will handle the failure and determine what to do about it. The default is stopping the actor.
 
 To see this in a more realistic example let's have a look at the following snippet:
 
@@ -366,7 +366,7 @@ To see this in a more realistic example let's have a look at the following snipp
 include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=stop_myself_1]
 ----
 <1> We invoke some business logic that does not have to be aware of the actor details at all.
-<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning api:Behavior[struct,alias='Behavior.stop'].
+<2> We interpret the terminal data chunk to mean that we should now stop, and do so by returning a api:Behavior[struct,alias='Behavior.stop'].
 
 This example also showcases that we do not necessarily have to bind the business logic to the fact that it is being executed inside an actor.
 As shown in the snippet, we can interpret states returned by the underlying logic as states the actor should transition in its lifecycle.
