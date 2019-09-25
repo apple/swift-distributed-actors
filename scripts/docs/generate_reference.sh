@@ -49,8 +49,6 @@ asciidoctor \
   $root_path/Docs/index.adoc
 
 cp -r $root_path/Docs/images $target_dir/
-cp -r $root_path/Docs/images/favicon/android-icon-48x48.png $target_dir/images/sact.png
-cp -r $root_path/Docs/images/favicon/*.ico $target_dir/
 cp -r $root_path/Docs/stylesheets $target_dir/
 
 echo "Docs generated: $target_dir/index.html"
