@@ -173,7 +173,7 @@ extension ClusteredNodesTestBase {
 
         let testKit = self.testKit(system)
 
-        let probe = testKit.spawnTestProbe("probe-assertAssociated", expecting: Set<UniqueNode>.self, file: file, line: line)
+        let probe = testKit.spawnTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
