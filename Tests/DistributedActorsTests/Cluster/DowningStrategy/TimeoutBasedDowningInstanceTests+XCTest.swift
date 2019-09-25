@@ -26,11 +26,11 @@ extension TimeoutBasedDowningInstanceTests {
             ("test_onLeaderChange_whenNotLeaderAndNewLeaderIsSelfAddress_shouldBecomeLeader", test_onLeaderChange_whenNotLeaderAndNewLeaderIsSelfAddress_shouldBecomeLeader),
             ("test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader", test_onLeaderChange_whenNotLeaderAndNewLeaderIsOtherAddress_shouldNotBecomeLeader),
             ("test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership", test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership),
+            ("test_onLeaderChange_whenNonMemberSelectedAsLeader_shouldThrow", test_onLeaderChange_whenNonMemberSelectedAsLeader_shouldThrow),
             ("test_onLeaderChange_whenLeaderAndNewLeaderIsSelfAddress_shouldStayLeader", test_onLeaderChange_whenLeaderAndNewLeaderIsSelfAddress_shouldStayLeader),
             ("test_onLeaderChange_whenLeaderAndNoNewLeaderIsElected_shouldLoseLeadership", test_onLeaderChange_whenLeaderAndNoNewLeaderIsElected_shouldLoseLeadership),
             ("test_onLeaderChange_whenNotLeaderAndNoNewLeaderIsElected_shouldNotBecomeLeader", test_onLeaderChange_whenNotLeaderAndNoNewLeaderIsElected_shouldNotBecomeLeader),
             ("test_onLeaderChange_whenBecomingLeaderAndNodesPendingToBeDowned_shouldReturnMarkAsDown", test_onLeaderChange_whenBecomingLeaderAndNodesPendingToBeDowned_shouldReturnMarkAsDown),
-            ("test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet", test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet),
             ("test_onTimeout_whenNotCurrentlyLeader_shouldInsertMemberAddressIntoMarkAsDown", test_onTimeout_whenNotCurrentlyLeader_shouldInsertMemberAddressIntoMarkAsDown),
             ("test_onTimeout_whenCurrentlyLeader_shouldReturnMarkAsDown", test_onTimeout_whenCurrentlyLeader_shouldReturnMarkAsDown),
             ("test_onMemberRemoved_whenMemberWasUnreachable_shouldReturnCancelTimer", test_onMemberRemoved_whenMemberWasUnreachable_shouldReturnCancelTimer),
@@ -39,6 +39,7 @@ extension TimeoutBasedDowningInstanceTests {
             ("test_onMemberReachable_whenMemberWasUnreachable_shouldReturnCancelTimer", test_onMemberReachable_whenMemberWasUnreachable_shouldReturnCancelTimer),
             ("test_onMemberReachable_whenMemberWasMarkAsDown_shouldReturnNone", test_onMemberReachable_whenMemberWasMarkAsDown_shouldReturnNone),
             ("test_onMemberReachable_whenMemberNotKnown_shouldReturnNone", test_onMemberReachable_whenMemberNotKnown_shouldReturnNone),
+            ("test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet", test_onMemberUnreachable_shouldAddAddressOfMemberToUnreachableSet),
         ]
     }
 }

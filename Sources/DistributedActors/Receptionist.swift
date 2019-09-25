@@ -279,7 +279,7 @@ internal enum LocalReceptionist {
                     terminatedCallback()
                     return .stop
                 }
-                return .ignore
+                return .same
             }
         }
 

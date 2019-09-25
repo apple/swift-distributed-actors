@@ -59,7 +59,7 @@ public class Philosopher {
                     fatalError("Already thinking")
 
                 case .forkReply:
-                    return .ignore
+                    return .same
                 }
             }
         }

@@ -35,11 +35,11 @@ extension CRDT.Identity: ProtobufRepresentable {
 extension CRDT.VersionContext: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTVersionContext
 
-    public func toProto(context: ActorSerializationContext) -> ProtoCRDTVersionContext {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTVersionContext {
         var proto = ProtoCRDTVersionContext()
-        proto.versionVector = self.vv.toProto(context: context)
-        proto.gaps = self.gaps.map { gap in
-            gap.toProto(context: context)
+        proto.versionVector = try self.vv.toProto(context: context)
+        proto.gaps = try self.gaps.map { gap in
+            try gap.toProto(context: context)
         }
         return proto
     }
@@ -63,8 +63,8 @@ extension CRDT.VersionedContainer: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTVersionedContainer {
         var proto = ProtoCRDTVersionedContainer()
-        proto.replicaID = self.replicaId.toProto(context: context)
-        proto.versionContext = self.versionContext.toProto(context: context)
+        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.versionContext = try self.versionContext.toProto(context: context)
         proto.elementByBirthDot = try self.elementByBirthDot.toProto(context: context)
         if let delta = self.delta {
             proto.delta = try delta.toProto(context: context)
@@ -98,7 +98,7 @@ extension CRDT.VersionedContainerDelta: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTVersionedContainerDelta {
         var proto = ProtoCRDTVersionedContainerDelta()
-        proto.versionContext = self.versionContext.toProto(context: context)
+        proto.versionContext = try self.versionContext.toProto(context: context)
         proto.elementByBirthDot = try self.elementByBirthDot.toProto(context: context)
         return proto
     }
@@ -119,7 +119,7 @@ private extension Dictionary where Key == VersionDot, Value: Hashable {
 
         for (dot, element) in self {
             var envelope = ProtoVersionDottedElementEnvelope()
-            envelope.dot = dot.toProto(context: context)
+            envelope.dot = try dot.toProto(context: context)
 
             let serializerId = try context.system.serialization.serializerIdFor(message: element)
             guard let serializer = context.system.serialization.serializer(for: serializerId) else {
@@ -178,10 +178,10 @@ extension CRDT.GCounter.State {
 }
 
 extension CRDT.GCounter.ProtoState {
-    fileprivate init(fromValue value: CRDT.GCounter.State, context: ActorSerializationContext) {
-        self = value.map { replicaId, count in
+    fileprivate init(fromValue value: CRDT.GCounter.State, context: ActorSerializationContext) throws {
+        self = try value.map { replicaId, count in
             var protoReplicaState = ProtoCRDTGCounter.ReplicaState()
-            protoReplicaState.replicaID = replicaId.toProto(context: context)
+            protoReplicaState.replicaID = try replicaId.toProto(context: context)
             protoReplicaState.count = UInt64(count)
             return protoReplicaState
         }
@@ -191,12 +191,12 @@ extension CRDT.GCounter.ProtoState {
 extension CRDT.GCounter: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTGCounter
 
-    public func toProto(context: ActorSerializationContext) -> ProtoCRDTGCounter {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTGCounter {
         var proto = ProtoCRDTGCounter()
-        proto.replicaID = self.replicaId.toProto(context: context)
-        proto.state = CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
+        proto.replicaID = try self.replicaId.toProto(context: context)
+        proto.state = try CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
         if let delta = self.delta {
-            proto.delta = delta.toProto(context: context)
+            proto.delta = try delta.toProto(context: context)
         }
         return proto
     }
@@ -218,9 +218,9 @@ extension CRDT.GCounter: ProtobufRepresentable {
 extension CRDT.GCounterDelta: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoCRDTGCounter.Delta
 
-    public func toProto(context: ActorSerializationContext) -> ProtoCRDTGCounter.Delta {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTGCounter.Delta {
         var proto = ProtoCRDTGCounter.Delta()
-        proto.state = CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
+        proto.state = try CRDT.GCounter.ProtoState(fromValue: self.state, context: context)
         return proto
     }
 
@@ -237,7 +237,7 @@ extension CRDT.ORSet: ProtobufRepresentable {
 
     public func toProto(context: ActorSerializationContext) throws -> ProtoCRDTORSet {
         var proto = ProtoCRDTORSet()
-        proto.replicaID = self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaId.toProto(context: context)
         proto.state = try self.state.toProto(context: context)
         return proto
     }

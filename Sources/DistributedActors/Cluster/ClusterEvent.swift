@@ -12,21 +12,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-public enum ClusterEvent {
-    case leaderChanged(UniqueNode?)
-    case membership(MembershipEvent)
-    case reachability(ReachabilityEvent)
+/// Represents cluster events, most notably regarding membership and reachability of other members of the cluster.
+public enum ClusterEvent: Equatable {
+    case snapshot(Membership)
+    case membershipChange(MembershipChange)
+    case reachabilityChange(ReachabilityChange)
+    case leadershipChange(LeadershipChange)
 }
 
-public enum MembershipEvent {
-    case memberJoining(Member)
-    case memberUp(Member)
-    case memberLeaving(Member)
-    case memberDown(Member)
-    case memberRemoved(Member)
-}
+/// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
+public struct ReachabilityChange: Equatable {
+    let member: Member
 
-public enum ReachabilityEvent {
-    case memberReachable(Member)
-    case memberUnreachable(Member)
+    /// This change is to a `.reachable` state of the `Member`
+    var toReachable: Bool {
+        return self.member.reachability == .reachable
+    }
+
+    /// This change is to a `.unreachable` state of the `Member`
+    var toUnreachable: Bool {
+        return self.member.reachability == .unreachable
+    }
 }

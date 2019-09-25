@@ -102,12 +102,12 @@ public final class ConditionLock<T: Equatable> {
         self._value = value
         self.mutex = Lock()
         let err = pthread_cond_init(self.cond, nil)
-        precondition(err == 0, "\(#function) failed in pthread_cond with error \(err)")
+        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
     }
 
     deinit {
         let err = pthread_cond_destroy(self.cond)
-        precondition(err == 0, "\(#function) failed in pthread_cond with error \(err)")
+        precondition(err == 0, "\(#function) failed in pthread_mutex with error \(err)")
         self.cond.deallocate()
     }
 

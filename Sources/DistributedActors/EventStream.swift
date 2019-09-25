@@ -14,7 +14,7 @@
 
 /// `EventStream` manages a set of subscribers and forwards any events sent to it via the `.publish`
 /// message to all subscribers. An actor can subscribe to the events by sending a `.subscribe` message
-/// and unsubscribe by sending `.unsubscribe`. Subscribers will be watched and unsubscribes in case
+/// and unsubscribe by sending `.unsubscribe`. Subscribers will be watched and un-subscribes in case
 /// they terminate.
 ///
 /// `EventStream` is only meant to be used locally and does not buffer or redeliver messages.

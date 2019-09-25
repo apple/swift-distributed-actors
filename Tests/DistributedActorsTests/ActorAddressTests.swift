@@ -99,7 +99,7 @@ final class ActorAddressTests: XCTestCase {
         let node = UniqueNode(systemName: "system", host: "127.0.0.1", port: 1234, nid: NodeID(11111))
         let remote = ActorAddress(node: node, path: address.path, incarnation: ActorIncarnation(8888))
 
-        String(reflecting: remote).shouldEqual("sact://system@127.0.0.1:1234/user/hello#8888")
+        String(reflecting: remote).shouldEqual("sact://system:11111@127.0.0.1:1234/user/hello#8888")
         "\(remote)".shouldEqual("sact://system@127.0.0.1:1234/user/hello")
         "\(remote.name)".shouldEqual("hello")
         "\(remote.path)".shouldEqual("/user/hello")
@@ -124,10 +124,10 @@ final class ActorAddressTests: XCTestCase {
 
     func test_equalityOf_addressWithDifferentSystemNameOnly() throws {
         let address = try ActorAddress(path: ActorPath._user.appending("hello"), incarnation: ActorIncarnation(8888))
-        let one = ActorAddress(node: .init(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
-        let two = ActorAddress(node: .init(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let one = ActorAddress(node: UniqueNode(systemName: "one", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
+        let two = ActorAddress(node: UniqueNode(systemName: "two", host: "127.0.0.1", port: 1234, nid: NodeID(11111)), path: address.path, incarnation: ActorIncarnation(88))
 
-        one.shouldNotEqual(two)
+        one.shouldEqual(two)
     }
 
     func test_equalityOf_addressWithDifferentSegmentsButSameUID() throws {
@@ -138,31 +138,41 @@ final class ActorAddressTests: XCTestCase {
     }
 
     func test_sortingOf_ActorAddresses() throws {
-        let node100 = UniqueNode(systemName: "X", host: "localhost", port: 22, nid: NodeID(100))
-        let node200 = UniqueNode(systemName: "X", host: "localhost", port: 22, nid: NodeID(200))
-        let node200p1 = UniqueNode(systemName: "X", host: "localhost", port: 1, nid: NodeID(200))
-
-        let pathA: ActorPath = try ActorPath._user.appending("a")
-        let a10: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(10))
-        let a11: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(11))
-        let a20: ActorAddress = ActorAddress(node: node100, path: pathA, incarnation: ActorIncarnation(20))
-        [a20, a10, a11].sorted().shouldEqual([a10, a11, a20]) // on equal nodes and paths, incarnations matter
-
-        let pathB: ActorPath = try ActorPath._user.appending("b")
-        let b10: ActorAddress = ActorAddress(node: node100, path: pathB, incarnation: .random())
-        let b20: ActorAddress = ActorAddress(node: node200, path: pathB, incarnation: .random())
-        [b20, b10].sorted().shouldEqual([b10, b20])
-
-        let pathC: ActorPath = try ActorPath._user.appending("b")
-        let cp22: ActorAddress = ActorAddress(node: node200, path: pathC, incarnation: .perpetual)
-        let cp1i0: ActorAddress = ActorAddress(node: node200p1, path: pathC, incarnation: .perpetual)
-        let cp1i1000: ActorAddress = ActorAddress(node: node200p1, path: pathC, incarnation: ActorIncarnation(1000))
-        [cp1i1000, cp1i0, cp22].sorted().shouldEqual([cp1i0, cp1i1000, cp22])
-
-        let a: ActorAddress = try ActorAddress(node: node100, path: ActorPath._user.appending("a"), incarnation: ActorIncarnation(10))
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .random())
         let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .random())
         let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .random())
-        // sorting should not be impacted by the random incarnation numbers, as node or path segments already decide order
-        [b, a, c].sorted().shouldEqual([b, c, a]) // local refs sorted first
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
+    }
+
+    func test_sortingOf_sameNode_ActorAddresses() throws {
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeLocalAddress(incarnation: .perpetual)
+        let b: ActorAddress = try ActorPath._user.appending("b").makeLocalAddress(incarnation: .perpetual)
+        let c: ActorAddress = try ActorPath._user.appending("c").makeLocalAddress(incarnation: .perpetual)
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
+    }
+
+    func test_sortingOf_diffNodes_ActorAddresses() throws {
+        var addresses: [ActorAddress] = []
+        let a: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 111, nid: NodeID(1)), incarnation: 1)
+        let b: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 222, nid: NodeID(1)), incarnation: 1)
+        let c: ActorAddress = try ActorPath._user.appending("a").makeRemoteAddress(on: UniqueNode(systemName: "A", host: "1.1.1.1", port: 333, nid: NodeID(1)), incarnation: 1)
+        addresses.append(c)
+        addresses.append(b)
+        addresses.append(a)
+
+        // sorting should not be impacted by the random incarnation numbers
+        addresses.sorted().shouldEqual([a, b, c])
     }
 }

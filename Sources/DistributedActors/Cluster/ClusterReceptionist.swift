@@ -68,7 +68,7 @@ internal enum ClusterReceptionist {
 
                 default:
                     context.log.warning("Received unexpected message \($0)")
-                    return .ignore
+                    return .same // TODO: .drop
                 }
                 return .same
             }
@@ -179,7 +179,7 @@ internal enum ClusterReceptionist {
                     terminatedCallback()
                     return .stop
                 }
-                return .ignore
+                return .same // TODO: .drop?
             }
         }
 

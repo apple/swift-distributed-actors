@@ -255,7 +255,7 @@ internal final class OutboundSystemMessageRedelivery {
         //        }
     }
 
-    func onReconnected(newAssociationID: AssociationStateMachine.AssociatedState) {
+    func onReconnected(newAssociationID: Association.AssociatedState) {
         // TODO: redeliver everything
     }
 

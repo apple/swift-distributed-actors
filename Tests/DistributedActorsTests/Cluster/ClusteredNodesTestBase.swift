@@ -96,23 +96,21 @@ open class ClusteredNodesTestBase: XCTestCase {
 // MARK: Printing information
 
 extension ClusteredNodesTestBase {
-    func pinfoAllMemberships(testKit: ActorTestKit, file: StaticString = #file, line: UInt = #line) {
+    func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
+        let testKit = self.testKit(system)
         let p = testKit.spawnTestProbe(expecting: Membership.self)
 
-        var infos: [String] = []
-        for node in self._nodes {
-            node.cluster._clusterRef.tell(.query(.currentMembership(p.ref)))
-            let membership = try! p.expectMessage()
-            infos.append(membership.prettyDescription(label: "\(node.cluster.node)"))
-        }
+        system.cluster.ref.tell(.query(.currentMembership(p.ref)))
+        let membership = try! p.expectMessage()
+        let info = membership.prettyDescription(label: String(reflecting: system.cluster.node))
 
         p.stop()
 
         pinfo("""
         \n
-        MEMBERSHIPS === -------------------------------------------------------------------------------------
-        \(infos.joined(separator: "\n\n"))
-        END OF MEMBERSHIPS === ------------------------------------------------------------------------------ 
+        MEMBERSHIP === -------------------------------------------------------------------------------------
+        \(info)
+        END OF MEMBERSHIP === ------------------------------------------------------------------------------ 
         """, file: file, line: line)
     }
 }
@@ -179,7 +177,7 @@ extension ClusteredNodesTestBase {
         defer { probe.stop() }
 
         try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
-            system.cluster._clusterRef.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
+            system.cluster.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 
             if verbose {
@@ -220,7 +218,7 @@ extension ClusteredNodesTestBase {
         let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
         try testKit.assertHolds(for: timeout ?? .seconds(1)) {
-            system.cluster._clusterRef.tell(.query(.associatedNodes(probe.ref)))
+            system.cluster.ref.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage() // TODO: use interval here
             if verbose {
                 pprint("                  Self: \(String(reflecting: system.settings.cluster.uniqueBindNode))")
@@ -238,21 +236,23 @@ extension ClusteredNodesTestBase {
     ///
     /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
     func assertMemberStatus(
-        _ testKit: ActorTestKit, on system: ActorSystem, member memberSystem: ActorSystem, is expectedStatus: MemberStatus,
+        on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
         file: StaticString = #file, line: UInt = #line
     ) throws {
+        let testKit = self.testKit(system)
         let p = testKit.spawnTestProbe(expecting: Membership.self)
-        system.cluster._clusterRef.tell(.query(.currentMembership(p.ref)))
+        defer {
+            p.stop()
+        }
+        system.cluster.ref.tell(.query(.currentMembership(p.ref)))
 
         let membership = try p.expectMessage()
-        guard let foundMember = membership.member(memberSystem.cluster.node) else {
-            throw testKit.error("Expected [\(memberSystem.cluster.node)] to know about [\(memberSystem.cluster.node)] member", file: file, line: line)
+        guard let foundMember = membership.uniqueMember(node) else {
+            throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
         }
 
-        p.stop()
-
         if foundMember.status != expectedStatus {
-            throw testKit.error("Expected [\(foundMember)] on [\(system)] to be seen as: [\(expectedStatus)]")
+            throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
         }
     }
 }

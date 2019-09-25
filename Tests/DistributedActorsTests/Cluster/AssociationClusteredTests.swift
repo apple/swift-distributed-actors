@@ -34,7 +34,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let (local, remote) = self.setUpPair()
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertAssociated(local, withExactly: remote.cluster.node)
         try assertAssociated(remote, withExactly: local.cluster.node)
@@ -46,14 +46,14 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let (local, remote) = self.setUpPair()
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertAssociated(local, withExactly: remote.cluster.node)
         try assertAssociated(remote, withExactly: local.cluster.node)
 
         try p.expectMessage(.success(remote.cluster.node))
 
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try p.expectMessage(.success(remote.cluster.node))
     }
@@ -62,34 +62,42 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     // MARK: Joining into existing cluster
 
     func test_association_sameAddressNodeJoin_shouldOverrideExistingNode() throws {
-        let (local, remote) = self.setUpPair()
+        try shouldNotThrow {
+            let (first, second) = self.setUpPair()
 
-        let remoteName = remote.cluster.node.node.systemName
-        let remotePort = remote.cluster.node.port
+            let secondName = second.cluster.node.node.systemName
+            let remotePort = second.cluster.node.port
 
-        local.cluster.join(node: remote.cluster.node.node)
+            let firstEventsProbe = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+            let secondEventsProbe = self.testKit(second).spawnTestProbe(expecting: ClusterEvent.self)
+            first.cluster.events.subscribe(firstEventsProbe.ref)
+            second.cluster.events.subscribe(secondEventsProbe.ref)
 
-        try assertAssociated(local, withExactly: remote.cluster.node)
-        try assertAssociated(remote, withExactly: local.cluster.node)
+            first.cluster.join(node: second.cluster.node.node)
 
-        let oldRemote = remote
-        oldRemote.shutdown().wait() // kill remote node
+            try assertAssociated(first, withExactly: second.cluster.node)
+            try assertAssociated(second, withExactly: first.cluster.node)
 
-        let replacementRemote = self.setUpNode(remoteName) { settings in
-            settings.cluster.bindPort = remotePort
+            let oldSecond = second
+            oldSecond.shutdown() // kill remote node
+
+            let secondReplacement = self.setUpNode(secondName + "-REPLACEMENT") { settings in
+                settings.cluster.bindPort = remotePort
+            }
+            let secondReplacementEventsProbe = self.testKit(secondReplacement).spawnTestProbe(expecting: ClusterEvent.self)
+            secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+            second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
+
+            let replacementUniqueAddress = secondReplacement.cluster.node
+
+            // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
+            // instance (oldRemote) on the same node; It should accept this new handshake, and ban the previous node.
+            secondReplacement.cluster.join(node: first.cluster.node.node)
+
+            // verify we are associated ONLY with the appropriate nodes now;
+            try assertAssociated(first, withExactly: [secondReplacement.cluster.node])
+            try assertAssociated(secondReplacement, withExactly: [first.cluster.node])
         }
-        let replacementUniqueAddress = replacementRemote.settings.cluster.uniqueBindNode
-
-        // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
-        // instance (oldRemote) on the same node; It should accept this new handshake, and ban the previous node.
-        replacementRemote.cluster.join(node: local.cluster.node.node)
-
-        // verify we are associated only with the appropriate nodes now;
-        //
-        // old node should have been removed from membership, by new one on same node "taking over"
-        // note that connections to old node should also been severed // TODO cover this in a test
-        try assertAssociated(local, withExactly: [replacementUniqueAddress])
-        try assertAssociated(replacementRemote, withExactly: [local.cluster.node])
     }
 
     func test_association_shouldAllowSendingToRemoteReference() throws {
@@ -128,8 +136,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         // here we attempt to make a race where the nodes race to join each other
         // again, only one association should be created.
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
-        remote.cluster._clusterRef.tell(.command(.handshakeWith(local.cluster.node.node, replyTo: p8228.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        remote.cluster.ref.tell(.command(.handshakeWith(local.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
@@ -145,8 +153,8 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         let p8228 = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
         // we issue two handshakes quickly after each other, both should succeed but there should only be one association established (!)
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p8228.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p7337.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p8228.ref)))
 
         _ = try p7337.expectMessage()
         _ = try p8228.expectMessage()
@@ -196,7 +204,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
 
         let p = self.testKit(local).spawnTestProbe(expecting: ClusterShell.HandshakeResult.self)
 
-        local.cluster._clusterRef.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
+        local.cluster.ref.tell(.command(.handshakeWith(remote.cluster.node.node, replyTo: p.ref)))
 
         try assertNotAssociated(system: local, expectAssociatedNode: remote.cluster.node)
         try assertNotAssociated(system: remote, expectAssociatedNode: local.cluster.node)
@@ -243,7 +251,7 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
         var node = local.cluster.node.node
         node.port = node.port + 10
 
-        local.cluster._clusterRef.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
+        local.cluster.ref.tell(.command(.handshakeWith(node, replyTo: p.ref))) // TODO: nicer API
 
         switch try p.expectMessage(within: .seconds(1)) {
         case ClusterShell.HandshakeResult.failure:
@@ -257,42 +265,49 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
     // MARK: Change membership on Down detected
 
     func test_down_self_shouldChangeMembershipSelfToBeDown() throws {
-        let (local, remote) = setUpPair()
-        remote.cluster.join(node: local.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        try shouldNotThrow {
+            let (first, second) = setUpPair()
 
-        local.cluster.down(node: local.cluster.node.node)
+            second.cluster.join(node: first.cluster.node.node)
+            try assertAssociated(first, withExactly: second.cluster.node)
 
-        let localProbe = self.testKit(local).spawnTestProbe(expecting: Membership.self)
+            first.cluster.down(node: first.cluster.node.node)
 
-        // we we down local on local, it should become down there:
-        try self.testKit(local).eventually(within: .seconds(3)) {
-            local.cluster._clusterRef.tell(.query(.currentMembership(localProbe.ref)))
-            let localMembership = try localProbe.expectMessage()
+            let localProbe = self.testKit(first).spawnTestProbe(expecting: Membership.self)
+            let remoteProbe = self.testKit(second).spawnTestProbe(expecting: Membership.self)
 
-            guard let selfMember = localMembership.member(local.cluster.node.node) else {
-                throw self.testKit(remote).error("No self member in membership! Wanted: \(local.cluster.node)", line: #line - 1)
-            }
-            guard selfMember.status == .down else {
-                throw self.testKit(local).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
-            }
+            // we we down local on local, it should become down there:
+            try self.testKit(first).eventually(within: .seconds(3)) {
+                first.cluster.ref.tell(.query(.currentMembership(localProbe.ref)))
+                let firstMembership = try localProbe.expectMessage()
 
-            // and the local node should also propagate the Down information to the remote node
-            // although this may be a best effort since the local can just shut down if it wanted to,
-            // this scenario assumes a graceful leave though:
+                guard let selfMember = firstMembership.uniqueMember(first.cluster.node) else {
+                    throw self.testKit(second).error("No self member in membership! Wanted: \(first.cluster.node)", line: #line - 1)
+                }
 
-            remote.cluster._clusterRef.tell(.query(.currentMembership(localProbe.ref)))
-            let remoteMembership = try localProbe.expectMessage()
-
-            guard let localMemberObservedOnRemote = remoteMembership.member(local.cluster.node.node) else {
-                throw Boom("\(remote) does not know about the \(local.cluster.node) at all...!")
+                try self.assertMemberStatus(on: first, node: first.cluster.node, is: .down)
+                guard selfMember.status == .down else {
+                    throw self.testKit(first).error("Wanted self member to be DOWN, but was: \(selfMember)", line: #line - 1)
+                }
             }
 
-            guard localMemberObservedOnRemote.status == .down else {
-                throw self.testKit(remote).error("Wanted to see \(local.cluster.node) as DOWN on \(remote), but was still: \(localMemberObservedOnRemote)", line: #line - 1)
+            // and the second node should also notice
+            try self.testKit(second).eventually(within: .seconds(3)) {
+                second.cluster.ref.tell(.query(.currentMembership(remoteProbe.ref)))
+                let secondMembership = try remoteProbe.expectMessage()
+
+                // and the local node should also propagate the Down information to the remote node
+                // although this may be a best effort since the local can just shut down if it wanted to,
+                // this scenario assumes a graceful leave though:
+
+                guard let localMemberObservedOnRemote = secondMembership.uniqueMember(first.cluster.node) else {
+                    throw self.testKit(second).error("\(second) does not know about the \(first.cluster.node) at all...!", line: #line - 1)
+                }
+
+                guard localMemberObservedOnRemote.status == .down else {
+                    throw self.testKit(second).error("Wanted to see \(first.cluster.node) as DOWN on \(second), but was still: \(localMemberObservedOnRemote)", line: #line - 1)
+                }
             }
         }
-
-        // and the remote node should also notice
     }
 }

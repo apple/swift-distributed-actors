@@ -18,26 +18,26 @@ import Foundation
 import XCTest
 
 final class SWIMShellTests: ClusteredNodesTestBase {
-    var localClusterProbe: ActorTestProbe<ClusterShell.Message>!
-    var remoteClusterProbe: ActorTestProbe<ClusterShell.Message>!
+    var firstClusterProbe: ActorTestProbe<ClusterShell.Message>!
+    var secondClusterProbe: ActorTestProbe<ClusterShell.Message>!
 
-    func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let local = super.setUpNode("local", modifySettings)
-        self.localClusterProbe = self.testKit(local).spawnTestProbe()
-        return local
+    func setUpFirst(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+        let first = super.setUpNode("first", modifySettings)
+        self.firstClusterProbe = self.testKit(first).spawnTestProbe()
+        return first
     }
 
-    func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
-        let remote = super.setUpNode("remote", modifySettings)
-        self.remoteClusterProbe = self.testKit(remote).spawnTestProbe()
-        return remote
+    func setUpSecond(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
+        let second = super.setUpNode("second", modifySettings)
+        self.secondClusterProbe = self.testKit(second).spawnTestProbe()
+        return second
     }
 
     func test_swim_shouldRespondWithAckToPing() throws {
-        let local = self.setUpLocal()
-        let p = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
+        let first = self.setUpFirst()
+        let p = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
 
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [], clusterRef: self.localClusterProbe.ref))
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
 
@@ -48,13 +48,13 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldPingRandomMember() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: String.self)
+        let p = self.testKit(second).spawnTestProbe(expecting: String.self)
 
         func behavior(postFix: String) -> Behavior<SWIM.Message> {
             return .receive { context, message in
@@ -70,12 +70,12 @@ final class SWIMShellTests: ClusteredNodesTestBase {
             }
         }
 
-        let refA = try remote.spawn("SWIM-A", behavior(postFix: "A"))
-        let remoteRefA = local._resolveKnownRemote(refA, onRemoteSystem: remote)
-        let refB = try remote.spawn("SWIM-B", behavior(postFix: "B"))
-        let remoteRefB = local._resolveKnownRemote(refB, onRemoteSystem: remote)
+        let refA = try second.spawn("SWIM-A", behavior(postFix: "A"))
+        let remoteRefA = first._resolveKnownRemote(refA, onRemoteSystem: second)
+        let refB = try second.spawn("SWIM-B", behavior(postFix: "B"))
+        let remoteRefB = first._resolveKnownRemote(refB, onRemoteSystem: second)
 
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: self.localClusterProbe.ref))
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteRefA, remoteRefB], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
         ref.tell(.local(.pingRandomMember))
@@ -84,12 +84,12 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldPingSpecificMemberWhenRequested() throws {
-        let local = self.setUpLocal()
+        let local = self.setUpFirst()
 
         let memberProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self)
         let ackProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
 
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [memberProbe.ref], clusterRef: self.localClusterProbe.ref))
+        let ref = try local.spawn("SWIM", self.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.remote(.pingReq(target: memberProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: .none)))
 
@@ -101,16 +101,16 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndNoOtherNodesCanBeRequested() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [remoteProbeRef], clusterRef: self.localClusterProbe.ref))
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -120,60 +120,60 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldMarkMembersAsSuspectWhenPingFailsAndRequestedNodesFailToPing() throws {
-        let local = self.setUpLocal()
+        let first = self.setUpFirst()
 
-        let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn("SWIMRefA", self.forwardingSWIMBehavior(forwardTo: probe.ref))
-        let refB = try local.spawn("SWIMRefB", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refA = try first.spawn("SWIMRefA", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try first.spawn("SWIMRefB", self.forwardingSWIMBehavior(forwardTo: probe.ref))
 
-        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.localClusterProbe.ref) { settings in
+        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let ref = try local.spawn("SWIM", behavior)
+        let ref = try first.spawn("SWIM", behavior)
 
         ref.tell(.local(.pingRandomMember))
 
         let forwardedPing = try probe.expectMessage()
         guard case SWIM.Message.remote(.ping(.alive(incarnation: 0), _, _)) = forwardedPing.message else {
-            throw self.testKit(local).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
         }
         let suspiciousRef = forwardedPing.recipient
 
         let forwardedPingReq = try probe.expectMessage()
         guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, lastKnownStatus: .alive(0), _, _)) = forwardedPingReq.message else {
-            throw self.testKit(local).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
         }
 
         try self.awaitStatus(.suspect(incarnation: 0), for: suspiciousRef, on: ref, within: .seconds(1))
     }
 
     func test_swim_shouldNotMarkMembersAsSuspectWhenPingFailsButRequestedNodesSucceedToPing() throws {
-        let local = self.setUpLocal()
+        let first = self.setUpFirst()
 
-        let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn("SWIMRefA", self.forwardingSWIMBehavior(forwardTo: probe.ref))
-        let refB = try local.spawn("SWIMRefB", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refA = try first.spawn("SWIMRefA", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try first.spawn("SWIMRefB", self.forwardingSWIMBehavior(forwardTo: probe.ref))
 
-        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.localClusterProbe.ref) { settings in
+        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let ref = try local.spawn("SWIM", behavior)
+        let ref = try first.spawn("SWIM", behavior)
 
         ref.tell(.local(.pingRandomMember))
 
         let forwardedPing = try probe.expectMessage()
         guard case SWIM.Message.remote(.ping(.alive(incarnation: 0), _, _)) = forwardedPing.message else {
-            throw self.testKit(local).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
         }
         let suspiciousRef = forwardedPing.recipient
 
         let forwardedPingReq = try probe.expectMessage()
         guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, lastKnownStatus: .alive(0), let replyTo, _)) = forwardedPingReq.message else {
-            throw self.testKit(local).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
         }
         replyTo.tell(.init(pinged: suspiciousRef, incarnation: 0, payload: .none))
 
@@ -181,15 +181,15 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldMarkSuspectedMembersAsAliveWhenPingingSucceedsWithinSuspicionTimeout() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [remoteProbeRef], clusterRef: self.localClusterProbe.ref))
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -205,16 +205,16 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldNotifyClusterAboutUnreachableNodeAfterConfiguredSuspicionTimeoutAndMarkDeadWhenConfirmed() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
-        try assertAssociated(remote, withExactly: local.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteMemberRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.localClusterProbe.ref))
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteMemberRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref))
 
         ref.tell(.local(.pingRandomMember))
 
@@ -231,9 +231,9 @@ final class SWIMShellTests: ClusteredNodesTestBase {
         // and have the SWIM actor mark the remote node as dead
         ref.tell(.local(.pingRandomMember))
 
-        let message = try localClusterProbe.expectMessage()
+        let message = try firstClusterProbe.expectMessage()
         guard case .command(.reachabilityChanged(let address, .unreachable)) = message else {
-            throw self.testKit(local).fail("expected to receive `.command(.markUnreachable)`, but got `\(message)`")
+            throw self.testKit(first).fail("expected to receive `.command(.markUnreachable)`, but got `\(message)`")
         }
         try self.holdStatus(.unreachable(incarnation: 0), for: remoteMemberRef, on: ref, within: .milliseconds(200))
 
@@ -242,20 +242,20 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldSendGossipInAck() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
-        try assertAssociated(remote, withExactly: local.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
+        try assertAssociated(second, withExactly: first.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Ack.self)
-        let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Ack.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-        let memberProbe = self.testKit(remote).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
-        let remoteMemberRef = local._resolveKnownRemote(memberProbe.ref, onRemoteSystem: remote)
+        let memberProbe = self.testKit(second).spawnTestProbe("RemoteSWIM", expecting: SWIM.Message.self)
+        let remoteMemberRef = first._resolveKnownRemote(memberProbe.ref, onRemoteSystem: second)
 
-        let swimRef = try local.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.localClusterProbe.ref))
+        let swimRef = try first.spawn("SWIM", self.swimBehavior(members: [remoteMemberRef], clusterRef: self.firstClusterProbe.ref))
 
         swimRef.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: remoteProbeRef, payload: .none)))
 
@@ -266,28 +266,28 @@ final class SWIMShellTests: ClusteredNodesTestBase {
             members.shouldContain(SWIM.Member(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0))
             // the since we get this reply from the remote node, it will know "us" (swim) as a remote ref, and thus include its full address
             // so we want to expect a full (with node) ref here:
-            members.shouldContain(SWIM.Member(ref: remote._resolveKnownRemote(swimRef, onRemoteSystem: local), status: .alive(incarnation: 0), protocolPeriod: 0))
+            members.shouldContain(SWIM.Member(ref: second._resolveKnownRemote(swimRef, onRemoteSystem: first), status: .alive(incarnation: 0), protocolPeriod: 0))
         case .none:
             throw p.error("Expected gossip, but got `.none`")
         }
     }
 
     func test_swim_shouldSendGossipInPing_() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        let first = self.setUpFirst()
+        let second = self.setUpSecond()
 
-        local.cluster.join(node: remote.cluster.node.node)
-        try assertAssociated(local, withExactly: remote.cluster.node)
+        first.cluster.join(node: second.cluster.node.node)
+        try assertAssociated(first, withExactly: second.cluster.node)
 
-        let p = self.testKit(remote).spawnTestProbe(expecting: SWIM.Message.self)
-        let remoteProbeRef = local._resolveKnownRemote(p.ref, onRemoteSystem: remote)
+        let p = self.testKit(second).spawnTestProbe(expecting: SWIM.Message.self)
+        let remoteProbeRef = first._resolveKnownRemote(p.ref, onRemoteSystem: second)
 
-        let behavior = self.swimBehavior(members: [remoteProbeRef], clusterRef: self.localClusterProbe.ref) { settings in
+        let behavior = self.swimBehavior(members: [remoteProbeRef], clusterRef: self.firstClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let swimRef = try local.spawn("SWIM", behavior)
-        let remoteSwimRef = remote._resolveKnownRemote(swimRef, onRemoteSystem: local)
+        let swimRef = try first.spawn("SWIM", behavior)
+        let remoteSwimRef = second._resolveKnownRemote(swimRef, onRemoteSystem: first)
 
         swimRef.tell(.local(.pingRandomMember))
 
@@ -304,30 +304,30 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldSendGossipInPingReq() throws {
-        let local = self.setUpLocal()
+        let first = self.setUpFirst()
 
-        let probe = self.testKit(local).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
+        let probe = self.testKit(first).spawnTestProbe(expecting: ForwardedSWIMMessage.self)
 
-        let refA = try local.spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probe.ref))
-        let refB = try local.spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refA = try first.spawn("SWIM-A", self.forwardingSWIMBehavior(forwardTo: probe.ref))
+        let refB = try first.spawn("SWIM-B", self.forwardingSWIMBehavior(forwardTo: probe.ref))
 
-        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.localClusterProbe.ref) { settings in
+        let behavior = self.swimBehavior(members: [refA, refB], clusterRef: self.firstClusterProbe.ref) { settings in
             settings.failureDetector.pingTimeout = .milliseconds(50)
         }
 
-        let swimRef = try local.spawn("SWIM", behavior)
+        let swimRef = try first.spawn("SWIM", behavior)
 
         swimRef.tell(.local(.pingRandomMember))
 
         let forwardedPing = try probe.expectMessage()
         guard case SWIM.Message.remote(.ping(.alive(incarnation: 0), _, _)) = forwardedPing.message else {
-            throw self.testKit(local).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.ping`, got [\(forwardedPing.message)]")
         }
         let suspiciousRef = forwardedPing.recipient
 
         let forwardedPingReq = try probe.expectMessage()
         guard case SWIM.Message.remote(.pingReq(target: suspiciousRef, lastKnownStatus: .alive(0), _, let gossip)) = forwardedPingReq.message else {
-            throw self.testKit(local).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
+            throw self.testKit(first).fail("Expected to receive `.pingReq` for \(suspiciousRef), got [\(forwardedPing.message)]")
         }
 
         switch gossip {
@@ -342,11 +342,11 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldSendGossipOnlyTheConfiguredNumberOfTimes() throws {
-        let local = self.setUpLocal()
-        let p = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
-        let memberProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Message.self)
+        let first = self.setUpFirst()
+        let p = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
+        let memberProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Message.self)
 
-        let ref = try local.spawn("SWIM", self.swimBehavior(members: [memberProbe.ref], clusterRef: self.localClusterProbe.ref))
+        let ref = try first.spawn("SWIM", self.swimBehavior(members: [memberProbe.ref], clusterRef: self.firstClusterProbe.ref))
 
         for _ in 0 ..< SWIM.Settings.default.gossip.maxGossipCountPerMessage {
             ref.tell(.remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: p.ref, payload: .none)))
@@ -376,59 +376,72 @@ final class SWIMShellTests: ClusteredNodesTestBase {
     }
 
     func test_swim_shouldConvergeStateThroughGossip() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+        try shouldNotThrow {
+            let first = self.setUpFirst()
+            let second = self.setUpSecond()
 
-        let membershipProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.MembershipState.self)
-        let pingProbe = self.testKit(local).spawnTestProbe(expecting: SWIM.Ack.self)
-
-        var settings: SWIMSettings = .default
-        settings.failureDetector.probeInterval = .milliseconds(50)
-
-        let localRef = try local.spawn("SWIM-A", SWIM.Shell(SWIM.Instance(settings), clusterRef: self.localClusterProbe.ref).behavior)
-        let remoteRef = try remote.spawn("SWIM-B", SWIM.Shell(SWIM.Instance(settings), clusterRef: self.remoteClusterProbe.ref).behavior)
-
-        let localRefRemote = remote._resolveKnownRemote(localRef, onRemoteSystem: local)
-
-        remoteRef.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
-
-        try self.testKit(local).eventually(within: .seconds(3)) {
-            localRef.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
-            let statusA = try membershipProbe.expectMessage()
-
-            remoteRef.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
-            let statusB = try membershipProbe.expectMessage()
-
-            guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
-                throw self.testKit(local).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
+            defer {
+                self.printCapturedLogs(first)
+                self.printCapturedLogs(second)
             }
 
-            for (ref, status) in statusA.membershipState {
-                // there has to be a better way to do this, but that paths are
-                // different, because they reside on different nodes, so we
-                // compare only the segments, which are unique per instance
-                guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
-                    throw self.testKit(local).error("Did not get status for [\(ref)] in statusB")
+            let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
+            let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
+
+            var settings: SWIMSettings = .default
+            settings.failureDetector.probeInterval = .milliseconds(100)
+
+            var firstSwim: ActorRef<SWIM.Message> = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
+            var secondSwim: ActorRef<SWIM.Message> = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
+
+            while firstSwim.path.starts(with: ._dead) || secondSwim.path.starts(with: ._dead) {
+                pprint("Resolved a dead SWIM... trying again")
+                firstSwim = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
+                secondSwim = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
+            }
+
+            let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
+
+            secondSwim.tell(.remote(.pingReq(target: localRefRemote, lastKnownStatus: .alive(incarnation: 0), replyTo: pingProbe.ref, payload: .none)))
+
+            try self.testKit(first).eventually(within: .seconds(10)) {
+                firstSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
+                let statusA = try membershipProbe.expectMessage(within: .seconds(1))
+
+                secondSwim.tell(.testing(.getMembershipState(replyTo: membershipProbe.ref)))
+                let statusB = try membershipProbe.expectMessage(within: .seconds(1))
+
+                guard statusA.membershipState.count == 2, statusB.membershipState.count == 2 else {
+                    throw self.testKit(first).error("Expected count of both members to be 2, was [statusA=\(statusA.membershipState.count), statusB=\(statusB.membershipState.count)]")
                 }
 
-                guard otherStatus == status else {
-                    throw self.testKit(local).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
+                for (ref, status) in statusA.membershipState {
+                    // there has to be a better way to do this, but that paths are
+                    // different, because they reside on different nodes, so we
+                    // compare only the segments, which are unique per instance
+                    guard let (_, otherStatus) = statusB.membershipState.first(where: { $0.key.address.path.segments == ref.address.path.segments }) else {
+                        throw self.testKit(first).error("Did not get status for [\(ref)] in statusB")
+                    }
+
+                    guard otherStatus == status else {
+                        throw self.testKit(first).error("Expected status \(status) for [\(ref)] in statusB, but found \(otherStatus)")
+                    }
                 }
             }
         }
     }
 
-    func test_SWIMShell_shouldBeAbleToJoinACluster() throws {
-        let local = self.setUpLocal()
-        let remote = self.setUpRemote()
+    func test_SWIMShell_shouldMonitorJoinedClusterMembers() throws {
+        let local = self.setUpFirst()
+        let remote = self.setUpSecond()
+
+        local.cluster.join(node: remote.cluster.node.node)
 
         let swimPath = try ActorPath._system.appending(SWIMShell.name)
         let swimAddress = ActorAddress(path: swimPath, incarnation: ActorIncarnation.perpetual)
 
         let remoteSwim: ActorRef<SWIM.Message> = remote._resolve(context: .init(address: swimAddress, system: remote))
         let localSwim: ActorRef<SWIM.Message> = local._resolve(context: .init(address: swimAddress, system: local))
-
-        localSwim.tell(.local(.monitor(remote.cluster.node.node)))
 
         let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
         try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))

@@ -171,7 +171,7 @@ class ActorRefAdapterTests: XCTestCase {
             .receiveMessage {
                 switch $0 {
                 case .crash:
-                    throw self.testKit.error()
+                    throw Boom()
                 case .createAdapter(let replyTo):
                     replyTo.tell(context.messageAdapter { .message("\($0)") })
                     return .same

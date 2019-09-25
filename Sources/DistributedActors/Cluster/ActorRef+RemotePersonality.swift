@@ -88,11 +88,15 @@ internal final class RemotePersonality<Message> {
             guard let remoteAddress = self.address.node else {
                 fatalError("Attempted to access association remote control yet ref has no address! This should never happen and is a bug.")
             }
-            guard let obtainedRemoteControl = self.clusterShell.associationRemoteControl(with: remoteAddress) else {
+            switch self.clusterShell.associationRemoteControl(with: remoteAddress) {
+            case .unknown:
+                return nil
+            case .associated(let remoteControl):
+                self._cachedAssociationRemoteControl = remoteControl // TODO: atomically...
+                return remoteControl
+            case .tombstone:
                 return nil
             }
-            self._cachedAssociationRemoteControl = obtainedRemoteControl // TODO: atomically...
-            return obtainedRemoteControl
             // FIXME: not safe, should ?? deadletters perhaps; OR keep internal mini buffer?
             // TODO: should check if association died in the meantime?
         }

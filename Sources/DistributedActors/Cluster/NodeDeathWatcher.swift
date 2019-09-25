@@ -73,11 +73,9 @@ internal final class NodeDeathWatcherInstance: NodeDeathWatcher {
         guard let change = self.membership.apply(change) else {
             return // no change, nothing to act on
         }
-        guard let toStatus = change.toStatus else {
-            return // no to status? weird, but ok
-        }
 
-        if toStatus >= .down {
+        // TODO: make sure we only handle ONCE?
+        if change.toStatus >= .down {
             // can be: down, leaving or removal.
             // on any of those we want to ensure we handle the "down"
             self.handleAddressDown(change)
@@ -136,8 +134,7 @@ enum NodeDeathWatcherShell {
 
             context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
                 switch event {
-                case .membership(.memberDown(let member)):
-                    let change = MembershipChange(node: member.node, fromStatus: .none, toStatus: .down)
+                case .membershipChange(let change) where change.isAtLeastDown:
                     instance.handleAddressDown(change)
                 default:
                     () // ignore other changes, we only need to react on nodes becoming DOWN

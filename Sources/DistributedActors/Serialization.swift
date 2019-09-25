@@ -73,6 +73,9 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: NumberSerializer(Int64.self, self.allocator), underId: Serialization.Id.InternalSerializer.Int64)
         self.registerSystemSerializer(context, serializer: NumberSerializer(UInt64.self, self.allocator), underId: Serialization.Id.InternalSerializer.UInt64)
 
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<ClusterShell.Message>(allocator: self.allocator), for: ClusterShell.Message.self, underId: Serialization.Id.InternalSerializer.ClusterShellMessage)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<ClusterEvent>(allocator: self.allocator), for: ClusterEvent.self, underId: Serialization.Id.InternalSerializer.ClusterEvent)
+
         // Cluster Receptionist
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.FullStateRequest.self, underId: Serialization.Id.InternalSerializer.FullStateRequest)
         self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ClusterReceptionist.Replicate.self, underId: Serialization.Id.InternalSerializer.Replicate)

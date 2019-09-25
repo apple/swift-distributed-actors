@@ -45,6 +45,9 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     let selfNode: UniqueNode
     let channel: Channel
 
+    // TODO: replace with gossip
+    let gossip: PeriodicBroadcastControl<ClusterShell.Message>
+
     let eventLoopGroup: EventLoopGroup
 
     var backoffStrategy: BackoffStrategy {
@@ -54,28 +57,24 @@ internal struct ClusterShellState: ReadOnlyClusterState {
     let allocator: ByteBufferAllocator
 
     internal var _handshakes: [Node: HandshakeStateMachine.State] = [:]
-    private var _associations: [Node: AssociationStateMachine.State] = [:]
+    private var _associations: [Node: Association.State] = [:]
 
-    // TODO: make private
-    internal var _membership: Membership
+    var membership: Membership
 
-    init(settings: ClusterSettings, channel: Channel, log: Logger) {
+    init(settings: ClusterSettings, channel: Channel, gossip: PeriodicBroadcastControl<ClusterShell.Message>, log: Logger) {
         self.log = log
         self.settings = settings
         self.allocator = settings.allocator
         self.eventLoopGroup = settings.eventLoopGroup ?? settings.makeDefaultEventLoopGroup()
 
         self.selfNode = settings.uniqueBindNode
+        self.membership = .empty
 
-        // TODO: we currently automatically proceed to UP right away, has to be done in more consistent manner in future
-        self._membership = Membership.empty
-            .joining(settings.uniqueBindNode)
-            .marking(settings.uniqueBindNode, as: .up)
-
+        self.gossip = gossip
         self.channel = channel
     }
 
-    func association(with node: Node) -> AssociationStateMachine.State? {
+    func association(with node: Node) -> Association.State? {
         return self._associations[node]
     }
 
@@ -95,10 +94,6 @@ internal struct ClusterShellState: ReadOnlyClusterState {
         return self._handshakes.values.map { hsm -> HandshakeStateMachine.State in
             hsm
         }
-    }
-
-    var membership: Membership {
-        return self._membership
     }
 }
 
@@ -292,40 +287,70 @@ extension ClusterShellState {
 
     /// "Upgrades" a connection with a remote node from handshaking state to associated.
     /// Stores an `Association` for the newly established association;
-    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociationStateMachine.AssociatedState {
+    mutating func associate(_ handshake: HandshakeStateMachine.CompletedState, channel: Channel) -> AssociatedDirective {
         guard self._handshakes.removeValue(forKey: handshake.remoteNode.node) != nil else {
             fatalError("Can not complete a handshake which was not in progress!")
             // TODO: perhaps we instead just warn and ignore this; since it should be harmless
         }
 
-        let asm = AssociationStateMachine.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
-        let state: AssociationStateMachine.State = .associated(asm)
+        // Membership may not know about the remote node yet, i.e. it reached out directly to this node;
+        // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
+        // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
+        // based on the stored member
+        let changeOption = self.onMembershipChange(handshake.remoteNode, toStatus: .joining) ??
+            self.membership.uniqueMember(handshake.remoteNode).map { MembershipChange(member: $0) }
 
-        func storeAssociation() {
-            self._associations[handshake.remoteNode.node] = state
-
-            // TODO; we currently automatically move to UP; this should be done with more coordination
-            self._membership = self._membership.joining(handshake.remoteNode)
-            _ = self._membership.mark(handshake.remoteNode, as: .up)
+        guard let change = changeOption else {
+            fatalError("""
+            Attempt to associate with \(reflecting: handshake.remoteNode) failed; It was neither a new node .joining, \
+            nor was it a node that we already know. This should never happen as one of those two cases is always true. \
+            Please report a bug.
+            """)
         }
 
-        let change = self._membership.join(handshake.remoteNode)
-        if change.isReplace {
-            switch self.association(with: handshake.remoteNode.node) {
-            case .some(.associated(let associated)):
+        func completeAssociation() -> Association.AssociatedState {
+            let asm = Association.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
+            self._associations[handshake.remoteNode.node] = .associated(asm)
+            return asm
+        }
+
+        // Note: The following replace handling has to be done here - before we complete the association(!)
+        //       As otherwise querying the associations by node would return the new one, leaving the old "replaced one" hanging (and channel not-closed).
+        //
+        // If the change is a replacement of a previously associated note, i.e. the remote node died, we didn't notice yet,
+        // but a new instance was started on the same host:port and now has reached out to us to associate. We need to eject
+        // the previous "replaced" node, and mark it as down, while at the same time accepting the association from the new node.
+        let beingReplacedAssociationToTerminate: Association.AssociatedState?
+        if let replacedMember = change.replaced {
+            switch self._associations.removeValue(forKey: replacedMember.node.node) {
+            case .some(.associated(let beingReplacedAssociation)):
+                self.log.warning("Node \(reflecting: handshake.remoteNode) joining OVER existing associated node \(reflecting: beingReplacedAssociation.remoteNode) as its replacement. Severing ties with previous incarnation of node.")
                 // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
                 // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.
-                //
-                // we ignore the close-future, as it would not give us much here; could only be used to mark "we are still shutting down"
-                _ = associated.channel.close()
+
+                // beingReplacedAssociation.makeRemoteControl().sendSystemMessage(., recipient: <#T##ActorAddress##ActorAddress#>) // TODO: Shoot the other node in the head here, best effort
+                beingReplacedAssociationToTerminate = beingReplacedAssociation
 
             default:
-                self.log.warning("Membership change indicated node replacement, yet no 'old' association found, this could happen if failure detection ")
+                self.log.warning("Membership change indicated node replacement, yet no 'old' association to replace found. Continuing with association of \(reflecting: handshake.remoteNode)")
+                beingReplacedAssociationToTerminate = nil
             }
+        } else {
+            // this is not a replacement operation, no pre-existing association to terminate
+            beingReplacedAssociationToTerminate = nil
         }
-        storeAssociation()
 
-        return asm
+        // Usual happy-path for an association; We associated a new node
+        let association = completeAssociation()
+        return AssociatedDirective(membershipChange: change, association: association, beingReplacedAssociationToTerminate: beingReplacedAssociationToTerminate)
+    }
+
+    struct AssociatedDirective {
+        let membershipChange: MembershipChange
+        let association: Association.AssociatedState
+
+        /// An association was replaced by the `membershipChange` and this "old" association must be closed, pruned from caches, and tombstoned.
+        let beingReplacedAssociationToTerminate: Association.AssociatedState?
     }
 }
 
@@ -333,31 +358,95 @@ extension ClusterShellState {
 // MARK: Membership
 
 extension ClusterShellState {
-    /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
-    //    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
-    mutating func onMembershipChange(_ node: Node, toStatus: MemberStatus) -> MembershipChange? {
-        guard let member = self.membership.member(node) else {
-            return nil // no such member
-        }
-
-        switch toStatus {
-        case .joining:
-            fatalError("A change on an existing Member (\(member)) can't do TO [.joining]")
-        case .up:
-            return self._membership.mark(member.node, as: .up)
-        case .down:
-            return self._membership.mark(member.node, as: .down)
-        case .leaving:
-            return self._membership.mark(member.node, as: .leaving)
-        case .removed:
-            return self._membership.mark(member.node, as: .removed)
+    // Implementation note: It is important to keep in mind that we may have various ways to select the leader, most notably
+    // we should be able to avoid the "blessed first node" problem when starting a cluster, if we have all nodes talk to one another
+    // and select a leader, if none is present in a cluster;
+    mutating func onLeadershipChange(change: LeadershipChange) -> LeadershipChange? {
+        do {
+            let appliedChange = try self.membership.applyLeadershipChange(to: change.newLeader)
+            self.log.info("Applied leadership change: \(reflecting: appliedChange)")
+            return change // TODO: only if change actually happened
+        } catch {
+            self.log.warning("Leadership change failed: \(error)") // i.e. new leader was not a known member // TODO maybe always add such member then...
+            return nil
         }
     }
 
-    /// - Returns: the changed member if a the change was a transition (unreachable -> reachable, or back),
+    /// - Returns: the `MembershipChange` that was the result of moving the member identified by the `node` to the `toStatus`,
+    ///    or `nil` if no (observable) change resulted from this move (e.g. marking a `.dead` node as `.dead` again, is not a "change").
+    mutating func onMembershipChange(_ node: UniqueNode, toStatus: MemberStatus) -> MembershipChange? {
+        return self.membership.apply(MembershipChange(member: Member(node: node, status: toStatus)))
+    }
+
+    /// - Returns: the changed member if the change was a transition (unreachable -> reachable, or back),
     ///            or `nil` if the reachability is the same as already known by the membership.
-    mutating func onMemberReachabilityChange(_ node: UniqueNode, toReachability: MemberReachability) -> Member? {
-        return self._membership.mark(node, reachability: toReachability)
+    mutating func onMemberReachabilityChange(_ change: ReachabilityChange) -> Member? {
+        return self.membership.applyReachabilityChange(change)
+    }
+
+    mutating func onClusterEvent(_ event: ClusterEvent) {
+        switch event {
+        case .leadershipChange(let change):
+            do {
+                if let appliedChange = try self.membership.applyLeadershipChange(to: change.newLeader) {
+                    self.log.info("Leader change: \(appliedChange) @@@ \(self.membership.prettyDescription(label: "\(self.selfNode)"))")
+                }
+            } catch {
+                self.log.warning("Unable to apply leadership change: \(change), error: \(error)")
+            }
+        case .membershipChange(let change):
+            if let appliedChange = self.membership.apply(change) {
+                self.log.trace("Applied change via cluster event: \(appliedChange)")
+            }
+        case .reachabilityChange(let change):
+            _ = self.onMemberReachabilityChange(change)
+        case .snapshot:
+            () // TODO: not handling snapshot here, we are a source of snapshots... yet what about gossip vs. "push membership", we may want ot handle here, by diff+apply
+        }
+
+        self.log.trace("Membership updated \(self.membership.prettyDescription(label: "\(self.selfNode)")), by \(event)")
+
+        let takenActions = self.tryPerformLeaderTasks()
+        // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
+        // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
+    }
+
+    /// If, and only if, the current node is a leader it performs a set of tasks, such as moving nodes to `.up` etc.
+    mutating func tryPerformLeaderTasks() -> [LeaderAction] {
+        guard self.membership.isLeader(self.selfNode) else {
+            return []
+        }
+
+        var leadershipActions: [LeaderAction] = []
+
+        func moveMembersUp() {
+            let joiningMembers = self.membership.members(withStatus: .joining, reachability: .reachable)
+
+            // TODO; do we really need seen tables here? Need to look at some more cases when "move to up" would be a potentially wrong decision... when really?
+            // TODO: can a seen table be a number of "every they at least know about membership in version X" -- TODO causality checking...
+            guard !joiningMembers.isEmpty else {
+                return
+            }
+
+            for joiningMember in joiningMembers {
+                let movingUp = MembershipChange(member: joiningMember, toStatus: .up)
+                leadershipActions.append(.moveMember(movingUp))
+                let change = self.membership.apply(movingUp)
+
+                // FIXME: the changes should be gossiped rather than sent directly
+                if let change = change {
+                    self.log.info("Leader moving member: \(change)")
+                }
+            }
+        }
+
+        moveMembersUp()
+
+        return leadershipActions
+    }
+
+    enum LeaderAction {
+        case moveMember(MembershipChange)
     }
 }
 
@@ -367,11 +456,11 @@ extension ClusterShellState {
 extension ClusterShellState {
     var metadata: Logger.Metadata {
         return [
-            "membership/count": "\(String(describing: self._membership.count))",
+            "membership/count": "\(String(describing: self.membership.count(atLeast: .joining)))",
         ]
     }
 
     func logMembership() {
-        self.log.info("MEMBERSHIP:::: \(self._membership.prettyDescription(label: self.selfNode.node.systemName))")
+        self.log.info("MEMBERSHIP:::: \(self.membership.prettyDescription(label: self.selfNode.node.systemName))")
     }
 }

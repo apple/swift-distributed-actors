@@ -18,11 +18,11 @@
 extension ReplicaId: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionReplicaId
 
-    public func toProto(context: ActorSerializationContext) -> ProtoVersionReplicaId {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionReplicaId {
         var proto = ProtoVersionReplicaId()
         switch self {
         case .actorAddress(let actorAddress):
-            proto.actorAddress = actorAddress.toProto(context: context)
+            proto.actorAddress = try actorAddress.toProto(context: context)
         }
         return proto
     }
@@ -46,12 +46,12 @@ extension ReplicaId: ProtobufRepresentable {
 extension VersionVector: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionVector
 
-    public func toProto(context: ActorSerializationContext) -> ProtoVersionVector {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionVector {
         var proto = ProtoVersionVector()
 
-        let replicaVersions: [ProtoReplicaVersion] = self.state.map { replicaId, version in
+        let replicaVersions: [ProtoReplicaVersion] = try self.state.map { replicaId, version in
             var replicaVersion = ProtoReplicaVersion()
-            replicaVersion.replicaID = replicaId.toProto(context: context)
+            replicaVersion.replicaID = try replicaId.toProto(context: context)
             replicaVersion.version = UInt64(version)
             return replicaVersion
         }
@@ -80,9 +80,9 @@ extension VersionVector: ProtobufRepresentable {
 extension VersionDot: ProtobufRepresentable {
     public typealias ProtobufRepresentation = ProtoVersionDot
 
-    public func toProto(context: ActorSerializationContext) -> ProtoVersionDot {
+    public func toProto(context: ActorSerializationContext) throws -> ProtoVersionDot {
         var proto = ProtoVersionDot()
-        proto.replicaID = self.replicaId.toProto(context: context)
+        proto.replicaID = try self.replicaId.toProto(context: context)
         proto.version = UInt64(self.version)
         return proto
     }

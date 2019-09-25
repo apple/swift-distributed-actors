@@ -62,3 +62,42 @@ extension ClusterShellState {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: TraceLog for Cluster
+
+extension ClusterShell {
+    /// Optional "dump all messages" logging.
+    func tracelog(
+        _ context: ActorContext<ClusterShell.Message>, _ type: TraceLogType, message: Any,
+        file: String = #file, function: String = #function, line: UInt = #line
+    ) {
+        if let level = context.system.settings.cluster.traceLogLevel {
+            context.log.log(
+                level: level,
+                "[tracelog:cluster] \(type.description): \(message)",
+                file: file, function: function, line: line
+            )
+        }
+    }
+
+    enum TraceLogType: CustomStringConvertible {
+        case send(to: Node)
+        case receive(from: Node)
+        case receiveUnique(from: UniqueNode)
+        case gossip(from: UniqueNode)
+
+        var description: String {
+            switch self {
+            case .send(let to):
+                return "     SEND(to:\(to))"
+            case .receive(let from):
+                return "     RECV(from:\(from))"
+            case .gossip(let from):
+                return "   GOSSIP(from:\(from))"
+            case .receiveUnique(let from):
+                return "RECV_UNIQ(from:\(from))"
+            }
+        }
+    }
+}

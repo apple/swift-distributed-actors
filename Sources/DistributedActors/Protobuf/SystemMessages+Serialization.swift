@@ -77,19 +77,19 @@ extension SystemMessage: InternalProtobufRepresentable {
         switch self {
         case .watch(let watchee, let watcher):
             var watch = ProtoSystemMessage_Watch()
-            watch.watchee = watchee.address.toProto(context: context)
-            watch.watcher = watcher.address.toProto(context: context)
+            watch.watchee = try watchee.address.toProto(context: context)
+            watch.watcher = try watcher.address.toProto(context: context)
             proto.payload = .watch(watch)
 
         case .unwatch(let watchee, let watcher):
             var unwatch = ProtoSystemMessage_Unwatch()
-            unwatch.watchee = watchee.address.toProto(context: context)
-            unwatch.watcher = watcher.address.toProto(context: context)
+            unwatch.watchee = try watchee.address.toProto(context: context)
+            unwatch.watcher = try watcher.address.toProto(context: context)
             proto.payload = .unwatch(unwatch)
 
         case .terminated(let ref, let existenceConfirmed, let addressTerminated):
             var terminated = ProtoSystemMessage_Terminated()
-            terminated.ref = ref.address.toProto(context: context)
+            terminated.ref = try ref.address.toProto(context: context)
             terminated.existenceConfirmed = existenceConfirmed
             terminated.addressTerminated = addressTerminated
             proto.payload = .terminated(terminated)

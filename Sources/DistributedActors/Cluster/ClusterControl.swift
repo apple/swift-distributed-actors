@@ -25,11 +25,11 @@ public struct ClusterControl {
 
     public let settings: ClusterSettings
 
-    internal let _clusterRef: ClusterShell.Ref
+    internal let ref: ClusterShell.Ref
 
     init(_ settings: ClusterSettings, clusterRef: ClusterShell.Ref, eventStream: EventStream<ClusterEvent>) {
         self.settings = settings
-        self._clusterRef = clusterRef
+        self.ref = clusterRef
         self.events = eventStream
     }
 
@@ -38,15 +38,15 @@ public struct ClusterControl {
     }
 
     public func join(node: Node) {
-        self._clusterRef.tell(.command(.join(node)))
+        self.ref.tell(.command(.initJoin(node)))
     }
 
     public func down(node: Node) {
-        self._clusterRef.tell(.command(.downCommand(node)))
+        self.ref.tell(.command(.downCommand(node)))
     }
 
     public func down(node: UniqueNode) {
-        self._clusterRef.tell(.command(.downCommand(node.node)))
+        self.ref.tell(.command(.downCommand(node.node)))
     }
 
     public var node: UniqueNode {

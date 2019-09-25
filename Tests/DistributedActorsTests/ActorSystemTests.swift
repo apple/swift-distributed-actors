@@ -77,7 +77,7 @@ class ActorSystemTests: XCTestCase {
         p.watch(ref1)
         p.watch(ref2)
 
-        try system2.shutdown().wait()
+        system2.shutdown().wait()
 
         try p.expectTerminatedInAnyOrder([ref1.asAddressable(), ref2.asAddressable()])
 
