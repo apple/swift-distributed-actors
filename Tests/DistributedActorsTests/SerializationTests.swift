@@ -199,7 +199,9 @@ class SerializationTests: XCTestCase {
                 try system.serialization.deserialize(HasStringRef.self, from: bytes)
             }
 
-            "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
+            guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            }
         }
     }
 
@@ -217,7 +219,9 @@ class SerializationTests: XCTestCase {
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
-            "\(back.containedInterestingRef.address)".shouldEqual("/dead/user/dead-on-arrival")
+            guard "\(back.containedInterestingRef.address)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedInterestingRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            }
         }
     }
 
