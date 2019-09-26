@@ -193,11 +193,16 @@ class SerializationTests: XCTestCase {
         }
 
         try p.expectTerminated(stoppedRef)
-        let back: HasStringRef = try shouldNotThrow {
-            try system.serialization.deserialize(HasStringRef.self, from: bytes)
-        }
 
-        "\(back.containedRef.address)".shouldEqual("/dead/user/dead-on-arrival")
+        try self.testKit.eventually(within: .seconds(3)) {
+            let back: HasStringRef = try shouldNotThrow {
+                try system.serialization.deserialize(HasStringRef.self, from: bytes)
+            }
+
+            guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            }
+        }
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forUserDefinedMessageType() throws {
@@ -208,12 +213,16 @@ class SerializationTests: XCTestCase {
             try system.serialization.serialize(message: hasRef)
         }
 
-        let back: HasInterestingMessageRef = try shouldNotThrow {
-            try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
-        }
+        try self.testKit.eventually(within: .seconds(3)) {
+            let back: HasInterestingMessageRef = try shouldNotThrow {
+                try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
+            }
 
-        back.containedInterestingRef.tell(InterestingMessage())
-        "\(back.containedInterestingRef.address)".shouldEqual("/dead/user/dead-on-arrival")
+            back.containedInterestingRef.tell(InterestingMessage())
+            guard "\(back.containedInterestingRef.address)" == "/dead/user/dead-on-arrival" else {
+                throw self.testKit.error("\(back.containedInterestingRef.address) is not equal to expected /dead/user/dead-on-arrival")
+            }
+        }
     }
 
     func test_serialize_shouldNotSerializeNotRegisteredType() throws {
