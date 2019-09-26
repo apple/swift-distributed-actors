@@ -188,3 +188,9 @@ extension CRDT.Replicator {
         }
     }
 }
+
+extension CRDT.Replicator.Instance: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "Data: \(self.dataStore),\nowners: \(self.owners),\ntombstones: \(self.tombstones),\nsettings: \(self.settings)"
+    }
+}
