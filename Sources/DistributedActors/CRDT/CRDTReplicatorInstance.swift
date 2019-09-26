@@ -191,6 +191,6 @@ extension CRDT.Replicator {
 
 extension CRDT.Replicator.Instance: CustomDebugStringConvertible {
     public var debugDescription: String {
-        return "CRDT.Replicator.Instance(\(self.dataStore)), owners: \(self.owners), tombstones: \(self.tombstones), settings: \(self.settings)"
+        return "CRDT.Replicator.Instance(dataStore: \(self.dataStore), owners: \(self.owners), tombstones: \(self.tombstones), settings: \(self.settings))"
     }
 }
