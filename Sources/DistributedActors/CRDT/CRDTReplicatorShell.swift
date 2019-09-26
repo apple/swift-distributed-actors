@@ -247,6 +247,13 @@ extension CRDT.Replicator {
                 case .data:
                     localConfirmed = true
                 case .notFound:
+                    // The operation fails to meet `.all` consistency, which requires local and all remote members to
+                    // have the CRDT, if the CRDT is not found locally.
+                    if case .all = consistency { // cannot use guard since we cannot negate `case`
+                        replyTo.tell(.failure(.consistencyError(.failedToFulfill)))
+                        return
+                    }
+
                     // Not found locally but we can make it up by reading from an additional remote member
                     localConfirmed = false
                 }

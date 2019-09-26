@@ -378,8 +378,9 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         // Register owner so replicator has a copy of g1 and will notify the owner on g1 updates
         _ = try self.makeCRDTOwnerTestProbe(system: self.remoteSystem, testKit: self.remoteTestKit, id: id, data: g1Remote.asAnyStateBasedCRDT)
 
-        // Tell local replicator to read g1 with .all consistency. Remote copies of g1 should be merged with local.
-        self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .all, timeout: self.timeout, replyTo: readP.ref)))
+        // Tell local replicator to read g1 with .atLeast(1) consistency. Local doesn't have it but can be fulfilled
+        // by remote instead. Remote copies of g1 should be merged with local.
+        self.localSystem.replicator.tell(.localCommand(.read(id, consistency: .atLeast(1), timeout: self.timeout, replyTo: readP.ref)))
         guard case .success(let data) = try readP.expectMessage() else { throw readP.error() }
 
         // `read` returns the underlying CRDT
