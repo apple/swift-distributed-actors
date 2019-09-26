@@ -185,7 +185,7 @@ extension CRDT.Replicator {
                     } catch let error as OperationConsistency.Error {
                         replyTo.tell(.failure(.consistencyError(error)))
                     } catch {
-                        fatalError("Unexpected error while writing \(updatedData) to remote nodes")
+                        fatalError("Unexpected error while writing \(updatedData) to remote nodes. Replicator: \(self.debugDescription)")
                     }
                 }
             case .inputAndStoredDataTypeMismatch(let stored):
@@ -272,16 +272,23 @@ extension CRDT.Replicator {
                             // We've read from the remote replicators, now merge their versions of the CRDT to local
                             for (_, remoteReadResult) in remoteResults {
                                 guard case .success(let data) = remoteReadResult else {
-                                    fatalError("Remote results should contain .success value only")
+                                    fatalError("Remote results should contain .success value only: \(remoteReadResult)")
                                 }
                                 guard case .applied = self.replicator.write(id, data) else {
-                                    fatalError("Failed to update \(id) locally with remote data \(remoteReadResult)")
+                                    fatalError("Failed to update \(id) locally with remote data \(remoteReadResult). Replicator: \(self.debugDescription)")
                                 }
                             }
 
                             // Read the updated CRDT from the local data store
                             guard case .data(let updatedData) = self.replicator.read(id) else {
-                                fatalError("Expected \(id) to be found locally but it is not")
+                                guard !remoteResults.isEmpty else {
+                                    // If CRDT doesn't exist locally and we didn't get any remote results, return `.notFound`.
+                                    // See also https://github.com/apple/swift-distributed-actors/issues/172
+                                    replyTo.tell(.failure(.notFound))
+                                    return .same
+                                }
+                                // Otherwise, if we have received remote results then CRDT should have been written to local.
+                                fatalError("Expected \(id) to be found locally but it is not. Remote results: \(remoteResults), replicator: \(self.debugDescription)")
                             }
 
                             replyTo.tell(.success(updatedData.underlying))
@@ -297,7 +304,7 @@ extension CRDT.Replicator {
                 } catch let error as OperationConsistency.Error {
                     replyTo.tell(.failure(.consistencyError(error)))
                 } catch {
-                    fatalError("Unexpected error while reading \(id) from remote nodes")
+                    fatalError("Unexpected error while reading \(id) from remote nodes. Replicator: \(self.debugDescription), error: \(error)")
                 }
             }
         }
@@ -329,7 +336,7 @@ extension CRDT.Replicator {
                     } catch let error as OperationConsistency.Error {
                         replyTo.tell(.failure(.consistencyError(error)))
                     } catch {
-                        fatalError("Unexpected error while deleting \(id) on remote nodes")
+                        fatalError("Unexpected error while deleting \(id) on remote nodes. Replicator: \(self.debugDescription), error: \(error)")
                     }
                 }
             }
@@ -537,6 +544,12 @@ extension CRDT.Replicator {
         mutating func failed(at remoteMember: ActorRef<Message>, result: Result? = nil, error: Error? = nil) {
             self.remoteFailuresCount = self.remoteFailuresCount + 1
         }
+    }
+}
+
+extension CRDT.Replicator.Shell: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        return "CRDT.Replicator.Shell(remoteReplicators: \(self.remoteReplicators)), \(self.replicator.debugDescription)"
     }
 }
 
