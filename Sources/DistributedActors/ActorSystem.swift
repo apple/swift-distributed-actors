@@ -128,6 +128,19 @@ public final class ActorSystem {
         self.init(settings: settings)
     }
 
+    /// Creates a named `ActorSystem`.
+    /// The passed in name is going to override the setting's cluster node name.
+    ///
+    /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
+    public convenience init(_ name: String, settings: ActorSystemSettings) {
+        var settings = settings
+        settings.cluster.node.systemName = name
+        self.init(settings: settings)
+    }
+
+    /// Creates an `ActorSystem` using the passed in settings.
+    ///
+    /// - Faults: when configuration closure performs very illegal action, e.g. reusing a serializer identifier
     public init(settings: ActorSystemSettings) {
         var settings = settings
         self.name = settings.cluster.node.systemName
