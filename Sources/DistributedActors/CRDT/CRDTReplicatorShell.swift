@@ -142,7 +142,7 @@ extension CRDT.Replicator {
                     self.notifyOwnersOnUpdate(context, id, updatedData)
                 case .atLeast, .quorum, .all:
                     do {
-                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
+                        let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
                             // Use `data`, NOT `updatedData`, to make `RemoteCommand`!!!
                             // We are replicating a specific change (e.g., `GCounter.increment`) made to a specific
                             // actor-owned CRDT (represented either by `data` as a whole or `data.delta`), not the
@@ -171,7 +171,7 @@ extension CRDT.Replicator {
                         // Opened https://github.com/apple/swift-distributed-actors/issues/136 to track in case we do in the future.
                         //
                         // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                        context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
@@ -260,7 +260,7 @@ extension CRDT.Replicator {
 
                 do {
                     // swiftformat:disable indent unusedArguments wrapArguments
-                    let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
+                    let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
                         isSuccessful: {
                             // TODO: is there a way to make this less verbose?
                             if case .success = $0 {
@@ -273,7 +273,7 @@ extension CRDT.Replicator {
                         .remoteCommand(.read(id, replyTo: $0))
                     }
                     // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                    context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                    context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                         switch result {
                         case .success(let remoteResults):
                             // We've read from the remote replicators, now merge their versions of the CRDT to local
@@ -325,11 +325,11 @@ extension CRDT.Replicator {
                     self.notifyOwnersOnDelete(context, id)
                 case .atLeast, .quorum, .all:
                     do {
-                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
+                        let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
                             .remoteCommand(.delete(id, replyTo: $0))
                         }
                         // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                        context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
@@ -354,32 +354,32 @@ extension CRDT.Replicator {
                                                                  with consistency: OperationConsistency,
                                                                  localConfirmed: Bool = true,
                                                                  isSuccessful: @escaping (RemoteCommandResult) -> Bool,
-                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopPromise<[ActorRef<Message>: RemoteCommandResult]> {
+                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
             let promise = context.system.eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
 
             // Determine the number of successful responses needed to satisfy consistency requirement.
             // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
             // requirement succeeds as long as this threshold is met.
-            var execution: OperationExecution<RemoteCommandResult>! // !-safe because initialization must succeed for us to continue
+            var execution: OperationExecution<RemoteCommandResult>
             do {
                 execution = try .init(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
             } catch {
                 // Initialization could fail (e.g., OperationConsistency.Error). In that case we fail the promise and return.
                 promise.fail(error)
-                return promise
+                return promise.futureResult
             }
 
             // It's possible for operation to be fulfilled without actually calling remote members.
             // e.g., when consistency = .atLeast(1) and localConfirmed = true
             if execution.fulfilled {
                 promise.succeed(execution.remoteConfirmationsReceived) // empty dictionary
-                return promise
+                return promise.futureResult
             }
             // If execution is not fulfilled at this point based on the given parameters and there are no remote members
             // (i.e., we are not entering the for-loop below), then it's impossible to fulfill it.
             guard !self.remoteReplicators.isEmpty else {
                 promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
-                return promise
+                return promise.futureResult
             }
 
             // Send `RemoteCommand` to every remote replicator and wait for as many successful responses as needed
@@ -405,20 +405,17 @@ extension CRDT.Replicator {
                         promise.succeed(execution.remoteConfirmationsReceived)
                     } else if execution.failed {
                         promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
+                    } else {
+                        // Indeterminate: we have not received enough results to mark execution success/failure.
+                        // Eventually, either this operation will fail with timeout, or execution will be fulfilled or failed.
+                        ()
                     }
-                    // No `else`--with each RemoteCommandResult one of the following can occur:
-                    // 1. We have received enough confirmations to mark execution success.
-                    // 2. We have received enough failures to mark execution failure.
-                    // 3. Indeterminate: we have not received enough results to mark execution success/failure.
-                    //
-                    // #1 and #2 are captured in the if-else-if above. #3 should eventually lead to execution failure
-                    // due to timeout. TODO: timeout is .effectivelyInfinite here but it's set on the promise itself. what happens if that timeout kicks in? would the promise be mark completed?
 
                     return .same
                 }
             }
 
-            return promise
+            return promise.futureResult
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
