@@ -360,12 +360,25 @@ extension CRDT.Replicator {
             // Determine the number of successful responses needed to satisfy consistency requirement.
             // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
             // requirement succeeds as long as this threshold is met.
-            var execution = try OperationExecution<RemoteCommandResult>(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
+            var execution: OperationExecution<RemoteCommandResult>! // !-safe because initialization must succeed for us to continue
+            do {
+                execution = try .init(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
+            } catch {
+                // Initialization could fail (e.g., OperationConsistency.Error). In that case we fail the promise and return.
+                promise.fail(error)
+                return promise
+            }
 
             // It's possible for operation to be fulfilled without actually calling remote members.
             // e.g., when consistency = .atLeast(1) and localConfirmed = true
             if execution.fulfilled {
-                promise.succeed(execution.remoteConfirmationsReceived) // empty
+                promise.succeed(execution.remoteConfirmationsReceived) // empty dictionary
+                return promise
+            }
+            // If execution is not fulfilled at this point based on the given parameters and there are no remote members
+            // (i.e., we are not entering the for-loop below), then it's impossible to fulfill it.
+            guard !self.remoteReplicators.isEmpty else {
+                promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
                 return promise
             }
 
@@ -393,6 +406,13 @@ extension CRDT.Replicator {
                     } else if execution.failed {
                         promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
                     }
+                    // No `else`--with each RemoteCommandResult one of the following can occur:
+                    // 1. We have received enough confirmations to mark execution success.
+                    // 2. We have received enough failures to mark execution failure.
+                    // 3. Indeterminate: we have not received enough results to mark execution success/failure.
+                    //
+                    // #1 and #2 are captured in the if-else-if above. #3 should eventually lead to execution failure
+                    // due to timeout. TODO: timeout is .effectivelyInfinite here but it's set on the promise itself. what happens if that timeout kicks in? would the promise be mark completed?
 
                     return .same
                 }
