@@ -30,8 +30,7 @@ class ClusterDocExamples: XCTestCase {
         }
 
         let otherNode = Node(systemName: "ClusterJoining", host: "localhost", port: 8228)
-        system.cluster.join(node: otherNode) // TODO: not final API // <2>
-        // TODO: provide a proper API for this; perhaps system.tell(.cluster(.join)) or similar ?
+        system.cluster.join(node: otherNode) // <2>
 
         // end::joining[]
     }

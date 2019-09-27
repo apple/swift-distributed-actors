@@ -14,6 +14,17 @@
 
 /// # SWIM (Scalable Weakly-consistent Infection-style Process Group Membership Protocol).
 ///
+/// SWIM serves as a low-level membership and distributed failure detector mechanism.
+/// Cluster members may be discovered though SWIM gossip, yet will be asked to participate in the high-level
+/// cluster membership as driven by the `ClusterShell`.
+///
+/// ### Modifications
+/// See the documentation of this swim implementation in the reference documentation.
+///
+/// ### Related Papers
+/// - SeeAlso: [SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf) paper
+///
+/// ### See Also
 /// - SeeAlso: `SWIM.Instance` for a detailed discussion on the implementation.
 /// - SeeAlso: `SWIM.Shell` for the interpretation and actor driving the interactions.
 public enum SWIM {
@@ -32,6 +43,7 @@ public enum SWIM {
 
     internal enum RemoteMessage {
         case ping(lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
+
         /// "Ping Request" requests a SWIM probe.
         // TODO: target -- node rather than the ref?
         case pingReq(target: ActorRef<Message>, lastKnownStatus: Status, replyTo: ActorRef<Ack>, payload: Payload)
@@ -105,7 +117,6 @@ public enum SWIM {
         case confirmDead(UniqueNode)
     }
 
-    // TODO: do we need this or can we ride on the Observer getting all the state?
     internal enum TestingMessage: NoSerializationVerification {
         /// FOR TESTING: Expose the entire membership state
         case getMembershipState(replyTo: ActorRef<MembershipState>)
@@ -121,8 +132,22 @@ public enum SWIM {
 // MARK: SWIM Member Status
 
 extension SWIM {
+    /// The SWIM membership status reflects.
     ///
-    // TODO: make serializable
+    /// The `.unreachable` state is set when a classic SWIM implementation would have declared a node `.down`,
+    /// yet since we allow for the higher level membership to decide when and how to eject members from a cluster,
+    /// only the `.unreachable` state is set and an `ReachabilityChange` cluster event is emitted. In response to this
+    /// most clusters will immediately adhere to SWIM's advice and mark the unreachable node as `.down`, resulting in
+    /// confirming the node as `.dead` in SWIM terms.
+    ///
+    /// ### Legal transitions:
+    /// - `alive -> suspect`
+    /// - `alive -> suspect`, with next `SWIM.Incarnation`, e.g. during flaky network situations, we suspect and un-suspect a node depending on probing
+    /// - `suspect -> unreachable | alive`, if in SWIM terms, a node is "most likely dead" we declare it `.unreachable` instead, and await for high-level confirmation to mark it `.dead`.
+    /// - `unreachable -> alive | suspect`, with next `SWIM.Incarnation`
+    /// - `alive | suspect | unreachable -> dead`
+    ///
+    /// - SeeAlso: `SWIM.Incarnation`
     internal enum Status: Hashable {
         case alive(incarnation: Incarnation)
         case suspect(incarnation: Incarnation)
