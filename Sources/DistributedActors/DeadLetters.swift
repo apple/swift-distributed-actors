@@ -59,7 +59,7 @@ extension ActorSystem {
     public func personalDeadLetters<Message>(type: Message.Type = Message.self, recipient: ActorAddress) -> ActorRef<Message> {
         // TODO: rather could we send messages to self._deadLetters with enough info so it handles properly?
 
-        guard recipient.node == self.settings.cluster.uniqueBindNode else {
+        guard recipient.node == nil || recipient.node == self.settings.cluster.uniqueBindNode else {
             /// While it should not realistically happen that a dead letter is obtained for a remote reference,
             /// we do allow for construction of such ref. It can be used to signify a ref is known to resolve to
             /// a known to be down cluster node.

@@ -120,4 +120,14 @@ class ActorSystemTests: XCTestCase {
 
         try p.expectTerminated(selfSender)
     }
+
+    func test_resolveUnknownActor_shouldReturnPersonalDeadLetters() throws {
+        let path = try ActorPath._user.appending("test").appending("foo").appending("bar")
+        let address = ActorAddress(path: path, incarnation: .random())
+        let context: ResolveContext<Never> = ResolveContext(address: address, system: self.system)
+        let ref = self.system._resolve(context: context)
+
+        ref.address.path.shouldEqual(ActorPath._dead.appending(segments: path.segments))
+        ref.address.incarnation.shouldEqual(address.incarnation)
+    }
 }

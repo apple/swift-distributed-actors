@@ -29,6 +29,7 @@ extension ActorSystemTests {
             ("test_shutdown_shouldCompleteReturnedHandleWhenDone", test_shutdown_shouldCompleteReturnedHandleWhenDone),
             ("test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes", test_shutdown_shouldReUseReceptacleWhenCalledMultipleTimes),
             ("test_shutdown_selfSendingActorShouldNotDeadlockSystem", test_shutdown_selfSendingActorShouldNotDeadlockSystem),
+            ("test_resolveUnknownActor_shouldReturnPersonalDeadLetters", test_resolveUnknownActor_shouldReturnPersonalDeadLetters),
         ]
     }
 }
