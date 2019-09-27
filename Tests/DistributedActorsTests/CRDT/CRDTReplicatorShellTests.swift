@@ -431,25 +431,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: OperationConfirmations
-
-    func test_OperationExecution_consistency_local() throws {
-        let remoteMembersCount = 5
-
-        try shouldNotThrow {
-            let localConfirmed = try OperationExecution<Int>(with: .local, remoteMembersCount: remoteMembersCount, localConfirmed: true)
-            localConfirmed.remoteConfirmationsNeeded.shouldEqual(0)
-            localConfirmed.fulfilled.shouldBeTrue()
-            localConfirmed.remoteFailuresAllowed.shouldEqual(0)
-            localConfirmed.failed.shouldBeFalse()
-
-            let localNotConfirmed = try OperationExecution<Int>(with: .local, remoteMembersCount: remoteMembersCount, localConfirmed: false)
-            localNotConfirmed.remoteConfirmationsNeeded.shouldEqual(0)
-            localNotConfirmed.fulfilled.shouldBeTrue()
-            localNotConfirmed.remoteFailuresAllowed.shouldEqual(0)
-            localNotConfirmed.failed.shouldBeFalse()
-        }
-    }
+    // MARK: OperationExecution
 
     func test_OperationExecution_consistency_atLeast() throws {
         self.setUpLocal()
@@ -507,11 +489,11 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
     func test_OperationExecution_consistency_atLeast_shouldThrowErrorForInvalidInput() throws {
         let remoteMembersCount = 5
 
-        let invalidError = shouldThrow {
+        let error = shouldThrow {
             _ = try OperationExecution<Int>(with: .atLeast(0), remoteMembersCount: remoteMembersCount, localConfirmed: true)
         }
 
-        guard case CRDT.OperationConsistency.Error.invalidNumberOfReplicasRequested = invalidError else {
+        guard case CRDT.OperationConsistency.Error.invalidNumberOfReplicasRequested = error else {
             throw self.localTestKit.fail("Should throw .invalidNumberOfReplicasRequested error")
         }
     }
@@ -519,16 +501,30 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
     func test_OperationExecution_consistency_atLeast_shouldThrowInsufficientReplicasError() throws {
         let remoteMembersCount = 5
 
-        let insufficientError = shouldThrow {
+        let error = shouldThrow {
             // Ask for 1 more than remote + local combined
             _ = try OperationExecution<Int>(with: .atLeast(remoteMembersCount + 2), remoteMembersCount: remoteMembersCount, localConfirmed: true)
         }
 
-        guard case CRDT.OperationConsistency.Error.insufficientReplicas(let needed, let actual) = insufficientError else {
+        guard case CRDT.OperationConsistency.Error.insufficientReplicas(let needed, let actual) = error else {
             throw self.localTestKit.fail("Should throw .insufficientReplicas error")
         }
-        needed.shouldEqual(remoteMembersCount + 2)
+        needed.shouldEqual(remoteMembersCount + 2) // what we ask for
         actual.shouldEqual(remoteMembersCount + 1) // + 1 for local
+    }
+
+    func test_OperationExecution_consistency_atLeast_shouldThrowFailedToFulfillError() throws {
+        let remoteMembersCount = 5
+
+        let error = shouldThrow {
+            // `remoteMembersCount + 1` essentially means we want all members to confirm.
+            // Send false for `localConfirmed` so the operation cannot be fulfilled.
+            _ = try OperationExecution<Int>(with: .atLeast(remoteMembersCount + 1), remoteMembersCount: remoteMembersCount, localConfirmed: false)
+        }
+
+        guard case CRDT.OperationConsistency.Error.failedToFulfill = error else {
+            throw self.localTestKit.fail("Should throw .failedToFulfill error")
+        }
     }
 
     func test_OperationExecution_consistency_quorum() throws {
@@ -554,6 +550,19 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         localNotConfirmed.remoteFailuresAllowed.shouldEqual(1) // 5 - 4 (needed)
     }
 
+    func test_OperationExecution_consistency_quorum_shouldThrowFailedToFulfillError() throws {
+        let remoteMembersCount = 1
+
+        let error = shouldThrow {
+            // Send false for `localConfirmed` so the operation cannot be fulfilled.
+            _ = try OperationExecution<Int>(with: .quorum, remoteMembersCount: remoteMembersCount, localConfirmed: false)
+        }
+
+        guard case CRDT.OperationConsistency.Error.failedToFulfill = error else {
+            throw self.localTestKit.fail("Should throw .failedToFulfill error")
+        }
+    }
+
     func test_OperationExecution_consistency_all() throws {
         let remoteMembersCount = 5
 
@@ -562,12 +571,19 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         localConfirmed.fulfilled.shouldBeFalse()
         localConfirmed.remoteFailuresAllowed.shouldEqual(0) // 5 - 5 (needed)
         localConfirmed.failed.shouldBeFalse()
+    }
 
-        let localNotConfirmed = try OperationExecution<Int>(with: .all, remoteMembersCount: remoteMembersCount, localConfirmed: false)
-        localNotConfirmed.remoteConfirmationsNeeded.shouldEqual(5)
-        localNotConfirmed.fulfilled.shouldBeFalse()
-        localNotConfirmed.remoteFailuresAllowed.shouldEqual(0) // 5 - 5 (needed)
-        localNotConfirmed.failed.shouldBeFalse()
+    func test_OperationExecution_consistency_all_shouldThrowFailedToFulfillErrorWhenLocalFailed() throws {
+        let remoteMembersCount = 5
+
+        let error = shouldThrow {
+            // Send false for `localConfirmed` so the operation cannot be fulfilled.
+            _ = try OperationExecution<Int>(with: .all, remoteMembersCount: remoteMembersCount, localConfirmed: false)
+        }
+
+        guard case CRDT.OperationConsistency.Error.failedToFulfill = error else {
+            throw self.localTestKit.fail("Should throw .failedToFulfill error")
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

@@ -247,14 +247,7 @@ extension CRDT.Replicator {
                 case .data:
                     localConfirmed = true
                 case .notFound:
-                    // The operation fails to meet `.all` consistency, which requires local and all remote members to
-                    // have the CRDT, if the CRDT is not found locally.
-                    if case .all = consistency { // cannot use guard since we cannot negate `case`
-                        replyTo.tell(.failure(.consistencyError(.failedToFulfill)))
-                        return
-                    }
-
-                    // Not found locally but we can make it up by reading from an additional remote member
+                    // Not found locally but we might be able to make it up by reading from an additional remote member
                     localConfirmed = false
                 }
 
@@ -521,6 +514,7 @@ extension CRDT.Replicator {
         let remoteConfirmationsNeeded: Int
         var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
 
+        // This could be negative for `.atLeast` and `.quorum` but an error should be thrown
         let remoteFailuresAllowed: Int
         var remoteFailuresCount: Int = 0
 
@@ -529,7 +523,8 @@ extension CRDT.Replicator {
         }
 
         var failed: Bool {
-            return self.remoteFailuresCount > self.remoteFailuresAllowed
+            // Don't return true unless there is actually a failure
+            return self.remoteFailuresCount > 0 && self.remoteFailuresCount > self.remoteFailuresAllowed
         }
 
         init(with consistency: CRDT.OperationConsistency, remoteMembersCount: Int, localConfirmed: Bool) throws {
@@ -537,25 +532,38 @@ extension CRDT.Replicator {
 
             switch consistency {
             case .local: // doesn't need any remote confirmation
-                self.remoteConfirmationsNeeded = 0
-                self.remoteFailuresAllowed = 0
+                fatalError("OperationExecution should not be used in conjunction with .local consistency. This is a bug, please report.")
             case .atLeast(let asked):
                 guard asked > 0 else {
                     throw CRDT.OperationConsistency.Error.invalidNumberOfReplicasRequested(asked)
+                }
+                guard asked <= membersCount else {
+                    throw CRDT.OperationConsistency.Error.insufficientReplicas(needed: asked, actual: membersCount)
                 }
 
                 self.remoteConfirmationsNeeded = localConfirmed ? asked - 1 : asked
                 self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
 
+                // This might fail if `localConfirmed` is false
                 guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
-                    throw CRDT.OperationConsistency.Error.insufficientReplicas(needed: asked, actual: membersCount)
+                    throw CRDT.OperationConsistency.Error.failedToFulfill
                 }
             case .quorum:
                 // When total = 4, quorum = 3. When total = 5, quorum = 3.
                 let quorum = membersCount / 2 + 1
                 self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum
                 self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+
+                // This would only ever fail if `localConfirmed` is false and `remoteMembersCount` is 1 or less.
+                guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
+                    throw CRDT.OperationConsistency.Error.failedToFulfill
+                }
             case .all:
+                // `.all` requires confirmation from local and all remote members.
+                guard localConfirmed else {
+                    throw CRDT.OperationConsistency.Error.failedToFulfill
+                }
+
                 self.remoteConfirmationsNeeded = remoteMembersCount
                 self.remoteFailuresAllowed = 0
             }
