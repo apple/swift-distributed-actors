@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" viewBox="349 -114 673 530" width="673" height="530">
+<svg version="1.1" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="349 -114 673 530" width="673" height="530">
   <defs>
     <filter id="Shadow" filterUnits="userSpaceOnUse" x="349" y="-114">
       <feGaussianBlur in="SourceAlpha" result="blur" stdDeviation="1.624648"/>
@@ -31,14 +31,14 @@
         <font-face-name name="HelveticaNeue-Italic"/>
       </font-face-src>
     </font-face>
-    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
-      <g>
-        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
-      </g>
-    </marker>
-    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_3" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
       <g>
         <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="Arrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="none" stroke="currentColor" stroke-width="1"/>
       </g>
     </marker>
     <filter id="Shadow_2" filterUnits="userSpaceOnUse" x="349" y="-114">
@@ -73,9 +73,9 @@
     </font-face>
   </defs>
   <metadata> Produced by OmniGraffle 7.11.3 
-    <dc:date>2019-09-26 04:22:16 +0000</dc:date>
+    <dc:date>2019-09-27 02:13:42 +0000</dc:date>
   </metadata>
-  <g id="Canvas_1" fill-opacity="1" stroke="none" stroke-dasharray="none" fill="none" stroke-opacity="1">
+  <g id="Canvas_1" stroke="none" stroke-dasharray="none" fill="none" fill-opacity="1" stroke-opacity="1">
     <title>Canvas 1</title>
     <g id="Canvas_1: Layer 1">
       <title>Layer 1</title>
@@ -161,16 +161,16 @@
         </text>
       </g>
       <g id="Line_241">
-        <line x1="467.89795" y1="256.9937" x2="480.59795" y2="256.9937" marker-end="url(#FilledArrow_Marker_2)" marker-start="url(#FilledArrow_Marker_3)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="467.89795" y1="256.9937" x2="480.59795" y2="256.9937" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_242">
-        <line x1="536.49795" y1="306.1" x2="536.49795" y2="274.4937" marker-start="url(#FilledArrow_Marker_3)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="536.49795" y1="306.1" x2="536.49795" y2="284.3937" marker-end="url(#Arrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_243">
-        <line x1="592.74795" y1="333.5" x2="618.09795" y2="333.5" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="592.74795" y1="333.5" x2="618.09795" y2="333.5" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_244">
-        <line x1="448.9107" y1="279.6769" x2="508.0199" y2="316" marker-start="url(#FilledArrow_Marker_3)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="499.5852" y1="310.8168" x2="448.9107" y2="279.6769" marker-end="url(#Arrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Graphic_246" filter="url(#Shadow_2)">
         <circle cx="883" cy="263.52516" r="22.5063265460949" fill="white"/>
@@ -180,16 +180,16 @@
         </text>
       </g>
       <g id="Line_247">
-        <line x1="883" y1="177.51258" x2="883" y2="231.11886" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="883" y1="177.51258" x2="883" y2="231.11886" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_248">
-        <line x1="883" y1="80.01258" x2="883" y2="120.6" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="883" y1="80.01258" x2="883" y2="120.6" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_249">
-        <line x1="768.5" y1="56.50629" x2="795.1" y2="56.50629" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="768.5" y1="56.50629" x2="795.1" y2="56.50629" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_250">
-        <line x1="515" y1="56.50629" x2="602.6" y2="56.50629" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="515" y1="56.50629" x2="602.6" y2="56.50629" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Group_253">
         <g id="Graphic_257" filter="url(#Shadow)">
@@ -214,7 +214,7 @@
         <line x1="553.499" y1="193" x2="553.829" y2="173.89852" marker-end="url(#StickArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1.0,4.0" stroke-width="1"/>
       </g>
       <g id="Line_262">
-        <line x1="554.4034" y1="110.50629" x2="554.4034" y2="66.49375" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="554.4034" y1="110.50629" x2="554.4034" y2="66.49375" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Graphic_263">
         <text transform="translate(365 -108.53855)" fill="black">
@@ -222,7 +222,7 @@
         </text>
       </g>
       <g id="Line_265">
-        <line x1="690.5" y1="80.01258" x2="690.5" y2="307.1" marker-end="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8.0,4.0,1.0,4.0" stroke-width="1"/>
+        <line x1="690.5" y1="80.01258" x2="690.5" y2="307.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8.0,4.0,1.0,4.0" stroke-width="1"/>
       </g>
     </g>
   </g>
