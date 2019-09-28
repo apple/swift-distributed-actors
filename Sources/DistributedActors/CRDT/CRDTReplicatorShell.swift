@@ -517,7 +517,6 @@ extension CRDT.Replicator {
         let remoteConfirmationsNeeded: Int
         var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
 
-        // This could be negative for `.atLeast` and `.quorum` but an error should be thrown
         let remoteFailuresAllowed: Int
         var remoteFailuresCount: Int = 0
 
@@ -552,11 +551,14 @@ extension CRDT.Replicator {
 
                 self.confirmationsRequired = asked
                 self.remoteConfirmationsNeeded = localConfirmed ? asked - 1 : asked
-                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
-
                 // This might fail when `localConfirmed` is false and there is not enough remote members to compensate
                 guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
                     throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: asked, remaining: self.remoteConfirmationsNeeded, obtainable: remoteMembersCount)
+                }
+
+                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+                guard self.remoteFailuresAllowed >= 0 else {
+                    fatalError("Expected non-negative remoteFailuresAllowed, got \(self.remoteFailuresAllowed). This is a bug, please report.")
                 }
             case .quorum:
                 // Quorum by definition requires at least one remote member (see discussion in https://github.com/apple/swift-distributed-actors/issues/172)
@@ -567,12 +569,16 @@ extension CRDT.Replicator {
                 // When total = 4, quorum = 3. When total = 5, quorum = 3.
                 let quorum = membersCount / 2 + 1
                 self.confirmationsRequired = quorum
-                self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum
-                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
 
+                self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum
                 // This would only ever fail if `localConfirmed` is false and `remoteMembersCount` is 1 or less.
                 guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
                     throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: quorum, remaining: self.remoteConfirmationsNeeded, obtainable: remoteMembersCount)
+                }
+
+                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+                guard self.remoteFailuresAllowed >= 0 else {
+                    fatalError("Expected non-negative remoteFailuresAllowed, got \(self.remoteFailuresAllowed). This is a bug, please report.")
                 }
             case .all:
                 // `.all` requires confirmation from local and all remote members.
