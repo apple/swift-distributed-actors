@@ -550,6 +550,18 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         localNotConfirmed.remoteFailuresAllowed.shouldEqual(1) // 5 - 4 (needed)
     }
 
+    func test_OperationExecution_consistency_quorum_shouldThrowErrorIfNoRemoteMember() throws {
+        let remoteMembersCount = 0
+
+        let error = shouldThrow {
+            _ = try OperationExecution<Int>(with: .quorum, remoteMembersCount: remoteMembersCount, localConfirmed: true)
+        }
+
+        guard case CRDT.OperationConsistency.Error.remoteReplicasRequired = error else {
+            throw self.localTestKit.fail("Should throw .remoteReplicasRequired error")
+        }
+    }
+
     func test_OperationExecution_consistency_quorum_shouldThrowFailedToFulfillError() throws {
         let remoteMembersCount = 1
 

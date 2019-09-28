@@ -549,6 +549,11 @@ extension CRDT.Replicator {
                     throw CRDT.OperationConsistency.Error.failedToFulfill
                 }
             case .quorum:
+                // Quorum by definition requires at least one remote member (see discussion in https://github.com/apple/swift-distributed-actors/issues/172)
+                guard remoteMembersCount > 0 else {
+                    throw CRDT.OperationConsistency.Error.remoteReplicasRequired
+                }
+
                 // When total = 4, quorum = 3. When total = 5, quorum = 3.
                 let quorum = membersCount / 2 + 1
                 self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum

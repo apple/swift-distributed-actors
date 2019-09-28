@@ -507,6 +507,7 @@ extension CRDT.OperationConsistency {
     public enum Error: Swift.Error {
         case invalidNumberOfReplicasRequested(Int)
         case insufficientReplicas(needed: Int, actual: Int)
+        case remoteReplicasRequired
         case failedToFulfill
     }
 }
@@ -518,6 +519,8 @@ extension CRDT.OperationConsistency.Error: Equatable {
             return lNum == rNum
         case (.insufficientReplicas(let lNeeded, let lActual), .insufficientReplicas(let rNeeded, let rActual)):
             return lNeeded == rNeeded && lActual == rActual
+        case (.remoteReplicasRequired, .remoteReplicasRequired):
+            return true
         case (.failedToFulfill, .failedToFulfill):
             return true
         default:
