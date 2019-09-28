@@ -190,8 +190,6 @@ extension CRDT.Replicator.LocalCommand.DeleteError: Equatable {
         switch (lhs, rhs) {
         case (.consistencyError(let lError), .consistencyError(let rError)):
             return lError == rError
-        default:
-            return false
         }
     }
 }
