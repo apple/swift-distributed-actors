@@ -506,8 +506,9 @@ extension CRDT.OperationConsistency: Equatable {
 extension CRDT.OperationConsistency {
     public enum Error: Swift.Error {
         case invalidNumberOfReplicasRequested(Int)
-        case insufficientReplicas(needed: Int, actual: Int)
-        case failedToFulfill
+        case unableToFulfill(consistency: CRDT.OperationConsistency, localConfirmed: Bool, required: Int, remaining: Int, obtainable: Int)
+        case tooManyFailures(allowed: Int, actual: Int)
+        case remoteReplicasRequired
     }
 }
 
@@ -516,9 +517,11 @@ extension CRDT.OperationConsistency.Error: Equatable {
         switch (lhs, rhs) {
         case (.invalidNumberOfReplicasRequested(let lNum), .invalidNumberOfReplicasRequested(let rNum)):
             return lNum == rNum
-        case (.insufficientReplicas(let lNeeded, let lActual), .insufficientReplicas(let rNeeded, let rActual)):
-            return lNeeded == rNeeded && lActual == rActual
-        case (.failedToFulfill, .failedToFulfill):
+        case (.unableToFulfill(let lConsistency, let lLocal, let lRequired, let lRemaining, let lObtainable), .unableToFulfill(let rConsistency, let rLocal, let rRequired, let rRemaining, let rObtainable)):
+            return lConsistency == rConsistency && lLocal == rLocal && lRequired == rRequired && lRemaining == rRemaining && lObtainable == rObtainable
+        case (.tooManyFailures(let lAllowed, let lActual), .tooManyFailures(let rAllowed, let rActual)):
+            return lAllowed == rAllowed && lActual == rActual
+        case (.remoteReplicasRequired, .remoteReplicasRequired):
             return true
         default:
             return false

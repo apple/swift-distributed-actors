@@ -142,7 +142,7 @@ extension CRDT.Replicator {
                     self.notifyOwnersOnUpdate(context, id, updatedData)
                 case .atLeast, .quorum, .all:
                     do {
-                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
+                        let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteWriteResult.success }) {
                             // Use `data`, NOT `updatedData`, to make `RemoteCommand`!!!
                             // We are replicating a specific change (e.g., `GCounter.increment`) made to a specific
                             // actor-owned CRDT (represented either by `data` as a whole or `data.delta`), not the
@@ -171,7 +171,7 @@ extension CRDT.Replicator {
                         // Opened https://github.com/apple/swift-distributed-actors/issues/136 to track in case we do in the future.
                         //
                         // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                        context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
@@ -247,20 +247,13 @@ extension CRDT.Replicator {
                 case .data:
                     localConfirmed = true
                 case .notFound:
-                    // The operation fails to meet `.all` consistency, which requires local and all remote members to
-                    // have the CRDT, if the CRDT is not found locally.
-                    if case .all = consistency { // cannot use guard since we cannot negate `case`
-                        replyTo.tell(.failure(.consistencyError(.failedToFulfill)))
-                        return
-                    }
-
-                    // Not found locally but we can make it up by reading from an additional remote member
+                    // Not found locally but we might be able to make it up by reading from an additional remote member
                     localConfirmed = false
                 }
 
                 do {
                     // swiftformat:disable indent unusedArguments wrapArguments
-                    let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
+                    let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: localConfirmed,
                         isSuccessful: {
                             // TODO: is there a way to make this less verbose?
                             if case .success = $0 {
@@ -273,7 +266,7 @@ extension CRDT.Replicator {
                         .remoteCommand(.read(id, replyTo: $0))
                     }
                     // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                    context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                    context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                         switch result {
                         case .success(let remoteResults):
                             // We've read from the remote replicators, now merge their versions of the CRDT to local
@@ -325,11 +318,11 @@ extension CRDT.Replicator {
                     self.notifyOwnersOnDelete(context, id)
                 case .atLeast, .quorum, .all:
                     do {
-                        let remotePromise = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
+                        let remoteFuture = try self.performOnRemoteMembers(context, for: id, with: consistency, localConfirmed: true, isSuccessful: { $0 == RemoteDeleteResult.success }) {
                             .remoteCommand(.delete(id, replyTo: $0))
                         }
                         // This is the only place in the call-chain where timeout != .effectivelyInfinite (see https://github.com/apple/swift-distributed-actors/issues/137).
-                        context.onResultAsync(of: remotePromise.futureResult, timeout: timeout) { result in
+                        context.onResultAsync(of: remoteFuture, timeout: timeout) { result in
                             switch result {
                             case .success:
                                 replyTo.tell(.success)
@@ -352,21 +345,34 @@ extension CRDT.Replicator {
         private func performOnRemoteMembers<RemoteCommandResult>(_ context: ActorContext<Message>,
                                                                  for id: CRDT.Identity,
                                                                  with consistency: OperationConsistency,
-                                                                 localConfirmed: Bool = true,
+                                                                 localConfirmed: Bool,
                                                                  isSuccessful: @escaping (RemoteCommandResult) -> Bool,
-                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopPromise<[ActorRef<Message>: RemoteCommandResult]> {
+                                                                 _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
             let promise = context.system.eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
 
             // Determine the number of successful responses needed to satisfy consistency requirement.
             // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
             // requirement succeeds as long as this threshold is met.
-            var execution = try OperationExecution<RemoteCommandResult>(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
+            var execution: OperationExecution<RemoteCommandResult>
+            do {
+                execution = try .init(with: consistency, remoteMembersCount: self.remoteReplicators.count, localConfirmed: localConfirmed)
+            } catch {
+                // Initialization could fail (e.g., OperationConsistency.Error). In that case we fail the promise and return.
+                promise.fail(error)
+                return promise.futureResult
+            }
 
             // It's possible for operation to be fulfilled without actually calling remote members.
             // e.g., when consistency = .atLeast(1) and localConfirmed = true
             if execution.fulfilled {
-                promise.succeed(execution.remoteConfirmationsReceived) // empty
-                return promise
+                promise.succeed(execution.remoteConfirmationsReceived) // empty dictionary
+                return promise.futureResult
+            }
+            // If execution is not fulfilled at this point based on the given parameters and there are no remote members
+            // (i.e., we are not entering the for-loop below), then it's impossible to fulfill it.
+            guard !self.remoteReplicators.isEmpty else {
+                promise.fail(CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: execution.confirmationsRequired, remaining: execution.remoteConfirmationsNeeded, obtainable: 0))
+                return promise.futureResult
             }
 
             // Send `RemoteCommand` to every remote replicator and wait for as many successful responses as needed
@@ -391,14 +397,18 @@ extension CRDT.Replicator {
                     if execution.fulfilled {
                         promise.succeed(execution.remoteConfirmationsReceived)
                     } else if execution.failed {
-                        promise.fail(CRDT.OperationConsistency.Error.failedToFulfill)
+                        promise.fail(CRDT.OperationConsistency.Error.tooManyFailures(allowed: execution.remoteFailuresAllowed, actual: execution.remoteFailuresCount))
+                    } else {
+                        // Indeterminate: we have not received enough results to mark execution success/failure.
+                        // Eventually, either this operation will fail with timeout, or execution will be fulfilled or failed.
+                        ()
                     }
 
                     return .same
                 }
             }
 
-            return promise
+            return promise.futureResult
         }
 
         // ==== --------------------------------------------------------------------------------------------------------
@@ -501,6 +511,9 @@ extension CRDT.Replicator {
     /// It is the responsibility of the caller to decide if the operation must succeed in the local replica or not
     /// (e.g., it might be ok for `read` because we can make it up by reading from an additional remote member).
     internal struct OperationExecution<Result> {
+        let localConfirmed: Bool
+        let confirmationsRequired: Int
+
         let remoteConfirmationsNeeded: Int
         var remoteConfirmationsReceived = [ActorRef<Message>: Result]()
 
@@ -512,14 +525,23 @@ extension CRDT.Replicator {
         }
 
         var failed: Bool {
-            return self.remoteFailuresCount > self.remoteFailuresAllowed
+            // Don't return true unless there is actually a failure
+            return self.remoteFailuresCount > 0 && self.remoteFailuresCount > self.remoteFailuresAllowed
         }
 
         init(with consistency: CRDT.OperationConsistency, remoteMembersCount: Int, localConfirmed: Bool) throws {
+            self.localConfirmed = localConfirmed
+
             let membersCount = remoteMembersCount + 1 // + 1 for local
 
             switch consistency {
-            case .local: // doesn't need any remote confirmation
+            case .local:
+                // Local is not allowed to fail for `.local`
+                guard localConfirmed else {
+                    throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: 1, remaining: 1, obtainable: 0)
+                }
+                self.confirmationsRequired = 1
+                // `.local` doesn't need any remote confirmation
                 self.remoteConfirmationsNeeded = 0
                 self.remoteFailuresAllowed = 0
             case .atLeast(let asked):
@@ -527,18 +549,44 @@ extension CRDT.Replicator {
                     throw CRDT.OperationConsistency.Error.invalidNumberOfReplicasRequested(asked)
                 }
 
+                self.confirmationsRequired = asked
                 self.remoteConfirmationsNeeded = localConfirmed ? asked - 1 : asked
-                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
-
+                // This might fail when `localConfirmed` is false and there is not enough remote members to compensate
                 guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
-                    throw CRDT.OperationConsistency.Error.insufficientReplicas(needed: asked, actual: membersCount)
+                    throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: asked, remaining: self.remoteConfirmationsNeeded, obtainable: remoteMembersCount)
+                }
+
+                self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+                guard self.remoteFailuresAllowed >= 0 else {
+                    fatalError("Expected non-negative remoteFailuresAllowed, got \(self.remoteFailuresAllowed). This is a bug, please report.")
                 }
             case .quorum:
+                // Quorum by definition requires at least one remote member (see discussion in https://github.com/apple/swift-distributed-actors/issues/172)
+                guard remoteMembersCount > 0 else {
+                    throw CRDT.OperationConsistency.Error.remoteReplicasRequired
+                }
+
                 // When total = 4, quorum = 3. When total = 5, quorum = 3.
                 let quorum = membersCount / 2 + 1
+                self.confirmationsRequired = quorum
+
                 self.remoteConfirmationsNeeded = localConfirmed ? quorum - 1 : quorum
+                // This would only ever fail if `localConfirmed` is false and `remoteMembersCount` is 1 or less.
+                guard self.remoteConfirmationsNeeded <= remoteMembersCount else {
+                    throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: quorum, remaining: self.remoteConfirmationsNeeded, obtainable: remoteMembersCount)
+                }
+
                 self.remoteFailuresAllowed = remoteMembersCount - self.remoteConfirmationsNeeded
+                guard self.remoteFailuresAllowed >= 0 else {
+                    fatalError("Expected non-negative remoteFailuresAllowed, got \(self.remoteFailuresAllowed). This is a bug, please report.")
+                }
             case .all:
+                // `.all` requires confirmation from local and all remote members.
+                guard localConfirmed else {
+                    throw CRDT.OperationConsistency.Error.unableToFulfill(consistency: consistency, localConfirmed: localConfirmed, required: membersCount, remaining: membersCount, obtainable: remoteMembersCount)
+                }
+
+                self.confirmationsRequired = membersCount
                 self.remoteConfirmationsNeeded = remoteMembersCount
                 self.remoteFailuresAllowed = 0
             }

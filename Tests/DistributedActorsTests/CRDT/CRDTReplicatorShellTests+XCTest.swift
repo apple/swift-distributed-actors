@@ -34,12 +34,17 @@ extension CRDTReplicatorShellTests {
             ("test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData", test_localCommand_read_doesNotExistLocally_shouldBeOK_shouldUpdateLocalStoreWithRemoteData),
             ("test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners", test_localCommand_delete_allConsistency_remoteShouldBeUpdated_remoteShouldNotifyOwners),
             ("test_OperationExecution_consistency_local", test_OperationExecution_consistency_local),
+            ("test_OperationExecution_consistency_local_throwIfLocalNotConfirmed", test_OperationExecution_consistency_local_throwIfLocalNotConfirmed),
             ("test_OperationExecution_consistency_atLeast", test_OperationExecution_consistency_atLeast),
-            ("test_OperationExecution_consistency_atLeast_exceedAllowedRemoteFailures", test_OperationExecution_consistency_atLeast_exceedAllowedRemoteFailures),
-            ("test_OperationExecution_consistency_atLeast_shouldThrowErrorForInvalidInput", test_OperationExecution_consistency_atLeast_shouldThrowErrorForInvalidInput),
-            ("test_OperationExecution_consistency_atLeast_shouldThrowInsufficientReplicasError", test_OperationExecution_consistency_atLeast_shouldThrowInsufficientReplicasError),
+            ("test_OperationExecution_consistency_atLeast_failedShouldBeTrueIfExceedAllowedRemoteFailures", test_OperationExecution_consistency_atLeast_failedShouldBeTrueIfExceedAllowedRemoteFailures),
+            ("test_OperationExecution_consistency_atLeast_throwIfInvalidInput", test_OperationExecution_consistency_atLeast_throwIfInvalidInput),
+            ("test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localConfirmed", test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localConfirmed),
+            ("test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localNotConfirmed", test_OperationExecution_consistency_atLeast_throwIfUnableToFulfill_localNotConfirmed),
             ("test_OperationExecution_consistency_quorum", test_OperationExecution_consistency_quorum),
+            ("test_OperationExecution_consistency_quorum_throwIfNoRemoteMember", test_OperationExecution_consistency_quorum_throwIfNoRemoteMember),
+            ("test_OperationExecution_consistency_quorum_throwIfUnableToFulfill", test_OperationExecution_consistency_quorum_throwIfUnableToFulfill),
             ("test_OperationExecution_consistency_all", test_OperationExecution_consistency_all),
+            ("test_OperationExecution_consistency_all_throwWhenLocalNotConfirmed", test_OperationExecution_consistency_all_throwWhenLocalNotConfirmed),
         ]
     }
 }
