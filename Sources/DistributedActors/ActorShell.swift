@@ -635,7 +635,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // MARK: Spawn implementations
 
     public override func spawn<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props = Props(), _ behavior: Behavior<Message>) throws -> ActorRef<Message> {
-        return try self._spawn(behavior, naming: naming, props: props)
+        return try self._spawn(naming, props: props, behavior, perpetual: false)
     }
 
     public override func spawnWatch<Message>(_ naming: ActorNaming, of type: Message.Type = Message.self, props: Props, _ behavior: Behavior<Message>) throws -> ActorRef<Message> {

@@ -318,13 +318,15 @@ extension Children {
 
 // TODO: Trying this style rather than the style done with DeathWatch to extend cell's capabilities
 extension ActorShell: ChildActorRefFactory {
-    internal func _spawn<M>(_ behavior: Behavior<M>, naming: ActorNaming, props: Props) throws -> ActorRef<M> {
+    // TODO: Maybe go back to "wellKnown" rather than perpetual, reads better to be honest and more true, since these do not have to live forever, they can come and go, but are "well known"
+    internal func _spawn<M>(_ naming: ActorNaming, props: Props, _ behavior: Behavior<M>, perpetual: Bool = false) throws -> ActorRef<M> {
         let name = naming.makeName(&self.namingContext)
 
         try behavior.validateAsInitial()
         try self.validateUniqueName(name) // FIXME: reserve name
 
-        let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: .random())
+        let incarnation: ActorIncarnation = perpetual ? .perpetual : .random()
+        let address: ActorAddress = try self.address.makeChildAddress(name: name, incarnation: incarnation)
 
         let dispatcher: MessageDispatcher
         switch props.dispatcher {

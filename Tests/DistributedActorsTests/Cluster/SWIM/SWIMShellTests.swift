@@ -437,14 +437,27 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
         local.cluster.join(node: remote.cluster.node.node)
 
-        let swimPath = try ActorPath._system.appending(SWIMShell.name)
-        let swimAddress = ActorAddress(path: swimPath, incarnation: ActorIncarnation.perpetual)
+        // resolving SWIM
+        try self.testKit(local).eventually(within: .seconds(3)) {
+            let swimAddress = ActorAddress._swim(on: local.cluster.node)
+            let remoteSwim: ActorRef<SWIM.Message> = remote._resolve(context: .init(address: swimAddress, system: remote))
+            let localSwim: ActorRef<SWIM.Message> = local._resolve(context: .init(address: swimAddress, system: local))
 
-        let remoteSwim: ActorRef<SWIM.Message> = remote._resolve(context: .init(address: swimAddress, system: remote))
-        let localSwim: ActorRef<SWIM.Message> = local._resolve(context: .init(address: swimAddress, system: local))
+            guard !localSwim.path.starts(with: ._dead) else {
+                pprint("Resolve failed, got: \(localSwim)")
+                throw Boom("Expected to resolve SWIM, though since it starts asynchronously, it may need some more time.")
+            }
+            pprint("Resolved local: = \(localSwim)")
 
-        let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
-        try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
+            guard !remoteSwim.path.starts(with: ._dead) else {
+                pprint("Resolve failed, got: \(remoteSwim)")
+                throw Boom("Expected to resolve SWIM, though since it starts asynchronously, it may need some more time.")
+            }
+            pprint("Resolved remote: = \(remoteSwim)")
+
+            let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+            try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
+        }
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -498,14 +511,14 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
     func awaitStatus(
         _ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
-        on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 
         try testKit.eventually(within: timeout, file: file, line: line, column: column) {
-            membershipShell.tell(.testing(.getMembershipState(replyTo: stateProbe.ref)))
+            swimShell.tell(.testing(.getMembershipState(replyTo: stateProbe.ref)))
             let membership = try stateProbe.expectMessage()
 
             let otherStatus = membership.membershipState[member]
@@ -517,14 +530,14 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
     func holdStatus(
         _ status: SWIM.Status, for member: ActorRef<SWIM.Message>,
-        on membershipShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
+        on swimShell: ActorRef<SWIM.Message>, within timeout: TimeAmount,
         file: StaticString = #file, line: UInt = #line, column: UInt = #column
     ) throws {
         let testKit = self._testKits.first!
         let stateProbe = testKit.spawnTestProbe(expecting: SWIM.MembershipState.self)
 
         try testKit.assertHolds(for: timeout, file: file, line: line, column: column) {
-            membershipShell.tell(.testing(.getMembershipState(replyTo: stateProbe.ref)))
+            swimShell.tell(.testing(.getMembershipState(replyTo: stateProbe.ref)))
             let otherStatus = try stateProbe.expectMessage().membershipState[member]
             guard otherStatus == status else {
                 throw testKit.error("Expected status [\(status)] for [\(member)], but found \(otherStatus.debugDescription)")

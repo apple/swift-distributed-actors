@@ -39,7 +39,13 @@ internal class ClusterShell {
     /// - Protected by: `_associationsLock`
     private var _associationTombstones: [UniqueNode]
 
-    private var _swimRef: ActorRef<SWIM.Message>!
+    private var _swimRef: SWIM.Ref?
+    private var swimRef: SWIM.Ref {
+        guard let ref = _swimRef else {
+            return fatalErrorBacktrace("Illegal early access to ClusterShell._swimRef detected! This ref is initialized during bind(), and must not be accessed earlier than that.")
+        }
+        return ref
+    }
 
     private var clusterEvents: EventStream<ClusterEvent>!
 
@@ -224,7 +230,7 @@ extension ClusterShell {
 
             // SWIM failure detector and gossiping
             let swimBehavior = SWIMShell(settings: clusterSettings.swim, clusterRef: context.myself).behavior
-            self._swimRef = try context.system._spawnSystemActor(SWIMShell.naming, swimBehavior, perpetual: true) // TODO: spawn as system/cluster/swim needs perpetual param there
+            self._swimRef = try context._downcastUnsafe._spawn(SWIMShell.naming, props: Props(), swimBehavior, perpetual: true)
 
             // subscribe to cluster events (which this shell might emit, like membership changes, but we can decouple processing them thanks to this in time and space)
             context.system.cluster.events.subscribe(context.messageAdapter { ClusterShell.Message.clusterEvent($0) })
@@ -705,7 +711,7 @@ extension ClusterShell {
             switch res {
             case .success(.success(let uniqueNode)):
                 context.log.debug("Associated \(uniqueNode), informing SWIM to monitor this node.")
-                self._swimRef.tell(.local(.monitor(uniqueNode)))
+                self.swimRef.tell(.local(.monitor(uniqueNode)))
                 return .same // .same, since state was modified since inside the handshakeWith (!)
             case .success(.failure(let error)):
                 context.log.debug("Handshake with \(reflecting: node) failed: \(error)")
@@ -770,7 +776,7 @@ extension ClusterShell {
             // ==== ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             // Down(self node); ensuring SWIM knows about this and should likely initiate graceful shutdown
 
-            self._swimRef.tell(.local(.confirmDead(state.selfNode)))
+            self.swimRef.tell(.local(.confirmDead(state.selfNode)))
             context.log.warning("Self node was determined [.down]. (TODO: initiate shutdown based on config)") // TODO: initiate a shutdown it configured to do so
 
             return state
@@ -788,9 +794,9 @@ extension ClusterShell {
 
         switch association {
         case .associated(let associated):
-            self._swimRef.tell(.local(.confirmDead(associated.remoteNode)))
+            self.swimRef.tell(.local(.confirmDead(associated.remoteNode)))
             state.log.info("Marked node [\(associated.remoteNode)] as: DOWN")
-            // STONITH - Shoot The Other Node In The Head
+            // TODO: STONITH - Shoot The Other Node In The Head
             // case tombstone ???
         }
 

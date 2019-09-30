@@ -30,6 +30,7 @@
 public enum SWIM {
     typealias Incarnation = UInt64
 
+    typealias Ref = ActorRef<SWIM.Message>
     typealias Shell = SWIMShell
     typealias Instance = SWIMInstance
     typealias Member = SWIMMember

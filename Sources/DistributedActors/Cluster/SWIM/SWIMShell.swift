@@ -319,7 +319,7 @@ internal struct SWIMShell {
         } else {
             context.log.warning("Attempted to .confirmDead(\(node)), yet no such member known to \(self)!") // TODO: would want to see if this happens when we fail these tests
             // even if not known, we invent such node and store it as dead
-            self.swim.addMember(context.system._resolve(context: .init(address: SWIMShell.address(on: node), system: context.system)), status: .dead)
+            self.swim.addMember(context.system._resolve(context: .init(address: ._swim(on: node), system: context.system)), status: .dead)
         }
     }
 
@@ -436,7 +436,7 @@ internal struct SWIMShell {
 
     /// This is effectively joining the SWIM membership of the other member.
     func sendFirstRemotePing(_ context: ActorContext<SWIM.Message>, on node: UniqueNode) {
-        let remoteSwimAddress = SWIMShell.address(on: node)
+        let remoteSwimAddress = ActorAddress._swim(on: node)
 
         let resolveContext = ResolveContext<SWIM.Message>(address: remoteSwimAddress, system: context.system)
         let remoteSwimRef = context.system._resolve(context: resolveContext)
@@ -447,14 +447,10 @@ internal struct SWIMShell {
 }
 
 extension SWIMShell {
-    static let name: String = "swim" // TODO: String -> ActorName
+    static let name: String = "swim"
     static let naming: ActorNaming = .unique(SWIMShell.name)
 
-    static func address(on node: UniqueNode) -> ActorAddress {
-        return try! ActorPath._system.appending(SWIMShell.name).makeRemoteAddress(on: node, incarnation: .perpetual)
-    }
-
-    static let periodicPingKey = TimerKey("swim/periodic-ping")
+    static let periodicPingKey = TimerKey("\(SWIMShell.name)/periodic-ping")
 }
 
 extension ActorAddress {
@@ -464,7 +460,7 @@ extension ActorAddress {
 }
 
 extension ActorPath {
-    internal static let _swim: ActorPath = try! ActorPath._system.appending("swim")
+    internal static let _swim: ActorPath = try! ActorPath._cluster.appending(SWIMShell.name)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
