@@ -156,7 +156,7 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
 
-    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.4.0"),
+    .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
