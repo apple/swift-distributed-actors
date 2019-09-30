@@ -200,7 +200,7 @@ public struct AssertionHoldsError: Error {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Internal "power" assertions, should not be used lightly as they are quite heavy and potentially racy
+// MARK: "Power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
 extension ActorTestKit {
     // TODO: how to better hide such more nasty assertions?
@@ -211,7 +211,7 @@ extension ActorTestKit {
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let res: TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
             if ref.address.path.description == path {
-                return .accumulateSingle(ref) // TODO: could use the .return(...)
+                return .accumulateSingle(ref)
             } else {
                 return .continue
             }
@@ -222,6 +222,24 @@ extension ActorTestKit {
         case .results(let refs): throw callSiteInfo.error("Found more than a single ref for assertion! Got \(refs).")
         case .completed: throw callSiteInfo.error("Failed to find actor occupying [\(path)]!")
         case .failed(let err): throw callSiteInfo.error("Path \(path) was not occupied by any actor! Error: \(err)")
+        }
+    }
+
+    /// Similar to the internal `system._resolve` however keeps retrying to resolve the passed in address until a not-dead ref is resolved.
+    /// If unable to resolve an not-dead reference, this function throws, rather than returning the dead reference.
+    ///
+    /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
+    public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(3)) throws -> ActorRef<Message> {
+        let context = ResolveContext<Message>(address: address, system: self.system)
+
+        return try self.eventually(within: .seconds(3)) {
+            let resolved = self.system._resolve(context: context)
+
+            if resolved.address.starts(with: ._dead) {
+                throw self.error("Attempting to resolve not-dead [\(address)] yet resolved: \(resolved)")
+            } else {
+                return resolved
+            }
         }
     }
 }
@@ -241,9 +259,6 @@ public extension ActorTestKit {
     func makeFakeContext<M>(for: Behavior<M>) -> ActorContext<M> {
         return self.makeFakeContext(forType: M.self)
     }
-
-    // TODO: we could implement EffectfulContext most likely which should be able to perform all such actions and allow asserting on it.
-    // It's quite harder to do and not entirely sure about safety of that so not attempting to do so for now
 }
 
 struct MockActorContextError: Error, CustomStringConvertible {

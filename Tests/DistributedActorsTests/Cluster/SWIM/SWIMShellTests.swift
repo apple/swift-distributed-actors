@@ -380,25 +380,14 @@ final class SWIMShellTests: ClusteredNodesTestBase {
             let first = self.setUpFirst()
             let second = self.setUpSecond()
 
-            defer {
-                self.printCapturedLogs(first)
-                self.printCapturedLogs(second)
-            }
-
             let membershipProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.MembershipState.self)
             let pingProbe = self.testKit(first).spawnTestProbe(expecting: SWIM.Ack.self)
 
             var settings: SWIMSettings = .default
             settings.failureDetector.probeInterval = .milliseconds(100)
 
-            var firstSwim: ActorRef<SWIM.Message> = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
-            var secondSwim: ActorRef<SWIM.Message> = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
-
-            while firstSwim.path.starts(with: ._dead) || secondSwim.path.starts(with: ._dead) {
-                pprint("Resolved a dead SWIM... trying again")
-                firstSwim = first._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: first.cluster.node), system: first))
-                secondSwim = second._resolve(context: ResolveContext<SWIM.Message>(address: ActorAddress._swim(on: second.cluster.node), system: second))
-            }
+            let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.node))
+            var secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
 
             let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
 
@@ -437,27 +426,11 @@ final class SWIMShellTests: ClusteredNodesTestBase {
 
         local.cluster.join(node: remote.cluster.node.node)
 
-        // resolving SWIM
-        try self.testKit(local).eventually(within: .seconds(3)) {
-            let swimAddress = ActorAddress._swim(on: local.cluster.node)
-            let remoteSwim: ActorRef<SWIM.Message> = remote._resolve(context: .init(address: swimAddress, system: remote))
-            let localSwim: ActorRef<SWIM.Message> = local._resolve(context: .init(address: swimAddress, system: local))
+        let localSwim: ActorRef<SWIM.Message> = try self.testKit(local)._eventuallyResolve(address: ._swim(on: local.cluster.node))
+        let remoteSwim: ActorRef<SWIM.Message> = try self.testKit(remote)._eventuallyResolve(address: ._swim(on: remote.cluster.node))
 
-            guard !localSwim.path.starts(with: ._dead) else {
-                pprint("Resolve failed, got: \(localSwim)")
-                throw Boom("Expected to resolve SWIM, though since it starts asynchronously, it may need some more time.")
-            }
-            pprint("Resolved local: = \(localSwim)")
-
-            guard !remoteSwim.path.starts(with: ._dead) else {
-                pprint("Resolve failed, got: \(remoteSwim)")
-                throw Boom("Expected to resolve SWIM, though since it starts asynchronously, it may need some more time.")
-            }
-            pprint("Resolved remote: = \(remoteSwim)")
-
-            let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
-            try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
-        }
+        let remoteSwimRef = local._resolveKnownRemote(remoteSwim, onRemoteSystem: remote)
+        try self.awaitStatus(.alive(incarnation: 0), for: remoteSwimRef, on: localSwim, within: .seconds(1))
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
