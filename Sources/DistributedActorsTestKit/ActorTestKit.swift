@@ -226,7 +226,7 @@ extension ActorTestKit {
     }
 
     /// Similar to the internal `system._resolve` however keeps retrying to resolve the passed in address until a not-dead ref is resolved.
-    /// If unable to resolve an not-dead reference, this function throws, rather than returning the dead reference.
+    /// If unable to resolve a not-dead reference, this function throws, rather than returning the dead reference.
     ///
     /// This is useful when the resolution might be racing against the startup of the actor we are trying to resolve.
     public func _eventuallyResolve<Message>(address: ActorAddress, of: Message.Type = Message.self, within: TimeAmount = .seconds(3)) throws -> ActorRef<Message> {
