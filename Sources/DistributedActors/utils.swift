@@ -57,6 +57,7 @@ public func FIXME<T>(_ hint: String, file: StaticString = #file, line: UInt = #l
     return undefined(hint: "FIXME: \(hint)", file: file, line: line)
 }
 
+// TODO: Remove this once we're happy with swift-backtrace always printing backtrace (also on macos)
 internal func fatalErrorBacktrace<T>(_ hint: String, file: StaticString = #file, line: UInt = #line) -> T {
     sact_dump_backtrace()
     fatalError(hint, file: file, line: line)

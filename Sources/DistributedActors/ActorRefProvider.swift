@@ -326,28 +326,19 @@ internal struct ResolveContext<Message> {
 
     let system: ActorSystem
 
-    private init(remainingSelectorSegments: ArraySlice<ActorPathSegment>, address: ActorAddress, system: ActorSystem) {
-        self.selectorSegments = remainingSelectorSegments
-        self.address = address
-        self.system = system
-    }
-
     init(address: ActorAddress, system: ActorSystem) {
         self.address = address
         self.selectorSegments = address.path.segments[...]
         self.system = system
     }
 
-    /// Returns copy of traversal context yet "one level deeper"
-    /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all
+    /// Returns copy of traversal context yet "one level deeper."
+    ///
+    /// Note that this also drops the `path` if it was present, but retains the `incarnation` as we may want to resolve a _specific_ ref after all.
     var deeper: ResolveContext {
-        var deeperSelector = self.selectorSegments
-        deeperSelector = deeperSelector.dropFirst()
-        return ResolveContext(
-            remainingSelectorSegments: self.selectorSegments.dropFirst(),
-            address: self.address,
-            system: self.system
-        )
+        var next = self
+        next.selectorSegments = self.selectorSegments.dropFirst()
+        return next
     }
 
     /// A dead letters reference that is personalized for the context's address, and well  well typed for `Message`.
