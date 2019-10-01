@@ -311,7 +311,6 @@ extension ClusterShell {
                 replyTo.tell(state.associatedNodes()) // TODO: we'll want to put this into some nicer message wrapper?
                 return .same
             case .currentMembership(let replyTo):
-                context.log.info("currentMembership >>>>>> \(replyTo)")
                 replyTo.tell(state.membership)
                 return .same
             }

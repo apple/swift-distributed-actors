@@ -321,8 +321,10 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        // FIXME: shouldn't need to do this
-        try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
+        try self.testKit(self.localSystem).eventually(within: .seconds(10)) {
+            try self.assertMemberStatus(on: self.localSystem, node: self.remoteSystem.cluster.node, is: .up)
+            try self.assertMemberStatus(on: self.remoteSystem, node: self.localSystem.cluster.node, is: .up)
+        }
 
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
