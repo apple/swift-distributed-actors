@@ -88,8 +88,6 @@ final class ClusterAssociationTests: ClusteredNodesTestBase {
             secondReplacement.cluster.events.subscribe(secondReplacementEventsProbe.ref)
             second.cluster.events.subscribe(secondReplacementEventsProbe.ref)
 
-            let replacementUniqueAddress = secondReplacement.cluster.node
-
             // the new replacement node is now going to initiate a handshake with 'local' which knew about the previous
             // instance (oldRemote) on the same node; It should accept this new handshake, and ban the previous node.
             secondReplacement.cluster.join(node: first.cluster.node.node)

@@ -104,11 +104,11 @@ internal struct SWIMShell {
             if !self.swim.isMember(target) {
                 self.ensureAssociated(context, remoteNode: target.address.node) { result in
                     switch result {
-                    case .success(let remoteAddress):
+                    case .success:
                         self.swim.addMember(target, status: lastKnownStatus) // TODO: push into SWIM?
                         self.sendPing(context: context, to: target, lastKnownStatus: lastKnownStatus, pingReqOrigin: replyTo)
                     case .failure(let error):
-                        context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned?")
+                        context.log.warning("Unable to obtain association for remote \(target.address)... Maybe it was tombstoned? Error: \(error)")
                     }
                 }
             } else {
