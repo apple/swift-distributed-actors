@@ -136,6 +136,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
+        // TODO: remove after figuring out why tests are flakey
         defer {
             self.logCaptureHandler.printLogs()
         }

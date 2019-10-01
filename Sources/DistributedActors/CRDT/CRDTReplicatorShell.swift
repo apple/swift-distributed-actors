@@ -649,13 +649,8 @@ extension CRDT.Replicator.Shell {
 // MARK: CRDT.Replicator path / address
 
 extension ActorAddress {
-    internal static func _crdtReplicator(on node: UniqueNode?) -> ActorAddress {
-        switch node {
-        case .some(let node):
-            return .init(node: node, path: ._crdtReplicator, incarnation: .perpetual)
-        case .none:
-            return .init(path: ._crdtReplicator, incarnation: .perpetual)
-        }
+    internal static func _crdtReplicator(on node: UniqueNode) -> ActorAddress {
+        return .init(node: node, path: ._crdtReplicator, incarnation: .perpetual)
     }
 }
 
