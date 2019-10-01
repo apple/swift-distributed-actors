@@ -68,13 +68,12 @@ extension CRDT.Replicator {
             }
         }
 
-        // ==== --------------------------------------------------------------------------------------------------------    func assertMemberStatus(on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Track replicators in the cluster
 
         private func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) {
             let makeReplicatorRef: (UniqueNode) -> ActorRef<Message> = { node in
-                let remoteReplicatorAddress = try! ActorAddress(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("replicator")]), incarnation: .perpetual)
-                let resolveContext = ResolveContext<Message>(address: remoteReplicatorAddress, system: context.system)
+                let resolveContext = ResolveContext<Message>(address: ._crdtReplicator(on: node), system: context.system)
                 return context.system._resolve(context: resolveContext)
             }
 
@@ -638,4 +637,23 @@ extension CRDT.Replicator.Shell {
             }
         }
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.Replicator path / address
+
+extension ActorAddress {
+    internal static func _crdtReplicator(on node: UniqueNode?) -> ActorAddress {
+        switch node {
+        case .some(let node):
+            return .init(node: node, path: ._crdtReplicator, incarnation: .perpetual)
+        case .none:
+            return .init(path: ._crdtReplicator, incarnation: .perpetual)
+        }
+
+    }
+}
+
+extension ActorPath {
+    internal static let _crdtReplicator = try! ActorPath._system.appending(CRDT.Replicator.name)
 }
