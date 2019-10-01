@@ -58,9 +58,11 @@ extension CRDT.Replicator {
                 return .receive { context, message in
                     switch message {
                     case .localCommand(let command):
+                        context.log.trace("Local command \(command)", metadata: self.metadata(context))
                         self.receiveLocalCommand(context, command: command)
                         return .same
                     case .remoteCommand(let command):
+                        context.log.trace("Remote command \(command)", metadata: self.metadata(context))
                         self.receiveRemoteCommand(context, command: command)
                         return .same
                     }
@@ -95,6 +97,7 @@ extension CRDT.Replicator {
                 self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
 
             default:
+                context.log.trace("Ignoring cluster event \(event)", metadata: self.metadata(context))
                 () // ignore other events
             }
         }
