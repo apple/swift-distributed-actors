@@ -85,8 +85,8 @@ extension LogCapture {
     public func printLogs() {
         for log in self.logs {
             var metadataString: String
-            if (log.metadata?.isEmpty ?? false) {
-                metadataString  = ""
+            if log.metadata?.isEmpty ?? false {
+                metadataString = ""
             } else {
                 if let metadata = log.metadata {
                     metadataString = "\n\\- metadata: "

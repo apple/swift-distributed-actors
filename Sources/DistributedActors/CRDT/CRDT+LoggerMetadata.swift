@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -14,6 +14,8 @@
 
 import Logging
 
+// TODO: add id?
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: GCounter + Logger Metadata
 
@@ -23,8 +25,8 @@ extension CRDT.GCounter {
             "crdt/type": "gcounter",
             "crdt/owner": "\(context.address)",
             "crdt/replicaId": "\(self.replicaId)",
-            "crdt/gcounter/delta": "\(self.delta)",
             "crdt/gcounter/value": "\(self.value)",
+            "crdt/gcounter/delta": "\(self.delta)",
         ]
     }
 }
@@ -38,8 +40,8 @@ extension CRDT.ORSet {
             "crdt/type": "orset",
             "crdt/owner": "\(context.address)",
             "crdt/replicaId": "\(self.replicaId)",
-            "crdt/orset/delta": "\(self.delta)",
             "crdt/orset/count": "\(self.count)",
+            "crdt/orset/delta": "\(self.delta)",
         ]
     }
 }
@@ -51,7 +53,7 @@ extension CRDT.Replicator.Shell {
     func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
         return [
             "crdt/replicator": "\(context.path)",
-            "crdt/replicator/remoteReplicators": "\(self.remoteReplicators)"
+            "crdt/replicator/remoteReplicators": "\(self.remoteReplicators)",
         ]
     }
 }

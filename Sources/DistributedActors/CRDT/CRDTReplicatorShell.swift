@@ -656,7 +656,6 @@ extension ActorAddress {
         case .none:
             return .init(path: ._crdtReplicator, incarnation: .perpetual)
         }
-
     }
 }
 

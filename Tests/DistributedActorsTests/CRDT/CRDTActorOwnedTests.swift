@@ -17,7 +17,6 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTActorOwnedTests: XCTestCase {
-
     var logCaptureHandler: LogCapture!
     var system: ActorSystem!
     var testKit: ActorTestKit!
