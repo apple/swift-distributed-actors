@@ -66,9 +66,7 @@ open class ClusteredNodesTestBase: XCTestCase {
 
     open override func tearDown() {
         if self.captureLogs, self.testRun?.failureCount ?? 0 > 0 {
-            for node in self._nodes {
-                self.printCapturedLogs(node)
-            }
+            self.printCapturedAllLogs()
         }
 
         self._nodes.forEach { $0.shutdown().wait() }
@@ -119,6 +117,12 @@ extension ClusteredNodesTestBase {
 // MARK: Logs
 
 extension ClusteredNodesTestBase {
+    func printCapturedAllLogs() {
+        for node in self._nodes {
+            self.printCapturedLogs(node)
+        }
+    }
+
     func printCapturedLogs(_ node: ActorSystem) {
         guard let index = self._nodes.firstIndex(of: node) else {
             fatalError("No such node: [\(node)] in [\(self._nodes)]!")
