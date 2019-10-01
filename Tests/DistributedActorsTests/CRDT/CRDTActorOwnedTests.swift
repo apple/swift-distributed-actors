@@ -172,7 +172,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         try g1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
 
         // owner2 should be notified about g1 updates, which means it should have up-to-date value too
-        try g1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnDelete) // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         g1Owner2.tell(.lastObservedValue(replyTo: g1Owner2IntP.ref))
         try g1Owner2IntP.expectMessage(3)
 
