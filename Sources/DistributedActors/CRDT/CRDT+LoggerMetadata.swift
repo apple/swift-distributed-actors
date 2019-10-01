@@ -43,3 +43,15 @@ extension CRDT.ORSet {
         ]
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.Replicator.Shell + Logger Metadata
+
+extension CRDT.Replicator.Shell {
+    func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
+        return [
+            "crdt/replicator": "\(context.path)",
+            "crdt/replicator/remoteReplicators": "\(self.remoteReplicators)"
+        ]
+    }
+}

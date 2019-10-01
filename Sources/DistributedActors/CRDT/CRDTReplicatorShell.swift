@@ -38,7 +38,7 @@ extension CRDT.Replicator {
             return self.replicator.settings
         }
 
-        private var remoteReplicators: Set<ActorRef<Message>> = []
+        internal var remoteReplicators: Set<ActorRef<Message>> = []
 
         init(_ replicator: Instance) {
             self.replicator = replicator
@@ -81,16 +81,19 @@ extension CRDT.Replicator {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
                 if member.node != context.system.cluster.node { // exclude this (local) node
+                    context.log.trace("Adding member to replicator: \(member)", metadata: self.metadata(context))
                     let remoteReplicatorRef = makeReplicatorRef(member.node)
                     self.remoteReplicators.insert(remoteReplicatorRef)
                     self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
                 }
-            // TODO: should be `if change.status >= .down` (see https://github.com/apple/swift-distributed-actors/pull/117/files#r324448462)
-            case .membershipChange(let change) where change.toStatus == .down:
+
+            case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
+                context.log.trace("Removing member from replicator: \(member)", metadata: self.metadata(context))
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)
                 self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+                
             default:
                 () // ignore other events
             }
