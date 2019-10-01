@@ -50,7 +50,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
         try shouldNotThrow {
             self.instance.isLeader.shouldBeFalse()
 
-            self.instance.membership.join(self.otherNode)
+            _ = self.instance.membership.join(self.otherNode)
             let directive = try self.instance.onLeaderChange(to: self.otherMember)
             // we the node does not become the leader, the directive should be `.none`
             guard case .none = directive else {
@@ -62,10 +62,10 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onLeaderChange_whenLeaderAndNewLeaderIsOtherAddress_shouldLoseLeadership() throws {
         try shouldNotThrow {
-            self.instance.membership.join(self.selfNode)
-            self.instance.membership.join(self.otherNode)
+            _ = self.instance.membership.join(self.selfNode)
+            _ = self.instance.membership.join(self.otherNode)
 
-            try self.instance.onLeaderChange(to: self.selfMember)
+            _ = try self.instance.onLeaderChange(to: self.selfMember)
             self.instance.isLeader.shouldBeTrue()
             let directive = try self.instance.onLeaderChange(to: self.otherMember)
             // when losing leadership, the directive should be `.none`
@@ -84,14 +84,14 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
     }
 
     func test_onLeaderChange_whenLeaderAndNewLeaderIsSelfAddress_shouldStayLeader() throws {
-        try self.instance.membership.applyLeadershipChange(to: self.selfMember)
+        _ = try self.instance.membership.applyLeadershipChange(to: self.selfMember)
         self.instance.isLeader.shouldBeTrue()
         _ = try self.instance.onLeaderChange(to: self.selfMember)
         self.instance.isLeader.shouldBeTrue()
     }
 
     func test_onLeaderChange_whenLeaderAndNoNewLeaderIsElected_shouldLoseLeadership() throws {
-        try self.instance.membership.applyLeadershipChange(to: self.selfMember)
+        _ = try self.instance.membership.applyLeadershipChange(to: self.selfMember)
         self.instance.isLeader.shouldBeTrue()
         _ = try self.instance.onLeaderChange(to: nil)
         self.instance.isLeader.shouldBeFalse()
@@ -133,7 +133,7 @@ final class TimeoutBasedDowningInstanceTests: XCTestCase {
 
     func test_onTimeout_whenCurrentlyLeader_shouldReturnMarkAsDown() throws {
         let member = Member(node: otherNode, status: .up)
-        try instance.membership.applyLeadershipChange(to: self.selfMember)
+        _ = try instance.membership.applyLeadershipChange(to: self.selfMember)
         self.instance._unreachable.insert(member.node)
         let directive = self.instance.onTimeout(member)
 

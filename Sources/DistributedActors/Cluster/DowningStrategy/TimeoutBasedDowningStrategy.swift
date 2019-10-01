@@ -51,7 +51,7 @@ extension TimeoutBasedDowningStrategy: DowningStrategy {
     }
 
     func onLeaderChange(to leader: Member?) throws -> DowningStrategyDirectives.LeaderChangeDirective {
-        try self.membership.applyLeadershipChange(to: leader)
+        _ = try self.membership.applyLeadershipChange(to: leader)
 
         if self.isLeader, !self._markAsDown.isEmpty {
             defer { self._markAsDown = [] }

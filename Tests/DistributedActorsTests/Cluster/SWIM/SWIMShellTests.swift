@@ -387,7 +387,7 @@ final class SWIMShellTests: ClusteredNodesTestBase {
             settings.failureDetector.probeInterval = .milliseconds(100)
 
             let firstSwim: ActorRef<SWIM.Message> = try self.testKit(first)._eventuallyResolve(address: ._swim(on: first.cluster.node))
-            var secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
+            let secondSwim: ActorRef<SWIM.Message> = try self.testKit(second)._eventuallyResolve(address: ._swim(on: second.cluster.node))
 
             let localRefRemote = second._resolveKnownRemote(firstSwim, onRemoteSystem: first)
 

@@ -36,7 +36,7 @@ final class LeadershipTests: XCTestCase {
     func test_LowestReachableMember_selectLeader() throws {
         let selection = Leadership.LowestReachableMember(minimumNrOfMembers: 3)
 
-        var membership = self.initialMembership
+        let membership = self.initialMembership
 
         let change: LeadershipChange? = try selection.select(context: self.fakeContext, membership: membership).future.wait()
         change.shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
@@ -68,7 +68,7 @@ final class LeadershipTests: XCTestCase {
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
-        membership.mark(self.firstMember.node, as: .down)
+        _ = membership.mark(self.firstMember.node, as: .down)
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
@@ -82,7 +82,7 @@ final class LeadershipTests: XCTestCase {
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.firstMember))
 
-        membership.mark(self.firstMember.node, reachability: .unreachable)
+        _ = membership.mark(self.firstMember.node, reachability: .unreachable)
         (try selection.select(context: self.fakeContext, membership: membership).future.wait())
             .shouldEqual(LeadershipChange(oldLeader: nil, newLeader: self.secondMember))
     }
