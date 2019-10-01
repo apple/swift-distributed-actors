@@ -51,6 +51,19 @@ public final class LogCapture: LogHandler {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: XCTest integrations and helpers
+
+extension LogCapture {
+    public func printIfFailed(_ testRun: XCTestRun?) {
+        if testRun?.failureCount ?? 0 > 0 {
+            print("------------------------------------------------------------------------------------------------------------------------")
+            self.printLogs()
+            print("========================================================================================================================")
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Implement LogHandler API
 
 extension LogCapture {
@@ -71,7 +84,21 @@ extension LogCapture {
 
     public func printLogs() {
         for log in self.logs {
-            print("Captured log [\(self.label)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)")
+            var metadataString: String
+            if (log.metadata?.isEmpty ?? false) {
+                metadataString  = ""
+            } else {
+                if let metadata = log.metadata {
+                    metadataString = "\n\\- metadata: "
+                    for key in metadata.keys.sorted() {
+                        metadataString.append("\"\(key)\": \(metadata[key]!), ")
+                    }
+                    metadataString = String(metadataString.dropLast(2))
+                } else {
+                    metadataString = ""
+                }
+            }
+            print("Captured log [\(self.label)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)\(metadataString)")
         }
     }
 

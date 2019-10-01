@@ -40,7 +40,8 @@ extension CRDT {
 
 extension CRDT {
     internal enum Replicator {
-        static let naming: ActorNaming = "replicator"
+        static let name: String = "replicator"
+        static let naming: ActorNaming = .unique(Replicator.name)
 
         enum Message {
             // The API for CRDT instance owner (e.g., actor) to call local replicator
@@ -60,8 +61,6 @@ extension CRDT {
             case read(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<ReadResult>)
             // Perform delete to at least `consistency` members
             case delete(_ id: Identity, consistency: OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<DeleteResult>)
-
-            // TODO: failed => failure to be consistent with Swift-NIO?
 
             enum RegisterResult {
                 case success

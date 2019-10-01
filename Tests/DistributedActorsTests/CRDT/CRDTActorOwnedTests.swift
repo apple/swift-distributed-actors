@@ -17,15 +17,21 @@ import DistributedActorsTestKit
 import XCTest
 
 final class CRDTActorOwnedTests: XCTestCase {
+
+    var logCaptureHandler: LogCapture!
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
     override func setUp() {
-        self.system = ActorSystem(String(describing: type(of: self)))
+        self.logCaptureHandler = LogCapture()
+        self.system = ActorSystem(String(describing: type(of: self))) { settings in
+            settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
+        }
         self.testKit = ActorTestKit(self.system)
     }
 
     override func tearDown() {
+        self.logCaptureHandler.printIfFailed(self.testRun)
         self.system.shutdown().wait()
     }
 
@@ -51,11 +57,11 @@ final class CRDTActorOwnedTests: XCTestCase {
         return .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: id)
             g.onUpdate { id, gg in
-                context.log.trace("GCounter \(id) updated with new value: \(gg.value)")
+                context.log.trace("GCounter \(id) updated with new value: \(gg.value)", metadata: gg.metadata(context))
                 ownerEventProbe.tell(.ownerDefinedOnUpdate)
             }
             g.onDelete { id in
-                context.log.trace("GCounter \(id) deleted")
+                context.log.trace("GCounter \(id) deleted", metadata: g.data.metadata(context))
                 ownerEventProbe.tell(.ownerDefinedOnDelete)
             }
 
