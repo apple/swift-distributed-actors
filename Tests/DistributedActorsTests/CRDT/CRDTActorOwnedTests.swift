@@ -137,6 +137,10 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
+        defer {
+            self.logCaptureHandler.printLogs()
+        }
+
         // g1 has two owners
         let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
@@ -172,7 +176,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         try g1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
 
         // owner2 should be notified about g1 updates, which means it should have up-to-date value too
-        try g1Owner2EventP.expectMessage(.ownerDefinedOnDelete) // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        try g1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
         g1Owner2.tell(.lastObservedValue(replyTo: g1Owner2IntP.ref))
         try g1Owner2IntP.expectMessage(3)
 
