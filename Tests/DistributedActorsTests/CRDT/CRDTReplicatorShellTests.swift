@@ -273,8 +273,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        // FIXME: shouldn't need to do this
-        try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
+        try self.ensureNodes(.up, systems: self.localSystem, self.remoteSystem)
 
         let writeP = self.localTestKit.spawnTestProbe(expecting: LocalWriteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
@@ -321,8 +320,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        // FIXME: shouldn't need to do this
-        try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
+        try self.ensureNodes(.up, systems: self.localSystem, self.remoteSystem)
 
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
@@ -365,8 +363,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        // FIXME: shouldn't need to do this
-        try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
+        try self.ensureNodes(.up, systems: self.localSystem, self.remoteSystem)
 
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
 
@@ -398,8 +395,7 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         self.setUpRemote()
 
         try self.joinNodes(node: self.localSystem, with: self.remoteSystem)
-        // FIXME: shouldn't need to do this
-        try self.fakeClusterMembershipEvent(on: self.localSystem, memberSystem: self.remoteSystem, memberStatus: .up)
+        try self.ensureNodes(.up, systems: self.localSystem, self.remoteSystem)
 
         let deleteP = self.localTestKit.spawnTestProbe(expecting: LocalDeleteResult.self)
         let readP = self.localTestKit.spawnTestProbe(expecting: LocalReadResult.self)
@@ -663,19 +659,5 @@ final class CRDTReplicatorShellTests: ClusteredNodesTestBase {
         guard case .success = try registerP.expectMessage() else { throw registerP.error() }
 
         return ownerP
-    }
-
-    // TODO: hopefully we don't need to do this after https://github.com/apple/swift-distributed-actors/pull/112
-    private func fakeClusterMembershipEvent(on system: ActorSystem, memberSystem: ActorSystem, memberStatus: MemberStatus) throws {
-        let memberNode = memberSystem.cluster.node
-
-        switch memberStatus {
-        case .down:
-            system.cluster.events.publish(.membershipChange(.init(member: Member(node: memberNode, status: .down))))
-        case .up:
-            system.cluster.events.publish(.membershipChange(.init(member: Member(node: memberNode, status: .up))))
-        default:
-            throw Boom("\(memberStatus) not supported")
-        }
     }
 }

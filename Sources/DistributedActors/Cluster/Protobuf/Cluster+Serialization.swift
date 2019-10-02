@@ -25,7 +25,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
         var proto = ProtoClusterShellMessage()
 
         switch self {
-        case .clusterEvent(let event):
+        case .requestMembershipChange(let event):
             proto.clusterEvent = try event.toProto(context: context)
         case .gossip(let gossip):
             proto.gossip = try gossip.toProto(context: context)
@@ -38,7 +38,7 @@ extension ClusterShell.Message: InternalProtobufRepresentable {
     init(fromProto proto: ProtoClusterShellMessage, context: ActorSerializationContext) throws {
         switch proto.message {
         case .some(.clusterEvent(let protoEvent)):
-            self = try .clusterEvent(.init(fromProto: protoEvent, context: context))
+            self = try .requestMembershipChange(.init(fromProto: protoEvent, context: context))
         case .some(.gossip(let protoGossip)):
             self = try .gossip(
                 .update(
