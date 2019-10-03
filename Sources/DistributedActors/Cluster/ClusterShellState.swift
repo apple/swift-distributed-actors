@@ -400,12 +400,9 @@ extension ClusterShellState {
         }
 
         guard changeWasApplied else {
-            self.log.info("NOT APPLIED: \(event) ;;;; \(self.membership)")
             return false
         }
 
-        // We always perform leader tasks, if we so happened to have something still pending
-        // TODO: Why would this happen? It is not unsafe to try running them, but
         _ = self.tryPerformLeaderTasks()
         // TODO: actions may want to be acted upon, they're like directives, we currently have no such need though;
         // such actions be e.g. "kill association right away" or "asap tell that node .down" directly without waiting for gossip etc
