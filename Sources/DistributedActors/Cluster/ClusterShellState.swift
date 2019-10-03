@@ -397,7 +397,6 @@ extension ClusterShellState {
         }
 
         guard changeWasApplied else {
-            self.log.info("NOT APPLIED \(event)")
             return false
         }
 
