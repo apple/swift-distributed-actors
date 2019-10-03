@@ -96,15 +96,15 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
 
             first.cluster.join(node: second.cluster.node.node)
             third.cluster.join(node: second.cluster.node.node)
-            try self.ensureNodes(.up, within: .seconds(20), systems: first, second, third)
+            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third)
 
-            // even the fourth node, now could join and be notified about all the existing up members
-            // it does not even have to run any leadership election -- there are leaders in the cluster.
+            // Even the fourth node now could join and be notified about all the existing up members.
+            // It does not even have to run any leadership election -- there are leaders in the cluster.
             //
-            // we only join one, arbitrary node, we will be notified about all nodes:
+            // We only join one arbitrary node, we will be notified about all nodes:
             fourth.cluster.join(node: third.cluster.node.node)
 
-            try self.ensureNodes(.up, within: .seconds(20), systems: first, second, third, fourth)
+            try self.ensureNodes(.up, within: .seconds(10), systems: first, second, third, fourth)
         }
     }
 

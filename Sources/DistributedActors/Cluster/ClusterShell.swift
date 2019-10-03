@@ -532,14 +532,14 @@ extension ClusterShell {
                     let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
                     state.log.warning("Tombstone association: \(reflecting: beingReplacedAssociation.remoteNode)")
                     self.terminateAndTombstoneAssociation(beingReplacedAssociation)
-                    context.myself.tell(.requestMembershipChange(.membershipChange(.init(member: replaced, toStatus: .down))))
                 }
-                // by emitting this change, we not only let anyone interested know about this, but we also
-                // enable the shell (or leadership) to update the leader if it needs changing.
-                state.log.trace("REQUEST CHANGE: \(directive.membershipChange)")
-                context.myself.tell(.requestMembershipChange(.membershipChange(directive.membershipChange)))
 
+                /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
+                state.tryPerformLeaderTasks()
+
+                /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 context.system.metrics.recordMembership(state.membership)
+
                 return self.ready(state: state)
 
             case .rejectHandshake(let rejectedHandshake):
@@ -630,7 +630,6 @@ extension ClusterShell {
         let directive = state.associate(completed, channel: channel)
         self.cacheAssociationRemoteControl(directive.association)
         state.log.debug("Associated with: \(reflecting: completed.remoteNode); Membership change: \(directive.membershipChange), resulting in: \(state.membership)")
-        state.events.publish(.membershipChange(directive.membershipChange))
 
         // by emitting these `change`s, we not only let anyone interested know about this,
         // but we also enable the shell (or leadership) to update the leader if it needs changing.
@@ -638,10 +637,13 @@ extension ClusterShell {
             let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
             state.log.warning("Tombstone association: \(reflecting: beingReplacedAssociation.remoteNode)")
             self.terminateAndTombstoneAssociation(beingReplacedAssociation)
-            state.events.publish(.membershipChange(.init(member: replaced, toStatus: .down)))
         }
 
+        /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
+        state.tryPerformLeaderTasks()
+
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
+        /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
         context.system.metrics.recordMembership(state.membership)
 
         completed.whenCompleted?.succeed(.accept(completed.makeAccept()))

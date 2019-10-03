@@ -302,22 +302,14 @@ extension ClusterShellState {
         // In that case, the join will return a change; Though if the node is already known, e.g. we were told about it
         // via gossip from other nodes, though didn't yet complete associating until just now, so we can make a `change`
         // based on the stored member
-        var whatIf = self.membership
-        let changeOption: MembershipChange? = whatIf.apply(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
-            whatIf.uniqueMember(handshake.remoteNode).map { MembershipChange(member: $0) }
-
+        let changeOption: MembershipChange? = self.membership.apply(.init(member: .init(node: handshake.remoteNode, status: .joining))) ??
+            self.membership.uniqueMember(handshake.remoteNode).map { MembershipChange(member: $0) }
         guard let change = changeOption else {
             fatalError("""
             Attempt to associate with \(reflecting: handshake.remoteNode) failed; It was neither a new node .joining, \
             nor was it a node that we already know. This should never happen as one of those two cases is always true. \
             Please report a bug.
             """)
-        }
-
-        func completeAssociation() -> Association.AssociatedState {
-            let asm = Association.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
-            self._associations[handshake.remoteNode.node] = .associated(asm)
-            return asm
         }
 
         // Note: The following replace handling has to be done here - before we complete the association(!)
@@ -334,8 +326,8 @@ extension ClusterShellState {
                 // we are fairly certain the old node is dead now, since the new node is taking its place and has same address,
                 // thus the channel is most likely pointing to an "already-dead" connection; we close it to cut off clean.
 
-                // beingReplacedAssociation.makeRemoteControl().sendSystemMessage(., recipient: <#T##ActorAddress##ActorAddress#>) // TODO: Shoot the other node in the head here, best effort
                 beingReplacedAssociationToTerminate = beingReplacedAssociation
+                self.events.publish(.membershipChange(.init(member: replacedMember, toStatus: .down)))
 
             default:
                 self.log.warning("Membership change indicated node replacement, yet no 'old' association to replace found. Continuing with association of \(reflecting: handshake.remoteNode)")
@@ -346,8 +338,12 @@ extension ClusterShellState {
             beingReplacedAssociationToTerminate = nil
         }
 
-        // Usual happy-path for an association; We associated a new node
-        let association = completeAssociation()
+        self.events.publish(.membershipChange(change))
+
+        // Usual happy-path for an association; We associated a new node.
+        let association = Association.AssociatedState(fromCompleted: handshake, log: self.log, over: channel)
+        self._associations[handshake.remoteNode.node] = .associated(association)
+
         return AssociatedDirective(membershipChange: change, association: association, beingReplacedAssociationToTerminate: beingReplacedAssociationToTerminate)
     }
 
@@ -395,11 +391,13 @@ extension ClusterShellState {
                 changeWasApplied = false
             }
         case .snapshot:
-            () // TODO: not handling snapshot here, we are a source of snapshots... yet what about gossip vs. "push membership", we may want ot handle here, by diff+apply
+            // TODO: not handling snapshot here, we are a source of snapshots... yet what about gossip vs. "push membership", we may want ot handle here, by diff+apply
+            self.log.info("SNAPSHOT NOT APPLIED, NOT IMPLEMENTED; \(event)")
             changeWasApplied = false
         }
 
         guard changeWasApplied else {
+            self.log.info("NOT APPLIED \(event)")
             return false
         }
 
