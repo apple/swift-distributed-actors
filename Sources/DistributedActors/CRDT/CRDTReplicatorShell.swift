@@ -86,8 +86,9 @@ extension CRDT.Replicator {
                     self.remoteReplicators.insert(remoteReplicatorRef)
                     self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
                 }
+
             // TODO: should be `if change.status >= .down` (see https://github.com/apple/swift-distributed-actors/pull/117/files#r324448462)
-            case .membershipChange(let change) where change.toStatus == .down:
+            case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)

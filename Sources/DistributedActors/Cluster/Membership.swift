@@ -262,6 +262,9 @@ extension Membership {
                 return self.join(change.node)
             }
         case let status:
+            if self.firstMember(change.node.node) == nil { // TODO: more general? // TODO this entire method should be simpler
+                _ = self.join(change.node)
+            }
             return self.mark(change.node, as: status)
         }
     }
@@ -311,7 +314,7 @@ extension Membership {
         } else {
             // node is normally joining
             self._members[node] = newMember
-            return .init(member: newMember)
+            return .init(node: node, fromStatus: nil, toStatus: .joining)
         }
     }
 

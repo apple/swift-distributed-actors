@@ -45,6 +45,7 @@ open class ClusteredNodesTestBase: XCTestCase {
             if self.captureLogs {
                 settings.overrideLogger = capture.makeLogger(label: name)
             }
+            settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             modifySettings?(&settings)
         }
 
@@ -84,11 +85,26 @@ open class ClusteredNodesTestBase: XCTestCase {
         return testKit
     }
 
-    func joinNodes(node: ActorSystem, with other: ActorSystem) throws {
+    func joinNodes(node: ActorSystem, with other: ActorSystem, ensureMembers: MemberStatus? = nil) throws {
         node.cluster.join(node: other.cluster.node.node)
 
         try assertAssociated(node, withAtLeast: other.settings.cluster.uniqueBindNode)
         try assertAssociated(other, withAtLeast: node.settings.cluster.uniqueBindNode)
+    }
+
+    func ensureNodes(_ status: MemberStatus, within: TimeAmount = .seconds(10), systems: ActorSystem...) throws {
+        guard let anySystem = self._nodes.first else {
+            fatalError("Must at least have 1 system present to use [ensureNodes]")
+        }
+
+        try self.testKit(anySystem).eventually(within: within) {
+            for onSystem in systems {
+                // all members on onMember should have reached this status (e.g. up)
+                for expectSystem in systems {
+                    try self.assertMemberStatus(on: onSystem, node: expectSystem.cluster.node, is: status)
+                }
+            }
+        }
     }
 }
 

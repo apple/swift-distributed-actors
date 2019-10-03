@@ -46,10 +46,10 @@ public protocol LeaderElection {
     /// Select a member to become a leader out of the existing `Membership`.
     ///
     /// Decisions about electing/selecting a leader may be performed asynchronously.
-    func select(context: LeaderSelectionContext, membership: Membership) -> LeaderElectionResult
+    func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult
 }
 
-public struct LeaderSelectionContext {
+public struct LeaderElectionContext {
     public let log: Logger
     public let loop: EventLoop
 
@@ -114,13 +114,14 @@ extension Leadership {
         private var membership: Membership // FIXME: we need to ensure the membership is always up to date -- we need the initial snapshot or a diff from a zero state etc.
         private let election: LeaderElection
 
-        init(_ leaderSelection: LeaderElection) {
-            self.election = leaderSelection
+        init(_ election: LeaderElection) {
+            self.election = election
             self.membership = .empty
         }
 
         var behavior: Behavior<ClusterEvent> {
             return .setup { context in
+                context.log.trace("Spawned \(context.path) to run \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
                 _ = self.membership.apply(MembershipChange(node: context.system.cluster.node, fromStatus: nil, toStatus: .joining))
@@ -154,19 +155,18 @@ extension Leadership {
         }
 
         func runElection(_ context: ActorContext<ClusterEvent>) -> Behavior<ClusterEvent> {
-            let selectionContext = LeaderSelectionContext(context)
-            let selectionResult = self.election.select(context: selectionContext, membership: self.membership)
+            let electionContext = LeaderElectionContext(context)
+            let electionResult = self.election.runElection(context: electionContext, membership: self.membership)
 
             // TODO: if/when we'd have some election scheme that is async, e.g. "vote" then this timeout should NOT be infinite and should be handled properly
-            return context.awaitResult(of: selectionResult, timeout: .effectivelyInfinite) {
+            return context.awaitResult(of: electionResult, timeout: .effectivelyInfinite) {
                 switch $0 {
                 case .success(.some(let leadershipChange)):
                     guard let changed = try self.membership.applyLeadershipChange(to: leadershipChange.newLeader) else {
                         context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
                         return .same
                     }
-                    // TODO: SubOnlyEventBus? such that only we internally can publish things? not worth it perhaps, just an idea
-                    context.system.cluster.events.publish(.leadershipChange(changed))
+                    context.system.cluster.ref.tell(.requestMembershipChange(.leadershipChange(changed)))
                     return .same
 
                 case .success(.none):
@@ -220,7 +220,7 @@ extension Leadership {
         }
 
         // TODO: not group but context
-        public func select(context: LeaderSelectionContext, membership: Membership) -> LeaderElectionResult {
+        public func runElection(context: LeaderElectionContext, membership: Membership) -> LeaderElectionResult {
             context.log.trace("Selecting leader among: \(membership)")
             var membership = membership
 

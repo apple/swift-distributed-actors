@@ -224,7 +224,7 @@ public final class ActorSystem {
         do {
             if let cluster = self._cluster {
                 let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
-                lazyCluster = try cluster.start(system: self, eventStream: clusterEvents) // only spawns when cluster is initialized
+                lazyCluster = try cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
 
                 self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)
 

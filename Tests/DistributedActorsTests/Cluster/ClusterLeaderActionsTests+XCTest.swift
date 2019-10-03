@@ -25,6 +25,7 @@ extension ClusterLeaderActionsTests {
         return [
             ("test_joining_to_up_decisionByLeader", test_joining_to_up_decisionByLeader),
             ("test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus", test_joining_to_up_earlyYetStillLettingAllNodesKnowAboutLatestMembershipStatus),
+            ("test_ensureAllSubscribersGetMovingUpEvents", test_ensureAllSubscribersGetMovingUpEvents),
         ]
     }
 }

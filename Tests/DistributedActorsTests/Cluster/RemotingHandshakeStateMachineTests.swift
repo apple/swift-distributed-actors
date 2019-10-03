@@ -44,6 +44,7 @@ final class RemoteHandshakeStateMachineTests: XCTestCase {
         return ClusterShellState(
             settings: settings,
             channel: EmbeddedChannel(),
+            events: EventStream(ref: ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
             gossip: PeriodicBroadcastControl(ActorRef(.deadLetters(.init(log, address: ._deadLetters, system: nil)))),
             log: log
         )

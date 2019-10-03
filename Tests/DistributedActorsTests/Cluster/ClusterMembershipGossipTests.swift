@@ -19,7 +19,7 @@ import NIOSSL
 import XCTest
 
 final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Marking .down
 
     func test_down_beGossipedToOtherNodes() throws {
@@ -61,7 +61,7 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
         }
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: SWIM + joining
 
     func test_join_swimDiscovered_thirdNode() throws {
