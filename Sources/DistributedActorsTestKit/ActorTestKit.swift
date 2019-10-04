@@ -115,7 +115,7 @@ public extension ActorTestKit {
         var lastError: Error?
         var polledTimes = 0
 
-        ActorTestKit.enterRepetableContext()
+        ActorTestKit.enterRepeatableContext()
         while deadline.hasTimeLeft() {
             do {
                 polledTimes += 1
@@ -126,7 +126,7 @@ public extension ActorTestKit {
                 usleep(useconds_t(interval.microseconds))
             }
         }
-        ActorTestKit.leaveRepetableContext()
+        ActorTestKit.leaveRepeatableContext()
 
         // This dance is necessary to "nicely print" if we had an embedded call site error,
         // which include colour and formatting, so we have to print the \(msg) directly for that case.
@@ -380,14 +380,14 @@ internal extension ActorTestKit {
     // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
     // failing a test from within blocks that continuously check conditions,
     // e.g. `ActorTestKit.eventually`. This is safe to use in nested calls.
-    static func enterRepetableContext() {
+    static func enterRepeatableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
     }
 
     // Unsets the flag and causes `isInRepeatableContext` to return `false`.
     // This is safe to use in nested calls.
-    static func leaveRepetableContext() {
+    static func leaveRepeatableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         precondition(currentDepth > 0, "Imbalanced `leaveRepeatableContext` detected. Depth was \(currentDepth)")
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth - 1

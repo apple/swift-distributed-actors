@@ -87,6 +87,8 @@ extension CRDT.Replicator {
                     let remoteReplicatorRef = makeReplicatorRef(member.node)
                     self.remoteReplicators.insert(remoteReplicatorRef)
                     self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+                } else {
+                    context.log.trace("Skip adding member \(member) to replicator because it is the same as local node", metadata: self.metadata(context))
                 }
 
             case .membershipChange(let change) where change.toStatus >= .down:

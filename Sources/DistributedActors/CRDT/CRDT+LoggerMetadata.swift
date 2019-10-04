@@ -26,7 +26,7 @@ extension CRDT.GCounter {
             "crdt/owner": "\(context.address)",
             "crdt/replicaId": "\(self.replicaId)",
             "crdt/gcounter/value": "\(self.value)",
-            "crdt/gcounter/delta": "\(self.delta)",
+            "crdt/gcounter/delta": "\(String(describing: self.delta))",
         ]
     }
 }
@@ -41,7 +41,7 @@ extension CRDT.ORSet {
             "crdt/owner": "\(context.address)",
             "crdt/replicaId": "\(self.replicaId)",
             "crdt/orset/count": "\(self.count)",
-            "crdt/orset/delta": "\(self.delta)",
+            "crdt/orset/delta": "\(String(describing: self.delta))",
         ]
     }
 }

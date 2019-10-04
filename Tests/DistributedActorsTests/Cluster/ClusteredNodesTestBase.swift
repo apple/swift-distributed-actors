@@ -211,7 +211,7 @@ extension ClusteredNodesTestBase {
                 let notYetAssociated = Set(atLeastNodes).subtracting(Set(associatedNodes)) // atLeast set is a sub set of the right one
                 if notYetAssociated.count > 0 {
                     throw TestError("""
-                    [\(system)] did still not associate \(notYetAssociated). \
+                    [\(system)] still did not associate \(notYetAssociated). \
                     Associated nodes: \(reflecting: associatedNodes), expected nodes: \(reflecting: atLeastNodes).
                     """)
                 }
