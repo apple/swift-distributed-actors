@@ -58,11 +58,11 @@ extension CRDT.Replicator {
                 return .receive { context, message in
                     switch message {
                     case .localCommand(let command):
-                        context.log.trace("Local command \(command)", metadata: self.metadata(context))
+                        self.tracelog(context, .receive, message: command)
                         self.receiveLocalCommand(context, command: command)
                         return .same
                     case .remoteCommand(let command):
-                        context.log.trace("Remote command \(command)", metadata: self.metadata(context))
+                        self.tracelog(context, .receive, message: command)
                         self.receiveRemoteCommand(context, command: command)
                         return .same
                     }
@@ -83,20 +83,18 @@ extension CRDT.Replicator {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
                 if member.node != context.system.cluster.node { // exclude this (local) node
-                    context.log.trace("Adding member to replicator: \(member)", metadata: self.metadata(context))
+                    self.tracelog(context, .addMember, message: member)
                     let remoteReplicatorRef = makeReplicatorRef(member.node)
                     self.remoteReplicators.insert(remoteReplicatorRef)
-                    self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
                 } else {
                     context.log.trace("Skip adding member \(member) to replicator because it is the same as local node", metadata: self.metadata(context))
                 }
 
             case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
-                context.log.trace("Removing member from replicator: \(member)", metadata: self.metadata(context))
+                self.tracelog(context, .removeMember, message: member)
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)
-                self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
 
             default:
                 context.log.trace("Ignoring cluster event \(event)", metadata: self.metadata(context))
@@ -626,7 +624,8 @@ extension CRDT.Replicator.Shell {
         if let level = self.settings.traceLogLevel {
             context.log.log(
                 level: level,
-                "[tracelog:replicator] \(type.description): \(message)",
+                "[tracelog:\(CRDT.Replicator.name)] \(type.description): \(message)",
+                metadata: self.metadata(context),
                 file: file, function: function, line: line
             )
         }
@@ -634,14 +633,17 @@ extension CRDT.Replicator.Shell {
 
     internal enum TraceLogType: CustomStringConvertible {
         case receive
-        case remoteReplicators
+        case addMember
+        case removeMember
 
         var description: String {
             switch self {
             case .receive:
                 return "RECV"
-            case .remoteReplicators:
-                return "REMOTE"
+            case .addMember:
+                return "ADD_MBR"
+            case .removeMember:
+                return "REM_MBR"
             }
         }
     }
