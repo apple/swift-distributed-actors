@@ -14,7 +14,17 @@
 
 import Logging
 
-// TODO: add id?
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorOwned + Logger Metadata
+
+extension CRDT.ActorOwned {
+    func metadata() -> Logger.Metadata {
+        return [
+            "crdt/id": "\(self.id)",
+            "crdt/status": "\(self.status)"
+        ]
+    }
+}
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: GCounter + Logger Metadata
