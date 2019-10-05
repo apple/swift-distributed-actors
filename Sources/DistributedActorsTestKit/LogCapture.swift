@@ -55,7 +55,7 @@ public final class LogCapture: LogHandler {
 
 extension LogCapture {
     public func printIfFailed(_ testRun: XCTestRun?) {
-        if testRun?.failureCount ?? 0 > 0 {
+        if let failureCount = testRun?.failureCount, failureCount > 0 {
             print("------------------------------------------------------------------------------------------------------------------------")
             self.printLogs()
             print("========================================================================================================================")
@@ -84,19 +84,13 @@ extension LogCapture {
 
     public func printLogs() {
         for log in self.logs {
-            var metadataString: String
-            if log.metadata?.isEmpty ?? false {
-                metadataString = ""
-            } else {
-                if let metadata = log.metadata {
-                    metadataString = "\n\\- metadata: "
-                    for key in metadata.keys.sorted() {
-                        metadataString.append("\"\(key)\": \(metadata[key]!), ")
-                    }
-                    metadataString = String(metadataString.dropLast(2))
-                } else {
-                    metadataString = ""
+            var metadataString: String = ""
+            if let metadata = log.metadata, !metadata.isEmpty {
+                metadataString = "\n\\- metadata: "
+                for key in metadata.keys.sorted() {
+                    metadataString.append("\"\(key)\": \(metadata[key]!), ")
                 }
+                metadataString = String(metadataString.dropLast(2))
             }
             print("Captured log [\(self.label)][\(log.file.split(separator: "/").last ?? ""):\(log.line)]: [\(log.level)] \(log.message)\(metadataString)")
         }

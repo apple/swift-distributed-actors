@@ -136,7 +136,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
-        // TODO: remove after figuring out why tests are flakey
+        // TODO: remove after figuring out why tests are flakey (https://github.com/apple/swift-distributed-actors/issues/157)
         defer {
             self.logCaptureHandler.printLogs()
         }
