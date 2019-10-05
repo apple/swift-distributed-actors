@@ -21,7 +21,7 @@ extension CRDT.ActorOwned {
     func metadata() -> Logger.Metadata {
         return [
             "crdt/id": "\(self.id)",
-            "crdt/status": "\(self.status)"
+            "crdt/status": "\(self.status)",
         ]
     }
 }
