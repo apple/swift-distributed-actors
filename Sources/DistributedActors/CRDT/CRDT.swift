@@ -215,14 +215,14 @@ public enum CRDT {
                 case .success(.failure(let error)):
                     self.owner.log.warning(
                         "Failed to update \(self.id): \(error)",
-                        metadata: ["crdt/id": "\(self.id)"]
-                    ) // TODO: structure the metadata in one place
+                        metadata: self.metadata()
+                    )
                     return .failure(error) // TODO: configure if it should or not crash the actor?
                 case .failure(let error):
                     self.owner.log.warning(
                         "Failed to update \(self.id): \(error)",
-                        metadata: ["crdt/id": "\(self.id)"]
-                    ) // TODO: structure the metadata in one place
+                        metadata: self.metadata()
+                    )
                     return .failure(error) // TODO: configure if it should or not crash the actor?
                 }
             }
@@ -248,14 +248,14 @@ public enum CRDT {
                 case .success(.failure(let readError)):
                     self.owner.log.warning(
                         "Failed to read(atConsistency: \(consistency), timeout: \(timeout.prettyDescription)), id: \(self.id): \(readError)",
-                        metadata: ["crdt/id": "\(self.id)"]
-                    ) // TODO: structure the metadata in one place
+                        metadata: self.metadata()
+                    )
                     return .failure(readError) // TODO: configure if it should or not crash the actor?
                 case .failure(let executionError):
                     self.owner.log.warning(
                         "Failed to read \(self.id): \(executionError)",
-                        metadata: ["crdt/id": "\(self.id)"]
-                    ) // TODO: structure the metadata in one place
+                        metadata: self.metadata()
+                    )
                     return .failure(executionError) // TODO: configure if it should or not crash the actor?
                 }
             }
@@ -277,8 +277,8 @@ public enum CRDT {
                 case .failure(let error):
                     self.owner.log.warning(
                         "Failed to delete \(self): \(error)",
-                        metadata: ["crdt/id": "\(self.id)"]
-                    ) // TODO: structure the metadata in one place
+                        metadata: self.metadata()
+                    )
                     return .failure(error) // TODO: configure if it should or not crash the actor?
                 }
             }

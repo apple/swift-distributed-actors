@@ -38,7 +38,7 @@ extension CRDT.Replicator {
             return self.replicator.settings
         }
 
-        private var remoteReplicators: Set<ActorRef<Message>> = []
+        internal var remoteReplicators: Set<ActorRef<Message>> = []
 
         init(_ replicator: Instance) {
             self.replicator = replicator
@@ -58,9 +58,11 @@ extension CRDT.Replicator {
                 return .receive { context, message in
                     switch message {
                     case .localCommand(let command):
+                        self.tracelog(context, .receive, message: command)
                         self.receiveLocalCommand(context, command: command)
                         return .same
                     case .remoteCommand(let command):
+                        self.tracelog(context, .receive, message: command)
                         self.receiveRemoteCommand(context, command: command)
                         return .same
                     }
@@ -68,13 +70,12 @@ extension CRDT.Replicator {
             }
         }
 
-        // ==== --------------------------------------------------------------------------------------------------------    func assertMemberStatus(on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
+        // ==== --------------------------------------------------------------------------------------------------------
         // MARK: Track replicators in the cluster
 
         private func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) {
             let makeReplicatorRef: (UniqueNode) -> ActorRef<Message> = { node in
-                let remoteReplicatorAddress = try! ActorAddress(node: node, path: ActorPath([ActorPathSegment("system"), ActorPathSegment("replicator")]), incarnation: .perpetual)
-                let resolveContext = ResolveContext<Message>(address: remoteReplicatorAddress, system: context.system)
+                let resolveContext = ResolveContext<Message>(address: ._crdtReplicator(on: node), system: context.system)
                 return context.system._resolve(context: resolveContext)
             }
 
@@ -82,18 +83,21 @@ extension CRDT.Replicator {
             case .membershipChange(let change) where change.toStatus == .up:
                 let member = change.member
                 if member.node != context.system.cluster.node { // exclude this (local) node
+                    self.tracelog(context, .addMember, message: member)
                     let remoteReplicatorRef = makeReplicatorRef(member.node)
                     self.remoteReplicators.insert(remoteReplicatorRef)
-                    self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+                } else {
+                    context.log.trace("Skip adding member \(member) to replicator because it is the same as local node", metadata: self.metadata(context))
                 }
 
-            // TODO: should be `if change.status >= .down` (see https://github.com/apple/swift-distributed-actors/pull/117/files#r324448462)
             case .membershipChange(let change) where change.toStatus >= .down:
                 let member = change.member
+                self.tracelog(context, .removeMember, message: member)
                 let remoteReplicatorRef = makeReplicatorRef(member.node)
                 self.remoteReplicators.remove(remoteReplicatorRef)
-                self.tracelog(context, .remoteReplicators, message: self.remoteReplicators)
+
             default:
+                context.log.trace("Ignoring cluster event \(event)", metadata: self.metadata(context))
                 () // ignore other events
             }
         }
@@ -620,7 +624,8 @@ extension CRDT.Replicator.Shell {
         if let level = self.settings.traceLogLevel {
             context.log.log(
                 level: level,
-                "[tracelog:replicator] \(type.description): \(message)",
+                "[tracelog:\(CRDT.Replicator.name)] \(type.description): \(message)",
+                metadata: self.metadata(context),
                 file: file, function: function, line: line
             )
         }
@@ -628,15 +633,31 @@ extension CRDT.Replicator.Shell {
 
     internal enum TraceLogType: CustomStringConvertible {
         case receive
-        case remoteReplicators
+        case addMember
+        case removeMember
 
         var description: String {
             switch self {
             case .receive:
                 return "RECV"
-            case .remoteReplicators:
-                return "REMOTE"
+            case .addMember:
+                return "ADD_MBR"
+            case .removeMember:
+                return "REM_MBR"
             }
         }
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: CRDT.Replicator path / address
+
+extension ActorAddress {
+    internal static func _crdtReplicator(on node: UniqueNode) -> ActorAddress {
+        return .init(node: node, path: ._crdtReplicator, incarnation: .perpetual)
+    }
+}
+
+extension ActorPath {
+    internal static let _crdtReplicator = try! ActorPath._system.appending(CRDT.Replicator.name)
 }
