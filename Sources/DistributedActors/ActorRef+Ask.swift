@@ -35,6 +35,18 @@ public protocol ReceivesQuestions: Codable {
     /// and will be invalid afterwards. The AskResponse will be failed with a
     /// TimeoutError if no response is received within the specified timeout.
     ///
+    /// ### Examples:
+    ///
+    ///     let answer = ref.ask(for: Information.self, timeout: .seconds(1)) {
+    ///         Question(replyTo: $0)
+    ///     }
+    ///
+    ///     // or alternatively:
+    ///
+    ///     let answerInfer: AskResponse<Answer> = ref.ask(timeout: .seconds(1)) {
+    ///         Question(replyTo: $0)
+    ///     }
+    ///
     /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state.
     ///            It may be executed concurrently with regards to the current context.
     func ask<Answer>(
@@ -51,20 +63,8 @@ public protocol ReceivesQuestions: Codable {
 extension ActorRef: ReceivesQuestions {
     public typealias Question = Message
 
-    /// Useful counterpart of ActorRef.tell but dedicated to request-response interactions.
-    /// Allows for asking an actor for a reply without having to be an actor.
-    ///
-    /// In order to facilitate this behavior, an ephemeral ActorRef created by this call has to be included in the
-    /// "question" message; Replying to this ref will complete the AskResponse returned by this method.
-    ///
-    /// The ephemeral ActorRef can only receive a single response
-    /// and will be invalid afterwards. The AskResponse will be failed with a
-    /// TimeoutError if no response is received within the specified timeout.
-    ///
-    /// - warning: The `makeQuestion` closure MUST NOT close over or capture any mutable state.
-    ///            It may be executed concurrently with regards to the current context.
     public func ask<Answer>(
-        for type: Answer.Type,
+        for type: Answer.Type = Answer.self,
         timeout: TimeAmount,
         file: String = #file, function: String = #function, line: UInt = #line,
         _ makeQuestion: @escaping (ActorRef<Answer>) -> Question
