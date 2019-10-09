@@ -25,7 +25,7 @@
 public enum Receptionist {
     public typealias Message = ReceptionistMessage
 
-    internal static let naming: ActorNaming = .unique("receptionist") // TODO: make an ActorName
+    internal static let naming: ActorNaming = .unique("receptionist")
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
