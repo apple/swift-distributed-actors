@@ -354,6 +354,12 @@ internal final class Mailbox<Message> {
 
     private func mailboxRun(_ shell: ActorShell<Message>) -> MailboxRunResult {
         let status = self.setProcessingSystemMessages()
+
+        guard !status.isClosed else {
+            shell.log.warning("!!! BUG !!! Run was scheduled on already closed mailbox.")
+            return .closed
+        }
+
         var processedActivations = status.hasSystemMessages ? MailboxBitMasks.processingSystemMessages : 0
         // User message count is shifted by two, so we need to shift this as well to make the check easier
         // we also need to add the `processedActivations` in case we are processing system messages, because
@@ -474,15 +480,15 @@ internal final class Mailbox<Message> {
             // as other conditions may hold, yet we really are ready to terminate immediately.
             traceLog_Mailbox(shell.path, "Terminating...")
             return .close
+        } else if runResult == .closed {
+            traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
+            return .closed
         } else if (oldActivations > processedActivations && !oldStatus.isSuspended) || oldStatus.hasSystemMessages {
             traceLog_Mailbox(shell.path, "Rescheduling... \(oldActivations) :: \(processedActivations)")
             // if we received new system messages during user message processing, or we could not process
             // all user messages in this run, because we had more messages queued up than the maximum run
             // length, return `Reschedule` to signal the queue should be re-scheduled
             return .reschedule
-        } else if runResult == .closed {
-            traceLog_Mailbox(shell.path, "Terminating, completely closed now...")
-            return .closed
         } else {
             traceLog_Mailbox(shell.path, "Run complete, shouldReschedule:false")
             return .done
