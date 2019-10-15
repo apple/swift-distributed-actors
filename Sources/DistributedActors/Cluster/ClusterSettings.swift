@@ -89,13 +89,13 @@ public struct ClusterSettings {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Membership Gossip
 
-    var membershipGossipInterval: TimeAmount = .milliseconds(500)
+    public var membershipGossipInterval: TimeAmount = .milliseconds(500)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Leader Election
 
-    var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)
-    enum LeadershipSelectionSettings {
+    public var autoLeaderElection: LeadershipSelectionSettings = .lowestAddress(minNumberOfMembers: 2)
+    public enum LeadershipSelectionSettings {
         /// No automatic leader selection, you can write your own logic and issue a `LeadershipChange` `ClusterEvent` to the `system.cluster.events` event stream.
         case none
         /// All nodes get ordered by their node addresses and the "lowest" is always selected as a leader.
