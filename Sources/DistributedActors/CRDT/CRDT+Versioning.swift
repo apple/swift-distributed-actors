@@ -248,6 +248,10 @@ extension CRDT {
         // Birth dots and their associated elements. This dictionary contains active elements only (i.e., not removed).
         internal var elementByBirthDot: [VersionDot: Element] = [:]
 
+        public var elements: Set<Element> {
+            return Set(self.elementByBirthDot.values)
+        }
+
         init() {}
 
         public mutating func merge(other: VersionedContainerDelta) {
@@ -282,19 +286,19 @@ extension CRDT {
 
             var mergedElementByBirthDot = self.elementByBirthDot
 
-            // "this" does not have birth dot and "this"'s `versionContext` does NOT dominate birth dot => element added (1)
+            // `self` does not have birth dot and `self`'s `versionContext` does NOT dominate birth dot => element added (1)
             let toAdd = other.elementByBirthDot.filter { birthDot, _ in
                 self.elementByBirthDot[birthDot] == nil && !self.versionContext.contains(birthDot)
             }
             mergedElementByBirthDot.merge(toAdd) { _, new in new }
 
-            // "this" has birth dot but `other`'s `versionContext` dominates birth dot => element removed (2)
+            // `self` has birth dot but `other`'s `versionContext` dominates birth dot => element removed (2)
             let toDelete = self.elementByBirthDot.filter { birthDot, _ in
                 other.elementByBirthDot[birthDot] == nil && other.versionContext.contains(birthDot)
             }
             toDelete.forEach { birthDot, _ in mergedElementByBirthDot.removeValue(forKey: birthDot) }
 
-            // Else the birth dot is in both "this" and `other`
+            // Else the birth dot is in both `self` and `other`
 
             // `VersionContext` is CRDT
             var versionContext = self.versionContext.merging(other: other.versionContext)
