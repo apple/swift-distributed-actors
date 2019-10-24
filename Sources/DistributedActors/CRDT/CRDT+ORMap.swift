@@ -144,7 +144,6 @@ extension CRDT {
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
             self._values.merge(keys: self._keys.elements, other: other._values, valueInitializer: self.valueInitializer)
-            self.resetDelta()
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
@@ -152,7 +151,6 @@ extension CRDT {
             // Use the updated `_keys` to merge `_values` dictionaries.
             // Keys that no longer exist will have their values deleted as well.
             self._values.merge(keys: self._keys.elements, other: delta.values, valueInitializer: self.valueInitializer)
-            self.resetDelta()
         }
 
         public mutating func resetDelta() {

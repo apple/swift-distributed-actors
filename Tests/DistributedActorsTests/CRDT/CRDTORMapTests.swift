@@ -100,18 +100,18 @@ final class CRDTORMapTests: XCTestCase {
         }
         m1.count.shouldEqual(1)
 
-        guard let delta1 = m1.delta else {
+        guard let d1 = m1.delta else {
             throw shouldNotHappen("Expect delta to be non nil")
         }
         // ORSet `keys`: [(A,1): "g1"]
         // `values`: ["g1": GCounter(value = 5)]
-        delta1.keys.versionContext.vv[self.replicaA].shouldEqual(1)
-        delta1.keys.elementByBirthDot.count.shouldEqual(1)
-        delta1.keys.elementByBirthDot[VersionDot(self.replicaA, 1)]!.shouldEqual("g1")
-        delta1.values.count.shouldEqual(1)
+        d1.keys.versionContext.vv[self.replicaA].shouldEqual(1)
+        d1.keys.elementByBirthDot.count.shouldEqual(1)
+        d1.keys.elementByBirthDot[VersionDot(self.replicaA, 1)]!.shouldEqual("g1")
+        d1.values.count.shouldEqual(1)
 
-        guard let dg1 = delta1.values["g1"] else {
-            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(delta1)")
+        guard let dg1 = d1.values["g1"] else {
+            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(d1)")
         }
         dg1.value.shouldEqual(5)
 
@@ -122,43 +122,43 @@ final class CRDTORMapTests: XCTestCase {
         }
         m1.count.shouldEqual(2)
 
-        guard let delta2 = m1.delta else {
+        guard let d2 = m1.delta else {
             throw shouldNotHappen("Expect delta to be non nil")
         }
         // ORSet `keys`: [(A,1): "g1", (A,2): "g2"]
         // `values`: ["g1": GCounter(value = 5), "g2": GCounter(value = 3)]
-        delta2.keys.versionContext.vv[self.replicaA].shouldEqual(2)
-        delta2.keys.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
-        delta2.keys.elementByBirthDot[VersionDot(self.replicaA, 1)]!.shouldEqual("g1")
-        delta2.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
-        delta2.values.count.shouldEqual(2)
+        d2.keys.versionContext.vv[self.replicaA].shouldEqual(2)
+        d2.keys.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
+        d2.keys.elementByBirthDot[VersionDot(self.replicaA, 1)]!.shouldEqual("g1")
+        d2.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
+        d2.values.count.shouldEqual(2)
 
-        guard let dgg1 = delta2.values["g1"] else {
-            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(delta2)")
+        guard let dgg1 = d2.values["g1"] else {
+            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(d2)")
         }
         dgg1.value.shouldEqual(5)
 
-        guard let dgg2 = delta2.values["g2"] else {
-            throw shouldNotHappen("Expect delta.values to contain \"g2\", got \(delta2)")
+        guard let dgg2 = d2.values["g2"] else {
+            throw shouldNotHappen("Expect delta.values to contain \"g2\", got \(d2)")
         }
         dgg2.value.shouldEqual(3)
 
         _ = m1.removeValue(forKey: "g1")
         m1.count.shouldEqual(1) // g2
 
-        guard let delta3 = m1.delta else {
+        guard let d3 = m1.delta else {
             throw shouldNotHappen("Expect delta to be non nil")
         }
         // ORSet `keys`: [(A,2): "g2"]
         // `values`: ["g2": GCounter(value = 3)]
         // keys.elementByBirthDot does not contain g1 because it's been deleted, but keys.versionContext still has the version
-        delta3.keys.versionContext.vv[self.replicaA].shouldEqual(2)
-        delta3.keys.elementByBirthDot.count.shouldEqual(1)
-        delta3.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
-        delta3.values.count.shouldEqual(1)
+        d3.keys.versionContext.vv[self.replicaA].shouldEqual(2)
+        d3.keys.elementByBirthDot.count.shouldEqual(1)
+        d3.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
+        d3.values.count.shouldEqual(1)
 
-        guard let dggg2 = delta3.values["g2"] else {
-            throw shouldNotHappen("Expect delta.values to contain \"g2\", got \(delta3)")
+        guard let dggg2 = d3.values["g2"] else {
+            throw shouldNotHappen("Expect delta.values to contain \"g2\", got \(d3)")
         }
         dggg2.value.shouldEqual(3)
 
@@ -169,19 +169,19 @@ final class CRDTORMapTests: XCTestCase {
         }
         m1.count.shouldEqual(2) // g1 and g2
 
-        guard let delta4 = m1.delta else {
+        guard let d4 = m1.delta else {
             throw shouldNotHappen("Expect delta to be non nil")
         }
         // ORSet `keys`: [(A,3): "g1", (A,2): "g2"]
         // `values`: ["g1": GCounter(value = 6), "g2": GCounter(value = 3)]
-        delta4.keys.versionContext.vv[self.replicaA].shouldEqual(3)
-        delta4.keys.elementByBirthDot.count.shouldEqual(2)
-        delta4.keys.elementByBirthDot[VersionDot(self.replicaA, 3)]!.shouldEqual("g1")
-        delta4.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
-        delta4.values.count.shouldEqual(2)
+        d4.keys.versionContext.vv[self.replicaA].shouldEqual(3)
+        d4.keys.elementByBirthDot.count.shouldEqual(2)
+        d4.keys.elementByBirthDot[VersionDot(self.replicaA, 3)]!.shouldEqual("g1")
+        d4.keys.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("g2")
+        d4.values.count.shouldEqual(2)
 
-        guard let dggg1 = delta4.values["g1"] else {
-            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(delta4)")
+        guard let dggg1 = d4.values["g1"] else {
+            throw shouldNotHappen("Expect delta.values to contain \"g1\", got \(d4)")
         }
         dggg1.value.shouldEqual(6)
     }
@@ -205,7 +205,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         g1.value.shouldEqual(5)
 
-        m1.delta.shouldBeNil() // delta reset after `merge`
         m1._keys.elements.shouldEqual(["g1"])
         m1._keys.state.versionContext.vv[self.replicaA].shouldEqual(0)
         m1._keys.state.versionContext.vv[self.replicaB].shouldEqual(1)
@@ -252,7 +251,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         gg2.value.shouldEqual(9)
 
-        m1.delta.shouldBeNil() // delta reset after `merge`
         m1._keys.elements.shouldEqual(["g1", "g2"])
         m1._keys.state.versionContext.vv[self.replicaA].shouldEqual(2)
         m1._keys.state.versionContext.vv[self.replicaB].shouldEqual(3)
@@ -319,7 +317,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         g3.value.shouldEqual(5)
 
-        m1.delta.shouldBeNil() // delta reset after `merge`
         m1._keys.elements.shouldEqual(["g1", "g2", "g3"])
         m1._keys.state.versionContext.vv[self.replicaA].shouldEqual(2)
         m1._keys.state.versionContext.vv[self.replicaB].shouldEqual(3)
@@ -459,7 +456,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         ss2.elements.shouldEqual([3])
 
-        m2.delta.shouldBeNil() // delta reset after `merge`
         m2._keys.elements.shouldEqual(["s2"])
         m2._keys.state.versionContext.vv[self.replicaA].shouldEqual(2)
         m2._keys.state.versionContext.vv[self.replicaB].shouldEqual(0)
@@ -539,7 +535,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         ss2.elements.shouldEqual([3])
 
-        m1.delta.shouldBeNil() // delta reset after `merge`
         m1._keys.elements.shouldEqual(["s1", "s2"])
         m1._keys.state.versionContext.vv[self.replicaA].shouldEqual(2)
         m1._keys.state.versionContext.vv[self.replicaB].shouldEqual(1)
@@ -627,7 +622,6 @@ final class CRDTORMapTests: XCTestCase {
         }
         ss2.elements.shouldEqual([3])
 
-        m1.delta.shouldBeNil() // delta reset after `merge`
         m1._keys.elements.shouldEqual(["s1", "s2"])
         m1._keys.state.versionContext.vv[self.replicaA].shouldEqual(3)
         m1._keys.state.versionContext.vv[self.replicaB].shouldEqual(1)
