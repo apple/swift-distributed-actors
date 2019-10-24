@@ -317,7 +317,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         s2Owner1.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: s2Owner1IntSetP.ref))
         try s2Owner1IntSetP.expectMessage([])
         // As a result owner should not have received any events
-        try s2Owner1IntSetP.expectNoMessage(for: .milliseconds(100))
+        try s2Owner1EventP.expectNoMessage(for: .milliseconds(100))
     }
 
     // This test would uncover concurrency issues if the Owned updates were to fire concurrently, and not looped through the actor
@@ -338,5 +338,131 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         let msg = try probe.expectMessage()
         msg.count.shouldEqual(101)
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor-owned ORMap tests
+
+    private enum ORMapCommand {
+        case increment(key: String, amount: Int, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
+        case removeValue(key: String, consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
+        case read(consistency: CRDT.OperationConsistency, timeout: TimeAmount, replyTo: ActorRef<[String: CRDT.GCounter]>)
+
+        case lastObservedValue(replyTo: ActorRef<[String: CRDT.GCounter]>)
+    }
+
+    private func actorOwnedORMapBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<ORMapCommand> {
+        return .setup { context in
+            let m = CRDT.ORMap<String, CRDT.GCounter>.owned(by: context, id: id, valueInitializer: { CRDT.GCounter(replicaId: .actorAddress(context.address)) })
+            m.onUpdate { id, mm in
+                context.log.trace("ORMap \(id) updated with new value: \(mm.underlying)")
+                ownerEventProbe.tell(.ownerDefinedOnUpdate)
+            }
+            m.onDelete { id in
+                context.log.trace("ORMap \(id) deleted")
+                ownerEventProbe.tell(.ownerDefinedOnDelete)
+            }
+
+            return .receiveMessage { message in
+                switch message {
+                case .increment(let key, let amount, let consistency, let timeout, let replyTo):
+                    m.update(key: key, writeConsistency: consistency, timeout: timeout) {
+                        var g = $0
+                        g.increment(by: amount)
+                        return g
+                    }.onComplete { result in
+                        switch result {
+                        case .success(let m):
+                            replyTo.tell(m.underlying)
+                        case .failure(let error):
+                            fatalError("increment error \(error)")
+                        }
+                    }
+                case .removeValue(let key, let consistency, let timeout, let replyTo):
+                    m.removeValue(forKey: key, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                        switch result {
+                        case .success(let m):
+                            replyTo.tell(m.underlying)
+                        case .failure(let error):
+                            fatalError("removeValue error \(error)")
+                        }
+                    }
+                case .read(let consistency, let timeout, let replyTo):
+                    m.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                        switch result {
+                        case .success(let m):
+                            replyTo.tell(m.underlying)
+                        case .failure(let error):
+                            fatalError("read error \(error)")
+                        }
+                    }
+                case .lastObservedValue(let replyTo):
+                    replyTo.tell(m.lastObservedValue)
+                }
+                return .same
+            }
+        }
+    }
+
+    func test_actorOwned_ORMap_update_shouldNotifyOthers() throws {
+        let m1 = "ormap-1"
+        let m2 = "ormap-2"
+
+        // m1 has two owners
+        let m1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m1Owner1 = try system.spawn("ormap1-owner1", self.actorOwnedORMapBehavior(id: m1, oep: m1Owner1EventP.ref))
+        let m1Owner1GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+
+        let m1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m1Owner2 = try system.spawn("ormap1-owner2", self.actorOwnedORMapBehavior(id: m1, oep: m1Owner2EventP.ref))
+        let m1Owner2GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+
+        // m2 has one owner
+        let m2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m2Owner1 = try system.spawn("ormap2-owner1", self.actorOwnedORMapBehavior(id: m2, oep: m2Owner1EventP.ref))
+        let m2Owner1GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+
+        // m1 not modified yet
+        m1Owner1.tell(.lastObservedValue(replyTo: m1Owner1GCounterDictP.ref))
+        let m1o1 = try m1Owner1GCounterDictP.expectMessage()
+        m1o1.isEmpty.shouldBeTrue()
+
+        // Add key-value to m1 and the latest value should be returned
+        m1Owner1.tell(.increment(key: "g1", amount: 3, consistency: .local, timeout: .milliseconds(100), replyTo: m1Owner1GCounterDictP.ref))
+        let m1oo1 = try m1Owner1GCounterDictP.expectMessage()
+        m1oo1.count.shouldEqual(1)
+        guard let g1 = m1oo1["g1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1oo1)")
+        }
+        g1.value.shouldEqual(3)
+
+        // m1 owner1's local value should be up-to-date
+        m1Owner1.tell(.lastObservedValue(replyTo: m1Owner1GCounterDictP.ref))
+        let m1ooo1 = try m1Owner1GCounterDictP.expectMessage()
+        m1ooo1.count.shouldEqual(1)
+        guard let gg1 = m1ooo1["g1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1ooo1)")
+        }
+        gg1.value.shouldEqual(3)
+
+        // owner1 should be notified even if it triggered the action
+        try m1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
+
+        // owner2 should be notified about m1 updates, which means it should have up-to-date value too
+        try m1Owner2EventP.expectMessage(.ownerDefinedOnUpdate)
+        m1Owner2.tell(.lastObservedValue(replyTo: m1Owner2GCounterDictP.ref))
+        let m1o2 = try m1Owner2GCounterDictP.expectMessage()
+        m1o2.count.shouldEqual(1)
+        guard let ggg1 = m1o2["g1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1o2)")
+        }
+        ggg1.value.shouldEqual(3)
+
+        // m2 hasn't been mutated
+        m2Owner1.tell(.read(consistency: .local, timeout: .milliseconds(100), replyTo: m2Owner1GCounterDictP.ref))
+        let m2o1 = try m2Owner1GCounterDictP.expectMessage()
+        m2o1.isEmpty.shouldBeTrue()
+        // As a result owner should not have received any events
+        try m2Owner1EventP.expectNoMessage(for: .milliseconds(100))
     }
 }

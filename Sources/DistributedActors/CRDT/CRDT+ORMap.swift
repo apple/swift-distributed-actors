@@ -47,7 +47,7 @@ extension CRDT {
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
     /// - SeeAlso: CRDT.ORSet
-    public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT {
+    public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
         public let replicaId: ReplicaId
@@ -71,6 +71,10 @@ extension CRDT {
             }
             // If `_keys` has not been mutated then assume `self` has not been modified either.
             return nil
+        }
+
+        public var underlying: [Key: Value] {
+            return self._values
         }
 
         public var keys: Dictionary<Key, Value>.Keys {
@@ -197,3 +201,55 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
         }
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorOwned ORMap
+
+public protocol ORMapOperations {
+    associatedtype Key: Hashable
+    associatedtype Value: CvRDT
+
+    var underlying: [Key: Value] { get }
+
+    mutating func update(key: Key, mutator: (Value) -> Value)
+    mutating func removeValue(forKey key: Key) -> Value?
+    mutating func removeAll()
+}
+
+// See comments in CRDT.ORSet
+extension CRDT.ActorOwned where DataType: ORMapOperations {
+    public var lastObservedValue: [DataType.Key: DataType.Value] {
+        return self.data.underlying
+    }
+
+    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (DataType.Value) -> DataType.Value) -> OperationResult<DataType> {
+        // Apply mutator to the value associated with `key` locally then propagate
+        self.data.update(key: key, mutator: mutator)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func removeValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+        // Remove value associated with the given key locally then propagate
+        self.data.removeValue(forKey: key)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func removeAll(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+        // Remove all values locally then propagate
+        self.data.removeAll()
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}
+
+extension CRDT.ORMap {
+    public static func owned<Message>(by owner: ActorContext<Message>, id: String, valueInitializer: @escaping () -> Value) -> CRDT.ActorOwned<CRDT.ORMap<Key, Value>> {
+        return CRDT.ActorOwned<CRDT.ORMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.ORMap<Key, Value>(replicaId: .actorAddress(owner.address), valueInitializer: valueInitializer))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Aliases
+
+// TODO: find better home for these type aliases
+
+typealias ObservedRemoveMap = CRDT.ORMap

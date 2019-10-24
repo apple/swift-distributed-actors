@@ -57,6 +57,21 @@ extension CRDT.ORSet {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ORMap + Logger Metadata
+
+extension CRDT.ORMap {
+    func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
+        return [
+            "crdt/type": "ormap",
+            "crdt/owner": "\(context.address)",
+            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/ormap/count": "\(self.count)",
+            "crdt/ormap/delta": "\(String(describing: self.delta))",
+        ]
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: CRDT.Replicator.Shell + Logger Metadata
 
 extension CRDT.Replicator.Shell {
