@@ -436,11 +436,7 @@ extension CRDT {
         func onWriteSuccess(actorOwned: CRDT.ActorOwned<DataType>) {}
     }
 
-    public class ActorOwnedDeltaCRDTDelegate<DataType: DeltaCRDT>: ActorOwnedDelegate<DataType> {
-        override func onWriteSuccess(actorOwned: CRDT.ActorOwned<DataType>) {
-            actorOwned.data.resetDelta()
-        }
-    }
+    public class ActorOwnedDeltaCRDTDelegate<DataType: DeltaCRDT>: ActorOwnedDelegate<DataType> {}
 }
 
 extension CRDT.ActorOwned where DataType: DeltaCRDT {

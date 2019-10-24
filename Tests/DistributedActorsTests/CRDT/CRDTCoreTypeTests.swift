@@ -49,9 +49,7 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.merge(other: g2)
 
         g1.value.shouldEqual(11) // 1 (g1) + 10 (g2)
-        g1.delta.shouldBeNil() // delta is reset after merge
         g2.value.shouldEqual(10) // unchanged
-        g2.delta.shouldNotBeNil()
     }
 
     func test_GCounter_merging_shouldNotMutate() throws {
@@ -68,7 +66,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         g2.value.shouldEqual(10) // unchanged
         g2.delta.shouldNotBeNil() // delta should not be nil after increment
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2)
-        g3.delta.shouldBeNil()
     }
 
     func test_GCounter_mergeDelta_shouldMutate() throws {
@@ -84,7 +81,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.mergeDelta(d)
 
         g1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
-        g1.delta.shouldBeNil() // delta is reset after mergeDelta
     }
 
     func test_GCounter_mergingDelta_shouldNotMutate() throws {
@@ -102,7 +98,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.value.shouldEqual(1) // unchanged
         g1.delta.shouldNotBeNil() // delta should not be nil after increment
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
-        g3.delta.shouldBeNil()
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -140,36 +135,44 @@ final class CRDTCoreTypeTests: XCTestCase {
         // version 1
         s1.add(1)
         s1.elements.shouldEqual([1])
-        s1.delta.shouldNotBeNil()
-        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(1)
-        s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
+        guard let d1 = s1.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
+        }
+        d1.versionContext.vv[s1.replicaId].shouldEqual(1)
+        d1.elementByBirthDot.count.shouldEqual(1)
+        d1.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
 
         // version 2
         s1.add(3)
         s1.elements.shouldEqual([1, 3])
-        s1.delta.shouldNotBeNil()
-        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
-        s1.delta!.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
-        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
-        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
+        guard let d2 = s1.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
+        }
+        d2.versionContext.vv[s1.replicaId].shouldEqual(2)
+        d2.elementByBirthDot.count.shouldEqual(2) // two dots for different elements
+        d2.elementByBirthDot[VersionDot(s1.replicaId, 1)]!.shouldEqual(1)
+        d2.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
 
         // `remove` doesn't increment version
         s1.remove(1)
         s1.elements.shouldEqual([3])
-        s1.delta.shouldNotBeNil()
-        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(2)
-        s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
+        guard let d3 = s1.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
+        }
+        d3.versionContext.vv[s1.replicaId].shouldEqual(2)
+        d3.elementByBirthDot.count.shouldEqual(1)
+        d3.elementByBirthDot[VersionDot(s1.replicaId, 2)]!.shouldEqual(3)
 
         // version 3 - duplicate element, previous version(s) deleted
         s1.add(3)
         s1.elements.shouldEqual([3])
-        s1.delta.shouldNotBeNil()
-        s1.delta!.versionContext.vv[s1.replicaId].shouldEqual(3)
+        guard let d4 = s1.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(s1)")
+        }
+        d4.versionContext.vv[s1.replicaId].shouldEqual(3)
         // Any existing dots for the element are removed before inserting, which means there is a single dot per element
-        s1.delta!.elementByBirthDot.count.shouldEqual(1)
-        s1.delta!.elementByBirthDot[VersionDot(s1.replicaId, 3)]!.shouldEqual(3)
+        d4.elementByBirthDot.count.shouldEqual(1)
+        d4.elementByBirthDot[VersionDot(s1.replicaId, 3)]!.shouldEqual(3)
     }
 
     func test_ORSet_merge_shouldMutate() throws {
@@ -194,8 +197,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
-
-        s1.delta.shouldBeNil() // delta reset after `merge`
     }
 
     func test_ORSet_merge_shouldMutate_shouldCompact() throws {
@@ -226,8 +227,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
-
-        s1.delta.shouldBeNil() // delta reset after `merge`
     }
 
     func test_ORSet_mergeDelta_shouldMutate() throws {
@@ -255,8 +254,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(5) // (B,2): 5
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(1) // (B,3): 1
         // (B,1): 3 and (B,3): 1 come from a different replica (B), so A cannot coalesce them.
-
-        s1.delta.shouldBeNil() // delta reset after `mergeDelta`
     }
 
     func test_ORSet_mergeDelta_shouldMutate_shouldCompact() throws {
@@ -290,8 +287,6 @@ final class CRDTCoreTypeTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 1)].shouldBeNil() // `compact` removes (B,1): 7
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
-
-        s1.delta.shouldBeNil() // delta reset after `mergeDelta`
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -398,9 +393,7 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Should be a GCounter")
         }
         ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2)
-        ugg1.delta.shouldBeNil() // delta is reset after merge
         ugg2.value.shouldEqual(10) // unchanged
-        ugg2.delta.shouldNotBeNil()
     }
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT
@@ -443,7 +436,6 @@ final class CRDTCoreTypeTests: XCTestCase {
             throw shouldNotHappen("Should be a GCounter")
         }
         ugg1.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
-        ugg1.delta.shouldBeNil() // delta is reset after mergeDelta
     }
 
     func test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType() throws {
@@ -464,7 +456,8 @@ final class CRDTCoreTypeTests: XCTestCase {
         g1.increment(by: 1)
 
         var gg1 = g1.asAnyDeltaCRDT
-        // gg1 is mutated
+        // gg1 should have delta
+        gg1.delta.shouldNotBeNil()
         gg1.resetDelta()
 
         guard let ugg1 = gg1.underlying as? CRDT.GCounter else {

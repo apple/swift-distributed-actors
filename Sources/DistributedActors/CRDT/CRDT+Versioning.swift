@@ -227,7 +227,6 @@ extension CRDT {
                 .merging(other: VersionContextAndElements(other.versionContext, other.elementByBirthDot))
             self.versionContext = merged.versionContext
             self.elementByBirthDot = merged.elementByBirthDot
-            self.resetDelta()
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
@@ -235,7 +234,6 @@ extension CRDT {
                 .merging(other: VersionContextAndElements(delta.versionContext, delta.elementByBirthDot))
             self.versionContext = merged.versionContext
             self.elementByBirthDot = merged.elementByBirthDot
-            self.resetDelta()
         }
 
         public mutating func resetDelta() {

@@ -71,12 +71,10 @@ extension CRDT {
         // To merge delta into state, call `mergeDelta`.
         public mutating func merge(other: GCounter) {
             self.state.merge(other.state, uniquingKeysWith: max)
-            self.resetDelta()
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
             self.state.merge(delta.state, uniquingKeysWith: max)
-            self.resetDelta()
         }
 
         public mutating func resetDelta() {

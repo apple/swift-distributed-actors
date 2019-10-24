@@ -49,7 +49,6 @@ final class CRDTActorOwnedTests: XCTestCase {
 
         case lastObservedValue(replyTo: ActorRef<Int>)
         case status(replyTo: ActorRef<CRDT.Status>)
-        case hasDelta(replyTo: ActorRef<Bool>)
     }
 
     private func actorOwnedGCounterBehavior(id: String, oep ownerEventProbe: ActorRef<OwnerEventProbeMessage>) -> Behavior<GCounterCommand> {
@@ -97,8 +96,6 @@ final class CRDTActorOwnedTests: XCTestCase {
                     replyTo.tell(g.lastObservedValue)
                 case .status(let replyTo):
                     replyTo.tell(g.status)
-                case .hasDelta(let replyTo):
-                    replyTo.tell(g.data.delta != nil)
                 }
                 return .same
             }
@@ -132,7 +129,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         try ownerEventPA.expectNoMessage(for: .milliseconds(10))
     }
 
-    func test_actorOwned_GCounter_increment_shouldResetDelta_shouldNotifyOthers() throws {
+    func test_actorOwned_GCounter_increment_shouldNotifyOthers() throws {
         let g1 = "gcounter-1"
         let g2 = "gcounter-2"
 
@@ -145,7 +142,6 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
         let g1Owner1IntP = self.testKit.spawnTestProbe(expecting: Int.self)
-        let g1Owner1BoolP = self.testKit.spawnTestProbe(expecting: Bool.self)
 
         let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner2 = try system.spawn("gcounter1-owner2", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
@@ -167,10 +163,6 @@ final class CRDTActorOwnedTests: XCTestCase {
         // g1 owner1's local value should be up-to-date
         g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
         try g1Owner1IntP.expectMessage(3)
-
-        // owner1's g1.delta should be reset
-        g1Owner1.tell(.hasDelta(replyTo: g1Owner1BoolP.ref))
-        try g1Owner1BoolP.expectMessage(false)
 
         // owner1 should be notified even if it triggered the action
         try g1Owner1EventP.expectMessage(.ownerDefinedOnUpdate)
@@ -283,7 +275,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         }
     }
 
-    func test_actorOwned_ORSet_add_remove_shouldResetDelta_shouldNotifyOthers() throws {
+    func test_actorOwned_ORSet_add_remove_shouldNotifyOthers() throws {
         let s1 = "orset-1"
         let s2 = "orset-2"
 
