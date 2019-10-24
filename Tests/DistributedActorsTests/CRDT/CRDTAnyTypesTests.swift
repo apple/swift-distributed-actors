@@ -24,9 +24,9 @@ final class CRDTAnyTypesTests: XCTestCase {
     // MARK: AnyCvRDT tests
 
     func test_AnyCvRDT_canBeUsedToMergeRightTypes() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         // Can have AnyCvRDT of different concrete CRDTs in same collection
@@ -64,7 +64,7 @@ final class CRDTAnyTypesTests: XCTestCase {
     }
 
     func test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [
@@ -90,9 +90,9 @@ final class CRDTAnyTypesTests: XCTestCase {
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT
     func test_AnyDeltaCRDT_canBeUsedToMergeRightTypes() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         // A collection of AnyCvRDTs and AnyDeltaCRDTs
@@ -129,7 +129,7 @@ final class CRDTAnyTypesTests: XCTestCase {
 
     // AnyDeltaCRDT has at least the same features as AnyCvRDT
     func test_AnyDeltaCRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         let anyDeltaCRDTs: [CRDT.Identity: AnyDeltaCRDT] = [
@@ -151,9 +151,9 @@ final class CRDTAnyTypesTests: XCTestCase {
     }
 
     func test_AnyDeltaCRDT_canBeUsedToMergeRightDeltaType() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         var gg1 = g1.asAnyDeltaCRDT
@@ -170,7 +170,7 @@ final class CRDTAnyTypesTests: XCTestCase {
     }
 
     func test_AnyDeltaCRDT_throwWhenAttemptToMergeInvalidDeltaType() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         var gg1 = g1.asAnyDeltaCRDT
@@ -183,7 +183,7 @@ final class CRDTAnyTypesTests: XCTestCase {
     }
 
     func test_AnyDeltaCRDT_canResetDelta() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
         var gg1 = g1.asAnyDeltaCRDT

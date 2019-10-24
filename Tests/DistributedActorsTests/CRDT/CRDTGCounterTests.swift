@@ -21,7 +21,7 @@ final class CRDTGCounterTests: XCTestCase {
     let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .perpetual))
 
     func test_GCounter_increment_shouldUpdateDelta() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
 
         g1.increment(by: 1)
         // delta should not be nil after increment
@@ -37,9 +37,9 @@ final class CRDTGCounterTests: XCTestCase {
     }
 
     func test_GCounter_merge_shouldMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         // g1 is mutated; g2 is not
@@ -50,9 +50,9 @@ final class CRDTGCounterTests: XCTestCase {
     }
 
     func test_GCounter_merging_shouldNotMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         // Neither g1 nor g2 is mutated
@@ -66,9 +66,9 @@ final class CRDTGCounterTests: XCTestCase {
     }
 
     func test_GCounter_mergeDelta_shouldMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         guard let d = g2.delta else {
@@ -81,9 +81,9 @@ final class CRDTGCounterTests: XCTestCase {
     }
 
     func test_GCounter_mergingDelta_shouldNotMutate() throws {
-        var g1 = CRDT.GCounter(replicaId: .actorAddress(self.ownerAlpha))
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
-        var g2 = CRDT.GCounter(replicaId: .actorAddress(self.ownerBeta))
+        var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
         guard let d = g2.delta else {

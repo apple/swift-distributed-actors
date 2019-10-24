@@ -230,7 +230,7 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
 
     public func removeValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Remove value associated with the given key locally then propagate
-        self.data.removeValue(forKey: key)
+        _ = self.data.removeValue(forKey: key)
         return self.write(consistency: consistency, timeout: timeout)
     }
 

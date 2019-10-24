@@ -21,7 +21,7 @@ final class CRDTORSetTests: XCTestCase {
     let replicaB: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("b"), incarnation: .perpetual))
 
     func test_ORSet_basicOperations() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
 
         s1.elements.isEmpty.shouldBeTrue()
         s1.count.shouldEqual(0)
@@ -47,7 +47,7 @@ final class CRDTORSetTests: XCTestCase {
     }
 
     func test_ORSet_add_remove_shouldUpdateDelta() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
 
         // version 1
         s1.add(1)
@@ -93,10 +93,10 @@ final class CRDTORSetTests: XCTestCase {
     }
 
     func test_ORSet_merge_shouldMutate() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
         s1.add(1)
         s1.add(3)
-        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        var s2 = CRDT.ORSet<Int>(replicaId: self.replicaB)
         s2.add(3)
         s2.add(5)
         s2.add(1)
@@ -117,9 +117,9 @@ final class CRDTORSetTests: XCTestCase {
     }
 
     func test_ORSet_merge_shouldMutate_shouldCompact() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
 
-        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        var s2 = CRDT.ORSet<Int>(replicaId: self.replicaB)
         s2.add(7) // (B,1): 7
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
@@ -147,10 +147,10 @@ final class CRDTORSetTests: XCTestCase {
     }
 
     func test_ORSet_mergeDelta_shouldMutate() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
         s1.add(1)
         s1.add(3)
-        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        var s2 = CRDT.ORSet<Int>(replicaId: self.replicaB)
         s2.add(3)
         s2.add(5)
         s2.add(1)
@@ -174,9 +174,9 @@ final class CRDTORSetTests: XCTestCase {
     }
 
     func test_ORSet_mergeDelta_shouldMutate_shouldCompact() throws {
-        var s1 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerAlpha))
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
 
-        var s2 = CRDT.ORSet<Int>(replicaId: .actorAddress(self.ownerBeta))
+        var s2 = CRDT.ORSet<Int>(replicaId: self.replicaB)
         s2.add(7) // (B,1): 7
 
         s1.merge(other: s2) // Now s1 has (B,1): 7
