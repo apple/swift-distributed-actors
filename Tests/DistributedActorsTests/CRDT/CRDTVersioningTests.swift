@@ -104,11 +104,13 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot.count.shouldEqual(1)
         aContainer.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3], vv=[(A,1)], gaps=[]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv[replicaA].shouldEqual(1) // The delta's vv should be incremented (0 -> 1) because of `compact`
-        aContainer.delta!.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 0 -> 1 is contiguous
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(1)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Delta should also have the dot
+        guard let d1 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d1.versionContext.vv[replicaA].shouldEqual(1) // The delta's vv should be incremented (0 -> 1) because of `compact`
+        d1.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 0 -> 1 is contiguous
+        d1.elementByBirthDot.count.shouldEqual(1)
+        d1.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Delta should also have the dot
 
         aContainer.add(5)
         aContainer.elements.shouldEqual([3, 5])
@@ -120,11 +122,13 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot.count.shouldEqual(2)
         aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3, (A,2): 5], vv=[(A,1)], gaps=[]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv[replicaA].shouldEqual(2) // The delta's vv should be incremented (1 -> 2) because of `compact`
-        aContainer.delta!.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 1 -> 2 is contiguous
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(2)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Delta should also have the dot
+        guard let d2 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d2.versionContext.vv[replicaA].shouldEqual(2) // The delta's vv should be incremented (1 -> 2) because of `compact`
+        d2.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 1 -> 2 is contiguous
+        d2.elementByBirthDot.count.shouldEqual(2)
+        d2.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Delta should also have the dot
 
         // Add 3 again
         aContainer.add(3)
@@ -137,11 +141,13 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot.count.shouldEqual(3)
         aContainer.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Verify birth dot
         // delta: elementByBirthDot=[(A,1): 3, (A,2): 5], (A,3): 3], vv=[(A,3)], gaps=[]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv[replicaA].shouldEqual(3) // The delta's vv should be incremented (2 -> 3) because of `compact`
-        aContainer.delta!.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 2 -> 3 is contiguous
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(3)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Delta should also have the dot
+        guard let d3 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d3.versionContext.vv[replicaA].shouldEqual(3) // The delta's vv should be incremented (2 -> 3) because of `compact`
+        d3.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 2 -> 3 is contiguous
+        d3.elementByBirthDot.count.shouldEqual(3)
+        d3.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Delta should also have the dot
 
         aContainer.remove(3)
         aContainer.elements.shouldEqual([5])
@@ -152,12 +158,14 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Removed dots are added to delta, not container's versionContext.gaps
         aContainer.elementByBirthDot.count.shouldEqual(1) // (A,1) and (A,3) removed; 3 - 2 = 1
         // delta: elementByBirthDot=[(A,2): 5], vv=[(A,3)], gaps=[]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv[replicaA].shouldEqual(3) // `remove` doesn't change vv
-        aContainer.delta!.versionContext.gaps.isEmpty.shouldBeTrue() // (A,1) and (A,3) added to gaps but dropped since vv already contains them
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(1)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 1)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 3)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        guard let d4 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d4.versionContext.vv[replicaA].shouldEqual(3) // `remove` doesn't change vv
+        d4.versionContext.gaps.isEmpty.shouldBeTrue() // (A,1) and (A,3) added to gaps but dropped since vv already contains them
+        d4.elementByBirthDot.count.shouldEqual(1)
+        d4.elementByBirthDot[VersionDot(replicaA, 1)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d4.elementByBirthDot[VersionDot(replicaA, 3)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
 
         aContainer.resetDelta()
         aContainer.delta.shouldBeNil()
@@ -173,12 +181,14 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot.count.shouldEqual(2)
         aContainer.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Verify birth dot
         // delta: elementByBirthDot=[(A,4): 6], vv=[], gaps=[(A,4)]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv.isEmpty.shouldBeTrue() // New dot is non-contiguous (vv version is 0, new dot's version is 4) so `compact` doesn't add to vv
-        aContainer.delta!.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
-        aContainer.delta!.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(1)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        guard let d5 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d5.versionContext.vv.isEmpty.shouldBeTrue() // New dot is non-contiguous (vv version is 0, new dot's version is 4) so `compact` doesn't add to vv
+        d5.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
+        d5.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
+        d5.elementByBirthDot.count.shouldEqual(1)
+        d5.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
 
         aContainer.remove(5)
         aContainer.elements.shouldEqual([6])
@@ -189,12 +199,14 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.gaps.isEmpty.shouldBeTrue() // Removed dots are added to delta, not container's versionContext.gaps
         aContainer.elementByBirthDot.count.shouldEqual(1) // (A,2) removed; 2 - 1 = 1
         // delta: elementByBirthDot=[(A,4): 6], vv=[], gaps=[(A,4), (A,2)]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv.isEmpty.shouldBeTrue() // (A,2) non-contiguous so `compact` doesn't add to vv
-        aContainer.delta!.versionContext.gaps.count.shouldEqual(2) // Dot was added to gaps and `compact` can't merge it to vv
-        aContainer.delta!.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue()
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(1)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        guard let d6 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d6.versionContext.vv.isEmpty.shouldBeTrue() // (A,2) non-contiguous so `compact` doesn't add to vv
+        d6.versionContext.gaps.count.shouldEqual(2) // Dot was added to gaps and `compact` can't merge it to vv
+        d6.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue()
+        d6.elementByBirthDot.count.shouldEqual(1)
+        d6.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
     }
 
     func test_VersionedContainer_removeAll_shouldAddAllBirthDotsToDeltaVersionContext() throws {
@@ -223,12 +235,14 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot.count.shouldEqual(2)
         aContainer.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Verify birth dot
         // delta: elementByBirthDot=[(A,4): 6], vv=[], gaps=[(A,4)]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv.isEmpty.shouldBeTrue() // New dot is non-contiguous (vv version is 0, new dot's version is 4) so `compact` doesn't add to vv
-        aContainer.delta!.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
-        aContainer.delta!.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
-        aContainer.delta!.elementByBirthDot.count.shouldEqual(1)
-        aContainer.delta!.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        guard let d1 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d1.versionContext.vv.isEmpty.shouldBeTrue() // New dot is non-contiguous (vv version is 0, new dot's version is 4) so `compact` doesn't add to vv
+        d1.versionContext.gaps.count.shouldEqual(1) // Dot was added to gaps and `compact` can't merge it to vv
+        d1.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
+        d1.elementByBirthDot.count.shouldEqual(1)
+        d1.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
 
         // Remove all elements!
         aContainer.removeAll()
@@ -242,12 +256,14 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.versionContext.gaps.count.shouldEqual(1) // `removeAll` doesn't change container gaps
         aContainer.elementByBirthDot.isEmpty.shouldBeTrue()
         // delta: elementByBirthDot=[], vv=[], gaps=[(A,4), (A,2)]
-        aContainer.delta.shouldNotBeNil() // Delta should be set
-        aContainer.delta!.versionContext.vv.isEmpty.shouldBeTrue() // `removeAll` doesn't change delta vv
-        aContainer.delta!.versionContext.gaps.count.shouldEqual(2)
-        aContainer.delta!.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
-        aContainer.delta!.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue() // (A,2) was added to delta gaps
-        aContainer.delta!.elementByBirthDot.isEmpty.shouldBeTrue() // Dots not in delta.elementByBirthDot indicates elements are deleted
+        guard let d2 = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
+        d2.versionContext.vv.isEmpty.shouldBeTrue() // `removeAll` doesn't change delta vv
+        d2.versionContext.gaps.count.shouldEqual(2)
+        d2.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
+        d2.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue() // (A,2) was added to delta gaps
+        d2.elementByBirthDot.isEmpty.shouldBeTrue() // Dots not in delta.elementByBirthDot indicates elements are deleted
     }
 
     func test_VersionedContainer_merge_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
@@ -274,7 +290,6 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(3)
         aContainer.elementByBirthDot[VersionDot(replicaB, 1)]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
         aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.delta.shouldBeNil() // delta cleared after `merge`
     }
 
     func test_VersionedContainer_merge_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
@@ -309,7 +324,6 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
         aContainer.elementByBirthDot[VersionDot(replicaB, 1)].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
         aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.delta.shouldBeNil() // delta cleared after `merge`
     }
 
     func test_VersionedContainer_merge_twoReplicasFormCompleteHistory() throws {
@@ -332,7 +346,6 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot[VersionDot(replicaC, 3)]!.shouldEqual(7)
         aContainer.elementByBirthDot[VersionDot(replicaC, 4)]!.shouldEqual(0)
         aContainer.elementByBirthDot[VersionDot(replicaC, 5)]!.shouldEqual(3)
-        aContainer.delta.shouldBeNil() // delta cleared after `merge`
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
@@ -347,9 +360,12 @@ final class CRDTVersioningTests: XCTestCase {
         bContainer.add(4)
         // bContainer: elementByBirthDot=[(B,1): 3, (B,2): 4], vv=[(B,2)], gaps=[]; delta: elementByBirthDot=[(B,1): 3, (B,2): 4], vv=[(B,2)], gaps=[]
         bContainer.delta.shouldNotBeNil()
+        guard let bDelta = bContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(bContainer)")
+        }
 
         // `mergeDelta` mutates aContainer
-        aContainer.mergeDelta(bContainer.delta!)
+        aContainer.mergeDelta(bDelta)
         aContainer.elements.shouldEqual([1, 3, 4])
         // aContainer: elementByBirthDot=[(A,1): 1, (A,2): 3, (B,1): 3, (B,2): 4], vv=[(A,2), (B,2)], gaps=[]
         aContainer.versionContext.vv[replicaA].shouldEqual(2)
@@ -360,7 +376,6 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(3)
         aContainer.elementByBirthDot[VersionDot(replicaB, 1)]!.shouldEqual(3) // From B; A didn't have this dot and A's version context doesn't dominate B's
         aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.delta.shouldBeNil() // delta cleared after `merge`
     }
 
     func test_VersionedContainer_mergeDelta_replicaBHasRemovalsThatReplicaAHasNotSeen_replicaAShouldDelete() throws {
@@ -370,24 +385,27 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.add(1)
         aContainer.add(3)
         // aContainer: elementByBirthDot=[(A,1): 1, (A,2): 3], vv=[(A,2)], gaps=[]; delta: elementByBirthDot=[(A,1): 1, (A,2): 3], vv=[(A,2)], gaps=[]
-        aContainer.delta.shouldNotBeNil()
+        guard let aDelta = aContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(aContainer)")
+        }
 
         bContainer.add(3)
         // bContainer: elementByBirthDot=[(B,1): 3], vv=[(B,1)], gaps=[]
 
         // Merge aContainer.delta into bContainer so that the latter's version context dominates
-        bContainer.mergeDelta(aContainer.delta!)
-        bContainer.delta.shouldBeNil() // delta cleared after `mergeDelta`
+        bContainer.mergeDelta(aDelta)
         // bContainer: elementByBirthDot=[(A,1): 1, (A,2): 3, (B,1): 3], vv=[(A,2), (B,1)], gaps=[]
 
         bContainer.remove(3)
         // bContainer: elementByBirthDot=[(A,1): 1], vv=[(A,2), (B,1)], gaps=[]; delta: elementByBirthDot=[], vv=[(B,1)], gaps=[(A,2)]
         bContainer.add(4)
         // bContainer: elementByBirthDot=[(A,1): 1, (B,2): 4], vv=[(A,2), (B,2)], gaps=[]; delta: elementByBirthDot=[(B,2): 4], vv=[(B,2)], gaps=[(A,2)]
-        bContainer.delta.shouldNotBeNil()
+        guard let bDelta = bContainer.delta else {
+            throw shouldNotHappen("Expected delta to be non nil, got \(bContainer)")
+        }
 
         // `mergeDelta` mutates aContainer
-        aContainer.mergeDelta(bContainer.delta!)
+        aContainer.mergeDelta(bDelta)
         aContainer.elements.shouldEqual([1, 4])
         // aContainer: elementByBirthDot=[(A,1): 1, (B,2): 4], vv=[(A,2), (B,2)], gaps=[]
         aContainer.versionContext.vv[replicaA].shouldEqual(2)
@@ -398,6 +416,5 @@ final class CRDTVersioningTests: XCTestCase {
         aContainer.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // (A,2): 3 deleted in B and B's version context dominates A's, so A deleted it
         aContainer.elementByBirthDot[VersionDot(replicaB, 1)].shouldBeNil() // (B,1): 3 deleted in B; A didn't see this
         aContainer.elementByBirthDot[VersionDot(replicaB, 2)]!.shouldEqual(4) // From B; A didn't have this dot and A's version context doesn't dominate B's
-        aContainer.delta.shouldBeNil() // delta cleared after `mergeDelta`
     }
 }

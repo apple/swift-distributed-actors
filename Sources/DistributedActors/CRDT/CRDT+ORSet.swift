@@ -84,13 +84,11 @@ extension CRDT {
         public mutating func merge(other: ORSet<Element>) {
             self.state.merge(other: other.state)
             self.compact()
-            self.resetDelta()
         }
 
         public mutating func mergeDelta(_ delta: Delta) {
             self.state.mergeDelta(delta)
             self.compact()
-            self.resetDelta()
         }
 
         /// Similar space reduction as described in the `add` method.
