@@ -44,28 +44,6 @@ enum Rendering {
 
         """
 
-    struct ActorSystemTemplate: Renderable {
-        let baseName: String
-
-        static let template = Template(
-            templateString:
-            """
-            \(Rendering.generatedFileHeader)
-            """
-        )
-
-        func render() throws -> String {
-            let context = [
-                "baseName": self.baseName,
-            ]
-
-            let rendered = try Self.template.render(context)
-            print(rendered)
-
-            return rendered
-        }
-    }
-
     struct ActorShellTemplate: Renderable {
         let baseName: String
         let funcs: [ActorFunc]
@@ -96,7 +74,7 @@ enum Rendering {
                         return .receiveMessage { message in
                             switch message { {% for func in funcs %}
                             case .{{func.name}}({% for param, type in func.params %} let {{param}} {% endfor %}):
-                                self.instance.{{func.name}}( {% for param, type in func.params %} {{param}}: {{param}} {% endfor %} )
+                                instance.{{func.name}}( {% for param, type in func.params %} {{param}}: {{param}} {% endfor %} )
                             {% endfor %} }
                             return .same
                         }
@@ -110,18 +88,11 @@ enum Rendering {
 
             // TODO: could this be ActorRef?
             // extension Actor where Message: Greetings { // FIXME would be nicer
-            extension Actor where Myself.Message == {{baseName}}.MessageEnum {
-            //    // generate and 1:1 matching the methods and the Greetings protocol
-            //    enum Message {
-            //        case greet(name: String, replyTo: ActorRef<GreetMe>)
-            //    }
-
-                // func greet(name: String, replyTo: ActorRef<GreetMe>) { // TODO: greet me
-            //        self.ref.tell(Greetings.Message.greet(name: name, replyTo: replyTo))
+            extension Actor where Myself.Message == {{baseName}}.Message {
 
                 {% for func in funcs %}
                 func {{func.name}}({% for param, type in func.params %} {{param}}: {{type}} {% endfor %}) {
-                    self.ref.tell(Greeter.MessageEnum.greet(name: name))
+                    self.ref.tell({{baseName}}.Message.greet(name: name))
                 }
                 {% endfor %}
             }

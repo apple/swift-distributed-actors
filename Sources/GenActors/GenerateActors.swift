@@ -33,23 +33,27 @@ final class GenerateActors {
         }
 
         try actorFilesToScan.forEach {
-            try self.run(file: $0)
+            try self.run(fileToParse: $0)
         }
 
         return actorFilesToScan.count > 0
     }
 
-    func run(file: File) throws -> Bool {
-        pprint("[gen actors] Parsing: \(file.path)")
+    func run(fileToParse: File) throws -> Bool {
+        pprint("[gen actors] Parsing: \(fileToParse.path)")
 
-        let url = URL(fileURLWithPath: file.path)
+        let url = URL(fileURLWithPath: fileToParse.path)
         let sourceFile = try SyntaxParser.parse(url)
 
         var gatherFuncs = GatherActorFuncs()
         sourceFile.walk(&gatherFuncs)
 
-        let renderedSystemExtension = try Rendering.ActorSystemTemplate(baseName: "Greeter").render()
         let renderedShell = try Rendering.ActorShellTemplate(baseName: "Greeter", funcs: gatherFuncs.actorFuncs).render()
+
+        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: "+Actor", with: "+GenActor")
+        let targetFile = try fileToParse.parent!.createFile(named: genActorFilename)
+        try targetFile.write(Rendering.generatedFileHeader)
+        try targetFile.append(renderedShell)
 
         return true
     }
