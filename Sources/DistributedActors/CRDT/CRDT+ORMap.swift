@@ -209,7 +209,8 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
     }
 }
 
-extension CRDT.ORMap where Value: ResettableCRDT {
+/// Convenience methods so users can call `resetValue` instead of "update-reset" for example.
+extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
     public mutating func resetValue(forKey key: Key) {
         // Reset value if exists
         if var value = self._values[key] {
@@ -249,6 +250,12 @@ public protocol ORMapOperations {
     mutating func unsafeRemoveAllValues()
 }
 
+public protocol ORMapWithResettableValue: ORMapOperations where Value: ResettableCRDT {
+    mutating func resetValue(forKey key: Key)
+
+    mutating func resetAllValues()
+}
+
 // See comments in CRDT.ORSet
 extension CRDT.ActorOwned where DataType: ORMapOperations {
     public var lastObservedValue: [DataType.Key: DataType.Value] {
@@ -278,6 +285,20 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
     public func unsafeRemoveAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Remove all values locally then propagate
         self.data.unsafeRemoveAllValues()
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}
+
+extension CRDT.ActorOwned where DataType: ORMapWithResettableValue {
+    public func resetValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+        // Reset value associated with the given key locally then propagate
+        self.data.resetValue(forKey: key)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func resetAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+        // Reset all values locally then propagate
+        self.data.resetAllValues()
         return self.write(consistency: consistency, timeout: timeout)
     }
 }
