@@ -20,19 +20,20 @@ extension CRDT {
     /// be CRDTs.
     ///
     /// Values are inserted or updated via `update`, using the provided `mutator`. The subscript is *read-only*--this
-    /// is to ensure that updates are performed on the values so causal history is preserved (if the CRDT keeps track
+    /// is to ensure that updates are performed on the values so causal histories are preserved (if the CRDT keeps track
     /// of causal history). Allowing read-write would mean values can be replaced, which poses the risks of wiping
     /// causal history (e.g., if a value is replaced by a newly created instance).
     ///
-    /// Be warned that `removeValue` (and `removeAll`) deletes a key-value and wipes the value's causal history in
-    /// the current replica. If changes were made to the same entry (i.e., a stale version of the value) in other
-    /// replica(s) *before* the deletion is propagated, then the entry would be re-added when those changes are
-    /// merged to this replica because they are considered to be more recent.
+    /// Be warned that `unsafeRemoveValue` (and similarly for `unsafeRemoveAllValues`) deletes a key-value and wipes the
+    /// value's causal history in the current replica. If changes were made to the same entry (i.e., a stale version of
+    /// the value) in other replica(s) *before* the deletion is propagated, then the entry would be re-added when those
+    /// changes are merged to this replica because they are considered to be more recent.
     ///
-    /// With that, if a value type supports clear/emptying operation (e.g., `CRDT.ORSet.removeAll`), it is important
-    /// to note the difference between applying it through `update` vs. `removeValue` then re-create. The latter does
-    /// NOT keep causal history and deletes the key-value from the ORMap, while the former keeps causal history but
-    /// also retains the key-value entry (e.g., the value would be an empty set).
+    /// With that, if a value type has causal history embedded AND supports the "reset" operation
+    /// (e.g., `CRDT.ORSet.removeAll`), it is important to note the difference between applying "reset" through
+    /// `update` vs. `unsafeRemoveValue` then re-create. `unsafeRemoveValue` does NOT keep causal history and deletes
+    /// the key-value from the ORMap, while update-reset keeps causal history but also retains the key-value entry
+    /// (e.g., the value would be an empty set).
     ///
     /// It is possible for an ORMap to contain different CRDT types as values, but for any given key the value type
     /// should remain the same, or perhaps more accurately, "mergeable". It is the user's responsibility to safe-guard
@@ -46,13 +47,15 @@ extension CRDT {
     /// all supported CRDTs are causal (i.e., have `CRDT.VersionContext` embedded).
     ///
     /// - SeeAlso: [Delta State Replicated Data Types](https://arxiv.org/pdf/1603.01529.pdf)
-    /// - SeeAlso: CRDT.ORSet
+    /// - SeeAlso: `CRDT.ORSet`
     public struct ORMap<Key: Hashable, Value: CvRDT>: NamedDeltaCRDT, ORMapOperations {
         public typealias Delta = ORMapDelta<Key, Value>
 
         public let replicaId: ReplicaId
 
-        /// Creates a new `Value` instance.
+        /// Creates a new `Value` instance. e.g., zero counter, empty set, etc.
+        /// The initializer should not close over mutable state as no strong guarantees are provided about
+        /// which context it will execute on.
         private let valueInitializer: () -> Value
 
         /// ORSet to maintain causal history of the keys only; values keep their own causal history (if applicable).
@@ -100,14 +103,15 @@ extension CRDT {
             self._values = [:]
         }
 
-        /// Updates value for the given `key` in the `ORMap` by applying `mutator`. Creates a new `Value` with
-        /// `self.valueInitializer` if it does not exist.
-        public mutating func update(key: Key, mutator: (Value) -> Value) {
+        /// Creates a new "zero" value using `valueInitializer` if the given `key` has no value, and passes this
+        /// zero value to the `mutator`. Otherwise the value present for the `key` is passed in.
+        public mutating func update(key: Key, mutator: (inout Value) -> Void) {
             // Always add `key` to `_keys` set to track its causal history
             self._keys.add(key)
 
-            // Apply `mutator` to the value and save the result. Create `Value` if needed.
-            let value = mutator(self._values[key] ?? self.valueInitializer())
+            // Apply `mutator` to the value then save it to state. Create `Value` if needed.
+            var value = self._values[key] ?? self.valueInitializer()
+            mutator(&value)
             self._values[key] = value
 
             // Update delta
@@ -115,17 +119,19 @@ extension CRDT {
         }
 
         /// Removes `key` and the associated value from the `ORMap`.
-        /// WARNING: this erases the value's causal history and may cause anomalies!
-        public mutating func removeValue(forKey key: Key) -> Value? {
+        ///
+        /// - ***Warning**: this erases the value's causal history and may cause anomalies!
+        public mutating func unsafeRemoveValue(forKey key: Key) -> Value? {
             self._keys.remove(key)
             let result = self._values.removeValue(forKey: key)
             self.updatedValues.removeValue(forKey: key)
             return result
         }
 
-        /// Removes all entries for the `ORMap`.
-        /// WARNING: this erases all of the values' causal history and may cause anomalies!
-        public mutating func removeAll() {
+        /// Removes all entries from the `ORMap`.
+        ///
+        /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
+        public mutating func unsafeRemoveAllValues() {
             self._keys.removeAll()
             self._values.removeAll()
             self.updatedValues.removeAll()
@@ -209,9 +215,17 @@ public protocol ORMapOperations {
 
     var underlying: [Key: Value] { get }
 
-    mutating func update(key: Key, mutator: (Value) -> Value)
-    mutating func removeValue(forKey key: Key) -> Value?
-    mutating func removeAll()
+    mutating func update(key: Key, mutator: (inout Value) -> Void)
+
+    /// Removes `key` and the associated value from the `ORMap`.
+    ///
+    /// - ***Warning**: this erases the value's causal history and may cause anomalies!
+    mutating func unsafeRemoveValue(forKey key: Key) -> Value?
+
+    /// Removes all entries from the `ORMap`.
+    ///
+    /// - ***Warning**: this erases all of the values' causal histories and may cause anomalies!
+    mutating func unsafeRemoveAllValues()
 }
 
 // See comments in CRDT.ORSet
@@ -220,21 +234,29 @@ extension CRDT.ActorOwned where DataType: ORMapOperations {
         return self.data.underlying
     }
 
-    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (DataType.Value) -> DataType.Value) -> OperationResult<DataType> {
+    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
         // Apply mutator to the value associated with `key` locally then propagate
         self.data.update(key: key, mutator: mutator)
         return self.write(consistency: consistency, timeout: timeout)
     }
 
-    public func removeValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    /// Removes `key` and the associated value from the `ORMap`. Must achieve the given `writeConsistency` within
+    /// `timeout` to be considered successful.
+    ///
+    /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
+    public func unsafeRemoveValue(forKey key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Remove value associated with the given key locally then propagate
-        _ = self.data.removeValue(forKey: key)
+        _ = self.data.unsafeRemoveValue(forKey: key)
         return self.write(consistency: consistency, timeout: timeout)
     }
 
-    public func removeAll(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+    /// Removes all entries from the `ORMap`. Must achieve the given `writeConsistency` within `timeout` to be
+    /// considered successful.
+    ///
+    /// - ***Warning**: This might cause anomalies! See `CRDT.ORMap` documentation for more details.
+    public func unsafeRemoveAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Remove all values locally then propagate
-        self.data.removeAll()
+        self.data.unsafeRemoveAllValues()
         return self.write(consistency: consistency, timeout: timeout)
     }
 }

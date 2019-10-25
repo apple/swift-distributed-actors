@@ -31,21 +31,9 @@ final class CRDTORMapTests: XCTestCase {
         m1.count.shouldEqual(0)
         m1.isEmpty.shouldBeTrue()
 
-        m1.update(key: "g1") {
-            var g1 = $0
-            g1.increment(by: 5)
-            return g1
-        }
-        m1.update(key: "g2") {
-            var g2 = $0
-            g2.increment(by: 3)
-            return g2
-        }
-        m1.update(key: "g1") {
-            var g1 = $0
-            g1.increment(by: 2)
-            return g1
-        }
+        m1.update(key: "g1") { $0.increment(by: 5) }
+        m1.update(key: "g2") { $0.increment(by: 3) }
+        m1.update(key: "g1") { $0.increment(by: 2) }
 
         guard let g1 = m1["g1"] else {
             throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1)")
@@ -63,7 +51,7 @@ final class CRDTORMapTests: XCTestCase {
         m1.isEmpty.shouldBeFalse()
 
         // Delete g1
-        _ = m1.removeValue(forKey: "g1")
+        _ = m1.unsafeRemoveValue(forKey: "g1")
 
         // g1 should no longer exist
         m1["g1"].shouldBeNil()
@@ -79,7 +67,7 @@ final class CRDTORMapTests: XCTestCase {
         m1.count.shouldEqual(1)
         m1.isEmpty.shouldBeFalse()
 
-        m1.removeAll()
+        m1.unsafeRemoveAllValues()
 
         m1["g1"].shouldBeNil()
         m1["g2"].shouldBeNil()
@@ -93,11 +81,7 @@ final class CRDTORMapTests: XCTestCase {
     func test_ORMap_GCounter_update_remove_shouldUpdateDelta() throws {
         var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
 
-        m1.update(key: "g1") {
-            var g1 = $0
-            g1.increment(by: 5)
-            return g1
-        }
+        m1.update(key: "g1") { $0.increment(by: 5) }
         m1.count.shouldEqual(1)
 
         guard let d1 = m1.delta else {
@@ -115,11 +99,7 @@ final class CRDTORMapTests: XCTestCase {
         }
         dg1.value.shouldEqual(5)
 
-        m1.update(key: "g2") {
-            var g2 = $0
-            g2.increment(by: 3)
-            return g2
-        }
+        m1.update(key: "g2") { $0.increment(by: 3) }
         m1.count.shouldEqual(2)
 
         guard let d2 = m1.delta else {
@@ -143,7 +123,7 @@ final class CRDTORMapTests: XCTestCase {
         }
         dgg2.value.shouldEqual(3)
 
-        _ = m1.removeValue(forKey: "g1")
+        _ = m1.unsafeRemoveValue(forKey: "g1")
         m1.count.shouldEqual(1) // g2
 
         guard let d3 = m1.delta else {
@@ -162,11 +142,7 @@ final class CRDTORMapTests: XCTestCase {
         }
         dggg2.value.shouldEqual(3)
 
-        m1.update(key: "g1") {
-            var g1 = $0
-            g1.increment(by: 6)
-            return g1
-        }
+        m1.update(key: "g1") { $0.increment(by: 6) }
         m1.count.shouldEqual(2) // g1 and g2
 
         guard let d4 = m1.delta else {
@@ -193,9 +169,7 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(B,1): "g1"]
         // `values`: ["g1": GCounter(value = 5)]
         m2.update(key: "g1") { // (B,1)
-            var g1 = $0
-            g1.increment(by: 5)
-            return g1
+            $0.increment(by: 5)
         }
 
         m1.merge(other: m2)
@@ -214,27 +188,19 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "g1", (A,2): "g2"]
         // `values`: ["g1": GCounter(value = 5 + 2 = 7), "g2": GCounter(value = 6)]
         m1.update(key: "g1") { // (A,1) replaces (B,1) because it's "newer"
-            var g1 = $0
-            g1.increment(by: 2)
-            return g1
+            $0.increment(by: 2)
         }
         m1.update(key: "g2") { // (A,2)
-            var g2 = $0
-            g2.increment(by: 6)
-            return g2
+            $0.increment(by: 6)
         }
 
         // ORSet `keys`: [(B,3): "g1", (B,2): "g2"]
         // `values`: ["g1": GCounter(value = 6), "g2": GCounter(value = 3)]
         m2.update(key: "g2") { // (B,2)
-            var g2 = $0
-            g2.increment(by: 3)
-            return g2
+            $0.increment(by: 3)
         }
         m2.update(key: "g1") { // (B,3) replaces (B,1)
-            var g1 = $0
-            g1.increment(by: 1)
-            return g1
+            $0.increment(by: 1)
         }
 
         // ORSet `keys`: [(A,1): "g1", (A,2): "g2", (B,2): "g2", (B,3): "g1"]
@@ -266,33 +232,23 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "g1", (A,2): "g2"]
         // `values`: ["g1": GCounter(value = 8), "g2": GCounter(value = 6)]
         m1.update(key: "g1") { // (A,1)
-            var g1 = $0
-            g1.increment(by: 8)
-            return g1
+            $0.increment(by: 8)
         }
         m1.update(key: "g2") { // (A,2)
-            var g2 = $0
-            g2.increment(by: 6)
-            return g2
+            $0.increment(by: 6)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaB, valueInitializer: { CRDT.GCounter(replicaId: self.replicaB) })
         // ORSet `keys`: [(B,1): "g2", (B,2): "g3", (B,3): "g1"]
         // `values`: ["g1": GCounter(value = 2), "g2": GCounter(value = 3), "g3": GCounter(value = 5)]
         m2.update(key: "g2") { // (B,1)
-            var g2 = $0
-            g2.increment(by: 3)
-            return g2
+            $0.increment(by: 3)
         }
         m2.update(key: "g3") { // (B,2)
-            var g3 = $0
-            g3.increment(by: 5)
-            return g3
+            $0.increment(by: 5)
         }
         m2.update(key: "g1") { // (B,3)
-            var g1 = $0
-            g1.increment(by: 2)
-            return g1
+            $0.increment(by: 2)
         }
 
         guard let delta = m2.delta else {
@@ -339,21 +295,9 @@ final class CRDTORMapTests: XCTestCase {
         m1.count.shouldEqual(0)
         m1.isEmpty.shouldBeTrue()
 
-        m1.update(key: "s1") {
-            var s1 = $0
-            s1.add(1)
-            return s1
-        }
-        m1.update(key: "s2") {
-            var s2 = $0
-            s2.add(3)
-            return s2
-        }
-        m1.update(key: "s1") {
-            var s1 = $0
-            s1.add(5)
-            return s1
-        }
+        m1.update(key: "s1") { $0.add(1) }
+        m1.update(key: "s2") { $0.add(3) }
+        m1.update(key: "s1") { $0.add(5) }
 
         guard let s1 = m1["s1"] else {
             throw shouldNotHappen("Expect m1 to contain \"s1\", got \(m1)")
@@ -371,7 +315,7 @@ final class CRDTORMapTests: XCTestCase {
         m1.isEmpty.shouldBeFalse()
 
         // Delete s1
-        _ = m1.removeValue(forKey: "s1")
+        _ = m1.unsafeRemoveValue(forKey: "s1")
 
         // s1 should no longer exist
         m1["s1"].shouldBeNil()
@@ -387,7 +331,7 @@ final class CRDTORMapTests: XCTestCase {
         m1.count.shouldEqual(1)
         m1.isEmpty.shouldBeFalse()
 
-        m1.removeAll()
+        m1.unsafeRemoveAllValues()
 
         m1["s1"].shouldBeNil()
         m1["s2"].shouldBeNil()
@@ -403,15 +347,11 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            var s1 = $0
-            s1.add(1)
-            s1.add(5)
-            return s1
+            $0.add(1)
+            $0.add(5)
         }
         m1.update(key: "s2") { // (A,2)
-            var s2 = $0
-            s2.add(3)
-            return s2
+            $0.add(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
@@ -437,7 +377,7 @@ final class CRDTORMapTests: XCTestCase {
         // Delete s1 from m1 (WARNING: this causes us to lose causal history for s1!!!)
         // ORSet `keys`: [(A,2): "s2"]
         // `values`: ["s2": [3]]
-        _ = m1.removeValue(forKey: "s1")
+        _ = m1.unsafeRemoveValue(forKey: "s1")
 
         guard let delta2 = m1.delta else {
             throw shouldNotHappen("m1.delta should not be nil after updates")
@@ -463,23 +403,19 @@ final class CRDTORMapTests: XCTestCase {
         m2._keys.state.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("s2")
     }
 
-    /// Demonstrates how using `removeValue` may potentially revive deleted elements (i.e., element in the deleted
+    /// Demonstrates how using `unsafeRemoveValue` may potentially revive deleted elements (i.e., element in the deleted
     /// ORSet) when replication has not been propagated yet and there are concurrent updates, because of the loss of
-    /// causal history associated with `removeValue`.
+    /// causal history associated with `unsafeRemoveValue`.
     func test_ORMap_ORSet_removeValue_revivesDeletedElementsOnMerge() throws {
         var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            var s1 = $0
-            s1.add(1)
-            s1.add(5)
-            return s1
+            $0.add(1)
+            $0.add(5)
         }
         m1.update(key: "s2") { // (A,2)
-            var s2 = $0
-            s2.add(3)
-            return s2
+            $0.add(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
@@ -505,7 +441,7 @@ final class CRDTORMapTests: XCTestCase {
         // Delete s1 from m1 (WARNING: this causes us to lose causal history for s1!!!)
         // ORSet `keys`: [(A,2): "s2"]
         // `values`: ["s2": [3]]
-        _ = m1.removeValue(forKey: "s1")
+        _ = m1.unsafeRemoveValue(forKey: "s1")
 
         // m2 doesn't know about deletion of m1.s1
 
@@ -513,10 +449,8 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(B,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5, 7], "s2": [3]]
         m2.update(key: "s1") { // (B,1) replaces (A,1) because it's "newer"
-            var s1 = $0
-            s1.add(5) // re-add
-            s1.add(7) // new
-            return s1
+            $0.add(5) // re-add
+            $0.add(7) // new
         }
 
         // This will bring m2.s1 to m1 and since m1 doesn't have causal history of s1 it re-adds the deleted
@@ -552,15 +486,11 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5], "s2": [3]]
         m1.update(key: "s1") { // (A,1)
-            var s1 = $0
-            s1.add(1)
-            s1.add(5)
-            return s1
+            $0.add(1)
+            $0.add(5)
         }
         m1.update(key: "s2") { // (A,2)
-            var s2 = $0
-            s2.add(3)
-            return s2
+            $0.add(3)
         }
 
         var m2 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaB, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaB) })
@@ -587,9 +517,7 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(A,3): "s1", (A,2): "s2"]
         // `values`: ["s1": [], "s2": [3]]
         m1.update(key: "s1") { // (A,3)
-            var s1 = $0
-            s1.removeAll()
-            return s1
+            $0.removeAll()
         }
 
         // m2 doesn't know about the changes made in m1.s1
@@ -598,10 +526,8 @@ final class CRDTORMapTests: XCTestCase {
         // ORSet `keys`: [(B,1): "s1", (A,2): "s2"]
         // `values`: ["s1": [1, 5, 7], "s2": [3]]
         m2.update(key: "s1") { // (B,1) replaces (A,1) because it's "newer"
-            var s1 = $0
-            s1.add(5) // re-add
-            s1.add(7) // new
-            return s1
+            $0.add(5) // re-add
+            $0.add(7) // new
         }
 
         // This will bring m2.s1 to m1 but deleted m1.s1 elements (i.e., 1, 5) should not be revived because

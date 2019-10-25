@@ -367,9 +367,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                 switch message {
                 case .increment(let key, let amount, let consistency, let timeout, let replyTo):
                     m.update(key: key, writeConsistency: consistency, timeout: timeout) {
-                        var g = $0
-                        g.increment(by: amount)
-                        return g
+                        $0.increment(by: amount)
                     }.onComplete { result in
                         switch result {
                         case .success(let m):
@@ -379,7 +377,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .removeValue(let key, let consistency, let timeout, let replyTo):
-                    m.removeValue(forKey: key, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                    m.unsafeRemoveValue(forKey: key, writeConsistency: consistency, timeout: timeout).onComplete { result in
                         switch result {
                         case .success(let m):
                             replyTo.tell(m.underlying)
