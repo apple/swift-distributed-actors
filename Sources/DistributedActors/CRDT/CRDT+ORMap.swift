@@ -35,6 +35,9 @@ extension CRDT {
     /// the key-value from the ORMap, while update-reset keeps causal history but also retains the key-value entry
     /// (e.g., the value would be an empty set).
     ///
+    /// Convenience methods `resetValue` and `resetAllValues` are provided for value types that conform to the
+    /// `ResettableCRDT` protocol to save users from doing update-reset explicitly.
+    ///
     /// It is possible for an ORMap to contain different CRDT types as values, but for any given key the value type
     /// should remain the same, or perhaps more accurately, "mergeable". It is the user's responsibility to safe-guard
     /// against writing different value types for the same key.
@@ -203,6 +206,24 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
             lv.merge(other: rv)
             self[k] = lv
         }
+    }
+}
+
+extension CRDT.ORMap where Value: ResettableCRDT {
+    public mutating func resetValue(forKey key: Key) {
+        // Reset value if exists
+        if var value = self._values[key] {
+            // Always add `key` to `_keys` set to track its causal history
+            self._keys.add(key)
+            // Update state and delta
+            value.reset()
+            self._values[key] = value
+            self.updatedValues[key] = value
+        }
+    }
+
+    public mutating func resetAllValues() {
+        self._values.keys.forEach { self.resetValue(forKey: $0) }
     }
 }
 

@@ -96,4 +96,14 @@ final class CRDTGCounterTests: XCTestCase {
         g1.delta.shouldNotBeNil() // delta should not be nil after increment
         g3.value.shouldEqual(11) // 1 (g1) + 10 (g2 delta)
     }
+
+    func test_GCounter_reset() throws {
+        var g1 = CRDT.GCounter(replicaId: self.replicaA)
+        g1.increment(by: 1)
+        g1.increment(by: 5)
+        g1.value.shouldEqual(6)
+
+        g1.reset()
+        g1.value.shouldEqual(0)
+    }
 }

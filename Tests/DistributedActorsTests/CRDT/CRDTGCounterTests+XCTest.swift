@@ -28,6 +28,7 @@ extension CRDTGCounterTests {
             ("test_GCounter_merging_shouldNotMutate", test_GCounter_merging_shouldNotMutate),
             ("test_GCounter_mergeDelta_shouldMutate", test_GCounter_mergeDelta_shouldMutate),
             ("test_GCounter_mergingDelta_shouldNotMutate", test_GCounter_mergingDelta_shouldNotMutate),
+            ("test_GCounter_reset", test_GCounter_reset),
         ]
     }
 }

@@ -29,6 +29,7 @@ extension CRDTORSetTests {
             ("test_ORSet_merge_shouldMutate_shouldCompact", test_ORSet_merge_shouldMutate_shouldCompact),
             ("test_ORSet_mergeDelta_shouldMutate", test_ORSet_mergeDelta_shouldMutate),
             ("test_ORSet_mergeDelta_shouldMutate_shouldCompact", test_ORSet_mergeDelta_shouldMutate_shouldCompact),
+            ("test_ORSet_reset", test_ORSet_reset),
         ]
     }
 }

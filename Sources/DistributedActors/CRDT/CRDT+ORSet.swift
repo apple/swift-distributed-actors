@@ -134,6 +134,13 @@ extension CRDT {
     }
 }
 
+extension CRDT.ORSet: ResettableCRDT {
+    public mutating func reset() {
+        // Doing this instead of `init` to preserve causal history
+        self.removeAll()
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 

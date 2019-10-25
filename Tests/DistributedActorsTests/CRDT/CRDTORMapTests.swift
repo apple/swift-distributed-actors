@@ -284,6 +284,45 @@ final class CRDTORMapTests: XCTestCase {
         m1._keys.state.elementByBirthDot[VersionDot(self.replicaB, 3)]!.shouldEqual("g1")
     }
 
+    func test_ORMap_GCounter_resetValue_resetAllValues() throws {
+        var m1 = CRDT.ORMap<String, CRDT.GCounter>(replicaId: self.replicaA, valueInitializer: { CRDT.GCounter(replicaId: self.replicaA) })
+        m1.update(key: "g1") {
+            $0.increment(by: 2)
+        }
+        m1.update(key: "g2") {
+            $0.increment(by: 6)
+        }
+
+        guard let g1 = m1["g1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1)")
+        }
+        g1.value.shouldEqual(2)
+
+        guard let g2 = m1["g2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g2\", got \(m1)")
+        }
+        g2.value.shouldEqual(6)
+
+        m1.resetValue(forKey: "g1")
+
+        guard let gg1 = m1["g1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g1\", got \(m1)")
+        }
+        gg1.value.shouldEqual(0) // reset
+
+        guard let gg2 = m1["g2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g2\", got \(m1)")
+        }
+        gg2.value.shouldEqual(6) // no change
+
+        m1.resetAllValues()
+
+        guard let ggg2 = m1["g2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"g2\", got \(m1)")
+        }
+        ggg2.value.shouldEqual(0)
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: ORMap + ORSet tests
 
@@ -555,5 +594,41 @@ final class CRDTORMapTests: XCTestCase {
         m1._keys.state.elementByBirthDot[VersionDot(self.replicaA, 2)]!.shouldEqual("s2")
         m1._keys.state.elementByBirthDot[VersionDot(self.replicaA, 3)]!.shouldEqual("s1")
         m1._keys.state.elementByBirthDot[VersionDot(self.replicaB, 1)]!.shouldEqual("s1")
+    }
+
+    func test_ORMap_ORSet_resetValue_resetAllValues() throws {
+        var m1 = CRDT.ORMap<String, CRDT.ORSet<Int>>(replicaId: self.replicaA, valueInitializer: { CRDT.ORSet<Int>(replicaId: self.replicaA) })
+        m1.update(key: "s1") { $0.add(1) }
+        m1.update(key: "s2") { $0.add(3) }
+        m1.update(key: "s1") { $0.add(5) }
+
+        guard let s1 = m1["s1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"s1\", got \(m1)")
+        }
+        s1.elements.shouldEqual([1, 5])
+
+        guard let s2 = m1["s2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"s2\", got \(m1)")
+        }
+        s2.elements.shouldEqual([3])
+
+        m1.resetValue(forKey: "s1")
+
+        guard let ss1 = m1["s1"] else {
+            throw shouldNotHappen("Expect m1 to contain \"s1\", got \(m1)")
+        }
+        ss1.isEmpty.shouldBeTrue() // reset
+
+        guard let ss2 = m1["s2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"s2\", got \(m1)")
+        }
+        ss2.elements.shouldEqual([3]) // no change
+
+        m1.resetAllValues()
+
+        guard let sss2 = m1["s2"] else {
+            throw shouldNotHappen("Expect m1 to contain \"s2\", got \(m1)")
+        }
+        sss2.isEmpty.shouldBeTrue()
     }
 }

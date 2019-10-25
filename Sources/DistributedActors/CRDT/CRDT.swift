@@ -117,6 +117,11 @@ public protocol NamedDeltaCRDT: DeltaCRDT {
     var replicaId: ReplicaId { get }
 }
 
+/// CRDT that can be reset to "zero" value. e.g., zero counter, empty set, etc.
+public protocol ResettableCRDT {
+    mutating func reset()
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor-owned CRDT
 

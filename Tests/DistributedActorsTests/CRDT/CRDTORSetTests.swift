@@ -205,4 +205,14 @@ final class CRDTORSetTests: XCTestCase {
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 2)]!.shouldEqual(3) // (B,2): 3 in different replica than (A,2): 3, so not removed by `compact`
         s1.state.elementByBirthDot[VersionDot(s2.replicaId, 3)]!.shouldEqual(7) // (B,3): 7
     }
+
+    func test_ORSet_reset() throws {
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
+        s1.add(1)
+        s1.add(3)
+        s1.elements.shouldEqual([1, 3])
+
+        s1.reset()
+        s1.isEmpty.shouldBeTrue()
+    }
 }

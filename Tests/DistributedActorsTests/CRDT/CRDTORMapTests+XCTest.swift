@@ -27,10 +27,12 @@ extension CRDTORMapTests {
             ("test_ORMap_GCounter_update_remove_shouldUpdateDelta", test_ORMap_GCounter_update_remove_shouldUpdateDelta),
             ("test_ORMap_GCounter_merge_shouldMutate", test_ORMap_GCounter_merge_shouldMutate),
             ("test_ORMap_GCounter_mergeDelta_shouldMutate", test_ORMap_GCounter_mergeDelta_shouldMutate),
+            ("test_ORMap_GCounter_resetValue_resetAllValues", test_ORMap_GCounter_resetValue_resetAllValues),
             ("test_ORMap_ORSet_basicOperations", test_ORMap_ORSet_basicOperations),
             ("test_ORMap_ORSet_removeValue_shouldRemoveInOtherReplicas", test_ORMap_ORSet_removeValue_shouldRemoveInOtherReplicas),
             ("test_ORMap_ORSet_removeValue_revivesDeletedElementsOnMerge", test_ORMap_ORSet_removeValue_revivesDeletedElementsOnMerge),
             ("test_ORMap_ORSet_update_deletedElementsShouldNotReviveOnMerge", test_ORMap_ORSet_update_deletedElementsShouldNotReviveOnMerge),
+            ("test_ORMap_ORSet_resetValue_resetAllValues", test_ORMap_ORSet_resetValue_resetAllValues),
         ]
     }
 }
