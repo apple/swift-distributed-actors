@@ -134,6 +134,13 @@ extension CRDT {
     }
 }
 
+extension CRDT.ORSet: ResettableCRDT {
+    public mutating func reset() {
+        // Doing this instead of `init` to preserve causal history
+        self.removeAll()
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned ORSet
 
@@ -144,6 +151,7 @@ public protocol ORSetOperations {
 
     mutating func add(_ element: Element)
     mutating func remove(_ element: Element)
+    mutating func removeAll()
 }
 
 // `CRDT.ORSet` is a generic type and we are not allowed to have `extension CRDT.ActorOwned where DataType == ORSet`. As
@@ -169,6 +177,12 @@ extension CRDT.ActorOwned where DataType: ORSetOperations {
     public func remove(_ element: DataType.Element, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Remove element locally then propagate
         self.data.remove(element)
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+
+    public func removeAll(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
+        // Remove all elements locally then propagate
+        self.data.removeAll()
         return self.write(consistency: consistency, timeout: timeout)
     }
 }

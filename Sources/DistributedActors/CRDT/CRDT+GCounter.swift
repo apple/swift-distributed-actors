@@ -96,6 +96,12 @@ extension CRDT {
     }
 }
 
+extension CRDT.GCounter: ResettableCRDT {
+    public mutating func reset() {
+        self = .init(replicaId: self.replicaId)
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ActorOwned GCounter
 

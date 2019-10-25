@@ -111,6 +111,7 @@ final class CRDTVersioningTests: XCTestCase {
         d1.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 0 -> 1 is contiguous
         d1.elementByBirthDot.count.shouldEqual(1)
         d1.elementByBirthDot[VersionDot(replicaA, 1)]!.shouldEqual(3) // Delta should also have the dot
+        d1.elements.shouldEqual([3])
 
         aContainer.add(5)
         aContainer.elements.shouldEqual([3, 5])
@@ -129,6 +130,7 @@ final class CRDTVersioningTests: XCTestCase {
         d2.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 1 -> 2 is contiguous
         d2.elementByBirthDot.count.shouldEqual(2)
         d2.elementByBirthDot[VersionDot(replicaA, 2)]!.shouldEqual(5) // Delta should also have the dot
+        d2.elements.shouldEqual([3, 5])
 
         // Add 3 again
         aContainer.add(3)
@@ -148,6 +150,7 @@ final class CRDTVersioningTests: XCTestCase {
         d3.versionContext.gaps.isEmpty.shouldBeTrue() // Dot was added to gaps but merged to vv since 2 -> 3 is contiguous
         d3.elementByBirthDot.count.shouldEqual(3)
         d3.elementByBirthDot[VersionDot(replicaA, 3)]!.shouldEqual(3) // Delta should also have the dot
+        d3.elements.shouldEqual([3, 5])
 
         aContainer.remove(3)
         aContainer.elements.shouldEqual([5])
@@ -166,6 +169,7 @@ final class CRDTVersioningTests: XCTestCase {
         d4.elementByBirthDot.count.shouldEqual(1)
         d4.elementByBirthDot[VersionDot(replicaA, 1)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
         d4.elementByBirthDot[VersionDot(replicaA, 3)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d4.elements.shouldEqual([5])
 
         aContainer.resetDelta()
         aContainer.delta.shouldBeNil()
@@ -189,6 +193,7 @@ final class CRDTVersioningTests: XCTestCase {
         d5.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
         d5.elementByBirthDot.count.shouldEqual(1)
         d5.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        d5.elements.shouldEqual([6])
 
         aContainer.remove(5)
         aContainer.elements.shouldEqual([6])
@@ -207,6 +212,7 @@ final class CRDTVersioningTests: XCTestCase {
         d6.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue()
         d6.elementByBirthDot.count.shouldEqual(1)
         d6.elementByBirthDot[VersionDot(replicaA, 2)].shouldBeNil() // Dot not in delta.elementByBirthDot indicates element is deleted
+        d6.elements.shouldEqual([6])
     }
 
     func test_VersionedContainer_removeAll_shouldAddAllBirthDotsToDeltaVersionContext() throws {
@@ -243,6 +249,7 @@ final class CRDTVersioningTests: XCTestCase {
         d1.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
         d1.elementByBirthDot.count.shouldEqual(1)
         d1.elementByBirthDot[VersionDot(replicaA, 4)]!.shouldEqual(6) // Delta should also have the dot
+        d1.elements.shouldEqual([6])
 
         // Remove all elements!
         aContainer.removeAll()
@@ -264,6 +271,7 @@ final class CRDTVersioningTests: XCTestCase {
         d2.versionContext.gaps.contains(VersionDot(self.replicaA, 4)).shouldBeTrue()
         d2.versionContext.gaps.contains(VersionDot(self.replicaA, 2)).shouldBeTrue() // (A,2) was added to delta gaps
         d2.elementByBirthDot.isEmpty.shouldBeTrue() // Dots not in delta.elementByBirthDot indicates elements are deleted
+        d2.elements.isEmpty.shouldBeTrue()
     }
 
     func test_VersionedContainer_merge_replicaBHasElementsThatReplicaAHasNotSeen_replicaAShouldAdd() throws {
