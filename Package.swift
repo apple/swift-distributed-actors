@@ -26,7 +26,7 @@ let targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: GenActor
+    // MARK: GenActors
 
     .target(
         name: "GenActors",
@@ -76,10 +76,13 @@ let targets: [PackageDescription.Target] = [
         dependencies: ["DistributedActorsConcurrencyHelpers"]
     ),
 
-//    .testTarget(
-//        name: "GenActorsTests",
-//        dependencies: ["GenActors"]
-//    ),
+    .testTarget(
+        name: "GenActorsTests",
+        dependencies: [
+            "GenActors",
+            "DistributedActorsTestKit",
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
@@ -193,12 +196,12 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
 
-    // ~~~ only for GenActor ~~~
+    // ~~~ only for GenActors ~~~
     .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.0"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
 
-        // ~~~ only for samples ~~~
+    // ~~~ only for samples ~~~
     .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
 ]
 

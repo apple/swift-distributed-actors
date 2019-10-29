@@ -25,7 +25,7 @@ import XCTest
 @testable import DistributedActorsConcurrencyHelpersTests
 @testable import DistributedActorsTestKitTests
 @testable import DistributedActorsTests
-@testable import GenActorTests
+@testable import GenActorsTests
 
 XCTMain([
     testCase(ActorAddressTests.allTests),

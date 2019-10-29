@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -17,19 +17,28 @@ import Files
 import Foundation
 import SwiftSyntax
 
-final class GenerateActors {
+public final class GenerateActors {
+    let scanFolder: Folder
     var args: [String]
 
-    let fileScanSuffix: String = "+Actor.swift"
+    let fileScanNameSuffix: String = "+Actorable"
+    let fileScanFullSuffix: String = "+Actorable.swift"
 
-    init(args: [String]) {
-        self.args = args
+    public init(args: [String]) {
         precondition(args.count > 0, "Syntax: genActors PATH [options]")
+
+        do {
+            self.scanFolder = try Folder(path: Folder.current.path + "/\(args.dropFirst().first!)")
+            self.args = Array(args.dropFirst(2))
+        } catch {
+            fatalError("Unable to initialize \(GenerateActors.self), error: \(error)")
+        }
     }
 
-    func run() throws -> Bool {
-        let actorFilesToScan = try Folder(path: "Samples/").files.recursive.filter { f in
-            f.name.hasSuffix("+Actor.swift")
+    public func run() throws -> Bool {
+        self.debug("Scanning \(self.scanFolder) for [\(self.fileScanFullSuffix)] suffixed files...")
+        let actorFilesToScan = self.scanFolder.files.recursive.filter { f in
+            f.name.hasSuffix(self.fileScanFullSuffix)
         }
 
         try actorFilesToScan.forEach {
@@ -39,72 +48,124 @@ final class GenerateActors {
         return actorFilesToScan.count > 0
     }
 
-    func run(fileToParse: File) throws -> Bool {
-        pprint("[gen actors] Parsing: \(fileToParse.path)")
+    public func run(fileToParse: File) throws -> Bool {
+        self.debug("Parsing: \(fileToParse.path)")
 
         let url = URL(fileURLWithPath: fileToParse.path)
         let sourceFile = try SyntaxParser.parse(url)
 
-        var gatherFuncs = GatherActorFuncs()
-        sourceFile.walk(&gatherFuncs)
+        var gather = GatherActorables()
+        sourceFile.walk(&gather)
 
-        let renderedShell = try Rendering.ActorShellTemplate(baseName: "Greeter", funcs: gatherFuncs.actorFuncs).render()
+        // TODO allow many actors in same file
+        let baseName = gather.actorable
 
-        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: "+Actor", with: "+GenActor")
+        let renderedShell = try Rendering.ActorShellTemplate(baseName: baseName, funcs: gather.actorFuncs).render()
+
+        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: self.fileScanNameSuffix, with: "+GenActor")
         let targetFile = try fileToParse.parent!.createFile(named: genActorFilename)
         try targetFile.write(Rendering.generatedFileHeader)
         try targetFile.append(renderedShell)
 
         return true
     }
+
+    func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
+        pprint("[gen-actors] \(message)", file: file, line: line)
+    }
 }
 
 // TODO: we do not allow many actors in the same file I guess
-struct GatherActorFuncs: SyntaxVisitor {
+struct GatherActorables: SyntaxVisitor {
     /// Those functions need to be made into message protocol and generate stuff for them
     var actorFuncs: [ActorFunc] = []
+    var actorable: String = ""
 
-    func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             return .skipChildren
         }
 
-        pprint("Actorable detected: \(node.identifier)")
+        self.debug("Actorable detected: [\(node.identifier.text)]")
+        self.actorable = node.identifier.text
+
+        pprint("self = \(self)")
+
         return .visitChildren
     }
 
-    func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
+    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             return .skipChildren
         }
 
-        pprint("Actorable detected: \(node.identifier)") // TODO: we could allow many
+        self.debug("Actorable detected: \(node.identifier)") // TODO: we could allow many
+        self.actorable = node.identifier.text
+
         return .visitChildren
     }
 
     mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+        let modifierTokenKinds = node.modifiers?.map {
+            $0.name.tokenKind
+        } ?? []
+
         // TODO: carry access control
-        guard node.modifiers?.contains(where: { mod in
-            pprint("mod.name.tokenKind = \(mod.name.tokenKind)")
-            return mod.name.tokenKind != .privateKeyword
-        }) ?? false else { // FIXME: if not present -> apply swifty rule
+        guard !modifierTokenKinds.contains(.privateKeyword) else {
             return .skipChildren
         }
 
+        let access: String
+        if modifierTokenKinds.contains(.publicKeyword) {
+            access = "public"
+        } else if modifierTokenKinds.contains(.internalKeyword) {
+            access = "internal"
+        } else {
+            access = ""
+        }
+
         // TODO: we could require it to be async as well or something
-        self.actorFuncs.append(.init(
-            access: "public",
-            name: "greet",
-            params: [
-                "name": "String",
-            ]
-        )
+        self.actorFuncs.append(
+            ActorFunc(message: ActorableMessageDecl(
+                access: access,
+                name: "\(node.identifier)",
+                params: node.signature.gatherParams()
+            ))
         )
 
         // pprint("MAKE INTO ACTOR FUNC: \(node)")
         return .skipChildren
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Gather parameters of function declarations
+
+struct GatherParameters: SyntaxVisitor {
+    typealias Output = [(String?, String, String)]
+    var params: Output = []
+
+    mutating func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
+        let firstName = node.firstName?.text
+        let secondName = node.secondName?.text ?? node.firstName?.text ?? "NOPE"
+        let type = node.type?.description ?? "<<NO_TYPE>>"
+
+        self.params.append((firstName, secondName, type))
+        return .skipChildren
+    }
+}
+
+extension FunctionSignatureSyntax {
+    func gatherParams() -> GatherParameters.Output {
+        var gather = GatherParameters()
+        self.walk(&gather)
+        return gather.params
+    }
+}
+
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Check type is Actorable
 
 extension DeclSyntax {
     func isActorable() -> Bool {
@@ -127,5 +188,11 @@ struct IsActorableVisitor: SyntaxVisitor {
 
     var shouldContinue: SyntaxVisitorContinueKind {
         return self.actorable ? .visitChildren : .skipChildren
+    }
+}
+
+extension SyntaxVisitor {
+    func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
+        pprint("[gen-actors] \(message)", file: file, line: line)
     }
 }

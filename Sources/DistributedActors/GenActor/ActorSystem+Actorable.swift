@@ -12,9 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Spawning `Actorable`
+
 extension ActorSystem {
-    public func spawn<A>(_ naming: ActorNaming, _: (A.Context) -> A) throws -> Actor<A>
-        where A: Actorable {
+    public func spawn<A: Actorable>(_ naming: ActorNaming, _: (A.ActorableContext) -> A) throws -> Actor<A> {
         let ref = try self.spawn(naming, of: A.Message.self, .setup {
             A.makeBehavior(context: $0)
         })
