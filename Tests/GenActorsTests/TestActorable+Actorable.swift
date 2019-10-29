@@ -14,17 +14,30 @@
 
 import DistributedActors
 
-struct Greeter: Actorable {
+// TODO take into account that type may not be public
+public struct TestActorable: Actorable {
+
+    var messages: [String] = []
 
     let context: ActorContext<Message>
-    init(context: ActorContext<Message>) {
+
+    public init(context: ActorContext<Message>) {
         self.context = context
     }
 
-    public func greet(name: String) {
-        print("Hello \(name)")
+    public mutating func ping() {
+        self.messages.append("\(#function)")
     }
 
-    // TODO allow non public actor funcs
+    public mutating func greet(name: String) {
+        self.messages.append("\(#function):\(name)")
+    }
 
+    public mutating func greetUnderscoreParam(_ name: String) {
+        self.messages.append("\(#function):\(name)")
+    }
+
+    public mutating func greet2(name: String, surname: String) {
+        self.messages.append("\(#function):\(name),\(surname)")
+    }
 }

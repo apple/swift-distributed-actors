@@ -14,13 +14,11 @@
 
 public protocol Actorable {
     associatedtype Message
-    associatedtype Context = ActorContext<Message>
-
-    var context: ActorContext<Message> { get }
+    associatedtype ActorableContext = ActorContext<Message>
 
     static func makeBehavior(context: ActorContext<Message>) -> Behavior<Message>
 
-    init(context: ActorContext<Self.Message>)
+    init(context: ActorableContext)
 }
 
 public struct Actor<Myself: Actorable> {
