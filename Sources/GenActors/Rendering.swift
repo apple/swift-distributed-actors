@@ -97,7 +97,7 @@ enum Rendering {
                 },
             ]
 
-            let rendered = try ActorShellTemplate.template.render(context)
+            let rendered = try Self.template.render(context)
             print(rendered)
 
             return rendered
@@ -147,7 +147,7 @@ struct ActorableMessageDecl {
     }
 
     var funcParams: String {
-        return self.params.map { first, second, type in
+        self.params.map { first, second, type in
             if let name = first {
                 if name == second {
                     // no need to write `name name: String`
