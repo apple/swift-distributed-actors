@@ -14,10 +14,10 @@
 
 import DistributedActors
 import DistributedActorsTestKit
-import GenActors
-import Foundation
-import XCTest
 import Files
+import Foundation
+import GenActors
+import XCTest
 
 final class GenerateActorsTests: XCTestCase {
     var system: ActorSystem!
@@ -41,7 +41,7 @@ final class GenerateActorsTests: XCTestCase {
 //        let folder = try Folder(path: "Tests/GenActorTests")
 //        let file = try folder.file(at: "TestActorable+Actorable.swift")
 //
-////        try gen.run(fileToParse: file)
+    ////        try gen.run(fileToParse: file)
 //    }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

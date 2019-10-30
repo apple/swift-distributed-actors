@@ -43,7 +43,7 @@ enum Rendering {
 
             extension {{baseName}} {
                 {{messageAccess}} enum Message { {% for case in funcCases %}
-                {{case}} {% endfor %} 
+                    {{case}} {% endfor %} 
                 }
             }
 
@@ -187,6 +187,7 @@ struct ActorableMessageDecl {
             }.joined(separator: ", ")
         }
     }
+
     var passMessage: String {
         var ret = ".\(self.name)"
 
@@ -201,7 +202,6 @@ struct ActorableMessageDecl {
 }
 
 struct ActorFunc {
-
     let message: ActorableMessageDecl
 
     func renderFuncTell() throws -> String {
