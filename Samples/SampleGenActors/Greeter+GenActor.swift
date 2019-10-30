@@ -17,9 +17,9 @@ extension Greeter {
 // MARK: DO NOT EDIT: Generated Greeter behavior
 
 extension Greeter {
-    public static func makeBehavior(context: ActorContext<Message>) -> Behavior<Message> {
+     public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
         return .setup { context in
-            var instance = Self(context: context) // TODO: has to become some "make"            
+            var instance = instance // TODO only var if any of the methods are mutating
 
             // /* await */ self.instance.preStart(context: context) // TODO: enable preStart
 
@@ -39,8 +39,7 @@ extension Greeter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for Greeter
 
-// TODO: could this be ActorRef?
-extension Actor where Myself.Message == Greeter.Message {
+extension Actor where A.Message == Greeter.Message {
     
      func greet(name: String) { // TODO: returning things
         self.ref.tell(.greet(name: name))

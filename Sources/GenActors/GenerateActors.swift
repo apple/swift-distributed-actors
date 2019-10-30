@@ -22,10 +22,10 @@ public final class GenerateActors {
     var args: [String]
 
     let fileScanNameSuffix: String = "+Actorable"
-    let fileScanFullSuffix: String = "+Actorable.swift"
+    let fileScanNameSuffixWithExtension: String = "+Actorable.swift"
 
     public init(args: [String]) {
-        precondition(args.count > 0, "Syntax: genActors PATH [options]")
+        precondition(args.count > 1, "Syntax: genActors PATH [options]")
 
         do {
             self.scanFolder = try Folder(path: Folder.current.path + "/\(args.dropFirst().first!)")
@@ -36,9 +36,9 @@ public final class GenerateActors {
     }
 
     public func run() throws -> Bool {
-        self.debug("Scanning \(self.scanFolder) for [\(self.fileScanFullSuffix)] suffixed files...")
+        self.debug("Scanning \(self.scanFolder) for [\(self.fileScanNameSuffixWithExtension)] suffixed files...")
         let actorFilesToScan = self.scanFolder.files.recursive.filter { f in
-            f.name.hasSuffix(self.fileScanFullSuffix)
+            f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
         }
 
         try actorFilesToScan.forEach {

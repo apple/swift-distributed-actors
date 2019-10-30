@@ -51,9 +51,9 @@ enum Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} behavior
 
             extension {{baseName}} {
-                public static func makeBehavior(context: ActorContext<Message>) -> Behavior<Message> {
+                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
                     return .setup { context in
-                        var instance = Self(context: context) // TODO: has to become some "make"            
+                        var instance = instance // TODO only var if any of the methods are mutating
 
                         // /* await */ self.instance.preStart(context: context) // TODO: enable preStart
 
@@ -72,8 +72,7 @@ enum Rendering {
             // ==== ----------------------------------------------------------------------------------------------------------------
             // MARK: Extend Actor for {{baseName}}
 
-            // TODO: could this be ActorRef?
-            extension Actor where Myself.Message == {{baseName}}.Message {
+            extension Actor where A.Message == {{baseName}}.Message {
                 {% for tell in funcTells %}
                 {{ tell }} 
                 {% endfor %}

@@ -16,15 +16,15 @@ public protocol Actorable {
     associatedtype Message
     associatedtype ActorableContext = ActorContext<Message>
 
-    static func makeBehavior(context: ActorContext<Message>) -> Behavior<Message>
+    static func makeBehavior(instance: Self) -> Behavior<Message>
 
     init(context: ActorableContext)
 }
 
-public struct Actor<Myself: Actorable> {
-    public let ref: ActorRef<Myself.Message>
+public struct Actor<A: Actorable> {
+    public let ref: ActorRef<A.Message>
 
-    public init(ref: ActorRef<Myself.Message>) {
+    public init(ref: ActorRef<A.Message>) {
         self.ref = ref
     }
 }
