@@ -14,9 +14,8 @@
 
 import DistributedActors
 
-// TODO take into account that type may not be public
+// TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
-
     var messages: [String] = []
 
     let context: ActorContext<Message>

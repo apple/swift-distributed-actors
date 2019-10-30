@@ -57,7 +57,7 @@ public final class GenerateActors {
         var gather = GatherActorables()
         sourceFile.walk(&gather)
 
-        // TODO allow many actors in same file
+        // TODO: allow many actors in same file
         let baseName = gather.actorable
 
         let renderedShell = try Rendering.ActorShellTemplate(baseName: baseName, funcs: gather.actorFuncs).render()
@@ -162,7 +162,6 @@ extension FunctionSignatureSyntax {
         return gather.params
     }
 }
-
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Check type is Actorable
