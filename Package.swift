@@ -3,6 +3,9 @@
 
 import PackageDescription
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Targets
+
 let targets: [PackageDescription.Target] = [
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actors
@@ -182,7 +185,10 @@ let targets: [PackageDescription.Target] = [
     ),
 ]
 
-let dependencies: [Package.Dependency] = [
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Dependencies
+
+var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-nio.git", from: "2.8.0"),
     .package(url: "https://github.com/apple/swift-nio-extras.git", from: "1.2.0"),
     .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.2.0"),
@@ -197,13 +203,27 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-metrics.git", from: "1.0.0"),
 
     // ~~~ only for GenActors ~~~
-    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
+    // <~~ swift-syntax depends on exact swift version, will be added below ~~>
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.0"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
 
     // ~~~ only for samples ~~~
     .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
 ]
+
+// ~~~ SwiftSyntax depends on exact Swift version, so we have to add it like this ~~~
+#if swift(>=5.1)
+dependencies.append(contentsOf: [
+    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50100.0")),
+])
+#else
+dependencies.append(contentsOf: [
+    .package(url: "https://github.com/apple/swift-syntax.git", .exact("0.50000.0")),
+])
+#endif
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Package Definition
 
 let package = Package(
     name: "swift-distributed-actors",

@@ -52,10 +52,16 @@ public final class GenerateActors {
         self.debug("Parsing: \(fileToParse.path)")
 
         let url = URL(fileURLWithPath: fileToParse.path)
+
+        #if swift(>=5.1)
         let sourceFile = try SyntaxParser.parse(url)
+        #else
+        // Swift 5.0
+        let sourceFile = try SyntaxTreeParser.parse(url)
+        #endif
 
         var gather = GatherActorables()
-        sourceFile.walk(&gather)
+        sourceFile.walk(gather)
 
         // TODO: allow many actors in same file
         let baseName = gather.actorable
@@ -76,12 +82,13 @@ public final class GenerateActors {
 }
 
 // TODO: we do not allow many actors in the same file I guess
-struct GatherActorables: SyntaxVisitor {
+// TODO: Can be struct but only in 5.1+
+final class GatherActorables: SyntaxVisitor {
     /// Those functions need to be made into message protocol and generate stuff for them
     var actorFuncs: [ActorFunc] = []
     var actorable: String = ""
 
-    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             return .skipChildren
         }
@@ -94,7 +101,7 @@ struct GatherActorables: SyntaxVisitor {
         return .visitChildren
     }
 
-    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             return .skipChildren
         }
@@ -105,7 +112,7 @@ struct GatherActorables: SyntaxVisitor {
         return .visitChildren
     }
 
-    mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let modifierTokenKinds = node.modifiers?.map {
             $0.name.tokenKind
         } ?? []
@@ -141,11 +148,12 @@ struct GatherActorables: SyntaxVisitor {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Gather parameters of function declarations
 
-struct GatherParameters: SyntaxVisitor {
+// TODO: Could be struct but only in Swift 5.1+
+final class GatherParameters: SyntaxVisitor {
     typealias Output = [(String?, String, String)]
     var params: Output = []
 
-    mutating func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
         let firstName = node.firstName?.text
         let secondName = node.secondName?.text ?? node.firstName?.text ?? "NOPE"
         let type = node.type?.description ?? "<<NO_TYPE>>"
@@ -158,7 +166,7 @@ struct GatherParameters: SyntaxVisitor {
 extension FunctionSignatureSyntax {
     func gatherParams() -> GatherParameters.Output {
         var gather = GatherParameters()
-        self.walk(&gather)
+        self.walk(gather)
         return gather.params
     }
 }
@@ -169,15 +177,16 @@ extension FunctionSignatureSyntax {
 extension DeclSyntax {
     func isActorable() -> Bool {
         var isActorable = IsActorableVisitor()
-        self.walk(&isActorable)
+        self.walk(isActorable)
         return isActorable.actorable
     }
 }
 
-struct IsActorableVisitor: SyntaxVisitor {
+// TODO: Could be struct but only in Swift 5.1+
+final class IsActorableVisitor: SyntaxVisitor {
     var actorable: Bool = false
 
-    mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
+    override func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
         if "\(node)".contains("Actorable") { // TODO: make less hacky
             self.actorable = true
             return .skipChildren
