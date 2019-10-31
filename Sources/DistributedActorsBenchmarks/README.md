@@ -5,13 +5,13 @@ Very much based on the Swift micro-benchmark infrastructure.
 To run:
 
 ```bash
-$ swift run Swift Distributed ActorsBenchmarks [options] NAME
+$ swift run DistributedActorsBenchmarks [options] NAME
 ```
 
 See also:
 
 ```bash
-$ swift run Swift Distributed ActorsBenchmarks --help
+$ swift run DistributedActorsBenchmarks --help
 ```
 
 for more usage information.

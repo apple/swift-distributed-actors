@@ -39,7 +39,7 @@ public let RingBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
         name: "RingBenchmarks.bench_ring_m100_000_n10_000",
         runFunction: bench_ring_m100_000_n10_000,
-        tags: [],
+        tags: [.actor],
         setUpFunction: { setUp { () in
             initLoop(m: 100_000, n: 10000)
         } },

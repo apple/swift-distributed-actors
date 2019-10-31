@@ -16,10 +16,10 @@ import DistributedActors
 import SwiftBenchmarkTools
 
 assert({
-    print("=================================================================")
+    print("===========================================================================")
     print("=   !!  YOU ARE RUNNING DistributedActorsBenchmarks IN DEBUG MODE  !!     =")
-    print("= When running on the command line, use: `swift run -c release` =")
-    print("=================================================================")
+    print("=     When running on the command line, use: `swift run -c release`       =")
+    print("===========================================================================")
     return true
 }())
 
