@@ -295,36 +295,36 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Write r1
-        guard case .applied = replicator.write(id, r1.asAnyStateBasedCRDT) else {
+        guard case .applied = replicator.write(id, r1a.asAnyStateBasedCRDT) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
 
-        // Make sure the assignment has a more recent timestamp
-        r1.assign(5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
+        // Make sure the new value has a more recent timestamp for it to "win" the merge
+        let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: SystemClock(timestamp: r1a.clock.timestamp.addingTimeInterval(1)))
 
         // Write the updated r1
-        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1.asAnyStateBasedCRDT) else {
+        guard case .applied(let writeResult, let isNew) = replicator.write(id, r1b.asAnyStateBasedCRDT) else {
             throw self.testKit.fail("The write operation should have been applied")
         }
         isNew.shouldBeFalse()
 
-        // Return value should match r1
+        // Return value should match r1b
         guard let wr1 = writeResult.underlying as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
-        wr1.value.shouldEqual(r1.value)
+        wr1.value.shouldEqual(r1b.value)
 
-        // Value in the data store should also match r1
+        // Value in the data store should also match r1b
         guard case .data(let readResult) = replicator.read(id) else {
-            throw self.testKit.fail("Data store should have r1")
+            throw self.testKit.fail("Data store should have r1b")
         }
         guard let rr1 = readResult.underlying as? CRDT.LWWRegister<Int> else {
             throw self.testKit.fail("Should be a LWWRegister<Int>")
         }
-        rr1.value.shouldEqual(r1.value)
+        rr1.value.shouldEqual(r1b.value)
     }
 
     func test_writeDelta_shouldFailIfCRDTIsNotInDataStore() throws {

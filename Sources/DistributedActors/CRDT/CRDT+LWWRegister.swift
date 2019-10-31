@@ -49,24 +49,11 @@ extension CRDT {
             self.updatedBy = self.replicaId
         }
 
-        @discardableResult
-        public mutating func assign(_ value: Value) -> Bool {
-            return self.assign(value, clock: Clock())
-        }
-
-        /// Assigns `value` to the register if `clock` is more recent.
-        ///
-        /// - Returns: True if the assignment took place and false otherwise.
-        @discardableResult
-        public mutating func assign(_ value: Value, clock: Clock) -> Bool {
-            // The greater timestamp wins
-            if self.clock < clock {
-                self.value = value
-                self.clock = clock
-                self.updatedBy = self.replicaId
-                return true
-            }
-            return false
+        /// Assigns `value` to the register.
+        public mutating func assign(_ value: Value) {
+            self.value = value
+            self.clock = Clock()
+            self.updatedBy = self.replicaId
         }
 
         public mutating func merge(other: LWWRegisterWithCustomClock<Clock, Value>) {
@@ -100,8 +87,7 @@ public protocol LWWRegisterOperations {
 
     var value: Value { get }
 
-    @discardableResult
-    mutating func assign(_ value: Value) -> Bool
+    mutating func assign(_ value: Value)
 }
 
 // See comments in CRDT.ORSet

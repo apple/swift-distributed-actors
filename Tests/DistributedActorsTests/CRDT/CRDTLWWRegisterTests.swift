@@ -90,7 +90,7 @@ final class CRDTLWWRegisterTests: XCTestCase {
         r1.initialValue.shouldEqual(3)
 
         // Make sure r1's value is changed to something different
-        r1.assign(5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
+        r1.assign(5)
         r1.value.shouldEqual(5)
 
         r1.reset()
