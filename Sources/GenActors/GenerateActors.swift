@@ -68,7 +68,7 @@ public final class GenerateActors {
 
         let renderedShell = try Rendering.ActorShellTemplate(baseName: baseName, funcs: gather.actorFuncs).render()
 
-        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: self.fileScanNameSuffix, with: "+GenActors")
+        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: self.fileScanNameSuffix, with: "+GenActor")
         guard let parentFolder = fileToParse.parent else {
             fatalError("Unable to locate or render Actorable definitions in \(fileToParse.parent).")
         }
