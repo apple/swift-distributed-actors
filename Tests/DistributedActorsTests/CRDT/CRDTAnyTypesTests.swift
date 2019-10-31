@@ -31,7 +31,7 @@ final class CRDTAnyTypesTests: XCTestCase {
 
         let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
         // Make sure r2's assignment has a more recent timestamp
-        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, timestamp: r1.timestamp.addingTimeInterval(1))
+        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
 
         // Can have AnyCvRDT of different concrete CRDTs in same collection
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [

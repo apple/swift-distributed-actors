@@ -18,45 +18,62 @@ import Foundation // for Date
 // MARK: LWWRegister as pure CRDT
 
 extension CRDT {
+    public typealias LWWRegister<Value> = CRDT.LWWRegisterWithCustomClock<SystemClock, Value>
+
     /// Last-Writer-Wins Register described in [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf).
     ///
-    /// By default LWWRegister does not have a `value` until `assign` is called. A new `timestamp` is generated each
-    /// `value` update, which is used in `merge` to determine total ordering of the assignments. The maximum timestamp
-    /// "wins", hence the name last-writer-wins register.
+    /// A new timestamp is generated for each `value` update, which is used in `merge` to determine total ordering
+    /// of the assignments. The greater timestamp "wins", hence the name last-writer-wins register.
     ///
-    /// In this implementation `timestamp`'s type is `Date`, but that can be enhanced to support custom clock instead,
-    /// as some of the other implementations have done.
+    /// `SystemClock` is the default type for timestamps. The use of custom `Clock` is also supported.
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
+    public struct LWWRegisterWithCustomClock<Clock: AbstractClock, Value>: CvRDT, LWWRegisterOperations {
         public let replicaId: ReplicaId
 
         let initialValue: Value
 
         public private(set) var value: Value
-        private(set) var timestamp: Date
+        private(set) var clock: Clock
         private(set) var updatedBy: ReplicaId
 
-        init(replicaId: ReplicaId, initialValue: Value, timestamp: Date = Date()) {
+        init(replicaId: ReplicaId, initialValue: Value) {
+            self.init(replicaId: replicaId, initialValue: initialValue, clock: Clock())
+        }
+
+        init(replicaId: ReplicaId, initialValue: Value, clock: Clock) {
             self.replicaId = replicaId
             self.initialValue = initialValue
             self.value = initialValue
-            self.timestamp = timestamp
+            self.clock = clock
             self.updatedBy = self.replicaId
         }
 
-        public mutating func assign(_ value: Value, timestamp: Date = Date()) {
-            if self.timestamp < timestamp {
-                self.value = value
-                self.timestamp = timestamp
-                self.updatedBy = self.replicaId
-            }
+        @discardableResult
+        public mutating func assign(_ value: Value) -> Bool {
+            return self.assign(value, clock: Clock())
         }
 
-        public mutating func merge(other: LWWRegister<Value>) {
-            if self.timestamp < other.timestamp {
+        /// Assigns `value` to the register if `clock` is more recent.
+        ///
+        /// - Returns true if the assignment took place and false otherwise.
+        @discardableResult
+        public mutating func assign(_ value: Value, clock: Clock) -> Bool {
+            // The greater timestamp wins
+            if self.clock < clock {
+                self.value = value
+                self.clock = clock
+                self.updatedBy = self.replicaId
+                return true
+            }
+            return false
+        }
+
+        public mutating func merge(other: LWWRegisterWithCustomClock<Clock, Value>) {
+            // The greater timestamp wins
+            if self.clock < other.clock {
                 self.value = other.value
-                self.timestamp = other.timestamp
+                self.clock = other.clock
                 self.updatedBy = other.updatedBy
             }
         }
@@ -83,7 +100,8 @@ public protocol LWWRegisterOperations {
 
     var value: Value { get }
 
-    mutating func assign(_ value: Value, timestamp: Date)
+    @discardableResult
+    mutating func assign(_ value: Value) -> Bool
 }
 
 // See comments in CRDT.ORSet
@@ -94,7 +112,7 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 
     public func assign(_ value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Assign value locally then propagate
-        self.data.assign(value, timestamp: Date())
+        self.data.assign(value)
         return self.write(consistency: consistency, timeout: timeout)
     }
 }

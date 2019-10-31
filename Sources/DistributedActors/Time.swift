@@ -413,3 +413,32 @@ public extension Deadline {
         return .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Clock
+
+/// Represents a timestamp with total order defined and therefore can be compared to establish causal order.
+public protocol AbstractClock: Comparable {
+    init()
+}
+
+/// A `Clock` implementation using `Date`.
+public struct SystemClock: AbstractClock {
+    internal let timestamp: Date
+
+    public init() {
+        self.init(timestamp: Date())
+    }
+
+    public init(timestamp: Date) {
+        self.timestamp = timestamp
+    }
+
+    public static func < (lhs: SystemClock, rhs: SystemClock) -> Bool {
+        return lhs.timestamp < rhs.timestamp
+    }
+
+    public static func == (lhs: SystemClock, rhs: SystemClock) -> Bool {
+        return lhs.timestamp == rhs.timestamp
+    }
+}

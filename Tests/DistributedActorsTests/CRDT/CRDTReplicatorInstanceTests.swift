@@ -303,7 +303,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         }
 
         // Make sure the assignment has a more recent timestamp
-        r1.assign(5, timestamp: r1.timestamp.addingTimeInterval(1))
+        r1.assign(5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
 
         // Write the updated r1
         guard case .applied(let writeResult, let isNew) = replicator.write(id, r1.asAnyStateBasedCRDT) else {
