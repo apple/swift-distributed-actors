@@ -13,6 +13,7 @@ extension TestActorable {
         case greet(name: String)
         case greetUnderscoreParam(String)
         case greet2(name: String, surname: String)
+        case greetReplyToActorRef(name: String, replyTo: ActorRef<String>)
     }
 }
 
@@ -36,6 +37,8 @@ extension TestActorable {
                     instance.greetUnderscoreParam(name)
                 case .greet2(let name, let surname):
                     instance.greet2(name: name, surname: surname)
+                case .greetReplyToActorRef(let name, let replyTo):
+                    instance.greetReplyToActorRef(name: name, replyTo: replyTo)
                 }
                 return .same
             }
@@ -61,5 +64,9 @@ extension Actor where A.Message == TestActorable.Message {
 
     public func greet2(name: String, surname: String) { // TODO: returning things
         self.ref.tell(.greet2(name: name, surname: surname))
+    }
+
+    public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { // TODO: returning things
+        self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
     }
 }

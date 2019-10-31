@@ -62,7 +62,7 @@ internal enum ClusterReceptionist {
                 case let message as _Lookup:
                     try ClusterReceptionist.onLookup(context: context, message: message, storage: storage)
 
-                // TODO: subcribe must be made cluster aware
+                // TODO: subscribe must be made cluster aware
                 case let message as _Subscribe:
                     try ClusterReceptionist.onSubscribe(context: context, message: message, storage: storage)
 

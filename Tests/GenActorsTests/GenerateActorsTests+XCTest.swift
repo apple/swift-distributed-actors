@@ -25,6 +25,8 @@ extension GenerateActorsTests {
         return [
             ("test_generated_TestActorable_greet", test_generated_TestActorable_greet),
             ("test_generated_TestActorable_greet_underscoreParam", test_generated_TestActorable_greet_underscoreParam),
+            ("test_generated_TestActorable_greet2", test_generated_TestActorable_greet2),
+            ("test_generated_TestActorable_greetReplyToActorRef", test_generated_TestActorable_greetReplyToActorRef),
         ]
     }
 }

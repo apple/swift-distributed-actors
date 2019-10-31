@@ -51,7 +51,7 @@ enum Rendering {
             // MARK: DO NOT EDIT: Generated {{baseName}} behavior
 
             extension {{baseName}} {
-                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
+                public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
                     return .setup { context in
                         var instance = instance // TODO only var if any of the methods are mutating
 

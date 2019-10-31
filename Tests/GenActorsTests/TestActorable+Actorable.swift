@@ -39,4 +39,9 @@ public struct TestActorable: Actorable {
     public mutating func greet2(name: String, surname: String) {
         self.messages.append("\(#function):\(name),\(surname)")
     }
+
+    public mutating func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
+        self.messages.append("\(#function):\(name),\(replyTo)")
+        replyTo.tell("Hello \(name)!")
+    }
 }
