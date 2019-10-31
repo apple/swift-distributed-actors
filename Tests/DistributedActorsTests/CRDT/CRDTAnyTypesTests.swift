@@ -29,12 +29,18 @@ final class CRDTAnyTypesTests: XCTestCase {
         var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
+        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA)
+        r1.assign(3)
+        var r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB)
+        // Make sure r2's assignment has a more recent timestamp
+        r2.assign(5, timestamp: r1.timestamp.addingTimeInterval(1))
+
         // Can have AnyCvRDT of different concrete CRDTs in same collection
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [
             "gcounter-1": AnyCvRDT(g1),
             "gcounter-2": AnyCvRDT(g2),
-            "mock-1": AnyCvRDT(MockCvRDT()),
-            "mock-2": AnyCvRDT(MockCvRDT()),
+            "lwwreg-1": AnyCvRDT(r1),
+            "lwwreg-2": AnyCvRDT(r2),
         ]
 
         guard var gg1: AnyCvRDT = anyCvRDTs["gcounter-1"] else {
@@ -43,12 +49,6 @@ final class CRDTAnyTypesTests: XCTestCase {
         guard let gg2: AnyCvRDT = anyCvRDTs["gcounter-2"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
-
-        // g1 is mutated; g2 is not
-        g1.merge(other: g2)
-
-        g1.value.shouldEqual(11)
-        g2.value.shouldEqual(10)
 
         // gg1 is mutated; gg2 is not
         gg1.merge(other: gg2)
@@ -61,26 +61,48 @@ final class CRDTAnyTypesTests: XCTestCase {
         }
         ugg1.value.shouldEqual(11)
         ugg2.value.shouldEqual(10)
+
+        guard var rr1: AnyCvRDT = anyCvRDTs["lwwreg-1"] else {
+            throw shouldNotHappen("Dictionary should not return nil for key")
+        }
+        guard let rr2: AnyCvRDT = anyCvRDTs["lwwreg-2"] else {
+            throw shouldNotHappen("Dictionary should not return nil for key")
+        }
+
+        // rr1 is mutated; rr2 is not
+        rr1.merge(other: rr2)
+
+        guard let urr1 = rr1.underlying as? CRDT.LWWRegister<Int> else {
+            throw shouldNotHappen("Underlying should be a LWWRegister<Int>")
+        }
+        guard let urr2 = rr2.underlying as? CRDT.LWWRegister<Int> else {
+            throw shouldNotHappen("Underlying should be a LWWRegister<Int>")
+        }
+        urr1.value.shouldEqual(5)
+        urr2.value.shouldEqual(5)
     }
 
     func test_AnyCvRDT_throwWhenIncompatibleTypesAttemptToBeMerged() throws {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
+        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA)
+        r1.assign(3)
+
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [
             "gcounter-1": AnyCvRDT(g1),
-            "mock-1": AnyCvRDT(MockCvRDT()),
+            "lwwreg-1": AnyCvRDT(r1),
         ]
 
         guard var gg1: AnyCvRDT = anyCvRDTs["gcounter-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
-        guard let m1: AnyCvRDT = anyCvRDTs["mock-1"] else {
+        guard let rr1: AnyCvRDT = anyCvRDTs["lwwreg-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
         let error = shouldThrow {
-            try gg1.tryMerge(other: m1)
+            try gg1.tryMerge(other: rr1)
         }
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
@@ -132,20 +154,23 @@ final class CRDTAnyTypesTests: XCTestCase {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
+        s1.add(3)
+
         let anyDeltaCRDTs: [CRDT.Identity: AnyDeltaCRDT] = [
             "gcounter-1": g1.asAnyDeltaCRDT,
-            "mock-1": AnyDeltaCRDT(MockDeltaCRDT()),
+            "orset-1": s1.asAnyDeltaCRDT,
         ]
 
         guard var gg1: AnyDeltaCRDT = anyDeltaCRDTs["gcounter-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
-        guard let m1: AnyDeltaCRDT = anyDeltaCRDTs["mock-1"] else {
+        guard let ss1: AnyDeltaCRDT = anyDeltaCRDTs["orset-1"] else {
             throw shouldNotHappen("Dictionary should not return nil for key")
         }
 
         let error = shouldThrow {
-            try gg1.tryMerge(other: m1)
+            try gg1.tryMerge(other: ss1)
         }
         "\(error)".shouldStartWith(prefix: "incompatibleTypesMergeAttempted")
     }
@@ -173,11 +198,17 @@ final class CRDTAnyTypesTests: XCTestCase {
         var g1 = CRDT.GCounter(replicaId: self.replicaA)
         g1.increment(by: 1)
 
+        var s1 = CRDT.ORSet<Int>(replicaId: self.replicaA)
+        s1.add(3)
+
         var gg1 = g1.asAnyDeltaCRDT
-        let d = AnyCvRDT(MockCvRDT())
+
+        guard let d = s1.delta else {
+            throw shouldNotHappen("Delta should not be nil")
+        }
 
         let error = shouldThrow {
-            try gg1.tryMergeDelta(d)
+            try gg1.tryMergeDelta(d.asAnyCvRDT)
         }
         "\(error)".shouldStartWith(prefix: "incompatibleDeltaTypeMergeAttempted")
     }
@@ -195,34 +226,5 @@ final class CRDTAnyTypesTests: XCTestCase {
             throw shouldNotHappen("Should be a GCounter")
         }
         ugg1.delta.shouldBeNil()
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: CRDT types for testing
-
-// TODO: remove after we implement more CRDTs
-
-struct MockCvRDT: CvRDT {
-    mutating func merge(other: MockCvRDT) {
-        print("MockCvRDT merge")
-    }
-}
-
-struct MockDeltaCRDT: DeltaCRDT {
-    typealias Delta = MockCvRDT
-
-    var delta: Delta?
-
-    mutating func merge(other: MockDeltaCRDT) {
-        print("MockDeltaCRDT merge")
-    }
-
-    mutating func mergeDelta(_: Delta) {
-        print("MockDeltaCRDT mergeDelta")
-    }
-
-    func resetDelta() {
-        print("MockDeltaCRDT resetDelta")
     }
 }
