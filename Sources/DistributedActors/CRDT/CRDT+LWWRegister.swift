@@ -56,7 +56,7 @@ extension CRDT {
 
         /// Assigns `value` to the register if `clock` is more recent.
         ///
-        /// - Returns true if the assignment took place and false otherwise.
+        /// - Returns: True if the assignment took place and false otherwise.
         @discardableResult
         public mutating func assign(_ value: Value, clock: Clock) -> Bool {
             // The greater timestamp wins
