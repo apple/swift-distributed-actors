@@ -418,7 +418,7 @@ public extension Deadline {
 // MARK: Clock
 
 /// Represents a timestamp with total order defined and therefore can be compared to establish causal order.
-public protocol AbstractClock: Comparable {
+public protocol AbstractClock: Comparable, CustomStringConvertible {
     init()
 }
 
@@ -440,5 +440,11 @@ public struct SystemClock: AbstractClock {
 
     public static func == (lhs: SystemClock, rhs: SystemClock) -> Bool {
         return lhs.timestamp == rhs.timestamp
+    }
+}
+
+extension SystemClock: CustomStringConvertible {
+    public var description: String {
+        return "\(self.timestamp.description)"
     }
 }
