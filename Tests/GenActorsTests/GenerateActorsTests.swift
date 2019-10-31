@@ -55,9 +55,25 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_generated_TestActorable_greet_underscoreParam() throws {
-        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+        let actor = try system.spawn(.anonymous, TestActorable.init)
 
         actor.greetUnderscoreParam("Caplin")
         actor.ref.tell(.greetUnderscoreParam("Caplin"))
+    }
+
+    func test_generated_TestActorable_greet2() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        actor.greet2(name: "Caplin", surname: "Capybara")
+        actor.ref.tell(.greet2(name: "Caplin", surname: "Capybara"))
+    }
+
+    func test_generated_TestActorable_greetReplyToActorRef() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        actor.greetReplyToActorRef(name: "Caplin", replyTo: p.ref)
+
+        try p.expectMessage("Hello Caplin!")
     }
 }

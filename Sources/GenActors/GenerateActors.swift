@@ -45,7 +45,7 @@ public final class GenerateActors {
             try self.run(fileToParse: $0)
         }
 
-        return actorFilesToScan.count > 0
+        return !actorFilesToScan.isEmpty
     }
 
     public func run(fileToParse: File) throws -> Bool {
@@ -63,7 +63,10 @@ public final class GenerateActors {
         let renderedShell = try Rendering.ActorShellTemplate(baseName: baseName, funcs: gather.actorFuncs).render()
 
         let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: self.fileScanNameSuffix, with: "+GenActor")
-        let targetFile = try fileToParse.parent!.createFile(named: genActorFilename)
+        guard let parentFolder = fileToParse.parent else {
+            fatalError("Unable to locate or render Actorable definitions in \(fileToParse.parent).")
+        }
+        let targetFile = try parentFolder.createFile(named: genActorFilename)
         try targetFile.write(Rendering.generatedFileHeader)
         try targetFile.append(renderedShell)
 
@@ -147,8 +150,12 @@ struct GatherParameters: SyntaxVisitor {
 
     mutating func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
         let firstName = node.firstName?.text
-        let secondName = node.secondName?.text ?? node.firstName?.text ?? "NOPE"
-        let type = node.type?.description ?? "<<NO_TYPE>>"
+        guard let secondName = node.secondName?.text ?? firstName else {
+            fatalError("No `secondName` or `firstName` available at: \(node)")
+        }
+        guard let type = node.type?.description else {
+            fatalError("No `type` available at: \(node)")
+        }
 
         self.params.append((firstName, secondName, type))
         return .skipChildren

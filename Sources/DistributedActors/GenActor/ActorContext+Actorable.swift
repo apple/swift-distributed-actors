@@ -15,7 +15,7 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Spawning `Actorable`
 
-extension ActorSystem {
+extension ActorContext {
     /// Spawns an actor using an `Actorable`, that `GenActors` is able to generate methods and behaviors for.
     ///
     /// The actor is immediately available to receive messages, which may be sent to it using function calls, which are turned into message-sends.
