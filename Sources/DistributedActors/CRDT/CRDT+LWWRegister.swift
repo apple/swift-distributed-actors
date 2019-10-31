@@ -31,12 +31,18 @@ extension CRDT {
     public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
         public let replicaId: ReplicaId
 
-        public private(set) var value: Value?
-        private(set) var timestamp: Date = Date.distantPast
-        private(set) var updatedBy: ReplicaId?
+        let initialValue: Value
 
-        init(replicaId: ReplicaId) {
+        public private(set) var value: Value
+        private(set) var timestamp: Date
+        private(set) var updatedBy: ReplicaId
+
+        init(replicaId: ReplicaId, initialValue: Value, timestamp: Date = Date()) {
             self.replicaId = replicaId
+            self.initialValue = initialValue
+            self.value = initialValue
+            self.timestamp = timestamp
+            self.updatedBy = self.replicaId
         }
 
         public mutating func assign(_ value: Value, timestamp: Date = Date()) {
@@ -57,9 +63,15 @@ extension CRDT {
     }
 }
 
+extension CRDT.LWWRegister where Value: ExpressibleByNilLiteral {
+    init(replicaId: ReplicaId) {
+        self.init(replicaId: replicaId, initialValue: nil)
+    }
+}
+
 extension CRDT.LWWRegister: ResettableCRDT {
     public mutating func reset() {
-        self = .init(replicaId: self.replicaId)
+        self = .init(replicaId: self.replicaId, initialValue: self.initialValue)
     }
 }
 
@@ -69,14 +81,14 @@ extension CRDT.LWWRegister: ResettableCRDT {
 public protocol LWWRegisterOperations {
     associatedtype Value
 
-    var value: Value? { get }
+    var value: Value { get }
 
     mutating func assign(_ value: Value, timestamp: Date)
 }
 
 // See comments in CRDT.ORSet
 extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
-    public var lastObservedValue: DataType.Value? {
+    public var lastObservedValue: DataType.Value {
         return self.data.value
     }
 
@@ -88,8 +100,8 @@ extension CRDT.ActorOwned where DataType: LWWRegisterOperations {
 }
 
 extension CRDT.LWWRegister {
-    public static func owned<Message>(by owner: ActorContext<Message>, id: String) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
-        return CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address)))
+    public static func owned<Message>(by owner: ActorContext<Message>, id: String, initialValue: Value) -> CRDT.ActorOwned<CRDT.LWWRegister<Value>> {
+        return CRDT.ActorOwned<CRDT.LWWRegister>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWRegister<Value>(replicaId: .actorAddress(owner.address), initialValue: initialValue))
     }
 }
 

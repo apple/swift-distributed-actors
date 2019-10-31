@@ -262,8 +262,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA)
-        r1.assign(3)
+        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Ensure r1 is not in data store
         guard case .notFound = replicator.read(id) else {
@@ -296,8 +295,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA)
-        r1.assign(3)
+        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Write r1
         guard case .applied = replicator.write(id, r1.asAnyStateBasedCRDT) else {
@@ -380,8 +378,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA)
-        r1.assign(3)
+        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
 
         // Write r1 to data store
         guard case .applied = replicator.write(id, r1.asAnyStateBasedCRDT) else {

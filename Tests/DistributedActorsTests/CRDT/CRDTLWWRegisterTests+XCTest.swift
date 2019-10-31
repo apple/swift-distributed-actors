@@ -28,6 +28,7 @@ extension CRDTLWWRegisterTests {
             ("test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp", test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp),
             ("test_LWWRegister_merging_shouldNotMutate", test_LWWRegister_merging_shouldNotMutate),
             ("test_LWWRegister_reset", test_LWWRegister_reset),
+            ("test_LWWRegister_optionalValueType", test_LWWRegister_optionalValueType),
         ]
     }
 }
