@@ -141,13 +141,22 @@ struct GatherActorables: SyntaxVisitor {
             throwing = false
         }
 
+        let throwing: Bool
+        switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
+        case .throwsKeyword:
+            throwing = true
+        default:
+            throwing = false
+        }
+
         // TODO: we could require it to be async as well or something
         self.actorFuncs.append(
             ActorFunc(message: ActorableMessageDecl(
                 access: access,
-                throwing: throwing,
                 name: "\(node.identifier)",
-                params: node.signature.gatherParams()
+                params: node.signature.gatherParams(),
+                throwing: throwing,
+                returnType: .fromType(node.signature.output?.returnType)
             ))
         )
 
@@ -169,7 +178,7 @@ struct GatherParameters: SyntaxVisitor {
             fatalError("No `secondName` or `firstName` available at: \(node)")
         }
         guard let type = node.type?.description else {
-            fatalError("No `type` available at: \(node)")
+            fatalError("No `type` available at function parameter: \(node)")
         }
 
         self.params.append((firstName, secondName, type))

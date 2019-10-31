@@ -14,6 +14,7 @@
 
 import DistributedActors
 import Stencil
+import SwiftSyntax
 
 protocol Renderable {
     func render() throws -> String
@@ -110,12 +111,42 @@ enum Rendering {
 
 struct ActorableMessageDecl {
     let access: String?
-    let throwing: Bool
     let name: String
 
     typealias Name = String
     typealias TypeName = String
     let params: [(Name?, Name, TypeName)]
+
+    let throwing: Bool
+
+    let returnType: ReturnType
+    enum ReturnType {
+        case void
+        case type(String)
+        case behavior(String)
+
+        static func fromType(_ type: TypeSyntax?) -> ReturnType {
+            guard let t = type else {
+                return .void
+            }
+            pprint("type = \(t)")
+
+            if "\(t)".starts(with: "Behavior<") {
+                return .behavior("\(t)")
+            } else {
+                return .type("\(t)")
+            }
+        }
+    }
+
+    var returnIfBecome: String {
+        switch self.returnType {
+        case .behavior:
+            return "return "
+        default:
+            return ""
+        }
+    }
 
     var caseDecl: String {
         guard !self.params.isEmpty else {
@@ -225,6 +256,7 @@ struct ActorFunc {
 
     func renderFuncSwitchCase() throws -> String {
         let context: [String: Any] = [
+            "returnIfBecome": message.returnIfBecome,
             "try": message.throwing ? "try " : "",
             "name": message.name,
             "caseLetParams": message.caseLetParams,
@@ -235,7 +267,7 @@ struct ActorFunc {
             templateString:
             """
             case .{{name}}{{caseLetParams}}:
-                                {{try}}instance.{{name}}({{passParams}})
+                                {{returnIfBecome}}{{try}}instance.{{name}}({{passParams}})
             """
         ).render(context)
 

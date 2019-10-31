@@ -13,6 +13,7 @@ extension TestActorable {
         case greet(name: String)
         case greetUnderscoreParam(String)
         case greet2(name: String, surname: String)
+        case throwing 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>)
         case throwing
         case contextSpawnExample
@@ -32,6 +33,7 @@ extension TestActorable {
 
             return .receiveMessage { message in
                 switch message {
+                
                 case .ping:
                     instance.ping()
                 case .greet(let name):
@@ -40,6 +42,8 @@ extension TestActorable {
                     instance.greetUnderscoreParam(name)
                 case .greet2(let name, let surname):
                     instance.greet2(name: name, surname: surname)
+                case .throwing:
+                    try instance.throwing() 
                 case .greetReplyToActorRef(let name, let replyTo):
                     instance.greetReplyToActorRef(name: name, replyTo: replyTo)
                 case .throwing:
@@ -53,12 +57,14 @@ extension TestActorable {
             }
         }
     }
+
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestActorable
 
 extension Actor where A.Message == TestActorable.Message {
+    
     public func ping() { // TODO: returning things
         self.ref.tell(.ping)
     }
@@ -74,6 +80,10 @@ extension Actor where A.Message == TestActorable.Message {
     public func greet2(name: String, surname: String) { // TODO: returning things
         self.ref.tell(.greet2(name: name, surname: surname))
     }
+    
+    public func throwing() { // TODO: returning things
+        self.ref.tell(.throwing)
+    } 
 
     public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { // TODO: returning things
         self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
@@ -90,4 +100,5 @@ extension Actor where A.Message == TestActorable.Message {
     func timer() { // TODO: returning things
         self.ref.tell(.timer)
     }
+    
 }
