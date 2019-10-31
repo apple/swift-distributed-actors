@@ -18,16 +18,16 @@ import SwiftBenchmarkTools
 
 public let ActorMessageFloodingBenchmarks: [BenchmarkInfo] = [
     BenchmarkInfo(
-        name: "ActorMessageFloodingBenchmarks.10_000_000_messages",
+        name: "ActorMessageFloodingBenchmarks.bench_messageFlooding(10_000_000)",
         runFunction: { _ in try! bench_messageFlooding(10_000_000) },
-        tags: [],
+        tags: [.actor],
         setUpFunction: { setUp() },
         tearDownFunction: tearDown
     ),
     BenchmarkInfo(
         name: "ActorMessageFloodingBenchmarks.bench_messageFlooding_send(10_000_000)",
         runFunction: { _ in try! bench_messageFlooding_send(10_000_000) },
-        tags: [],
+        tags: [.actor],
         setUpFunction: { setUp() },
         tearDownFunction: tearDown
     ),
