@@ -402,7 +402,6 @@ enum TimeUnit: String {
         default: fatalError("Only the following time units are supported: ns, us, ms, s")
         }
     }
-
     static var `default` = TimeUnit.nanoseconds
 }
 
