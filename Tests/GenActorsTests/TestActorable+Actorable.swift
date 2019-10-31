@@ -16,7 +16,6 @@ import DistributedActors
 
 // TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State
 
@@ -73,5 +72,4 @@ public struct TestActorable: Actorable {
     func timer() {
         self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))
     }
-
 }

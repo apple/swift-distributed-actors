@@ -132,7 +132,7 @@ struct GatherActorables: SyntaxVisitor {
         } else {
             access = ""
         }
-        
+
         let throwing: Bool
         switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
         case .throwsKeyword:
