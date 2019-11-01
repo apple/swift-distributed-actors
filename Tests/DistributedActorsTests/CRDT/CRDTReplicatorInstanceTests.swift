@@ -295,7 +295,8 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         let replicator = CRDT.Replicator.Instance(.default)
 
         let id = CRDT.Identity("lwwreg-1")
-        let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1aClock = WallTimeClock()
+        let r1a = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1aClock))
 
         // Write r1
         guard case .applied = replicator.write(id, r1a.asAnyStateBasedCRDT) else {
@@ -303,7 +304,7 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
         }
 
         // Make sure the new value has a more recent timestamp for it to "win" the merge
-        let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: SystemClock(timestamp: r1a.clock.timestamp.addingTimeInterval(1)))
+        let r1b = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1aClock.timestamp.addingTimeInterval(1))))
 
         // Write the updated r1
         guard case .applied(let writeResult, let isNew) = replicator.write(id, r1b.asAnyStateBasedCRDT) else {

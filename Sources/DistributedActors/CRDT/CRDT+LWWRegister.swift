@@ -18,31 +18,31 @@ import Foundation // for Date
 // MARK: LWWRegister as pure CRDT
 
 extension CRDT {
-    public typealias LWWRegister<Value> = CRDT.LWWRegisterWithCustomClock<SystemClock, Value>
-
     /// Last-Writer-Wins Register described in [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf).
     ///
     /// A new timestamp is generated for each `value` update, which is used in `merge` to determine total ordering
     /// of the assignments. The greater timestamp "wins", hence the name last-writer-wins register.
     ///
-    /// `SystemClock` is the default type for timestamps. The use of custom `Clock` is also supported.
+    /// `WallTimeClock` is the default type for timestamps.
     ///
     /// - SeeAlso: [A comprehensive study of CRDTs](https://hal.inria.fr/file/index/docid/555588/filename/techreport.pdf)
-    public struct LWWRegisterWithCustomClock<Clock: AbstractClock, Value>: CvRDT, LWWRegisterOperations {
+    public struct LWWRegister<Value>: CvRDT, LWWRegisterOperations {
         public let replicaId: ReplicaId
 
+        let defaultClock: () -> Clock
         let initialValue: Value
 
         public private(set) var value: Value
         private(set) var clock: Clock
         private(set) var updatedBy: ReplicaId
 
-        init(replicaId: ReplicaId, initialValue: Value) {
-            self.init(replicaId: replicaId, initialValue: initialValue, clock: Clock())
+        init(replicaId: ReplicaId, initialValue: Value, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
+            self.init(replicaId: replicaId, initialValue: initialValue, clock: defaultClock(), defaultClock: defaultClock)
         }
 
-        init(replicaId: ReplicaId, initialValue: Value, clock: Clock) {
+        init(replicaId: ReplicaId, initialValue: Value, clock: Clock, defaultClock: @escaping () -> Clock = Clock.wallTimeNow) {
             self.replicaId = replicaId
+            self.defaultClock = defaultClock
             self.initialValue = initialValue
             self.value = initialValue
             self.clock = clock
@@ -52,11 +52,11 @@ extension CRDT {
         /// Assigns `value` to the register.
         public mutating func assign(_ value: Value) {
             self.value = value
-            self.clock = Clock()
+            self.clock = self.defaultClock()
             self.updatedBy = self.replicaId
         }
 
-        public mutating func merge(other: LWWRegisterWithCustomClock<Clock, Value>) {
+        public mutating func merge(other: LWWRegister<Value>) {
             // The greater timestamp wins
             if self.clock < other.clock {
                 self.value = other.value

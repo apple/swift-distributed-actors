@@ -44,7 +44,7 @@ extension CRDT.GCounter {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LWWRegister + Logger Metadata
 
-extension CRDT.LWWRegisterWithCustomClock {
+extension CRDT.LWWRegister {
     func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
         return [
             "crdt/type": "lwwregister",

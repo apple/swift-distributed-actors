@@ -418,12 +418,41 @@ public extension Deadline {
 // MARK: Clock
 
 /// Represents a timestamp with total order defined and therefore can be compared to establish causal order.
-public protocol AbstractClock: Comparable, CustomStringConvertible {
-    init()
+public enum Clock {
+    case wallTime(WallTimeClock)
+
+    public static func wallTimeNow() -> Clock {
+        return .wallTime(WallTimeClock())
+    }
+}
+
+extension Clock: Comparable {
+    public static func < (lhs: Clock, rhs: Clock) -> Bool {
+        switch (lhs, rhs) {
+        case (.wallTime(let l), .wallTime(let r)):
+            return l < r
+        }
+    }
+
+    public static func == (lhs: Clock, rhs: Clock) -> Bool {
+        switch (lhs, rhs) {
+        case (.wallTime(let l), .wallTime(let r)):
+            return l == r
+        }
+    }
+}
+
+extension Clock: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .wallTime(let c):
+            return "Clock(wallTime: \(c.description))"
+        }
+    }
 }
 
 /// A `Clock` implementation using `Date`.
-public struct SystemClock: AbstractClock {
+public struct WallTimeClock: CustomStringConvertible {
     internal let timestamp: Date
 
     public init() {
@@ -434,16 +463,14 @@ public struct SystemClock: AbstractClock {
         self.timestamp = timestamp
     }
 
-    public static func < (lhs: SystemClock, rhs: SystemClock) -> Bool {
+    public static func < (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
         return lhs.timestamp < rhs.timestamp
     }
 
-    public static func == (lhs: SystemClock, rhs: SystemClock) -> Bool {
+    public static func == (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
         return lhs.timestamp == rhs.timestamp
     }
-}
 
-extension SystemClock: CustomStringConvertible {
     public var description: String {
         return "\(self.timestamp.description)"
     }

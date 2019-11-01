@@ -29,9 +29,10 @@ final class CRDTAnyTypesTests: XCTestCase {
         var g2 = CRDT.GCounter(replicaId: self.replicaB)
         g2.increment(by: 10)
 
-        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1Clock = WallTimeClock()
+        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1Clock))
         // Make sure r2's assignment has a more recent timestamp
-        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
+        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1Clock.timestamp.addingTimeInterval(1))))
 
         // Can have AnyCvRDT of different concrete CRDTs in same collection
         let anyCvRDTs: [CRDT.Identity: AnyCvRDT] = [

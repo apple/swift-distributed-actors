@@ -37,9 +37,10 @@ final class CRDTLWWRegisterTests: XCTestCase {
     }
 
     func test_LWWRegister_merge_shouldMutateIfMoreRecentTimestamp() throws {
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1Clock = WallTimeClock()
+        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1Clock))
         // Make sure r2's assignment has a more recent timestamp
-        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
+        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1Clock.timestamp.addingTimeInterval(1))))
 
         // r1 is mutated; r2 is not
         r1.merge(other: r2)
@@ -54,9 +55,10 @@ final class CRDTLWWRegisterTests: XCTestCase {
     }
 
     func test_LWWRegister_merge_shouldNotMutateIfOlderTimestamp() throws {
-        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1Clock = WallTimeClock()
+        var r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1Clock))
         // Make sure r2's assignment has an older timestamp
-        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(-1)))
+        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1Clock.timestamp.addingTimeInterval(-1))))
 
         let r1OldClock = r1.clock
 
@@ -69,9 +71,10 @@ final class CRDTLWWRegisterTests: XCTestCase {
     }
 
     func test_LWWRegister_merging_shouldNotMutate() throws {
-        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3)
+        let r1Clock = WallTimeClock()
+        let r1 = CRDT.LWWRegister<Int>(replicaId: self.replicaA, initialValue: 3, clock: .wallTime(r1Clock))
         // Make sure r2's assignment has a more recent timestamp
-        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: SystemClock(timestamp: r1.clock.timestamp.addingTimeInterval(1)))
+        let r2 = CRDT.LWWRegister<Int>(replicaId: self.replicaB, initialValue: 5, clock: .wallTime(WallTimeClock(timestamp: r1Clock.timestamp.addingTimeInterval(1))))
 
         // Neither r1 nor r2 is mutated
         let r3 = r1.merging(other: r2)
