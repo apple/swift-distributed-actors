@@ -211,8 +211,8 @@ extension Dictionary where Key: Hashable, Value: CvRDT {
 
 /// Convenience methods so users can call `resetValue` instead of "update-reset" for example.
 extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
+    /// Resets value for `key` if exists.
     public mutating func resetValue(forKey key: Key) {
-        // Reset value if exists
         if var value = self._values[key] {
             // Always add `key` to `_keys` set to track its causal history
             self._keys.add(key)
@@ -223,6 +223,7 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
         }
     }
 
+    /// Resets all values in the `ORMap`.
     public mutating func resetAllValues() {
         self._values.keys.forEach { self.resetValue(forKey: $0) }
     }
