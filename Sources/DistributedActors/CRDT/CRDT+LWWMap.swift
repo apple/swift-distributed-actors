@@ -52,7 +52,11 @@ extension CRDT {
         init(replicaId: ReplicaId, defaultValue: Value) {
             self.replicaId = replicaId
             self.state = .init(replicaId: replicaId) {
-                LWWRegister<Value>(replicaId: replicaId, initialValue: defaultValue)
+                // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we
+                // must create a "zero" value before merging `other` into it.
+                // The "zero" value's timestamp must "happen-before" `other`'s to allow `other` to win. If we just
+                // use the current time `other` would never win.
+                LWWRegister<Value>(replicaId: replicaId, initialValue: defaultValue, clock: .wallTime(WallTimeClock.zero))
             }
         }
 

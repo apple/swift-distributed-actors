@@ -455,6 +455,8 @@ extension Clock: CustomStringConvertible {
 public struct WallTimeClock: CustomStringConvertible {
     internal let timestamp: Date
 
+    public static let zero = WallTimeClock(timestamp: Date.distantPast)
+
     public init() {
         self.init(timestamp: Date())
     }
