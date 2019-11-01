@@ -120,6 +120,32 @@ extension CRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorOwned LWWMap
+
+public protocol LWWMapOperations: ORMapWithResettableValue {
+    subscript(key: Key) -> Value? { get set }
+}
+
+// See comments in CRDT.ORSet
+extension CRDT.ActorOwned where DataType: LWWMapOperations {
+    public var lastObservedValue: [DataType.Key: DataType.Value] {
+        return self.data.underlying
+    }
+
+    public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
+        // Set value for key locally then propagate
+        self.data[key] = value
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}
+
+extension CRDT.LWWMap {
+    public static func owned<Message>(by owner: ActorContext<Message>, id: String, defaultValue: Value) -> CRDT.ActorOwned<CRDT.LWWMap<Key, Value>> {
+        return CRDT.ActorOwned<CRDT.LWWMap>(ownerContext: owner, id: CRDT.Identity(id), data: CRDT.LWWMap<Key, Value>(replicaId: .actorAddress(owner.address), defaultValue: defaultValue))
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Aliases
 
 // TODO: find better home for these type aliases

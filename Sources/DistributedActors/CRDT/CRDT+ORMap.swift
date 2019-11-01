@@ -230,15 +230,13 @@ extension CRDT.ORMap: ORMapWithResettableValue where Value: ResettableCRDT {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ActorOwned ORMap
+// MARK: ActorOwned - Common protocols and extensions for generic and specialized ORMap types (e.g., ORMap, LWWMap)
 
-public protocol ORMapOperations {
+public protocol ORMapWithUnsafeRemove {
     associatedtype Key: Hashable
-    associatedtype Value: CvRDT
+    associatedtype Value
 
     var underlying: [Key: Value] { get }
-
-    mutating func update(key: Key, mutator: (inout Value) -> Void)
 
     /// Removes `key` and the associated value from the `ORMap`.
     ///
@@ -251,24 +249,13 @@ public protocol ORMapOperations {
     mutating func unsafeRemoveAllValues()
 }
 
-public protocol ORMapWithResettableValue: ORMapOperations where Value: ResettableCRDT {
+public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove where Value: ResettableCRDT {
     mutating func resetValue(forKey key: Key)
 
     mutating func resetAllValues()
 }
 
-// See comments in CRDT.ORSet
-extension CRDT.ActorOwned where DataType: ORMapOperations {
-    public var lastObservedValue: [DataType.Key: DataType.Value] {
-        return self.data.underlying
-    }
-
-    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
-        // Apply mutator to the value associated with `key` locally then propagate
-        self.data.update(key: key, mutator: mutator)
-        return self.write(consistency: consistency, timeout: timeout)
-    }
-
+extension CRDT.ActorOwned where DataType: ORMapWithUnsafeRemove {
     /// Removes `key` and the associated value from the `ORMap`. Must achieve the given `writeConsistency` within
     /// `timeout` to be considered successful.
     ///
@@ -300,6 +287,26 @@ extension CRDT.ActorOwned where DataType: ORMapWithResettableValue {
     public func resetAllValues(writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Reset all values locally then propagate
         self.data.resetAllValues()
+        return self.write(consistency: consistency, timeout: timeout)
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorOwned ORMap
+
+public protocol ORMapOperations: ORMapWithUnsafeRemove where Value: CvRDT {
+    mutating func update(key: Key, mutator: (inout Value) -> Void)
+}
+
+// See comments in CRDT.ORSet
+extension CRDT.ActorOwned where DataType: ORMapOperations {
+    public var lastObservedValue: [DataType.Key: DataType.Value] {
+        return self.data.underlying
+    }
+
+    public func update(key: DataType.Key, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
+        // Apply mutator to the value associated with `key` locally then propagate
+        self.data.update(key: key, mutator: mutator)
         return self.write(consistency: consistency, timeout: timeout)
     }
 }
