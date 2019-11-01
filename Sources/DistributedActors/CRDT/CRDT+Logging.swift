@@ -42,6 +42,21 @@ extension CRDT.GCounter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: LWWRegister + Logger Metadata
+
+extension CRDT.LWWRegister {
+    func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
+        return [
+            "crdt/type": "lwwregister",
+            "crdt/owner": "\(context.address)",
+            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/lwwreg/value": "\(self.value)",
+            "crdt/lwwreg/clock": "\(self.clock)",
+        ]
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: ORSet + Logger Metadata
 
 extension CRDT.ORSet {

@@ -32,7 +32,7 @@ public protocol CvRDT: StateBasedCRDT {
     ///
     /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
-    /// - SeeAlso: The framework's documentation on serialization for more information.
+    /// - SeeAlso: The library's documentation on serialization for more information.
     ///
     /// - Parameter other: A data type instance to merge.
     mutating func merge(other: Self)
@@ -43,7 +43,7 @@ extension CvRDT {
     ///
     /// `Self` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
-    /// - SeeAlso: The framework's documentation on serialization for more information.
+    /// - SeeAlso: The library's documentation on serialization for more information.
     ///
     /// - Parameter other: A data type instance to merge.
     /// - Returns: A new data type instance with the merged state of this data type instance and `other`.
@@ -73,7 +73,7 @@ extension CvRDT {
 public protocol DeltaCRDT: CvRDT {
     /// `Delta` type should be registered and (de-)serializable using the Actor serialization infrastructure.
     ///
-    /// - SeeAlso: The framework's documentation on serialization for more information.
+    /// - SeeAlso: The library's documentation on serialization for more information.
     associatedtype Delta: CvRDT
 
     var delta: Delta? { get }

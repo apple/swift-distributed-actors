@@ -30,6 +30,8 @@ extension CRDTReplicatorInstanceTests {
             ("test_write_shouldFallbackToMergeForDeltaCRDTIfDeltaIsNil_whenDeltaMergeIsTrue", test_write_shouldFallbackToMergeForDeltaCRDTIfDeltaIsNil_whenDeltaMergeIsTrue),
             ("test_write_mutationsByMultipleOwnersOfTheSameCRDT_shouldMergeCorrectly", test_write_mutationsByMultipleOwnersOfTheSameCRDT_shouldMergeCorrectly),
             ("test_write_shouldFailWhenInputAndStoredTypeDoNotMatch", test_write_shouldFailWhenInputAndStoredTypeDoNotMatch),
+            ("test_write_shouldAddCRDTToDataStoreIfNew_nonDeltaCRDT", test_write_shouldAddCRDTToDataStoreIfNew_nonDeltaCRDT),
+            ("test_write_shouldUpdateCRDTInDataStoreUsingMerge_nonDeltaCRDT", test_write_shouldUpdateCRDTInDataStoreUsingMerge_nonDeltaCRDT),
             ("test_writeDelta_shouldFailIfCRDTIsNotInDataStore", test_writeDelta_shouldFailIfCRDTIsNotInDataStore),
             ("test_writeDelta_shouldApplyDeltaToExistingDeltaCRDT", test_writeDelta_shouldApplyDeltaToExistingDeltaCRDT),
             ("test_writeDelta_shouldFailIfNotDeltaCRDT", test_writeDelta_shouldFailIfNotDeltaCRDT),

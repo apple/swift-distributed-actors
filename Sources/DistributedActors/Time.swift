@@ -413,3 +413,65 @@ public extension Deadline {
         return .nanoseconds(self.uptimeNanoseconds - Deadline.now().uptimeNanoseconds)
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Clock
+
+/// Represents a timestamp with total order defined and therefore can be compared to establish causal order.
+public enum Clock {
+    case wallTime(WallTimeClock)
+
+    public static func wallTimeNow() -> Clock {
+        return .wallTime(WallTimeClock())
+    }
+}
+
+extension Clock: Comparable {
+    public static func < (lhs: Clock, rhs: Clock) -> Bool {
+        switch (lhs, rhs) {
+        case (.wallTime(let l), .wallTime(let r)):
+            return l < r
+        }
+    }
+
+    public static func == (lhs: Clock, rhs: Clock) -> Bool {
+        switch (lhs, rhs) {
+        case (.wallTime(let l), .wallTime(let r)):
+            return l == r
+        }
+    }
+}
+
+extension Clock: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .wallTime(let c):
+            return "Clock(wallTime: \(c.description))"
+        }
+    }
+}
+
+/// A `Clock` implementation using `Date`.
+public struct WallTimeClock: CustomStringConvertible {
+    internal let timestamp: Date
+
+    public init() {
+        self.init(timestamp: Date())
+    }
+
+    public init(timestamp: Date) {
+        self.timestamp = timestamp
+    }
+
+    public static func < (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
+        return lhs.timestamp < rhs.timestamp
+    }
+
+    public static func == (lhs: WallTimeClock, rhs: WallTimeClock) -> Bool {
+        return lhs.timestamp == rhs.timestamp
+    }
+
+    public var description: String {
+        return "\(self.timestamp.description)"
+    }
+}
