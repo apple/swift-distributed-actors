@@ -24,7 +24,7 @@ FIRST_OUT="$(git status --porcelain)"
 shopt -u dotglob
 find Sources/* Tests/* -type d | while IFS= read -r d; do
   printf "   * checking $d... "
-  out=$(swiftformat --exclude "**/*.pb.swift" $d 2>&1)
+  out=$(swiftformat --exclude "**/*.pb.swift" --exclude "**/*+GenActor.swift" $d 2>&1)
   SECOND_OUT="$(git status --porcelain)"
   if [[ "$out" == *"error"*] && ["$out" != "*No eligible files" ]]; then
     printf "\033[0;31merror!\033[0m\n"
