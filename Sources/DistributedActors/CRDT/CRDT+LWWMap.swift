@@ -12,17 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation // for Date
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LWWMap as pure CRDT
 
 extension CRDT {
+    /// LWWMap, or last-writer-wins map, is a specialized ORMap in which values are automatically wrapped inside
+    /// LWWRegisters. Unlike ORMap, there is no constraint on `Value` type.
+    ///
+    /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
+    /// - SeeAlso: `CRDT.ORMap`
+    /// - SeeAlso: `CRDT.LWWRegister`
     public struct LWWMap<Key: Hashable, Value>: NamedDeltaCRDT {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
         public let replicaId: ReplicaId
 
+        /// Underlying ORMap for storing key-value entries and managing causal history and delta
         var state: ORMap<Key, LWWRegister<Value>>
 
         public var delta: Delta? {
@@ -54,8 +59,11 @@ extension CRDT {
             self.state = .init(replicaId: replicaId) {
                 // This is relevant only in `ORMap.merge`, when `key` exists in `other` but not `self` and therefore we
                 // must create a "zero" value before merging `other` into it.
-                // The "zero" value's timestamp must "happen-before" `other`'s to allow `other` to win. If we just
-                // use the current time `other` would never win.
+                // The "zero" value's timestamp must happen-before `other`'s to allow `other` to win. If we just
+                // use the current time here `other` would never win.
+                // We don't need to worry about the usage of this and timestamp being too new in `ORMap.update` because
+                // a call to `LWWRegister.assign` immediately follows and the value is updated without comparing
+                // timestamps.
                 LWWRegister<Value>(replicaId: replicaId, initialValue: defaultValue, clock: .wallTime(WallTimeClock.zero))
             }
         }
