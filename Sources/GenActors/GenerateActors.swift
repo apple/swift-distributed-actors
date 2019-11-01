@@ -141,14 +141,6 @@ struct GatherActorables: SyntaxVisitor {
             throwing = false
         }
 
-        let throwing: Bool
-        switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
-        case .throwsKeyword:
-            throwing = true
-        default:
-            throwing = false
-        }
-
         // TODO: we could require it to be async as well or something
         self.actorFuncs.append(
             ActorFunc(message: ActorableMessageDecl(
