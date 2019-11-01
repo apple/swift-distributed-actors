@@ -9,7 +9,7 @@ import DistributedActors
 
 extension Greeter {
     public enum Message { 
-    case greet(name: String)  
+        case greet(name: String)  
     }
 }
 
@@ -17,7 +17,7 @@ extension Greeter {
 // MARK: DO NOT EDIT: Generated Greeter behavior
 
 extension Greeter {
-     public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
+    public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
         return .setup { context in
             var instance = instance // TODO only var if any of the methods are mutating
 

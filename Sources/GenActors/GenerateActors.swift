@@ -18,8 +18,8 @@ import Foundation
 import SwiftSyntax
 
 public final class GenerateActors {
-    let scanFolder: Folder
-    var args: [String]
+    let foldersToScan: [Folder]
+    var options: [String]
 
     let fileScanNameSuffix: String = "+Actorable"
     let fileScanNameSuffixWithExtension: String = "+Actorable.swift"
@@ -27,28 +27,34 @@ public final class GenerateActors {
     public init(args: [String]) {
         precondition(args.count > 1, "Syntax: genActors PATH [options]")
 
+        var remaining = args.dropFirst()
+        self.options = remaining.filter { $0.starts(with: "--") }
+
         do {
-            self.scanFolder = try Folder(path: Folder.current.path + "/\(args.dropFirst().first!)")
-            self.args = Array(args.dropFirst(2))
+            let foldersToScan = remaining.filter { !$0.starts(with: "--") }
+            precondition(!foldersToScan.isEmpty, "At least one directory to scan must be passed in. Arguments were: \(args)")
+            self.foldersToScan = try foldersToScan.map { try Folder(path: Folder.current.path + "/\($0)") }
         } catch {
             fatalError("Unable to initialize \(GenerateActors.self), error: \(error)")
         }
     }
 
     public func run() throws -> Bool {
-        self.debug("Scanning \(self.scanFolder) for [\(self.fileScanNameSuffixWithExtension)] suffixed files...")
-        let actorFilesToScan = self.scanFolder.files.recursive.filter { f in
-            f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
+        let foldersContainedActorables: [Bool] = try self.foldersToScan.map { folder in
+            self.debug("Scanning [\(folder.path)] for [\(self.fileScanNameSuffixWithExtension)] suffixed files...")
+            let actorFilesToScan = folder.files.recursive.filter { f in
+                f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
+            }
+
+            return try actorFilesToScan.reduce(true) { acc, file in
+                try acc && self.parseAndGen(fileToParse: file)
+            }
         }
 
-        try actorFilesToScan.forEach {
-            try self.run(fileToParse: $0)
-        }
-
-        return !actorFilesToScan.isEmpty
+        return foldersContainedActorables.reduce(true) { $0 && $1 }
     }
 
-    public func run(fileToParse: File) throws -> Bool {
+    public func parseAndGen(fileToParse: File) throws -> Bool {
         self.debug("Parsing: \(fileToParse.path)")
 
         let url = URL(fileURLWithPath: fileToParse.path)
@@ -127,10 +133,19 @@ struct GatherActorables: SyntaxVisitor {
             access = ""
         }
 
+        let throwing: Bool
+        switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
+        case .throwsKeyword:
+            throwing = true
+        default:
+            throwing = false
+        }
+
         // TODO: we could require it to be async as well or something
         self.actorFuncs.append(
             ActorFunc(message: ActorableMessageDecl(
                 access: access,
+                throwing: throwing,
                 name: "\(node.identifier)",
                 params: node.signature.gatherParams()
             ))

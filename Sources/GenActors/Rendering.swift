@@ -110,6 +110,7 @@ enum Rendering {
 
 struct ActorableMessageDecl {
     let access: String?
+    let throwing: Bool
     let name: String
 
     typealias Name = String
@@ -224,6 +225,7 @@ struct ActorFunc {
 
     func renderFuncSwitchCase() throws -> String {
         let context: [String: Any] = [
+            "try": message.throwing ? "try " : "",
             "name": message.name,
             "caseLetParams": message.caseLetParams,
             "passParams": message.passParams,
@@ -233,7 +235,7 @@ struct ActorFunc {
             templateString:
             """
             case .{{name}}{{caseLetParams}}:
-                                instance.{{name}}({{passParams}})
+                                {{try}}instance.{{name}}({{passParams}})
             """
         ).render(context)
 

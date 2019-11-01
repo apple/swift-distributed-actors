@@ -16,13 +16,22 @@ import DistributedActors
 
 // TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: State
+
     var messages: [String] = []
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Init
 
     let context: ActorContext<Message>
 
     public init(context: ActorContext<Message>) {
         self.context = context
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Receiving
 
     public mutating func ping() {
         self.messages.append("\(#function)")
@@ -43,5 +52,24 @@ public struct TestActorable: Actorable {
     public mutating func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
         replyTo.tell("Hello \(name)!")
+    }
+
+    public func throwing() throws {
+        try self.contextSpawnExample()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Spawning from ActorableContext
+
+    func contextSpawnExample() throws {
+        let child = try self.context.spawn("child", TestActorable.init)
+        self.context.log.info("Spawned: \(child)")
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Scheduling timers
+
+    func timer() {
+        self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))
     }
 }
