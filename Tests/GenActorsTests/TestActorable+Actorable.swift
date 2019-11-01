@@ -49,13 +49,23 @@ public struct TestActorable: Actorable {
         self.messages.append("\(#function):\(name),\(surname)")
     }
 
+    public func throwing() throws {
+        try self.contextSpawnExample()
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Replying
+
     public mutating func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
         replyTo.tell("Hello \(name)!")
     }
 
-    public func throwing() throws {
-        try self.contextSpawnExample()
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Become
+
+    func becomeStopped() -> Behavior<TestActorable.Message> {
+        return .stop
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

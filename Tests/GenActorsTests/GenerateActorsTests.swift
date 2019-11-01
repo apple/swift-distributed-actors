@@ -76,4 +76,17 @@ final class GenerateActorsTests: XCTestCase {
 
         try p.expectMessage("Hello Caplin!")
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Behavior interop
+
+    func test_generated_TestActorable_becomeAnotherBehavior() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        p.watch(actor.ref)
+        actor.becomeStopped()
+        try p.expectTerminated(actor.ref)
+    }
 }
