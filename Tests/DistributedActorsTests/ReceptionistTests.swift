@@ -51,11 +51,11 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
-        receptionist.tell(Receptionist.Register(refA, key: key))
-        receptionist.tell(Receptionist.Register(refB, key: key))
-        receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+        receptionist.checkIn(refA, key: key)
+        receptionist.checkIn(refB, key: key)
+        receptionist.lookup(key: key, replyTo: lookupProbe.ref)
 
         let listing = try lookupProbe.expectMessage()
 
@@ -78,12 +78,12 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
-        receptionist.tell(Receptionist.Register(ref, key: key))
+        receptionist.checkIn(ref, key: key)
 
-        let unknownKey = Receptionist.RegistrationKey(String.self, id: "unknown")
-        receptionist.tell(Receptionist.Lookup(key: unknownKey, replyTo: lookupProbe.ref))
+        let unknownKey = Receptionist.GroupIdentifier(String.self, id: "unknown")
+        receptionist.lookup(key: unknownKey, replyTo: lookupProbe.ref)
 
         let listing = try lookupProbe.expectMessage()
 
@@ -101,12 +101,12 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
-        receptionist.tell(Receptionist.Register(ref, key: key))
-        receptionist.tell(Receptionist.Register(ref, key: key))
+        receptionist.checkIn(ref, key: key)
+        receptionist.checkIn(ref, key: key)
 
-        receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+        receptionist.lookup(key: key, replyTo: lookupProbe.ref))
 
         let listing = try lookupProbe.expectMessage()
 
@@ -115,7 +115,7 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldReplyWithRegistered() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let probe: ActorTestProbe<Receptionist.Registered<String>> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Receptionist.CheckInConfirmed<String>> = self.testKit.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -124,7 +124,7 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         receptionist.tell(Receptionist.Register(ref, key: key, replyTo: probe.ref))
 
@@ -145,14 +145,14 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
-        receptionist.tell(Receptionist.Register(ref, key: key))
+        receptionist.checkIn(ref, key: key)
 
         ref.tell("stop")
 
         try self.testKit.eventually(within: .seconds(1)) {
-            receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+            receptionist.lookup(key: key, replyTo: lookupProbe.ref))
             let message = try lookupProbe.expectMessage()
 
             // TODO: modify TestKit to allow usage of matchers instead
@@ -180,7 +180,7 @@ class ReceptionistTests: XCTestCase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
         try lookupProbe.expectMessage(Receptionist.Listing(refs: []))

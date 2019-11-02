@@ -18,6 +18,7 @@ import NIO
 public protocol AsyncResult {
     associatedtype Value
 
+    // TODO: hide this, it's not safe; https://github.com/apple/swift-distributed-actors/issues/202
     /// Registers a callback that is executed when the `AsyncResult` is available.
     func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
 

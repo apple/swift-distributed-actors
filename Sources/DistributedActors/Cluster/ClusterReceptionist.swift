@@ -56,8 +56,8 @@ internal enum ClusterReceptionist {
                 case _ as ClusterReceptionist.Sync:
                     try ClusterReceptionist.syncRegistrations(context: context, myself: replicateAdapter)
 
-                case let message as _Register:
-                    try ClusterReceptionist.onRegister(context: context, message: message, storage: storage)
+                case let message as _CheckIn:
+                    try ClusterReceptionist.onCheckIn(context: context, message: message, storage: storage)
 
                 case let message as _Lookup:
                     try ClusterReceptionist.onLookup(context: context, message: message, storage: storage)
@@ -75,15 +75,15 @@ internal enum ClusterReceptionist {
         }
     }
 
-    private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
-        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message._key.boxed, ref: message._addressableActorRef)
+    private static func onCheckIn(context: ActorContext<Receptionist.Message>, message: _CheckIn, storage: Receptionist.Storage) throws {
+        try ClusterReceptionist.addCheckIn(context: context, storage: storage, key: message._group.boxed, ref: message._addressableActorRef)
 
         try ClusterReceptionist.replicate(context: context, register: message)
 
-        message.replyRegistered()
+        message.replyCheckedIn()
     }
 
-    private static func addRegistration(context: ActorContext<Receptionist.Message>, storage: Receptionist.Storage, key: AnyRegistrationKey, ref: AddressableActorRef) throws {
+    private static func addCheckIn(context: ActorContext<Receptionist.Message>, storage: Receptionist.Storage, key: AnyRegistrationKey, ref: AddressableActorRef) throws {
         if storage.addRegistration(key: key, ref: ref) {
             let terminatedCallback = ClusterReceptionist.makeRemoveRegistrationCallback(context: context, key: key, ref: ref, storage: storage)
             try ClusterReceptionist.startWatcher(ref: ref, context: context, terminatedCallback: terminatedCallback.invoke(()))
@@ -99,7 +99,7 @@ internal enum ClusterReceptionist {
 
     private static func onSubscribe(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) throws {
         let boxedMessage = message._boxed
-        let key = AnyRegistrationKey(from: message._key)
+        let key = AnyRegistrationKey(from: message._group)
         if storage.addSubscription(key: key, subscription: boxedMessage) {
             let terminatedCallback = ClusterReceptionist.makeRemoveSubscriptionCallback(context: context, message: message, storage: storage)
             try ClusterReceptionist.startWatcher(ref: message._addressableActorRef, context: context, terminatedCallback: terminatedCallback.invoke(()))
@@ -109,7 +109,7 @@ internal enum ClusterReceptionist {
     }
 
     private static func onLookup(context: ActorContext<Receptionist.Message>, message: _Lookup, storage: Receptionist.Storage) throws {
-        message.replyWith(storage.registrations(forKey: message._key.boxed) ?? [])
+        message.replyWith(storage.registrations(forKey: message._group.boxed) ?? [])
     }
 
     private static func onFullStateRequest(context: ActorContext<Receptionist.Message>, request: ClusterReceptionist.FullStateRequest, storage: Receptionist.Storage) {
@@ -137,7 +137,7 @@ internal enum ClusterReceptionist {
             return
         }
 
-        try ClusterReceptionist.addRegistration(context: context, storage: storage, key: message.key, ref: ref)
+        try ClusterReceptionist.addCheckIn(context: context, storage: storage, key: message.key, ref: ref)
     }
 
     private static func onFullState(context: ActorContext<Receptionist.Message>, fullState: ClusterReceptionist.FullState, storage: Receptionist.Storage) throws {
@@ -203,11 +203,11 @@ internal enum ClusterReceptionist {
 
     private static func makeRemoveSubscriptionCallback(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
-            storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
+            storage.removeSubscription(key: message._group.boxed, subscription: message._boxed)
         }
     }
 
-    private static func replicate(context: ActorContext<Receptionist.Message>, register: _Register) throws {
+    private static func replicate(context: ActorContext<Receptionist.Message>, register: _CheckIn) throws {
         let remoteControls = context.system._cluster!.associationRemoteControls // FIXME: should not be needed and use cluster members instead
 
         guard !remoteControls.isEmpty else {
@@ -220,7 +220,7 @@ internal enum ClusterReceptionist {
             let remoteReceptionistAddress = ClusterReceptionist.makeRemoteAddress(on: remoteControl.remoteNode)
             let address = ClusterReceptionist.setNode(register._addressableActorRef.address, localNode: context.system.settings.cluster.uniqueBindNode)
 
-            let envelope: Envelope = Envelope(payload: .message(Replicate(key: register._key.boxed, address: address)))
+            let envelope: Envelope = Envelope(payload: .message(Replicate(key: register._group.boxed, address: address)))
             remoteControl.sendUserMessage(type: ClusterReceptionist.Replicate.self, envelope: envelope, recipient: remoteReceptionistAddress)
         }
     }

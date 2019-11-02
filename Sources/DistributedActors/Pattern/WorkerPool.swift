@@ -32,7 +32,7 @@ public class WorkerPool<Message> {
     public enum Selector {
         /// Instructs the `WorkerPool` to subscribe to given receptionist key, and add/remove
         /// any actors which register/leave with the receptionist using this key.
-        case dynamic(Receptionist.RegistrationKey<Message>)
+        case dynamic(Receptionist.GroupIdentifier<Message>)
         // TODO: let awaitAtLeast: Int // before starting to direct traffic
 
         /// Instructs the `WorkerPool` to use only the specified actors for routing.
@@ -84,9 +84,9 @@ internal extension WorkerPool {
     func initial() -> PoolBehavior {
         return .setup { context in
             switch self.selector {
-            case .dynamic(let key):
+            case .dynamic(let group):
                 context.system.receptionist.subscribe(
-                    key: key,
+                    group: group,
                     subscriber: context.messageAdapter(from: Receptionist.Listing<Message>.self) { listing in
                         context.log.log(level: self.settings.logLevel, "Got listing for \(self.selector): \(listing)")
                         return .listing(listing)

@@ -22,7 +22,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let (local, remote) = setUpPair()
 
         let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.CheckInConfirmed<String>.self)
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         local.cluster.join(node: remote.cluster.node.node)
@@ -36,7 +36,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
 
@@ -61,7 +61,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         }
 
         let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.CheckInConfirmed<String>.self)
         let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let ref: ActorRef<String> = try local.spawn(
@@ -72,7 +72,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             }
         )
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         remote.receptionist.tell(Receptionist.Subscribe(key: key, subscriber: lookupProbe.ref))
 
@@ -99,7 +99,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Receptionist.Registered<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Receptionist.CheckInConfirmed<String>.self)
         let localLookupProbe = self.testKit(local).spawnTestProbe("localLookupProbe", expecting: Receptionist.Listing<String>.self)
         let remoteLookupProbe = self.testKit(remote).spawnTestProbe("remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
@@ -112,7 +112,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let refC: ActorRef<String> = try remote.spawn("refC", behavior)
         let refD: ActorRef<String> = try remote.spawn("refD", behavior)
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         local.receptionist.tell(Receptionist.Register(refA, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()
@@ -148,7 +148,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.CheckInConfirmed<String>.self)
         let remoteLookupProbe = self.testKit(remote).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
@@ -158,7 +158,7 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
         let refA: ActorRef<String> = try local.spawn(.anonymous, behavior)
         let refB: ActorRef<String> = try local.spawn(.anonymous, behavior)
 
-        let key = Receptionist.RegistrationKey(String.self, id: "test")
+        let key = Receptionist.GroupIdentifier(String.self, id: "test")
 
         local.receptionist.tell(Receptionist.Register(refA, key: key, replyTo: registeredProbe.ref))
         _ = try registeredProbe.expectMessage()

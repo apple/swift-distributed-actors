@@ -32,7 +32,7 @@ final class WorkerPoolTests: XCTestCase {
     }
 
     func test_workerPool_registerNewlyStartedActors() throws {
-        let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
+        let workerKey = Receptionist.GroupIdentifier(String.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
@@ -40,7 +40,7 @@ final class WorkerPoolTests: XCTestCase {
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
-                context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
+                context.system.receptionist.checkIn(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
                     p.tell("work:\(work) at \(context.name)")
@@ -77,7 +77,7 @@ final class WorkerPoolTests: XCTestCase {
     }
 
     func test_workerPool_dynamic_removeDeadActors() throws {
-        let workerKey = Receptionist.RegistrationKey(String.self, id: "request-workers")
+        let workerKey = Receptionist.GroupIdentifier(String.self, id: "request-workers")
 
         let pA: ActorTestProbe<String> = self.testKit.spawnTestProbe("pA")
         let pB: ActorTestProbe<String> = self.testKit.spawnTestProbe("pB")
@@ -85,7 +85,7 @@ final class WorkerPoolTests: XCTestCase {
 
         func worker(p: ActorTestProbe<String>) -> Behavior<String> {
             return .setup { context in
-                context.system.receptionist.register(context.myself, key: workerKey) // could ask and await on the registration
+                context.system.receptionist.checkIn(context.myself, key: workerKey) // could ask and await on the registration
 
                 return .receive { context, work in
                     if work == "stop" {

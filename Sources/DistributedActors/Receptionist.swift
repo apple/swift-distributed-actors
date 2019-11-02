@@ -29,7 +29,7 @@ public enum Receptionist {
 
     /// Used to register and lookup actors in the receptionist. The key is a combination
     /// of the string id and the message type of the actor.
-    public struct RegistrationKey<Message>: _RegistrationKey {
+    public struct GroupIdentifier<Message>: _GroupIdentifier {
         public let id: String
 
         public init(_ type: Message.Type, id: String) {
@@ -65,14 +65,14 @@ public enum Receptionist {
     }
 
     /// When sent to receptionist will register the specified `ActorRef` under the given `RegistrationKey`
-    public struct Register<Message>: _Register {
+    public struct CheckIn<Message>: _CheckIn {
         public let ref: ActorRef<Message>
-        public let key: RegistrationKey<Message>
-        public let replyTo: ActorRef<Registered<Message>>?
+        public let group: GroupIdentifier<Message>
+        public let replyTo: ActorRef<CheckInConfirmed<Message>>?
 
-        public init(_ ref: ActorRef<Message>, key: RegistrationKey<Message>, replyTo: ActorRef<Registered<Message>>? = nil) {
+        public init(_ ref: ActorRef<Message>, group: GroupIdentifier<Message>, replyTo: ActorRef<CheckInConfirmed<Message>>? = nil) {
             self.ref = ref
-            self.key = key
+            self.group = group
             self.replyTo = replyTo
         }
 
@@ -80,39 +80,39 @@ public enum Receptionist {
             return AddressableActorRef(self.ref)
         }
 
-        internal var _key: _RegistrationKey {
-            return self.key
+        internal var _group: _GroupIdentifier {
+            return self.group
         }
 
-        internal func replyRegistered() {
-            self.replyTo?.tell(Registered(ref: self.ref, key: self.key))
+        internal func replyCheckedIn() {
+            self.replyTo?.tell(Receptionist.CheckInConfirmed(ref: self.ref, group: self.group))
         }
     }
 
-    /// Response to a `Register` message
-    public struct Registered<Message> {
+    /// Response to a `CheckIn` message, confirming a successful registration with the receptionist.
+    public struct CheckInConfirmed<Message> {
         public let ref: ActorRef<Message>
-        public let key: RegistrationKey<Message>
+        public let group: GroupIdentifier<Message>
     }
 
     /// Used to lookup `ActorRef`s for the given `RegistrationKey`
     public struct Lookup<Message>: ListingRequest, _Lookup {
-        public let key: RegistrationKey<Message>
+        public let group: GroupIdentifier<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
-        public init(key: RegistrationKey<Message>, replyTo: ActorRef<Listing<Message>>) {
-            self.key = key
+        public init(group: GroupIdentifier<Message>, replyTo: ActorRef<Listing<Message>>) {
+            self.group = group
             self.replyTo = replyTo
         }
     }
 
     /// Subscribe to periodic updates of the specified key
     public struct Subscribe<Message>: _Subscribe, ListingRequest {
-        public let key: RegistrationKey<Message>
+        public let group: GroupIdentifier<Message>
         public let replyTo: ActorRef<Listing<Message>>
 
-        public init(key: RegistrationKey<Message>, subscriber: ActorRef<Listing<Message>>) {
-            self.key = key
+        public init(group: GroupIdentifier<Message>, subscriber: ActorRef<Listing<Message>>) {
+            self.group = group
             self.replyTo = subscriber
         }
 
@@ -125,9 +125,16 @@ public enum Receptionist {
         }
     }
 
-    /// Response to `Lookup` and `Subscribe` requests
+    /// A `Listing` contains a set of actor references that are available for the key that was used during `lookup`/`subscribe`.
+    /// The listing always contains all actors the receptionist is aware of for the given query, so users need not maintain
+    /// their own lists of actors, but can directly store the set as provided by the `refs` field of the listing.
+    ///
+    /// - SeeAlso: `Receptionist.CheckIn`
+    /// - SeeAlso: `Receptionist.Lookup`
+    /// - SeeAlso: `Receptionist.Subscribe`
     public struct Listing<Message>: Equatable, CustomStringConvertible {
         public let refs: Set<ActorRef<Message>>
+        // FIXME missing group: Group !!!
         public var description: String {
             return "Listing<\(Message.self)>(\(self.refs.map { $0.address }))"
         }
@@ -184,21 +191,101 @@ public enum Receptionist {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Receptionist ActorRef Extensions
+// MARK: ActorRef + Receptionist
 
 public extension ActorRef where Message == ReceptionistMessage {
+
     /// Register given actor ref under the reception key, for discovery by other actors (be it local or on other nodes, when clustered).
-    func register<M>(_ ref: ActorRef<M>, key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Registered<M>>? = nil) {
-        self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))
+    ///
+    /// - SeeAlso: `subscribe(key:subscriber:)`
+    /// - SeeAlso: `lookup(key:subscriber:)`
+    func checkIn<M>(_ ref: ActorRef<M>, group: Receptionist.GroupIdentifier<M>, replyTo: ActorRef<Receptionist.CheckInConfirmed<M>>? = nil) {
+        self.tell(Receptionist.CheckIn(ref, group: group, replyTo: replyTo))
+    }
+
+    /// Used to lookup `ActorRef`s for the given `RegistrationKey`, once.
+    ///
+    /// Single lookups are inherently racy with new actors checking in with the receptionist,
+    /// as such, you may want to use the `subscribe` alternative of interacting with the receptionist,
+    /// if you want to be kept always up to date with regards to the list of checked in actors.
+    ///
+    /// - SeeAlso: `register(key:subscriber:)`
+    /// - SeeAlso: `subscribe(key:subscriber:)`
+    func lookup<M>(group: Receptionist.GroupIdentifier<M>, replyTo: ActorRef<Receptionist.Listing<M>>) {
+        self.lookup(group: group, replyTo: replyTo)
     }
 
     /// Subscribe to changes in checked-in actors under given `key`.
-    /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die,
-    /// under the passed in key.
-    func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
-        self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
+    /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register,
+    /// leave or die, under the passed in key.
+    ///
+    /// The listing always contains the *complete* set of actors under the key, for a given moment in time,
+    /// thus subscribers need not maintain their own listing, and can rely on the listing provided by the subscription.
+    ///
+    /// - SeeAlso: `register(key:subscriber:)`
+    /// - SeeAlso: `lookup(key:subscriber:)`
+    func subscribe<M>(group: Receptionist.GroupIdentifier<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
+        self.tell(Receptionist.Subscribe(group: group, subscriber: subscriber))
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: ActorContext + Receptionist
+
+extension ActorContext {
+
+    /// `Receptionist` aware of the current actor context, offering simplified APIs for checking in and looking up actors.
+    var receptionist: ContextReceptionist<Message> {
+        ContextReceptionist<Message>(context: self)
+    }
+}
+
+
+/// An `ActorContext` specific `Receptionist`, simplifying some tasks like checking-in and looking up other actors.
+public struct ContextReceptionist<Message> {
+    private let context: ActorContext<Message>
+
+    internal init(context: ActorContext<Message>) {
+        self.context = context
+    }
+
+    internal var ref: ActorRef<Receptionist.Message> {
+        return context.system.receptionist
+    }
+
+    /// Register `context.myself` under the receptionist `group`, for discovery by other actors (be it local or on other nodes, when clustered).
+    ///
+    /// - SeeAlso: `subscribe(key:subscriber:)`
+    /// - SeeAlso: `lookup(key:subscriber:)`
+    func checkIn(group: Receptionist.GroupIdentifier<Message>, timeout: TimeAmount = .effectivelyInfinite) -> AskResponse<Receptionist.CheckInConfirmed<Message>> {
+        self.ref.ask(timeout: timeout) {
+            Receptionist.CheckIn(self.context.myself, group: group, replyTo: $0)
+        }
+    }
+
+    // For checking in myself adapted or a subReceive, or even some other actor that we spawned and we want to check in on its behalf.
+    @discardableResult
+    func checkIn<M>(_ ref: ActorRef<M>, group: Receptionist.GroupIdentifier<M>, timeout: TimeAmount = .effectivelyInfinite) -> AskResponse<Receptionist.CheckInConfirmed<M>> {
+        self.ref.ask(timeout: timeout) {
+            Receptionist.CheckIn(ref, group: group, replyTo: $0)
+        }
+    }
+
+    func lookup<M>(group: Receptionist.GroupIdentifier<M>, timeout: TimeAmount = .effectivelyInfinite) -> AskResponse<Receptionist.Listing<M>> {
+        self.ref.ask(timeout: timeout) {
+            Receptionist.Lookup(group: group, replyTo: $0)
+        }
+    }
+
+    // TODO: alternate excellent API would be: subscribe(group:) -> Publisher<Listing<M>>
+    func subscribe<M>(group: Receptionist.GroupIdentifier<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
+        self.ref.tell(Receptionist.Subscribe(group: group, subscriber: subscriber))
+    }
+
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Receptionist Implementations
 
 /// Receptionist for local execution. Does not depend on a cluster being available.
 internal enum LocalReceptionist {
@@ -210,8 +297,8 @@ internal enum LocalReceptionist {
             // TODO: since all states access all the same state, allocating a local receptionist would result in less passing around storage
             return .receiveMessage { message in
                 switch message {
-                case let message as _Register:
-                    try LocalReceptionist.onRegister(context: context, message: message, storage: storage)
+                case let message as _CheckIn:
+                    try LocalReceptionist.onCheckIn(context: context, message: message, storage: storage)
 
                 case let message as _Lookup:
                     try LocalReceptionist.onLookup(context: context, message: message, storage: storage)
@@ -227,11 +314,11 @@ internal enum LocalReceptionist {
         }
     }
 
-    private static func onRegister(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) throws {
-        let key = message._key.boxed
+    private static func onCheckIn(context: ActorContext<Receptionist.Message>, message: _CheckIn, storage: Receptionist.Storage) throws {
+        let key = message._group.boxed
         let addressable = message._addressableActorRef
 
-        context.log.debug("Registering \(addressable) under key: \(key)")
+        context.log.debug("Checking in [\(addressable)] under key: \(key)")
 
         if storage.addRegistration(key: key, ref: addressable) {
             let terminatedCallback = LocalReceptionist.makeRemoveRegistrationCallback(context: context, message: message, storage: storage)
@@ -245,12 +332,12 @@ internal enum LocalReceptionist {
             }
         }
 
-        message.replyRegistered()
+        message.replyCheckedIn()
     }
 
     private static func onSubscribe(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) throws {
         let boxedMessage = message._boxed
-        let key = AnyRegistrationKey(from: message._key)
+        let key = AnyRegistrationKey(from: message._group)
 
         context.log.debug("Subscribing \(message._addressableActorRef) to: \(key)")
 
@@ -263,7 +350,7 @@ internal enum LocalReceptionist {
     }
 
     private static func onLookup(context: ActorContext<Receptionist.Message>, message: _Lookup, storage: Receptionist.Storage) throws {
-        if let registered = storage.registrations(forKey: message._key.boxed) {
+        if let registered = storage.registrations(forKey: message._group.boxed) {
             message.replyWith(registered)
         } else {
             message.replyWith([])
@@ -286,11 +373,11 @@ internal enum LocalReceptionist {
         _ = try context.spawn(.anonymous, behavior)
     }
 
-    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
+    private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _CheckIn, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
-            let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._addressableActorRef) ?? []
+            let remainingRegistrations = storage.removeRegistration(key: message._group.boxed, ref: message._addressableActorRef) ?? []
 
-            if let subscribed = storage.subscriptions(forKey: message._key.boxed) {
+            if let subscribed = storage.subscriptions(forKey: message._group.boxed) {
                 for subscription in subscribed {
                     subscription._replyWith(remainingRegistrations)
                 }
@@ -300,7 +387,7 @@ internal enum LocalReceptionist {
 
     private static func makeRemoveSubscriptionCallback(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
         return context.makeAsynchronousCallback {
-            storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
+            storage.removeSubscription(key: message._group.boxed, subscription: message._boxed)
         }
     }
 }
@@ -311,8 +398,8 @@ internal enum LocalReceptionist {
 ///
 /// - SeeAlso:
 ///     - `Receptionist.Message`
+///     - `Receptionist.CheckIn`
 ///     - `Receptionist.Lookup`
-///     - `Receptionist.Register`
 ///     - `Receptionist.Subscribe`
 public protocol ReceptionistMessage {}
 
@@ -321,19 +408,19 @@ public protocol ReceptionistMessage {}
 
 internal typealias FullyQualifiedTypeName = String
 
-internal protocol _Register: ReceptionistMessage {
+internal protocol _CheckIn: ReceptionistMessage {
     var _addressableActorRef: AddressableActorRef { get }
-    var _key: _RegistrationKey { get }
-    func replyRegistered()
+    var _group: _GroupIdentifier { get }
+    func replyCheckedIn()
 }
 
 internal protocol _Lookup: ReceptionistMessage {
-    var _key: _RegistrationKey { get }
+    var _group: _GroupIdentifier { get }
     func replyWith(_ refs: Set<AddressableActorRef>)
     func replyWith(_ refs: [AddressableActorRef])
 }
 
-internal protocol _RegistrationKey {
+internal protocol _GroupIdentifier {
     var boxed: AnyRegistrationKey { get }
     var id: String { get }
     var typeString: FullyQualifiedTypeName { get }
@@ -346,7 +433,7 @@ internal enum ReceptionistError: Error {
     case typeMismatch(expected: String)
 }
 
-internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
+internal struct AnyRegistrationKey: _GroupIdentifier, Hashable, Codable {
     var boxed: AnyRegistrationKey {
         return self
     }
@@ -354,7 +441,7 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
     var id: String
     var typeString: FullyQualifiedTypeName
 
-    init(from key: _RegistrationKey) {
+    init(from key: _GroupIdentifier) {
         self.id = key.id
         self.typeString = key.typeString
     }
@@ -367,7 +454,7 @@ internal struct AnyRegistrationKey: _RegistrationKey, Hashable, Codable {
 }
 
 internal protocol _Subscribe: ReceptionistMessage {
-    var _key: _RegistrationKey { get }
+    var _group: _GroupIdentifier { get }
     var _boxed: AnySubscribe { get }
     var _addressableActorRef: AddressableActorRef { get }
 }
@@ -397,18 +484,18 @@ internal struct AnySubscribe: Hashable {
 internal protocol ListingRequest {
     associatedtype Message
 
-    var key: Receptionist.RegistrationKey<Message> { get }
+    var group: Receptionist.GroupIdentifier<Message> { get }
     var replyTo: ActorRef<Receptionist.Listing<Message>> { get }
 
     func replyWith(_ refs: Set<AddressableActorRef>)
 
-    var _key: _RegistrationKey { get }
+    var _group: _GroupIdentifier { get }
 }
 
 internal extension ListingRequest {
     func replyWith(_ refs: Set<AddressableActorRef>) {
         let typedRefs = refs.map {
-            key._unsafeAsActorRef($0)
+            self.group._unsafeAsActorRef($0)
         }
 
         replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
@@ -416,13 +503,13 @@ internal extension ListingRequest {
 
     func replyWith(_ refs: [AddressableActorRef]) {
         let typedRefs = refs.map {
-            key._unsafeAsActorRef($0)
+            self.group._unsafeAsActorRef($0)
         }
 
         replyTo.tell(Receptionist.Listing(refs: Set(typedRefs)))
     }
 
-    var _key: _RegistrationKey {
-        return self.key
+    var _group: _GroupIdentifier {
+        return self.group
     }
 }
