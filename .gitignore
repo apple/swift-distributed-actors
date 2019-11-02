@@ -4,6 +4,7 @@
 *.orig
 
 /.build
+/Samples/.build
 /.SourceKitten
 /Packages
 .xcode
