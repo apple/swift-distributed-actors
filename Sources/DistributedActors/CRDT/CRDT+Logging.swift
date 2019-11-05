@@ -42,6 +42,21 @@ extension CRDT.GCounter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: LWWMap + Logger Metadata
+
+extension CRDT.LWWMap {
+    func metadata<Message>(_ context: ActorContext<Message>) -> Logger.Metadata {
+        return [
+            "crdt/type": "lwwmap",
+            "crdt/owner": "\(context.address)",
+            "crdt/replicaId": "\(self.replicaId)",
+            "crdt/lwwmap/count": "\(self.count)",
+            "crdt/lwwmap/delta": "\(String(describing: self.delta))",
+        ]
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: LWWRegister + Logger Metadata
 
 extension CRDT.LWWRegister {

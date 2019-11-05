@@ -51,6 +51,7 @@ XCTMain([
     testCase(CRDTAnyTypesTests.allTests),
     testCase(CRDTEnvelopeSerializationTests.allTests),
     testCase(CRDTGCounterTests.allTests),
+    testCase(CRDTLWWMapTests.allTests),
     testCase(CRDTLWWRegisterTests.allTests),
     testCase(CRDTORMapTests.allTests),
     testCase(CRDTORSetTests.allTests),
