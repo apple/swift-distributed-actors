@@ -41,7 +41,8 @@ final class GenerateActorsTests: XCTestCase {
 //        let folder = try Folder(path: "Tests/GenActorTests")
 //        let file = try folder.file(at: "TestActorable+Actorable.swift")
 //
-    ////        try gen.run(fileToParse: file)
+// // TODO: run and check the ignored method _ prefixed is not generated as actor interface
+//        try gen.run(fileToParse: file)
 //    }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -88,5 +89,49 @@ final class GenerateActorsTests: XCTestCase {
         p.watch(actor.ref)
         actor.becomeStopped()
         try p.expectTerminated(actor.ref)
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Combined protocols
+
+    func test_combinedProtocols_receiveEitherMessage() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let combined: Actor<JackOfAllTrades> = try system.spawn(.anonymous, JackOfAllTrades.init)
+
+        combined.ref.tell(.parking(.park))
+
+        combined.makeTicket()
+        combined.park()
+        combined.hello(replyTo: p.ref)
+
+        try p.expectMessage("Hello")
+    }
+
+    func test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol() throws {
+        let p = testKit.spawnTestProbe(expecting: String.self)
+
+        let combined: Actor<JackOfAllTrades> = try system.spawn(.anonymous, JackOfAllTrades.init)
+
+        func takeHello(_ a: Actor<JackOfAllTrades>) {
+            a.hello(replyTo: p.ref)
+        }
+        func takeTicketing<T: Ticketing>(_ a: Actor<T>) {
+            a.makeTicket()
+        }
+        func takeParking<T: Parking>(_ a: Actor<T>) {
+            a.park()
+        }
+        func takeParkingAndTicketing<T: Parking & Ticketing>(_ a: Actor<T>) {
+            a.park()
+            a.makeTicket()
+        }
+
+        takeHello(combined)
+        takeTicketing(combined)
+        takeParking(combined)
+        takeParkingAndTicketing(combined)
+
+        try p.expectMessage("Hello")
     }
 }

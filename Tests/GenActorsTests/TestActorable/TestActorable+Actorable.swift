@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import class NIO.EventLoopFuture
 
 // TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
@@ -53,12 +54,36 @@ public struct TestActorable: Actorable {
         try self.contextSpawnExample()
     }
 
+    /// Underscored method names are ignored automatically
+    public func _ignoreInGenActor() throws {
+        // nothing
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replying
 
     public mutating func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
         replyTo.tell("Hello \(name)!")
+    }
+
+    // The <Self> has to be special handled as well, since in the message it'd be the "wrong" self
+    public mutating func greetReplyToActor(name: String, replyTo: Actor<Self>) {
+        self.messages.append("\(#function):\(name),\(replyTo)")
+        replyTo.greet(name: "name")
+    }
+
+    // TODO: would be better served as `async` function; we'd want to forbid non async functions perhaps even?
+    public mutating func greetReplyToReturnStrict(name: String) -> String {
+        self.messages.append("\(#function):\(name)")
+        return "Hello strict \(name)!"
+    }
+
+    // TODO: would be better served as `async` function
+    public mutating func greetReplyToReturnNIOFuture(name: String) -> EventLoopFuture<String> {
+        self.messages.append("\(#function):\(name)")
+
+        return self.context.system._eventLoopGroup.next().makeSucceededFuture("Hello future \(name)!")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

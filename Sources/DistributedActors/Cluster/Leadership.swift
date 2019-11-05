@@ -55,7 +55,7 @@ public struct LeaderElectionContext {
 
     internal init<M>(_ ownerContext: ActorContext<M>) {
         self.log = ownerContext.log
-        self.loop = ownerContext.system.eventLoopGroup.next()
+        self.loop = ownerContext.system._eventLoopGroup.next()
     }
 
     internal init(log: Logger, eventLoop: EventLoop) {

@@ -108,7 +108,9 @@ public final class ActorSystem {
     private var shutdownReceptacle: BlockingReceptacle<Void>?
     private let shutdownLock: Lock = Lock()
 
-    internal let eventLoopGroup: MultiThreadedEventLoopGroup
+    /// Exposes `NIO.MultiThreadedEventLoopGroup` used by this system.
+    /// Try not to rely on this too much as this is an implementation detail...
+    public let _eventLoopGroup: MultiThreadedEventLoopGroup
 
     #if SACT_TESTS_LEAKS
     static let actorSystemInitCounter: Atomic<Int> = Atomic(value: 0)
@@ -155,7 +157,7 @@ public final class ActorSystem {
         settings.cluster.eventLoopGroup = eventLoopGroup
 
         // TODO: should we share this, or have a separate ELG for IO?
-        self.eventLoopGroup = eventLoopGroup
+        self._eventLoopGroup = eventLoopGroup
 
         self.settings = settings
 
@@ -311,7 +313,7 @@ public final class ActorSystem {
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
-            try! self.eventLoopGroup.syncShutdownGracefully()
+            try! self._eventLoopGroup.syncShutdownGracefully()
             self.serialization = nil
             self._cluster = nil
             self._receptionist = self.deadLetters.adapted()

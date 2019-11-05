@@ -356,7 +356,7 @@ extension CRDT.Replicator {
                                                                  localConfirmed: Bool,
                                                                  isSuccessful: @escaping (RemoteCommandResult) -> Bool,
                                                                  _ makeRemoteCommand: @escaping (ActorRef<RemoteCommandResult>) -> Message) throws -> EventLoopFuture<[ActorRef<Message>: RemoteCommandResult]> {
-            let promise = context.system.eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
+            let promise = context.system._eventLoopGroup.next().makePromise(of: [ActorRef<Message>: RemoteCommandResult].self)
 
             // Determine the number of successful responses needed to satisfy consistency requirement.
             // The `RemoteCommand` is sent to *all* known remote replicators, but the consistency
