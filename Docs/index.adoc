@@ -106,6 +106,15 @@ such as https://akka.io[Akka] and https://www.erlang.org[Erlang].
 
 Swift Distributed Actors's transport layer is implemented on top of https://github.com/apple/swift-nio[Swift NIO].
 
+++++
+<h3>Supported Versions</h3>
+++++
+
+Distributed Actors currently requires:
+
+- Swift 5.1+
+  - though do get in touch if you require Swift 5.0 support
+- Swift NIO 2.x
 
 ++++
 <h3>Getting in Touch</h3>
