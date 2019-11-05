@@ -110,7 +110,7 @@ Swift Distributed Actors's transport layer is implemented on top of https://gith
 <h3>Supported Versions</h3>
 ++++
 
-Distributed Actors currently require:
+Distributed Actors currently requires:
 
 - Swift 5.1+
   - though do get in touch if you require Swift 5.0 support
