@@ -131,39 +131,8 @@ let targets: [PackageDescription.Target] = [
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Samples
-
-    .target(
-        name: "SampleDiningPhilosophers",
-        dependencies: ["DistributedActors"],
-        path: "Samples/SampleDiningPhilosophers"
-    ),
-    .target(
-        name: "SampleLetItCrash",
-        dependencies: ["DistributedActors"],
-        path: "Samples/SampleLetItCrash"
-    ),
-    .target(
-        name: "SampleCluster",
-        dependencies: ["DistributedActors"],
-        path: "Samples/SampleCluster"
-    ),
-    .target(
-        name: "SampleMetrics",
-        dependencies: [
-            "DistributedActors",
-            "SwiftPrometheus",
-        ],
-        path: "Samples/SampleMetrics"
-    ),
-    .target(
-        name: "SampleGenActors",
-        dependencies: [
-            "DistributedActors"
-        ],
-        // TODO: make possible to run `swift genActors` here somehow
-        path: "Samples/SampleGenActors"
-    ),
+    // MARK: Samples are defined in Samples/Package.swift
+    // ==== ----------------------------------------------------------------------------------------------------------------
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Internals; NOT SUPPORTED IN ANY WAY
@@ -200,9 +169,6 @@ var dependencies: [Package.Dependency] = [
     // swift-syntax is Swift version dependent, and added  as such below
     .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.0"), // BSD license
     .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
-
-    // ~~~ only for samples ~~~
-    .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
 ]
 
 #if swift(>=5.1)
@@ -240,29 +206,6 @@ let package = Package(
         .executable(
             name: "DistributedActorsBenchmarks",
             targets: ["DistributedActorsBenchmarks"]
-        ),
-
-        /* ---  samples --- */
-
-        .executable(
-            name: "SampleDiningPhilosophers",
-            targets: ["SampleDiningPhilosophers"]
-        ),
-        .executable(
-            name: "SampleLetItCrash",
-            targets: ["SampleLetItCrash"]
-        ),
-        .executable(
-            name: "SampleCluster",
-            targets: ["SampleCluster"]
-        ),
-        .executable(
-            name: "SampleMetrics",
-            targets: ["SampleMetrics"]
-        ),
-        .executable(
-            name: "SampleGenActors",
-            targets: ["SampleGenActors"]
         ),
     ],
 
