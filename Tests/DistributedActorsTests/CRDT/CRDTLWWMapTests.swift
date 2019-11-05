@@ -29,8 +29,8 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.count.shouldEqual(0)
         m1.isEmpty.shouldBeTrue()
 
-        m1["foo"] = 3
-        m1["bar"] = 5
+        m1.set(forKey: "foo", value: 3)
+        m1.set(forKey: "bar", value: 5)
 
         guard let foo1 = m1["foo"] else {
             throw shouldNotHappen("Expect m1 to contain \"foo\", got \(m1)")
@@ -50,7 +50,7 @@ final class CRDTLWWMapTests: XCTestCase {
         m1.count.shouldEqual(2)
         m1.isEmpty.shouldBeFalse()
 
-        m1["foo"] = 2
+        m1.set(forKey: "foo", value: 2)
 
         guard let foo2 = m1["foo"] else {
             throw shouldNotHappen("Expect m1 to contain \"foo\", got \(m1)")
@@ -94,7 +94,7 @@ final class CRDTLWWMapTests: XCTestCase {
     func test_LWWMap_update_remove_shouldUpdateDelta() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
 
-        m1["foo"] = 5
+        m1.set(forKey: "foo", value: 5)
         m1.count.shouldEqual(1)
 
         guard let d1 = m1.delta else {
@@ -112,7 +112,7 @@ final class CRDTLWWMapTests: XCTestCase {
         }
         d1foo.value.shouldEqual(5)
 
-        m1["bar"] = 3
+        m1.set(forKey: "bar", value: 3)
         m1.count.shouldEqual(2)
 
         guard let d2 = m1.delta else {
@@ -155,7 +155,7 @@ final class CRDTLWWMapTests: XCTestCase {
         }
         d3bar.value.shouldEqual(3)
 
-        m1["foo"] = 6
+        m1.set(forKey: "foo", value: 6)
         m1.count.shouldEqual(2) // "foo" and "bar"
 
         guard let d4 = m1.delta else {
@@ -181,7 +181,7 @@ final class CRDTLWWMapTests: XCTestCase {
         var m2 = CRDT.LWWMap<String, Int>(replicaId: self.replicaB, defaultValue: 0)
         // ORSet `keys`: [(B,1): "foo"]
         // `values`: ["foo": 5]
-        m2["foo"] = 5 // (B,1)
+        m2.set(forKey: "foo", value: 5) // (B,1)
 
         m1.merge(other: m2)
 
@@ -200,14 +200,14 @@ final class CRDTLWWMapTests: XCTestCase {
         // `values`: ["foo": 7, "bar": 6]
         // ORSet `keys`: [(B,3): "foo", (B,2): "bar"]
         // `values`: ["foo": 1, "bar": 3]
-        m1["foo"] = 7 // (A,1) replaces (B,1) because it's "newer"
-        m2["bar"] = 3 // (B,2)
+        m1.set(forKey: "foo", value: 7) // (A,1) replaces (B,1) because it's "newer"
+        m2.set(forKey: "bar", value: 3) // (B,2)
 
         // Ensure the following changes are "newer"
         Thread.sleep(until: Date().addingTimeInterval(0.005))
 
-        m1["bar"] = 6 // (A,2)
-        m2["foo"] = 1 // (B,3) replaces (B,1)
+        m1.set(forKey: "bar", value: 6) // (A,2)
+        m2.set(forKey: "foo", value: 1) // (B,3) replaces (B,1)
 
         // ORSet `keys`: [(A,1): "foo", (A,2): "bar", (B,2): "bar", (B,3): "foo"]
         // `values`: ["foo": 1 ((B,3) wins), "bar": 6 ((A,2) wins)]
@@ -237,8 +237,8 @@ final class CRDTLWWMapTests: XCTestCase {
         var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
         // ORSet `keys`: [(A,1): "foo", (A,2): "bar"]
         // `values`: ["foo": 8, "bar": 6]
-        m1["foo"] = 8 // (A,1)
-        m1["bar"] = 6 // (A,2)
+        m1.set(forKey: "foo", value: 8) // (A,1)
+        m1.set(forKey: "bar", value: 6) // (A,2)
 
         // Ensure the following changes are "newer"
         Thread.sleep(until: Date().addingTimeInterval(0.005))
@@ -246,8 +246,8 @@ final class CRDTLWWMapTests: XCTestCase {
         var m2 = CRDT.LWWMap<String, Int>(replicaId: self.replicaB, defaultValue: 0)
         // ORSet `keys`: [(B,1): "bar", (B,2): "baz"]
         // `values`: ["bar": 3, "baz": 5]
-        m2["bar"] = 3 // (B,1)
-        m2["baz"] = 5 // (B,2)
+        m2.set(forKey: "bar", value: 3) // (B,1)
+        m2.set(forKey: "baz", value: 5) // (B,2)
 
         guard let delta = m2.delta else {
             throw shouldNotHappen("m2.delta should not be nil after updates")
@@ -283,8 +283,8 @@ final class CRDTLWWMapTests: XCTestCase {
 
     func test_LWWMap_resetValue_resetAllValues() throws {
         var m1 = CRDT.LWWMap<String, Int>(replicaId: self.replicaA, defaultValue: 0)
-        m1["foo"] = 2
-        m1["bar"] = 6 // (A,2)
+        m1.set(forKey: "foo", value: 2)
+        m1.set(forKey: "bar", value: 6) // (A,2)
 
         guard let foo1 = m1["foo"] else {
             throw shouldNotHappen("Expect m1 to contain \"foo\", got \(m1)")

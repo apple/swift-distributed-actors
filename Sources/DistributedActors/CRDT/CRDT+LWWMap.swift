@@ -17,7 +17,7 @@
 
 extension CRDT {
     /// LWWMap, or last-writer-wins map, is a specialized ORMap in which values are automatically wrapped inside
-    /// LWWRegisters. Unlike ORMap, there is no constraint on `Value` type.
+    /// `LWWRegister`s. Unlike `ORMap`, there is no constraint on `Value` type.
     ///
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
@@ -68,24 +68,18 @@ extension CRDT {
             }
         }
 
-        /// Accesses the value associated with the given `key` for reading and writing.
+        /// Gets the value, if any, associated with `key`.
         ///
-        /// - ***Warning**: If you assign `nil` as the value for the given `key`, the `LWWMap` removes that key by
-        ///     calling `unsafeRemoveValue`, which might cause unexpected consequences.
-        /// - SeeAlso: `LWWMap.unsafeRemoveValue(forKey:)`
+        /// The subscript is *read-only*--this is to ensure that values cannot be set to `nil` by mistake which would
+        /// erase causal histories.
         public subscript(key: Key) -> Value? {
-            get {
-                return self.state[key]?.value
-            }
+            return self.state[key]?.value
+        }
 
-            set(value) {
-                if let value = value {
-                    self.state.update(key: key) { register in
-                        register.assign(value)
-                    }
-                } else {
-                    _ = self.unsafeRemoveValue(forKey: key)
-                }
+        /// Sets the `value` for `key`.
+        public mutating func set(forKey key: Key, value: Value) {
+            self.state.update(key: key) { register in
+                register.assign(value)
             }
         }
 
@@ -131,7 +125,8 @@ extension CRDT {
 // MARK: ActorOwned LWWMap
 
 public protocol LWWMapOperations: ORMapWithResettableValue {
-    subscript(key: Key) -> Value? { get set }
+    subscript(key: Key) -> Value? { get }
+    func set(forKey key: Key, value: Value)
 }
 
 // See comments in CRDT.ORSet
@@ -142,7 +137,7 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
 
     public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
         // Set value for key locally then propagate
-        self.data[key] = value
+        self.data.set(forKey: key, value: value)
         return self.write(consistency: consistency, timeout: timeout)
     }
 }
