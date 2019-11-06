@@ -5,25 +5,25 @@
 import DistributedActors
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated Greeter messages 
+// MARK: DO NOT EDIT: Generated LifecycleActor messages 
 
-/// DO NOT EDIT: Generated Greeter messages
-extension Greeter {
+/// DO NOT EDIT: Generated LifecycleActor messages
+extension LifecycleActor {
     public enum Message { 
-        case greet(name: String) 
+        case pleaseStop 
     }
 
     
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated Greeter behavior
+// MARK: DO NOT EDIT: Generated LifecycleActor behavior
 
-extension Greeter {
+extension LifecycleActor {
 
-    public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
+    public static func makeBehavior(instance: LifecycleActor) -> Behavior<Message> {
         return .setup { context in
-            var ctx = Actor<Greeter>.Context(underlying: context)
+            var ctx = Actor<LifecycleActor>.Context(underlying: context)
             var instance = instance // TODO only var if any of the methods are mutating
 
             /* await */ instance.preStart(context: ctx)
@@ -31,14 +31,14 @@ extension Greeter {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .greet(let name):
-                    instance.greet(name: name) 
+                case .pleaseStop:
+                    return instance.pleaseStop() 
                 
                 }
                 return .same
             }.receiveSignal { context, signal in 
                 if signal is Signals.PostStop {
-                    var ctx = Actor<Greeter>.Context(underlying: context)
+                    var ctx = Actor<LifecycleActor>.Context(underlying: context)
                     instance.postStop(context: ctx)
                 }
                 return .same
@@ -48,12 +48,12 @@ extension Greeter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for Greeter
+// MARK: Extend Actor for LifecycleActor
 
-extension Actor where A.Message == Greeter.Message {
+extension Actor where A.Message == LifecycleActor.Message {
     
-     func greet(name: String) { 
-        self.ref.tell(.greet(name: name))
+    public func pleaseStop() { 
+        self.ref.tell(.pleaseStop)
     } 
     
 }

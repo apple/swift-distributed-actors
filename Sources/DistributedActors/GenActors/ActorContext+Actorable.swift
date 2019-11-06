@@ -28,6 +28,11 @@ extension ActorContext {
         })
         return Actor(ref: ref)
     }
+
+    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @autoclosure @escaping () -> A) throws -> Actor<A> {
+        let ref = try self.spawn(naming, of: A.Message.self, A.makeBehavior(instance: makeActorable()))
+        return Actor(ref: ref)
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -42,6 +47,10 @@ extension Actor {
     public struct Context {
         @usableFromInline
         internal let underlying: ActorContext<A.Message>
+
+        public init(underlying: ActorContext<A.Message>) {
+            self.underlying = underlying
+        }
     }
 }
 
@@ -102,7 +111,7 @@ extension Actor.Context {
 }
 
 // ==== ------------------------------------------------------------------------------------------------------------
-// MARK: Actor<A>.Context + Spawning actors
+// MARK: Actor<A>.Context + Spawning
 
 extension Actor.Context {
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {

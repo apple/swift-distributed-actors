@@ -29,7 +29,6 @@ enum Rendering {
 
         import DistributedActors
 
-
         """
 
     struct ActorShellTemplate: Renderable {
@@ -52,7 +51,6 @@ enum Rendering {
                 {% endfor %}
             }
 
-
             """
         )
 
@@ -67,7 +65,6 @@ enum Rendering {
                     {{case}} {% endfor %} 
                 }
             }
-
 
             """
         )
@@ -97,11 +94,12 @@ enum Rendering {
 
                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
                     return .setup { context in
+                        var ctx = Actor<{{baseName}}>.Context(underlying: context)
                         var instance = instance // TODO only var if any of the methods are mutating
 
-                        // /* await */ self.instance.preStart(context: context) // TODO: enable preStart
+                        /* await */ instance.preStart(context: ctx)
 
-                        return .receiveMessage { message in
+                        return Behavior<Message>.receiveMessage { message in
                             switch message { 
                             {% for case in funcSwitchCases %}
                             {{case}} {% endfor %}
@@ -109,11 +107,16 @@ enum Rendering {
                             {{case}} {% endfor %}
                             }
                             return .same
+                        }.receiveSignal { context, signal in 
+                            if signal is Signals.PostStop {
+                                var ctx = Actor<{{baseName}}>.Context(underlying: context)
+                                instance.postStop(context: ctx)
+                            }
+                            return .same
                         }
                     }
                 }
             }
-
 
             """
         )
@@ -129,7 +132,6 @@ enum Rendering {
                 {{ tell }} 
                 {% endfor %}
             }
-
 
             """
         )

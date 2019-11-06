@@ -30,6 +30,7 @@ extension GenerateActorsTests {
             ("test_generated_TestActorable_becomeAnotherBehavior", test_generated_TestActorable_becomeAnotherBehavior),
             ("test_combinedProtocols_receiveEitherMessage", test_combinedProtocols_receiveEitherMessage),
             ("test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol", test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol),
+            ("test_LifecycleActor_shouldReceiveLifecycleEvents", test_LifecycleActor_shouldReceiveLifecycleEvents),
         ]
     }
 }
