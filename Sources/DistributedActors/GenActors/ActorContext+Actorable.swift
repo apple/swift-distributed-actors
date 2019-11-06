@@ -39,7 +39,7 @@ extension Actor {
     ///
     /// - ***Warning**: MUST NOT be shared "outside" the actor, as it is only safe to access by the owning actor itself.
     ///
-    /// The `Actor<A>.Context` is the `Actorable` equivalent of `ActorContext<Message>` which is designed to work with the low-level `Behavior` types.
+    /// The `Actor<A>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
 
         @usableFromInline
