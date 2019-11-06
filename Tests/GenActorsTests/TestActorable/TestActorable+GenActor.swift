@@ -7,6 +7,7 @@ import DistributedActors
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable messages 
 
+/// DO NOT EDIT: Generated TestActorable messages
 extension TestActorable {
     public enum Message { 
         case ping 
@@ -15,16 +16,25 @@ extension TestActorable {
         case greet2(name: String, surname: String) 
         case throwing 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
+        case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
+        case greetReplyToReturnStrict(name: String) 
+        case greetReplyToReturnNIOFuture(name: String) 
         case becomeStopped 
         case contextSpawnExample 
-        case timer  
+        case timer 
     }
+
+    
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable behavior
 
 extension TestActorable {
+
+    // TODO: if overriden don't generate this?
+    // public typealias Message = Actor<TestActorable>.TestActorableMessage
+
     public static func makeBehavior(instance: TestActorable) -> Behavior<Message> {
         return .setup { context in
             var instance = instance // TODO only var if any of the methods are mutating
@@ -46,18 +56,24 @@ extension TestActorable {
                     try instance.throwing() 
                 case .greetReplyToActorRef(let name, let replyTo):
                     instance.greetReplyToActorRef(name: name, replyTo: replyTo) 
+                case .greetReplyToActor(let name, let replyTo):
+                    instance.greetReplyToActor(name: name, replyTo: replyTo) 
+                case .greetReplyToReturnStrict(let name):
+                    instance.greetReplyToReturnStrict(name: name) 
+                case .greetReplyToReturnNIOFuture(let name):
+                    instance.greetReplyToReturnNIOFuture(name: name) 
                 case .becomeStopped:
                     return instance.becomeStopped() 
                 case .contextSpawnExample:
                     try instance.contextSpawnExample() 
                 case .timer:
                     instance.timer() 
+                
                 }
                 return .same
             }
         }
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -65,40 +81,53 @@ extension TestActorable {
 
 extension Actor where A.Message == TestActorable.Message {
     
-    public func ping() { // TODO: returning things
+    public func ping() { 
         self.ref.tell(.ping)
     } 
     
-    public func greet(name: String) { // TODO: returning things
+    public func greet(name: String) { 
         self.ref.tell(.greet(name: name))
     } 
     
-    public func greetUnderscoreParam(_ name: String) { // TODO: returning things
+    public func greetUnderscoreParam(_ name: String) { 
         self.ref.tell(.greetUnderscoreParam(name))
     } 
     
-    public func greet2(name: String, surname: String) { // TODO: returning things
+    public func greet2(name: String, surname: String) { 
         self.ref.tell(.greet2(name: name, surname: surname))
     } 
     
-    public func throwing() { // TODO: returning things
+    public func throwing() { 
         self.ref.tell(.throwing)
     } 
     
-    public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { // TODO: returning things
+    public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { 
         self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
     } 
     
-     func becomeStopped() { // TODO: returning things
+    public func greetReplyToActor(name: String, replyTo: Actor<TestActorable>) { 
+        self.ref.tell(.greetReplyToActor(name: name, replyTo: replyTo))
+    } 
+    
+    public func greetReplyToReturnStrict(name: String) { 
+        self.ref.tell(.greetReplyToReturnStrict(name: name))
+    } 
+    
+    public func greetReplyToReturnNIOFuture(name: String) { 
+        self.ref.tell(.greetReplyToReturnNIOFuture(name: name))
+    } 
+    
+     func becomeStopped() { 
         self.ref.tell(.becomeStopped)
     } 
     
-     func contextSpawnExample() { // TODO: returning things
+     func contextSpawnExample() { 
         self.ref.tell(.contextSpawnExample)
     } 
     
-     func timer() { // TODO: returning things
+     func timer() { 
         self.ref.tell(.timer)
     } 
     
 }
+

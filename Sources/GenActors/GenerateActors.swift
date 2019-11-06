@@ -18,40 +18,66 @@ import Foundation
 import SwiftSyntax
 
 public final class GenerateActors {
-    let foldersToScan: [Folder]
+    var filesToScan: [File] = []
+    var foldersToScan: [Folder] = []
     var options: [String]
 
     let fileScanNameSuffix: String = "+Actorable"
     let fileScanNameSuffixWithExtension: String = "+Actorable.swift"
+    let fileGenNameSuffixWithExtension: String = "+GenActor.swift"
 
     public init(args: [String]) {
         precondition(args.count > 1, "Syntax: genActors PATH [options]")
 
         var remaining = args.dropFirst()
-        self.options = remaining.filter { $0.starts(with: "--") }
+        self.options = remaining.filter {
+            $0.starts(with: "--")
+        }
 
         do {
-            let foldersToScan = remaining.filter { !$0.starts(with: "--") }
-            precondition(!foldersToScan.isEmpty, "At least one directory to scan must be passed in. Arguments were: \(args)")
-            self.foldersToScan = try foldersToScan.map { try Folder(path: Folder.current.path + "/\($0)") }
+            let passedInToScan: [String] = remaining.filter {
+                !$0.starts(with: "--")
+            }.map { path in
+                if path.starts(with: "/") {
+                    return path
+                } else {
+                    return Folder.current.path + path
+                }
+            }
+            precondition(!passedInToScan.isEmpty, "At least one directory to scan must be passed in. Arguments were: \(args)")
+
+            self.filesToScan = try passedInToScan.filter {
+                $0.hasSuffix(self.fileScanNameSuffixWithExtension)
+            }.map { path in
+                pprint("path = \(path)")
+                return try File(path: path)
+            }
+            self.foldersToScan = try passedInToScan.filter {
+                !$0.hasSuffix(".swift")
+            }.map { path in
+                pprint("path = \(path)")
+                return try Folder(path: path)
+            }
         } catch {
             fatalError("Unable to initialize \(GenerateActors.self), error: \(error)")
         }
     }
 
-    public func run() throws -> Bool {
-        let foldersContainedActorables: [Bool] = try self.foldersToScan.map { folder in
+    public func run() throws {
+        try self.filesToScan.forEach { file in
+            _ = try self.parseAndGen(fileToParse: file)
+        }
+
+        try self.foldersToScan.map { folder in
             self.debug("Scanning [\(folder.path)] for [\(self.fileScanNameSuffixWithExtension)] suffixed files...")
             let actorFilesToScan = folder.files.recursive.filter { f in
                 f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
             }
 
-            return try actorFilesToScan.reduce(true) { acc, file in
-                try acc && self.parseAndGen(fileToParse: file)
+            try actorFilesToScan.forEach { file in
+                _ = try self.parseAndGen(fileToParse: file)
             }
         }
-
-        return foldersContainedActorables.reduce(true) { $0 && $1 }
     }
 
     public func parseAndGen(fileToParse: File) throws -> Bool {
@@ -62,158 +88,27 @@ public final class GenerateActors {
 
         var gather = GatherActorables()
         sourceFile.walk(&gather)
+        let rawActorables = gather.actorables
 
-        // TODO: allow many actors in same file
-        let baseName = gather.actorable
+        let actorables = ResolveActorables.resolve(rawActorables)
 
-        let renderedShell = try Rendering.ActorShellTemplate(baseName: baseName, funcs: gather.actorFuncs).render()
+        try actorables.forEach { actorable in
+            let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render()
 
-        let genActorFilename = "\(fileToParse.nameExcludingExtension).swift".replacingOccurrences(of: self.fileScanNameSuffix, with: "+GenActor")
-        guard let parentFolder = fileToParse.parent else {
-            fatalError("Unable to locate or render Actorable definitions in \(fileToParse.parent).")
-        }
-        let targetFile = try parentFolder.createFile(named: genActorFilename)
-        try targetFile.write(Rendering.generatedFileHeader)
-        try targetFile.append(renderedShell)
+            guard let parent = fileToParse.parent else {
+                fatalError("Unable to locate or render Actorable definitions in \(fileToParse).")
+            }
 
-        return true
-    }
+            let targetFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenNameSuffixWithExtension)")
 
-    func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
-        pprint("[gen-actors] \(message)", file: file, line: line)
-    }
-}
-
-// TODO: we do not allow many actors in the same file I guess
-struct GatherActorables: SyntaxVisitor {
-    /// Those functions need to be made into message protocol and generate stuff for them
-    var actorFuncs: [ActorFunc] = []
-    var actorable: String = ""
-
-    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        guard node.isActorable() else {
-            return .skipChildren
+            try targetFile.write("")
+            try targetFile.append(Rendering.generatedFileHeader)
+            try targetFile.append(renderedShell)
         }
 
-        self.debug("Actorable detected: [\(node.identifier.text)]")
-        self.actorable = node.identifier.text
-
-        pprint("self = \(self)")
-
-        return .visitChildren
+        return !rawActorables.isEmpty
     }
 
-    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        guard node.isActorable() else {
-            return .skipChildren
-        }
-
-        self.debug("Actorable detected: \(node.identifier)") // TODO: we could allow many
-        self.actorable = node.identifier.text
-
-        return .visitChildren
-    }
-
-    mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        let modifierTokenKinds = node.modifiers?.map {
-            $0.name.tokenKind
-        } ?? []
-
-        // TODO: carry access control
-        guard !modifierTokenKinds.contains(.privateKeyword) else {
-            return .skipChildren
-        }
-
-        let access: String
-        if modifierTokenKinds.contains(.publicKeyword) {
-            access = "public"
-        } else if modifierTokenKinds.contains(.internalKeyword) {
-            access = "internal"
-        } else {
-            access = ""
-        }
-
-        let throwing: Bool
-        switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
-        case .throwsKeyword:
-            throwing = true
-        default:
-            throwing = false
-        }
-
-        // TODO: we could require it to be async as well or something
-        self.actorFuncs.append(
-            ActorFunc(message: ActorableMessageDecl(
-                access: access,
-                name: "\(node.identifier)",
-                params: node.signature.gatherParams(),
-                throwing: throwing,
-                returnType: .fromType(node.signature.output?.returnType)
-            ))
-        )
-
-        // pprint("MAKE INTO ACTOR FUNC: \(node)")
-        return .skipChildren
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Gather parameters of function declarations
-
-struct GatherParameters: SyntaxVisitor {
-    typealias Output = [(String?, String, String)]
-    var params: Output = []
-
-    mutating func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
-        let firstName = node.firstName?.text
-        guard let secondName = node.secondName?.text ?? firstName else {
-            fatalError("No `secondName` or `firstName` available at: \(node)")
-        }
-        guard let type = node.type?.description else {
-            fatalError("No `type` available at function parameter: \(node)")
-        }
-
-        self.params.append((firstName, secondName, type))
-        return .skipChildren
-    }
-}
-
-extension FunctionSignatureSyntax {
-    func gatherParams() -> GatherParameters.Output {
-        var gather = GatherParameters()
-        self.walk(&gather)
-        return gather.params
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Check type is Actorable
-
-extension DeclSyntax {
-    func isActorable() -> Bool {
-        var isActorable = IsActorableVisitor()
-        self.walk(&isActorable)
-        return isActorable.actorable
-    }
-}
-
-struct IsActorableVisitor: SyntaxVisitor {
-    var actorable: Bool = false
-
-    mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
-        if "\(node)".contains("Actorable") { // TODO: make less hacky
-            self.actorable = true
-            return .skipChildren
-        }
-        return .visitChildren
-    }
-
-    var shouldContinue: SyntaxVisitorContinueKind {
-        return self.actorable ? .visitChildren : .skipChildren
-    }
-}
-
-extension SyntaxVisitor {
     func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
         pprint("[gen-actors] \(message)", file: file, line: line)
     }

@@ -183,7 +183,7 @@ internal struct SWIMShell {
         // We are only interested in successful pings, as a single success tells us the node is
         // still alive. Therefore we propagate only the first success, but no failures.
         // The failure case is handled through the timeout of the whole operation.
-        let firstSuccess = context.system.eventLoopGroup.next().makePromise(of: SWIM.Ack.self)
+        let firstSuccess = context.system._eventLoopGroup.next().makePromise(of: SWIM.Ack.self)
         let pingTimeout = self.swim.settings.failureDetector.pingTimeout
         for member in membersToPingRequest {
             let payload = self.swim.makeGossipPayload()

@@ -311,7 +311,7 @@ public enum CRDT {
             ) {
                 // not storing ownerContext on purpose; it always is a bit dangerous to store "someone's" context, for retain cycles and potential concurrency issues
                 self.log = ownerContext.log
-                self.eventLoopGroup = ownerContext.system.eventLoopGroup
+                self.eventLoopGroup = ownerContext.system._eventLoopGroup
 
                 self.subReceive = subReceive
                 self.replicator = replicator

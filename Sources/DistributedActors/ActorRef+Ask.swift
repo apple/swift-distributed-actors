@@ -72,7 +72,7 @@ extension ActorRef: ReceivesQuestions {
         guard let system = self._system else {
             fatalError("`ask` was accessed while system was already terminated. Unable to even make up an `AskResponse`!")
         }
-        let promise = system.eventLoopGroup.next().makePromise(of: type)
+        let promise = system._eventLoopGroup.next().makePromise(of: type)
 
         // TODO: implement special actor ref instead of using real actor
         do {
@@ -189,7 +189,7 @@ internal enum AskActor {
                     }
                 }
 
-                scheduledTimeout = context.system.eventLoopGroup.next().scheduleTask(in: timeout.toNIO) {
+                scheduledTimeout = context.system._eventLoopGroup.next().scheduleTask(in: timeout.toNIO) {
                     timeoutSub.tell(.timeout)
                 }
             }
