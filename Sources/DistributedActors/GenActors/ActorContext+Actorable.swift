@@ -66,7 +66,7 @@ extension Actor.Context {
 
     /// Name of this actor.
     ///
-    /// The `name` is the last segment of the Actor's `path`.
+    /// The `name` is the last segment of the `Actor`'s `path`.
     ///
     /// Special characters like `$` are reserved for internal use of the `ActorSystem`.
     // Implementation note:
