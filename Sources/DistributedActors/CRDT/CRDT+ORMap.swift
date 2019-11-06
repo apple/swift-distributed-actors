@@ -249,7 +249,7 @@ public protocol ORMapWithUnsafeRemove {
     mutating func unsafeRemoveAllValues()
 }
 
-public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove where Value: ResettableCRDT {
+public protocol ORMapWithResettableValue: ORMapWithUnsafeRemove {
     mutating func resetValue(forKey key: Key)
 
     mutating func resetAllValues()
