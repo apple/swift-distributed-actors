@@ -102,7 +102,7 @@ struct GatherActorables: SyntaxVisitor {
                 return .skipChildren
             }
 
-            // only not-static methods can be actor tells
+            // only non-static methods can be actor tells
             guard !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
