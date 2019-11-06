@@ -135,7 +135,7 @@ extension CRDT.ActorOwned where DataType: LWWMapOperations {
         return self.data.underlying
     }
 
-    public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount, mutator: (inout DataType.Value) -> Void) -> OperationResult<DataType> {
+    public func set(forKey key: DataType.Key, value: DataType.Value, writeConsistency consistency: CRDT.OperationConsistency, timeout: TimeAmount) -> OperationResult<DataType> {
         // Set value for key locally then propagate
         self.data.set(forKey: key, value: value)
         return self.write(consistency: consistency, timeout: timeout)
