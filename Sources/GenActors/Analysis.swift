@@ -77,6 +77,8 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: functions
 
+    static let skipMethodsStartingWith = ["_", "$"]
+
     mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.identifier)"
 
@@ -92,18 +94,14 @@ struct GatherActorables: SyntaxVisitor {
            name == "\(self.wipActorable.boxFuncName)" {
             isBoxingFunc = true
         } else {
-            guard !name.starts(with: "_") && !name.starts(with: "$") else {
+            guard Self.skipMethodsStartingWith.contains(where: { $0.starts(with: $0) }) else {
                 // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
                 return .skipChildren
             }
 
             // TODO: carry access control
-            guard !modifierTokenKinds.contains(.privateKeyword) else {
-                return .skipChildren
-            }
-
-            // only non-static methods can be actor tells
-            guard !modifierTokenKinds.contains(.staticKeyword) else {
+            guard !modifierTokenKinds.contains(.privateKeyword),
+                  !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
         }

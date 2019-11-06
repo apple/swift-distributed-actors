@@ -33,9 +33,6 @@ extension JackOfAllTrades {
 
 extension JackOfAllTrades {
 
-    // TODO: if overriden don't generate this?
-    // public typealias Message = Actor<JackOfAllTrades>.JackOfAllTradesMessage
-
     public static func makeBehavior(instance: JackOfAllTrades) -> Behavior<Message> {
         return .setup { context in
             var instance = instance // TODO only var if any of the methods are mutating

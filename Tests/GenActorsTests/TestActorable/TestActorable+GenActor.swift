@@ -15,6 +15,8 @@ extension TestActorable {
         case greetUnderscoreParam(String) 
         case greet2(name: String, surname: String) 
         case throwing 
+        case passMyself(someone: ActorRef<Actor<TestActorable>>) 
+        case _ignoreInGenActor 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
         case greetReplyToReturnStrict(name: String) 
@@ -31,9 +33,6 @@ extension TestActorable {
 // MARK: DO NOT EDIT: Generated TestActorable behavior
 
 extension TestActorable {
-
-    // TODO: if overriden don't generate this?
-    // public typealias Message = Actor<TestActorable>.TestActorableMessage
 
     public static func makeBehavior(instance: TestActorable) -> Behavior<Message> {
         return .setup { context in
@@ -54,6 +53,10 @@ extension TestActorable {
                     instance.greet2(name: name, surname: surname) 
                 case .throwing:
                     try instance.throwing() 
+                case .passMyself(let someone):
+                    instance.passMyself(someone: someone) 
+                case ._ignoreInGenActor:
+                    try instance._ignoreInGenActor() 
                 case .greetReplyToActorRef(let name, let replyTo):
                     instance.greetReplyToActorRef(name: name, replyTo: replyTo) 
                 case .greetReplyToActor(let name, let replyTo):
@@ -99,6 +102,14 @@ extension Actor where A.Message == TestActorable.Message {
     
     public func throwing() { 
         self.ref.tell(.throwing)
+    } 
+    
+     func passMyself(someone: ActorRef<Actor<TestActorable>>) { 
+        self.ref.tell(.passMyself(someone: someone))
+    } 
+    
+    public func _ignoreInGenActor() { 
+        self.ref.tell(._ignoreInGenActor)
     } 
     
     public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { 
