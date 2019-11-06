@@ -22,7 +22,7 @@ extension CRDT {
     /// - SeeAlso: Akka's [`LWWMap`](https://github.com/akka/akka/blob/master/akka-distributed-data/src/main/scala/akka/cluster/ddata/LWWMap.scala)
     /// - SeeAlso: `CRDT.ORMap`
     /// - SeeAlso: `CRDT.LWWRegister`
-    public struct LWWMap<Key: Hashable, Value>: NamedDeltaCRDT {
+    public struct LWWMap<Key: Hashable, Value>: NamedDeltaCRDT, LWWMapOperations {
         public typealias Delta = ORMapDelta<Key, LWWRegister<Value>>
 
         public let replicaId: ReplicaId
@@ -126,7 +126,7 @@ extension CRDT {
 
 public protocol LWWMapOperations: ORMapWithResettableValue {
     subscript(key: Key) -> Value? { get }
-    func set(forKey key: Key, value: Value)
+    mutating func set(forKey key: Key, value: Value)
 }
 
 // See comments in CRDT.ORSet
