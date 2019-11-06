@@ -143,6 +143,7 @@ extension Actor.Context {
 
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Actor<A>.Context + Death Watch
+
 extension Actor.Context {
 
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
