@@ -13,15 +13,25 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import class NIO.EventLoopFuture
 
-struct Greeter: Actorable {
-    let context: ActorContext<Message>
+// struct LifecycleActor: ActorableLifecycle, Actorable {
+public struct LifecycleActor: Actorable {
+    let probe: ActorRef<String>
 
-    init(context: ActorContext<Message>) {
-        self.context = context
+    public func preStart(context: Actor<Self>.Context) {
+        probe.tell("\(#function):\(context.path)")
     }
 
-    func greet(name: String) {
-        print("Hello \(name)")
+    public func postStop(context: Actor<Self>.Context) {
+        probe.tell("\(#function):\(context.path)")
+    }
+
+    public func pleaseStop() -> Behavior<Message> {
+        .stop
+    }
+
+    public func _skipMe() {
+        // noop
     }
 }

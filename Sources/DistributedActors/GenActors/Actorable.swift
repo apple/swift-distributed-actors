@@ -29,11 +29,28 @@
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
 public protocol Actorable {
     associatedtype Message
-    associatedtype ActorableContext = ActorContext<Message>
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: GenActor filled in functions
 
     static func makeBehavior(instance: Self) -> Behavior<Message>
 
-    init(context: ActorableContext)
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actor Lifecycle Hooks
+
+    func preStart(context: Actor<Self>.Context)
+
+    func postStop(context: Actor<Self>.Context)
+}
+
+extension Actorable {
+    public func preStart(context: Actor<Self>.Context) {
+        // noop
+    }
+
+    public func postStop(context: Actor<Self>.Context) {
+        // noop
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -49,6 +66,14 @@ public struct Actor<A: Actorable> {
 
     /// Underlying `ActorRef` to the actor running the `Actorable` behavior.
     public let ref: ActorRef<A.Message>
+
+    public var address: ActorAddress {
+        self.ref.address
+    }
+
+    public var path: ActorPath {
+        self.ref.address.path
+    }
 
     public init(ref: ActorRef<A.Message>) {
         self.ref = ref

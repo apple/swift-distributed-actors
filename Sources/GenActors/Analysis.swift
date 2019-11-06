@@ -76,8 +76,6 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: functions
 
-    static let skipMethodsStartingWith = ["_", "$"]
-
     mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.identifier)"
 
@@ -93,8 +91,7 @@ struct GatherActorables: SyntaxVisitor {
             name == "\(self.wipActorable.boxFuncName)" {
             isBoxingFunc = true
         } else {
-            guard Self.skipMethodsStartingWith.contains(where: { $0.starts(with: $0) }) else {
-                // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
+            if Self.shouldSkipGenFor(func: node) {
                 return .skipChildren
             }
 
@@ -142,6 +139,28 @@ struct GatherActorables: SyntaxVisitor {
         }
 
         return .skipChildren
+    }
+}
+
+extension GatherActorables {
+    static let skipMethodsStartingWith = ["_", "$"]
+    static let skipMethods = ["preStart", "postStop"] // TODO: more specific with param type matching?
+
+    static func shouldSkipGenFor(func node: FunctionDeclSyntax) -> Bool {
+        // Skip all "internal" methods
+        if Self.skipMethodsStartingWith.contains(where: { prefix in node.identifier.text.starts(with: prefix) }) {
+            // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
+            pprint("skip = \(node.identifier.text)")
+            return true
+        }
+
+        // skip all Actorable lifecycle methods
+        if Self.skipMethods.contains(where: { name in node.identifier.text == name }) {
+            pprint("skip exact = \(node.identifier.text)")
+            return true
+        }
+
+        return false
     }
 }
 

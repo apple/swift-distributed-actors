@@ -26,4 +26,11 @@ extension ActorSystem {
         })
         return Actor(ref: ref)
     }
+
+    // TODO: discuss the autoclosure with Swift team -- it looks nicer, but is also scarier for "accidentally close over some mutable thing"
+    // TODO: does it matter if supervision is gone though? I think not actually, so that's excellent...
+    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @autoclosure @escaping () -> A) throws -> Actor<A> {
+        let ref = try self.spawn(naming, of: A.Message.self, A.makeBehavior(instance: makeActorable()))
+        return Actor(ref: ref)
+    }
 }

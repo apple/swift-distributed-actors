@@ -134,4 +134,17 @@ final class GenerateActorsTests: XCTestCase {
 
         try p.expectMessage("Hello")
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Lifecycle callbacks
+
+    func test_LifecycleActor_shouldReceiveLifecycleEvents() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+
+        let actor = try system.spawn("lifecycleActor", LifecycleActor(probe: p.ref))
+
+        try p.expectMessage("preStart(context:):\(actor.ref.path)")
+        actor.pleaseStop()
+        try p.expectMessage("postStop(context:):\(actor.ref.path)")
+    }
 }
