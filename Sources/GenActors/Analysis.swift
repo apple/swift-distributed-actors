@@ -33,7 +33,7 @@ struct GatherActorables: SyntaxVisitor {
             return .skipChildren
         }
 
-        self.debug("Actorable \(type) detected: [\(name)], analysing...")
+        self.debug("Actorable \(type) detected: [\(name)], analyzing...")
         self.wipActorable = ActorableDecl(type: type, name: name)
 
         return .visitChildren
