@@ -165,7 +165,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// #### Concurrency:
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
-    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> { // TODO: fix signature, should return the watchee
+    public func watch<M>(_ watchee: ActorRef<M>, file: String = #file, line: UInt = #line) -> ActorRef<M> {
         return undefined()
     }
 

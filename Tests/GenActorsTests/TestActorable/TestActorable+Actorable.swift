@@ -17,6 +17,7 @@ import class NIO.EventLoopFuture
 
 // TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State
 
@@ -25,9 +26,9 @@ public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Init
 
-    let context: ActorContext<Message>
+    let context: Actor<Self>.Context
 
-    public init(context: ActorContext<Message>) {
+    public init(context: Actor<Self>.Context) {
         self.context = context
     }
 
@@ -52,6 +53,10 @@ public struct TestActorable: Actorable {
 
     public func throwing() throws {
         try self.contextSpawnExample()
+    }
+
+    func passMyself(someone: ActorRef<Actor<TestActorable>>) {
+        someone.tell(self.context.myself)
     }
 
     /// Underscored method names are ignored automatically

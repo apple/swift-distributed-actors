@@ -31,18 +31,14 @@ public protocol Ticketing: Actorable {
 // TODO: take into account that type may not be public
 public struct JackOfAllTrades: Ticketing, Parking, Actorable {
 
-    let context: ActorContext<Message>
+    let context: Actor<Self>.Context
 
-    public init(context: ActorContext<Message>) {
+    public init(context: Actor<Self>.Context) {
         self.context = context
     }
 
     public func hello(replyTo: ActorRef<String>) {
         context.log.info("hello")
-
-
-        let ref: ActorRef<Message> = context.myself
-
         replyTo.tell("Hello")
     }
 

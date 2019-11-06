@@ -95,9 +95,6 @@ enum Rendering {
 
             extension {{baseName}} {
 
-                // TODO: if overriden don't generate this?
-                // {{messageAccess}} typealias Message = Actor<{{baseName}}>.{{baseName}}Message
-
                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
                     return .setup { context in
                         var instance = instance // TODO only var if any of the methods are mutating
