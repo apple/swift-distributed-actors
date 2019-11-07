@@ -15,11 +15,7 @@
 import DistributedActors
 
 struct Greeter: Actorable {
-    let context: ActorContext<Message>
-
-    init(context: ActorContext<Message>) {
-        self.context = context
-    }
+    let context: Actor<Self>.Context
 
     func greet(name: String) {
         print("Hello \(name)")
