@@ -10,17 +10,17 @@ let targets: [PackageDescription.Target] = [
     .target(
         name: "SampleDiningPhilosophers",
         dependencies: ["DistributedActors"],
-        path: "SampleDiningPhilosophers"
+        path: "Sources/SampleDiningPhilosophers"
     ),
     .target(
         name: "SampleLetItCrash",
         dependencies: ["DistributedActors"],
-        path: "SampleLetItCrash"
+        path: "Sources/SampleLetItCrash"
     ),
     .target(
         name: "SampleCluster",
         dependencies: ["DistributedActors"],
-        path: "SampleCluster"
+        path: "Sources/SampleCluster"
     ),
     .target(
         name: "SampleMetrics",
@@ -28,15 +28,26 @@ let targets: [PackageDescription.Target] = [
             "DistributedActors",
             "SwiftPrometheus",
         ],
-        path: "SampleMetrics"
+        path: "Sources/SampleMetrics"
     ),
     .target(
         name: "SampleGenActors",
         dependencies: [
             "DistributedActors",
         ],
-        path: "SampleGenActors"
+        path: "Sources/SampleGenActors"
     ),
+
+    /* --- tests --- */
+    .testTarget(
+        name: "SampleGenActorsTests",
+        dependencies: [
+            "SampleGenActors",
+            "DistributedActorsTestKit"
+        ],
+        path: "Tests/SampleGenActorsTests"
+    ),
+
 ]
 
 var dependencies: [Package.Dependency] = [
@@ -71,6 +82,7 @@ let package = Package(
             name: "SampleGenActors",
             targets: ["SampleGenActors"]
         ),
+
     ],
 
     dependencies: dependencies,
