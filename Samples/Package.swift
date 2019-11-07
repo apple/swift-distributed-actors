@@ -33,7 +33,7 @@ let targets: [PackageDescription.Target] = [
     .target(
         name: "SampleGenActors",
         dependencies: [
-            "DistributedActors"
+            "DistributedActors",
         ],
         path: "SampleGenActors"
     ),

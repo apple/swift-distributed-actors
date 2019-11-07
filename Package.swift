@@ -35,7 +35,8 @@ let targets: [PackageDescription.Target] = [
             "SwiftSyntax",
             "Stencil",
             "Files",
-        ]),
+        ]
+    ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
@@ -142,8 +143,10 @@ let targets: [PackageDescription.Target] = [
         dependencies: []
     ),
 
-    .target(name: "CDistributedActorsAtomics",
-            dependencies: []),
+    .target(
+        name: "CDistributedActorsAtomics",
+        dependencies: []
+    ),
 
     .target(
         name: "DistributedActorsConcurrencyHelpers",

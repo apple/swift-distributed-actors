@@ -19,10 +19,12 @@ func run(identifier: String) {
     let system = ActorSystem("\(identifier)")
 
     measure(identifier: identifier) {
-        let _: ActorRef<String> = try! system.spawn(.anonymous, of: String.self,
-                                                    Behavior<String>.setup { _ in
-                                                        .stop
-        })
+        let _: ActorRef<String> = try! system.spawn(
+            .anonymous, of: String.self,
+            Behavior<String>.setup { _ in
+                .stop
+            }
+        )
 
         return 0
     }

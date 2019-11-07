@@ -1,6 +1,8 @@
 # file options
 
 --exclude .build
+--exclude "**/*.pb.swift"
+--exclude "**/*+GenActor.swift"
 
 # format options
 

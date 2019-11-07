@@ -34,21 +34,18 @@ extension ActorContext {
 // MARK: Actor<A>.Context
 
 extension Actor {
-
     /// `Context` of the `Actor`, exposing details and capabilities of the actor, such as spawning, starting timers and similar.
     ///
     /// - ***Warning**: MUST NOT be shared "outside" the actor, as it is only safe to access by the owning actor itself.
     ///
     /// The `Actor<A>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
-
         @usableFromInline
         internal let underlying: ActorContext<A.Message>
     }
 }
 
 extension Actor.Context {
-
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
         self.underlying.system
@@ -108,7 +105,6 @@ extension Actor.Context {
 // MARK: Actor<A>.Context + Spawning actors
 
 extension Actor.Context {
-
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
         let ref = try self.underlying.spawn(naming, of: Child.Message.self, Behavior<Child.Message>.setup { context in
             Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
@@ -134,7 +130,6 @@ extension Actor.Context {
 // MARK: Actor<A>.Context + Timers
 
 extension Actor.Context {
-
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<A.Message> {
         self.underlying.timers
@@ -145,7 +140,6 @@ extension Actor.Context {
 // MARK: Actor<A>.Context + Death Watch
 
 extension Actor.Context {
-
     /// Watches the given actor for termination, which means that this actor will receive a `.terminated` signal
     /// when the watched actor fails ("dies"), be it via throwing a Swift Error or performing some other kind of fault.
     ///
@@ -206,4 +200,3 @@ extension Actor.Context {
         return watchee
     }
 }
-

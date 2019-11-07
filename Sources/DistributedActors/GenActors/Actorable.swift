@@ -62,7 +62,6 @@ public struct Actor<A: Actorable> {
 ///
 /// These namespaces are used to not pollute the global namespace with generated type names for the messages.
 public enum GeneratedActor {
-
     /// The enums match the names of the actorable types they were generated from.
     public enum Messages {
         // This enum is intentionally left blank.
