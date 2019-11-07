@@ -32,11 +32,11 @@ extension JackOfAllTrades {
 extension JackOfAllTrades {
 
     public static func makeBehavior(instance: JackOfAllTrades) -> Behavior<Message> {
-        return .setup { context in
-            var ctx = Actor<JackOfAllTrades>.Context(underlying: context)
+        return .setup { _context in
+            let context = Actor<JackOfAllTrades>.Context(underlying: _context)
             var instance = instance // TODO only var if any of the methods are mutating
 
-            /* await */ instance.preStart(context: ctx)
+            /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -50,10 +50,17 @@ extension JackOfAllTrades {
                     instance.park() 
                 }
                 return .same
-            }.receiveSignal { context, signal in 
+            }.receiveSignal { _context, signal in 
+                let context = Actor<JackOfAllTrades>.Context(underlying: _context)
+
                 if signal is Signals.PostStop {
-                    var ctx = Actor<JackOfAllTrades>.Context(underlying: context)
-                    instance.postStop(context: ctx)
+                    instance.postStop(context: context)
+                } else if let terminated = signal as? Signals.Terminated {
+                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    case .unhandled: return .unhandled
+                    case .stop: return .stop
+                    case .ignore: return .same
+                    }
                 }
                 return .same
             }

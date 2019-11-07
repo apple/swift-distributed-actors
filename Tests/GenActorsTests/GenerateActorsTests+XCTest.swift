@@ -33,6 +33,7 @@ extension GenerateActorsTests {
             ("test_combinedProtocols_receiveEitherMessage", test_combinedProtocols_receiveEitherMessage),
             ("test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol", test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol),
             ("test_LifecycleActor_shouldReceiveLifecycleEvents", test_LifecycleActor_shouldReceiveLifecycleEvents),
+            ("test_LifecycleActor_watchActorsAndReceiveTerminationSignals", test_LifecycleActor_watchActorsAndReceiveTerminationSignals),
         ]
     }
 }

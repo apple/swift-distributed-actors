@@ -10,6 +10,7 @@ import DistributedActors
 extension LifecycleActor {
     public enum Message { 
         case pleaseStop 
+        case watchChildAndTerminateIt 
     }
 
     
@@ -20,24 +21,33 @@ extension LifecycleActor {
 extension LifecycleActor {
 
     public static func makeBehavior(instance: LifecycleActor) -> Behavior<Message> {
-        return .setup { context in
-            var ctx = Actor<LifecycleActor>.Context(underlying: context)
+        return .setup { _context in
+            let context = Actor<LifecycleActor>.Context(underlying: _context)
             var instance = instance // TODO only var if any of the methods are mutating
 
-            /* await */ instance.preStart(context: ctx)
+            /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
                 case .pleaseStop:
                     return instance.pleaseStop() 
+                case .watchChildAndTerminateIt:
+                    try instance.watchChildAndTerminateIt() 
                 
                 }
                 return .same
-            }.receiveSignal { context, signal in 
+            }.receiveSignal { _context, signal in 
+                let context = Actor<LifecycleActor>.Context(underlying: _context)
+
                 if signal is Signals.PostStop {
-                    var ctx = Actor<LifecycleActor>.Context(underlying: context)
-                    instance.postStop(context: ctx)
+                    instance.postStop(context: context)
+                } else if let terminated = signal as? Signals.Terminated {
+                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    case .unhandled: return .unhandled
+                    case .stop: return .stop
+                    case .ignore: return .same
+                    }
                 }
                 return .same
             }
@@ -51,6 +61,10 @@ extension Actor where A.Message == LifecycleActor.Message {
     
     public func pleaseStop() { 
         self.ref.tell(.pleaseStop)
+    } 
+    
+    func watchChildAndTerminateIt() { 
+        self.ref.tell(.watchChildAndTerminateIt)
     } 
     
 }

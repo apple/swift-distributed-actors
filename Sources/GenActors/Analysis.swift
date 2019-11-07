@@ -21,8 +21,14 @@ import SwiftSyntax
 // MARK: Find Actorables
 
 struct GatherActorables: SyntaxVisitor {
+    let settings: GenerateActors.Settings
+
     var actorables: [ActorableDecl] = []
     var wipActorable: ActorableDecl = .init(type: .protocol, name: "<NOTHING>")
+
+    init(_ settings: GenerateActors.Settings) {
+        self.settings = settings
+    }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: types
@@ -132,7 +138,6 @@ struct GatherActorables: SyntaxVisitor {
         )
 
         if isBoxingFunc {
-            pprint("self.wipActorable.boxingFunc = \(funcDecl)")
             self.wipActorable.boxingFunc = funcDecl
         } else {
             self.wipActorable.funcs.append(funcDecl)
@@ -144,19 +149,17 @@ struct GatherActorables: SyntaxVisitor {
 
 extension GatherActorables {
     static let skipMethodsStartingWith = ["_", "$"]
-    static let skipMethods = ["preStart", "postStop"] // TODO: more specific with param type matching?
+    static let skipMethods = ["preStart", "postStop", "receiveTerminated"] // TODO: more specific with param type matching?
 
     static func shouldSkipGenFor(func node: FunctionDeclSyntax) -> Bool {
         // Skip all "internal" methods
         if Self.skipMethodsStartingWith.contains(where: { prefix in node.identifier.text.starts(with: prefix) }) {
             // we always skip `_` prefixed methods; this is a way to allow public/internal methods but still not expose them as the actor interface.
-            pprint("skip = \(node.identifier.text)")
             return true
         }
 
         // skip all Actorable lifecycle methods
         if Self.skipMethods.contains(where: { name in node.identifier.text == name }) {
-            pprint("skip exact = \(node.identifier.text)")
             return true
         }
 
@@ -236,9 +239,6 @@ struct ResolveActorables {
             // And we remove the "ad hoc" funcs which actually are funcs belonging to these protocols
             resolved.funcs = resolved.funcs.filter { f in
                 let implementViaProtocol = protocolFuncs.contains(f)
-                if implementViaProtocol {
-                    pprint("Implement via actorable protocol: \(f)")
-                }
                 return !implementViaProtocol
             }
 

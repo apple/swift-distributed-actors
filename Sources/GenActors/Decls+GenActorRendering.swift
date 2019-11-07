@@ -17,7 +17,7 @@ import Stencil
 import SwiftSyntax
 
 protocol Renderable {
-    func render() throws -> String
+    func render(_ settings: GenerateActors.Settings) throws -> String
 }
 
 enum Rendering {
@@ -93,11 +93,11 @@ enum Rendering {
             extension {{baseName}} {
 
                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
-                    return .setup { context in
-                        var ctx = Actor<{{baseName}}>.Context(underlying: context)
+                    return .setup { _context in
+                        let context = Actor<{{baseName}}>.Context(underlying: _context)
                         var instance = instance // TODO only var if any of the methods are mutating
 
-                        /* await */ instance.preStart(context: ctx)
+                        /* await */ instance.preStart(context: context)
 
                         return Behavior<Message>.receiveMessage { message in
                             switch message { 
@@ -107,10 +107,17 @@ enum Rendering {
                             {{case}} {% endfor %}
                             }
                             return .same
-                        }.receiveSignal { context, signal in 
+                        }.receiveSignal { _context, signal in 
+                            let context = Actor<{{baseName}}>.Context(underlying: _context)
+
                             if signal is Signals.PostStop {
-                                var ctx = Actor<{{baseName}}>.Context(underlying: context)
-                                instance.postStop(context: ctx)
+                                instance.postStop(context: context)
+                            } else if let terminated = signal as? Signals.Terminated {
+                                switch instance.receiveTerminated(context: context, terminated: terminated) {
+                                case .unhandled: return .unhandled
+                                case .stop: return .stop
+                                case .ignore: return .same
+                                }
                             }
                             return .same
                         }
@@ -136,7 +143,7 @@ enum Rendering {
             """
         )
 
-        func render() throws -> String {
+        func render(_ settings: GenerateActors.Settings) throws -> String {
             let context: [String: Any] = [
                 "baseName": self.actorable.name,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
@@ -182,18 +189,9 @@ enum Rendering {
                 rendered.append(try Self.boxingForProtocolTemplate.render(context))
             }
 
-//            for delegateProtocol in self.actorable.actorableProtocols {
-//                let context: [String: Any] = [
-//                    "baseName": self.actorable.name,
-//
-//                ]
-//
-//                let renderedProtocolTellsExtension = try Self.actorProtocolTellTemplate.render(context)
-//                rendered.append(renderedProtocolTellsExtension)
-//            }
-
-            // TODO: if debug mode of generation
-            print(rendered)
+            if settings.verbose {
+                print(rendered)
+            }
 
             return rendered
         }

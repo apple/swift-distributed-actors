@@ -32,11 +32,11 @@ extension TestActorable {
 extension TestActorable {
 
     public static func makeBehavior(instance: TestActorable) -> Behavior<Message> {
-        return .setup { context in
-            var ctx = Actor<TestActorable>.Context(underlying: context)
+        return .setup { _context in
+            let context = Actor<TestActorable>.Context(underlying: _context)
             var instance = instance // TODO only var if any of the methods are mutating
 
-            /* await */ instance.preStart(context: ctx)
+            /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -70,10 +70,17 @@ extension TestActorable {
                 
                 }
                 return .same
-            }.receiveSignal { context, signal in 
+            }.receiveSignal { _context, signal in 
+                let context = Actor<TestActorable>.Context(underlying: _context)
+
                 if signal is Signals.PostStop {
-                    var ctx = Actor<TestActorable>.Context(underlying: context)
-                    instance.postStop(context: ctx)
+                    instance.postStop(context: context)
+                } else if let terminated = signal as? Signals.Terminated {
+                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    case .unhandled: return .unhandled
+                    case .stop: return .stop
+                    case .ignore: return .same
+                    }
                 }
                 return .same
             }

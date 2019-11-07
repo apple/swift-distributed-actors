@@ -29,7 +29,7 @@ extension ActorContext {
         return Actor(ref: ref)
     }
 
-    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @autoclosure @escaping () -> A) throws -> Actor<A> {
+    public func spawn<A: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> A) throws -> Actor<A> {
         let ref = try self.spawn(naming, of: A.Message.self, A.makeBehavior(instance: makeActorable()))
         return Actor(ref: ref)
     }
@@ -121,6 +121,11 @@ extension Actor.Context {
         return Actor<Child>(ref: ref)
     }
 
+    public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
+        let ref: ActorRef = try self.underlying.spawn(naming, of: Child.Message.self, Child.makeBehavior(instance: makeActorable()))
+        return Actor<Child>(ref: ref)
+    }
+
     /// Spawn a child actor and start watching it to get notified about termination.
     ///
     /// For a detailed explanation of the both concepts refer to the `spawn` and `watch` documentation.
@@ -132,8 +137,13 @@ extension Actor.Context {
         return self.watch(actor)
     }
 
-    // TODO: public func stop() to stop myself.
+    public func spawnWatch<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
+        let actor = try self.spawn(naming, makeActorable)
+        return self.watch(actor)
+    }
+
 }
+// TODO: public func stop() to stop myself.
 
 // ==== ------------------------------------------------------------------------------------------------------------
 // MARK: Actor<A>.Context + Timers
