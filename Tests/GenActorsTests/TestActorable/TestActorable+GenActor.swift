@@ -3,7 +3,6 @@
 // ==== ------------------------------------------------------------------ ====
 
 import DistributedActors
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable messages 
 
@@ -16,7 +15,6 @@ extension TestActorable {
         case greet2(name: String, surname: String) 
         case throwing 
         case passMyself(someone: ActorRef<Actor<TestActorable>>) 
-        case _ignoreInGenActor 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
         case greetReplyToReturnStrict(name: String) 
@@ -28,7 +26,6 @@ extension TestActorable {
 
     
 }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable behavior
 
@@ -36,11 +33,12 @@ extension TestActorable {
 
     public static func makeBehavior(instance: TestActorable) -> Behavior<Message> {
         return .setup { context in
+            var ctx = Actor<TestActorable>.Context(underlying: context)
             var instance = instance // TODO only var if any of the methods are mutating
 
-            // /* await */ self.instance.preStart(context: context) // TODO: enable preStart
+            /* await */ instance.preStart(context: ctx)
 
-            return .receiveMessage { message in
+            return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
                 case .ping:
@@ -55,8 +53,6 @@ extension TestActorable {
                     try instance.throwing() 
                 case .passMyself(let someone):
                     instance.passMyself(someone: someone) 
-                case ._ignoreInGenActor:
-                    try instance._ignoreInGenActor() 
                 case .greetReplyToActorRef(let name, let replyTo):
                     instance.greetReplyToActorRef(name: name, replyTo: replyTo) 
                 case .greetReplyToActor(let name, let replyTo):
@@ -74,11 +70,16 @@ extension TestActorable {
                 
                 }
                 return .same
+            }.receiveSignal { context, signal in 
+                if signal is Signals.PostStop {
+                    var ctx = Actor<TestActorable>.Context(underlying: context)
+                    instance.postStop(context: ctx)
+                }
+                return .same
             }
         }
     }
 }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for TestActorable
 
@@ -104,12 +105,8 @@ extension Actor where A.Message == TestActorable.Message {
         self.ref.tell(.throwing)
     } 
     
-     func passMyself(someone: ActorRef<Actor<TestActorable>>) { 
+    func passMyself(someone: ActorRef<Actor<TestActorable>>) { 
         self.ref.tell(.passMyself(someone: someone))
-    } 
-    
-    public func _ignoreInGenActor() { 
-        self.ref.tell(._ignoreInGenActor)
     } 
     
     public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { 
@@ -128,17 +125,16 @@ extension Actor where A.Message == TestActorable.Message {
         self.ref.tell(.greetReplyToReturnNIOFuture(name: name))
     } 
     
-     func becomeStopped() { 
+    func becomeStopped() { 
         self.ref.tell(.becomeStopped)
     } 
     
-     func contextSpawnExample() { 
+    func contextSpawnExample() { 
         self.ref.tell(.contextSpawnExample)
     } 
     
-     func timer() { 
+    func timer() { 
         self.ref.tell(.timer)
     } 
     
 }
-
