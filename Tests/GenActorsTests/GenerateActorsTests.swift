@@ -82,15 +82,14 @@ final class GenerateActorsTests: XCTestCase {
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case _skipMe")
-
     }
+
     func test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods() throws {
         let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case preStart")
         lifecycleGenActorSource.shouldNotContain("case postStop")
-
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
