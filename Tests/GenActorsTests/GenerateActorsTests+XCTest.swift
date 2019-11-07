@@ -28,7 +28,7 @@ extension GenerateActorsTests {
             ("test_TestActorable_greet2", test_TestActorable_greet2),
             ("test_TestActorable_greetReplyToActorRef", test_TestActorable_greetReplyToActorRef),
             ("test_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
-            ("test_LifecycleActor_doesNotContainGenerated_messagesForLifecycleMethods", test_LifecycleActor_doesNotContainGenerated_messagesForLifecycleMethods),
+            ("test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods", test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods),
             ("test_TestActorable_doesNotContainGenerated_privateFuncs", test_TestActorable_doesNotContainGenerated_privateFuncs),
             ("test_TestActorable_becomeAnotherBehavior", test_TestActorable_becomeAnotherBehavior),
             ("test_combinedProtocols_receiveEitherMessage", test_combinedProtocols_receiveEitherMessage),
