@@ -27,6 +27,8 @@ extension GenerateActorsTests {
             ("test_generated_TestActorable_greet_underscoreParam", test_generated_TestActorable_greet_underscoreParam),
             ("test_generated_TestActorable_greet2", test_generated_TestActorable_greet2),
             ("test_generated_TestActorable_greetReplyToActorRef", test_generated_TestActorable_greetReplyToActorRef),
+            ("test_generated_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_generated_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
+            ("test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods", test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods),
             ("test_generated_TestActorable_becomeAnotherBehavior", test_generated_TestActorable_becomeAnotherBehavior),
             ("test_combinedProtocols_receiveEitherMessage", test_combinedProtocols_receiveEitherMessage),
             ("test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol", test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol),
