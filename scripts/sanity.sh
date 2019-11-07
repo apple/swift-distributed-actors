@@ -16,9 +16,6 @@
 set -eu
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# ensure samples build correctly
-cd $here/Samples && swift build; cd $here
-
 bash $here/validate_license_header.sh
 bash $here/validate_format.sh
 bash $here/validate_linux_tests_generated.sh
