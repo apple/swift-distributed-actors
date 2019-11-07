@@ -102,13 +102,13 @@ struct GatherActorables: SyntaxVisitor {
             }
         }
 
-        let access: String
+        let access: String?
         if modifierTokenKinds.contains(.publicKeyword) {
             access = "public"
         } else if modifierTokenKinds.contains(.internalKeyword) {
             access = "internal"
         } else {
-            access = ""
+            access = nil
         }
 
         let throwing: Bool

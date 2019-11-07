@@ -3,7 +3,6 @@
 // ==== ------------------------------------------------------------------ ====
 
 import DistributedActors
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated Parking messages 
 
@@ -12,13 +11,12 @@ extension GeneratedActor.Messages {
         case park  
     }
 }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Boxing Parking for any inheriting actorable `A` 
 
 extension Actor where A: Parking {
     
-     func park() { 
+    func park() { 
         self.ref.tell(A._boxParking(.park))
     } 
     
