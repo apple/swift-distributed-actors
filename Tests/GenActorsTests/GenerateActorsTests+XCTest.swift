@@ -23,13 +23,14 @@ import XCTest
 extension GenerateActorsTests {
     static var allTests: [(String, (GenerateActorsTests) -> () throws -> Void)] {
         return [
-            ("test_generated_TestActorable_greet", test_generated_TestActorable_greet),
-            ("test_generated_TestActorable_greet_underscoreParam", test_generated_TestActorable_greet_underscoreParam),
-            ("test_generated_TestActorable_greet2", test_generated_TestActorable_greet2),
-            ("test_generated_TestActorable_greetReplyToActorRef", test_generated_TestActorable_greetReplyToActorRef),
-            ("test_generated_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_generated_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
-            ("test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods", test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods),
-            ("test_generated_TestActorable_becomeAnotherBehavior", test_generated_TestActorable_becomeAnotherBehavior),
+            ("test_TestActorable_greet", test_TestActorable_greet),
+            ("test_TestActorable_greet_underscoreParam", test_TestActorable_greet_underscoreParam),
+            ("test_TestActorable_greet2", test_TestActorable_greet2),
+            ("test_TestActorable_greetReplyToActorRef", test_TestActorable_greetReplyToActorRef),
+            ("test_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
+            ("test_LifecycleActor_doesNotContainGenerated_messagesForLifecycleMethods", test_LifecycleActor_doesNotContainGenerated_messagesForLifecycleMethods),
+            ("test_TestActorable_doesNotContainGenerated_privateFuncs", test_TestActorable_doesNotContainGenerated_privateFuncs),
+            ("test_TestActorable_becomeAnotherBehavior", test_TestActorable_becomeAnotherBehavior),
             ("test_combinedProtocols_receiveEitherMessage", test_combinedProtocols_receiveEitherMessage),
             ("test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol", test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol),
             ("test_LifecycleActor_shouldReceiveLifecycleEvents", test_LifecycleActor_shouldReceiveLifecycleEvents),

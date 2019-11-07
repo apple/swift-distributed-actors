@@ -47,28 +47,31 @@ final class GenerateActorsTests: XCTestCase {
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Generated actors
 
-    func test_generated_TestActorable_greet() throws {
+    func test_TestActorable_greet() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         actor.greet(name: "Caplin")
         actor.ref.tell(.greet(name: "Caplin"))
     }
 
-    func test_generated_TestActorable_greet_underscoreParam() throws {
+    func test_TestActorable_greet_underscoreParam() throws {
         let actor = try system.spawn(.anonymous, TestActorable.init)
 
         actor.greetUnderscoreParam("Caplin")
         actor.ref.tell(.greetUnderscoreParam("Caplin"))
     }
 
-    func test_generated_TestActorable_greet2() throws {
+    func test_TestActorable_greet2() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         actor.greet2(name: "Caplin", surname: "Capybara")
         actor.ref.tell(.greet2(name: "Caplin", surname: "Capybara"))
     }
 
-    func test_generated_TestActorable_greetReplyToActorRef() throws {
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Replying
+
+    func test_TestActorable_greetReplyToActorRef() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         let p = self.testKit.spawnTestProbe(expecting: String.self)
@@ -77,14 +80,17 @@ final class GenerateActorsTests: XCTestCase {
         try p.expectMessage("Hello Caplin!")
     }
 
-    func test_generated_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Ignoring certain methods from exposing
+
+    func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
         let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case _skipMe")
     }
 
-    func test_generated_LifecycleActor_doesNotContainGeneratesMessagesForLifecycleMethods() throws {
+    func test_LifecycleActor_doesNotContainGenerated_messagesForLifecycleMethods() throws {
         let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
@@ -92,10 +98,17 @@ final class GenerateActorsTests: XCTestCase {
         lifecycleGenActorSource.shouldNotContain("case postStop")
     }
 
+    func test_TestActorable_doesNotContainGenerated_privateFuncs() throws {
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
+
+        lifecycleGenActorSource.shouldNotContain("case privateFunc")
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Behavior interop
 
-    func test_generated_TestActorable_becomeAnotherBehavior() throws {
+    func test_TestActorable_becomeAnotherBehavior() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         let p = self.testKit.spawnTestProbe(expecting: String.self)

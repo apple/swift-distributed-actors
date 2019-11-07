@@ -63,6 +63,10 @@ public struct TestActorable: Actorable {
         // nothing
     }
 
+    private func privateFunc() {
+        // nothing
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replying
 
