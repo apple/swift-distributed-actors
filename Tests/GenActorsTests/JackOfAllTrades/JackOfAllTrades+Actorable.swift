@@ -30,7 +30,6 @@ public protocol Ticketing: Actorable {
 
 // TODO: take into account that type may not be public
 public struct JackOfAllTrades: Ticketing, Parking, Actorable {
-
     let context: Actor<Self>.Context
 
     public init(context: Actor<Self>.Context) {

@@ -21,7 +21,6 @@ import SwiftSyntax
 // MARK: Find Actorables
 
 struct GatherActorables: SyntaxVisitor {
-
     var actorables: [ActorableDecl] = []
     var wipActorable: ActorableDecl = .init(type: .protocol, name: "<NOTHING>")
 
@@ -43,7 +42,7 @@ struct GatherActorables: SyntaxVisitor {
         self.visit(.protocol, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: ProtocolDeclSyntax) {
+    mutating func visitPost(_: ProtocolDeclSyntax) {
         self.actorables.append(self.wipActorable)
         self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
     }
@@ -52,7 +51,7 @@ struct GatherActorables: SyntaxVisitor {
         self.visit(.class, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: ClassDeclSyntax) {
+    mutating func visitPost(_: ClassDeclSyntax) {
         self.actorables.append(self.wipActorable)
         self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
     }
@@ -61,7 +60,7 @@ struct GatherActorables: SyntaxVisitor {
         self.visit(.struct, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: StructDeclSyntax) {
+    mutating func visitPost(_: StructDeclSyntax) {
         self.actorables.append(self.wipActorable)
         self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
     }
@@ -90,8 +89,8 @@ struct GatherActorables: SyntaxVisitor {
         var isBoxingFunc = false
 
         if self.wipActorable.type == .protocol,
-           modifierTokenKinds.contains(.staticKeyword),
-           name == "\(self.wipActorable.boxFuncName)" {
+            modifierTokenKinds.contains(.staticKeyword),
+            name == "\(self.wipActorable.boxFuncName)" {
             isBoxingFunc = true
         } else {
             guard Self.skipMethodsStartingWith.contains(where: { $0.starts(with: $0) }) else {
@@ -101,7 +100,7 @@ struct GatherActorables: SyntaxVisitor {
 
             // TODO: carry access control
             guard !modifierTokenKinds.contains(.privateKeyword),
-                  !modifierTokenKinds.contains(.staticKeyword) else {
+                !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
         }
@@ -132,8 +131,8 @@ struct GatherActorables: SyntaxVisitor {
                 params: node.signature.gatherParams(),
                 throwing: throwing,
                 returnType: .fromType(node.signature.output?.returnType)
-            ))
-
+            )
+        )
 
         if isBoxingFunc {
             pprint("self.wipActorable.boxingFunc = \(funcDecl)")
@@ -144,7 +143,6 @@ struct GatherActorables: SyntaxVisitor {
 
         return .skipChildren
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -33,7 +33,8 @@ pprint("Started process: \(getpid()) with roles: \(isolated.roles)")
 struct OnPurposeBoom: Error {}
 
 isolated.run(on: .master) {
-    isolated.spawnServantProcess(supervision:
+    isolated.spawnServantProcess(
+        supervision:
         .respawn(
             atMost: 5, within: nil,
             backoff: Backoff.exponential(
@@ -41,7 +42,8 @@ isolated.run(on: .master) {
                 multiplier: 1.5,
                 randomFactor: 0
             )
-        ))
+        )
+    )
 }
 
 try isolated.run(on: .servant) {

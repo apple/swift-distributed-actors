@@ -217,7 +217,7 @@ extension ActorableDecl {
         return res
     }
 
-    func renderBoxingFunc(`in` owner: ActorableDecl) throws -> String {
+    func renderBoxingFunc(in owner: ActorableDecl) throws -> String {
         let context: [String: Any] = [
             "baseName": "\(owner.name)",
             "access": "public",
@@ -226,7 +226,8 @@ extension ActorableDecl {
             "messageToBoxType": "GeneratedActor.Messages.\(self.name)",
         ]
 
-        return try Template(stringLiteral:
+        return try Template(
+            stringLiteral:
             """
             /// Performs boxing of {{messageToBoxType}} messages such that they can be received by Actor<{{baseName}}>
                 {{access}} static func {{boxFuncName}}(_ message: {{messageToBoxType}}) -> {{baseName}}.Message {
@@ -235,7 +236,6 @@ extension ActorableDecl {
             """
         ).render(context)
     }
-
 }
 
 extension ActorableMessageDecl {
@@ -351,7 +351,6 @@ extension ActorableMessageDecl {
 }
 
 extension ActorFuncDecl {
-
     func renderFuncTell() throws -> String {
         let context: [String: Any] = [
             "funcDecl": message.funcDecl,

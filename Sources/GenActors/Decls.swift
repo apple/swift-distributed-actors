@@ -47,7 +47,7 @@ struct ActorableDecl {
     var funcs: [ActorFuncDecl] = []
 
     /// Only expected in case of a `protocol` for
-    var boxingFunc: ActorFuncDecl? = nil
+    var boxingFunc: ActorFuncDecl?
 }
 
 struct ActorFuncDecl {
@@ -55,11 +55,10 @@ struct ActorFuncDecl {
 }
 
 extension ActorFuncDecl: Equatable {
-    public static func ==(lhs: ActorFuncDecl, rhs: ActorFuncDecl) -> Bool {
+    public static func == (lhs: ActorFuncDecl, rhs: ActorFuncDecl) -> Bool {
         lhs.message == rhs.message
     }
 }
-
 
 struct ActorableMessageDecl {
     let actorableName: String
@@ -102,11 +101,11 @@ struct ActorableMessageDecl {
 extension ActorableMessageDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
 //        hasher.combine(access) // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
-        hasher.combine(name)
-        hasher.combine(throwing)
+        hasher.combine(self.name)
+        hasher.combine(self.throwing)
     }
 
-    public static func ==(lhs: ActorableMessageDecl, rhs: ActorableMessageDecl) -> Bool {
+    public static func == (lhs: ActorableMessageDecl, rhs: ActorableMessageDecl) -> Bool {
 //        if lhs.access != rhs.access { // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
 //            return false
 //        }

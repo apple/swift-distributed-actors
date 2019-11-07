@@ -17,7 +17,6 @@ import class NIO.EventLoopFuture
 
 // TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
-
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State
 
