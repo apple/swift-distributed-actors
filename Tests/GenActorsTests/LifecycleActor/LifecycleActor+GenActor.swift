@@ -3,7 +3,6 @@
 // ==== ------------------------------------------------------------------ ====
 
 import DistributedActors
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated LifecycleActor messages 
 
@@ -15,7 +14,6 @@ extension LifecycleActor {
 
     
 }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated LifecycleActor behavior
 
@@ -46,7 +44,6 @@ extension LifecycleActor {
         }
     }
 }
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Extend Actor for LifecycleActor
 
@@ -57,4 +54,3 @@ extension Actor where A.Message == LifecycleActor.Message {
     } 
     
 }
-

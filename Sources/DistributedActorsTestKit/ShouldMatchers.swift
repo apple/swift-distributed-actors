@@ -124,10 +124,12 @@ public extension TestMatchers where T: Collection, T.Element: Equatable {
 
 public extension TestMatchers where T == String {
     /// Asserts that `it` contains the `subString`.
-    func toContain(_ subString: String) {
-        if !self.it.contains(subString) {
+    func toContain(_ subString: String, negate: Bool = false) {
+        let contains = self.it.contains(subString)
+        if (negate && contains) || (!negate && !contains)  {
             // fancy printout:
-            var m = "Expected String [\(it)] to contain: ["
+            let negateString = negate ? "NOT " : ""
+            var m = "Expected String [\(it)] to \(negateString)contain: ["
             if isTty { m += "\(ANSIColors.bold.rawValue)" }
             m += "\(subString)"
             if isTty { m += "\(ANSIColors.reset.rawValue)\(ANSIColors.red.rawValue)" }
@@ -136,6 +138,10 @@ public extension TestMatchers where T == String {
             let msg = self.callSite.detailedMessage(m)
             XCTAssert(false, msg, file: self.callSite.file, line: self.callSite.line)
         }
+    }
+    /// Asserts that `it` does NOT contain the `subString`.
+    func toNotContain(_ subString: String) {
+        return self.toContain(subString, negate: true)
     }
 }
 
@@ -300,6 +306,10 @@ extension String {
     public func shouldContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
         let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
         return TestMatchers(it: self, callSite: csInfo).toContain(el)
+    }
+    public func shouldNotContain(_ el: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) {
+        let csInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
+        return TestMatchers(it: self, callSite: csInfo).toNotContain(el)
     }
 }
 
