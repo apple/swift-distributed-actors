@@ -30,7 +30,8 @@ extension Greeter {
                 switch message { 
                 
                 case .greet(let name):
-                    instance.greet(name: name) 
+                    instance.greet(name: name)
+ 
                 
                 }
                 return .same
