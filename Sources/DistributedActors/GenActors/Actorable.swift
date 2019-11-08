@@ -38,9 +38,21 @@ public protocol Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor Lifecycle Hooks
 
+    /// Received before after the actor's `init` completes and before the first message is received by the actor.
+    /// It can be used to initiate some additional setup of dependencies
+    // TODO: should allow suspending, i.e. returning "suspend me until a future completes", like behavior style does.
+    //       This would not be necessary with the arrival of async/await most likely, if we could suspend on the preRestart
     func preStart(context: Actor<Self>.Context)
 
+    /// Received right after the actor has stopped (i.e. will not receive any more messages),
+    /// giving the actor a chance to perform some final cleanup or release resources.
     func postStop(context: Actor<Self>.Context)
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Receiving Signals
+
+    /// Received when a watched actor terminates.
+    func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective
 }
 
 extension Actorable {
@@ -50,6 +62,13 @@ extension Actorable {
 
     public func postStop(context: Actor<Self>.Context) {
         // noop
+    }
+}
+
+extension Actorable {
+    public func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective {
+        // DeathWatch semantics are implemented in the behavior runtime, so we remain compatible with them here.
+        .unhandled
     }
 }
 
@@ -91,4 +110,23 @@ public enum GeneratedActor {
     public enum Messages {
         // This enum is intentionally left blank.
     }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actorable + DeathPact
+
+/// Upon receipt of a `Signals.Terminated` an actor can either stop itself (default for watched actors),
+/// or ignore the terminated signal (as is the case for not-watched child actors).
+///
+/// - SeeAlso: DeathWatch reference documentation
+/// - SeeAlso: `context.watch` and `context.unwatch`
+public enum DeathPactDirective {
+    /// No decision was made, the actor will fail if the actor was watched (i.e. this was not a ChildTerminated for an not-watched child)
+    case unhandled
+
+    /// Ignore the terminated signal, e.g. if the signal was handled by spawning a replacement of the terminated actor
+    case ignore
+
+    /// Stops the current actor as reaction to the termination of the watched actors termination.
+    case stop
 }

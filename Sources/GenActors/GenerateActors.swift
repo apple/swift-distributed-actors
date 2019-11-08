@@ -20,7 +20,8 @@ import SwiftSyntax
 public final class GenerateActors {
     var filesToScan: [File] = []
     var foldersToScan: [Folder] = []
-    var options: [String]
+
+    var settings: Settings
 
     let fileScanNameSuffix: String = "+Actorable"
     let fileScanNameSuffixWithExtension: String = "+Actorable.swift"
@@ -29,9 +30,16 @@ public final class GenerateActors {
     public init(args: [String]) {
         precondition(args.count > 1, "Syntax: genActors PATH [options]")
 
-        var remaining = args.dropFirst()
-        self.options = remaining.filter {
+        let remaining = args.dropFirst()
+        self.settings = remaining.filter {
             $0.starts(with: "--")
+        }.reduce(into: Settings()) { settings, option in
+            switch option {
+            case "--verbose":
+                settings.verbose = true
+            default:
+                ()
+            }
         }
 
         do {
@@ -49,14 +57,12 @@ public final class GenerateActors {
             self.filesToScan = try passedInToScan.filter {
                 $0.hasSuffix(self.fileScanNameSuffixWithExtension)
             }.map { path in
-                pprint("path = \(path)")
-                return try File(path: path)
+                try File(path: path)
             }
             self.foldersToScan = try passedInToScan.filter {
                 !$0.hasSuffix(".swift")
             }.map { path in
-                pprint("path = \(path)")
-                return try Folder(path: path)
+                try Folder(path: path)
             }
         } catch {
             fatalError("Unable to initialize \(GenerateActors.self), error: \(error)")
@@ -68,7 +74,7 @@ public final class GenerateActors {
             _ = try self.parseAndGen(fileToParse: file)
         }
 
-        try self.foldersToScan.map { folder in
+        try self.foldersToScan.forEach { folder in
             self.debug("Scanning [\(folder.path)] for [\(self.fileScanNameSuffixWithExtension)] suffixed files...")
             let actorFilesToScan = folder.files.recursive.filter { f in
                 f.name.hasSuffix(self.fileScanNameSuffixWithExtension)
@@ -86,14 +92,14 @@ public final class GenerateActors {
         let url = URL(fileURLWithPath: fileToParse.path)
         let sourceFile = try SyntaxParser.parse(url)
 
-        var gather = GatherActorables()
+        var gather = GatherActorables(self.settings)
         sourceFile.walk(&gather)
         let rawActorables = gather.actorables
 
         let actorables = ResolveActorables.resolve(rawActorables)
 
         try actorables.forEach { actorable in
-            let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render()
+            let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.settings)
 
             guard let parent = fileToParse.parent else {
                 fatalError("Unable to locate or render Actorable definitions in \(fileToParse).")
@@ -110,6 +116,19 @@ public final class GenerateActors {
     }
 
     func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
-        pprint("[gen-actors] \(message)", file: file, line: line)
+        if self.settings.verbose {
+            pprint("[gen-actors] \(message)", file: file, line: line)
+        }
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Settings
+
+extension GenerateActors {
+    struct Settings {
+        /// If true, prints verbose information during analysis and source code generation.
+        /// Can be enabled using `--verbose`
+        var verbose: Bool = false
     }
 }

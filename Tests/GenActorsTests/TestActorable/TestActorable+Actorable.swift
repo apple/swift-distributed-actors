@@ -105,7 +105,7 @@ public struct TestActorable: Actorable {
     // MARK: Spawning from ActorableContext
 
     func contextSpawnExample() throws {
-        let child = try self.context.spawn("child", TestActorable.init)
+        let child: Actor<TestActorable> = try self.context.spawn("child", TestActorable.init)
         self.context.log.info("Spawned: \(child)")
     }
 
@@ -113,6 +113,7 @@ public struct TestActorable: Actorable {
     // MARK: Scheduling timers
 
     func timer() {
+        // This causes the actor to schedule invoking `ping()`
         self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))
     }
 }

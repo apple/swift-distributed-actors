@@ -14,7 +14,7 @@
 
 do {
     let gen = GenerateActors(args: CommandLine.arguments)
-    let results = try gen.run()
+    _ = try gen.run()
 } catch {
     print("error: \(error)")
 }
