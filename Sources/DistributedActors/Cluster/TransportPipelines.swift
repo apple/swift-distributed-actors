@@ -118,7 +118,7 @@ final class ReceivingHandshakeHandler: ChannelInboundHandler, RemovableChannelHa
             let promise = context.eventLoop.makePromise(of: Wire.HandshakeResponse.self)
             self.cluster.tell(.inbound(.handshakeOffer(offer, channel: context.channel, replyTo: promise)))
 
-            promise.futureResult.onComplete { res in
+            promise.futureResult.whenComplete { res in
                 switch res {
                 case .failure(let err):
                     context.fireErrorCaught(err)
@@ -485,7 +485,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         self.redeliveryScheduled = context.eventLoop.scheduleTask(in: nextRedeliveryDelay.toNIO) {
             RedeliveryTick()
         }
-        self.redeliveryScheduled?.futureResult.onComplete { _ in
+        self.redeliveryScheduled?.futureResult.whenComplete { _ in
             self.redeliveryScheduled = nil
             self.onRedeliveryTick(context)
         }

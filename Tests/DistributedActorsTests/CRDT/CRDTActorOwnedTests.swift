@@ -66,7 +66,7 @@ final class CRDTActorOwnedTests: XCTestCase {
             return .receiveMessage { message in
                 switch message {
                 case .increment(let amount, let consistency, let timeout, let replyTo):
-                    g.increment(by: amount, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                    g.increment(by: amount, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let g):
                             replyTo.tell(g.value)
@@ -75,7 +75,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .read(let consistency, let timeout, let replyTo):
-                    g.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                    g.read(atConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let g):
                             replyTo.tell(g.value)
@@ -84,7 +84,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .delete(let consistency, let timeout, let replyTo):
-                    g.deleteFromCluster(consistency: consistency, timeout: timeout).onComplete { result in
+                    g.deleteFromCluster(consistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success:
                             replyTo.tell(())
@@ -241,7 +241,7 @@ final class CRDTActorOwnedTests: XCTestCase {
             return .receiveMessage { message in
                 switch message {
                 case .add(let element, let consistency, let timeout, let replyTo):
-                    s.add(element, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                    s.add(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let s):
                             replyTo.tell(s.elements)
@@ -250,7 +250,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .remove(let element, let consistency, let timeout, let replyTo):
-                    s.remove(element, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                    s.remove(element, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let s):
                             replyTo.tell(s.elements)
@@ -259,7 +259,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .read(let consistency, let timeout, let replyTo):
-                    s.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                    s.read(atConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let s):
                             replyTo.tell(s.elements)
@@ -368,7 +368,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                 case .increment(let key, let amount, let consistency, let timeout, let replyTo):
                     m.update(key: key, writeConsistency: consistency, timeout: timeout) {
                         $0.increment(by: amount)
-                    }.onComplete { result in
+                    }._onComplete { result in
                         switch result {
                         case .success(let m):
                             replyTo.tell(m.underlying)
@@ -377,7 +377,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .removeValue(let key, let consistency, let timeout, let replyTo):
-                    m.unsafeRemoveValue(forKey: key, writeConsistency: consistency, timeout: timeout).onComplete { result in
+                    m.unsafeRemoveValue(forKey: key, writeConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let m):
                             replyTo.tell(m.underlying)
@@ -386,7 +386,7 @@ final class CRDTActorOwnedTests: XCTestCase {
                         }
                     }
                 case .read(let consistency, let timeout, let replyTo):
-                    m.read(atConsistency: consistency, timeout: timeout).onComplete { result in
+                    m.read(atConsistency: consistency, timeout: timeout)._onComplete { result in
                         switch result {
                         case .success(let m):
                             replyTo.tell(m.underlying)

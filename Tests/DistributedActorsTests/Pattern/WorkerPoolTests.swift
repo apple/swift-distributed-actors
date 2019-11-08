@@ -173,12 +173,12 @@ final class WorkerPoolTests: XCTestCase {
         let answerB: AskResponse<String> = workers.ask(for: String.self, timeout: .seconds(1)) { WorkerPoolQuestion(id: "BBB", replyTo: $0) }
 
         try self.testKit.eventually(within: .seconds(1)) {
-            answerA.nioFuture.onComplete { res in
+            answerA.nioFuture._onComplete { res in
                 pA.tell("\(res)")
             }
         }
         try self.testKit.eventually(within: .seconds(1)) {
-            answerB.nioFuture.onComplete { res in
+            answerB.nioFuture._onComplete { res in
                 pB.tell("\(res)")
             }
         }

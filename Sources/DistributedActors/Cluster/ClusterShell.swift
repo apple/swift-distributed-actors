@@ -436,7 +436,7 @@ extension ClusterShell {
         }
 
         let whenHandshakeComplete = state.eventLoopGroup.next().makePromise(of: Wire.HandshakeResponse.self)
-        whenHandshakeComplete.futureResult.onComplete { result in
+        whenHandshakeComplete.futureResult.whenComplete { result in
             switch result {
             case .success(.accept(let accept)):
                 /// we need to switch here, since we MAY have been attached to an ongoing handshake which may have been initiated
@@ -464,7 +464,7 @@ extension ClusterShell {
             return self.connectSendHandshakeOffer(context, state, initiated: initiated)
 
         case .wasOfferedHandshake, .inFlight, .completed:
-            // the reply will be handled already by the future.onComplete we've set up above here
+            // the reply will be handled already by the future.whenComplete we've set up above here
             // so nothing to do here, just become the next state
             return self.ready(state: state)
         }

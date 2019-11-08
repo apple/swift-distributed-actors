@@ -14,12 +14,26 @@
 
 import NIO
 
-/// The result of an asynchronous operation, e.g. a `Future`.
+/// Abstraction over various types of asynchronous results, e.g. Futures or values completed by asynchronous callbacks,
+/// or messages.
+///
+/// `AsyncResult` allows the actor to suspend itself until the result completes using `ActorContext.awaitResult`,
+/// or _safely_ executing a callback on the actor's context by using `ActorContext.onResultAsync`.
+///
+/// - SeeAlso: `ActorContext.awaitResult`
+/// - SeeAlso: `ActorContext.onResultAsync`
 public protocol AsyncResult {
     associatedtype Value
 
+    /// **WARNING:** NOT end-user API.
+    ///
+    /// Unsafe to close over state as no assumptions can be made about the execution context of the closure! Most definitely do not invoke from an actor.
+    /// Rather, use `context.onResultAsync` or `context.awaitResult` to handle this `AsyncResult`.
+    ///
     /// Registers a callback that is executed when the `AsyncResult` is available.
-    func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
+    ///
+    /// **CAUTION**: For testing purposes only. Not safe to use for actually running actors.
+    func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
 
     /// Returns a new `AsyncResult` that is completed with the value of this
     /// `AsyncResult`, or a `TimeoutError` when it is not completed within
@@ -31,12 +45,10 @@ public protocol AsyncResult {
     ///
     /// - parameter after: defines a timeout after which the result should be considered failed.
     func withTimeout(after timeout: TimeAmount) -> Self
-
-    // TODO: func withAlreadyHasTimeout(really: .yes.really) j/k syntax but feature would be good
 }
 
 extension EventLoopFuture: AsyncResult {
-    public func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+    public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
         self.whenComplete(callback)
     }
 
