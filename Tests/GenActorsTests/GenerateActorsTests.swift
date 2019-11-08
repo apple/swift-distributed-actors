@@ -156,7 +156,7 @@ final class GenerateActorsTests: XCTestCase {
     func test_LifecycleActor_shouldReceiveLifecycleEvents() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let actor = try system.spawn("lifecycleActor", { LifecycleActor(context: $0, probe: p.ref) })
+        let actor = try system.spawn("lifecycleActor") { LifecycleActor(context: $0, probe: p.ref) }
 
         try p.expectMessage("preStart(context:):\(actor.ref.path)")
         actor.pleaseStop()
@@ -166,7 +166,7 @@ final class GenerateActorsTests: XCTestCase {
     func test_LifecycleActor_watchActorsAndReceiveTerminationSignals() throws {
         let p = self.testKit.spawnTestProbe(expecting: String.self)
 
-        let actor: Actor<LifecycleActor> = try self.system.spawn("watcher", { LifecycleActor(context: $0, probe: p.ref) })
+        let actor: Actor<LifecycleActor> = try self.system.spawn("watcher") { LifecycleActor(context: $0, probe: p.ref) }
         actor.watchChildAndTerminateIt()
 
         try p.expectMessage("preStart(context:):/user/watcher")

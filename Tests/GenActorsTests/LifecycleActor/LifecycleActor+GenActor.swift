@@ -40,16 +40,22 @@ extension LifecycleActor {
             }.receiveSignal { _context, signal in 
                 let context = Actor<LifecycleActor>.Context(underlying: _context)
 
-                if signal is Signals.PostStop {
+                switch signal {
+                case is Signals.PostStop: 
                     instance.postStop(context: context)
-                } else if let terminated = signal as? Signals.Terminated {
+                    return .same
+                case let terminated as Signals.Terminated:
                     switch instance.receiveTerminated(context: context, terminated: terminated) {
-                    case .unhandled: return .unhandled
-                    case .stop: return .stop
-                    case .ignore: return .same
+                    case .unhandled: 
+                        return .unhandled
+                    case .stop: 
+                        return .stop
+                    case .ignore: 
+                        return .same
                     }
+                default:
+                    return .unhandled
                 }
-                return .same
             }
         }
     }

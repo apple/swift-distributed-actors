@@ -20,11 +20,11 @@ extension Greeter {
 extension Greeter {
 
     public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
-        return .setup { context in
-            var ctx = Actor<Greeter>.Context(underlying: context)
+        return .setup { _context in
+            let context = Actor<Greeter>.Context(underlying: _context)
             var instance = instance // TODO only var if any of the methods are mutating
 
-            /* await */ instance.preStart(context: ctx)
+            /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
@@ -34,12 +34,25 @@ extension Greeter {
                 
                 }
                 return .same
-            }.receiveSignal { context, signal in 
-                if signal is Signals.PostStop {
-                    var ctx = Actor<Greeter>.Context(underlying: context)
-                    instance.postStop(context: ctx)
+            }.receiveSignal { _context, signal in 
+                let context = Actor<Greeter>.Context(underlying: _context)
+
+                switch signal {
+                case is Signals.PostStop: 
+                    instance.postStop(context: context)
+                    return .same
+                case let terminated as Signals.Terminated:
+                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    case .unhandled: 
+                        return .unhandled
+                    case .stop: 
+                        return .stop
+                    case .ignore: 
+                        return .same
+                    }
+                default:
+                    return .unhandled
                 }
-                return .same
             }
         }
     }
@@ -49,7 +62,7 @@ extension Greeter {
 
 extension Actor where A.Message == Greeter.Message {
     
-     func greet(name: String) { 
+    func greet(name: String) { 
         self.ref.tell(.greet(name: name))
     } 
     

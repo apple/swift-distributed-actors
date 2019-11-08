@@ -141,8 +141,8 @@ extension Actor.Context {
         let actor = try self.spawn(naming, makeActorable)
         return self.watch(actor)
     }
-
 }
+
 // TODO: public func stop() to stop myself.
 
 // ==== ------------------------------------------------------------------------------------------------------------

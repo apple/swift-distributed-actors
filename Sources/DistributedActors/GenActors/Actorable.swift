@@ -121,7 +121,6 @@ public enum GeneratedActor {
 /// - SeeAlso: DeathWatch reference documentation
 /// - SeeAlso: `context.watch` and `context.unwatch`
 public enum DeathPactDirective {
-
     /// No decision was made, the actor will fail if the actor was watched (i.e. this was not a ChildTerminated for an not-watched child)
     case unhandled
 

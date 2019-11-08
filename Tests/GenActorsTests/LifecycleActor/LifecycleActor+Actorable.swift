@@ -33,7 +33,7 @@ public struct LifecycleActor: Actorable {
     }
 
     func watchChildAndTerminateIt() throws {
-        let child: Actor<LifecycleActor> = try self.context.spawn("child", { LifecycleActor(context: $0, probe: self.probe) })
+        let child: Actor<LifecycleActor> = try self.context.spawn("child") { LifecycleActor(context: $0, probe: self.probe) }
         self.context.watch(child)
         child.pleaseStop()
     }

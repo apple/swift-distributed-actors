@@ -10,19 +10,19 @@ import DistributedActors
 extension JackOfAllTrades {
     public enum Message { 
         case hello(replyTo: ActorRef<String>) 
-        case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
         case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
+        case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
     }
 
-    
-    /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
-    public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
-        .ticketing(message)
-    } 
     
     /// Performs boxing of GeneratedActor.Messages.Parking messages such that they can be received by Actor<JackOfAllTrades>
     public static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> JackOfAllTrades.Message {
         .parking(message)
+    } 
+    
+    /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
+    public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
+        .ticketing(message)
     } 
     
 }
@@ -44,25 +44,31 @@ extension JackOfAllTrades {
                 case .hello(let replyTo):
                     instance.hello(replyTo: replyTo) 
                 
-                case .ticketing(.makeTicket):
-                    instance.makeTicket() 
                 case .parking(.park):
                     instance.park() 
+                case .ticketing(.makeTicket):
+                    instance.makeTicket() 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
                 let context = Actor<JackOfAllTrades>.Context(underlying: _context)
 
-                if signal is Signals.PostStop {
+                switch signal {
+                case is Signals.PostStop: 
                     instance.postStop(context: context)
-                } else if let terminated = signal as? Signals.Terminated {
+                    return .same
+                case let terminated as Signals.Terminated:
                     switch instance.receiveTerminated(context: context, terminated: terminated) {
-                    case .unhandled: return .unhandled
-                    case .stop: return .stop
-                    case .ignore: return .same
+                    case .unhandled: 
+                        return .unhandled
+                    case .stop: 
+                        return .stop
+                    case .ignore: 
+                        return .same
                     }
+                default:
+                    return .unhandled
                 }
-                return .same
             }
         }
     }
