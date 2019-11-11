@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 private let NANOS = 1_000_000_000

@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class BehaviorCanonicalizeTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -31,7 +31,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_nestedSetupBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe1")
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe("canonicalizeProbe1")
 
         let b: Behavior<String> = .setup { _ in
             p.tell("outer-1")
@@ -58,7 +58,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_doesSurviveDeeplyNestedSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe2")
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe("canonicalizeProbe2")
 
         func deepSetupRabbitHole(currentDepth depth: Int, stopAt limit: Int) -> Behavior<String> {
             return .setup { _ in
@@ -84,7 +84,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_unwrapInterceptBehaviors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("canonicalizeProbe3")
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe("canonicalizeProbe3")
 
         let b: Behavior<String> = .intercept(behavior: .setup { _ in
             p.tell("outer-1")
@@ -108,7 +108,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_orElse_shouldThrowOnTooDeeplyNestedBehaviors() throws {
-        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Int> = self.testTools.spawnTestProbe()
         var behavior: Behavior<Int> = .receiveMessage { message in
             p.tell(message)
             return .same
@@ -131,7 +131,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_canonicalize_orElse_executeNestedSetupOnBecome() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn("orElseCanonicalizeNestedSetups", .receiveMessage { msg in
             let onlyA = Behavior<String>.setup { _ in
@@ -170,7 +170,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_startBehavior_shouldThrowOnTooDeeplyNestedBehaviorSetups() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("startBehaviorProbe")
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe("startBehaviorProbe")
 
         /// Creates an infinitely nested setup behavior -- it is used to see that we detect this and abort executing eagerly
         func setupDaDoRunRunRunDaDoRunRun(depth: Int = 0) -> Behavior<String> {
@@ -192,7 +192,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_stopWithoutPostStop_shouldUsePreviousBehavior() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
             .stop
@@ -213,7 +213,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_stopWithPostStop_shouldUseItForPostStopSignalHandling() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = Behavior.receiveMessage { _ in
             .stop { _ in
@@ -231,7 +231,7 @@ class BehaviorCanonicalizeTests: XCTestCase {
     }
 
     func test_setup_returningSameShouldThrow() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { _ in
             .same

@@ -14,7 +14,7 @@
 //
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIO
 import NIOFoundationCompat
@@ -22,7 +22,7 @@ import XCTest
 
 class TraversalTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     struct ActorReady {
         let name: String
@@ -33,10 +33,10 @@ class TraversalTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
 
         // we use the probe to make sure all actors are started before we start asserting on the tree
-        let probe = self.testKit.spawnTestProbe(expecting: ActorReady.self)
+        let probe = self.testTools.spawnTestProbe(expecting: ActorReady.self)
 
         let tellProbeWhenReady: Behavior<Void> = .setup { context in
             probe.tell(ActorReady(context.name))

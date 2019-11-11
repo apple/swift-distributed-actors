@@ -39,11 +39,11 @@ let targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
-    // MARK: TestKit
+    // MARK: TestTools
 
     /// This target is intended only for use in tests, though we have no way to mark this
     .target(
-        name: "DistributedActorsTestKit",
+        name: "DistributedActorsTestTools",
         dependencies: ["DistributedActors", "DistributedActorsConcurrencyHelpers"]
     ),
 
@@ -52,7 +52,7 @@ let targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsDocumentationTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        dependencies: ["DistributedActors", "DistributedActorsTestTools"]
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -60,16 +60,16 @@ let targets: [PackageDescription.Target] = [
 
     .testTarget(
         name: "DistributedActorsTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        dependencies: ["DistributedActors", "DistributedActorsTestTools"]
     ),
     .testTarget(
-        name: "DistributedActorsTestKitTests",
-        dependencies: ["DistributedActors", "DistributedActorsTestKit"]
+        name: "DistributedActorsTestToolsTests",
+        dependencies: ["DistributedActors", "DistributedActorsTestTools"]
     ),
 
     .testTarget(
         name: "CDistributedActorsMailboxTests",
-        dependencies: ["CDistributedActorsMailbox", "DistributedActorsTestKit"]
+        dependencies: ["CDistributedActorsMailbox", "DistributedActorsTestTools"]
     ),
 
     .testTarget(
@@ -81,7 +81,7 @@ let targets: [PackageDescription.Target] = [
         name: "GenActorsTests",
         dependencies: [
             "GenActors",
-            "DistributedActorsTestKit",
+            "DistributedActorsTestTools",
         ]
     ),
 
@@ -194,8 +194,8 @@ let package = Package(
             targets: ["DistributedActors"]
         ),
         .library(
-            name: "DistributedActorsTestKit",
-            targets: ["DistributedActorsTestKit"]
+            name: "DistributedActorsTestTools",
+            targets: ["DistributedActorsTestTools"]
         ),
 
         /* --- genActors --- */

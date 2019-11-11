@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -20,11 +20,11 @@ import XCTest
 
 class StashBufferTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -32,7 +32,7 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_stash_shouldStashMessages() throws {
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testTools.spawnTestProbe()
 
         let unstashBehavior: Behavior<Int> = .receiveMessage { message in
             probe.ref.tell(message)
@@ -78,7 +78,7 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_unstash_intoSetupBehavior_shouldCanonicalize() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Int.self)
+        let p = self.testTools.spawnTestProbe(expecting: Int.self)
 
         _ = try self.system.spawn("unstashIntoSetup", Behavior<Int>.setup { context in
             let stash = StashBuffer<Int>(capacity: 2)
@@ -96,7 +96,7 @@ class StashBufferTests: XCTestCase {
     }
 
     func test_messagesStashedAgainDuringUnstashingShouldNotBeProcessedInTheSameRun() throws {
-        let probe: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Int> = self.testTools.spawnTestProbe()
 
         let stash: StashBuffer<Int> = StashBuffer(capacity: 100)
 

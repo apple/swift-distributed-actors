@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -21,11 +21,11 @@ class ActorSystemTests: XCTestCase {
     let MaxSpecialTreatedValueTypeSizeInBytes = 24
 
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -49,7 +49,7 @@ class ActorSystemTests: XCTestCase {
     }
 
     func test_system_spawn_shouldNotThrowOnNameReUse() throws {
-        let p: ActorTestProbe<Int> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Int> = self.testTools.spawnTestProbe()
         // re-using a name of an actor that has been stopped is fine
         let ref: ActorRef<String> = try system.spawn("test", .stop)
 
@@ -58,14 +58,14 @@ class ActorSystemTests: XCTestCase {
 
         // since spawning on top level is racy for the names replacements;
         // we try a few times, and if it eventually succeeds things are correct -- it should succeed only once though
-        try self.testKit.eventually(within: .milliseconds(500)) {
+        try self.testTools.eventually(within: .milliseconds(500)) {
             let _: ActorRef<String> = try system.spawn("test", .ignore)
         }
     }
 
     func test_shutdown_shouldStopAllActors() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receiveMessage { message in
             p.tell(message)
             return .same
@@ -106,7 +106,7 @@ class ActorSystemTests: XCTestCase {
 
     func test_shutdown_selfSendingActorShouldNotDeadlockSystem() throws {
         let system2 = ActorSystem("ShutdownSystem")
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
         let echoBehavior: Behavior<String> = .receive { context, message in
             context.myself.tell(message)
             return .same

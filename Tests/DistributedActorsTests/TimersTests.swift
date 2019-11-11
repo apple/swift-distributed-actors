@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -20,11 +20,11 @@ import XCTest
 
 class TimersTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -37,7 +37,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_startSingleTimer_shouldSendSingleMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startSingle(key: TimerKey("message"), message: "fromTimer", delay: .microseconds(100))
@@ -53,7 +53,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_startPeriodicTimer_shouldSendPeriodicMessage() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
@@ -78,7 +78,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_periodicTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             var i = 0
@@ -102,7 +102,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_singleTimer_shouldStopWhenCanceled() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior = Behavior<String>.setup { context in
             // We start the timer without delay and then sleep for a short
@@ -123,7 +123,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_timers_cancelAllShouldStopAllTimers() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: TimerKey("message"), message: "fromTimer", interval: .milliseconds(10))
@@ -142,7 +142,7 @@ class TimersTests: XCTestCase {
     }
 
     func test_timers_cancelAllShouldNotStopSystemTimers() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .setup { context in
             context.timers.startPeriodic(key: TimerKey("message", isSystemTimer: true), message: "fromSystemTimer", interval: .milliseconds(10))

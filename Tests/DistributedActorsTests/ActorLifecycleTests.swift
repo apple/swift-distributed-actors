@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ActorLifecycleTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -95,7 +95,7 @@ class ActorLifecycleTests: XCTestCase {
     // MARK: Stopping actors
 
     func test_stopping_shouldDeinitTheBehavior() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe("p1")
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe("p1")
         let chattyAboutLifecycle =
             try system.spawn("deinitLifecycleActor", .class { LifecycleDeinitClassBehavior(p.ref) })
 

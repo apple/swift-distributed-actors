@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 @testable import Logging
 import XCTest
 
 final class DeadLetterTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
     var logCaptureHandler: LogCapture!
 
     override func setUp() {
@@ -27,7 +27,7 @@ final class DeadLetterTests: XCTestCase {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: "mock")
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -56,7 +56,7 @@ final class DeadLetterTests: XCTestCase {
         let ref: ActorRef<String> = try self.system.spawn("ludwig", .receiveMessage { _ in
             .stop
         })
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testTools.spawnTestProbe(expecting: Never.self)
 
         p.watch(ref)
         ref.tell("terminate please")
@@ -72,7 +72,7 @@ final class DeadLetterTests: XCTestCase {
         let ref: ActorRef<String> = try self.system.spawn("ludwig", .receiveMessage { _ in
             .stop
         })
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testTools.spawnTestProbe(expecting: Never.self)
 
         p.watch(ref)
         ref.tell("terminate please")
@@ -93,7 +93,7 @@ final class DeadLetterTests: XCTestCase {
     }
 
     private func awaitLogContaining(text: String) throws {
-        return try self.testKit.eventually(within: .seconds(1)) {
+        return try self.testTools.eventually(within: .seconds(1)) {
             if !self.logCaptureHandler.logs.contains(where: { log in
                 "\(log)".contains(text)
             }) {

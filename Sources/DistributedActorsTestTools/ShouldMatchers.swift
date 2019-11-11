@@ -359,7 +359,7 @@ public func shouldThrow<T>(file: StaticString = #file, line: UInt = #line, colum
 ///    shouldNotThrow({
 ///    ^~~~~~~~~~~~~~~
 /// error: Unexpected throw captured: illegalActorPathElement(name: "/user", illegal: "/", index: 0)
-/// Fatal error: Failed: expectedErrorToBeThrown: file sact/Sources/DistributedActorsTestKit/ShouldMatchers.swift, line 79
+/// Fatal error: Failed: expectedErrorToBeThrown: file sact/Sources/DistributedActorsTestTools/ShouldMatchers.swift, line 79
 /// ```
 ///
 /// Mostly used for debugging what was thrown in a test in a more command line friendly way, e.g. on CI.
@@ -452,7 +452,7 @@ extension CallSiteInfo {
     /// The failure contains the passed in message as well as source location of the call site, for easier locating of the issue.
     public func error(_ message: String, failTest: Bool = true) -> Error {
         let details = self.detailedMessage(message)
-        if failTest, !ActorTestKit.isInRepeatableContext() {
+        if failTest, !ActorTestTools.isInRepeatableContext() {
             XCTFail(details, file: self.file, line: self.line)
         }
 

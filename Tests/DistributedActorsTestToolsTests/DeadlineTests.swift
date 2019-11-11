@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-@testable import DistributedActorsTestKit
+@testable import DistributedActorsTestTools
 import Foundation
 import XCTest
 

@@ -36,6 +36,7 @@ extension ParentChildActorTests {
             ("test_spawnWatch_shouldSpawnAWatchedActor", test_spawnWatch_shouldSpawnAWatchedActor),
             ("test_stopParent_shouldWaitForChildrenToStop", test_stopParent_shouldWaitForChildrenToStop),
             ("test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren", test_spawnStopSpawnManyTimesWithSameName_shouldProperlyTerminateAllChildren),
+            ("test_contextStop_shouldBeAbleToStopChildInBehaviorIgnore", test_contextStop_shouldBeAbleToStopChildInBehaviorIgnore),
         ]
     }
 }

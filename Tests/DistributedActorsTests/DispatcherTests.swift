@@ -14,7 +14,7 @@
 
 import Dispatch
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIO
 import XCTest
@@ -22,12 +22,12 @@ import XCTest
 class DispatcherTests: XCTestCase {
     var group: EventLoopGroup!
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -40,7 +40,7 @@ class DispatcherTests: XCTestCase {
     // MARK: Running "on NIO" for fun and profit
 
     func test_runOn_nioEventLoop() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")
@@ -59,7 +59,7 @@ class DispatcherTests: XCTestCase {
     }
 
     func test_runOn_nioEventLoopGroup() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let behavior: Behavior<String> = .receive { context, message in
             context.log.info("HELLO")
             p.tell("Received: \(message)")

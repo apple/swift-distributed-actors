@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class SWIMInstanceTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
     var clusterTestProbe: ActorTestProbe<ClusterShell.Message>!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
-        self.clusterTestProbe = self.testKit.spawnTestProbe()
+        self.testTools = ActorTestTools(self.system)
+        self.clusterTestProbe = self.testTools.spawnTestProbe()
     }
 
     override func tearDown() {
@@ -32,7 +32,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_addMember_shouldAddAMemberWithTheSpecifiedStatusAndCurrentProtocolPeriod() {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
         let status: SWIM.Status = .alive(incarnation: 1)
 
@@ -53,7 +53,7 @@ final class SWIMInstanceTests: XCTestCase {
     // MARK: Detecting myself
 
     func test_notMyself_shouldDetectRemoteVersionOfSelf() {
-        let shell = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -62,8 +62,8 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_notMyself_shouldDetectRandomNotMyselfActor() {
-        let shell = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let someone = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let shell = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let someone = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let swim = SWIM.Instance(.default)
         swim.addMyself(shell)
@@ -75,7 +75,7 @@ final class SWIMInstanceTests: XCTestCase {
     // MARK: Marking members as various statuses
 
     func test_mark_shouldNotApplyEqualStatus() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
@@ -87,7 +87,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_mark_shouldApplyNewerStatus() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
@@ -102,7 +102,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_mark_shouldNotApplyOlderStatus() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
@@ -115,7 +115,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_mark_shouldApplyDead() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .suspect(incarnation: 1))
@@ -127,7 +127,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_mark_shouldNotApplyAnyStatusIfAlreadyDead() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .dead)
@@ -146,9 +146,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPingRequestResponse_allowsSuspectNodeToRefuteSuspicion() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // p3 is suspect already...
         swim.addMyself(p1)
@@ -169,9 +169,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPingRequestResponse_ignoresTooOldRefutations() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe("p1", expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe("p2", expecting: SWIM.Message.self).ref
-        let p3 = self.testKit.spawnTestProbe("p3", expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe("p1", expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe("p2", expecting: SWIM.Message.self).ref
+        let p3 = self.testTools.spawnTestProbe("p3", expecting: SWIM.Message.self).ref
 
         // p3 is suspect already...
         swim.addMyself(p1)
@@ -195,8 +195,8 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPing_shouldOfferAckMessageWithMyselfReference() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         swim.addMyself(p1)
         swim.addMember(p2, status: .alive(incarnation: 0))
@@ -212,8 +212,8 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPing_withAlive_shouldReplyWithAlive_withIncrementedIncarnation() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // from our perspective, all nodes are alive...
         swim.addMyself(p1)
@@ -234,8 +234,8 @@ final class SWIMInstanceTests: XCTestCase {
     func test_onPing_withSuspicion_shouldReplyWithAlive_withIncrementedIncarnation() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         // from our perspective, all nodes are alive...
         swim.addMyself(p1)
@@ -271,7 +271,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning == nil:
             ()
         default:
-            throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
+            throw self.testTools.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
@@ -292,7 +292,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning == nil:
             ()
         default:
-            throw self.testKit.fail("Expected `.applied(warning: nil)`, got \(res)")
+            throw self.testTools.fail("Expected `.applied(warning: nil)`, got \(res)")
         }
     }
 
@@ -319,7 +319,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(nil, nil):
             ()
         default:
-            throw self.testKit.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
+            throw self.testTools.fail("Expected [applied(level: nil, message: nil)], got [\(res)]")
         }
     }
 
@@ -340,7 +340,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .applied(_, let warning) where warning != nil:
             ()
         default:
-            throw self.testKit.fail("Expected `.none(message)`, got \(res)")
+            throw self.testTools.fail("Expected `.none(message)`, got \(res)")
         }
     }
 
@@ -358,7 +358,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .confirmedDead(let member):
             member.shouldEqual(myselfMember)
         default:
-            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testTools.fail("Expected `.confirmedDead`, got \(res)")
         }
     }
 
@@ -379,7 +379,7 @@ final class SWIMInstanceTests: XCTestCase {
         case .confirmedDead(let member):
             member.shouldEqual(otherMember)
         default:
-            throw self.testKit.fail("Expected `.confirmedDead`, got \(res)")
+            throw self.testTools.fail("Expected `.confirmedDead`, got \(res)")
         }
     }
 
@@ -398,9 +398,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_members_shouldContainAllAddedMembers() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         swim.addMember(p2.ref, status: .alive(incarnation: 0))
@@ -419,7 +419,7 @@ final class SWIMInstanceTests: XCTestCase {
         let memberCount = 10
         var members: Set<ActorRef<SWIM.Message>> = []
         for _ in 0 ..< memberCount {
-            let p = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+            let p = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
             members.insert(p.ref)
             swim.addMember(p.ref, status: .alive(incarnation: 0))
         }
@@ -427,7 +427,7 @@ final class SWIMInstanceTests: XCTestCase {
         var seenMembers: [ActorRef<SWIM.Message>] = []
         for _ in 0 ..< memberCount {
             guard let member = swim.nextMemberToPing() else {
-                throw self.testKit.fail("Could not fetch member to ping")
+                throw self.testTools.fail("Could not fetch member to ping")
             }
 
             seenMembers.append(member)
@@ -439,7 +439,7 @@ final class SWIMInstanceTests: XCTestCase {
         // should loop around and we should encounter all the same members now
         for _ in 0 ..< memberCount {
             guard let member = swim.nextMemberToPing() else {
-                throw self.testKit.fail("Could not fetch member to ping")
+                throw self.testTools.fail("Could not fetch member to ping")
             }
 
             seenMembers.removeFirst().shouldEqual(member)
@@ -447,7 +447,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_addMember_shouldNotAddLocalNodeForPinging() {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMyself(probe.ref)
@@ -457,11 +457,11 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_nextMemberToPingRequest() {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         swim.addMember(p2.ref, status: .alive(incarnation: 0))
@@ -479,7 +479,7 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_member_shouldReturnTheLastAssignedStatus() {
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let swim = SWIM.Instance(.default)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
@@ -490,8 +490,8 @@ final class SWIMInstanceTests: XCTestCase {
     }
 
     func test_member_shouldWorkForMyself() {
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
         let swim = SWIM.Instance(.default)
 
         swim.addMyself(p1)
@@ -509,9 +509,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_suspects_shouldContainOnlySuspectedNodes() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
@@ -535,9 +535,9 @@ final class SWIMInstanceTests: XCTestCase {
     func test_memberCount_shouldNotCountDeadMembers() {
         let swim = SWIM.Instance(.default)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self).ref
 
         let aliveAtZero = SWIM.Status.alive(incarnation: 0)
         swim.addMember(p1, status: aliveAtZero)
@@ -568,9 +568,9 @@ final class SWIMInstanceTests: XCTestCase {
         settings.gossip.maxGossipCountPerMessage = 2
         let swim = SWIM.Instance(settings)
 
-        let p1 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(p1.ref, status: .alive(incarnation: 0))
         try self.validateGossip(swim: swim, expected: [.init(ref: p1.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
@@ -589,7 +589,7 @@ final class SWIMInstanceTests: XCTestCase {
         settings.gossip.maxGossipCountPerMessage = 2
         let swim = SWIM.Instance(settings)
 
-        let probe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let probe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
 
         swim.addMember(probe.ref, status: .alive(incarnation: 0))
         try self.validateGossip(swim: swim, expected: [.init(ref: probe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
@@ -608,11 +608,11 @@ final class SWIMInstanceTests: XCTestCase {
 
         if shouldSucceed {
             guard case .applied = markResult else {
-                throw self.testKit.fail("Expected `.applied`, got `\(markResult)`", file: file, line: line, column: column)
+                throw self.testTools.fail("Expected `.applied`, got `\(markResult)`", file: file, line: line, column: column)
             }
         } else {
             guard case .ignoredDueToOlderStatus = markResult else {
-                throw self.testKit.fail("Expected `.ignoredDueToOlderStatus`, got `\(markResult)`", file: file, line: line, column: column)
+                throw self.testTools.fail("Expected `.ignoredDueToOlderStatus`, got `\(markResult)`", file: file, line: line, column: column)
             }
         }
     }
@@ -625,11 +625,11 @@ final class SWIMInstanceTests: XCTestCase {
         let payload = swim.makeGossipPayload()
         if expected.isEmpty {
             guard case SWIM.Payload.none = payload else {
-                throw self.testKit.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
+                throw self.testTools.fail("Expected `.none`, but got `\(payload)`", file: file, line: line, column: column)
             }
         } else {
             guard case SWIM.Payload.membership(let members) = payload else {
-                throw self.testKit.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)
+                throw self.testTools.fail("Expected `.membership`, but got `\(payload)`", file: file, line: line, column: column)
             }
 
             Set(members).shouldEqual(expected, file: file, line: line, column: column)

@@ -13,12 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 open class ClusteredNodesTestBase: XCTestCase {
     var _nodes: [ActorSystem] = []
-    var _testKits: [ActorTestKit] = []
+    var _testToolss: [ActorTestTools] = []
     var _logCaptures: [LogCapture] = []
 
     /// If `true` automatically captures all logs of all `setUpNode` started systems, and prints them if at least one test failure is encountered.
@@ -50,7 +50,7 @@ open class ClusteredNodesTestBase: XCTestCase {
         }
 
         self._nodes.append(node)
-        self._testKits.append(.init(node))
+        self._testToolss.append(.init(node))
         if self.captureLogs {
             self._logCaptures.append(capture)
         }
@@ -75,14 +75,14 @@ open class ClusteredNodesTestBase: XCTestCase {
         self._nodes.forEach { $0.shutdown().wait() }
     }
 
-    func testKit(_ system: ActorSystem) -> ActorTestKit {
+    func testTools(_ system: ActorSystem) -> ActorTestTools {
         guard let idx = self._nodes.firstIndex(where: { s in s.cluster.node == system.cluster.node }) else {
             fatalError("Must only call with system that was spawned using `setUpNode()`, was: \(system)")
         }
 
-        let testKit = self._testKits[idx]
+        let testTools = self._testToolss[idx]
 
-        return testKit
+        return testTools
     }
 
     func joinNodes(node: ActorSystem, with other: ActorSystem, ensureMembers: MemberStatus? = nil) throws {
@@ -97,7 +97,7 @@ open class ClusteredNodesTestBase: XCTestCase {
             fatalError("Must at least have 1 system present to use [ensureNodes]")
         }
 
-        try self.testKit(anySystem).eventually(within: within) {
+        try self.testTools(anySystem).eventually(within: within) {
             for onSystem in systems {
                 // all members on onMember should have reached this status (e.g. up)
                 for expectSystem in systems {
@@ -113,8 +113,8 @@ open class ClusteredNodesTestBase: XCTestCase {
 
 extension ClusteredNodesTestBase {
     func pinfoMembership(_ system: ActorSystem, file: StaticString = #file, line: UInt = #line) {
-        let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        let testTools = self.testTools(system)
+        let p = testTools.spawnTestProbe(expecting: Membership.self)
 
         system.cluster.ref.tell(.query(.currentMembership(p.ref)))
         let membership = try! p.expectMessage()
@@ -187,12 +187,12 @@ extension ClusteredNodesTestBase {
         // FIXME: this is a weak workaround around not having "extensions" (unique object per actor system)
         // FIXME: this can be removed once issue #458 lands
 
-        let testKit = self.testKit(system)
+        let testTools = self.testTools(system)
 
-        let probe = testKit.spawnTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
+        let probe = testTools.spawnTestProbe(.prefixed(with: "probe-assertAssociated"), expecting: Set<UniqueNode>.self, file: file, line: line)
         defer { probe.stop() }
 
-        try testKit.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
+        try testTools.eventually(within: timeout ?? .seconds(5), file: file, line: line, column: column) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref))) // TODO: ask would be nice here
             let associatedNodes = try probe.expectMessage(file: file, line: line)
 
@@ -229,11 +229,11 @@ extension ClusteredNodesTestBase {
         timeout: TimeAmount? = nil, interval: TimeAmount? = nil,
         verbose: Bool = false
     ) throws {
-        let testKit: ActorTestKit = self.testKit(system)
+        let testTools: ActorTestTools = self.testTools(system)
 
-        let probe = testKit.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
+        let probe = testTools.spawnTestProbe(.prefixed(with: "assertNotAssociated-probe"), expecting: Set<UniqueNode>.self)
         defer { probe.stop() }
-        try testKit.assertHolds(for: timeout ?? .seconds(1)) {
+        try testTools.assertHolds(for: timeout ?? .seconds(1)) {
             system.cluster.ref.tell(.query(.associatedNodes(probe.ref)))
             let associatedNodes = try probe.expectMessage() // TODO: use interval here
             if verbose {
@@ -250,13 +250,13 @@ extension ClusteredNodesTestBase {
 
     /// Asserts the given member node has the expected `status`.
     ///
-    /// An error is thrown but NOT failing the test; use in pair with `testKit.eventually` to achieve the expected behavior.
+    /// An error is thrown but NOT failing the test; use in pair with `testTools.eventually` to achieve the expected behavior.
     func assertMemberStatus(
         on system: ActorSystem, node: UniqueNode, is expectedStatus: MemberStatus,
         file: StaticString = #file, line: UInt = #line
     ) throws {
-        let testKit = self.testKit(system)
-        let p = testKit.spawnTestProbe(expecting: Membership.self)
+        let testTools = self.testTools(system)
+        let p = testTools.spawnTestProbe(expecting: Membership.self)
         defer {
             p.stop()
         }
@@ -264,11 +264,11 @@ extension ClusteredNodesTestBase {
 
         let membership = try p.expectMessage()
         guard let foundMember = membership.uniqueMember(node) else {
-            throw testKit.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
+            throw testTools.error("Expected [\(system.cluster.node)] to know about [\(node)] member", file: file, line: line)
         }
 
         if foundMember.status != expectedStatus {
-            throw testKit.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
+            throw testTools.error("Expected \(reflecting: foundMember.node) on \(reflecting: system.cluster.node) to be seen as: [\(expectedStatus)], but was [\(foundMember.status)]")
         }
     }
 }

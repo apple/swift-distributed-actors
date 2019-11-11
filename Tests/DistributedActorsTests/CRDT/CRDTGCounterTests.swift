@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class CRDTGCounterTests: XCTestCase {

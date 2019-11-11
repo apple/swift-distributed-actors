@@ -13,12 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class CRDTSerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
@@ -29,7 +29,7 @@ final class CRDTSerializationTests: XCTestCase {
             settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1005)
             // CRDT.ORSet<String>.Delta is the same as CRDT.VersionedContainerDelta<String> (id: 1004)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {

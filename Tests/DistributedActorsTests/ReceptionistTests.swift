@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ReceptionistTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -32,8 +32,8 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldRespondWithRegisteredRefsForKey() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let probe: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<String> = self.testTools.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testTools.spawnTestProbe()
 
         let refA: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -69,7 +69,7 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldRespondWithEmptyRefForUnknownKey() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testTools.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -92,7 +92,7 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldNotRegisterTheSameRefTwice() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testTools.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -115,7 +115,7 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldReplyWithRegistered() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let probe: ActorTestProbe<Receptionist.Registered<String>> = self.testKit.spawnTestProbe()
+        let probe: ActorTestProbe<Receptionist.Registered<String>> = self.testTools.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -136,7 +136,7 @@ class ReceptionistTests: XCTestCase {
 
     func test_receptionist_shouldUnregisterTerminatedRefs() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testTools.spawnTestProbe()
 
         let ref: ActorRef<String> = try system.spawn(
             .anonymous,
@@ -151,20 +151,20 @@ class ReceptionistTests: XCTestCase {
 
         ref.tell("stop")
 
-        try self.testKit.eventually(within: .seconds(1)) {
+        try self.testTools.eventually(within: .seconds(1)) {
             receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
             let message = try lookupProbe.expectMessage()
 
-            // TODO: modify TestKit to allow usage of matchers instead
+            // TODO: modify TestTools to allow usage of matchers instead
             guard message.refs.isEmpty else {
-                throw self.testKit.error()
+                throw self.testTools.error()
             }
         }
     }
 
     func test_receptionist_shouldContinuouslySendUpdatesForSubscriptions() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
-        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testTools.spawnTestProbe()
 
         let refA: ActorRef<String> = try system.spawn(
             .anonymous,

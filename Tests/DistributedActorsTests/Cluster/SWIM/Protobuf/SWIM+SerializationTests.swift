@@ -13,16 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class SWIMSerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -30,23 +30,23 @@ final class SWIMSerializationTests: XCTestCase {
     }
 
     func test_serializationOf_ping() throws {
-        let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.Ack.self)
+        let memberProbe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testTools.spawnTestProbe(expecting: SWIM.Ack.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let ping: SWIM.Message = .remote(.ping(lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
         try self.shared_serializationRoundtrip(ping)
     }
 
     func test_serializationOf_pingReq() throws {
-        let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
-        let ackProbe = self.testKit.spawnTestProbe(expecting: SWIM.Ack.self)
+        let memberProbe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
+        let ackProbe = self.testTools.spawnTestProbe(expecting: SWIM.Ack.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let pingReq: SWIM.Message = .remote(.pingReq(target: memberProbe.ref, lastKnownStatus: .alive(incarnation: 0), replyTo: ackProbe.ref, payload: payload))
         try self.shared_serializationRoundtrip(pingReq)
     }
 
     func test_serializationOf_Ack() throws {
-        let memberProbe = self.testKit.spawnTestProbe(expecting: SWIM.Message.self)
+        let memberProbe = self.testTools.spawnTestProbe(expecting: SWIM.Message.self)
         let payload: SWIM.Payload = .membership([.init(ref: memberProbe.ref, status: .alive(incarnation: 0), protocolPeriod: 0)])
         let pingReq: SWIM.Ack = .init(pinged: memberProbe.ref, incarnation: 1, payload: payload)
         try self.shared_serializationRoundtrip(pingReq)

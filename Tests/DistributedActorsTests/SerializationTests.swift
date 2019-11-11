@@ -14,7 +14,7 @@
 //
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIO
 import NIOFoundationCompat
@@ -22,7 +22,7 @@ import XCTest
 
 class SerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
@@ -34,7 +34,7 @@ class SerializationTests: XCTestCase {
 
             settings.serialization.registerCodable(for: HasReceivesSystemMsgs.self, underId: 1005)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -116,7 +116,7 @@ class SerializationTests: XCTestCase {
     // MARK: Actor ref serialization and resolve
 
     func test_serialize_actorRef_inMessage() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let ref: ActorRef<String> = try system.spawn("hello", .receiveMessage { message in
             p.tell("got:\(message)")
@@ -148,8 +148,8 @@ class SerializationTests: XCTestCase {
 
             settings.serialization.registerCodable(for: HasStringRef.self, underId: 1002)
         }
-        let testKit = ActorTestKit(remoteCapableSystem)
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let testTools = ActorTestTools(remoteCapableSystem)
+        let p = testTools.spawnTestProbe(expecting: String.self)
 
         let ref: ActorRef<String> = try remoteCapableSystem.spawn("hello", .receiveMessage { message in
             p.tell("got:\(message)")
@@ -183,7 +183,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_deserialize_alreadyDeadActorRef_shouldDeserializeAsDeadLetters_forSystemDefinedMessageType() throws {
-        let p = self.testKit.spawnTestProbe(expecting: Never.self)
+        let p = self.testTools.spawnTestProbe(expecting: Never.self)
         let stoppedRef: ActorRef<String> = try system.spawn("dead-on-arrival", .stop)
         p.watch(stoppedRef)
 
@@ -194,13 +194,13 @@ class SerializationTests: XCTestCase {
 
         try p.expectTerminated(stoppedRef)
 
-        try self.testKit.eventually(within: .seconds(3)) {
+        try self.testTools.eventually(within: .seconds(3)) {
             let back: HasStringRef = try shouldNotThrow {
                 try system.serialization.deserialize(HasStringRef.self, from: bytes)
             }
 
             guard "\(back.containedRef.address)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedRef.address) is not equal to expected /dead/user/dead-on-arrival")
+                throw self.testTools.error("\(back.containedRef.address) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
@@ -213,14 +213,14 @@ class SerializationTests: XCTestCase {
             try system.serialization.serialize(message: hasRef)
         }
 
-        try self.testKit.eventually(within: .seconds(3)) {
+        try self.testTools.eventually(within: .seconds(3)) {
             let back: HasInterestingMessageRef = try shouldNotThrow {
                 try system.serialization.deserialize(HasInterestingMessageRef.self, from: bytes)
             }
 
             back.containedInterestingRef.tell(InterestingMessage())
             guard "\(back.containedInterestingRef.address)" == "/dead/user/dead-on-arrival" else {
-                throw self.testKit.error("\(back.containedInterestingRef.address) is not equal to expected /dead/user/dead-on-arrival")
+                throw self.testTools.error("\(back.containedInterestingRef.address) is not equal to expected /dead/user/dead-on-arrival")
             }
         }
     }
@@ -239,7 +239,7 @@ class SerializationTests: XCTestCase {
     }
 
     func test_serialize_receivesSystemMessages_inMessage() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let watchMe: ActorRef<String> = try system.spawn("watchMe", .ignore)
 
@@ -284,7 +284,7 @@ class SerializationTests: XCTestCase {
         }
 
         do {
-            let p = self.testKit.spawnTestProbe("p1", expecting: String.self)
+            let p = self.testTools.spawnTestProbe("p1", expecting: String.self)
             let echo: ActorRef<String> = try s2.spawn("echo", .receiveMessage { msg in
                 p.ref.tell("echo:\(msg)")
                 return .same

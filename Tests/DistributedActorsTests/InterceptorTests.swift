@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -54,11 +54,11 @@ final class TerminatedInterceptor<Message>: Interceptor<Message> {
 
 class InterceptorTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -66,7 +66,7 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldConvertMessages() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let interceptor = ShoutingInterceptor()
 
@@ -90,8 +90,8 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldSurviveDeeplyNestedInterceptors() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
-        let i: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
+        let i: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let makeStringsLouderInterceptor = ShoutingInterceptor(probe: i)
 
@@ -126,7 +126,7 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldInterceptSignals() throws {
-        let p: ActorTestProbe<Signals.Terminated> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<Signals.Terminated> = self.testTools.spawnTestProbe()
 
         let spyOnTerminationSignals: Interceptor<String> = TerminatedInterceptor(probe: p)
 
@@ -174,7 +174,7 @@ class InterceptorTests: XCTestCase {
     }
 
     func test_interceptor_shouldRemainWHenReturningStoppingWithPostStop() throws {
-        let p: ActorTestProbe<String> = self.testKit.spawnTestProbe()
+        let p: ActorTestProbe<String> = self.testTools.spawnTestProbe()
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             .stop { _ in

@@ -14,17 +14,17 @@
 
 import DistributedActors
 import struct DistributedActors.TimeAmount
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 final class ActorAskTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(system)
+        self.testTools = ActorTestTools(system)
     }
 
     override func tearDown() {
@@ -85,7 +85,7 @@ final class ActorAskTests: XCTestCase {
     }
 
     func test_askResult_shouldBePossibleTo_contextAwaitOn() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testTools.spawnTestProbe(expecting: String.self)
 
         let greeter: ActorRef<AnswerMePlease> = try system.spawn("greeterAskReply", .receiveMessage { message in
             message.replyTo.tell("Hello there")
@@ -105,7 +105,7 @@ final class ActorAskTests: XCTestCase {
     }
 
     func shared_askResult_shouldBePossibleTo_contextOnResultAsyncOn(withTimeout timeout: TimeAmount) throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testTools.spawnTestProbe(expecting: String.self)
 
         let greeter: ActorRef<AnswerMePlease> = try system.spawn(
             "greeterAskReply",
@@ -142,7 +142,7 @@ final class ActorAskTests: XCTestCase {
     }
 
     func test_askResult_whenContextAwaitedOn_shouldRespectTimeout() throws {
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = testTools.spawnTestProbe(expecting: String.self)
 
         let void: ActorRef<AnswerMePlease> = try system.spawn("theVoid", (.receiveMessage { _ in .same }))
 

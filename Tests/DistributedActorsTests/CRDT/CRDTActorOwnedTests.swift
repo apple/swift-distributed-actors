@@ -13,20 +13,20 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class CRDTActorOwnedTests: XCTestCase {
     var logCaptureHandler: LogCapture!
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.logCaptureHandler = LogCapture()
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = self.logCaptureHandler.makeLogger(label: settings.cluster.node.systemName)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -103,8 +103,8 @@ final class CRDTActorOwnedTests: XCTestCase {
     }
 
     func test_actorOwned_theLastWrittenOnUpdateCallbackWins() throws {
-        let ownerEventPA = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
-        let ownerEventPB = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let ownerEventPA = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let ownerEventPB = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
 
         let behavior: Behavior<String> = .setup { context in
             let g = CRDT.GCounter.owned(by: context, id: "test-gcounter")
@@ -139,18 +139,18 @@ final class CRDTActorOwnedTests: XCTestCase {
         }
 
         // g1 has two owners
-        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let g1Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
-        let g1Owner1IntP = self.testKit.spawnTestProbe(expecting: Int.self)
+        let g1Owner1IntP = self.testTools.spawnTestProbe(expecting: Int.self)
 
-        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let g1Owner2EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner2 = try system.spawn("gcounter1-owner2", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
-        let g1Owner2IntP = self.testKit.spawnTestProbe(expecting: Int.self)
+        let g1Owner2IntP = self.testTools.spawnTestProbe(expecting: Int.self)
 
         // g2 has one owner
-        let g2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let g2Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g2Owner1 = try system.spawn("gcounter2-owner1", self.actorOwnedGCounterBehavior(id: g2, oep: g2Owner1EventP.ref))
-        let g2Owner1IntP = self.testKit.spawnTestProbe(expecting: Int.self)
+        let g2Owner1IntP = self.testTools.spawnTestProbe(expecting: Int.self)
 
         // g1 not incremented yet
         g1Owner1.tell(.lastObservedValue(replyTo: g1Owner1IntP.ref))
@@ -185,14 +185,14 @@ final class CRDTActorOwnedTests: XCTestCase {
         let g1 = "gcounter-1"
 
         // g1 has two owners
-        let g1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let g1Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner1 = try system.spawn("gcounter1-owner1", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner1EventP.ref))
-        let g1Owner1VoidP = self.testKit.spawnTestProbe(expecting: Void.self)
-        let g1Owner1StatusP = self.testKit.spawnTestProbe(expecting: CRDT.Status.self)
+        let g1Owner1VoidP = self.testTools.spawnTestProbe(expecting: Void.self)
+        let g1Owner1StatusP = self.testTools.spawnTestProbe(expecting: CRDT.Status.self)
 
-        let g1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let g1Owner2EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let g1Owner2 = try system.spawn("gcounter1-owner2", self.actorOwnedGCounterBehavior(id: g1, oep: g1Owner2EventP.ref))
-        let g1Owner2StatusP = self.testKit.spawnTestProbe(expecting: CRDT.Status.self)
+        let g1Owner2StatusP = self.testTools.spawnTestProbe(expecting: CRDT.Status.self)
 
         // Should be .active
         g1Owner2.tell(.status(replyTo: g1Owner2StatusP.ref))
@@ -280,18 +280,18 @@ final class CRDTActorOwnedTests: XCTestCase {
         let s2 = "orset-2"
 
         // s1 has two owners
-        let s1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s1Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let s1Owner1 = try system.spawn("orset1-owner1", self.actorOwnedORSetBehavior(id: s1, oep: s1Owner1EventP.ref))
-        let s1Owner1IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+        let s1Owner1IntSetP = self.testTools.spawnTestProbe(expecting: Set<Int>.self)
 
-        let s1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s1Owner2EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let s1Owner2 = try system.spawn("orset1-owner2", self.actorOwnedORSetBehavior(id: s1, oep: s1Owner2EventP.ref))
-        let s1Owner2IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+        let s1Owner2IntSetP = self.testTools.spawnTestProbe(expecting: Set<Int>.self)
 
         // s2 has one owner
-        let s2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let s2Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let s2Owner1 = try system.spawn("orset2-owner1", self.actorOwnedORSetBehavior(id: s2, oep: s2Owner1EventP.ref))
-        let s2Owner1IntSetP = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+        let s2Owner1IntSetP = self.testTools.spawnTestProbe(expecting: Set<Int>.self)
 
         // s1 not modified yet
         s1Owner1.tell(.lastObservedValue(replyTo: s1Owner1IntSetP.ref))
@@ -328,7 +328,7 @@ final class CRDTActorOwnedTests: XCTestCase {
         let ignoreOEP: ActorRef<OwnerEventProbeMessage> = try system.spawn("ignoreOEP", .receiveMessage { _ in .same })
 
         let owner = try system.spawn("set-owner-1", self.actorOwnedORSetBehavior(id: s1, oep: ignoreOEP))
-        let probe = self.testKit.spawnTestProbe(expecting: Set<Int>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: Set<Int>.self)
 
         // we issue many writes, and want to see that
         for i in 1 ... 100 {
@@ -407,18 +407,18 @@ final class CRDTActorOwnedTests: XCTestCase {
         let m2 = "ormap-2"
 
         // m1 has two owners
-        let m1Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m1Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let m1Owner1 = try system.spawn("ormap1-owner1", self.actorOwnedORMapBehavior(id: m1, oep: m1Owner1EventP.ref))
-        let m1Owner1GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+        let m1Owner1GCounterDictP = self.testTools.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
 
-        let m1Owner2EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m1Owner2EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let m1Owner2 = try system.spawn("ormap1-owner2", self.actorOwnedORMapBehavior(id: m1, oep: m1Owner2EventP.ref))
-        let m1Owner2GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+        let m1Owner2GCounterDictP = self.testTools.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
 
         // m2 has one owner
-        let m2Owner1EventP = self.testKit.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
+        let m2Owner1EventP = self.testTools.spawnTestProbe(expecting: OwnerEventProbeMessage.self)
         let m2Owner1 = try system.spawn("ormap2-owner1", self.actorOwnedORMapBehavior(id: m2, oep: m2Owner1EventP.ref))
-        let m2Owner1GCounterDictP = self.testKit.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
+        let m2Owner1GCounterDictP = self.testTools.spawnTestProbe(expecting: [String: CRDT.GCounter].self)
 
         // m1 not modified yet
         m1Owner1.tell(.lastObservedValue(replyTo: m1Owner1GCounterDictP.ref))

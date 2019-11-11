@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 final class PeriodicBroadcastTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -33,8 +33,8 @@ final class PeriodicBroadcastTests: XCTestCase {
     // TODO: Way more tests and capabilities; should be able to use receptionist to find nodes to broadcast to
 
     func test_PeriodicBroadcast_send() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: String.self)
 
         _ = try self.system.spawn(.anonymous, of: Never.self, .setup { context in
             let bcast: PeriodicBroadcastControl<String> = try PeriodicBroadcast.start(context)

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Files
 import Foundation
 import GenActors
@@ -21,11 +21,11 @@ import XCTest
 
 final class GenerateActorsTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -74,7 +74,7 @@ final class GenerateActorsTests: XCTestCase {
     func test_TestActorable_greetReplyToActorRef() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         actor.greetReplyToActorRef(name: "Caplin", replyTo: p.ref)
 
         try p.expectMessage("Hello Caplin!")
@@ -112,7 +112,7 @@ final class GenerateActorsTests: XCTestCase {
     func test_TestActorable_becomeAnotherBehavior() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         p.watch(actor.ref)
         actor.becomeStopped()
@@ -123,7 +123,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Combined protocols
 
     func test_combinedProtocols_receiveEitherMessage() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let combined: Actor<JackOfAllTrades> = try system.spawn(.anonymous, JackOfAllTrades.init)
 
@@ -137,7 +137,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_combinedProtocols_passAroundAsOnlyAPartOfTheProtocol() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let combined: Actor<JackOfAllTrades> = try system.spawn(.anonymous, JackOfAllTrades.init)
 
@@ -167,7 +167,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Lifecycle callbacks
 
     func test_LifecycleActor_shouldReceiveLifecycleEvents() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let actor = try system.spawn("lifecycleActor") { LifecycleActor(context: $0, probe: p.ref) }
 
@@ -177,7 +177,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_LifecycleActor_watchActorsAndReceiveTerminationSignals() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
 
         let actor: Actor<LifecycleActor> = try self.system.spawn("watcher") { LifecycleActor(context: $0, probe: p.ref) }
         actor.watchChildAndTerminateIt()

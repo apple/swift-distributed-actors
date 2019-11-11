@@ -23,7 +23,7 @@ import XCTest
 #if os(Linux) || os(FreeBSD)
 @testable import CDistributedActorsMailboxTests
 @testable import DistributedActorsConcurrencyHelpersTests
-@testable import DistributedActorsTestKitTests
+@testable import DistributedActorsTestToolsTests
 @testable import DistributedActorsTests
 @testable import GenActorsTests
 
@@ -40,10 +40,11 @@ XCTMain([
     testCase(ActorRefAdapterTests.allTests),
     testCase(ActorSubReceiveTests.allTests),
     testCase(ActorSystemTests.allTests),
-    testCase(ActorTestKitTests.allTests),
     testCase(ActorTestProbeTests.allTests),
+    testCase(ActorTestToolsTests.allTests),
     testCase(BackoffStrategyTests.allTests),
     testCase(BehaviorCanonicalizeTests.allTests),
+    testCase(BehaviorTests.allTests),
     testCase(BehaviorTests.allTests),
     testCase(BlockingReceptacleTests.allTests),
     testCase(CMPSCLinkedQueueTests.allTests),
@@ -85,6 +86,7 @@ XCTMain([
     testCase(NIOExtensionTests.allTests),
     testCase(NodeDeathWatcherTests.allTests),
     testCase(NodeTests.allTests),
+    testCase(ParentChildActorTests.allTests),
     testCase(ParentChildActorTests.allTests),
     testCase(PeriodicBroadcastTests.allTests),
     testCase(ProtoEnvelopeTests.allTests),

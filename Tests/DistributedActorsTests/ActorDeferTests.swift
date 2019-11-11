@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ActorDeferTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -55,7 +55,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func shared_defer_shouldExecute(deferUntil: DeferUntilWhen, whenActor reaction: ReductionReaction) throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let behavior: Behavior<String> = self.receiveDeferBehavior(p.ref, deferUntil: deferUntil, whenActor: reaction)
 
         let worker = try system.spawn(.anonymous, behavior)
@@ -68,7 +68,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func shared_defer_shouldNotExecute(deferUntil: DeferUntilWhen, whenActor reaction: ReductionReaction) throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = self.receiveDeferBehavior(p.ref, deferUntil: deferUntil, whenActor: reaction)
 
         let worker = try system.spawn(.anonymous, b)
@@ -139,7 +139,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_defer_untilReceiveFailed_shouldNotCarryOverToNextReceiveReduction() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = .receive { context, message in
             p.tell("message:\(message)")
 
@@ -175,7 +175,7 @@ class ActorDeferTests: XCTestCase {
     // MARK: context.defer(until: mix) {}
 
     func test_mixedDefers_shouldExecuteAtRightPointsInTime_failed() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = .receive { context, first in
             p.tell("first:\(first)")
 
@@ -227,7 +227,7 @@ class ActorDeferTests: XCTestCase {
     }
 
     func test_mixedDefers_shouldExecuteAtRightPointsInTime_stopped() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = .receive { context, first in
             p.tell("first:\(first)")
 
@@ -284,7 +284,7 @@ class ActorDeferTests: XCTestCase {
     // TODO: could be implemented if we really want to keep context.defer and keep semantics as close to Swift as possible
     func skip_nestedDefer_shouldMatchSwiftSemantics() throws {
         // sanity check
-        let s = self.testKit.spawnTestProbe(expecting: String.self)
+        let s = self.testTools.spawnTestProbe(expecting: String.self)
         func deferSemanticsSanityCheck() {
             defer { s.tell("A") }
             defer { s.tell("B") }
@@ -299,7 +299,7 @@ class ActorDeferTests: XCTestCase {
         deferSemanticsSanityCheck()
         try s.expectMessages(count: 5).shouldEqual(["message", "C", "NEST", "B", "A"])
 
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<String> = .receive { context, string in
             context.defer(until: .received) { p.tell("A") }
             context.defer(until: .received) { p.tell("B") }
@@ -322,7 +322,7 @@ class ActorDeferTests: XCTestCase {
     // regression test for a bug caused by not setting the actor behavior to failed
     // in case canonicalization after setup fails
     func test_executeDefer_whenSetupReturnsSame() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let b: Behavior<Never> = .setup { context in
             context.defer(until: .terminated) {
                 p.tell("A")

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIOSSL
 import XCTest
@@ -237,14 +237,14 @@ class RemotingTLSTests: ClusteredNodesTestBase {
             )
         }
 
-        let testKit = ActorTestKit(local)
+        let testTools = ActorTestTools(local)
 
         local.cluster.join(node: remote.cluster.node.node)
 
         sleep(2)
 
         do {
-            let pSystem = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
+            let pSystem = testTools.spawnTestProbe(expecting: Set<UniqueNode>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             remote.cluster.ref.tell(.query(.associatedNodes(pSystem.ref)))
             let associatedNodes = try pSystem.expectMessage()
@@ -252,7 +252,7 @@ class RemotingTLSTests: ClusteredNodesTestBase {
         }
 
         do {
-            let pRemote = testKit.spawnTestProbe(expecting: Set<UniqueNode>.self)
+            let pRemote = testTools.spawnTestProbe(expecting: Set<UniqueNode>.self)
             local.cluster.ref.tell(.query(.associatedNodes(pRemote.ref))) // FIXME: We need to get the Accept back and act on it on the origin side
             remote.cluster.ref.tell(.query(.associatedNodes(pRemote.ref)))
             let associatedNodes = try pRemote.expectMessage()

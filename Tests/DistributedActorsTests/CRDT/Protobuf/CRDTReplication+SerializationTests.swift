@@ -13,18 +13,18 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class CRDTReplicationSerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.serialization.registerProtobufRepresentable(for: CRDT.ORSet<String>.self, underId: 1001)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -48,20 +48,20 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             g1.increment(by: 5)
             g1.delta.shouldNotBeNil()
 
-            let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
+            let resultProbe = self.testTools.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.write(id, g1.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
 
             let bytes = try system.serialization.serialize(message: write)
             let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
             guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.write message")
+                throw self.testTools.fail("Should be RemoteCommand.write message")
             }
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
             guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
-                throw self.testKit.fail("Should be a GCounter")
+                throw self.testTools.fail("Should be a GCounter")
             }
             dg1.value.shouldEqual(g1.value)
             dg1.delta.shouldNotBeNil()
@@ -76,20 +76,20 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             set.add("world")
             set.delta.shouldNotBeNil()
 
-            let resultProbe = self.testKit.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
+            let resultProbe = self.testTools.spawnTestProbe(expecting: CRDT.Replicator.RemoteCommand.WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.write(id, set.asAnyStateBasedCRDT, replyTo: resultProbe.ref))
 
             let bytes = try system.serialization.serialize(message: write)
             let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
             guard case .remoteCommand(.write(let deserializedId, let deserializedData, let deserializedReplyTo)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.write message")
+                throw self.testTools.fail("Should be RemoteCommand.write message")
             }
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
             guard let dset = deserializedData.underlying as? CRDT.ORSet<String> else {
-                throw self.testKit.fail("Should be a ORSet<String>")
+                throw self.testTools.fail("Should be a ORSet<String>")
             }
             dset.elements.shouldEqual(set.elements)
             dset.delta.shouldNotBeNil()
@@ -103,20 +103,20 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             g1.increment(by: 5)
             g1.delta.shouldNotBeNil()
 
-            let resultProbe = self.testKit.spawnTestProbe(expecting: WriteResult.self)
+            let resultProbe = self.testTools.spawnTestProbe(expecting: WriteResult.self)
             let write: CRDT.Replicator.Message = .remoteCommand(.writeDelta(id, delta: g1.delta!.asAnyStateBasedCRDT, replyTo: resultProbe.ref)) // !-safe since we check for nil above
 
             let bytes = try system.serialization.serialize(message: write)
             let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
             guard case .remoteCommand(.writeDelta(let deserializedId, let deserializedDelta, let deserializedReplyTo)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.write message")
+                throw self.testTools.fail("Should be RemoteCommand.write message")
             }
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
 
             guard let ddg1 = deserializedDelta.underlying as? CRDT.GCounterDelta else {
-                throw self.testKit.fail("Should be a GCounter")
+                throw self.testTools.fail("Should be a GCounter")
             }
             "\(ddg1.state)".shouldContain("[actor:sact://CRDTReplicationSerializationTests@localhost:7337/user/alpha: 5]")
         }
@@ -130,7 +130,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(WriteResult.self, from: bytes)
 
             guard case .success = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.WriteResult.success message")
+                throw self.testTools.fail("Should be RemoteCommand.WriteResult.success message")
             }
         }
     }
@@ -144,7 +144,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(WriteResult.self, from: bytes)
 
             guard case .failure(.inputAndStoredDataTypeMismatch(let deserializedHint)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.WriteResult.failure message with .inputAndStoredDataTypeMismatch error")
+                throw self.testTools.fail("Should be RemoteCommand.WriteResult.failure message with .inputAndStoredDataTypeMismatch error")
             }
             deserializedHint.shouldEqual(hint)
         }
@@ -157,14 +157,14 @@ final class CRDTReplicationSerializationTests: XCTestCase {
         try shouldNotThrow {
             let id = CRDT.Identity("gcounter-1")
 
-            let resultProbe = self.testKit.spawnTestProbe(expecting: ReadResult.self)
+            let resultProbe = self.testTools.spawnTestProbe(expecting: ReadResult.self)
             let read: CRDT.Replicator.Message = .remoteCommand(.read(id, replyTo: resultProbe.ref))
 
             let bytes = try system.serialization.serialize(message: read)
             let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
             guard case .remoteCommand(.read(let deserializedId, let deserializedReplyTo)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.read message")
+                throw self.testTools.fail("Should be RemoteCommand.read message")
             }
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
@@ -183,10 +183,10 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(ReadResult.self, from: bytes)
 
             guard case .success(let deserializedData) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.ReadResult.success message")
+                throw self.testTools.fail("Should be RemoteCommand.ReadResult.success message")
             }
             guard let dg1 = deserializedData.underlying as? CRDT.GCounter else {
-                throw self.testKit.fail("Should be a GCounter")
+                throw self.testTools.fail("Should be a GCounter")
             }
             dg1.value.shouldEqual(g1.value)
             dg1.delta.shouldNotBeNil()
@@ -201,7 +201,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(ReadResult.self, from: bytes)
 
             guard case .failure(.notFound) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.ReadResult.failure message with .notFound error")
+                throw self.testTools.fail("Should be RemoteCommand.ReadResult.failure message with .notFound error")
             }
         }
     }
@@ -213,14 +213,14 @@ final class CRDTReplicationSerializationTests: XCTestCase {
         try shouldNotThrow {
             let id = CRDT.Identity("gcounter-1")
 
-            let resultProbe = self.testKit.spawnTestProbe(expecting: DeleteResult.self)
+            let resultProbe = self.testTools.spawnTestProbe(expecting: DeleteResult.self)
             let delete: CRDT.Replicator.Message = .remoteCommand(.delete(id, replyTo: resultProbe.ref))
 
             let bytes = try system.serialization.serialize(message: delete)
             let deserialized = try system.serialization.deserialize(CRDT.Replicator.Message.self, from: bytes)
 
             guard case .remoteCommand(.delete(let deserializedId, let deserializedReplyTo)) = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.delete message")
+                throw self.testTools.fail("Should be RemoteCommand.delete message")
             }
             deserializedId.shouldEqual(id)
             deserializedReplyTo.shouldEqual(resultProbe.ref)
@@ -235,7 +235,7 @@ final class CRDTReplicationSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(DeleteResult.self, from: bytes)
 
             guard case .success = deserialized else {
-                throw self.testKit.fail("Should be RemoteCommand.DeleteResult.success message")
+                throw self.testTools.fail("Should be RemoteCommand.DeleteResult.success message")
             }
         }
     }

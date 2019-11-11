@@ -13,13 +13,13 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ActorLoggingTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     var exampleSenderPath: ActorPath!
     let exampleTrace = Trace(
@@ -32,7 +32,7 @@ class ActorLoggingTests: XCTestCase {
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
 
         self.exampleSenderPath = try! ActorPath(root: "user")
         self.exampleSenderPath.append(segment: try! ActorPathSegment("hello"))
@@ -46,8 +46,8 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldIncludeActorPath() throws {
-        let p = self.testKit.spawnTestProbe("p", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r", expecting: Rendered.self)
+        let p = self.testTools.spawnTestProbe("p", expecting: String.self)
+        let r = self.testTools.spawnTestProbe("r", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -71,8 +71,8 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderLazyMetadataIfLogIsUnderDefinedLogLevel() throws {
-        let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
+        let p = self.testTools.spawnTestProbe("p2", expecting: String.self)
+        let r = self.testTools.spawnTestProbe("r2", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~
@@ -97,8 +97,8 @@ class ActorLoggingTests: XCTestCase {
     }
 
     func test_actorLogger_shouldNotRenderALazyValueIfWeOverwriteItUsingLocalMetadata() throws {
-        let p = self.testKit.spawnTestProbe("p2", expecting: String.self)
-        let r = self.testKit.spawnTestProbe("r2", expecting: Rendered.self)
+        let p = self.testTools.spawnTestProbe("p2", expecting: String.self)
+        let r = self.testTools.spawnTestProbe("r2", expecting: Rendered.self)
 
         let ref: ActorRef<String> = try system.spawn("myName", .setup { context in
             // ~~~~~~~ (imagine as) set by swift-distributed-actors library internally ~~~~~~~~~~

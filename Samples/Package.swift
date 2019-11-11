@@ -43,7 +43,7 @@ let targets: [PackageDescription.Target] = [
         name: "SampleGenActorsTests",
         dependencies: [
             "SampleGenActors",
-            "DistributedActorsTestKit"
+            "DistributedActorsTestTools"
         ],
         path: "Tests/SampleGenActorsTests"
     ),

@@ -23,21 +23,21 @@ import XCTest
 /// Due to their asynchronous nature Actors are sometimes tricky to write assertions for,
 /// since all communication is asynchronous and no access to internal state is offered.
 ///
-/// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
+/// The `ActorTestTools` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
-public final class ActorTestKit {
+public final class ActorTestTools {
     internal let system: ActorSystem
 
     private let spawnProbesLock = Lock()
     /// Access should be protected by `spawnProbesLock`, in order to guarantee unique names.
     private var _namingContext = ActorNamingContext()
 
-    public let settings: ActorTestKitSettings
+    public let settings: ActorTestToolsSettings
 
-    public init(_ system: ActorSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
+    public init(_ system: ActorSystem, configuredWith configureSettings: (inout ActorTestToolsSettings) -> Void = { _ in () }) {
         self.system = system
 
-        var settings = ActorTestKitSettings()
+        var settings = ActorTestToolsSettings()
         configureSettings(&settings)
         self.settings = settings
     }
@@ -53,17 +53,17 @@ public struct TestError: Error, Hashable {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: TestKit settings
+// MARK: TestTools settings
 
-public struct ActorTestKitSettings {
-    /// Timeout used by default by all the `expect...` and `within` functions defined on the testkit and test probes.
+public struct ActorTestToolsSettings {
+    /// Timeout used by default by all the `expect...` and `within` functions defined on the test tools and test probes.
     var expectationTimeout: TimeAmount = .seconds(3)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test Probes
 
-public extension ActorTestKit {
+public extension ActorTestTools {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
     func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
@@ -93,7 +93,7 @@ public extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Eventually
 
-public extension ActorTestKit {
+public extension ActorTestTools {
     /// Executes passed in block numerous times, until a the expected value is obtained or the `within` time limit expires,
     /// in which case an `EventuallyError` is thrown, along with the last encountered error thrown by block.
     ///
@@ -102,7 +102,7 @@ public extension ActorTestKit {
     /// **CAUTION**: Using `shouldX` matchers in an `eventually` block will fail the test on the first failure.
     ///
     // TODO: does not handle blocking longer than `within` well
-    // TODO: should use default `within` from TestKit
+    // TODO: should use default `within` from TestTools
     @discardableResult
     func eventually<T>(
         within timeAmount: TimeAmount, interval: TimeAmount = .milliseconds(100),
@@ -115,7 +115,7 @@ public extension ActorTestKit {
         var lastError: Error?
         var polledTimes = 0
 
-        ActorTestKit.enterRepeatableContext()
+        ActorTestTools.enterRepeatableContext()
         while deadline.hasTimeLeft() {
             do {
                 polledTimes += 1
@@ -126,7 +126,7 @@ public extension ActorTestKit {
                 usleep(useconds_t(interval.microseconds))
             }
         }
-        ActorTestKit.leaveRepeatableContext()
+        ActorTestTools.leaveRepeatableContext()
 
         // This dance is necessary to "nicely print" if we had an embedded call site error,
         // which include colour and formatting, so we have to print the \(msg) directly for that case.
@@ -145,7 +145,7 @@ public extension ActorTestKit {
         Queried \(polledTimes) times, within \(timeAmount.prettyDescription). \
         \(lastErrorMessage)
         """)
-        if !ActorTestKit.isInRepeatableContext() {
+        if !ActorTestTools.isInRepeatableContext() {
             XCTFail(message, file: callSite.file, line: callSite.line)
         }
         throw EventuallyError(message: message, lastError: lastError)
@@ -165,7 +165,7 @@ public struct EventuallyError: Error {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: assertHolds
 
-public extension ActorTestKit {
+public extension ActorTestTools {
     /// Executes passed in block numerous times, to check the assertion holds over time.
     /// Throws an `AssertionHoldsError` when the block fails within the specified tiem amount.
     func assertHolds(
@@ -202,7 +202,7 @@ public struct AssertionHoldsError: Error {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Power" assertions, should not be used lightly as they are quite heavy and potentially racy
 
-extension ActorTestKit {
+extension ActorTestTools {
     // TODO: how to better hide such more nasty assertions?
     // TODO: Not optimal since we always do traverseAll rather than follow the Path of the context
     public func _assertActorPathOccupied(_ path: String, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
@@ -247,7 +247,7 @@ extension ActorTestKit {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Fake and mock contexts
 
-public extension ActorTestKit {
+public extension ActorTestTools {
     /// Creates a _fake_ `ActorContext` which can be used to pass around to fulfil type argument requirements,
     /// however it DOES NOT have the ability to perform any of the typical actor context actions (such as spawning etc).
     func makeFakeContext<M>(forType: M.Type = M.self) -> ActorContext<M> {
@@ -340,15 +340,15 @@ final class MockActorContext<Message>: ActorContext<Message> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Error
 
-extension ActorTestKit {
+extension ActorTestTools {
     /// Returns an error that can be used when conditions in tests are not met. This is especially useful in
-    /// calls to `testKit.eventually`, where a condition is checked multiple times, until it is successful
+    /// calls to `testTools.eventually`, where a condition is checked multiple times, until it is successful
     /// or times out.
     ///
     /// Examples:
     ///
-    ///     testKit.eventually(within: .seconds(1)) {
-    ///         guard ... else { throw testKit.error("failed to extract expected information") }
+    ///     testTools.eventually(within: .seconds(1)) {
+    ///         guard ... else { throw testTools.error("failed to extract expected information") }
     ///     }
     public func error(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
@@ -360,7 +360,7 @@ extension ActorTestKit {
     ///
     /// Examples:
     ///
-    ///     guard ... else { throw testKit.fail("failed to extract expected information") }
+    ///     guard ... else { throw testTools.fail("failed to extract expected information") }
     public func fail(_ message: String? = nil, file: StaticString = #file, line: UInt = #line, column: UInt = #column) -> Error {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
         let fullMessage: String = message ?? "<no message>"
@@ -372,14 +372,14 @@ extension ActorTestKit {
 // MARK: repeatable context
 
 // Used to mark a repeatable context, in which `ActorTestProbe.expectX` does not
-// immediately fail the test, but instead lets the `ActorTestKit.eventually`
+// immediately fail the test, but instead lets the `ActorTestTools.eventually`
 // block handle it.
-internal extension ActorTestKit {
+internal extension ActorTestTools {
     static let threadLocalContextKey: String = "SACT_TESTKIT_REPEATABLE_CONTEXT"
 
     // Sets a flag that can be checked with `isInRepeatableContext`, to avoid
     // failing a test from within blocks that continuously check conditions,
-    // e.g. `ActorTestKit.eventually`. This is safe to use in nested calls.
+    // e.g. `ActorTestTools.eventually`. This is safe to use in nested calls.
     static func enterRepeatableContext() {
         let currentDepth = self.currentRepeatableContextDepth
         Foundation.Thread.current.threadDictionary[self.threadLocalContextKey] = currentDepth + 1
@@ -394,9 +394,9 @@ internal extension ActorTestKit {
     }
 
     // Returns `true` if we are currently executing a code clock that repeatedly
-    // checks conditions. Used in `ActorTestProbe.expectX` and `ActorTestKit.error`
+    // checks conditions. Used in `ActorTestProbe.expectX` and `ActorTestTools.error`
     // to avoid failing the test on the first iteration in e.g. an
-    // `ActorTestKit.eventually` block.
+    // `ActorTestTools.eventually` block.
     static func isInRepeatableContext() -> Bool {
         return self.currentRepeatableContextDepth > 0
     }

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -35,8 +35,8 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
             let refOnRemote2: ActorRef<String> = try second.spawn("remote-2", .ignore)
             let refOnFirstToRemote2 = first._resolve(ref: refOnRemote2, onSystem: second)
 
-            let testKit = ActorTestKit(first)
-            let p = testKit.spawnTestProbe(expecting: Signals.Terminated.self)
+            let testTools = ActorTestTools(first)
+            let p = testTools.spawnTestProbe(expecting: Signals.Terminated.self)
 
             // --- prepare actor on [first], which watches remote actors ---
 

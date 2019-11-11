@@ -18,7 +18,7 @@ import DistributedActors
 
 // end::imports[]
 
-@testable import DistributedActorsTestKit
+@testable import DistributedActorsTestTools
 import XCTest
 
 class ClusterDocExamples: XCTestCase {

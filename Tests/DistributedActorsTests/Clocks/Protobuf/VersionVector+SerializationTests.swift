@@ -13,12 +13,12 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class VersionVectorSerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
@@ -26,7 +26,7 @@ final class VersionVectorSerializationTests: XCTestCase {
             settings.serialization.registerProtobufRepresentable(for: VersionVector.self, underId: 1002)
             settings.serialization.registerProtobufRepresentable(for: VersionDot.self, underId: 1003)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {

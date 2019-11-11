@@ -44,7 +44,7 @@ public final class ActorTestProbe<Message> {
         return self.exposedRef
     }
 
-    private let settings: ActorTestKitSettings
+    private let settings: ActorTestToolsSettings
     private var expectationTimeout: TimeAmount {
         return self.settings.expectationTimeout
     }
@@ -58,9 +58,9 @@ public final class ActorTestProbe<Message> {
 
     private var lastMessageObserved: Message?
 
-    /// Prepares and spawns a new test probe. Users should use `testKit.spawnTestProbe(...)` instead.
+    /// Prepares and spawns a new test probe. Users should use `testTools.spawnTestProbe(...)` instead.
     internal init(
-        spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestKitSettings,
+        spawn: (Behavior<ProbeCommands>) throws -> ActorRef<ProbeCommands>, settings: ActorTestToolsSettings,
         file: StaticString = #file, line: UInt = #line
     ) {
         self.settings = settings
@@ -241,7 +241,7 @@ extension ActorTestProbe where Message: Equatable {
     ///
     /// Example output:
     ///
-    ///     sact/Tests/DistributedActorsTestKitTests/ActorTestProbeTests.swift:35: error: -[DistributedActorsTestKitTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
+    ///     sact/Tests/DistributedActorsTestToolsTests/ActorTestProbeTests.swift:35: error: -[DistributedActorsTestToolsTests.ActorTestProbeTests test_testProbe_expectMessage_shouldFailWhenNoMessageSentWithinTimeout] : XCTAssertTrue failed -
     ///     try! probe.expectMessage("awaiting-forever")
     ///                ^~~~~~~~~~~~~~
     ///     error: Did not receive expected [awaiting-forever]:String within [1s], error: noMessagesInQueue

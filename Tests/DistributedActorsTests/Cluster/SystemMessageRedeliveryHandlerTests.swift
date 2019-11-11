@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 @testable import Logging
 import NIO
@@ -21,7 +21,7 @@ import XCTest
 
 final class SystemMessageRedeliveryHandlerTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
     var logCaptureHandler: LogCapture!
 
     var handler: SystemMessageRedeliveryHandler!
@@ -42,7 +42,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
         self.system = ActorSystem(String(describing: type(of: self))) { settings in
             settings.overrideLogger = Logger(label: "mock", self.logCaptureHandler)
         }
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
 
         self.eventLoop = EmbeddedEventLoop()
         self.channel = EmbeddedChannel(loop: self.eventLoop)
@@ -77,7 +77,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
 
         self.system.shutdown().wait()
         self.system = nil
-        self.testKit = nil
+        self.testTools = nil
     }
 
     // NOTE: Most of the re-logic is tested in isolation in `SystemMessagesRedeliveryTests`,
@@ -186,7 +186,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
 
     func expectWrite(file: StaticString = #file, line: UInt = #line) throws -> TransportEnvelope {
         guard let write = self.writeRecorder.writes.first else {
-            throw self.testKit.fail(file: file, line: line)
+            throw self.testTools.fail(file: file, line: line)
         }
         _ = self.writeRecorder.writes.removeFirst()
         return write
@@ -194,7 +194,7 @@ final class SystemMessageRedeliveryHandlerTests: XCTestCase {
 
     func expectNoWrite(file: StaticString = #file, line: UInt = #line) throws {
         guard self.writeRecorder.writes.isEmpty else {
-            throw self.testKit.fail(file: file, line: line)
+            throw self.testTools.fail(file: file, line: line)
         }
     }
 }

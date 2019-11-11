@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 final class ActorIsolationFailureHandlingTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -77,8 +77,8 @@ final class ActorIsolationFailureHandlingTests: XCTestCase {
     }
 
     func test_worker_crashOnlyWorkerOnPlainErrorThrow() throws {
-        let pm: ActorTestProbe<SimpleProbeMessages> = self.testKit.spawnTestProbe("testProbe-master-1")
-        let pw: ActorTestProbe<Int> = self.testKit.spawnTestProbe("testProbeForWorker-1")
+        let pm: ActorTestProbe<SimpleProbeMessages> = self.testTools.spawnTestProbe("testProbe-master-1")
+        let pw: ActorTestProbe<Int> = self.testTools.spawnTestProbe("testProbeForWorker-1")
 
         let healthyMaster: ActorRef<String> = try system.spawn("healthyMaster", self.healthyMasterBehavior(pm: pm.ref, pw: pw.ref))
 

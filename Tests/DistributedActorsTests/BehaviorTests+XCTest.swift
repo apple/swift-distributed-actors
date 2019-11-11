@@ -65,6 +65,7 @@ extension BehaviorTests {
             ("test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted", test_onResultAsync_shouldAllowChangingBehaviorWhileFutureIsNotCompleted),
             ("test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds", test_onResultAsyncThrowing_shouldExecuteContinuationWhenFutureSucceeds),
             ("test_onResultAsyncThrowing_shouldFailActorWhenFutureFails", test_onResultAsyncThrowing_shouldFailActorWhenFutureFails),
+            ("test_ignore_shouldIgnoreAllIncomingMessages", test_ignore_shouldIgnoreAllIncomingMessages),
         ]
     }
 }

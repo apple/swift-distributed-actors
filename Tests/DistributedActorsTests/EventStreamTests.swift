@@ -13,23 +13,23 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import NIO
 import XCTest
 
 final class EventStreamTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem("\(type(of: self))")
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     func test_eventStream_shouldPublishEventsToAllSubscribers() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
@@ -45,9 +45,9 @@ final class EventStreamTests: XCTestCase {
     }
 
     func test_eventStream_shouldNotPublishEventsToActorsAfterTheyUnsubscribed() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 
@@ -72,9 +72,9 @@ final class EventStreamTests: XCTestCase {
     }
 
     func test_eventStream_shouldUnsubscribeActorsOnTermination() throws {
-        let p1 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p2 = self.testKit.spawnTestProbe(expecting: String.self)
-        let p3 = self.testKit.spawnTestProbe(expecting: String.self)
+        let p1 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p2 = self.testTools.spawnTestProbe(expecting: String.self)
+        let p3 = self.testTools.spawnTestProbe(expecting: String.self)
 
         let eventStream = try EventStream(system, name: "StringEventStream", of: String.self)
 

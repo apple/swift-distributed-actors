@@ -13,16 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-@testable import DistributedActorsTestKit
+@testable import DistributedActorsTestTools
 import XCTest
 
 class ActorTestProbeTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -30,7 +30,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_maybeExpectMessage_shouldReturnTheReceivedMessage() throws {
-        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
+        let probe = self.testTools.spawnTestProbe("p2", expecting: String.self)
 
         probe.tell("one")
 
@@ -38,7 +38,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_maybeExpectMessage_shouldReturnNilIfTimeoutExceeded() throws {
-        let probe = self.testKit.spawnTestProbe("p2", expecting: String.self)
+        let probe = self.testTools.spawnTestProbe("p2", expecting: String.self)
 
         probe.tell("one")
 
@@ -46,15 +46,15 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_expectNoMessage() throws {
-        let p = self.testKit.spawnTestProbe("p3", expecting: String.self)
+        let p = self.testTools.spawnTestProbe("p3", expecting: String.self)
 
         try p.expectNoMessage(for: .milliseconds(100))
         p.stop()
     }
 
     func test_shouldBeWatchable() throws {
-        let watchedProbe = self.testKit.spawnTestProbe(expecting: Never.self)
-        let watchingProbe = self.testKit.spawnTestProbe(expecting: Never.self)
+        let watchedProbe = self.testTools.spawnTestProbe(expecting: Never.self)
+        let watchingProbe = self.testTools.spawnTestProbe(expecting: Never.self)
 
         watchingProbe.watch(watchedProbe.ref)
 
@@ -64,7 +64,7 @@ class ActorTestProbeTests: XCTestCase {
     }
 
     func test_expectMessageAnyOrderSuccess() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testTools.spawnTestProbe(expecting: String.self)
         let messages = ["test1", "test2", "test3", "test4"]
 
         for message in messages.reversed() {

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
@@ -21,9 +21,9 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
     func test_clusterReceptionist_shouldReplicateRegistrations() throws {
         let (local, remote) = setUpPair()
 
-        let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let probe = self.testTools(local).spawnTestProbe(expecting: String.self)
+        let registeredProbe = self.testTools(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let lookupProbe = self.testTools(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         local.cluster.join(node: remote.cluster.node.node)
         try assertAssociated(local, withExactly: remote.settings.cluster.uniqueBindNode)
@@ -60,9 +60,9 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let probe = self.testKit(local).spawnTestProbe(expecting: String.self)
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let lookupProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let probe = self.testTools(local).spawnTestProbe(expecting: String.self)
+        let registeredProbe = self.testTools(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let lookupProbe = self.testTools(local).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let ref: ActorRef<String> = try local.spawn(
             .anonymous,
@@ -99,9 +99,9 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe("registeredProbe", expecting: Receptionist.Registered<String>.self)
-        let localLookupProbe = self.testKit(local).spawnTestProbe("localLookupProbe", expecting: Receptionist.Listing<String>.self)
-        let remoteLookupProbe = self.testKit(remote).spawnTestProbe("remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = self.testTools(local).spawnTestProbe("registeredProbe", expecting: Receptionist.Registered<String>.self)
+        let localLookupProbe = self.testTools(local).spawnTestProbe("localLookupProbe", expecting: Receptionist.Listing<String>.self)
+        let remoteLookupProbe = self.testTools(remote).spawnTestProbe("remoteLookupProbe", expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             .same
@@ -148,8 +148,8 @@ class ClusterReceptionistTests: ClusteredNodesTestBase {
             $0.cluster.receptionistSyncInterval = .milliseconds(100)
         }
 
-        let registeredProbe = self.testKit(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
-        let remoteLookupProbe = self.testKit(remote).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
+        let registeredProbe = self.testTools(local).spawnTestProbe(expecting: Receptionist.Registered<String>.self)
+        let remoteLookupProbe = self.testTools(remote).spawnTestProbe(expecting: Receptionist.Listing<String>.self)
 
         let behavior: Behavior<String> = .receiveMessage { _ in
             .stop

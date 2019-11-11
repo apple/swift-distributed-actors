@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Somewhat invasive utilities for testing things depending on ActorSystem internals

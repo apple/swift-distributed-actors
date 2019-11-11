@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIOSSL
 import XCTest
@@ -44,19 +44,19 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             try assertAssociated(second, withAtLeast: third.cluster.node)
             try assertAssociated(first, withAtLeast: third.cluster.node)
 
-            try self.testKit(first).eventually(within: .seconds(10)) {
+            try self.testTools(first).eventually(within: .seconds(10)) {
                 try self.assertMemberStatus(on: first, node: first.cluster.node, is: .up)
                 try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)
                 try self.assertMemberStatus(on: first, node: third.cluster.node, is: .up)
             }
 
-            try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.testTools(second).eventually(within: .seconds(10)) {
                 try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
             }
 
-            try self.testKit(third).eventually(within: .seconds(10)) {
+            try self.testTools(third).eventually(within: .seconds(10)) {
                 try self.assertMemberStatus(on: third, node: first.cluster.node, is: .up)
                 try self.assertMemberStatus(on: third, node: second.cluster.node, is: .up)
                 try self.assertMemberStatus(on: third, node: third.cluster.node, is: .up)
@@ -120,13 +120,13 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
-            let p1 = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+            let p1 = self.testTools(first).spawnTestProbe(expecting: ClusterEvent.self)
             first.cluster.events.subscribe(p1.ref)
 
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
-            let p2 = self.testKit(second).spawnTestProbe(expecting: ClusterEvent.self)
+            let p2 = self.testTools(second).spawnTestProbe(expecting: ClusterEvent.self)
             second.cluster.events.subscribe(p2.ref)
 
             first.cluster.join(node: second.cluster.node.node)

@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 /// Tests of the SWIM.Instance which require the existence of actor systems, even if the instance tests are driven manually.
@@ -23,13 +23,13 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
 
     func setUpLocal(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
         let local = super.setUpNode("local", modifySettings)
-        self.localClusterProbe = self.testKit(local).spawnTestProbe()
+        self.localClusterProbe = self.testTools(local).spawnTestProbe()
         return local
     }
 
     func setUpRemote(_ modifySettings: ((inout ActorSystemSettings) -> Void)? = nil) -> ActorSystem {
         let remote = super.setUpNode("remote", modifySettings)
-        self.remoteClusterProbe = self.testKit(remote).spawnTestProbe()
+        self.remoteClusterProbe = self.testTools(remote).spawnTestProbe()
         return remote
     }
 
@@ -64,7 +64,7 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
             swim.member(for: remoteShell)!.status.shouldEqual(remoteMember.status)
 
         default:
-            throw self.testKit(local).fail("Should have requested connecting to the new node")
+            throw self.testTools(local).fail("Should have requested connecting to the new node")
         }
     }
 
@@ -92,7 +92,7 @@ final class SWIMInstanceClusterTests: ClusteredNodesTestBase {
             swim.memberCount.shouldEqual(1)
 
         default:
-            throw self.testKit(local).fail("Should have requested connecting to the new node")
+            throw self.testTools(local).fail("Should have requested connecting to the new node")
         }
     }
 }

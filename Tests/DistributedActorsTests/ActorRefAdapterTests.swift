@@ -13,17 +13,17 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ActorRefAdapterTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -31,8 +31,8 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_shouldConvertMessages() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
-        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Int>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: String.self)
+        let refProbe = self.testTools.spawnTestProbe(expecting: ActorRef<Int>.self)
 
         let behavior: Behavior<String> = .setup { context in
             refProbe.tell(context.messageAdapter { "\($0)" })
@@ -62,9 +62,9 @@ class ActorRefAdapterTests: XCTestCase {
             settings.cluster.node.port = 1881
         }
         defer { systemOne.shutdown().wait() }
-        let firstTestKit = ActorTestKit(systemOne)
-        let probe = firstTestKit.spawnTestProbe(expecting: String.self)
-        let refProbe = firstTestKit.spawnTestProbe(expecting: ActorRef<Int>.self)
+        let firstTestTools = ActorTestTools(systemOne)
+        let probe = firstTestTools.spawnTestProbe(expecting: String.self)
+        let refProbe = firstTestTools.spawnTestProbe(expecting: ActorRef<Int>.self)
 
         let systemTwo = ActorSystem("Two-RemoteActorRefAdapterTests") { settings in
             settings.cluster.enabled = true
@@ -99,7 +99,7 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_shouldBeWatchable() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let behavior: Behavior<Int> = .setup { context in
             probe.tell(context.messageAdapter { _ in 0 })
@@ -120,9 +120,9 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adapter_shouldAllowDroppingMessages() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: ActorRef<String>.self)
 
-        let pAdapted = self.testKit.spawnTestProbe(expecting: Int.self)
+        let pAdapted = self.testTools.spawnTestProbe(expecting: Int.self)
 
         let behavior: Behavior<Int> = .setup { context in
             probe.tell(context.messageAdapter { message in
@@ -162,8 +162,8 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_shouldShareTheSameLifecycleAsItsActor() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testTools.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
@@ -204,8 +204,8 @@ class ActorRefAdapterTests: XCTestCase {
     }
 
     func test_adaptedRef_newAdapterShouldReplaceOld() throws {
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testTools.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let strategy = SupervisionStrategy.restart(atMost: 5, within: .seconds(5))
 
@@ -253,8 +253,8 @@ class ActorRefAdapterTests: XCTestCase {
         }
         defer { system.shutdown().wait() }
 
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
-        let receiveRefProbe = self.testKit.spawnTestProbe(expecting: ActorRef<String>.self)
+        let probe = self.testTools.spawnTestProbe(expecting: String.self)
+        let receiveRefProbe = self.testTools.spawnTestProbe(expecting: ActorRef<String>.self)
 
         let behavior: Behavior<LifecycleTestMessage> = .setup { context in
             .receiveMessage {
@@ -292,10 +292,10 @@ class ActorRefAdapterTests: XCTestCase {
         class TopExample {}
         class BottomExample: TopExample {}
 
-        let probe = self.testKit.spawnTestProbe(expecting: String.self)
+        let probe = self.testTools.spawnTestProbe(expecting: String.self)
 
-        let probeTop = self.testKit.spawnTestProbe(expecting: ActorRef<TopExample>.self)
-        let probeBottom = self.testKit.spawnTestProbe(expecting: ActorRef<BottomExample>.self)
+        let probeTop = self.testTools.spawnTestProbe(expecting: ActorRef<TopExample>.self)
+        let probeBottom = self.testTools.spawnTestProbe(expecting: ActorRef<BottomExample>.self)
 
         let behavior: Behavior<LifecycleTestMessage> = .setup { context in
             let topRef: ActorRef<TopExample> = context.messageAdapter { .message("adapter-top:\($0)") }

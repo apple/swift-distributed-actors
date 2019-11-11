@@ -14,7 +14,7 @@
 
 import DistributedActors
 import struct DistributedActors.TimeAmount
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 

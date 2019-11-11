@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import NIOSSL
 import XCTest
@@ -41,7 +41,7 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
             try assertAssociated(second, withAtLeast: third.cluster.node)
             try assertAssociated(first, withAtLeast: third.cluster.node)
 
-            try self.testKit(second).eventually(within: .seconds(10)) {
+            try self.testTools(second).eventually(within: .seconds(10)) {
                 try self.assertMemberStatus(on: second, node: first.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: second.cluster.node, is: .up)
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
@@ -49,13 +49,13 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
 
             second.cluster.down(node: third.cluster.node)
 
-            try self.testKit(first).eventually(within: .seconds(5)) {
+            try self.testTools(first).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)
             }
-            try self.testKit(second).eventually(within: .seconds(5)) {
+            try self.testTools(second).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .down)
             }
-            try self.testKit(third).eventually(within: .seconds(5)) {
+            try self.testTools(third).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: third, node: third.cluster.node, is: .down)
             }
         }

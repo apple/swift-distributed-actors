@@ -13,16 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 @testable import DistributedActors
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import XCTest
 
 final class CRDTEnvelopeSerializationTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -44,10 +44,10 @@ final class CRDTEnvelopeSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(CRDTEnvelope.self, from: bytes)
 
             guard case .DeltaCRDT(let data) = deserialized._boxed else {
-                throw self.testKit.fail("CRDTEnvelope._boxed should be .DeltaCRDT for AnyDeltaCRDT")
+                throw self.testTools.fail("CRDTEnvelope._boxed should be .DeltaCRDT for AnyDeltaCRDT")
             }
             guard let gg1 = data.underlying as? CRDT.GCounter else {
-                throw self.testKit.fail("AnyDeltaCRDT.underlying should be GCounter")
+                throw self.testTools.fail("AnyDeltaCRDT.underlying should be GCounter")
             }
 
             gg1.value.shouldEqual(g1.value)
@@ -70,10 +70,10 @@ final class CRDTEnvelopeSerializationTests: XCTestCase {
             let deserialized = try system.serialization.deserialize(CRDTEnvelope.self, from: bytes)
 
             guard case .CvRDT(let data) = deserialized._boxed else {
-                throw self.testKit.fail("CRDTEnvelope._boxed should be .CvRDT for AnyCvRDT")
+                throw self.testTools.fail("CRDTEnvelope._boxed should be .CvRDT for AnyCvRDT")
             }
             guard let dg1Delta = data.underlying as? CRDT.GCounter.Delta else {
-                throw self.testKit.fail("AnyCvRDT.underlying should be GCounter.Delta")
+                throw self.testTools.fail("AnyCvRDT.underlying should be GCounter.Delta")
             }
 
             dg1Delta.state.count.shouldEqual(1)

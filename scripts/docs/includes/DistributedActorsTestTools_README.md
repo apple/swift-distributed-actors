@@ -1,8 +1,8 @@
-# Swift Distributed Actors TestKit API Documentation
+# Swift Distributed Actors Test Tools API Documentation
 
 <small>Version $version</small>
 
-Welcome to the API documentation of Swift Distributed Actors TestKit!
+Welcome to the API documentation of Swift Distributed Actors Test Tools!
 
 This style of documentation is relatively raw and intended for quick lookups while working with actors. <br/>
 
@@ -12,7 +12,7 @@ If you are learning about Actors you may instead want refer to the [Reference Do
 
 The actor test kit's main type is: 
 
-- [ActorTestKit](Classes/ActorTestKit.html)
+- [ActorTestTools](Classes/ActorTestTools.html)
 
 Which allows for spawning of test probes:
 

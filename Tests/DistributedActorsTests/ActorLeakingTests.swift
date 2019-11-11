@@ -14,17 +14,17 @@
 
 @testable import DistributedActors
 import DistributedActorsConcurrencyHelpers
-import DistributedActorsTestKit
+import DistributedActorsTestTools
 import Foundation
 import XCTest
 
 class ActorLeakingTests: XCTestCase {
     var system: ActorSystem!
-    var testKit: ActorTestKit!
+    var testTools: ActorTestTools!
 
     override func setUp() {
         self.system = ActorSystem(String(describing: type(of: self)))
-        self.testKit = ActorTestKit(self.system)
+        self.testTools = ActorTestTools(self.system)
     }
 
     override func tearDown() {
@@ -52,7 +52,7 @@ class ActorLeakingTests: XCTestCase {
 
         var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStartActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
@@ -64,7 +64,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStopActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -94,7 +94,7 @@ class ActorLeakingTests: XCTestCase {
 
         var ref: ActorRef<String>? = try system.spawn("printer", stopsOnAnyMessage)
 
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStartActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
@@ -106,7 +106,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStopActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -132,7 +132,7 @@ class ActorLeakingTests: XCTestCase {
 
         var ref: ActorRef<String>? = try system.spawn("stopsOnAnyMessage", stopsOnAnyMessage)
 
-        let afterStartMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStartMailboxCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
             if counter != 1 {
                 throw NotEnoughActorsAlive(expected: 1, current: counter)
@@ -144,7 +144,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell("please stop")
         ref = nil
 
-        let afterStopMailboxCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStopMailboxCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userMailboxInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
@@ -185,7 +185,7 @@ class ActorLeakingTests: XCTestCase {
 
         ref?.tell(expectedChildrenCount)
 
-        let afterStartActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStartActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != expectedActorCount {
                 throw NotEnoughActorsAlive(expected: expectedActorCount, current: counter)
@@ -197,7 +197,7 @@ class ActorLeakingTests: XCTestCase {
         ref?.tell(0) // stops the parent actor
         ref = nil
 
-        let afterStopActorCount = try testKit.eventually(within: .milliseconds(200)) { () -> Int in
+        let afterStopActorCount = try testTools.eventually(within: .milliseconds(200)) { () -> Int in
             let counter = self.system.userCellInitCounter.load()
             if counter != 0 {
                 throw TooManyActorsAlive(expected: 0, current: counter)
