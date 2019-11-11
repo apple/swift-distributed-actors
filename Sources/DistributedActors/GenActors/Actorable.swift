@@ -31,7 +31,7 @@ public protocol Actorable {
     associatedtype Message
 
     /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
-    public typealias Myself = Actor<Self>
+    typealias Myself = Actor<Self>
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActor filled in functions
