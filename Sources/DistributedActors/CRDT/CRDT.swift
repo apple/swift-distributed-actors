@@ -182,7 +182,13 @@ public enum CRDT {
 
             let replicator = ownerContext.system.replicator
 
-            func continueOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
+            func continueAskResponseOnActorContext<Res>(_ future: AskResponse<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
+                ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
+                    continuation(res)
+                    return .same
+                }
+            }
+            func continueEventLoopFutureOnActorContext<Res>(_ future: EventLoopFuture<Res>, continuation: @escaping (Result<Res, Swift.Error>) -> Void) {
                 ownerContext.onResultAsync(of: future, timeout: .effectivelyInfinite) { res in
                     continuation(res)
                     return .same
@@ -192,9 +198,11 @@ public enum CRDT {
                 ownerContext,
                 subReceive: subReceive,
                 replicator: replicator,
-                onWriteComplete: continueOnActorContext,
-                onReadComplete: continueOnActorContext,
-                onDeleteComplete: continueOnActorContext
+                onWriteComplete: continueAskResponseOnActorContext,
+                onReadComplete: continueAskResponseOnActorContext,
+                onDeleteComplete: continueAskResponseOnActorContext,
+                onDataOperationResultComplete: continueEventLoopFutureOnActorContext,
+                onVoidOperationResultComplete: continueEventLoopFutureOnActorContext
             )
 
             // Register as owner of the CRDT instance with local replicator
@@ -300,6 +308,8 @@ public enum CRDT {
             private let _onWriteComplete: (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void
             private let _onReadComplete: (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, Swift.Error>) -> Void) -> Void
             private let _onDeleteComplete: (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Void) -> Void
+            private let _onDataOperationResultComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
+            private let _onVoidOperationResultComplete: (EventLoopFuture<Void>, @escaping (Result<Void, Swift.Error>) -> Void) -> Void
 
             init<M>(
                 _ ownerContext: ActorContext<M>,
@@ -307,7 +317,9 @@ public enum CRDT {
                 replicator: ActorRef<Replicator.Message>,
                 onWriteComplete: @escaping (AskResponse<Replicator.LocalCommand.WriteResult>, @escaping (Result<Replicator.LocalCommand.WriteResult, Swift.Error>) -> Void) -> Void,
                 onReadComplete: @escaping (AskResponse<Replicator.LocalCommand.ReadResult>, @escaping (Result<Replicator.LocalCommand.ReadResult, Swift.Error>) -> Void) -> Void,
-                onDeleteComplete: @escaping (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Void) -> Void
+                onDeleteComplete: @escaping (AskResponse<Replicator.LocalCommand.DeleteResult>, @escaping (Result<Replicator.LocalCommand.DeleteResult, Swift.Error>) -> Void) -> Void,
+                onDataOperationResultComplete: @escaping (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void,
+                onVoidOperationResultComplete: @escaping (EventLoopFuture<Void>, @escaping (Result<Void, Swift.Error>) -> Void) -> Void
             ) {
                 // not storing ownerContext on purpose; it always is a bit dangerous to store "someone's" context, for retain cycles and potential concurrency issues
                 self.log = ownerContext.log
@@ -318,6 +330,8 @@ public enum CRDT {
                 self._onWriteComplete = onWriteComplete
                 self._onReadComplete = onReadComplete
                 self._onDeleteComplete = onDeleteComplete
+                self._onDataOperationResultComplete = onDataOperationResultComplete
+                self._onVoidOperationResultComplete = onVoidOperationResultComplete
             }
 
             // Implementation note:
@@ -343,7 +357,7 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult)
+                return OperationResult(promise.futureResult, safeOnComplete: self._onDataOperationResultComplete)
             }
 
             func onReadComplete(
@@ -356,7 +370,7 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult)
+                return OperationResult(promise.futureResult, safeOnComplete: self._onDataOperationResultComplete)
             }
 
             func onDeleteComplete(
@@ -369,23 +383,32 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult.map { _ in () })
+                return OperationResult(promise.futureResult.map { _ in () }, safeOnComplete: self._onVoidOperationResultComplete)
             }
         }
 
         public struct OperationResult<DataType>: AsyncResult {
             let dataFuture: EventLoopFuture<DataType>
 
-            init(_ dataFuture: EventLoopFuture<DataType>) {
+            private let _safeOnComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
+
+            init(_ dataFuture: EventLoopFuture<DataType>, safeOnComplete: @escaping (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void) {
                 self.dataFuture = dataFuture
+                self._safeOnComplete = safeOnComplete
             }
 
-            public func _onComplete(_ callback: @escaping (Swift.Result<DataType, Swift.Error>) -> Void) {
-                self.dataFuture.whenComplete(callback)
+            public func _onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
+                self.onComplete(callback)
+            }
+
+            public func onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
+                self._safeOnComplete(self.dataFuture) { result in
+                    callback(result)
+                }
             }
 
             public func withTimeout(after timeout: TimeAmount) -> OperationResult<DataType> {
-                return OperationResult(self.dataFuture.withTimeout(after: timeout))
+                return OperationResult(self.dataFuture.withTimeout(after: timeout), safeOnComplete: self._safeOnComplete)
             }
         }
 
