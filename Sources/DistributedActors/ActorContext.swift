@@ -294,7 +294,7 @@ public class ActorContext<Message>: ActorRefFactory {
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
     public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Behavior<Message>) -> Behavior<Message> {
-        asyncResult.withTimeout(after: timeout).onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
+        asyncResult.withTimeout(after: timeout)._onComplete { [weak selfRef = self.myself._unsafeUnwrapCell] result in
             selfRef?.sendSystemMessage(.resume(result.map { $0 }))
         }
         return .suspend(handler: continuation)
@@ -346,7 +346,7 @@ public class ActorContext<Message>: ActorRefFactory {
             shell.behavior = try shell.behavior.canonicalize(shell, next: nextBehavior)
         }
 
-        asyncResult.withTimeout(after: timeout).onComplete { res in
+        asyncResult.withTimeout(after: timeout)._onComplete { res in
             asyncCallback.invoke(res)
         }
     }

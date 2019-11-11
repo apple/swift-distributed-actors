@@ -117,8 +117,8 @@ public struct AskResponse<Value> {
 }
 
 extension AskResponse: AsyncResult {
-    public func onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
-        self.nioFuture.onComplete { result in
+    public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+        self.nioFuture._onComplete { result in
             callback(result)
         }
     }

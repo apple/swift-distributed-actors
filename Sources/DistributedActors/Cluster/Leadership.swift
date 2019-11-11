@@ -80,8 +80,8 @@ public struct LeaderElectionResult: AsyncResult {
         self.future = future
     }
 
-    public func onComplete(_ callback: @escaping (Result<LeadershipChange?, Error>) -> Void) {
-        self.future.onComplete(callback)
+    public func _onComplete(_ callback: @escaping (Result<LeadershipChange?, Error>) -> Void) {
+        self.future.whenComplete(callback)
     }
 
     public func withTimeout(after timeout: TimeAmount) -> LeaderElectionResult {

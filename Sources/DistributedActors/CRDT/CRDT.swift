@@ -380,8 +380,8 @@ public enum CRDT {
                 self.dataFuture = dataFuture
             }
 
-            public func onComplete(_ callback: @escaping (Swift.Result<DataType, Swift.Error>) -> Void) {
-                self.dataFuture.onComplete(callback)
+            public func _onComplete(_ callback: @escaping (Swift.Result<DataType, Swift.Error>) -> Void) {
+                self.dataFuture.whenComplete(callback)
             }
 
             public func withTimeout(after timeout: TimeAmount) -> OperationResult<DataType> {
