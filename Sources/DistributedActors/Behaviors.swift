@@ -506,7 +506,7 @@ public extension Behavior {
 
         // illegal to attempt interpreting at the following behaviors (e.g. should have been canonicalized before):
         case .same: fatalError("Illegal attempt to interpret message with .same behavior! Behavior should have been canonicalized. This is a bug, please open a ticket.", file: file, line: line)
-        case .ignore: return .same
+        case .ignore: fatalError("Illegal attempt to interpret message with .ignore behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
         case .unhandled: fatalError("Illegal attempt to interpret message with .unhandled behavior! Behavior should have been canonicalized before interpreting; This is a bug, please open a ticket.", file: file, line: line)
 
         case .setup: fatalError("Illegal attempt to interpret message with .setup behavior! Behaviors MUST be canonicalized before interpreting. This is a bug, please open a ticket.", file: file, line: line)
@@ -698,7 +698,7 @@ internal extension Behavior {
     @inlinable
     var isChanging: Bool {
         switch self.underlying {
-        case .same, .unhandled: return false
+        case .same, .ignore, .unhandled: return false
         default: return true
         }
     }
@@ -729,7 +729,7 @@ internal extension Behavior {
 
                 case .same where self.isSetup: throw IllegalBehaviorError.illegalTransition(from: self, to: next)
                 case .same: return base
-                case .ignore: return canonical
+                case .ignore: return base
                 case .unhandled: return base
                 case .class: return canonical
 

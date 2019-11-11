@@ -1219,27 +1219,4 @@ class BehaviorTests: XCTestCase {
         promise.fail(error)
         try probe.expectTerminated(ref)
     }
-
-    func test_ignore_shouldIgnoreAllIncomingMessages() throws {
-        let p = self.testKit.spawnTestProbe(expecting: String.self)
-        let behavior: Behavior<String> = .receiveMessage { message in
-            p.tell("receive:\(message)")
-
-            return .ignore // from now on, all messages will be ignored
-        }
-
-        let ref = try system.spawn(.anonymous, behavior)
-
-        ref.tell("first")
-        try p.expectMessage("receive:first")
-
-        ref.tell("second")
-        try p.expectNoMessage(for: .milliseconds(50))
-
-        ref.tell("third")
-        try p.expectNoMessage(for: .milliseconds(50))
-
-        ref.tell("fourth")
-        try p.expectNoMessage(for: .milliseconds(50))
-    }
 }

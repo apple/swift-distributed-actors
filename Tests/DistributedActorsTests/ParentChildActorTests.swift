@@ -527,27 +527,4 @@ class ParentChildActorTests: XCTestCase {
         let messages = try p.expectMessages(count: childCount)
         messages.sorted().shouldEqual((1 ... childCount).sorted())
     }
-
-    func test_contextStop_shouldBeAbleToStopChildInBehaviorIgnore() throws {
-        let p = self.testKit.spawnTestProbe(expecting: ActorRef<Never>.self)
-
-        let behavior: Behavior<String> = .setup { context in
-            let childRef = try context.spawn(.prefixed(with: "child"), of: Never.self, .ignore)
-
-            p.tell(childRef)
-
-            return .receiveMessage { _ in
-                try context.stop(child: childRef)
-                return .same
-            }
-        }
-
-        let ref = try self.system.spawn(.prefixed(with: "parent"), behavior)
-
-        let childRef = try p.expectMessage()
-        p.watch(childRef)
-
-        ref.tell("stopChild")
-        try p.expectTerminated(childRef)
-    }
 }
