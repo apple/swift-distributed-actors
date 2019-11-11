@@ -192,12 +192,29 @@ public extension ActorRef where Message == ReceptionistMessage {
         self.tell(Receptionist.Register(ref, key: key, replyTo: replyTo))
     }
 
+    /// Looks up actors by given `key`, replying (once) to the `replyTo` actor once the lookup has completed.
+    ///
+    /// - SeeAlso: `subscribe(key:subscriber:)`
+    func lookup<M>(key: Receptionist.RegistrationKey<M>, replyTo: ActorRef<Receptionist.Listing<M>>) {
+        self.tell(Receptionist.Lookup(key: key, replyTo: replyTo))
+    }
+
+    /// Looks up actors by given `key`.
+    ///
+    /// The closure is invoked _on the actor context_, meaning that it is safe to access and/or modify actor state from it.
+    func lookup<M>(key: Receptionist.RegistrationKey<M>, timeout: TimeAmount = .effectivelyInfinite) -> AskResponse<Receptionist.Listing<M>> {
+        self.ask(for: Receptionist.Listing<M>.self, timeout: timeout) {
+            Receptionist.Lookup<M>(key: key, replyTo: $0)
+        }
+    }
+
     /// Subscribe to changes in checked-in actors under given `key`.
     /// The `subscriber` actor will be notified with `Receptionist.Listing<M>` messages when new actors register, leave or die,
     /// under the passed in key.
     func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
         self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
     }
+
 }
 
 /// Receptionist for local execution. Does not depend on a cluster being available.
