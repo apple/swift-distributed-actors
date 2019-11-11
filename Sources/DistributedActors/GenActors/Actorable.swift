@@ -30,6 +30,9 @@
 public protocol Actorable {
     associatedtype Message
 
+    /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
+    typealias Myself = Actor<Self>
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActor filled in functions
 
@@ -42,11 +45,11 @@ public protocol Actorable {
     /// It can be used to initiate some additional setup of dependencies
     // TODO: should allow suspending, i.e. returning "suspend me until a future completes", like behavior style does.
     //       This would not be necessary with the arrival of async/await most likely, if we could suspend on the preRestart
-    func preStart(context: Actor<Self>.Context)
+    func preStart(context: Myself.Context)
 
     /// Received right after the actor has stopped (i.e. will not receive any more messages),
     /// giving the actor a chance to perform some final cleanup or release resources.
-    func postStop(context: Actor<Self>.Context)
+    func postStop(context: Myself.Context)
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Receiving Signals
@@ -56,17 +59,17 @@ public protocol Actorable {
 }
 
 extension Actorable {
-    public func preStart(context: Actor<Self>.Context) {
+    public func preStart(context: Myself.Context) {
         // noop
     }
 
-    public func postStop(context: Actor<Self>.Context) {
+    public func postStop(context: Myself.Context) {
         // noop
     }
 }
 
 extension Actorable {
-    public func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective {
+    public func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
         // DeathWatch semantics are implemented in the behavior runtime, so we remain compatible with them here.
         .unhandled
     }
