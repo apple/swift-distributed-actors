@@ -357,7 +357,7 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult, onComplete: self._onDataOperationResultComplete)
+                return OperationResult(promise.futureResult, safeOnComplete: self._onDataOperationResultComplete)
             }
 
             func onReadComplete(
@@ -370,7 +370,7 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult, onComplete: self._onDataOperationResultComplete)
+                return OperationResult(promise.futureResult, safeOnComplete: self._onDataOperationResultComplete)
             }
 
             func onDeleteComplete(
@@ -383,7 +383,7 @@ public enum CRDT {
                     let result = onComplete(result)
                     promise.completeWith(result)
                 }
-                return OperationResult(promise.futureResult.map { _ in () }, onComplete: self._onVoidOperationResultComplete)
+                return OperationResult(promise.futureResult.map { _ in () }, safeOnComplete: self._onVoidOperationResultComplete)
             }
         }
 
@@ -392,9 +392,9 @@ public enum CRDT {
 
             private let _safeOnComplete: (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void
 
-            init(_ dataFuture: EventLoopFuture<DataType>, onComplete: @escaping (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void) {
+            init(_ dataFuture: EventLoopFuture<DataType>, safeOnComplete: @escaping (EventLoopFuture<DataType>, @escaping (Result<DataType, Swift.Error>) -> Void) -> Void) {
                 self.dataFuture = dataFuture
-                self._safeOnComplete = onComplete
+                self._safeOnComplete = safeOnComplete
             }
 
             public func _onComplete(_ callback: @escaping (Result<DataType, Swift.Error>) -> Void) {
@@ -408,7 +408,7 @@ public enum CRDT {
             }
 
             public func withTimeout(after timeout: TimeAmount) -> OperationResult<DataType> {
-                return OperationResult(self.dataFuture.withTimeout(after: timeout), onComplete: self._safeOnComplete)
+                return OperationResult(self.dataFuture.withTimeout(after: timeout), safeOnComplete: self._safeOnComplete)
             }
         }
 
