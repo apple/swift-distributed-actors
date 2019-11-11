@@ -23,11 +23,22 @@ import SwiftSyntax
 struct GatherActorables: SyntaxVisitor {
     let settings: GenerateActors.Settings
 
+    // naively copies all import Decls
+    var imports: [String] = []
+
     var actorables: [ActorableDecl] = []
     var wipActorable: ActorableDecl = .init(type: .protocol, name: "<NOTHING>")
 
     init(_ settings: GenerateActors.Settings) {
         self.settings = settings
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: imports
+
+    mutating func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.imports.append("\(node)")
+        return .visitChildren
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
