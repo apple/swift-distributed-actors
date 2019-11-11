@@ -29,6 +29,9 @@
 /// ***NOTE:*** It is our hope to replace the code generation needed here with language features in Swift itself.
 public protocol Actorable {
     associatedtype Message
+    
+    /// Represents a handle to this actor (`myself`), that is safe to pass to other actors, threads, and even nodes.
+    public typealias Myself = Actor<Self.Message>
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActor filled in functions
