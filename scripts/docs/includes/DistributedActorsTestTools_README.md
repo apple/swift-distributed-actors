@@ -10,7 +10,7 @@ If you are learning about Actors you may instead want refer to the [Reference Do
 
 ## Topics of Interest
 
-The actor test kit's main type is: 
+The actor test tools' main type is: 
 
 - [ActorTestTools](Classes/ActorTestTools.html)
 
