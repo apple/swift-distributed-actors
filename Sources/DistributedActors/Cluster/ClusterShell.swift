@@ -528,14 +528,14 @@ extension ClusterShell {
                 self.tracelog(context, .send(to: offer.from.node), message: accept)
                 promise.succeed(.accept(accept))
 
-                if let replaced = directive.membershipChange.replaced,
+                if directive.membershipChange.replaced != nil,
                     let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
                     state.log.warning("Tombstone association: \(reflecting: beingReplacedAssociation.remoteNode)")
                     self.terminateAndTombstoneAssociation(beingReplacedAssociation)
                 }
 
                 /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-                state.tryPerformLeaderTasks()
+                _ = state.tryPerformLeaderTasks() // TODO: refactor to handle or not return
 
                 /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
                 context.system.metrics.recordMembership(state.membership)

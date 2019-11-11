@@ -32,10 +32,10 @@ public final class GenerateActors {
 
         let remaining = args.dropFirst()
         self.settings = remaining.filter {
-            $0.starts(with: "--")
+            $0.starts(with: "-") 
         }.reduce(into: Settings()) { settings, option in
             switch option {
-            case "--verbose":
+            case "-v", "--verbose":
                 settings.verbose = true
             default:
                 ()
@@ -109,6 +109,10 @@ public final class GenerateActors {
 
             try targetFile.write("")
             try targetFile.append(Rendering.generatedFileHeader)
+            try targetFile.append("\n")
+            try gather.imports.forEach { importBlock in
+                try targetFile.append("\(importBlock)\n")
+            }
             try targetFile.append(renderedShell)
         }
 
