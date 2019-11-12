@@ -37,14 +37,13 @@ extension Actor.Context {
             self.context.underlying
         }
 
-        func register(_ key: SystemReceptionist.RegistrationKey<Myself.Message>) {
+        public func register(_ key: SystemReceptionist.RegistrationKey<Myself.Message>) {
             self.underlying.system.receptionist.register(self.underlying.myself, key: key)
         }
 
-
         // could return Combine.Publisher or our MultiTask? if we could make it safe inside the actor context
         // TODO abusing the registration key somewhat; it was intended to be message
-        func subscribe<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListingChange: @escaping (Receptionist.Listing<A>) -> Void) {
+        public func subscribe<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListingChange: @escaping (Receptionist.Listing<A>) -> Void) {
             self.underlying.system.receptionist.subscribe(key: key, subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
                 let actors = Set(listing.refs.map { ref in
                     Actor<A>(ref: ref)
@@ -54,7 +53,7 @@ extension Actor.Context {
         }
 
         // TODO: make those able to find Actorables
-        func lookup<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListing: @escaping (Receptionist.Listing<A>) -> Void) {
+        public func lookup<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListing: @escaping (Receptionist.Listing<A>) -> Void) {
             self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(key: key, replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
                 let actors = Set(listing.refs.map { ref in
                     Actor<A>(ref: ref)
@@ -63,7 +62,7 @@ extension Actor.Context {
             }))
         }
 
-        struct Listing<A: Actorable> {
+        public struct Listing<A: Actorable> {
             let actors: Set<Actor<A>>
         }
 

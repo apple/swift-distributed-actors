@@ -26,19 +26,19 @@ import class NIO.EventLoopFuture
 extension JackOfAllTrades {
     public enum Message { 
         case hello(replyTo: ActorRef<String>) 
-        case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
         case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
+        case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
     }
 
-    
-    /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
-    public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
-        .ticketing(message)
-    } 
     
     /// Performs boxing of GeneratedActor.Messages.Parking messages such that they can be received by Actor<JackOfAllTrades>
     public static func _boxParking(_ message: GeneratedActor.Messages.Parking) -> JackOfAllTrades.Message {
         .parking(message)
+    } 
+    
+    /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
+    public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {
+        .ticketing(message)
     } 
     
 }
@@ -61,10 +61,10 @@ extension JackOfAllTrades {
                     instance.hello(replyTo: replyTo)
  
                 
-                case .ticketing(.makeTicket):
-                    instance.makeTicket() 
                 case .parking(.park):
                     instance.park() 
+                case .ticketing(.makeTicket):
+                    instance.makeTicket() 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
