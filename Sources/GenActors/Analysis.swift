@@ -78,6 +78,10 @@ struct GatherActorables: SyntaxVisitor {
     }
 
     mutating func visitPost(_: StructDeclSyntax) {
+        guard self.wipActorable.name != "<NOTHING>" else {
+            return
+        }
+
         self.actorables.append(self.wipActorable)
         self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
     }

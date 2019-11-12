@@ -119,3 +119,9 @@ public struct TestActorable: Actorable {
         self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))
     }
 }
+
+// should not accidentally try to make this actorable
+public struct ExampleModel {
+    public struct ExampleData {}
+}
+
