@@ -261,7 +261,7 @@ extension ActorableMessageDecl {
 
         var ret = "case \(self.name)("
         ret.append(
-            self.params.map { first, second, tpe in
+            self.effectiveParams.map { first, second, tpe in
                 // FIXME: super naive... replace with something more proper
                 let type = tpe
                     .replacingOccurrences(of: "<Self>", with: "<\(self.actorableName)>")
@@ -283,12 +283,12 @@ extension ActorableMessageDecl {
         return ret
     }
 
-    var funcDecl: String {
+    var renderFuncDecl: String {
         let access = self.access.map {
             "\($0) "
         } ?? ""
 
-        return "\(access)func \(self.name)(\(self.renderFuncParams))"
+        return "\(access)func \(self.name)(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)"
     }
 
     var renderFuncParams: String {
@@ -316,22 +316,31 @@ extension ActorableMessageDecl {
     ///
     /// ````(let thing, let other)
     var renderCaseLetParams: String {
-        if self.params.isEmpty {
+        if self.effectiveParams.isEmpty {
             return ""
         } else {
             return "(" +
-                self.params.map { p in
+                self.effectiveParams.map { p in
                     "let \(p.1)"
                 }.joined(separator: ", ") +
                 ")"
         }
     }
 
+    var passEffectiveParams: String {
+        self.renderPassParams(effectiveParamsToo: true)
+    }
+
     var passParams: String {
-        if self.params.isEmpty {
+        self.renderPassParams(effectiveParamsToo: false)
+    }
+
+    func renderPassParams(effectiveParamsToo: Bool) -> String {
+        let ps = effectiveParamsToo ? self.effectiveParams : self.params
+        if ps.isEmpty {
             return ""
         } else {
-            return self.params.map { p in
+            return ps.map { p in
                 if let name = p.0, name == "_" {
                     // greet(name)
                     return "\(p.1)"
@@ -343,12 +352,57 @@ extension ActorableMessageDecl {
         }
     }
 
-    var passMessage: String {
+    /// Implements the generated func method(...) by passing the parameters as a message, by telling or asking.
+    var renderTellOrAskMessage: String {
+        var ret = ""
+        var isAsk = false
+
+        switch self.returnType {
+        case .nioEventLoopFuture(let futureValueType):
+            isAsk = true
+            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
+            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("            self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
+            ret.append("                ")
+        case .type(let t):
+            isAsk = true
+            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
+            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("            self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
+            ret.append("                ")
+        case .void:
+            ret.append("self.ref.tell(")
+        case .behavior:
+            ret.append("self.ref.tell(")
+        }
+
+        ret.append(self.renderPassMessage)
+
+        if isAsk {
+            ret.append("\n")
+            ret.append("            }")
+            ret.append("""
+            .nioFuture.flatMapThrowing { result in
+                        switch result {
+                        case .success(let res): return res
+                        case .failure(let err): throw err
+                        }
+                    }\n
+            """)
+            ret.append("            )")
+        } else {
+            ret.append(")")
+        }
+
+        return ret
+    }
+
+    var renderPassMessage: String {
         var ret = ".\(self.name)"
 
-        if !self.params.isEmpty {
+        if !self.effectiveParams.isEmpty {
             ret.append("(")
-            ret.append(self.passParams)
+            ret.append(self.passEffectiveParams)
             ret.append(")")
         }
 
@@ -356,18 +410,56 @@ extension ActorableMessageDecl {
     }
 }
 
+extension ActorableMessageDecl.ReturnType {
+    /// Renders:
+    /// ```
+    ///
+    /// // or
+    /// -> AskResponse<T>
+    /// ```
+    var renderReturnTypeDeclPart: String {
+        switch self {
+        case .void:
+            return ""
+        case .behavior:
+            return ""
+        case .nioEventLoopFuture(let t):
+            return " -> AskResponse<\(t)>" // FIXME: Would prefer some other future...
+        case .type(let t):
+            return " -> AskResponse<\(t)>" // FIXME: Would prefer some other future...
+        }
+    }
+
+    var isTypeReturn: Bool {
+        if case .type = self {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    var rendersReturn: Bool {
+        switch self {
+        case .void, .behavior:
+            return false
+        case .nioEventLoopFuture, .type:
+            return true
+        }
+    }
+}
+
 extension ActorFuncDecl {
     func renderFuncTell() throws -> String {
         let context: [String: Any] = [
-            "funcDecl": message.funcDecl,
-            "passMessage": message.passMessage,
+            "funcDecl": message.renderFuncDecl,
+            "passMessage": message.renderTellOrAskMessage,
         ]
 
         let rendered = try Template(
             templateString:
             """
             {{funcDecl}} { 
-                    self.ref.tell({{passMessage}})
+                    {{passMessage}}
                 }
             """
         ).render(context)
@@ -375,12 +467,13 @@ extension ActorFuncDecl {
         return rendered
     }
 
+    // TODO: implement boxed asks
     func renderBoxFuncTell(_ actorableProtocol: ActorableDecl) throws -> String {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
         let context: [String: Any] = [
-            "funcDecl": self.message.funcDecl,
-            "passMessage": self.message.passMessage,
+            "funcDecl": self.message.renderFuncDecl,
+            "passMessage": self.message.renderPassMessage,
             "boxFuncName": actorableProtocol.boxFuncName,
         ]
 
@@ -398,23 +491,45 @@ extension ActorFuncDecl {
 
     // TODO: dedup with the boxed one
     func renderFuncSwitchCase() throws -> String {
+        var ret = "case .\(message.name)\(message.renderCaseLetParams):"
+        ret.append("\n")
+
         let context: [String: Any] = [
-            "returnIfBecome": message.returnIfBecome,
-            "try": message.throwing ? "try " : "",
-            "name": message.name,
-            "caseLetParams": message.renderCaseLetParams,
-            "passParams": message.passParams,
+            "name": self.message.name,
+            "returnIfBecome": self.message.returnIfBecome,
+            "storeIfTypeReturn": self.message.returnType.isTypeReturn ? "let result = " : "",
+            "replyWithTypeReturn": self.message.returnType.isTypeReturn ? "\n                    _replyTo.tell(.success(result))" : "",
+            "try": self.message.throwing ? "try " : "",
+            "passParams": self.message.passParams,
         ]
 
-        let rendered = try Template(
-            templateString:
-            """
-            case .{{name}}{{caseLetParams}}:
-                                {{returnIfBecome}}{{try}}instance.{{name}}({{passParams}})
-            """
-        ).render(context)
+        if self.message.throwing, self.message.returnType.rendersReturn {
+            ret.append("                    do {")
+            ret.append("\n")
+        }
 
-        return rendered
+        // FIXME: it really is time to adopt CodePrinter
+
+        // render invocation
+        ret.append(try Template(
+            templateString:
+            "                    {{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
+        ).render(context))
+
+        if case .nioEventLoopFuture = self.message.returnType {
+            ret.append("\n                                    .onComplete { res in _replyTo.tell(res) }")
+        } else {
+            ret.append("\n")
+        }
+
+        if self.message.throwing, self.message.returnType.rendersReturn {
+            let pad = "                    " // FIXME: replace with code printer
+            ret.append("\(pad)} catch {\n")
+            ret.append("\(pad)    _replyTo.tell(.failure(error))\n")
+            ret.append("\(pad)}\n")
+        }
+
+        return ret
     }
 
     func renderBoxFuncSwitchCase(partOf ownerProtocol: ActorableDecl) throws -> String {
@@ -439,6 +554,6 @@ extension ActorFuncDecl {
     }
 
     func renderCaseDecl() -> String {
-        return self.message.renderCaseDecl
+        self.message.renderCaseDecl
     }
 }

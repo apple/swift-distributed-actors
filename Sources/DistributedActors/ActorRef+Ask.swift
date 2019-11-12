@@ -114,6 +114,11 @@ public struct AskResponse<Value> {
     /// - warning: DO NOT access or modify actor state from any of the future's callbacks as they MAY run concurrently to the actor.
     /// - warning: `AskResponse` may in the future no longer be backed by a NIO future and this field deprecated, or replaced by an adapter.
     public let nioFuture: EventLoopFuture<Value>
+
+    // FIXME: Leaking that we depend on NIO a bit here...
+    public init(nioFuture: EventLoopFuture<Value>) {
+        self.nioFuture = nioFuture
+    }
 }
 
 extension AskResponse: AsyncResult {

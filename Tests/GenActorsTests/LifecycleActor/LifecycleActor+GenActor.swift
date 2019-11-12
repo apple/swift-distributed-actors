@@ -31,9 +31,11 @@ extension LifecycleActor {
                 switch message { 
                 
                 case .pleaseStop:
-                    return instance.pleaseStop() 
+                    return instance.pleaseStop()
+ 
                 case .watchChildAndTerminateIt:
-                    try instance.watchChildAndTerminateIt() 
+                    try instance.watchChildAndTerminateIt()
+ 
                 
                 }
                 return .same

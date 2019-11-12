@@ -74,6 +74,17 @@ struct ActorableMessageDecl {
     typealias Name = String
     typealias TypeName = String
     let params: [(Name?, Name, TypeName)]
+    var effectiveParams: [(Name?, Name, TypeName)] {
+        var res = self.params
+
+        if case .nioEventLoopFuture(of: let futureValueType) = self.returnType {
+            res.append((nil, "_replyTo", "ActorRef<Result<\(futureValueType), Error>>"))
+        } else if case .type(let returnType) = self.returnType {
+            res.append((nil, "_replyTo", "ActorRef<Result<\(returnType), Error>>"))
+        }
+
+        return res
+    }
 
     let throwing: Bool
 
@@ -81,6 +92,7 @@ struct ActorableMessageDecl {
 
     enum ReturnType {
         case void
+        case nioEventLoopFuture(of: String)
         case type(String)
         case behavior(String)
 
@@ -91,8 +103,15 @@ struct ActorableMessageDecl {
 
             if "\(t)".starts(with: "Behavior<") {
                 return .behavior("\(t)")
+            } else if "\(t)".starts(with: "EventLoopFuture<") {
+                let valueTypeString = String("\(t)"
+                    .trim(character: " ")
+                    .replacingOccurrences(of: "EventLoopFuture<", with: "")
+                    .dropLast(1)
+                )
+                return .nioEventLoopFuture(of: valueTypeString)
             } else {
-                return .type("\(t)")
+                return .type("\(t)".trim(character: " "))
             }
         }
     }

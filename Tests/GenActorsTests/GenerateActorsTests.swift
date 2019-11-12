@@ -68,7 +68,7 @@ final class GenerateActorsTests: XCTestCase {
         actor.ref.tell(.greet2(name: "Caplin", surname: "Capybara"))
     }
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replying
 
     func test_TestActorable_greetReplyToActorRef() throws {
@@ -78,6 +78,52 @@ final class GenerateActorsTests: XCTestCase {
         actor.greetReplyToActorRef(name: "Caplin", replyTo: p.ref)
 
         try p.expectMessage("Hello Caplin!")
+    }
+
+    func test_TestActorable_greetReplyToActor() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let p: ActorTestProbe<TestActorable.Message> = self.testKit.spawnTestProbe(expecting: TestActorable.Message.self)
+        let pa = Actor<TestActorable>(ref: p.ref)
+
+        let name = "Caplin"
+        actor.greetReplyToActor(name: name, replyTo: pa)
+
+        // TODO: we can't p.expectMessage(.greet(name: name)) since the enum is not Equatable (!)
+        // TODO: should we make the enum Equatable "if possible"? That's hard to detect in codegen...
+        switch try p.expectMessage() {
+        case .greet(let gotName):
+            gotName.shouldEqual(name)
+        default:
+            self.testKit.fail("Expected .greet(\(name))")
+        }
+    }
+
+    func test_TestActorable_greetReplyToReturnStrict() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let name = "Caplin"
+        let futureString: AskResponse<String> = actor.greetReplyToReturnStrict(name: name)
+
+        try futureString.nioFuture.wait().shouldEqual("Hello strict \(name)!")
+    }
+
+    func test_TestActorable_greetReplyToReturnStrictThrowing() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let name = "Caplin"
+        let futureString: AskResponse<String> = actor.greetReplyToReturnStrictThrowing(name: name)
+
+        try futureString.nioFuture.wait().shouldEqual("Hello strict \(name)!")
+    }
+
+    func test_TestActorable_greetReplyToReturnNIOFuture() throws {
+        let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
+
+        let name = "Caplin"
+        let futureString: AskResponse<String> = actor.greetReplyToReturnNIOFuture(name: name)
+
+        try futureString.nioFuture.wait().shouldEqual("Hello NIO \(name)!")
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------

@@ -75,23 +75,25 @@ public struct TestActorable: Actorable {
         replyTo.tell("Hello \(name)!")
     }
 
-    // The <Self> has to be special handled as well, since in the message it'd be the "wrong" self
     public mutating func greetReplyToActor(name: String, replyTo: Actor<Self>) {
         self.messages.append("\(#function):\(name),\(replyTo)")
-        replyTo.greet(name: "name")
+
+        replyTo.greet(name: name)
     }
 
     // TODO: would be better served as `async` function; we'd want to forbid non async functions perhaps even?
-    public mutating func greetReplyToReturnStrict(name: String) -> String {
-        self.messages.append("\(#function):\(name)")
-        return "Hello strict \(name)!"
+    public func greetReplyToReturnStrict(name: String) -> String {
+        "Hello strict \(name)!"
+    }
+
+    public func greetReplyToReturnStrictThrowing(name: String) throws -> String {
+        "Hello strict \(name)!"
     }
 
     // TODO: would be better served as `async` function
-    public mutating func greetReplyToReturnNIOFuture(name: String) -> EventLoopFuture<String> {
-        self.messages.append("\(#function):\(name)")
-
-        return self.context.system._eventLoopGroup.next().makeSucceededFuture("Hello future \(name)!")
+    public func greetReplyToReturnNIOFuture(name: String) -> EventLoopFuture<String> {
+        let loop = self.context.system._eventLoopGroup.next()
+        return loop.makeSucceededFuture("Hello NIO \(name)!")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
