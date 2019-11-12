@@ -198,3 +198,71 @@ extension Actor.Context {
         return watchee
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Actor<A>.Context + Suspending / Future inter-op
+
+extension Actor.Context {
+
+    /// ***CAUTION***: This functionality should be used with extreme caution, as it will
+    ///                stall user message processing for up to the configured timeout.
+    ///
+    /// While executing a suspension is non-blocking, and the actor will continue processing
+    /// system messages, it does hinder the actor from processing any subsequent user messages
+    /// until the `task` completes. In other words, it can cause mailbox queue buildup,
+    /// if it is receiving many messages while awaiting for the completion signal.
+    ///
+    /// The behavior returned by the `continuation` is applied as-if it was returned in place of the
+    /// returned suspension, i.e. returning .same is legal and means keeping the behavior that
+    /// was current at the point where the suspension was initiated. Returning another suspending
+    /// behavior is legal, and causes another suspension.
+    ///
+    /// - Parameters:
+    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
+    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (Result<AR.Value, Error>) throws -> ()) -> Behavior<Myself.Message> {
+        let ar: AR
+        if let timeout = timeout {
+            ar = asyncResult.withTimeout(after: timeout)
+        } else {
+            ar = asyncResult
+        }
+
+        ar._onComplete { [weak myCell = self.myself.ref._unsafeUnwrapCell] result in
+            myCell?.sendSystemMessage(.resume(result.map { $0 }))
+        }
+
+        return Behavior<Myself.Message>.suspend(handler: { (res: Result<AR.Value, Error>) in 
+            try continuation(res)
+            return .same
+        })
+    }
+
+    /// ***CAUTION***: This functionality should be used with extreme caution, as it will
+    ///                stall user message processing for up to the configured timeout.
+    ///
+    /// Similar to `awaitResult`, however in case the suspended-on `AsyncTask` completes
+    /// with a `.failure`, the behavior will escalate this failure causing the actor to
+    /// crash (or be subject to supervision).
+    ///
+    /// - SeeAlso: `awaitResult`
+    /// - Parameters:
+    ///   - asyncResult: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
+    public func awaitResultThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (AR.Value) throws -> ()) -> Behavior<Myself.Message> {
+        self.awaitResult(of: asyncResult, timeout: timeout) { result in
+            switch result {
+            case .success(let res): return try continuation(res)
+            case .failure(let error): throw error
+            }
+        }
+    }
+
+
+}

@@ -19,7 +19,7 @@ import Logging
 
 extension Actor.Context {
 
-    var receptionist: Self.Receptionist {
+    public var receptionist: Self.Receptionist {
         Self.Receptionist(context: self)
     }
 
@@ -28,9 +28,9 @@ extension Actor.Context {
 public typealias SystemReceptionist = Receptionist
 
 extension Actor.Context {
-    typealias Myself = Actor<A>
+    public typealias Myself = Actor<A>
 
-    struct Receptionist {
+    public struct Receptionist {
         let context: Myself.Context
 
         private var underlying: ActorContext<A.Message> {
