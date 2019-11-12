@@ -84,8 +84,8 @@ extension Actorable {
 ///
 /// It is safe (including thread-safe) to share the `Actor` object with other threads, as well as to share it across the network.
 public struct Actor<A: Actorable> {
-    typealias Message = A.Message
-    typealias Myself = Actor<A>
+    public typealias Message = A.Message
+    public typealias Myself = Actor<A>
 
     /// Underlying `ActorRef` to the actor running the `Actorable` behavior.
     public let ref: ActorRef<A.Message>

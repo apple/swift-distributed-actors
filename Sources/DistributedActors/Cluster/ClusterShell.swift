@@ -640,7 +640,7 @@ extension ClusterShell {
         }
 
         /// a new node joined, thus if we are the leader, we should perform leader tasks to potentially move it to .up
-        state.tryPerformLeaderTasks()
+        _ = state.tryPerformLeaderTasks() // TODO: don't return, or handle them (refactoring)
 
         // TODO: return self.changedMembership which can do the publishing and publishing of metrics? we do it now in two places separately (incoming/outgoing accept)
         /// only after leader (us, if we are one) performed its tasks, we update the metrics on membership (it might have modified membership)
