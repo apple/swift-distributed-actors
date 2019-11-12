@@ -633,7 +633,7 @@ extension ClusterShell {
 
         // by emitting these `change`s, we not only let anyone interested know about this,
         // but we also enable the shell (or leadership) to update the leader if it needs changing.
-        if let replaced = directive.membershipChange.replaced,
+        if directive.membershipChange.replaced != nil,
             let beingReplacedAssociation = directive.beingReplacedAssociationToTerminate {
             state.log.warning("Tombstone association: \(reflecting: beingReplacedAssociation.remoteNode)")
             self.terminateAndTombstoneAssociation(beingReplacedAssociation)

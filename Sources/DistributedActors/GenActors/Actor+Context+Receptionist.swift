@@ -42,18 +42,30 @@ extension Actor.Context {
         }
 
 
-        // could return Combine.Publisher if we could make it safe inside the actor context
-        func subscribe<M>(_ key: SystemReceptionist.RegistrationKey<M>, onListingChange: @escaping (SystemReceptionist.Listing<M>) -> Void) {
-            self.underlying.system.receptionist.subscribe(key: key, subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<M>.self) { listing in
-                onListingChange(listing)
+        // could return Combine.Publisher or our MultiTask? if we could make it safe inside the actor context
+        // TODO abusing the registration key somewhat; it was intended to be message
+        func subscribe<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListingChange: @escaping (Receptionist.Listing<A>) -> Void) {
+            self.underlying.system.receptionist.subscribe(key: key, subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
+                let actors = Set(listing.refs.map { ref in
+                    Actor<A>(ref: ref)
+                })
+                onListingChange(Listing(actors: actors))
             })
         }
 
         // TODO: make those able to find Actorables
-        func lookup<M>(_ key: SystemReceptionist.RegistrationKey<M>, onListing: @escaping (SystemReceptionist.Listing<M>) -> Void) {
-            self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(key: key, replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<M>.self) { listing in
-                onListing(listing)
+        func lookup<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListing: @escaping (Receptionist.Listing<A>) -> Void) {
+            self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(key: key, replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
+                let actors = Set(listing.refs.map { ref in
+                    Actor<A>(ref: ref)
+                })
+                onListing(Listing(actors: actors))
             }))
         }
+
+        struct Listing<A: Actorable> {
+            let actors: Set<Actor<A>>
+        }
+
     }
 }
