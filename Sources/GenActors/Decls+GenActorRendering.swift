@@ -246,7 +246,7 @@ extension ActorableMessageDecl {
     var returnIfBecome: String {
         switch self.returnType {
         case .behavior:
-            return "return "
+            return "return /*become*/"
         default:
             return ""
         }
