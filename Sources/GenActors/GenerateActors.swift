@@ -115,7 +115,7 @@ public final class GenerateActors {
             try targetFile.append(Rendering.generatedFileHeader)
             try targetFile.append("\n")
             try gather.imports.forEach { importBlock in
-                try targetFile.append("\(importBlock)\n")
+                try targetFile.append("\(importBlock)")
             }
             try targetFile.append(renderedShell)
         }

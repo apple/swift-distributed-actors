@@ -40,7 +40,8 @@ enum Rendering {
 
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
-                {{messageAccess}} enum Message: Codable { {% for case in funcCases %}
+                // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
+                {{messageAccess}} enum Message { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
 
@@ -359,13 +360,13 @@ extension ActorableMessageDecl {
         case .nioEventLoopFuture(let futureValueType):
             isAsk = true
             ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("        Reply(nioFuture: \n")
             ret.append("            self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
             ret.append("                ")
         case .type(let t):
             isAsk = true
             ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("        Reply(nioFuture: \n")
             if self.throwing {
                 ret.append("            self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
             } else {
@@ -375,7 +376,7 @@ extension ActorableMessageDecl {
         case .result(let t, let errType):
             isAsk = true
             ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("        Reply(nioFuture: \n")
             ret.append("            self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
             ret.append("                ")
         case .void:
@@ -387,16 +388,20 @@ extension ActorableMessageDecl {
         ret.append(self.renderPassMessage)
 
         if isAsk {
-            ret.append("\n")
-            ret.append("            }")
-            ret.append("""
-            .nioFuture.flatMapThrowing { result in
-                        switch result {
-                        case .success(let res): return res
-                        case .failure(let err): throw err
-                        }
-                    }\n
-            """)
+                ret.append("\n")
+                ret.append("            }")
+            if self.throwing || self.returnType.isFutureReturn {
+                ret.append("""
+                           .nioFuture.flatMapThrowing { result in
+                                       switch result {
+                                       case .success(let res): return res
+                                       case .failure(let err): throw err
+                                       }
+                                   }\n
+                           """)
+            } else {
+                ret.append(".nioFuture\n")
+            }
             ret.append("            )")
         } else {
             ret.append(")")
@@ -423,7 +428,7 @@ extension ActorableMessageDecl.ReturnType {
     /// ```
     ///
     /// // or
-    /// -> AskResponse<T>
+    /// -> Reply<T>
     /// ```
     var renderReturnTypeDeclPart: String {
         switch self {
@@ -432,16 +437,24 @@ extension ActorableMessageDecl.ReturnType {
         case .behavior:
             return ""
         case .result(let t, let errT):
-            return " -> AskResponse<Result<\(t), \(errT)>>" // TODO: Reply type; ResultReply<T, Reason>
+            return " -> ResultReply<\(t), \(errT)>" // TODO: Reply type; ResultReply<T, Reason>
         case .nioEventLoopFuture(let t):
-            return " -> AskResponse<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
         case .type(let t):
-            return " -> AskResponse<\(t)>" // TODO: Reply type; Reply<T>
+            return " -> Reply<\(t)>" // TODO: Reply type; Reply<T>
         }
     }
 
     var isTypeReturn: Bool {
         if case .type = self {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    var isFutureReturn: Bool {
+        if case .nioEventLoopFuture = self {
             return true
         } else {
             return false
@@ -531,7 +544,7 @@ extension ActorFuncDecl {
         ).render(context))
 
         if case .nioEventLoopFuture = self.message.returnType {
-            ret.append("\n                                    .onComplete { res in _replyTo.tell(res) }")
+            ret.append("\n                                    .whenComplete { res in _replyTo.tell(res) }")
         } else {
             ret.append("\n")
         }

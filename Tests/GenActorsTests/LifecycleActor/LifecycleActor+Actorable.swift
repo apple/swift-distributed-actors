@@ -43,7 +43,14 @@ public struct LifecycleActor: Actorable {
         return .ignore
     }
 
-    public func _skipMe() {
+    public func __skipMe() {
+        // noop
+    }
+
+    // we treat _messages as "only this actor is sending those to themselves"
+    // FIXME: in reality what we want is: "this method, even though private do generate a message for it.
+    // We'd need some form of annotations for this...
+    internal func _doNOTSkipMe() {
         // noop
     }
 }
