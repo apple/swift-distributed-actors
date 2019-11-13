@@ -497,7 +497,14 @@ extension ActorFuncDecl {
             "returnIfBecome": self.message.returnIfBecome,
             "storeIfTypeReturn": self.message.returnType.isTypeReturn ? "let result = " : "",
             "replyWithTypeReturn": self.message.returnType.isTypeReturn ? "\n                    _replyTo.tell(.success(result))" : "",
+            "tryDo": self.message.throwing ? "do { " : "",
             "try": self.message.throwing ? "try " : "",
+            "tryCatch": self.message.throwing ? """
+                                                 
+                                                } catch { 
+                                                    context.log.error(\"Error thrown while handling [\\(message)], error: \\(error)\") 
+                                                }
+                                                """ : "",
             "passParams": self.message.passParams,
         ]
 
@@ -511,7 +518,7 @@ extension ActorFuncDecl {
         // render invocation
         ret.append(try Template(
             templateString:
-            "                    {{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
+            "                    {{tryDo}}{{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}{{tryCatch}}"
         ).render(context))
 
         if case .nioEventLoopFuture = self.message.returnType {

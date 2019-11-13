@@ -52,7 +52,6 @@ public final class GenerateActors {
                     return Folder.current.path + path
                 }
             }
-            precondition(!passedInToScan.isEmpty, "At least one directory to scan must be passed in. Arguments were: \(args)")
 
             self.filesToScan = try passedInToScan.filter {
                 $0.hasSuffix(self.fileScanNameSuffixWithExtension)
