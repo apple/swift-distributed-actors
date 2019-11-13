@@ -17,13 +17,12 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-
-import class NIO.EventLoopFuture
-// ==== ----------------------------------------------------------------------------------------------------------------
+import class NIO.EventLoopFuture// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable messages 
 
 /// DO NOT EDIT: Generated TestActorable messages
 extension TestActorable {
+    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case ping 
         case greet(name: String) 
@@ -31,9 +30,10 @@ extension TestActorable {
         case greet2(name: String, surname: String) 
         case throwing 
         case passMyself(someone: ActorRef<Actor<TestActorable>>) 
+        case _ignoreInGenActor 
         case greetReplyToActorRef(name: String, replyTo: ActorRef<String>) 
         case greetReplyToActor(name: String, replyTo: Actor<TestActorable>) 
-        case greetReplyToReturnStrict(name: String, _replyTo: ActorRef<Result<String, Error>>) 
+        case greetReplyToReturnStrict(name: String, _replyTo: ActorRef<String>) 
         case greetReplyToReturnStrictThrowing(name: String, _replyTo: ActorRef<Result<String, Error>>) 
         case greetReplyToReturnNIOFuture(name: String, _replyTo: ActorRef<Result<String, Error>>) 
         case becomeStopped 
@@ -76,6 +76,9 @@ extension TestActorable {
                 case .passMyself(let someone):
                     instance.passMyself(someone: someone)
  
+                case ._ignoreInGenActor:
+                    try instance._ignoreInGenActor()
+ 
                 case .greetReplyToActorRef(let name, let replyTo):
                     instance.greetReplyToActorRef(name: name, replyTo: replyTo)
  
@@ -84,21 +87,22 @@ extension TestActorable {
  
                 case .greetReplyToReturnStrict(let name, let _replyTo):
                     let result = instance.greetReplyToReturnStrict(name: name)
-                    _replyTo.tell(.success(result))
+                    _replyTo.tell(result)
  
                 case .greetReplyToReturnStrictThrowing(let name, let _replyTo):
                     do {
                     let result = try instance.greetReplyToReturnStrictThrowing(name: name)
                     _replyTo.tell(.success(result))
                     } catch {
+                        context.log.warning("Error thrown while handling [\(message)], error: \(error)")
                         _replyTo.tell(.failure(error))
                     }
  
                 case .greetReplyToReturnNIOFuture(let name, let _replyTo):
                     instance.greetReplyToReturnNIOFuture(name: name)
-                                    .onComplete { res in _replyTo.tell(res) } 
+                                    .whenComplete { res in _replyTo.tell(res) } 
                 case .becomeStopped:
-                    return instance.becomeStopped()
+                    return /*become*/ instance.becomeStopped()
  
                 case .contextSpawnExample:
                     try instance.contextSpawnExample()
@@ -161,6 +165,10 @@ extension Actor where A.Message == TestActorable.Message {
         self.ref.tell(.passMyself(someone: someone))
     } 
     
+    public func _ignoreInGenActor() { 
+        self.ref.tell(._ignoreInGenActor)
+    } 
+    
     public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { 
         self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
     } 
@@ -169,23 +177,18 @@ extension Actor where A.Message == TestActorable.Message {
         self.ref.tell(.greetReplyToActor(name: name, replyTo: replyTo))
     } 
     
-    public func greetReplyToReturnStrict(name: String) -> AskResponse<String> { 
+    public func greetReplyToReturnStrict(name: String) -> Reply<String> { 
         // TODO: FIXME perhaps timeout should be taken from context
-        AskResponse(nioFuture: 
-            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
+        Reply(nioFuture: 
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)
-            }.nioFuture.flatMapThrowing { result in
-            switch result {
-            case .success(let res): return res
-            case .failure(let err): throw err
-            }
-        }
+            }.nioFuture
             )
     } 
     
-    public func greetReplyToReturnStrictThrowing(name: String) -> AskResponse<String> { 
+    public func greetReplyToReturnStrictThrowing(name: String) -> Reply<String> { 
         // TODO: FIXME perhaps timeout should be taken from context
-        AskResponse(nioFuture: 
+        Reply(nioFuture: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
             }.nioFuture.flatMapThrowing { result in
@@ -197,9 +200,9 @@ extension Actor where A.Message == TestActorable.Message {
             )
     } 
     
-    public func greetReplyToReturnNIOFuture(name: String) -> AskResponse<String> { 
+    public func greetReplyToReturnNIOFuture(name: String) -> Reply<String> { 
         // TODO: FIXME perhaps timeout should be taken from context
-        AskResponse(nioFuture: 
+        Reply(nioFuture: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)
             }.nioFuture.flatMapThrowing { result in

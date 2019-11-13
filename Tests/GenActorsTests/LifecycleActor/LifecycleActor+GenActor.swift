@@ -17,16 +17,16 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-
-import class NIO.EventLoopFuture
-// ==== ----------------------------------------------------------------------------------------------------------------
+import class NIO.EventLoopFuture// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated LifecycleActor messages 
 
 /// DO NOT EDIT: Generated LifecycleActor messages
 extension LifecycleActor {
+    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case pleaseStop 
         case watchChildAndTerminateIt 
+        case _doNOTSkipMe 
     }
 
     
@@ -47,10 +47,13 @@ extension LifecycleActor {
                 switch message { 
                 
                 case .pleaseStop:
-                    return instance.pleaseStop()
+                    return /*become*/ instance.pleaseStop()
  
                 case .watchChildAndTerminateIt:
                     try instance.watchChildAndTerminateIt()
+ 
+                case ._doNOTSkipMe:
+                    instance._doNOTSkipMe()
  
                 
                 }
@@ -89,6 +92,10 @@ extension Actor where A.Message == LifecycleActor.Message {
     
     func watchChildAndTerminateIt() { 
         self.ref.tell(.watchChildAndTerminateIt)
+    } 
+    
+    public func _doNOTSkipMe() { 
+        self.ref.tell(._doNOTSkipMe)
     } 
     
 }

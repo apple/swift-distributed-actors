@@ -33,18 +33,6 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Generator
-
-//    func test_example() throws {
-//        let gen = GenerateActors(args: [])
-//
-//        let folder = try Folder(path: "Tests/GenActorTests")
-//        let file = try folder.file(at: "TestActorable+Actorable.swift")
-//
-//        try gen.run(fileToParse: file)
-//    }
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Generated actors
 
     func test_TestActorable_greet() throws {
@@ -95,7 +83,7 @@ final class GenerateActorsTests: XCTestCase {
         case .greet(let gotName):
             gotName.shouldEqual(name)
         default:
-            self.testKit.fail("Expected .greet(\(name))")
+            throw self.testKit.fail("Expected .greet(\(name))")
         }
     }
 
@@ -103,27 +91,27 @@ final class GenerateActorsTests: XCTestCase {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         let name = "Caplin"
-        let futureString: AskResponse<String> = actor.greetReplyToReturnStrict(name: name)
+        let futureString: Reply<String> = actor.greetReplyToReturnStrict(name: name)
 
-        try futureString.nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnStrictThrowing() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         let name = "Caplin"
-        let futureString: AskResponse<String> = actor.greetReplyToReturnStrictThrowing(name: name)
+        let futureString: Reply<String> = actor.greetReplyToReturnStrictThrowing(name: name)
 
-        try futureString.nioFuture.wait().shouldEqual("Hello strict \(name)!")
+        try futureString._nioFuture.wait().shouldEqual("Hello strict \(name)!")
     }
 
     func test_TestActorable_greetReplyToReturnNIOFuture() throws {
         let actor: Actor<TestActorable> = try system.spawn(.anonymous, TestActorable.init)
 
         let name = "Caplin"
-        let futureString: AskResponse<String> = actor.greetReplyToReturnNIOFuture(name: name)
+        let futureString: Reply<String> = actor.greetReplyToReturnNIOFuture(name: name)
 
-        try futureString.nioFuture.wait().shouldEqual("Hello NIO \(name)!")
+        try futureString._nioFuture.wait().shouldEqual("Hello NIO \(name)!")
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
@@ -133,7 +121,8 @@ final class GenerateActorsTests: XCTestCase {
         let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
-        lifecycleGenActorSource.shouldNotContain("case _skipMe")
+        lifecycleGenActorSource.shouldNotContain("case __skipMe")
+        lifecycleGenActorSource.shouldContain("case _doNOTSkipMe")
     }
 
     func test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods() throws {
