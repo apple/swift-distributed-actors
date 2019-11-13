@@ -64,6 +64,11 @@ public final class GenerateActors {
             }.map { path in
                 try Folder(path: path)
             }
+
+            if self.foldersToScan.isEmpty {
+                try foldersToScan.append(Folder.current.subfolder(at: "Sources"))
+            }
+
         } catch {
             fatalError("Unable to initialize \(GenerateActors.self), error: \(error)")
         }
