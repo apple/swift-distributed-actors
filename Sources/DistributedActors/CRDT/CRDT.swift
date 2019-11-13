@@ -168,7 +168,7 @@ public enum CRDT {
             self.data = data
             self.delegate = delegate
 
-            let subReceive = ownerContext.subReceive(SubReceiveId(id.id), CRDT.Replication.DataOwnerMessage.self) { message in
+            let subReceive = ownerContext.subReceive(SubReceiveId(id: id.id), CRDT.Replication.DataOwnerMessage.self) { message in
                 switch message {
                 case .updated(let data):
                     guard let data = data as? DataType else {

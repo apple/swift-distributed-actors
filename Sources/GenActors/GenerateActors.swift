@@ -28,8 +28,6 @@ public final class GenerateActors {
     let fileGenNameSuffixWithExtension: String = "+GenActor.swift"
 
     public init(args: [String]) {
-        precondition(args.count > 1, "Syntax: genActors PATH [options]")
-
         let remaining = args.dropFirst()
         self.settings = remaining.filter {
             $0.starts(with: "-")
@@ -111,7 +109,6 @@ public final class GenerateActors {
 
             let targetFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenNameSuffixWithExtension)")
 
-            try targetFile.write("")
             try targetFile.append(Rendering.generatedFileHeader)
             try targetFile.append("\n")
             try gather.imports.forEach { importBlock in
@@ -123,9 +120,9 @@ public final class GenerateActors {
         return !rawActorables.isEmpty
     }
 
-    func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
+    func debug(_ message: String) {
         if self.settings.verbose {
-            pprint("[gen-actors] \(message)", file: file, line: line)
+            print("[gen-actors] \(message)")
         }
     }
 }
