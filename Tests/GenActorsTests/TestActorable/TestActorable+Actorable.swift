@@ -124,4 +124,3 @@ public struct TestActorable: Actorable {
 public struct ExampleModel {
     public struct ExampleData {}
 }
-

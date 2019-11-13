@@ -388,17 +388,17 @@ extension ActorableMessageDecl {
         ret.append(self.renderPassMessage)
 
         if isAsk {
-                ret.append("\n")
-                ret.append("            }")
+            ret.append("\n")
+            ret.append("            }")
             if self.throwing || self.returnType.isFutureReturn {
                 ret.append("""
-                           .nioFuture.flatMapThrowing { result in
-                                       switch result {
-                                       case .success(let res): return res
-                                       case .failure(let err): throw err
-                                       }
-                                   }\n
-                           """)
+                .nioFuture.flatMapThrowing { result in
+                            switch result {
+                            case .success(let res): return res
+                            case .failure(let err): throw err
+                            }
+                        }\n
+                """)
             } else {
                 ret.append(".nioFuture\n")
             }
@@ -521,9 +521,9 @@ extension ActorFuncDecl {
             "name": self.message.name,
             "returnIfBecome": self.message.returnIfBecome,
             "storeIfTypeReturn": self.message.returnType.isTypeReturn ? "let result = " : "",
-            "replyWithTypeReturn": self.message.returnType.isTypeReturn ? 
+            "replyWithTypeReturn": self.message.returnType.isTypeReturn ?
                 (self.message.throwing ?
-                    "\n                    _replyTo.tell(.success(result))" : 
+                    "\n                    _replyTo.tell(.success(result))" :
                     "\n                    _replyTo.tell(result)"
                 ) : "",
             "try": self.message.throwing ? "try " : "",

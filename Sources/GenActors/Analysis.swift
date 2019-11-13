@@ -163,7 +163,6 @@ struct GatherActorables: SyntaxVisitor {
 }
 
 extension GatherActorables {
-
     /// We skip generating messages for methods prefixed like this, regardless if they are public etc.
     /// We DO allow `_` methods and treat them as "this is only for the actor to message _itself_
     static let skipMethodsStartingWith = ["__", "$"]

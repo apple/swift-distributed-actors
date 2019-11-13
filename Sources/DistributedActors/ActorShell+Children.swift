@@ -34,7 +34,7 @@ internal enum Child {
 public class Children {
     // Implementation note: access is optimized for fetching by name, as that's what we do during child lookup
     // as well as actor tree traversal.
-    typealias Name = String // TODO: ActorName // TODO still?
+    private typealias Name = String
 
     private var container: [Name: Child]
     private var stopping: [ActorAddress: AbstractActor]

@@ -13,16 +13,15 @@
 //===----------------------------------------------------------------------===//
 
 import Logging
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor<A>.Context Receptionist
 
 extension Actor.Context {
-
     public var receptionist: Self.Receptionist {
         Self.Receptionist(context: self)
     }
-
 }
 
 public typealias SystemReceptionist = Receptionist
@@ -37,34 +36,62 @@ extension Actor.Context {
             self.context.underlying
         }
 
-        public func register(_ key: SystemReceptionist.RegistrationKey<Myself.Message>) {
-            self.underlying.system.receptionist.register(self.underlying.myself, key: key)
+        public static func key<Act: Actorable>(_ type: Act.Type = Act.self, id: String) -> SystemReceptionist.RegistrationKey<Act.Message> {
+            SystemReceptionist.RegistrationKey(Act.Message.self, id: id)
         }
+
+        /// Registers `myself` in the systems receptionist with given group id.
+        public func register(as id: String) {
+            self.register(actor: self.context.myself, using: Receptionist.key(A.self, id: id))
+        }
+
+        public func register<Act: Actorable>(actor: Actor<Act>, using key: SystemReceptionist.RegistrationKey<Act.Message>) {
+            self.underlying.system.receptionist.register(actor.ref, key: key)
+        }
+
+        // TODO: this is a prime example what we need task for.. we'd need to emit some value, or many ones, and make it safe to call
 
         // could return Combine.Publisher or our MultiTask? if we could make it safe inside the actor context
-        // TODO abusing the registration key somewhat; it was intended to be message
-        public func subscribe<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListingChange: @escaping (Receptionist.Listing<A>) -> Void) {
-            self.underlying.system.receptionist.subscribe(key: key, subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
-                let actors = Set(listing.refs.map { ref in
-                    Actor<A>(ref: ref)
-                })
-                onListingChange(Listing(actors: actors))
-            })
+        // TODO: abusing the registration key somewhat; it was intended to be message
+        public func subscribe<Act: Actorable>(_ type: Act.Type = Act.self, _ key: SystemReceptionist.RegistrationKey<Act.Message>, onListingChange: @escaping (Reception.Listing<Act>) -> Void) {
+            self.underlying.system.receptionist.subscribe(
+                key: key,
+                subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<Act.Message>.self) { listing in
+                    let actors = Set(listing.refs.map { ref in
+                        Actor<Act>(ref: ref)
+                    })
+                    onListingChange(.init(actors: actors))
+                }
+            )
         }
 
-        // TODO: make those able to find Actorables
-        public func lookup<A: Actorable>(_ key: SystemReceptionist.RegistrationKey<A.Message>, onListing: @escaping (Receptionist.Listing<A>) -> Void) {
-            self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(key: key, replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<A.Message>.self) { listing in
-                let actors = Set(listing.refs.map { ref in
-                    Actor<A>(ref: ref)
-                })
-                onListing(Listing(actors: actors))
-            }))
-        }
+        public func lookup<Act: Actorable>(_: Act.Type = Act.self, _ key: SystemReceptionist.RegistrationKey<Act.Message>) -> EventLoopFuture<Reception.Listing<Act>> {
+            let promise = self.context.system._eventLoopGroup.next().makePromise(of: Reception.Listing<Act>.self)
+            self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(
+                key: key,
+                replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<Act.Message>.self) { listing in
+                    let actors = Set(listing.refs.map { ref in
+                        Actor<Act>(ref: ref)
+                    })
+                    promise.succeed(.init(actors: actors))
+                }
+            )
+            )
 
-        public struct Listing<A: Actorable> {
-            let actors: Set<Actor<A>>
+            return promise.futureResult
         }
+    }
+}
 
+public enum Reception {}
+
+extension Reception {
+    /// Actorable version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
+    public struct Listing<A: Actorable> {
+        public let actors: Set<Actor<A>>
+
+        public var isEmpty: Bool {
+            self.actors.isEmpty
+        }
     }
 }

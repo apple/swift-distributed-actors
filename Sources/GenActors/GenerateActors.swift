@@ -32,7 +32,7 @@ public final class GenerateActors {
 
         let remaining = args.dropFirst()
         self.settings = remaining.filter {
-            $0.starts(with: "-") 
+            $0.starts(with: "-")
         }.reduce(into: Settings()) { settings, option in
             switch option {
             case "-v", "--verbose":
@@ -65,7 +65,7 @@ public final class GenerateActors {
             }
 
             if self.foldersToScan.isEmpty {
-                try foldersToScan.append(Folder.current.subfolder(at: "Sources"))
+                try self.foldersToScan.append(Folder.current.subfolder(at: "Sources"))
             }
 
         } catch {
