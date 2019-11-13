@@ -214,7 +214,6 @@ public extension ActorRef where Message == ReceptionistMessage {
     func subscribe<M>(key: Receptionist.RegistrationKey<M>, subscriber: ActorRef<Receptionist.Listing<M>>) {
         self.tell(Receptionist.Subscribe(key: key, subscriber: subscriber))
     }
-
 }
 
 /// Receptionist for local execution. Does not depend on a cluster being available.

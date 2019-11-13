@@ -94,7 +94,7 @@ extension Actor where A.Message == LifecycleActor.Message {
         self.ref.tell(.watchChildAndTerminateIt)
     } 
     
-    public func _doNOTSkipMe() { 
+    internal func _doNOTSkipMe() { 
         self.ref.tell(._doNOTSkipMe)
     } 
     

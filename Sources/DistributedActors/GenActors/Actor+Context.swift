@@ -203,7 +203,6 @@ extension Actor.Context {
 // MARK: Actor<A>.Context + Suspending / Future inter-op
 
 extension Actor.Context {
-
     /// ***CAUTION***: This functionality should be used with extreme caution, as it will
     ///                stall user message processing for up to the configured timeout.
     ///
@@ -223,7 +222,7 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (Result<AR.Value, Error>) throws -> ()) -> Behavior<Myself.Message> {
+    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Void) -> Behavior<Myself.Message> {
         let ar: AR
         if let timeout = timeout {
             ar = asyncResult.withTimeout(after: timeout)
@@ -232,10 +231,12 @@ extension Actor.Context {
         }
 
         ar._onComplete { [weak myCell = self.myself.ref._unsafeUnwrapCell] result in
-            myCell?.sendSystemMessage(.resume(result.map { $0 }))
+            myCell?.sendSystemMessage(.resume(result.map {
+                $0
+            }))
         }
 
-        return Behavior<Myself.Message>.suspend(handler: { (res: Result<AR.Value, Error>) in 
+        return Behavior<Myself.Message>.suspend(handler: { (res: Result<AR.Value, Error>) in
             try continuation(res)
             return .same
         })
@@ -255,7 +256,7 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResultThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (AR.Value) throws -> ()) -> Behavior<Myself.Message> {
+    public func awaitResultThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (AR.Value) throws -> Void) -> Behavior<Myself.Message> {
         self.awaitResult(of: asyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
@@ -264,5 +265,47 @@ extension Actor.Context {
         }
     }
 
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: onResultAsync
 
+    /// Applies the result of the `task` to the given `continuation` within the
+    /// same actor context, after it completes. The returned behavior will be
+    /// assigned as the new behavior of the actor. The actor will keep processing
+    /// other incoming messages, while `task` has not been completed, as opposed
+    /// to `awaitResult`, which suspends message processing of the actor and
+    /// only allows signals to be processed.
+    ///
+    /// - Parameters:
+    ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Void) {
+        self.underlying.onResultAsync(of: asyncResult, timeout: timeout) { result in
+            try continuation(result)
+            return .same
+        }
+    }
+
+    /// Applies the result of the `task` to the given `continuation` within the
+    /// same actor context, after it completes. The returned behavior will be
+    /// assigned as the new behavior of the actor. The actor will keep processing
+    /// other incoming messages, while `task` has not been completed, as opposed
+    /// to `awaitResult`, which suspends message processing of the actor and
+    /// only allows signals to be processed.
+    ///
+    /// In case the given `AsyncTask` completes with a `.failure`, the failure
+    /// will be escalated, causing the actor to crash (or be subject to supervision).
+    ///
+    /// - Parameters:
+    ///   - task: result of an asynchronous operation the actor is waiting for
+    ///   - timeout: time after which the asyncResult will be failed if it does not complete
+    ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
+    ///                   and modify actor state from here.
+    public func onResultAsyncThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Void) {
+        self.underlying.onResultAsyncThrowing(of: asyncResult, timeout: timeout) { result in
+            try continuation(result)
+            return .same
+        }
+    }
 }

@@ -124,7 +124,7 @@ struct ActorableMessageDecl {
             if "\(t)".starts(with: "Behavior<") {
                 return .behavior("\(t)")
             } else if "\(t)".starts(with: "Result<") {
-                // TODO instead analyse the type syntax?
+                // TODO: instead analyse the type syntax?
                 let trimmed = String("\(t)"
                     .trim(character: " ")
                     .replacingOccurrences(of: " ", with: "")
@@ -132,9 +132,9 @@ struct ActorableMessageDecl {
 //                    .dropLast(1)
                 )
 
-                // FIXME this will break with nexting...
-                let valueType = String(trimmed[trimmed.index(after: trimmed.firstIndex(of: "<")!)..<trimmed.firstIndex(of: ",")!])
-                let errorType = String(trimmed[trimmed.index(after: trimmed.firstIndex(of: ",")!)..<trimmed.lastIndex(of: ">")!])
+                // FIXME: this will break with nexting...
+                let valueType = String(trimmed[trimmed.index(after: trimmed.firstIndex(of: "<")!) ..< trimmed.firstIndex(of: ",")!])
+                let errorType = String(trimmed[trimmed.index(after: trimmed.firstIndex(of: ",")!) ..< trimmed.lastIndex(of: ">")!])
 
                 return .result(valueType, errorType: errorType)
             } else if "\(t)".starts(with: "EventLoopFuture<") {
