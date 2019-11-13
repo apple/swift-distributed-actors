@@ -40,7 +40,7 @@ enum Rendering {
 
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
-                {{messageAccess}} enum Message { {% for case in funcCases %}
+                {{messageAccess}} enum Message: Codable { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
 
@@ -246,14 +246,14 @@ extension ActorableMessageDecl {
     var returnIfBecome: String {
         switch self.returnType {
         case .behavior:
-            return "return /*become*/"
+            return "return /*become*/ "
         default:
             return ""
         }
     }
 
     var renderCaseDecl: String {
-        guard !self.params.isEmpty else {
+        guard !self.effectiveParams.isEmpty else {
             return "case \(self.name)"
         }
 
@@ -366,7 +366,17 @@ extension ActorableMessageDecl {
             isAsk = true
             ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
             ret.append("        AskResponse(nioFuture: \n")
-            ret.append("            self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
+            if self.throwing {
+                ret.append("            self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
+            } else {
+                ret.append("            self.ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in\n")
+            }
+            ret.append("                ")
+        case .result(let t, let errType):
+            isAsk = true
+            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
+            ret.append("        AskResponse(nioFuture: \n")
+            ret.append("            self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
             ret.append("                ")
         case .void:
             ret.append("self.ref.tell(")
@@ -421,10 +431,12 @@ extension ActorableMessageDecl.ReturnType {
             return ""
         case .behavior:
             return ""
+        case .result(let t, let errT):
+            return " -> AskResponse<Result<\(t), \(errT)>>" // TODO: Reply type; ResultReply<T, Reason>
         case .nioEventLoopFuture(let t):
-            return " -> AskResponse<\(t)>" // FIXME: Would prefer some other future...
+            return " -> AskResponse<\(t)>" // TODO: Reply type; Reply<T>
         case .type(let t):
-            return " -> AskResponse<\(t)>" // FIXME: Would prefer some other future...
+            return " -> AskResponse<\(t)>" // TODO: Reply type; Reply<T>
         }
     }
 
@@ -440,7 +452,7 @@ extension ActorableMessageDecl.ReturnType {
         switch self {
         case .void, .behavior:
             return false
-        case .nioEventLoopFuture, .type:
+        case .type, .result, .nioEventLoopFuture:
             return true
         }
     }
@@ -496,15 +508,12 @@ extension ActorFuncDecl {
             "name": self.message.name,
             "returnIfBecome": self.message.returnIfBecome,
             "storeIfTypeReturn": self.message.returnType.isTypeReturn ? "let result = " : "",
-            "replyWithTypeReturn": self.message.returnType.isTypeReturn ? "\n                    _replyTo.tell(.success(result))" : "",
-            "tryDo": self.message.throwing ? "do { " : "",
+            "replyWithTypeReturn": self.message.returnType.isTypeReturn ? 
+                (self.message.throwing ?
+                    "\n                    _replyTo.tell(.success(result))" : 
+                    "\n                    _replyTo.tell(result)"
+                ) : "",
             "try": self.message.throwing ? "try " : "",
-            "tryCatch": self.message.throwing ? """
-                                                 
-                                                } catch { 
-                                                    context.log.error(\"Error thrown while handling [\\(message)], error: \\(error)\") 
-                                                }
-                                                """ : "",
             "passParams": self.message.passParams,
         ]
 
@@ -518,7 +527,7 @@ extension ActorFuncDecl {
         // render invocation
         ret.append(try Template(
             templateString:
-            "                    {{tryDo}}{{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}{{tryCatch}}"
+            "                    {{storeIfTypeReturn}}{{returnIfBecome}}{{try}}instance.{{name}}({{passParams}}){{replyWithTypeReturn}}"
         ).render(context))
 
         if case .nioEventLoopFuture = self.message.returnType {
@@ -530,6 +539,7 @@ extension ActorFuncDecl {
         if self.message.throwing, self.message.returnType.rendersReturn {
             let pad = "                    " // FIXME: replace with code printer
             ret.append("\(pad)} catch {\n")
+            ret.append("\(pad)    context.log.warning(\"Error thrown while handling [\\(message)], error: \\(error)\")\n")
             ret.append("\(pad)    _replyTo.tell(.failure(error))\n")
             ret.append("\(pad)}\n")
         }
