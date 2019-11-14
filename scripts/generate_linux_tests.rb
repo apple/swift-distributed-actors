@@ -207,7 +207,7 @@ Dir[testsDirectory + '/*'].each do |subDirectory|
       if File.directory? fileName
         directoryHasClasses |= findTestClasses(fileName, allFiles)
         next
-      elsif !(File.file? fileName) || !(fileName =~ /Test(s?)\.swift/)
+      elsif !(File.file? fileName) || !(fileName =~ /Test(s?)\.swift$/)
         next
       end
 
