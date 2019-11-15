@@ -75,6 +75,8 @@ struct ActorableMessageDecl {
     typealias TypeName = String
     let params: [(Name?, Name, TypeName)]
 
+    var isMutating: Bool
+
     /// Similar to `params` but with potential `replyTo` parameter appended
     var effectiveParams: [(Name?, Name, TypeName)] {
         var res = self.params

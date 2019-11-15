@@ -17,7 +17,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import class NIO.EventLoopFuture// ==== ----------------------------------------------------------------------------------------------------------------
+import class NIO.EventLoopFuture
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated JackOfAllTrades messages 
 
 /// DO NOT EDIT: Generated JackOfAllTrades messages
@@ -49,7 +50,7 @@ extension JackOfAllTrades {
     public static func makeBehavior(instance: JackOfAllTrades) -> Behavior<Message> {
         return .setup { _context in
             let context = Actor<JackOfAllTrades>.Context(underlying: _context)
-            var instance = instance // TODO only var if any of the methods are mutating
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
