@@ -345,7 +345,7 @@ extension ActorableMessageDecl {
                     return "\(p.1)"
                 } else {
                     // greet(name: name)
-                    return "\(p.1): \(p.1)"
+                    return "\(p.0 ?? p.1): \(p.1)"
                 }
             }.joined(separator: ", ")
         }

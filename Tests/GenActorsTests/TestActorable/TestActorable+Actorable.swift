@@ -67,6 +67,10 @@ public struct TestActorable: Actorable {
         // nothing
     }
 
+    func parameterNames(first second: String) {
+        // nothing
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Replying
 
