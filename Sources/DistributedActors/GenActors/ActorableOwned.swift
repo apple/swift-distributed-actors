@@ -17,7 +17,8 @@ import Foundation
 /// Allows an actor to "own", and automatically keep a value "up to date",
 /// without having to perform the dance of receiving a value updating message and updating the value manually.
 ///
-/// All functions on an owned MUST only be invoked by the actor itself.
+/// - ***Warning**: Be careful to read which functions are safe to be invoked on any thread, and which must be called from within the actor's context.
+// TODO: Consider if a ReadOnly version is needed or not
 public final class ActorableOwned<T> {
     private struct ValueCell {
         let value: T
@@ -49,20 +50,27 @@ public final class ActorableOwned<T> {
     }
 
     /// Update the owned value.
+    ///
     /// The update can be performed by any thread.
     public func update(newValue: T) {
         self._ref.tell(newValue)
     }
 
-    /// MUST be invoked on actor context, so NOT in a Future or other execution context.
+    /// The underlying last observed value that this actor-owned is wrapping.
+    /// E.g. if a value is based on a subscription, the underlying value is kept up to date by the subscription,
+    /// and by calling `lastObservedValue` the actor can treat the actor-owned as containing always the "most recent" version of the value.
     ///
-    /// If a value is needed in another context, read it by calling `lastObservedValue` before moving on to the other execution context.
+    /// The underlying value is automatically kept up to date.
     ///
-    /// The value is automatically kept up to date.
+    /// - ***Warning***: MUST be called from within the actor's execution context.
+    ///                  If a value is needed in another context, read it by calling `lastObservedValue` before moving on to the other execution context.
     public var lastObservedValue: T? {
         self._cell?.value
     }
 
+    /// Returns the last `Foundation.Date` at which the underlying value was updated.
+    ///
+    /// - ***Warning***: MUST be called from within the actor's execution context.
     public var lastUpdatedAt: Date? {
         self._cell?.updatedAt
     }
@@ -70,7 +78,7 @@ public final class ActorableOwned<T> {
     /// Sets a callback to be executed whenever the underlying owned value is updated (by an `update` invocation).
     /// The callback is guaranteed to execute on the actors context, and thus can access and even mutate the actors state.
     ///
-    /// Setting the onUpdate callback MUST be invoked by the actor itself.
+    /// - ***Warning***: MUST be called from within the actor's execution context.
     public func onUpdate(_ callback: @escaping (T) -> Void) {
         self.__onUpdate = callback
     }

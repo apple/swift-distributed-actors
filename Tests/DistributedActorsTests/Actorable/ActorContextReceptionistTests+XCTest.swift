@@ -23,8 +23,8 @@ import XCTest
 extension ActorContextReceptionTests {
     static var allTests: [(String, (ActorContextReceptionTests) -> () throws -> Void)] {
         return [
-            ("test_ownedListing_updatesAutomatically", test_ownedListing_updatesAutomatically),
-            ("test_ownedListing_invokesOnUpdate", test_ownedListing_invokesOnUpdate),
+            ("test_autoUpdatedListing_updatesAutomatically", test_autoUpdatedListing_updatesAutomatically),
+            ("test_autoUpdatedListing_invokesOnUpdate", test_autoUpdatedListing_invokesOnUpdate),
         ]
     }
 }

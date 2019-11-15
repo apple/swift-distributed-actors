@@ -29,13 +29,13 @@ final class ActorContextReceptionTests: XCTestCase {
         self.system.shutdown().wait()
     }
 
-    func test_ownedListing_updatesAutomatically() throws {
+    func test_autoUpdatedListing_updatesAutomatically() throws {
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted()) }
 
         let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(1)) {
             let readFuture = owner.readLastObservedValue()
             guard let listing = try readFuture._nioFuture.wait() else {
-                throw Boom()
+                throw self.testKit.error()
             }
             return listing
         }
@@ -43,7 +43,7 @@ final class ActorContextReceptionTests: XCTestCase {
         listing.actors.first!.shouldEqual(owner)
     }
 
-    func test_ownedListing_invokesOnUpdate() throws {
+    func test_autoUpdatedListing_invokesOnUpdate() throws {
         let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: p.ref) }
 

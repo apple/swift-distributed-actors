@@ -20,12 +20,12 @@ struct OwnerOfThings: Actorable {
 
     init(context: Myself.Context, probe: ActorRef<Reception.Listing<OwnerOfThings>>) {
         self.context = context
-        self.ownedListing = context.receptionist.ownedListing(OwnerOfThings.key)
+        self.ownedListing = context.receptionist.autoUpdatedListing(OwnerOfThings.key)
         self.ownedListing.onUpdate { newValue in
             probe.tell(newValue)
         }
 
-        context.receptionist.register(as: Self.key.id)
+        context.receptionist.registerMyself(as: Self.key.id)
     }
 
     func readLastObservedValue() -> Reception.Listing<OwnerOfThings>? {

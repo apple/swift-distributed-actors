@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import Logging
 import NIO
 
@@ -30,6 +29,11 @@ public typealias SystemReceptionist = Receptionist
 extension Actor.Context {
     public typealias Myself = Actor<A>
 
+    /// The receptionist enables type-safe and dynamic (subscription based) actor discovery.
+    ///
+    /// Actors may register themselves when they start with an `Reception.Key<A>`
+    ///
+    /// - SeeAlso: `DistributedActors.Receptionist` for the `ActorRef<Message>` version of this API.
     public struct Receptionist {
         let context: Myself.Context
 
@@ -37,19 +41,44 @@ extension Actor.Context {
             self.context.underlying
         }
 
-        /// Registers `myself` in the systems receptionist with given group id.
-        public func register(as id: String) {
+        /// Registers `myself` in the systems receptionist with given id.
+        ///
+        /// - Parameters:
+        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
+        ///
+        /// - SeeAlso: `register(actor:key:)`, `register(actor:as:)`
+        public func registerMyself(as id: String) {
             self.register(actor: self.context.myself, key: Reception.Key(A.self, id: id))
         }
 
+        /// Registers passed in `actor` in the systems receptionist with given id.
+        ///
+        /// - Parameters:
+        ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".
+        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
+        public func register<Act: Actorable>(actor: Actor<Act>, as id: String) {
+            self.register(actor: actor, key: .init(Act.self, id: id))
+        }
+
+        /// Registers passed in `actor` in the systems receptionist with given id.
+        ///
+        /// - Parameters:
+        ///   - actor: the actor to register with the receptionist. It may be `context.myself` or any other actor, however generally it is recommended to let actors register themselves when they are "ready".        ///   - id: id used for the key identifier. E.g. when aiming to register all instances of "Sensor" in the same group, the recommended id is "sensors".
         public func register<Act: Actorable>(actor: Actor<Act>, key: Reception.Key<Act>) {
             self.underlying.system.receptionist.register(actor.ref, key: key.underlying)
         }
 
-        // TODO: this is a prime example what we need task for.. we'd need to emit some value, or many ones, and make it safe to call
-
-        // could return Combine.Publisher or our MultiTask? if we could make it safe inside the actor context
-        // TODO: abusing the registration key somewhat; it was intended to be message
+        /// Subscribe to actors registering under given `key`.
+        ///
+        /// A new `Reception.Listing<Act>` is emitted whenever new actors join (or leave) the reception, and the `onListingChange` is then
+        /// invoked on the actors context.
+        ///
+        /// - Parameters:
+        ///   - key: selects which actors we are interested in.
+        ///   - onListingChange: invoked whenever actors join/leave the reception or when they terminate.
+        ///                      The invocation is made on the owning actor's context, meaning that it is safe to mutate actor state from the callback.
+        ///
+        /// SeeAlso: `autoUpdatedListing(_:)` for an automatically managed wrapped variable containing a `Reception.Listing<Act>`
         public func subscribe<Act: Actorable>(_ key: Reception.Key<Act>, onListingChange: @escaping (Reception.Listing<Act>) -> Void) {
             self.underlying.system.receptionist.subscribe(
                 key: key.underlying,
@@ -62,7 +91,11 @@ extension Actor.Context {
             )
         }
 
-        public func ownedListing<Act: Actorable>(_ key: Reception.Key<Act>) -> ActorableOwned<Reception.Listing<Act>> {
+        /// An automatically managed (i.e. kept up to date, by an subscription for the passed in `key`) `Reception.Listing<Act>`.
+        ///
+        /// SeeAlso: `ActorOwned<T>` for the general mechanism of actor owned values.
+        /// SeeAlso: `subscribe(key:onListingChange:)` for a callback based version of this API.
+        public func autoUpdatedListing<Act: Actorable>(_ key: Reception.Key<Act>) -> ActorableOwned<Reception.Listing<Act>> {
             let owned: ActorableOwned<Reception.Listing<Act>> = ActorableOwned(self.context)
             self.context.system.receptionist.subscribe(
                 key: key.underlying,
@@ -77,7 +110,11 @@ extension Actor.Context {
             return owned
         }
 
-        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>) -> EventLoopFuture<Reception.Listing<Act>> {
+        /// Perform a single lookup for an `Actor<Act>` identified by the passed in `key`.
+        ///
+        /// - Parameters:
+        ///   - key: selects which actors we are interested in.
+        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>) -> Reply<Reception.Listing<Act>> {
             let promise = self.context.system._eventLoopGroup.next().makePromise(of: Reception.Listing<Act>.self)
             self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(
                 key: key.underlying,
@@ -87,17 +124,22 @@ extension Actor.Context {
                     })
                     promise.succeed(.init(actors: actors))
                 }
-            )
-            )
+            ))
 
-            return promise.futureResult
+            return Reply(nioFuture: promise.futureResult)
         }
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Reception
+
+/// The `Reception` serves as holder of types related to the `Actorable` specific receptionist implementation.
 public enum Reception {}
 
 extension Reception {
+    /// Key used to identify Actors registered in `Actor.Context.Receptionist`.
+    /// Used to lookup actors of specific type and group `id`.
     public struct Key<Act: Actorable> {
         public let underlying: SystemReceptionist.RegistrationKey<Act.Message>
 
@@ -109,10 +151,11 @@ extension Reception {
             self.underlying.id
         }
     }
-}
 
-extension Reception {
-    /// Actorable version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
+    /// Contains a list of actors looked up using a `Key`.
+    /// A listing MAY be empty.
+    ///
+    /// This is the `Actorable` version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
     public struct Listing<A: Actorable>: Equatable {
         public let actors: Set<Actor<A>>
 
