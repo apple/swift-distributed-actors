@@ -30,6 +30,7 @@ import XCTest
 XCTMain([
     testCase(ActorAddressTests.allTests),
     testCase(ActorAskTests.allTests),
+    testCase(ActorContextReceptionTests.allTests),
     testCase(ActorDeferTests.allTests),
     testCase(ActorIsolationFailureHandlingTests.allTests),
     testCase(ActorLeakingTests.allTests),

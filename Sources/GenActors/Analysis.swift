@@ -311,12 +311,12 @@ struct IsActorableVisitor: SyntaxVisitor {
     }
 
     var shouldContinue: SyntaxVisitorContinueKind {
-        return self.actorable ? .visitChildren : .skipChildren
+        self.actorable ? .visitChildren : .skipChildren
     }
 }
 
 extension SyntaxVisitor {
-    func debug(_ message: String, file: StaticString = #file, line: UInt = #line) {
-        pprint("[gen-actors] \(message)", file: file, line: line)
+    func debug(_ message: String) {
+        print("[gen-actors] \(message)")
     }
 }

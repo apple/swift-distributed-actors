@@ -17,7 +17,7 @@ import DistributedActorsTestKit
 import Foundation
 import XCTest
 
-class ReceptionistTests: XCTestCase {
+final class ReceptionistTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 

@@ -434,7 +434,7 @@ public class ActorContext<Message>: ActorRefFactory {
     /// with an existing type, it replaces the old one. All references will remain valid and point to
     /// the new behavior.
     public func subReceive<SubMessage>(_ type: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
-        return self.subReceive(SubReceiveId(for: type), type, closure)
+        return self.subReceive(SubReceiveId(type), type, closure)
     }
 
     @usableFromInline
@@ -447,22 +447,22 @@ public class ActorContext<Message>: ActorRefFactory {
 public struct SubReceiveId<SubMessage>: Hashable, Equatable {
     public let id: String
 
-    public init(for type: SubMessage.Type) {
-        self.id = String(reflecting: type)
+    public init(_: SubMessage.Type) {
+        let typeName = String(reflecting: SubMessage.self)
+            .replacingOccurrences(of: "<", with: "-")
+            .replacingOccurrences(of: ">", with: "-") // TODO: workaround this since names will be gone...?
+
+        self.id = typeName
     }
 
-    public init(_ id: String) {
+    public init(_ type: SubMessage.Type = SubMessage.self, id: String) {
         self.id = id
-    }
-
-    public init(for type: SubMessage.Type, id: String) {
-        self.id = "\(String(reflecting: type))-\(id)"
     }
 }
 
 extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
-        self.init(value)
+        self.init(id: value)
     }
 }
 
