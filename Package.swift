@@ -162,7 +162,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.7.0"),
 
     // ~~~ workaround for backtraces ~~~
-    .package(url: "https://github.com/ianpartridge/swift-backtrace.git", .branch("master")),
+    .package(url: "https://github.com/ianpartridge/swift-backtrace.git", from: "1.1.1"),
 
     // ~~~ SSWG APIs ~~~
     .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
