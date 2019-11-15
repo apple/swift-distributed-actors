@@ -17,50 +17,42 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import class NIO.EventLoopFuture
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated LifecycleActor messages 
+// MARK: DO NOT EDIT: Generated MutatingStructActorable messages 
 
-/// DO NOT EDIT: Generated LifecycleActor messages
-extension LifecycleActor {
+/// DO NOT EDIT: Generated MutatingStructActorable messages
+extension MutatingStructActorable {
     // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
-        case pleaseStop 
-        case watchChildAndTerminateIt 
-        case _doNOTSkipMe 
+        case hello(_replyTo: ActorRef<String>) 
     }
 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated LifecycleActor behavior
+// MARK: DO NOT EDIT: Generated MutatingStructActorable behavior
 
-extension LifecycleActor {
+extension MutatingStructActorable {
 
-    public static func makeBehavior(instance: LifecycleActor) -> Behavior<Message> {
+    public static func makeBehavior(instance: MutatingStructActorable) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<LifecycleActor>.Context(underlying: _context)
-            let instance = instance
+            let context = Actor<MutatingStructActorable>.Context(underlying: _context)
+            var instance = instance
 
             /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .pleaseStop:
-                    return /*become*/ instance.pleaseStop()
- 
-                case .watchChildAndTerminateIt:
-                    try instance.watchChildAndTerminateIt()
- 
-                case ._doNOTSkipMe:
-                    instance._doNOTSkipMe()
+                case .hello(let _replyTo):
+                    let result = instance.hello()
+                    _replyTo.tell(result)
  
                 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<LifecycleActor>.Context(underlying: _context)
+                let context = Actor<MutatingStructActorable>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -83,20 +75,17 @@ extension LifecycleActor {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for LifecycleActor
+// MARK: Extend Actor for MutatingStructActorable
 
-extension Actor where A.Message == LifecycleActor.Message {
+extension Actor where A.Message == MutatingStructActorable.Message {
     
-    public func pleaseStop() { 
-        self.ref.tell(.pleaseStop)
-    } 
-    
-    func watchChildAndTerminateIt() { 
-        self.ref.tell(.watchChildAndTerminateIt)
-    } 
-    
-    internal func _doNOTSkipMe() { 
-        self.ref.tell(._doNOTSkipMe)
+    func hello() -> Reply<String> { 
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture: 
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                .hello(_replyTo: _replyTo)
+            }.nioFuture
+            )
     } 
     
 }

@@ -115,6 +115,17 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Storing instance in right type of reference
+
+    func test_ClassActorableInstance() throws {
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
+
+        lifecycleGenActorSource.shouldNotContain("case __skipMe")
+        lifecycleGenActorSource.shouldContain("case _doNOTSkipMe")
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Ignoring certain methods from exposing
 
     func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {

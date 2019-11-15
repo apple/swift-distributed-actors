@@ -94,7 +94,7 @@ enum Rendering {
                 public static func makeBehavior(instance: {{baseName}}) -> Behavior<Message> {
                     return .setup { _context in
                         let context = Actor<{{baseName}}>.Context(underlying: _context)
-                        var instance = instance // TODO only var if any of the methods are mutating
+                        {{varLetInstance}} instance = instance
 
                         /* await */ instance.preStart(context: context)
 
@@ -153,6 +153,8 @@ enum Rendering {
                 "baseName": self.actorable.name,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
 
+                "varLetInstance": self.actorable.renderStoreInstanceAs,
+
                 "messageAccess": "public", // TODO: allow non public actor messages
 
                 "funcCases": self.actorable.renderCaseDecls,
@@ -178,7 +180,7 @@ enum Rendering {
                 } : [],
             ]
 
-            var rendered: String = ""
+            var rendered: String = "\n"
             switch self.actorable.type {
             case .protocol:
                 rendered.append(try Self.messageForProtocolTemplate.render(context))
@@ -207,6 +209,21 @@ enum Rendering {
 // MARK: Rendering extensions
 
 extension ActorableDecl {
+    /// Render if we should store this as `let` or `var`, as storing in the right way is important to avoid compiler warnings,
+    /// i.e. we could store always in a var, but it'd cause warnings.
+    var renderStoreInstanceAs: String {
+        if self.type == DeclType.class {
+            return "let"
+        } else {
+            // structs may need to be stored as var or let, depending if they have mutating members
+            if self.funcs.contains(where: { $0.message.isMutating }) {
+                return "var"
+            } else {
+                return "let"
+            }
+        }
+    }
+
     var renderCaseDecls: [String] {
         let renderedDirectFuncs = self.funcs.map {
             $0.renderCaseDecl()

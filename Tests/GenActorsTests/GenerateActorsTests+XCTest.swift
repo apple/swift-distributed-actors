@@ -31,6 +31,7 @@ extension GenerateActorsTests {
             ("test_TestActorable_greetReplyToReturnStrict", test_TestActorable_greetReplyToReturnStrict),
             ("test_TestActorable_greetReplyToReturnStrictThrowing", test_TestActorable_greetReplyToReturnStrictThrowing),
             ("test_TestActorable_greetReplyToReturnNIOFuture", test_TestActorable_greetReplyToReturnNIOFuture),
+            ("test_ClassActorableInstance", test_ClassActorableInstance),
             ("test_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
             ("test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods", test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods),
             ("test_TestActorable_doesNotContainGenerated_privateFuncs", test_TestActorable_doesNotContainGenerated_privateFuncs),

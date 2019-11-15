@@ -16,7 +16,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors// ==== ----------------------------------------------------------------------------------------------------------------
+import DistributedActors
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated Greeter messages 
 
 /// DO NOT EDIT: Generated Greeter messages
@@ -36,7 +37,7 @@ extension Greeter {
     public static func makeBehavior(instance: Greeter) -> Behavior<Message> {
         return .setup { _context in
             let context = Actor<Greeter>.Context(underlying: _context)
-            var instance = instance // TODO only var if any of the methods are mutating
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 

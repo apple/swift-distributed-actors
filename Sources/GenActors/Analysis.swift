@@ -132,9 +132,12 @@ struct GatherActorables: SyntaxVisitor {
             access = nil
         }
 
+        // TODO: there is no TokenKind.mutatingKeyword in swift-syntax and it's expressed as .identifier("mutating"), could be a bug/omission
+        let isMutating: Bool = node.modifiers?.tokens.contains(where: { $0.text == "mutating" }) ?? false
+
         let throwing: Bool
         switch node.signature.throwsOrRethrowsKeyword?.tokenKind {
-        case .throwsKeyword:
+        case .throwsKeyword, .rethrowsKeyword:
             throwing = true
         default:
             throwing = false
@@ -147,6 +150,7 @@ struct GatherActorables: SyntaxVisitor {
                 access: access,
                 name: name,
                 params: node.signature.gatherParams(),
+                isMutating: isMutating,
                 throwing: throwing,
                 returnType: .fromType(node.signature.output?.returnType)
             )

@@ -17,7 +17,8 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import class NIO.EventLoopFuture// ==== ----------------------------------------------------------------------------------------------------------------
+import class NIO.EventLoopFuture
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated TestActorable messages 
 
 /// DO NOT EDIT: Generated TestActorable messages
@@ -51,7 +52,7 @@ extension TestActorable {
     public static func makeBehavior(instance: TestActorable) -> Behavior<Message> {
         return .setup { _context in
             let context = Actor<TestActorable>.Context(underlying: _context)
-            var instance = instance // TODO only var if any of the methods are mutating
+            var instance = instance
 
             /* await */ instance.preStart(context: context)
 

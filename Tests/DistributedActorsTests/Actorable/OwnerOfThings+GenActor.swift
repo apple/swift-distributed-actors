@@ -16,7 +16,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors// ==== ----------------------------------------------------------------------------------------------------------------
+import DistributedActors
+// ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated OwnerOfThings messages 
 
 /// DO NOT EDIT: Generated OwnerOfThings messages
@@ -36,7 +37,7 @@ extension OwnerOfThings {
     public static func makeBehavior(instance: OwnerOfThings) -> Behavior<Message> {
         return .setup { _context in
             let context = Actor<OwnerOfThings>.Context(underlying: _context)
-            var instance = instance // TODO only var if any of the methods are mutating
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
