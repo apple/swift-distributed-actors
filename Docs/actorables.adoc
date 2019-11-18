@@ -10,11 +10,11 @@ NOTE: See also <<behaviors, Actor Behaviors>> which describes the underlying pow
 === Getting Started: Actorable
 
 WARNING: api:Actorable[protocol] and `GenActors` are EXPERIMENTAL and may change.
-         This source generation tool is aimed to proof the concept of deriving actor message protocols from function declarations,
+         This source generation tool is aimed to prove the concept of deriving actor message protocols from function declarations,
          which may perhaps be possible to implement using compiler features in the future.
 
-The api:Actorable[protocol] protocol allows for an no-hassle way for defining actor behavior.
-By conforming to the protocol all public and internal functions of a type defined in it directly (not in extensions),
+The api:Actorable[protocol] protocol allows for a no-hassle way for defining actor behavior.
+By conforming to the protocol all public and internal functions defined directly (not in extensions) in a type
 are made available as messages.
 
 [source]
@@ -22,17 +22,17 @@ are made available as messages.
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=greeter_0]
 ----
 
-Such `struct` can be used as synchronous implementation, but can also be spawned as an actor.
+Such struct can be used as synchronous implementation, but can also be spawned as an actor.
 
 Before we spawn the actor, we have to run the `GenActors` command line utility, which analyzes and generates messages,
-and supporting actor infrastructure for all Actorable types. To do so, we can invoke:
+and supporting actor infrastructure for all Actorable types. To do so, invoke:
 
 [source]
 ----
 swift run --package-path .build/checkouts/swift-distributed-actors GenActors
 ----
 
-which by default generates actors for all api:Actorable[protocol] types located in the Sources directory.
+which by default generates actors for all api:Actorable[protocol] types located in the `Sources` directory.
 If you want to customize which folders or files to scan for actorables, you can pass them as parameters.
 You can also use `--verbose` to print more information about the source code generation.
 
@@ -44,29 +44,29 @@ Spawning an api:Actor[struct] from an actorable is performed using the `system.s
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_greeter]
 ----
 <1> An api:ActorSystem[class] is where all actors are running
-<2> Spawn the actor by passing a closure that creates an `Actorable`; The returned type is an `Actor`, wrapping the `Greeter` instance.
-<3> The `greet(name:)` call, results in *sending a message* to the greeter actor. It will execute it's `greet` implementation asynchronously, and eventually reply -- which is signified by the `Reply<String>` type.
+<2> Spawn the actor by passing a closure that creates an `Actorable`. The returned type is an `Actor` wrapping the `Greeter` instance.
+<3> The `greet(name:)` call results in *sending a message* to the greeter actor. It will execute its `greet` implementation asynchronously, and eventually reply -- which is signified by the `Reply<String>` type.
 
-TIP: The generated sources are always created in a file named with the Actorables name, suffixed with `+GenActor.swift`.
-     E.g. generated sources for `Greeter` would be generated into `Greeter+GenActor.swift`.
+TIP: The generated sources are always created in a file named with the Actorable's name, suffixed with `+GenActor.swift`.
+     E.g. generated sources for `Greeter` are located in `Greeter+GenActor.swift`.
 
 ==== Messaging styles: tell, ask, call
 
-Actors are very general constructs, and can perform many more interaction patterns than plain request/reply calls.
+Actors are very general constructs and can perform many more interaction patterns than plain request/reply calls.
 
 In general Actors support three discrete styles of interactions:
 
-- "tell" -- an uni-directional message pass; which is equivalent to a `Void` returning function.
-    * this is the underlying mechanism for all other interactions, and does not by itself exert any backpressure on senders;
-      Backpressure mechanisms are built on top of tell communication, on the message protocol layer, e.g. with token based flow control,
+- "tell" -- a uni-directional message pass; which is equivalent to a `Void` returning function.
+    * This is the underlying mechanism for all other interactions, and does not by itself exert any backpressure on senders.
+      Backpressure mechanisms are built on top of tell communication in the message protocol layer. E.g. with token based flow control,
       similar to how Combine or Reactive Streams achieve this.
     * Actorable example signature: `func printGreeting(name: String)`, i.e. it does not return/reply.
-- `ask` -- a general form of asking for a reply, however, unlike "calling", when asking an explicit `ActorRef<Reply>` is sent to the downstream,
-  making it possible to instead of replying, pass along the asking reference to another actor which then eventually replies to the originator _directly_.
+- `ask` -- a general form of asking for a reply. An explicit `ActorRef<Reply>` is sent to the downstream,
+  making it possible to pass along the asking reference to another actor, which then eventually replies to the originator _directly_.
     * Actorable example signature: `func greetMe(replyTo: Actor<GreetMe>)` or `func greetMe(replyTo: ActorRef<GreetMe>)`, i.e. we expect the greeting to be sent back to the `replyTo` actor.
 - "call" -- calls are the general shape of how api:Actorable[protocol] actors expose their request/reply interactions. I.e. when an actorable
   method "returns a value", it actually is implemented by sending that value back to the calling actor.
-    * calls are usually implemented as a form of asks, though this is done transparently to the user.
+    * calls are implemented as a form of asks, though this is done transparently to the user.
     * Actorable example signature: `func greet(name: String) -> Greeting`, or `func greet(name: String) -> EventLoopFuture<Greeting>`,
       meaning we "return" the value we want to reply back with. The calling actor will receive an `Reply<Greeting>` in either case.
 
@@ -76,7 +76,7 @@ In general Actors support three discrete styles of interactions:
 TIP: The api:Behavior[struct] style offers the `ActorContext<Message>` type to access all actor functionality.
      Its equivalent in Actorable style API is `Actor<Self>.Context` which is also accessible as `Myself.Context` inside an actorable.
 
-The actor context is what allows the actor to find out about its name, spawn other actors and also perform more advanced
+The actor context is what allows the actor to find out about its name, spawn other actors, and perform more advanced
 tasks such as starting timers or awaiting on tasks to complete.
 
 An api:Actorable[protocol] can obtain its own actor context in two ways, though most usefully, it can get it during spawning:
@@ -85,14 +85,14 @@ An api:Actorable[protocol] can obtain its own actor context in two ways, though 
 ----
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_with_context_0]
 ----
-<1> Store the context as a field inside the actor. Ensure to *never* hand the context to other threads or actors, it is strictly private to the actor itself.
+<1> Store the context as a field inside the actor. Be sure to *never* hand the context to other threads or actors, as it is strictly private to the actor itself.
 <2>
 
 [source]
 ----
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_with_context_1]
 ----
-<1> `spawn` has an overload which allows creating the api:Actorable[protocol] using a closure which gets the context passed in.
+<1> `spawn` has an overload that allows creating the api:Actorable[protocol] using a closure which gets the context passed in.
     *Make sure to never close over any mutable shared state, as it could break the promise of state isolation actors rely upon*.
 <2> For single parameter inits accepting the actor's context, you can use this shorthand version of spawning them.
 
@@ -100,8 +100,8 @@ Refer to api:Actor.Context[struct] API documentation to learn more, or the <<beh
 
 ==== Context.Myself
 
-The "`myself`" reference can be obtained by using `context.myself`, and it is typed as `Myself` (a type alias to `Actor<Self>`) allowing you to pass
-it anywhere where any of the actors adopted actorable protocols may be expected. Learn more about this in <<actorable_protocol_composition>>.
+The `myself` reference can be obtained by using `context.myself`. It is typed as `Myself` (a type alias to `Actor<Self>`), allowing you to pass
+it anywhere Actorable-conforming actors may be expected. Learn more about this in <<actorable_protocol_composition>>.
 
 ==== Sending messages to myself
 
@@ -111,7 +111,7 @@ When implementing functions inside an ac
 
 #Access control is fairly limited, as we'd realistically want more control, e.g. using some @Actorable on methods.#
 
-Currently, all except a few functions declared on an Actorable type are generated (by <<gen_actors, GenActors>>) as actor messages.
+Currently, all except a few functions declared in an Actorable type are generated (by <<gen_actors, GenActors>>) as actor messages.
 For example, the following Actorable:
 
 [source]
@@ -121,23 +121,23 @@ include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=access_co
 
 In order to NOT generate a message for a specific function that should be available for your actor, you can:
 
-- prefix it with `__` (double-underscore; as single-underscore sometimes is used for messages which "have to" be public, but really should not be called nor show up in auto completion.)
+- prefix it with `__` (double-underscore, as single-underscore sometimes is used for messages which "have to" be public but really should not be called nor show up in auto completion)
 
 ==== Actorable Lifecycle
 
 Each actor follows a well-defined lifecycle from the moment it is spawned until the moment it terminates.
-An actorable can react to those lifecycle events by overriding the `preStart`, `postStop` and `receiveTerminated` functions, like this:
+An actorable can react to lifecycle events by overriding the `preStart`, `postStop` and `receiveTerminated` functions, like this:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=lifecycle_callbacks]
 ----
-<1> `preStart` executes before any other message is received by the actor, and is a good place to perform any post-init additional initialization work, e.g. scheduling timers or similar.
+<1> `preStart` executes before any other message is received by the actor, and is a good place to perform additional post-init initialization work, e.g. scheduling timers or similar.
 <2> Note also that the Actor's context is passed into these lifecycle hooks, making it easy to log or perform additional tasks
 <3> `postStop` executes after the "last" message that an actor will handle is processed (or the actor is crashing), and before it is finally terminated and `Terminated` signals are sent to any actors which were watching it.
 <4> `receiveTerminated` executes whenever a watched actor is terminated (crashes or stops voluntarily), giving this actor a chance to react to that termination (e.g. by terminating itself, or spawning a "replacement" for the now dead actor).
 
-The entire lifecycle is perhaps best explained using the following diagram illustrates lifecycle transitions and signals
+The entire lifecycle is perhaps best explained using the following diagram that illustrates lifecycle transitions and signals
 which are delivered to an actor as it undergoes these transitions. Note that in normal situations, i.e. without faulty behaviors,
 the diagram is a simple linear transition from `Running` through `Stopped` to `Terminated`. All other states and transitions come
 into play only in face of faulty behaviors.
@@ -148,13 +148,13 @@ image::actor_lifecycle.png[Actor Lifecycle]
 
 1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing the `preStart` callback to execute
 2. Stop Myself: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
-3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
+3. Stop by Parent: Alternatively, the current actor's parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
 4. PostStop: Once the actor has `Stopped` and drained its mailbox (to dead letters), it will process one last signal, causing the `postStop` callback to execute
 However, regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
 Once `Terminated`, the actor will never again wake up nor process any more messages nor signals.
-5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, and invoke its supervisor will be invoked, to see if the actor should be restated or not.
+5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, its supervisor will be invoked to see if the actor should be restarted or not.
 To learn more about <<Supervision>> and the various supervision strategies, refer to the <<Failure Handling>> chapter of the documentation.
-6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), an :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
+6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), a :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
 before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
 from a clean slate, however _while preserving its mailbox and identity_.
 7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
@@ -166,7 +166,7 @@ the actor will transition to `Stopped` and `Terminated`, similar to how it would
 It is possible to make protocols api:Actorable[protocol] as well, this allows other concrete actorables (such as classes or structs),
 to adopt them, and also enables composing multiple message protocols and implementing them in one actor.
 
-TIP: If you are familiar with behaviors and adapters, then this composition style is vastly superior and less boiler-plate heavy.
+TIP: In case you are familiar with behaviors and adapters, this composition style is vastly superior and less boiler-plate heavy.
 
 Let us define two protocols, which will perform two separate sets of tasks, and then we will implement them in the same actorable.
 
@@ -175,15 +175,15 @@ Let us define two protocols, which will perform two separate sets of tasks, and 
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=compose_protocols_1]
 ----
 <1> Create a (public) protocol and make it api:Actorable[protocol]
-<2> Boilerplate which we need to provide to allow boxing the `CoffeeMachine` messages in an concrete actor's message protocol (see below)
+<2> Boilerplate which we need to provide to allow boxing the `CoffeeMachine` messages in a concrete actor's message protocol (see below)
 <3> Create an (internal) protocol and make it api:Actorable[protocol]
-<4> Boilerplate which we need to provide to allow boxing the `Diagnostics` messages in an concrete actor's message protocol (see below)
+<4> Boilerplate which we need to provide to allow boxing the `Diagnostics` messages in a concrete actor's message protocol (see below)
 <5> Finally, implement a concrete Actorable, conforming to api:Actorable[protocol] (!) as well as the two protocols we just defined.
 
-Since we intend to use them as actorable protocols, we need to allow any adopter of this protocol to box the protocols messages,
-into the conforming types message protocol. #TODO: Hopefully we could work around this somehow less painfully#
-In other words, we have to define a special boxing methods in the protocols, if we forget to do so, we will see the following error,
-asking us to provide the not function declaration (without implementing it, as that is generated) to our protocol(s):
+Since we intend to use them as actorable protocols, we need to allow any adopter of this protocol to box the protocols messages
+into the conforming type's message protocol. #TODO: Hopefully we could work around this somehow less painfully#
+In other words, we have to define a special boxing methods in the protocols. If we forget to do so, we will see the following error,
+asking us to provide the function declaration (without implementing it, as that is generated) to our protocol(s):
 
 ----
 [gen-actors] Actorable protocol [CoffeeMachine] MUST define a boxing function, in order to be adopted by other Actorables!
@@ -215,21 +215,21 @@ which many of your actors can implement.
 
 TIP: If you are wondering if you should adopt more protocols in the same actor, or introduce more actors to handle the tasks:
      ask yourself if there is a meaningful asynchronous boundary between the two sets of tasks, or if they require some consistent
-     view on some data when performing each their actions. A single actor has stronger consistency and lesser complexity than splitting the tasks,
-     up into multiple actors, but it also is limiting the parallelism at which the tasks are performed.
+     view on some data when performing each their actions. A single actor has stronger consistency and lesser complexity than splitting the tasks
+     up into multiple actors, but it also limits the parallelism at which the tasks are performed.
 
 [[gen_actors]]
 === Detailed GenActors usage
 
 The `GenActors` utility generates sources in `*+GenActor.swift` files which pair with each Actorable type you define.
-In order to inspect what sources were generated, simply refer to that file.
+Inspect that file for generated source code.
 
-Notable aspects of the generated sources, for some Actorable type called `Greeter`, the following is true:
+Using some Actorable type called `Greeter` as an example, here are a few notable aspects of the generated sources:
 
 - `Greeter.Message` refers to the message protocol as defined by the functions on the type.
   - you refer to this type whenever a single message or an `ActorRef` for yourself is needed, i.e. you may offer
     a `myself` reference by using `context.myself.underlying` which will be an `ActorRef<Greeter.Message>
-- all public and internal functions get generated functions that correspond to their messages, i.e. matching by name.
+- all public and internal functions get corresponding generated "message" functions, i.e. matching by name.
 
 ==== GenActors Limitations
 
@@ -269,7 +269,7 @@ swift run --package-path .build/checkouts/swift-distributed-actors GenActors
 ----
 
 The GenActors command by default inspects the `Sources` directory for files which end with `+Actorable.swift`,
-and applies source generation on them. Optionally, you may pass folder paths or file names
+and applies source generation on them. Optionally, you may pass folder paths or file names.
 
 === Actorables and Serialization
 

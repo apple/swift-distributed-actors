@@ -15,8 +15,8 @@ Welcome to Swift Distributed Actors, a _type-safe_ implementation of the Actor M
 
 In order to build systems successfully using actors first you will need to get into the right mindset.
 In this section we will try to guide you towards "thinking in actors," but perhaps it's also best to first realize that:
-"you probably already know actors!" As any time you implemented some form of identity that was fed tasks that it should
-work on, most likely using some concurrent queue or other synchronization mechanism, you probably almost invented some form of actor-like structures there yourself!
+"you probably already know actors!" As any time you implement some form of identity that is given tasks that it should
+work on, most likely using some concurrent queue or other synchronization mechanism, you are probably inventing some form of actor-like structures there yourself!
 
 Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
 happens: via asynchronous message passing. Actors take this observation and make it the core principle of anything built using them:
@@ -29,7 +29,7 @@ messages to each other's mailboxes, and processing messages from their own mailb
 This abstraction is very powerful and enables all core features of actors, namely:
 
 * handling concurrency without the need of thinking about threads or specific queues -- one only has to think about sending messages to specific identities;
-  ** Same as in real life: we only need to care about whom to send that important email, not about all the details how to safely get that email delivered to them!
+  ** Same as in real life: we only need to care about whom to send that important email, and not worry about all the details on how to safely get that email delivered to them!
 * being able to send messages to actors _the same way_, regardless if they are located on the same machine, on another clustered node, or potentially even somewhere completely different.
   ** This is sometimes referred to as "location transparency," as we do not need to know about the physical location of the actor, as long as we have a reference to it.
 
@@ -40,7 +40,7 @@ Actors enable us to write advanced concurrent and distributed applications by of
 actor processes a message, and the next time it receives a message, it may react differently than before , since the previous message
 has changed its behavior. It is perhaps easier explained if we think about changing state. If an incoming message changed an actor's
 state, such as a counter, the next message would be handled depending on the new counter's state. In other words, state changes manifest
-in changes in an actor's behavior.
+as changes in an actor's behavior.
 
 In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
 stopping or suspending the actor, ignoring, dropping or combining message handlers as "the next behavior." We will learn more about
@@ -81,18 +81,18 @@ Take care to not fall into the "every single thing must be an actor" fallacy whi
 Actors have a specific purpose, and much like not every single operation in your program is starting new threads and performing work asynchronously,
 not all things have to be expressed as actor messages.
 
-Consider the following situation: an actor accepting a `SummarizeBill` message, which will cause the actor calculate the total amount
+Consider the following situation: an actor accepting a `SummarizeBill` message, which will cause the actor to calculate the total amount.
 
 === Defining Messages
 
-Before we dive in head-first into defining our actors, let's focus for a second what in reality might be the most
+Before we dive head-first into defining our actors, let's focus for a second what in reality might be the most
 important aspect of working with them, to begin with: defining message protocols.
 
-While swift-distributed-actors does not limit what types of messages you can send between actors, you should keep in mind that you are
+While Swift Distributed Actors does not limit what types of messages you can send between actors, you should keep in mind that you are
 working with inherently concurrent entities, and as such care should be taken to _not_ share any mutable references inside
 your messages. In order of preference (from best to worst) you should try to define messages using the following style:
 
-- as (deeply immutable) value types ^(best)^ -- e.g. as `structs` or `enums` which contains only other value types,
+- as (deeply immutable) value types ^(best)^ -- e.g. as structs or enums which contains only other value types,
 - as value types -- which do contain references to non-value types, however, those are either immutable, or thread-safe to access,
 - as immutable reference types -- as even if it is a reference type, you still guarantee that they won't be mutated accidentally by multiple actors at the same time,
 - as general reference types ^(worst;^ ^highly^ ^error^ ^prone)^ -- this is best avoided, as it can easily lead to accidentally sharing mutable references which may lead to concurrent access to those fields by multiple actors.
