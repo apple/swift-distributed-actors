@@ -26,8 +26,8 @@ struct GatherActorables: SyntaxVisitor {
     // naively copies all import Decls
     var imports: [String] = []
 
-    var actorables: [ActorableDecl] = []
-    var wipActorable: ActorableDecl = .init(type: .protocol, name: "<NOTHING>")
+    var actorables: [ActorableTypeDecl] = []
+    var wipActorable: ActorableTypeDecl! = nil
 
     init(_ settings: GenerateActors.Settings) {
         self.settings = settings
@@ -44,13 +44,13 @@ struct GatherActorables: SyntaxVisitor {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: types
 
-    mutating func visit(_ type: ActorableDecl.DeclType, node: DeclSyntax, name: String) -> SyntaxVisitorContinueKind {
+    mutating func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntax, name: String) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
             return .skipChildren
         }
 
         self.debug("Actorable \(type) detected: [\(name)], analyzing...")
-        self.wipActorable = ActorableDecl(type: type, name: name)
+        self.wipActorable = ActorableTypeDecl(type: type, name: name)
 
         return .visitChildren
     }
@@ -60,8 +60,11 @@ struct GatherActorables: SyntaxVisitor {
     }
 
     mutating func visitPost(_: ProtocolDeclSyntax) {
+        guard self.wipActorable != nil else {
+            return
+        }
         self.actorables.append(self.wipActorable)
-        self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
+        self.wipActorable = nil
     }
 
     mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -69,28 +72,42 @@ struct GatherActorables: SyntaxVisitor {
     }
 
     mutating func visitPost(_: ClassDeclSyntax) {
+        guard self.wipActorable != nil else {
+            return
+        }
         self.actorables.append(self.wipActorable)
-        self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
+        self.wipActorable = nil
     }
 
     mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.struct, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_: StructDeclSyntax) {
-        guard self.wipActorable.name != "<NOTHING>" else {
+    mutating func visitPost(_ node: StructDeclSyntax) {
+        guard self.wipActorable != nil else {
             return
         }
-
         self.actorables.append(self.wipActorable)
-        self.wipActorable = .init(type: .protocol, name: "<NOTHING>")
+        self.wipActorable = nil
+    }
+
+    mutating func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visit(.extension, node: node, name: "\(node.uniqueIdentifier)")
+    }
+
+    mutating func visitPost(_ node: ExtensionDeclSyntax) {
+        guard self.wipActorable != nil else {
+            return
+        }
+        self.actorables.append(self.wipActorable)
+        self.wipActorable = nil
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: inherited types, incl. potentially actorable protocols
 
     mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
-        self.wipActorable.inheritedTypes.insert(node.typeName.description)
+        self.wipActorable.inheritedTypes.insert("\(node.typeName)".trim(character: " "))
         return .visitChildren
     }
 
@@ -99,6 +116,7 @@ struct GatherActorables: SyntaxVisitor {
 
     mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
         let name = "\(node.identifier)"
+        self.debug("visit func: \(name)")
 
         let modifierTokenKinds = node.modifiers?.map {
             $0.name.tokenKind
@@ -221,10 +239,10 @@ extension FunctionSignatureSyntax {
 // MARK: Resolve types, e.g. inherited Actorable protocols
 
 struct ResolveActorables {
-    static func resolve(_ actorables: [ActorableDecl]) -> [ActorableDecl] {
+    static func resolve(_ actorables: [ActorableTypeDecl]) -> [ActorableTypeDecl] {
         Self.validateActorableProtocols(actorables)
 
-        var protocolLookup: [String: ActorableDecl] = [:]
+        var protocolLookup: [String: ActorableTypeDecl] = [:]
         protocolLookup.reserveCapacity(actorables.count)
         for act in actorables where act.type == .protocol {
             // TODO: in reality should be FQN, for cross module support
@@ -233,7 +251,7 @@ struct ResolveActorables {
         let actorableTypes: Set<String> = Set(protocolLookup.keys)
 
         // yeah this is n^2 would not need this if we could use the type-/macro-system to do this for us?
-        let resolvedActorables: [ActorableDecl] = actorables.map { actorable in
+        let resolvedActorables: [ActorableTypeDecl] = actorables.map { actorable in
             let inheritedByNameMatches = actorable.inheritedTypes.intersection(actorableTypes)
             guard !inheritedByNameMatches.isEmpty else {
                 return actorable
@@ -270,7 +288,7 @@ struct ResolveActorables {
     }
 
     /// **Faults** when an `protocol` inheriting `Actorable` does not provide a boxing
-    static func validateActorableProtocols(_ actorables: [ActorableDecl]) {
+    static func validateActorableProtocols(_ actorables: [ActorableTypeDecl]) {
         let protocols = actorables.filter {
             $0.type == .protocol
         }
@@ -285,6 +303,8 @@ struct ResolveActorables {
                             static func \(proto.boxFuncName)(_ message: GeneratedActor.Messages.\(proto.name)) -> Self.Message
 
                         Implementations for this function will be generated automatically for every concrete conformance of an Actorable and this protocol.
+                        
+                        Actorables: \(actorables)
                         \u{001B}[0;0m
                     """)
             }

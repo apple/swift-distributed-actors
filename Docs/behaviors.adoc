@@ -1,113 +1,15 @@
 
-== Actors
+[[behaviors]]
+== Actor Behaviors
 
-> Actors provide a higher level of abstraction for building concurrent and distributed systems.
->
-> They are a fundamental building block of the http://en.wikipedia.org/wiki/Actor_model[Actor Model],
-> published by Carl Hewitt in 1973, but since gained popularity thanks to numerous implementations of the model.
+> Actor = Behavior + (with State) + Mailbox (Runtime)
 
+Actors at their heart are the sum of their behaviors (which may capture state), and a mailbox that is executed by the runtime.
 
-Welcome to Swift Distributed Actors, a _type-safe_ implementation of the Actor Model for Swift.
+This chapter introduces the low-level api:Behavior[struct] API which allows for building powerful and dynamic behaviors,
+which may encapsulate and enable advanced patterns such as backoff, suspending and others.
 
-=== Thinking in Actors
-
-In order to build systems successfully using actors first you will need to get into the right mindset.
-In this section we will try to guide you towards "thinking in actors," but perhaps it's also best to first realize that:
-"you probably already know actors!" As any time you implemented some form of identity that was fed tasks that it should
-work on, most likely using some concurrent queue or other synchronization mechanism, you probably almost invented some form of actor-like structures there yourself!
-
-Actors are a relatively low-level concurrency and distribution abstraction, modeled after how communication in the real world
-happens: via asynchronous message passing. Actors take this observation and make it the core principle of anything built using them:
-
-> **Rule 1: Actors communicate only using messages.**
-
-Which is the single most important difference between actors and other concurrency styles. Actors communicate by sending
-messages to each other's mailboxes, and processing messages from their own mailboxes.
-
-This abstraction is very powerful and enables all core features of actors, namely:
-
-* handling concurrency without the need of thinking about threads or specific queues -- one only has to think about sending messages to specific identities;
-  ** Same as in real life: we only need to care about whom to send that important email, not about all the details how to safely get that email delivered to them!
-* being able to send messages to actors _the same way_, regardless if they are located on the same machine, on another clustered node, or potentially even somewhere completely different.
-  ** This is sometimes referred to as "location transparency," as we do not need to know about the physical location of the actor, as long as we have a reference to it.
-
-> **Rule 2: Actors can change their behavior in reaction to a message**.
-
-An Actor's _raison d'être_ can be formulated as: encapsulating state and protecting it from the complicated concurrent world out there.
-Actors enable us to write advanced concurrent and distributed applications by offering us a simple mental model: an
-actor processes a message, and the next time it receives a message, it may react differently than before , since the previous message
-has changed its behavior. It is perhaps easier explained if we think about changing state. If an incoming message changed an actor's
-state, such as a counter, the next message would be handled depending on the new counter's state. In other words, state changes manifest
-in changes in an actor's behavior.
-
-In Swift Distributed Actors we model Behaviors explicitly, as they are not only state changes, but also runtime affecting behaviors, such as
-stopping or suspending the actor, ignoring, dropping or combining message handlers as "the next behavior." We will learn more about
-behaviors in the following sections.
-
-> **Rule 3: Actors can `spawn` other actors**
-
-Similarly to threads, processes, isolates or other isolation mechanisms, actors can create (or "spawn" in actor terminology)
-other actors. This is a very useful capability as a single actor does not by itself give any parallelism to processing of messages,
-as it always processes one message at a time. In order to distribute work to be processed in parallel we want to use multiple actors,
-with each working on a piece or chunk of a lager work item. Or another way to view this is that if we represent users of our system
-by an actor each -- we get parallelism in processing across all the users/actors, however each user/actor, is going to process
-its own pieces of work in a linear fashion.
-
-A typical example where spawning _child_ actors comes in handy is splitting up a bigger piece of work into smaller ones and having the parent coordinate this work being done. Examples of such tasks include simulations, rendering tasks or simply tasks which consist of many smaller tasks. Actors also fit very well for modeling anything that has identity and makes some independent decisions based on the outside world's signals, like for example units and CPU "players" in games.
-
-Another typical use case for being able to spawn millions of actors on a single machine, as opposed to threads,
-is the ability to use them to map real world identities, such as devices, measurements or people to their actor "counterpart,"
-inside of our actor application. This helps understandability and traceability when "things go wrong," as we can more easily
-trace back faults to perhaps a given user's dataset or message sequence that caused a crash.
-
-==== What Actors are **_not_**?
-
-Actors are not aimed to solve _all_ concurrency tasks, nor do they replace Futures or async/await based models.
-
-In fact, they complement them -- as Futures or async/await are excellent ways to model the flow of data or avoid callbacks,
-however, they do not provide addressable identities which are able to _keep state_ and communicate over the network -- and this is where actors excel at.
-
-In other words: actors are focused on identity, state, and distribution thereof.
-
-
-==== Design for Failure
-
-We should avoid "omg everything as an actor!" when people start adopting this :-)
-
-==== Actors are asynchronous boundaries, not _everything_ needs such boundary
-
-Take care to not fall into the "every single thing must be an actor" fallacy while learning and using actors in your project.
-
-Actors have a specific purpose, and much like not every single operation in your program is starting new threads and performing work asynchronously,
-not all things have to be expressed as actor messages.
-
-Consider the following situation: an actor accepting a `SummarizeBill` message, which will cause the actor calculate the total amount
-
-=== Defining Messages
-
-Before we dive in head-first into defining our actors, let's focus for a second what in reality might be the most
-important aspect of working with them, to begin with: defining message protocols.
-
-While swift-distributed-actors does not limit what types of messages you can send between actors, you should keep in mind that you are
-working with inherently concurrent entities, and as such care should be taken to _not_ share any mutable references inside
-your messages. In order of preference (from best to worst) you should try to define messages using the following style:
-
-- as (deeply immutable) value types ^(best)^ -- e.g. as `structs` or `enums` which contains only other value types,
-- as value types -- which do contain references to non-value types, however, those are either immutable, or thread-safe to access,
-- as immutable reference types -- as even if it is a reference type, you still guarantee that they won't be mutated accidentally by multiple actors at the same time,
-- as general reference types ^(worst;^ ^highly^ ^error^ ^prone)^ -- this is best avoided, as it can easily lead to accidentally sharing mutable references which may lead to concurrent access to those fields by multiple actors.
-
-In general, it is best to keep messages sent between actors just that: plain messages.
-Avoid sending closures as part of messages, as you may accidentally introduce race conditions by means of closing over some shared mutable reference in such closure.
-
-#Internal note: While it would be lovely if we could require them to be "copyable". Similar to Rust's https://doc.rust-lang.org/std/marker/trait.Send.html[`Send`].#
-
-TIP: Messages SHOULD be immutable values. Prefer structs and enumerations wherever possible.
-
-#TODO: Add link to serialization engine docs once we have it.#
-
-#TODO: There should be another section eventually about designing message protocols.#
-
+TIP: For the majority of use-cases building applications, it is recommended to use the <<actorable, Actorable>> APIs instead.
 
 === Defining Actor Behaviors
 
@@ -494,7 +396,8 @@ the following situation:
     holding references to actor mailboxes; however semantically the model is exactly the same: the "old incarnation" is now gone.
 - messages sent to the "old" api:ActorRef[struct] are instead piped to the `/system/deadLetters` queue and may be logged for diagnosing potential control flow issues in the application.
 
-=== Locating actors using the Receptionist [[receptionist]]
+[[receptionist]]
+=== Locating actors using the Receptionist
 
 The receptionist is a system actor that allows users to register actors under a :api:Receptionist[enum,alias='Receptionist.RegistrationKey'] so that
 it can be looked up in other parts of the system. Usually actor references should be passed around to allow actors to communicate,
@@ -668,10 +571,3 @@ include::{dir_sact_doc_tests}/ActorDocExamples.swift[tag=eventStream]
 <2> Subscribe `ref` to receive events from the stream
 <3> Publish on event to all subscribers
 <4> Unsubscribe `ref` from the event stream
-
-=== Where to go from here?
-
-This chapter has introduced you to the bare basics of building simple actors, however in reality you will want to utilize
-more of their capabilities including failure handling and clustering.
-
-We recommend continuing the read of this guide chapter by chapter, and later on referring to it while you work on your apps.

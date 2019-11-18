@@ -30,7 +30,7 @@ enum Rendering {
         """
 
     struct ActorShellTemplate: Renderable {
-        let actorable: ActorableDecl
+        let actorable: ActorableTypeDecl
 
         static let messageForNonProtocolTemplate = Template(
             templateString:
@@ -160,11 +160,11 @@ enum Rendering {
                 "funcCases": self.actorable.renderCaseDecls,
 
                 "funcSwitchCases": try self.actorable.funcs.map {
-                    try $0.renderFuncSwitchCase()
+                    try $0.renderFuncSwitchCase(partOfProtocol: nil)
                 },
                 "funcBoxSwitchCases": try self.actorable.actorableProtocols.flatMap { box in
                     try box.funcs.map {
-                        try $0.renderBoxFuncSwitchCase(partOf: box)
+                        try $0.renderFuncSwitchCase(partOfProtocol: box)
                     }
                 },
 
@@ -189,7 +189,7 @@ enum Rendering {
             }
 
             switch self.actorable.type {
-            case .struct, .class:
+            case .struct, .class, .extension:
                 rendered.append(try Self.behaviorTemplate.render(context))
                 rendered.append(try Self.actorTellTemplate.render(context))
             case .protocol:
@@ -208,7 +208,7 @@ enum Rendering {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Rendering extensions
 
-extension ActorableDecl {
+extension ActorableTypeDecl {
     /// Render if we should store this as `let` or `var`, as storing in the right way is important to avoid compiler warnings,
     /// i.e. we could store always in a var, but it'd cause warnings.
     var renderStoreInstanceAs: String {
@@ -216,7 +216,11 @@ extension ActorableDecl {
             return "let"
         } else {
             // structs may need to be stored as var or let, depending if they have mutating members
-            if self.funcs.contains(where: { $0.message.isMutating }) {
+            //
+            // we need to also check all the adopted protocols if they cause any mutating calls;
+            // TODO: this would need to go recursively all the way in reality; since protocols conform to other protocols etc.
+            if self.funcs.contains(where: { $0.message.isMutating }) ||
+                   self.actorableProtocols.contains(where: { $0.funcs.contains(where: { $0.message.isMutating }) }) {
                 return "var"
             } else {
                 return "let"
@@ -239,7 +243,7 @@ extension ActorableDecl {
         return res
     }
 
-    func renderBoxingFunc(in owner: ActorableDecl) throws -> String {
+    func renderBoxingFunc(in owner: ActorableTypeDecl) throws -> String {
         let context: [String: Any] = [
             "baseName": "\(owner.name)",
             "access": "public",
@@ -297,6 +301,14 @@ extension ActorableMessageDecl {
         ret.append(")")
 
         return ret
+    }
+
+    func renderFunc(body: String) -> String {
+        """
+        \(self.renderFuncDecl) {
+            \(body)
+        }
+        """
     }
 
     var renderFuncDecl: String {
@@ -369,7 +381,7 @@ extension ActorableMessageDecl {
     }
 
     /// Implements the generated func method(...) by passing the parameters as a message, by telling or asking.
-    var renderTellOrAskMessage: String {
+    func renderTellOrAskMessage(boxWith boxProtocol: ActorableTypeDecl? = nil) -> String {
         var ret = ""
         var isAsk = false
 
@@ -402,7 +414,7 @@ extension ActorableMessageDecl {
             ret.append("self.ref.tell(")
         }
 
-        ret.append(self.renderPassMessage)
+        ret.append(self.renderPassMessage(boxWith: boxProtocol))
 
         if isAsk {
             ret.append("\n")
@@ -427,12 +439,23 @@ extension ActorableMessageDecl {
         return ret
     }
 
-    var renderPassMessage: String {
-        var ret = ".\(self.name)"
+    func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?) -> String {
+        var ret = ""
+
+        if let boxName = boxProtocol?.boxFuncName {
+            ret.append("A.")
+            ret.append(boxName)
+            ret.append("(")
+        }
+        ret.append(".\(self.name)")
 
         if !self.effectiveParams.isEmpty {
             ret.append("(")
             ret.append(self.passEffectiveParams)
+            ret.append(")")
+        }
+
+        if boxProtocol != nil {
             ret.append(")")
         }
 
@@ -490,49 +513,39 @@ extension ActorableMessageDecl.ReturnType {
 
 extension ActorFuncDecl {
     func renderFuncTell() throws -> String {
-        let context: [String: Any] = [
-            "funcDecl": message.renderFuncDecl,
-            "passMessage": message.renderTellOrAskMessage,
-        ]
-
-        let rendered = try Template(
-            templateString:
-            """
-            {{funcDecl}} { 
-                    {{passMessage}}
-                }
-            """
-        ).render(context)
-
-        return rendered
+        self.message.renderFunc(body: message.renderTellOrAskMessage(boxWith: nil))
     }
 
-    // TODO: implement boxed asks
-    func renderBoxFuncTell(_ actorableProtocol: ActorableDecl) throws -> String {
+    func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl) throws -> String {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
-        let context: [String: Any] = [
-            "funcDecl": self.message.renderFuncDecl,
-            "passMessage": self.message.renderPassMessage,
-            "boxFuncName": actorableProtocol.boxFuncName,
-        ]
+        // TODO need CodePrinter finally...
+        var res = ""
+        res.append(self.message.renderFuncDecl)
+        res.append(" {")
+        res.append("\n")
 
-        let rendered = try Template(
-            templateString:
-            """
-            {{funcDecl}} { 
-                    self.ref.tell(A.{{boxFuncName}}({{passMessage}}))
-                }
-            """
-        ).render(context)
+        res.append(self.message.renderTellOrAskMessage(boxWith: actorableProtocol))
+        res.append("\n")
+        res.append("}")
 
-        return rendered
+        return res
     }
 
     // TODO: dedup with the boxed one
-    func renderFuncSwitchCase() throws -> String {
-        var ret = "case .\(message.name)\(message.renderCaseLetParams):"
-        ret.append("\n")
+    func renderFuncSwitchCase(partOfProtocol ownerProtocol: ActorableTypeDecl?) throws -> String {
+        var ret = "case "
+
+        if let boxProto = ownerProtocol {
+            ret.append(".")
+            ret.append(boxProto.nameFirstLowercased)
+            ret.append("(")
+        }
+        ret.append(".\(message.name)\(message.renderCaseLetParams)")
+        if ownerProtocol != nil {
+            ret.append(")")
+        }
+        ret.append(":\n")
 
         let context: [String: Any] = [
             "name": self.message.name,
@@ -577,26 +590,26 @@ extension ActorFuncDecl {
         return ret
     }
 
-    func renderBoxFuncSwitchCase(partOf ownerProtocol: ActorableDecl) throws -> String {
-        let context: [String: Any] = [
-            "box": ownerProtocol.nameFirstLowercased,
-            "returnIfBecome": message.returnIfBecome,
-            "try": message.throwing ? "try " : "",
-            "name": message.name,
-            "caseLetParams": message.renderCaseLetParams,
-            "passParams": message.passParams,
-        ]
-
-        let rendered = try Template(
-            templateString:
-            """
-            case .{{box}}(.{{name}}{{caseLetParams}}):
-                                {{returnIfBecome}}{{try}}instance.{{name}}({{passParams}})
-            """
-        ).render(context)
-
-        return rendered
-    }
+//    func renderBoxFuncSwitchCase() throws -> String {
+//        let context: [String: Any] = [
+//            "box": ownerProtocol.nameFirstLowercased,
+//            "returnIfBecome": message.returnIfBecome,
+//            "try": message.throwing ? "try " : "",
+//            "name": message.name,
+//            "caseLetParams": message.renderCaseLetParams,
+//            "passParams": message.passParams,
+//        ]
+//
+//        let rendered = try Template(
+//            templateString:
+//            """
+//            case .{{box}}(.{{name}}{{caseLetParams}}):
+//                                {{returnIfBecome}}{{try}}instance.{{name}}({{passParams}})
+//            """
+//        ).render(context)
+//
+//        return rendered
+//    }
 
     func renderCaseDecl() -> String {
         self.message.renderCaseDecl
