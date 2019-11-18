@@ -86,7 +86,7 @@ extension LifecycleReacting {
 extension Actor where A.Message == LifecycleReacting.Message {
     
     func something() {
-    self.ref.tell(.something)
-} 
+        self.ref.tell(.something)
+    } 
     
 }

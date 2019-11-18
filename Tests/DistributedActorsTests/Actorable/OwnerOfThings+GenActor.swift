@@ -80,12 +80,12 @@ extension OwnerOfThings {
 extension Actor where A.Message == OwnerOfThings.Message {
     
     func readLastObservedValue() -> Reply<Reception.Listing<OwnerOfThings>?> {
-    // TODO: FIXME perhaps timeout should be taken from context
+        // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
                 .readLastObservedValue(_replyTo: _replyTo)
             }.nioFuture
             )
-} 
+    } 
     
 }

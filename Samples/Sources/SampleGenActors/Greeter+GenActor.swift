@@ -79,7 +79,7 @@ extension Greeter {
 extension Actor where A.Message == Greeter.Message {
     
     func greet(name: String) {
-    self.ref.tell(.greet(name: name))
-} 
+        self.ref.tell(.greet(name: name))
+    } 
     
 }
