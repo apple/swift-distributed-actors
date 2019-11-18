@@ -79,13 +79,13 @@ extension StructActorable {
 
 extension Actor where A.Message == StructActorable.Message {
     
-    func hello() -> Reply<String> { 
-        // TODO: FIXME perhaps timeout should be taken from context
+    func hello() -> Reply<String> {
+    // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
                 .hello(_replyTo: _replyTo)
             }.nioFuture
             )
-    } 
+} 
     
 }

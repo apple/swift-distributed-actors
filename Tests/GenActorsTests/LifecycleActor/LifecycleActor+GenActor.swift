@@ -87,16 +87,16 @@ extension LifecycleActor {
 
 extension Actor where A.Message == LifecycleActor.Message {
     
-    public func pleaseStop() { 
-        self.ref.tell(.pleaseStop)
-    } 
+    public func pleaseStop() {
+    self.ref.tell(.pleaseStop)
+} 
     
-    func watchChildAndTerminateIt() { 
-        self.ref.tell(.watchChildAndTerminateIt)
-    } 
+    func watchChildAndTerminateIt() {
+    self.ref.tell(.watchChildAndTerminateIt)
+} 
     
-    internal func _doNOTSkipMe() { 
-        self.ref.tell(._doNOTSkipMe)
-    } 
+    internal func _doNOTSkipMe() {
+    self.ref.tell(._doNOTSkipMe)
+} 
     
 }

@@ -21,15 +21,17 @@ import SwiftSyntax
 // MARK: Find Actorables
 
 struct GatherActorables: SyntaxVisitor {
+    let path: String
     let settings: GenerateActors.Settings
 
     // naively copies all import Decls
     var imports: [String] = []
 
     var actorables: [ActorableTypeDecl] = []
-    var wipActorable: ActorableTypeDecl! = nil
+    var wipActorable: ActorableTypeDecl!
 
-    init(_ settings: GenerateActors.Settings) {
+    init(_ path: String, _ settings: GenerateActors.Settings) {
+        self.path = path
         self.settings = settings
     }
 
@@ -49,7 +51,9 @@ struct GatherActorables: SyntaxVisitor {
             return .skipChildren
         }
 
-        self.debug("Actorable \(type) detected: [\(name)], analyzing...")
+        let BLUE = "\u{001B}[0;34m"
+        let RST = "\u{001B}[0;0m"
+        self.debug("Actorable \(type) detected: [\(BLUE)\(name)\(RST)] at \(self.path), analyzing...")
         self.wipActorable = ActorableTypeDecl(type: type, name: name)
 
         return .visitChildren
@@ -83,7 +87,7 @@ struct GatherActorables: SyntaxVisitor {
         self.visit(.struct, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_ node: StructDeclSyntax) {
+    mutating func visitPost(_: StructDeclSyntax) {
         guard self.wipActorable != nil else {
             return
         }
@@ -95,7 +99,7 @@ struct GatherActorables: SyntaxVisitor {
         self.visit(.extension, node: node, name: "\(node.uniqueIdentifier)")
     }
 
-    mutating func visitPost(_ node: ExtensionDeclSyntax) {
+    mutating func visitPost(_: ExtensionDeclSyntax) {
         guard self.wipActorable != nil else {
             return
         }
@@ -107,6 +111,9 @@ struct GatherActorables: SyntaxVisitor {
     // MARK: inherited types, incl. potentially actorable protocols
 
     mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
+        guard self.wipActorable != nil else {
+            return .skipChildren
+        }
         self.wipActorable.inheritedTypes.insert("\(node.typeName)".trim(character: " "))
         return .visitChildren
     }
@@ -115,8 +122,12 @@ struct GatherActorables: SyntaxVisitor {
     // MARK: functions
 
     mutating func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
+        guard self.wipActorable != nil else {
+            // likely a top-level function, we skip those always
+            return .skipChildren
+        }
+
         let name = "\(node.identifier)"
-        self.debug("visit func: \(name)")
 
         let modifierTokenKinds = node.modifiers?.map {
             $0.name.tokenKind

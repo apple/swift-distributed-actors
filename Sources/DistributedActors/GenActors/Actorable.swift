@@ -57,7 +57,7 @@ public protocol Actorable {
     // MARK: Receiving Signals
 
     /// Received when a watched actor terminates.
-    func receiveTerminated(context: Actor<Self>.Context, terminated: Signals.Terminated) -> DeathPactDirective
+    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective
 }
 
 extension Actorable {
