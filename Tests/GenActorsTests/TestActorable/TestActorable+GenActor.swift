@@ -146,57 +146,57 @@ extension TestActorable {
 
 extension Actor where A.Message == TestActorable.Message {
     
-    public func ping() { 
-        self.ref.tell(.ping)
-    } 
+    public func ping() {
+    self.ref.tell(.ping)
+} 
     
-    public func greet(name: String) { 
-        self.ref.tell(.greet(name: name))
-    } 
+    public func greet(name: String) {
+    self.ref.tell(.greet(name: name))
+} 
     
-    public func greetUnderscoreParam(_ name: String) { 
-        self.ref.tell(.greetUnderscoreParam(name))
-    } 
+    public func greetUnderscoreParam(_ name: String) {
+    self.ref.tell(.greetUnderscoreParam(name))
+} 
     
-    public func greet2(name: String, surname: String) { 
-        self.ref.tell(.greet2(name: name, surname: surname))
-    } 
+    public func greet2(name: String, surname: String) {
+    self.ref.tell(.greet2(name: name, surname: surname))
+} 
     
-    public func throwing() { 
-        self.ref.tell(.throwing)
-    } 
+    public func throwing() {
+    self.ref.tell(.throwing)
+} 
     
-    func passMyself(someone: ActorRef<Actor<TestActorable>>) { 
-        self.ref.tell(.passMyself(someone: someone))
-    } 
+    func passMyself(someone: ActorRef<Actor<TestActorable>>) {
+    self.ref.tell(.passMyself(someone: someone))
+} 
     
-    public func _ignoreInGenActor() { 
-        self.ref.tell(._ignoreInGenActor)
-    } 
+    public func _ignoreInGenActor() {
+    self.ref.tell(._ignoreInGenActor)
+} 
     
-    func parameterNames(first second: String) { 
-        self.ref.tell(.parameterNames(first: second))
-    } 
+    func parameterNames(first second: String) {
+    self.ref.tell(.parameterNames(first: second))
+} 
     
-    public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) { 
-        self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
-    } 
+    public func greetReplyToActorRef(name: String, replyTo: ActorRef<String>) {
+    self.ref.tell(.greetReplyToActorRef(name: name, replyTo: replyTo))
+} 
     
-    public func greetReplyToActor(name: String, replyTo: Actor<TestActorable>) { 
-        self.ref.tell(.greetReplyToActor(name: name, replyTo: replyTo))
-    } 
+    public func greetReplyToActor(name: String, replyTo: Actor<TestActorable>) {
+    self.ref.tell(.greetReplyToActor(name: name, replyTo: replyTo))
+} 
     
-    public func greetReplyToReturnStrict(name: String) -> Reply<String> { 
-        // TODO: FIXME perhaps timeout should be taken from context
+    public func greetReplyToReturnStrict(name: String) -> Reply<String> {
+    // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)
             }.nioFuture
             )
-    } 
+} 
     
-    public func greetReplyToReturnStrictThrowing(name: String) -> Reply<String> { 
-        // TODO: FIXME perhaps timeout should be taken from context
+    public func greetReplyToReturnStrictThrowing(name: String) -> Reply<String> {
+    // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
@@ -207,10 +207,10 @@ extension Actor where A.Message == TestActorable.Message {
             }
         }
             )
-    } 
+} 
     
-    public func greetReplyToReturnNIOFuture(name: String) -> Reply<String> { 
-        // TODO: FIXME perhaps timeout should be taken from context
+    public func greetReplyToReturnNIOFuture(name: String) -> Reply<String> {
+    // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)
@@ -221,18 +221,18 @@ extension Actor where A.Message == TestActorable.Message {
             }
         }
             )
-    } 
+} 
     
-    func becomeStopped() { 
-        self.ref.tell(.becomeStopped)
-    } 
+    func becomeStopped() {
+    self.ref.tell(.becomeStopped)
+} 
     
-    func contextSpawnExample() { 
-        self.ref.tell(.contextSpawnExample)
-    } 
+    func contextSpawnExample() {
+    self.ref.tell(.contextSpawnExample)
+} 
     
-    func timer() { 
-        self.ref.tell(.timer)
-    } 
+    func timer() {
+    self.ref.tell(.timer)
+} 
     
 }

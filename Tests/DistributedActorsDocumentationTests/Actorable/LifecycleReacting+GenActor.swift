@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,43 +16,49 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated MutatingStructActorable messages 
+// tag::imports[]
 
-/// DO NOT EDIT: Generated MutatingStructActorable messages
-extension MutatingStructActorable {
+import DistributedActors
+
+// end::imports[]
+
+import DistributedActorsTestKit
+import XCTest
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: DO NOT EDIT: Generated LifecycleReacting messages 
+
+/// DO NOT EDIT: Generated LifecycleReacting messages
+extension LifecycleReacting {
     // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
-        case hello(_replyTo: ActorRef<String>) 
+        case something 
     }
 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated MutatingStructActorable behavior
+// MARK: DO NOT EDIT: Generated LifecycleReacting behavior
 
-extension MutatingStructActorable {
+extension LifecycleReacting {
 
-    public static func makeBehavior(instance: MutatingStructActorable) -> Behavior<Message> {
+    public static func makeBehavior(instance: LifecycleReacting) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<MutatingStructActorable>.Context(underlying: _context)
-            var instance = instance
+            let context = Actor<LifecycleReacting>.Context(underlying: _context)
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .hello(let _replyTo):
-                    let result = instance.hello()
-                    _replyTo.tell(result)
+                case .something:
+                    instance.something()
  
                 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<MutatingStructActorable>.Context(underlying: _context)
+                let context = Actor<LifecycleReacting>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -75,17 +81,12 @@ extension MutatingStructActorable {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for MutatingStructActorable
+// MARK: Extend Actor for LifecycleReacting
 
-extension Actor where A.Message == MutatingStructActorable.Message {
+extension Actor where A.Message == LifecycleReacting.Message {
     
-    func hello() -> Reply<String> {
-    // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture: 
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .hello(_replyTo: _replyTo)
-            }.nioFuture
-            )
+    func something() {
+    self.ref.tell(.something)
 } 
     
 }

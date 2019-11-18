@@ -94,7 +94,8 @@ public final class GenerateActors {
         let url = URL(fileURLWithPath: fileToParse.path)
         let sourceFile = try SyntaxParser.parse(url)
 
-        var gather = GatherActorables(self.settings)
+        let path = try File(path: url.path).path(relativeTo: Folder.current)
+        var gather = GatherActorables(path, self.settings)
         sourceFile.walk(&gather)
         let rawActorables = gather.actorables
 

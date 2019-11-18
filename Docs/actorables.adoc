@@ -105,6 +105,44 @@ In order to NOT generate a message for a specific function that should be availa
 
 - prefix it with `__` (double-underscore; as single-underscore sometimes is used for messages which "have to" be public, but really should not be called nor show up in auto completion.)
 
+==== Actorable Lifecycle
+
+Each actor follows a well-defined lifecycle from the moment it is spawned until the moment it terminates.
+An actorable can react to those lifecycle events by overriding the `preStart`, `postStop` and `receiveTerminated` functions, like this:
+
+[source]
+----
+include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=lifecycle_callbacks]
+----
+<1> `preStart` executes before any other message is received by the actor, and is a good place to perform any post-init additional initialization work, e.g. scheduling timers or similar.
+<2> Note also that the Actor's context is passed into these lifecycle hooks, making it easy to log or perform additional tasks
+<3> `postStop` executes after the "last" message that an actor will handle is processed (or the actor is crashing), and before it is finally terminated and `Terminated` signals are sent to any actors which were watching it.
+<4> `receiveTerminated` executes whenever a watched actor is terminated (crashes or stops voluntarily), giving this actor a chance to react to that termination (e.g. by terminating itself, or spawning a "replacement" for the now dead actor).
+
+The entire lifecycle is perhaps best explained using the following diagram illustrates lifecycle transitions and signals
+which are delivered to an actor as it undergoes these transitions. Note that in normal situations, i.e. without faulty behaviors,
+the diagram is a simple linear transition from `Running` through `Stopped` to `Terminated`. All other states and transitions come
+into play only in face of faulty behaviors.
+
+#TODO: The diagram and wording are based on the <<behaviors>> documentation, and not yet completely remade for Actorable.#
+
+image::actor_lifecycle.png[Actor Lifecycle]
+
+1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing the `preStart` callback to execute
+2. Stop Myself: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
+3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
+4. PostStop: Once the actor has `Stopped` and drained its mailbox (to dead letters), it will process one last signal, causing the `postStop` callback to execute
+However, regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
+Once `Terminated`, the actor will never again wake up nor process any more messages nor signals.
+5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, and invoke its supervisor will be invoked, to see if the actor should be restated or not.
+To learn more about <<Supervision>> and the various supervision strategies, refer to the <<Failure Handling>> chapter of the documentation.
+6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), an :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
+before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
+from a clean slate, however _while preserving its mailbox and identity_.
+7. Supervision (fail): If the supervisor decides that the actor should _not_ be restarted (e.g. because it exhausted its permitted restart count, or the fault captured is too serious to ignore),
+the actor will transition to `Stopped` and `Terminated`, similar to how it would behave if it were stopping itself manually. #TODO: I think we want to signal in PostStop that this is because we failed, and not a manual stop#
+
+
 === Actorable Protocols & Composition
 
 It is possible to make protocols api:Actorable[protocol] as well, this allows other concrete actorables (such as classes or structs),

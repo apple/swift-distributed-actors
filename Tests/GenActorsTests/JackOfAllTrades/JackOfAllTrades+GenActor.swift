@@ -62,9 +62,11 @@ extension JackOfAllTrades {
  
                 
                 case .parking(.park):
-                    instance.park() 
+                    instance.park()
+ 
                 case .ticketing(.makeTicket):
-                    instance.makeTicket() 
+                    instance.makeTicket()
+ 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
@@ -95,8 +97,8 @@ extension JackOfAllTrades {
 
 extension Actor where A.Message == JackOfAllTrades.Message {
     
-    public func hello(replyTo: ActorRef<String>) { 
-        self.ref.tell(.hello(replyTo: replyTo))
-    } 
+    public func hello(replyTo: ActorRef<String>) {
+    self.ref.tell(.hello(replyTo: replyTo))
+} 
     
 }

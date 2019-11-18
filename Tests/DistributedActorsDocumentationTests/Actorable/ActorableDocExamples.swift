@@ -62,7 +62,7 @@ struct UseActorWithContext {
     func run() throws {
         let system = ActorSystem("Example")
         // tag::spawn_with_context_1[]
-        let greeter = try system.spawn("actorWithContext") { context in 
+        let greeter = try system.spawn("actorWithContext") { context in
             ContextGreeter(context: context)
         } // <1>
 
@@ -75,7 +75,6 @@ struct UseActorWithContext {
 
 // tag::spawn_with_context[]
 // end::spawn_with_context[]
-
 
 // tag::compose_protocols_1[]
 public protocol CoffeeMachine: Actorable { // <1>
@@ -93,11 +92,9 @@ internal protocol Diagnostics: Actorable { // <3>
 }
 
 struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
-
     private var madeCoffees = 0
 
-    init() {
-    }
+    init() {}
 
     // message specific to the `CoffeeMachine`
     mutating func makeCoffee() -> Coffee {
@@ -111,17 +108,13 @@ struct AllInOneMachine: Actorable, CoffeeMachine, Diagnostics { // <5>
     }
 
     // message specific to the `AllInOneMachine`
-    func clean() {
-
-    }
+    func clean() {}
 }
 
 // end::compose_protocols_1[]
-public struct Tea {
-}
+public struct Tea {}
 
-public struct Coffee {
-}
+public struct Coffee {}
 
 class UsingAllInOneMachine {
     func run() throws {
@@ -131,7 +124,6 @@ class UsingAllInOneMachine {
 
         let coffee = machine.makeCoffee() // <1>
         machine.printDiagnostics() // <2>
-
 
         func printAnyDiagnostics<D: Diagnostics>(diagnostics: Actor<D>) {
             diagnostics.printDiagnostics()
@@ -143,9 +135,29 @@ class UsingAllInOneMachine {
     }
 }
 
+// tag::lifecycle_callbacks[]
+struct LifecycleReacting: Actorable {
+    func preStart(context: Myself.Context) { // <1>
+        context.log.info("Starting...") // <2>
+    }
+
+    func postStop(context: Myself.Context) { // <3>
+        context.log.info("Stopping...")
+    }
+
+    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective { // <4>
+        return .ignore
+    }
+
+    func something() {
+        // nothing
+    }
+}
+
+// end::lifecycle_callbacks[]
+
 // tag::access_control_1[]
 public struct AccessControl: Actorable {
-
     // ==== -------------------------------------------------------------------
     // MARK: Messages are generated for the following funcs
 
@@ -168,7 +180,6 @@ public struct AccessControl: Actorable {
     func __internalButNotMessage() {
         // will NOT get generated as message
     }
-
 }
 
 extension AccessControl {
@@ -179,6 +190,4 @@ extension AccessControl {
 
 // end::access_control_1[]
 
-final class ActorableDocExamples: XCTestCase {
-
-}
+final class ActorableDocExamples: XCTestCase {}

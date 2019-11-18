@@ -220,7 +220,7 @@ extension ActorableTypeDecl {
             // we need to also check all the adopted protocols if they cause any mutating calls;
             // TODO: this would need to go recursively all the way in reality; since protocols conform to other protocols etc.
             if self.funcs.contains(where: { $0.message.isMutating }) ||
-                   self.actorableProtocols.contains(where: { $0.funcs.contains(where: { $0.message.isMutating }) }) {
+                self.actorableProtocols.contains(where: { $0.funcs.contains(where: { $0.message.isMutating }) }) {
                 return "var"
             } else {
                 return "let"
@@ -519,7 +519,7 @@ extension ActorFuncDecl {
     func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl) throws -> String {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
-        // TODO need CodePrinter finally...
+        // TODO: need CodePrinter finally...
         var res = ""
         res.append(self.message.renderFuncDecl)
         res.append(" {")
