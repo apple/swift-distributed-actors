@@ -87,12 +87,12 @@ extension Greeter {
 extension Actor where A.Message == Greeter.Message {
     
     func greet(name: String) -> Reply<String> {
-    // TODO: FIXME perhaps timeout should be taken from context
+        // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture: 
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
                 .greet(name: name, _replyTo: _replyTo)
             }.nioFuture
             )
-} 
+    } 
     
 }

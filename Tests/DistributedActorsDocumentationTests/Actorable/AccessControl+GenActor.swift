@@ -90,11 +90,11 @@ extension AccessControl {
 extension Actor where A.Message == AccessControl.Message {
     
     public func greetPublicly() {
-    self.ref.tell(.greetPublicly)
-} 
+        self.ref.tell(.greetPublicly)
+    } 
     
     internal func greetInternal() {
-    self.ref.tell(.greetInternal)
-} 
+        self.ref.tell(.greetInternal)
+    } 
     
 }

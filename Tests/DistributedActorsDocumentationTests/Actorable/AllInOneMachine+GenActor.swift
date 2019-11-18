@@ -105,7 +105,7 @@ extension AllInOneMachine {
 extension Actor where A.Message == AllInOneMachine.Message {
     
     func clean() {
-    self.ref.tell(.clean)
-} 
+        self.ref.tell(.clean)
+    } 
     
 }

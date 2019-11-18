@@ -306,8 +306,8 @@ extension ActorableMessageDecl {
     func renderFunc(body: String) -> String {
         """
         \(self.renderFuncDecl) {
-            \(body)
-        }
+                \(body)
+            }
         """
     }
 

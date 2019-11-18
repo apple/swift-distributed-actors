@@ -45,7 +45,7 @@ struct SpawnGreeter {
 
 // tag::spawn_with_context_0[]
 struct ContextGreeter: Actorable {
-    let context: Myself.Context // <1>
+    private let context: Myself.Context // <1>
 
     init(context: Myself.Context) { // <2>
         self.context = context
@@ -66,8 +66,8 @@ struct UseActorWithContext {
             ContextGreeter(context: context)
         } // <1>
 
-        // or a nice shorthand version, if passing only one parameter (the context):
-        _ = try system.spawn("anotherWithContext", ContextGreeter.init)
+        // or
+        _ = try system.spawn("anotherWithContext", ContextGreeter.init) // <2>
         // end::spawn_with_context_1[]
         _ = greeter
     }
