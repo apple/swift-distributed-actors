@@ -23,8 +23,8 @@ public final class GenerateActors {
 
     var settings: Settings
 
-    let fileScanNameSuffix: String = "+Actorable"
-    let fileScanNameSuffixWithExtension: String = "+Actorable.swift"
+    let fileScanNameSuffix: String = ""
+    let fileScanNameSuffixWithExtension: String = ".swift"
     let fileGenNameSuffixWithExtension: String = "+GenActor.swift"
 
     public init(args: [String]) {

@@ -14,11 +14,12 @@
 
 import SwiftSyntax
 
-struct ActorableDecl {
+struct ActorableTypeDecl {
     enum DeclType {
         case `protocol`
         case `class`
         case `struct`
+        case `extension`
     }
 
     var type: DeclType
@@ -38,7 +39,7 @@ struct ActorableDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: [ActorableDecl] = []
+    var actorableProtocols: [ActorableTypeDecl] = []
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
