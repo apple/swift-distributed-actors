@@ -88,16 +88,16 @@ Distributed Actors is for distributed applications."
 
 The core building block of all components are <<actors, Actors>>. They are entities which communicate The same semantics are used for local
 and remote actors, which unifies distributed and "local" development, allowing for fast development cycles and one shared
-mental model for how a system communicates. Swift Distributed Actors are type-safe and able to handle various serialization mechanisms
+mental model for how a system communicates. Swift Distributed Actors is type-safe and able to handle various serialization mechanisms
 transparently, so you can focus on developing business logic, without serialization boilerplate getting in the way.
 
 TIP: You can define actors using the high-level <<actorable, Actorable>> API or using the low-level/power-user <<behaviors, Behavior>> API.
-     Most applications should prefer the Actorable style whenever possible, and can mix-in a behavior whenever they need to.
+     Most applications should prefer the `Actorable` style whenever possible, and can mix-in `Behavior` whenever they need to.
 
 Actors embrace the _"Let it crash!"_ mentality, as popularized by https://www.erlang.org and https://akka.io[Akka],
 and implement various specific ways to <<failure_isolation, isolate as well as detect failure>> in distributed (or local, multi-process) systems.
 Actors can form <<clustering, clusters>> spanning multiple nodes, or communicate between <<process_isolated, processes>>
-on the same machine, all using the same communication style and APIs. Actors <<process_isolated, isolated in processes>>,
+on the same machine, all using the same communication style and APIs. Actors <<process_isolated, isolated in processes>>
 allow us to handle fatal faults (such as fatalError, and other preconditions) in a graceful manner, without terminating the entire system.
 #Eventually aiming to allow handling panics within process as well; which we aim to make safe by following the data isolation style of Actor programming.#
 
