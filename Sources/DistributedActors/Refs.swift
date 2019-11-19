@@ -29,6 +29,7 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
         case remote(RemotePersonality<Message>)
         case adapter(AbstractAdapter)
         case guardian(Guardian)
+        case delegate(CellDelegate<Message>)
         case deadLetters(DeadLetterOffice)
     }
 
@@ -44,6 +45,7 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
         case .remote(let remote): return remote.address
         case .adapter(let adapter): return adapter.address
         case .guardian(let guardian): return guardian.address
+        case .delegate(let delegate): return delegate.address
         case .deadLetters(let letters): return letters.address
         }
     }
@@ -65,6 +67,8 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
             adapter.trySendUserMessage(message, file: file, line: line)
         case .guardian(let guardian):
             guardian.trySendUserMessage(message)
+        case .delegate(let delegate):
+            delegate.sendMessage(message, file: file, line: line)
         case .deadLetters(let deadLetters):
             deadLetters.deliver(message, file: file, line: line) // drop message directly into dead letters
         }
@@ -114,10 +118,11 @@ extension ActorRef.Personality {
             return l.address == r.address
         case (.guardian(let l), .guardian(let r)):
             return l.address == r.address
+        case (.delegate(let l), .delegate(let r)):
+            return l.address == r.address
         case (.deadLetters, .deadLetters):
             return true
-
-        case (.cell, _), (.remote, _), (.adapter, _), (.guardian, _), (.deadLetters, _):
+        case (.cell, _), (.remote, _), (.adapter, _), (.guardian, _), (.delegate, _), (.deadLetters, _):
             return false
         }
     }
@@ -177,6 +182,8 @@ internal extension ActorRef {
             adapter.sendSystemMessage(message, file: file, line: line)
         case .guardian(let guardian):
             guardian.sendSystemMessage(message, file: file, line: line)
+        case .delegate(let delegate):
+            delegate.sendSystemMessage(message, file: file, line: line)
         case .deadLetters(let dead):
             dead.deliver(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line))
         }
@@ -192,6 +199,8 @@ internal extension ActorRef {
             return adapter.deadLetters
         case .deadLetters:
             return self as! ActorRef<DeadLetter>
+        case .delegate(let delegate):
+            return delegate.system.deadLetters
         case .guardian(let guardian):
             return guardian.deadLetters
         }
@@ -230,6 +239,8 @@ internal extension ActorRef {
             return guardian.system
         case .deadLetters(let deadLetters):
             return deadLetters.system
+        case .delegate(let delegate):
+            return delegate.system
         case .remote(let remote):
             return remote.system
         }
@@ -327,6 +338,50 @@ public extension ActorRef where Message == DeadLetter {
         return self.adapt(from: IncomingMessage.self)
     }
 }
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Delegate Cell
+
+
+/// Similar to an `ActorCell` but for some delegated actual "entity".
+/// This can be used to implement actor-like beings, which are backed by non-actor entities.
+// TODO we could use this to make TestProbes more "real" rather than wrappers
+internal class CellDelegate<Message> {
+
+    var system: ActorSystem {
+        fatalError("Not implemented: \(#function)")
+    }
+
+    var address: ActorAddress {
+        fatalError("Not implemented: \(#function)")
+    }
+
+    @usableFromInline
+    func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+        fatalError("Not implemented: \(#function), called from \(file):\(line)")
+    }
+
+    @usableFromInline
+    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+        fatalError("Not implemented: \(#function), called from \(file):\(line)")
+    }
+
+    @usableFromInline
+    func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
+        fatalError("Not implemented: \(#function), called from \(file):\(line)")
+    }
+
+    @usableFromInline
+    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+        fatalError("Not implemented: \(#function), called from \(file):\(line)")
+    }
+
+    @usableFromInline
+    func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+        fatalError("Not implemented: \(#function), called from \(file):\(line)")
+    }
+}
+
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: "Special" internal actors, "the Top Level Guardians"

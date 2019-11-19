@@ -64,6 +64,33 @@ struct GatherActorables: SyntaxVisitor {
         return .visitChildren
     }
 
+    mutating func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
+        switch self.visit(.protocol, node: node, name: node.identifier.text) {
+        case .skipChildren:
+            return .skipChildren
+        case .visitChildren:
+            guard let modifiers = node.modifiers else {
+                return .visitChildren
+            }
+
+            // TODO: quite inefficient way to scan it, tho list is short
+            if modifiers.contains(where: { $0.name.tokenKind == .publicKeyword }) {
+                self.wipActorable.access = "public"
+            } else if modifiers.contains(where: { $0.name.tokenKind == .internalKeyword }) {
+                self.wipActorable.access = "internal"
+            } else if modifiers.contains(where: { $0.name.tokenKind == .fileprivateKeyword }) {
+                fatalError("""
+                           Fileprivate actors are not supported with GenActors, \
+                           since multiple files are involved due to the source generation. \
+                           Please change the following to be NOT fileprivate: \(node)
+                           """)
+            } else if modifiers.contains(where: { $0.name.tokenKind == .privateKeyword }) {
+                self.wipActorable.access = "private"
+            }
+            return .visitChildren
+        }
+    }
+
     mutating func visitPostDecl(_ nodeName: String) {
         self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
 
@@ -190,20 +217,20 @@ struct GatherActorables: SyntaxVisitor {
                 return .skipChildren
             }
 
-            // TODO: carry access control
             guard !modifierTokenKinds.contains(.privateKeyword),
                 !modifierTokenKinds.contains(.staticKeyword) else {
                 return .skipChildren
             }
         }
 
-        let access: String?
+        let access: String
         if modifierTokenKinds.contains(.publicKeyword) {
             access = "public"
         } else if modifierTokenKinds.contains(.internalKeyword) {
             access = "internal"
         } else {
-            access = nil
+            // carry access from outer scope
+            access = self.wipActorable.access
         }
 
         // TODO: there is no TokenKind.mutatingKeyword in swift-syntax and it's expressed as .identifier("mutating"), could be a bug/omission
@@ -324,9 +351,11 @@ struct ResolveActorables {
             }
 
             /// Functions which shall be implemented by packaging into the protocols "container" rather than ad hoc by the actorable class/struct
-            let protocolFuncs = inheritedActorableProtocols.flatMap {
+            let protocolFuncs: [ActorFuncDecl] = inheritedActorableProtocols.flatMap {
                 $0.funcs
             }
+
+            pprint("protocolFuncs = \(protocolFuncs)")
 
             // The protocols are added such that we can generate their `case _protocol(Protocol)` cases and delegate to them
             resolved.actorableProtocols.append(contentsOf: inheritedActorableProtocols)

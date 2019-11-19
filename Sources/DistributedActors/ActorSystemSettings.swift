@@ -17,6 +17,7 @@ import Logging
 
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
+
     public static var `default`: ActorSystemSettings {
         .init()
     }
@@ -43,6 +44,9 @@ public struct ActorSystemSettings {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
+    public var xpc: XPCActorTransport = .default
+
+    public var transports: [ActorTransport] = []
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     public var installSwiftBacktrace: Bool = true
@@ -87,5 +91,19 @@ extension ActorSystemSettings {
 
         // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
         public var maxBehaviorNestingDepth: Int = 128
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Transport Settings
+
+/// Internal protocol allowing for introduction of additional transports.
+public class ActorTransport {
+    var `protocol`: String {
+        fatalError("Not implemented: \(#function)")
+    }
+
+    func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+        fatalError("Not implemented: \(#function)")
     }
 }
