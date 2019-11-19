@@ -58,6 +58,33 @@ struct ContextGreeter: Actorable {
 
 // end::spawn_with_context_0[]
 
+// tag::self_myself_call[]
+public struct InvokeFuncs: Actorable {
+
+    let context: Myself.Context
+    
+    public func doThingsAndRunTask() -> Int {
+        context.log.info("Doing things...")
+
+        // invoke the internal task directly, synchronously
+        let result: Int = self.internalTask() // <1>
+
+        return result
+    }
+
+    public func doThingsAsync() -> Reply<Int> { // <2>
+        // send myself a message to handle internalTask() in the future
+        let reply: Reply<Int> = context.myself.internalTask() // <3>
+        return reply
+    }
+
+    internal func internalTask() -> Int {
+        42
+    }
+}
+
+// end::self_myself_call[]
+
 struct UseActorWithContext {
     func run() throws {
         let system = ActorSystem("Example")

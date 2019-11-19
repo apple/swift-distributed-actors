@@ -44,19 +44,19 @@ Spawning an api:Actor[struct] from an actorable is performed using the `system.s
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_greeter]
 ----
 <1> An api:ActorSystem[class] is where all actors are running
-<2> Spawn the actor by passing a closure that creates an `Actorable`. The returned type is an `Actor` wrapping the `Greeter` instance.
-<3> The `greet(name:)` call results in *sending a message* to the greeter actor. It will execute its `greet` implementation asynchronously, and eventually reply -- which is signified by the `Reply<String>` type.
+<2> Spawn the actor by passing a closure that creates an `Actorable`; The returned type is an `Actor`, wrapping the `Greeter` instance.
+<3> The `greet(name:)` call, results in *sending a message* to the greeter actor. It will execute it's `greet` implementation asynchronously, and eventually reply -- which is signified by the `Reply<String>` type.
 
-TIP: The generated sources are always created in a file named with the Actorable's name, suffixed with `+GenActor.swift`.
-     E.g. generated sources for `Greeter` are located in `Greeter+GenActor.swift`.
+TIP: The generated sources are always created in a file named with the Actorables name, suffixed with `+GenActor.swift`.
+     E.g. generated sources for `Greeter` would be generated into `Greeter+GenActor.swift`.
 
 ==== Messaging styles: tell, ask, call
 
-Actors are very general constructs and can perform many more interaction patterns than plain request/reply calls.
+Actors are very general constructs, and can perform many more interaction patterns than plain request/reply calls.
 
 In general Actors support three discrete styles of interactions:
 
-- "tell" -- a uni-directional message pass; which is equivalent to a `Void` returning function.
+- "tell" -- an uni-directional message pass; which is equivalent to a `Void` returning function.
     * This is the underlying mechanism for all other interactions, and does not by itself exert any backpressure on senders.
       Backpressure mechanisms are built on top of tell communication in the message protocol layer. E.g. with token based flow control,
       similar to how Combine or Reactive Streams achieve this.
@@ -105,13 +105,30 @@ it anywhere Actorable-conforming actors may be expected. Learn more about this i
 
 ==== Sending messages to myself
 
-When implementing functions inside an ac
+When implementing functions inside an actorable it is possible to invoke its functions directly, as well as send messages to `myself`.
+
+Both invocation styles may sometimes be useful. E.g. an asynchronous invocation on `context.myself` is useful to reuse
+an internal actor function as part of a few public interface methods, or for scheduling tasks for later execution.
+A synchronous execution of an actorable function is as useful as any other function reuse, but that function may also be
+exposed for others to call via messaging if it makes sense.
+
+The following example showcases both "self invocation" and "myself call" styles:
+
+[source]
+----
+include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=self_invoke]
+----
+<1> We call the `internalTask()` *synchronously*, directly on the actorable's `self`
+<2> In this function we will send a `internalTask` _message_ and want to return its reply, thus the return type changes
+<3> We use `context.myself.internalTask()` to *send a message* to `myself`
+
+
 
 ==== Message Access-Control
 
 #Access control is fairly limited, as we'd realistically want more control, e.g. using some @Actorable on methods.#
 
-Currently, all except a few functions declared in an Actorable type are generated (by <<gen_actors, GenActors>>) as actor messages.
+Currently, all except a few functions declared on an Actorable type are generated (by <<gen_actors, GenActors>>) as actor messages.
 For example, the following Actorable:
 
 [source]
@@ -121,23 +138,23 @@ include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=access_co
 
 In order to NOT generate a message for a specific function that should be available for your actor, you can:
 
-- prefix it with `__` (double-underscore, as single-underscore sometimes is used for messages which "have to" be public but really should not be called nor show up in auto completion)
+- prefix it with `__` (double-underscore; as single-underscore sometimes is used for messages which "have to" be public, but really should not be called nor show up in auto completion.)
 
 ==== Actorable Lifecycle
 
 Each actor follows a well-defined lifecycle from the moment it is spawned until the moment it terminates.
-An actorable can react to lifecycle events by overriding the `preStart`, `postStop` and `receiveTerminated` functions, like this:
+An actorable can react to those lifecycle events by overriding the `preStart`, `postStop` and `receiveTerminated` functions, like this:
 
 [source]
 ----
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=lifecycle_callbacks]
 ----
-<1> `preStart` executes before any other message is received by the actor, and is a good place to perform additional post-init initialization work, e.g. scheduling timers or similar.
+<1> `preStart` executes before any other message is received by the actor, and is a good place to perform any post-init additional initialization work, e.g. scheduling timers or similar.
 <2> Note also that the Actor's context is passed into these lifecycle hooks, making it easy to log or perform additional tasks
 <3> `postStop` executes after the "last" message that an actor will handle is processed (or the actor is crashing), and before it is finally terminated and `Terminated` signals are sent to any actors which were watching it.
 <4> `receiveTerminated` executes whenever a watched actor is terminated (crashes or stops voluntarily), giving this actor a chance to react to that termination (e.g. by terminating itself, or spawning a "replacement" for the now dead actor).
 
-The entire lifecycle is perhaps best explained using the following diagram that illustrates lifecycle transitions and signals
+The entire lifecycle is perhaps best explained using the following diagram illustrates lifecycle transitions and signals
 which are delivered to an actor as it undergoes these transitions. Note that in normal situations, i.e. without faulty behaviors,
 the diagram is a simple linear transition from `Running` through `Stopped` to `Terminated`. All other states and transitions come
 into play only in face of faulty behaviors.
@@ -148,11 +165,11 @@ image::actor_lifecycle.png[Actor Lifecycle]
 
 1. Start: Upon spawning, a special internal `Start` signal is interpreted by the actor, causing the `preStart` callback to execute
 2. Stop Myself: An actor may decide to stop itself by returning a api:Behavior[struct,alias='Behavior.stop'], causing it to transition to `Stopped`.
-3. Stop by Parent: Alternatively, the current actor's parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
+3. Stop by Parent: Alternatively, the current actor's parent parent could send a stop signal (using `context.stop(childRef)`), which the actor would have to abide to.
 4. PostStop: Once the actor has `Stopped` and drained its mailbox (to dead letters), it will process one last signal, causing the `postStop` callback to execute
 However, regardless of the next behavior returned by handling this signal, the actor will always proceed to the `Terminated` state.
 Once `Terminated`, the actor will never again wake up nor process any more messages nor signals.
-5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, its supervisor will be invoked to see if the actor should be restarted or not.
+5. Supervision: If an actor throws an error or causes a fault it will transition to Failing 🔥, and invoke its supervisor will be invoked, to see if the actor should be restated or not.
 To learn more about <<Supervision>> and the various supervision strategies, refer to the <<Failure Handling>> chapter of the documentation.
 6. Supervision (restart): If the configured supervisor decides that the actor should be restarted (now, or upon a delay), a :api:Signals[enum,alias='Signals.PreRestart'] signal will be delivered to the _current (failing) behavior_,
 before a new instance of the _initial behavior_ will be created to replace the faulty one. This means that any state kept enclosed by the faulty behavior will be lost – and the actor can resume operations
