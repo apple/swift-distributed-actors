@@ -93,8 +93,10 @@ include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_wit
 include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=spawn_with_context_1]
 ----
 <1> `spawn` has an overload that allows creating the api:Actorable[protocol] using a closure which gets the context passed in.
-    *Make sure to never close over any mutable shared state, as it could break the promise of state isolation actors rely upon*.
 <2> For single parameter inits accepting the actor's context, you can use this shorthand version of spawning them.
+
+WARNING: When spawning actors, make sure to never close over any mutable shared state in the actorable-creating closure,
+         as it could break the promise of state isolation actors rely upon.
 
 Refer to api:Actor.Context[struct] API documentation to learn more, or the <<behaviors>> documentation, as many actor context features are the same.
 
