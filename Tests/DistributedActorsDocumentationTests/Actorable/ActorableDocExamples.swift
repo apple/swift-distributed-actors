@@ -60,11 +60,10 @@ struct ContextGreeter: Actorable {
 
 // tag::self_myself_call[]
 public struct InvokeFuncs: Actorable {
-
     let context: Myself.Context
-    
+
     public func doThingsAndRunTask() -> Int {
-        context.log.info("Doing things...")
+        self.context.log.info("Doing things...")
 
         // invoke the internal task directly, synchronously
         let result: Int = self.internalTask() // <1>
@@ -74,7 +73,7 @@ public struct InvokeFuncs: Actorable {
 
     public func doThingsAsync() -> Reply<Int> { // <2>
         // send myself a message to handle internalTask() in the future
-        let reply: Reply<Int> = context.myself.internalTask() // <3>
+        let reply: Reply<Int> = self.context.myself.internalTask() // <3>
         return reply
     }
 
