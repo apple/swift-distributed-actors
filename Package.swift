@@ -39,6 +39,86 @@ let targets: [PackageDescription.Target] = [
     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: XPC
+
+    .target(
+        name: "HelloXPCService",
+        dependencies: [
+            "DistributedActors"
+        ]
+    ),
+    .target(
+        name: "HelloXPC",
+        dependencies: [
+            "DistributedActors"
+        ]
+    ),
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: LibXPC
+
+
+    .target(
+        name: "CXPCActorable",
+        dependencies: [
+            "Files",
+        ]
+    ),
+    .target(
+        name: "XPCActorable",
+        dependencies: [
+            "DistributedActors",
+            "CXPCActorable",
+            "Files",
+        ]
+    ),
+
+    // libxpc
+    .target(
+        name: "XPCServiceProvider",
+        dependencies: []
+    ),
+    .target(
+        name: "XPCLibCaller",
+        dependencies: [
+        ]
+    ),
+
+    // xpc + actorable
+    // TODO: it's hard to pull off across module
+//    .target(
+//        name: "XPCActorServiceAPI",
+//        dependencies: [
+//            "XPCActorable"
+//        ]
+//    ),
+    .target(
+        name: "XPCActorServiceProvider",
+        dependencies: [
+//            "XPCActorServiceAPI",
+            "XPCActorable",
+            "Files",
+        ]
+    ),
+    .target(
+        name: "XPCActorCaller",
+        dependencies: [
+//            "XPCActorServiceAPI",
+            "XPCActorServiceProvider", // TODO: direct dependency... need to make it work with just an interface project
+            "XPCActorable",
+            "Files",
+        ]
+    ),
+
+    // other
+
+    .target(
+        name: "XPCSquirrel",
+        dependencies: [
+        ]),
+
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
 
     /// This target is intended only for use in tests, though we have no way to mark this
@@ -152,6 +232,7 @@ let targets: [PackageDescription.Target] = [
         name: "DistributedActorsConcurrencyHelpers",
         dependencies: ["CDistributedActorsAtomics"]
     ),
+
 ]
 
 var dependencies: [Package.Dependency] = [
@@ -204,6 +285,21 @@ let package = Package(
             name: "GenActors",
             targets: ["GenActors"]
         ),
+
+        /* --- XPC --- */
+
+//        .executable(
+//            name: "HelloXPC",
+//            targets: [
+//                "HelloXPC",
+//            ]
+//        ),
+//        .executable(
+//            name: "HelloXPCService",
+//            targets: [
+//                "HelloXPCService"
+//            ]
+//        ),
 
         /* ---  performance --- */
         .executable(

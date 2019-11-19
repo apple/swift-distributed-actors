@@ -43,7 +43,7 @@ public struct DeadLetter {
     let sentAtLine: UInt?
 
     // TODO: could be under a flag if we do carry the file/line or not?
-    init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
+    public init(_ message: Any, recipient: ActorAddress?, sentAtFile: String? = nil, sentAtLine: UInt? = nil) {
         self.message = message
         self.recipient = recipient
         self.sentAtFile = sentAtFile

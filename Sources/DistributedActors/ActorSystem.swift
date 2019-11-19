@@ -531,6 +531,18 @@ extension ActorSystem: _ActorTreeTraversable {
             return context.personalDeadLetters
         }
 
+        // TODO some more generic way to register protocol handlers?
+        guard context.address.node?.node.protocol != "xpc" else {
+            // it is an XPC ref thus we return it directly
+            do {
+                return try ActorRef<Message>(.delegate(XPCServiceCellDelegate(
+                    system: self, address: context.address
+                )))
+            } catch {
+                return context.personalDeadLetters
+            }
+        }
+
         switch selector.value {
         case "system": return self.systemProvider._resolve(context: context)
         case "user": return self.userProvider._resolve(context: context)
