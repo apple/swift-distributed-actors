@@ -42,15 +42,14 @@ extension Rendering {
 
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
+
                 {{messageAccess}} enum Message { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
-
                 {%for tell in boxFuncs %}
                 {{ tell }} 
                 {% endfor %}
             }
-
             """
         )
 
@@ -193,6 +192,7 @@ extension Rendering {
                 rendered.append(try Self.messageForProtocolTemplate.render(context))
             default:
                 rendered.append(try Self.messageForNonProtocolTemplate.render(context))
+                rendered.append("\n")
             }
 
             switch self.actorable.type {

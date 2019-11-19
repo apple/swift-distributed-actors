@@ -34,7 +34,9 @@ public struct Serialization {
 
     private let log: Logger
 
-    private let allocator: ByteBufferAllocator
+    /// Allocator used by the serialization infrastructure.
+    /// Public only for access by other serialization work performed e.g. by other transports.
+    public let allocator: ByteBufferAllocator
 
     internal init(settings systemSettings: ActorSystemSettings, system: ActorSystem, traversable: _ActorTreeTraversable) { // TODO: should take the top level actors
         let settings = systemSettings.serialization

@@ -18,6 +18,7 @@
 
 import DistributedActors
 
+import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Codable conformance for Greeter.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
@@ -25,22 +26,22 @@ import DistributedActors
 extension Greeter.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case greet
+        case _boxGreetingsServiceProtocol
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case greet_name
+        case _boxGreetingsServiceProtocol
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .greet:
-            let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
-            self = .greet(name: name)
+        case ._boxGreetingsServiceProtocol:
+            let boxed = try container.decode(GeneratedActor.Messages.GreetingsServiceProtocol.self, forKey: CodingKeys._boxGreetingsServiceProtocol)
+            self = .greetingsServiceProtocol(boxed)
 
         }
     }
@@ -48,9 +49,8 @@ extension Greeter.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .greet(let name):
-            try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
-            try container.encode(name, forKey: CodingKeys.greet_name)
+        case .greetingsServiceProtocol(let boxed):
+            try container.encode(boxed, forKey: CodingKeys._boxGreetingsServiceProtocol)
 
         }
     }

@@ -9,6 +9,7 @@
 /.SourceKitten
 /Packages
 .xcode
+*.app
 /*.xcodeproj
 SwiftDistributedActors.xcworkspace
 .xcode

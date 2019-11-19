@@ -23,6 +23,7 @@ struct ActorableTypeDecl {
         case `extension`
     }
 
+    var access: String = ""
     var type: DeclType
 
     /// Contains type names within which this type is declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
