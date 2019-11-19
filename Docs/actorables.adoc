@@ -286,8 +286,8 @@ The project will be checked out and available in `.build/checkouts/swift-distrib
 swift run --package-path .build/checkouts/swift-distributed-actors GenActors
 ----
 
-The GenActors command by default inspects the `Sources` directory for files which end with `+Actorable.swift`,
-and applies source generation on them. Optionally, you may pass folder paths or file names.
+The GenActors command by default inspects the `Sources` directory for files and detects top level types conforming to the
+api:Actorable[protocol] protocol. Optionally, you may pass folder paths or file names explicitly.
 
 === Actorables and Serialization
 
