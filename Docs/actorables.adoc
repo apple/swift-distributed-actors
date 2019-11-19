@@ -118,7 +118,7 @@ The following example showcases both "self invocation" and "myself call" styles:
 
 [source]
 ----
-include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=self_invoke]
+include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=self_myself_call]
 ----
 <1> We call the `internalTask()` *synchronously*, directly on the actorable's `self`
 <2> In this function we will send a `internalTask` _message_ and want to return its reply, thus the return type changes
