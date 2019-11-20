@@ -63,9 +63,9 @@ public struct ActorTestKitSettings {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Test Probes
 
-public extension ActorTestKit {
+extension ActorTestKit {
     /// Spawn an `ActorTestProbe` which offers various assertion methods for actor messaging interactions.
-    func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
+    public func spawnTestProbe<M>(_ naming: ActorNaming? = nil, expecting type: M.Type = M.self, file: StaticString = #file, line: UInt = #line) -> ActorTestProbe<M> {
         self.spawnProbesLock.lock()
         defer { self.spawnProbesLock.unlock() }
         // we want to use our own sequence number for the naming here, so we make it here rather than let the
@@ -87,6 +87,43 @@ public extension ActorTestKit {
 
             return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
         }, settings: self.settings)
+    }
+
+    /// Spawn `ActorableTestProbe` which offers various assertions for actor messaging interactions.
+    public func spawnActorableTestProbe<A: Actorable>(_ naming: ActorNaming? = nil, of actorable: A.Type = A.self, file: StaticString = #file, line: UInt = #line)
+        -> ActorableTestProbe<A> {
+        self.spawnProbesLock.lock()
+        defer { self.spawnProbesLock.unlock() }
+        // we want to use our own sequence number for the naming here, so we make it here rather than let the
+        // system use its own sequence number -- which should only be in use for the user actors.
+        let name: String
+        if let naming = naming {
+            name = naming.makeName(&self._namingContext)
+        } else {
+            name = ActorTestProbe<A.Message>.naming.makeName(&self._namingContext)
+        }
+
+        return ActorableTestProbe(spawn: { probeBehavior in
+
+            // TODO: allow configuring dispatcher for the probe or always use the calling thread one
+            var testProbeProps = Props()
+            #if SACT_PROBE_CALLING_THREAD
+            testProbeProps.dispatcher = .callingThread
+            #endif
+
+            return try system.spawn(.init(unchecked: .unique(name)), props: testProbeProps, probeBehavior)
+        }, settings: self.settings)
+    }
+}
+
+/// A test probe pretends to be the `Actorable` and allows expecting messages be sent to it.
+///
+/// - SeeAlso: `ActorTestProbe` which is the equivalent API for `ActorRef`s.
+public final class ActorableTestProbe<A: Actorable>: ActorTestProbe<A.Message> {
+    /// `Actor` reference to the underlying test probe actor.
+    /// All message sends invoked on this Actor will result in messages in the probe available to be `expect`-ed.
+    public var actor: Actor<A> {
+        return Actor(ref: self.ref)
     }
 }
 

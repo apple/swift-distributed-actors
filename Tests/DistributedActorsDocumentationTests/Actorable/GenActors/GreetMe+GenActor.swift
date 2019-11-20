@@ -16,68 +16,44 @@
 //
 //===----------------------------------------------------------------------===//
 
-// tag::imports[]
-
 import DistributedActors
-
-// end::imports[]
-
 import DistributedActorsTestKit
 import XCTest
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine messages 
+// MARK: DO NOT EDIT: Generated GreetMe messages 
 
-/// DO NOT EDIT: Generated AllInOneMachine messages
-extension AllInOneMachine {
+/// DO NOT EDIT: Generated GreetMe messages
+extension GreetMe {
 
     public enum Message { 
-        case clean 
-        case diagnostics(/*TODO: MODULE.*/GeneratedActor.Messages.Diagnostics) 
-        case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
+        case hello(greeting: String) 
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.Diagnostics messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxDiagnostics(_ message: GeneratedActor.Messages.Diagnostics) -> AllInOneMachine.Message {
-        .diagnostics(message)
-    } 
-    
-    /// Performs boxing of GeneratedActor.Messages.CoffeeMachine messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> AllInOneMachine.Message {
-        .coffeeMachine(message)
-    } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine behavior
+// MARK: DO NOT EDIT: Generated GreetMe behavior
 
-extension AllInOneMachine {
+extension GreetMe {
 
-    public static func makeBehavior(instance: AllInOneMachine) -> Behavior<Message> {
+    public static func makeBehavior(instance: GreetMe) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<AllInOneMachine>.Context(underlying: _context)
-            var instance = instance
+            let context = Actor<GreetMe>.Context(underlying: _context)
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .clean:
-                    instance.clean()
+                case .hello(let greeting):
+                    instance.hello(greeting: greeting)
  
                 
-                case .diagnostics(.printDiagnostics):
-                    instance.printDiagnostics()
- 
-                case .coffeeMachine(.makeCoffee(let _replyTo)):
-                    let result = instance.makeCoffee()
-                    _replyTo.tell(result)
- 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<AllInOneMachine>.Context(underlying: _context)
+                let context = Actor<GreetMe>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -101,12 +77,12 @@ extension AllInOneMachine {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for AllInOneMachine
+// MARK: Extend Actor for GreetMe
 
-extension Actor where A.Message == AllInOneMachine.Message {
+extension Actor where A.Message == GreetMe.Message {
 
-     func clean() {
-        self.ref.tell(.clean)
+     func hello(greeting: String) {
+        self.ref.tell(.hello(greeting: greeting))
     }
  
 
