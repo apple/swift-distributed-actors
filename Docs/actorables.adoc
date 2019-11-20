@@ -25,11 +25,17 @@ include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=greeter_0
 Such struct can be used as synchronous implementation, but can also be spawned as an actor.
 
 Before we spawn the actor, we have to run the `GenActors` command line utility, which analyzes and generates messages,
-and supporting actor infrastructure for all Actorable types. To do so, invoke:
+and supporting actor infrastructure for all api:Actorable[protocol] types.
+
+NOTE: Remember to depend on `DistributedActors` in the target you intend to use them, as well as on `GenActors`
+in at least one target or main product; as SwiftPM is soon going to require more explicit dependencies in order to be
+able `run` executable targets offered by dependencies.
+
+To run the source code generator, invoke:
 
 [source]
 ----
-swift run --package-path .build/checkouts/swift-distributed-actors GenActors
+swift run GenActors
 ----
 
 which by default generates actors for all api:Actorable[protocol] types located in the `Sources` directory.
@@ -38,6 +44,8 @@ You can also use `--verbose` to print more information about the source code gen
 
 Once this is done, we are ready to spawn and communicate with our first api:Actor[struct].
 Spawning an api:Actor[struct] from an actorable is performed using the `system.spawn` method on api:ActorSystem[class]:
+
+More advanced features of the source generator are documented in <<advanced_genactors_usage>>.
 
 [source]
 ----
@@ -264,6 +272,7 @@ It is possible to interop with behaviors from actorable funcs, i.e. it is possib
 func initialize(task: Task) -> Behavior<Self.Message>
 ----
 
+[[advanced_genactors_usage]]
 ==== Advanced GenActors Usage
 
 
@@ -283,7 +292,7 @@ The project will be checked out and available in `.build/checkouts/swift-distrib
 
 [source]
 ----
-swift run --package-path .build/checkouts/swift-distributed-actors GenActors
+swift run GenActors
 ----
 
 The GenActors command by default inspects the `Sources` directory for files and detects top level types conforming to the
