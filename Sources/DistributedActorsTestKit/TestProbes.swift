@@ -29,24 +29,32 @@ extension ActorTestProbeCommand: NoSerializationVerification {}
 
 /// A special actor that can be used in place of real actors, yet in addition exposes useful assertion methods
 /// which make testing asynchronous actor interactions simpler.
-public final class ActorTestProbe<Message> {
+///
+/// - SeeAlso: `ActorableTestProbe` which is the equivalent API for `Actorable`s.
+public class ActorTestProbe<Message> {
+    /// Name of the test probe (and underlying actor).
     public let name: String
+
+    /// Naming strategy for anonymous test probes.
+    /// By default test probes are named as `$testProbe-###`.
     public static var naming: ActorNaming {
         // has to be computed property since: static stored properties are not supported in generic types
-        return ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
+        ActorNaming(unchecked: .prefixed(prefix: "$testProbe", suffixScheme: .sequentialNumeric))
     }
 
     typealias ProbeCommands = ActorTestProbeCommand<Message>
     internal let internalRef: ActorRef<ProbeCommands>
     internal let exposedRef: ActorRef<Message>
 
+    /// The reference to the underlying "mock" actor.
+    /// Sending messages to this reference allows the probe to inspect them using the `expect...` family of functions.
     public var ref: ActorRef<Message> {
-        return self.exposedRef
+        self.exposedRef
     }
 
     private let settings: ActorTestKitSettings
     private var expectationTimeout: TimeAmount {
-        return self.settings.expectationTimeout
+        self.settings.expectationTimeout
     }
 
     /// Blocking linked queue, available to run assertions on

@@ -16,7 +16,7 @@ import DistributedActors
 @testable import DistributedActorsTestKit
 import XCTest
 
-class ActorTestKitTests: XCTestCase {
+final class ActorTestKitTests: XCTestCase {
     var system: ActorSystem!
     var testKit: ActorTestKit!
 
@@ -73,5 +73,29 @@ class ActorTestKitTests: XCTestCase {
                 throw testKit.fail("This should not fail the test")
             }
         }
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Actorable
+
+    func test_ActorableTestProbe_shouldWork() throws {
+        let greeterProbe = self.testKit.spawnActorableTestProbe(of: TestMeActorable.self)
+
+        let reply = greeterProbe.actor.hello()
+        guard case .hello(let replyTo) = try greeterProbe.expectMessage() else {
+            throw greeterProbe.error()
+        }
+
+        // mock that we respond
+        replyTo.tell("Mock Hello!")
+
+        // the reply should get the hello
+        try reply._nioFuture.wait().shouldEqual("Mock Hello!")
+    }
+}
+
+struct TestMeActorable: Actorable {
+    func hello() -> String {
+        "Hello!"
     }
 }
