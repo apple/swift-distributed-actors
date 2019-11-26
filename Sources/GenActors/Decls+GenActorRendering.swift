@@ -28,7 +28,9 @@ enum Rendering {
         // ==== ------------------------------------------------------------------ ====
 
         """
+}
 
+extension Rendering {
     struct ActorShellTemplate: Renderable {
         let actorable: ActorableTypeDecl
 
@@ -201,6 +203,94 @@ enum Rendering {
             }
 
             return rendered
+        }
+    }
+}
+
+extension Rendering {
+    struct MessageCodableTemplate: Renderable {
+        let actorable: ActorableTypeDecl
+
+        static let messageCodableConformanceTemplate = Template(
+            templateString:
+            """
+            // ==== ----------------------------------------------------------------------------------------------------------------
+            // MARK: DO NOT EDIT: Codable conformance for {{baseName}}.Message
+            // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
+
+             extension {{baseName}}.Message: Codable {
+                // TODO: Check with Swift team which style of discriminator to aim for
+                public enum DiscriminatorKeys: String, Decodable {
+                    {% for key in discriminatorKeys %}
+                    case {{ key }}{% endfor %}
+                }
+
+                 public enum CodingKeys: CodingKey {
+                    case _case
+                    {% for key in codingKeys %}
+                    case {{ key }}{% endfor %}
+                }
+
+                public init(from decoder: Decoder) throws {
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
+                    {% for case in decodeCases %}
+                    {{ case }}{% endfor %}
+                    }
+                }
+
+                 public func encode(to encoder: Encoder) throws {
+                    var container = encoder.container(keyedBy: CodingKeys.self)
+                    switch self {
+                    {% for case in encodeCases %}
+                    {{ case }}{% endfor %}
+                    }
+                }
+            }
+            """
+        )
+
+        func render(_ settings: GenerateActors.Settings) throws -> String {
+            let discriminatorKeys: [String] = self.actorable.funcs.map { decl in
+                return decl.message.name
+            }
+
+            let codingKeys: [String] = self.actorable.funcs.flatMap { decl in
+                // TODO effective params???
+                decl.message.effectiveParams.map { (firstName, secondName, _) in
+                    "\(decl.message.name)_\(firstName ?? secondName)"
+                }
+            }
+
+            let decodeCases: [String] = self.actorable.funcs.flatMap { decl in
+                var res = "case .\(decl.message.name):\n"
+                // render decode params
+                decl.message.effectiveParams.forEach { (firstName, secondName, type) in
+                    let name = firstName ?? secondName
+                    res.append("    let \(name) = try container.decode(\(type).self, forKey: .\(decl.message.name)_\(name))\n")
+                }
+                res.append("            self = .\(decl.message.name)\(decl.message.renderPassParams(effectiveParamsToo: true))\n")
+                return res
+            }
+
+            let encodeCases: [String] = self.actorable.funcs.flatMap { decl in
+                var res = "case .\(decl.message.name)\(decl.message.renderCaseLetParams):\n"
+                res.append("    try container.encode(DiscriminatorKeys.\(decl.message.name).rawValue, forKey: CodingKeys._case)\n")
+                // render encode params
+                decl.message.effectiveParams.forEach { (firstName, secondName, type) in
+                    let name = firstName ?? secondName
+                    res.append("    try container.encode(self.\(name), forKey: .\(decl.message.name)_\(name))")
+                }
+                return res
+            }
+
+            return try Self.messageCodableConformanceTemplate.render([
+                "baseName": self.actorable.name,
+                "discriminatorKeys": discriminatorKeys,
+                "codingKeys": codingKeys,
+                "decodeCases": decodeCases,
+                "encodeCases": encodeCases,
+            ])
         }
     }
 }
