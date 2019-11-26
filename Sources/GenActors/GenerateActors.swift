@@ -25,7 +25,8 @@ public final class GenerateActors {
 
     let fileScanNameSuffix: String = ""
     let fileScanNameSuffixWithExtension: String = ".swift"
-    let fileGenNameSuffixWithExtension: String = "+GenActor.swift"
+    let fileGenActorNameSuffixWithExtension: String = "+GenActor.swift"
+    let fileGenCodableNameSuffixWithExtension: String = "+GenCodable.swift"
 
     public init(args: [String]) {
         let remaining = args.dropFirst()
@@ -102,23 +103,40 @@ public final class GenerateActors {
         let actorables = ResolveActorables.resolve(rawActorables)
 
         try actorables.forEach { actorable in
-            let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.settings)
 
             guard let parent = fileToParse.parent else {
                 fatalError("Unable to locate or render Actorable definitions in \(fileToParse).")
             }
 
-            let targetFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenNameSuffixWithExtension)")
+            let targetGenActorFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenActorNameSuffixWithExtension)")
+            try generateGenActorFile(targetFile: targetGenActorFile, gather: gather, actorable: actorable)
 
-            try targetFile.append(Rendering.generatedFileHeader)
-            try targetFile.append("\n")
-            try gather.imports.forEach { importBlock in
-                try targetFile.append("\(importBlock)")
-            }
-            try targetFile.append(renderedShell)
+            let targetGenCodableFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenCodableNameSuffixWithExtension)")
+            try generateGenCodableFile(targetFile: targetGenCodableFile, gather: gather, actorable: actorable)
         }
 
         return !rawActorables.isEmpty
+    }
+
+    private func generateGenActorFile(targetFile: File, gather: GatherActorables, actorable: ActorableTypeDecl) throws {
+        try targetFile.append(Rendering.generatedFileHeader)
+        try targetFile.append("\n")
+
+        try gather.imports.forEach { importBlock in
+            try targetFile.append("\(importBlock)")
+        }
+
+        let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.settings)
+        try targetFile.append(renderedShell)
+    }
+
+    /// Generate Codable conformances for the `Message` type -- until we don't have auto synthesis of it for enums with associated values.
+    private func generateGenCodableFile(targetFile: File, gather: GatherActorables, actorable: ActorableTypeDecl) throws {
+        try targetFile.append(Rendering.generatedFileHeader)
+        try targetFile.append("\n")
+
+        let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.settings)
+        try targetFile.append(codableConformance)
     }
 
     func debug(_ message: String) {
