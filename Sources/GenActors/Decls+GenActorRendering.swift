@@ -218,32 +218,27 @@ extension Rendering {
             // MARK: DO NOT EDIT: Codable conformance for {{baseName}}.Message
             // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-             extension {{baseName}}.Message: Codable {
+            extension {{baseName}}.Message: Codable {
                 // TODO: Check with Swift team which style of discriminator to aim for
                 public enum DiscriminatorKeys: String, Decodable {
-                    {% for key in discriminatorKeys %}
-                    case {{ key }}{% endfor %}
+                    {{ discriminatorCases }}
                 }
 
-                 public enum CodingKeys: CodingKey {
-                    case _case
-                    {% for key in codingKeys %}
-                    case {{ key }}{% endfor %}
+                public enum CodingKeys: CodingKey {
+                    {{ codingKeys }}
                 }
 
                 public init(from decoder: Decoder) throws {
                     let container = try decoder.container(keyedBy: CodingKeys.self)
                     switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-                    {% for case in decodeCases %}
-                    {{ case }}{% endfor %}
+                    {{ decodeCases }}
                     }
                 }
 
                  public func encode(to encoder: Encoder) throws {
                     var container = encoder.container(keyedBy: CodingKeys.self)
                     switch self {
-                    {% for case in encodeCases %}
-                    {{ case }}{% endfor %}
+                    {{ encodeCases }}
                     }
                 }
             }
@@ -251,45 +246,57 @@ extension Rendering {
         )
 
         func render(_ settings: GenerateActors.Settings) throws -> String {
-            let discriminatorKeys: [String] = self.actorable.funcs.map { decl in
-                return decl.message.name
+            let printer = CodePrinter()
+
+            var discriminatorCases = printer.makeIndented(by: 2)
+            discriminatorCases.dontIndentNext()
+            self.actorable.funcs.forEach { decl in
+                discriminatorCases.print("case \(decl.message.name)")
             }
 
-            let codingKeys: [String] = self.actorable.funcs.flatMap { decl in
+            var codingKeys = printer.makeIndented(by: 2)
+            codingKeys.dontIndentNext()
+            self.actorable.funcs.forEach { decl in
                 // TODO effective params???
                 decl.message.effectiveParams.map { (firstName, secondName, _) in
-                    "\(decl.message.name)_\(firstName ?? secondName)"
+                    codingKeys.print("case \(decl.message.name)_\(firstName ?? secondName)")
                 }
             }
 
-            let decodeCases: [String] = self.actorable.funcs.flatMap { decl in
-                var res = "case .\(decl.message.name):\n"
+            var decodeCases = printer.makeIndented(by: 2)
+            decodeCases.dontIndentNext()
+            self.actorable.funcs.forEach { decl in
+                decodeCases.print("case .\(decl.message.name):")
+                decodeCases.indent()
                 // render decode params
                 decl.message.effectiveParams.forEach { (firstName, secondName, type) in
                     let name = firstName ?? secondName
-                    res.append("    let \(name) = try container.decode(\(type).self, forKey: .\(decl.message.name)_\(name))\n")
+                    decodeCases.print("let \(name) = try container.decode(\(type).self, forKey: .\(decl.message.name)_\(name))")
                 }
-                res.append("            self = .\(decl.message.name)\(decl.message.renderPassParams(effectiveParamsToo: true))\n")
-                return res
+                decodeCases.print("self = .\(decl.message.name)\(decl.message.renderPassParams(effectiveParamsToo: true))")
+                decodeCases.outdent()
             }
 
-            let encodeCases: [String] = self.actorable.funcs.flatMap { decl in
-                var res = "case .\(decl.message.name)\(decl.message.renderCaseLetParams):\n"
-                res.append("    try container.encode(DiscriminatorKeys.\(decl.message.name).rawValue, forKey: CodingKeys._case)\n")
+            var encodeCases = printer.makeIndented(by: 2)
+            encodeCases.dontIndentNext()
+            self.actorable.funcs.forEach { decl in
+                encodeCases.print( "case .\(decl.message.name)\(decl.message.renderCaseLetParams):")
+                encodeCases.indent()
+                encodeCases.print("try container.encode(DiscriminatorKeys.\(decl.message.name).rawValue, forKey: CodingKeys._case)")
                 // render encode params
                 decl.message.effectiveParams.forEach { (firstName, secondName, type) in
                     let name = firstName ?? secondName
-                    res.append("    try container.encode(self.\(name), forKey: .\(decl.message.name)_\(name))")
+                    encodeCases.print("try container.encode(self.\(name), forKey: .\(decl.message.name)_\(name))")
                 }
-                return res
+                encodeCases.outdent()
             }
 
             return try Self.messageCodableConformanceTemplate.render([
                 "baseName": self.actorable.name,
-                "discriminatorKeys": discriminatorKeys,
-                "codingKeys": codingKeys,
-                "decodeCases": decodeCases,
-                "encodeCases": encodeCases,
+                "discriminatorCases": discriminatorCases.content,
+                "codingKeys": codingKeys.content,
+                "decodeCases": decodeCases.content,
+                "encodeCases": encodeCases.content,
             ])
         }
     }
