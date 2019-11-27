@@ -207,101 +207,6 @@ extension Rendering {
     }
 }
 
-extension Rendering {
-    struct MessageCodableTemplate: Renderable {
-        let actorable: ActorableTypeDecl
-
-        static let messageCodableConformanceTemplate = Template(
-            templateString:
-            """
-            // ==== ----------------------------------------------------------------------------------------------------------------
-            // MARK: DO NOT EDIT: Codable conformance for {{baseName}}.Message
-            // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
-
-            extension {{baseName}}.Message: Codable {
-                // TODO: Check with Swift team which style of discriminator to aim for
-                public enum DiscriminatorKeys: String, Decodable {
-                    {{ discriminatorCases }}
-                }
-
-                public enum CodingKeys: CodingKey {
-                    {{ codingKeys }}
-                }
-
-                public init(from decoder: Decoder) throws {
-                    let container = try decoder.container(keyedBy: CodingKeys.self)
-                    switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-                    {{ decodeCases }}
-                    }
-                }
-
-                 public func encode(to encoder: Encoder) throws {
-                    var container = encoder.container(keyedBy: CodingKeys.self)
-                    switch self {
-                    {{ encodeCases }}
-                    }
-                }
-            }
-            """
-        )
-
-        func render(_ settings: GenerateActors.Settings) throws -> String {
-            let printer = CodePrinter()
-
-            var discriminatorCases = printer.makeIndented(by: 2)
-            discriminatorCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                discriminatorCases.print("case \(decl.message.name)")
-            }
-
-            var codingKeys = printer.makeIndented(by: 2)
-            codingKeys.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                // TODO effective params???
-                decl.message.effectiveParams.map { (firstName, secondName, _) in
-                    codingKeys.print("case \(decl.message.name)_\(firstName ?? secondName)")
-                }
-            }
-
-            var decodeCases = printer.makeIndented(by: 2)
-            decodeCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                decodeCases.print("case .\(decl.message.name):")
-                decodeCases.indent()
-                // render decode params
-                decl.message.effectiveParams.forEach { (firstName, secondName, type) in
-                    let name = firstName ?? secondName
-                    decodeCases.print("let \(name) = try container.decode(\(type).self, forKey: .\(decl.message.name)_\(name))")
-                }
-                decodeCases.print("self = .\(decl.message.name)\(decl.message.renderPassParams(effectiveParamsToo: true))")
-                decodeCases.outdent()
-            }
-
-            var encodeCases = printer.makeIndented(by: 2)
-            encodeCases.dontIndentNext()
-            self.actorable.funcs.forEach { decl in
-                encodeCases.print( "case .\(decl.message.name)\(decl.message.renderCaseLetParams):")
-                encodeCases.indent()
-                encodeCases.print("try container.encode(DiscriminatorKeys.\(decl.message.name).rawValue, forKey: CodingKeys._case)")
-                // render encode params
-                decl.message.effectiveParams.forEach { (firstName, secondName, type) in
-                    let name = firstName ?? secondName
-                    encodeCases.print("try container.encode(self.\(name), forKey: .\(decl.message.name)_\(name))")
-                }
-                encodeCases.outdent()
-            }
-
-            return try Self.messageCodableConformanceTemplate.render([
-                "baseName": self.actorable.name,
-                "discriminatorCases": discriminatorCases.content,
-                "codingKeys": codingKeys.content,
-                "decodeCases": decodeCases.content,
-                "encodeCases": encodeCases.content,
-            ])
-        }
-    }
-}
-
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Rendering extensions
 
@@ -323,6 +228,14 @@ extension ActorableTypeDecl {
                 return "let"
             }
         }
+    }
+
+    var renderCaseLet: String {
+        "case .\(self.nameFirstLowercased)(let boxed):"
+    }
+
+    var renderBoxCaseLet: String {
+        "case .\(self.boxFuncName)(let boxed):"
     }
 
     var renderCaseDecls: [String] {
@@ -445,17 +358,37 @@ extension ActorableMessageDecl {
             return ""
         } else {
             return "(" +
-                self.effectiveParams.map { p in
-                    "let \(p.1)"
+                self.effectiveParams.map { _, secondName, _ in
+                    // TODO: Finally change the triple tuple into a specific type with more helpers
+                    let name: String
+//                    if firstName == "_" {
+//                        name = secondName
+//                    } else {
+//                        name = firstName ?? secondName
+//                    }
+                    name = secondName
+                    return "let \(name)"
                 }.joined(separator: ", ") +
                 ")"
         }
     }
 
-    var passEffectiveParams: String {
-        self.renderPassParams(effectiveParamsToo: true)
+    // // nothing
+    // (hello: hello)
+    // (_replyTo: _replyTo)
+    var passEffectiveParamsWithBraces: String {
+        if self.effectiveParams.isEmpty {
+            return self.renderPassParams(effectiveParamsToo: true)
+        } else {
+            return "(\(self.renderPassParams(effectiveParamsToo: true)))"
+        }
     }
 
+    // WARNING: Does not wrap with `()`
+    //
+    // // nothing
+    // hello: hello
+    // hello: hello, two: two
     var passParams: String {
         self.renderPassParams(effectiveParamsToo: false)
     }
@@ -546,11 +479,7 @@ extension ActorableMessageDecl {
         }
         ret.append(".\(self.name)")
 
-        if !self.effectiveParams.isEmpty {
-            ret.append("(")
-            ret.append(self.passEffectiveParams)
-            ret.append(")")
-        }
+        ret.append(self.passEffectiveParamsWithBraces)
 
         if boxProtocol != nil {
             ret.append(")")
@@ -686,27 +615,6 @@ extension ActorFuncDecl {
 
         return ret
     }
-
-//    func renderBoxFuncSwitchCase() throws -> String {
-//        let context: [String: Any] = [
-//            "box": ownerProtocol.nameFirstLowercased,
-//            "returnIfBecome": message.returnIfBecome,
-//            "try": message.throwing ? "try " : "",
-//            "name": message.name,
-//            "caseLetParams": message.renderCaseLetParams,
-//            "passParams": message.passParams,
-//        ]
-//
-//        let rendered = try Template(
-//            templateString:
-//            """
-//            case .{{box}}(.{{name}}{{caseLetParams}}):
-//                                {{returnIfBecome}}{{try}}instance.{{name}}({{passParams}})
-//            """
-//        ).render(context)
-//
-//        return rendered
-//    }
 
     func renderCaseDecl() -> String {
         self.message.renderCaseDecl

@@ -54,7 +54,7 @@ struct GatherActorables: SyntaxVisitor {
         let BLUE = "\u{001B}[0;34m"
         let RST = "\u{001B}[0;0m"
         self.debug("Actorable \(type) detected: [\(BLUE)\(name)\(RST)] at \(self.path), analyzing...")
-        self.wipActorable = ActorableTypeDecl(type: type, name: name)
+        self.wipActorable = ActorableTypeDecl(type: type, name: name, generateCodableConformance: true)
 
         return .visitChildren
     }
@@ -116,6 +116,31 @@ struct GatherActorables: SyntaxVisitor {
         }
         self.wipActorable.inheritedTypes.insert("\(node.typeName)".trim(character: " "))
         return .visitChildren
+    }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: GenActors configuration: static lets
+    mutating func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
+        // we only care about static ones that we use to configure the source gen
+        guard node.modifiers?.contains(where: { $0.name.tokenKind == .staticKeyword }) ?? false else {
+            return .skipChildren
+        }
+
+        guard let name = node.bindings.firstToken?.text else {
+            // should never happen, what is a var/let binding without any name?
+            return .skipChildren
+        }
+
+        switch name {
+        case "generateCodableConformance":
+            // short cut, rather than checking exact return value
+            self.wipActorable.generateCodableConformance = "\(node)".contains("true")
+        default:
+            // not a property we care about
+            return .skipChildren
+        }
+
+        return .skipChildren
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

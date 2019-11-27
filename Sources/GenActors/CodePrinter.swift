@@ -14,7 +14,6 @@
 
 /// Utility that helps in printing code at the "right" indentation levels.
 struct CodePrinter {
-
     private var indentation = 0
     // for when templates are embedded in other templates at the right level
     private var _dontIndentNext: Bool = false
@@ -38,7 +37,7 @@ struct CodePrinter {
         return next
     }
 
-    @discardableResult 
+    @discardableResult
     mutating func dontIndentNext() -> Self {
         self._dontIndentNext = true
         return self

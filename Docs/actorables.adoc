@@ -298,12 +298,21 @@ swift run GenActors
 The GenActors command by default inspects the `Sources` directory for files and detects top level types conforming to the
 api:Actorable[protocol] protocol. Optionally, you may pass folder paths or file names explicitly.
 
-=== Actorables and Serialization
+=== Actorable.Message and Serialization
 
-#TODO: This needs a rehaul of the serialization story as we want them to automatically "just work".#
+`GenActors` also generates an additional file suffixed `+GenCodable.swift` which contains `Codable` conformance for an actorable's `Message` type.
 
-Currently no special codegen is enabled for Actorables, so in order to send messages to other processes or nodes,
-you will have to register serializers same as in the behavior style, see: <<serialization>>.
+TIP: Currently Swift does not automatically synthesize `Codable` conformances for enums with associated values, which messages are.
+     We hope to lift this limitation from the Swift compiler soon, however until that time, you can use `GenActors` and its generated conformance.
 
-When your actorable is called `Greeter` the generated messages are defined as `Greeter.Message`, and that is the type you will have
-to invoke `system.serialization.registerSerializer()` for.
+You can disable this conformance generation by overriding the static `generateCodableConformance` property in your api:Actorable[protocol], like this:
+
+[source]
+----
+include::{dir_sact_doc_tests}/Actorable/ActorableDocExamples.swift[tag=disable_codable_gen]
+----
+
+You still have to *register* the the type with the serialization infrastructure as documented in <<serialization>> however.
+
+TIP: We aim to simplify the serialization infrastructure to be able to infer more about what serializer to use for a given type,
+     however the current approach remains valid (and most resilient in face of type refactorings).

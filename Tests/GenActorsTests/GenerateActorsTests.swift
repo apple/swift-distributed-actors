@@ -125,6 +125,21 @@ final class GenerateActorsTests: XCTestCase {
         lifecycleGenActorSource.shouldContain("case _doNOTSkipMe")
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Codable support
+
+    func test_codableMessage_skipGeneration() throws {
+        do {
+            let filename = "SkipCodableActorable+GenCodable.swift"
+            let genCodableFile = try Folder.current
+                .subfolder(at: "Tests/GenActorsTests/SkipCodableActorable")
+                .file(named: filename)
+            XCTFail("Expected file \(filename) to NOT exist, since its generation should have been skipped.")
+        } catch {
+            print("OK: \(error)")
+        }
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Ignoring certain methods from exposing
 

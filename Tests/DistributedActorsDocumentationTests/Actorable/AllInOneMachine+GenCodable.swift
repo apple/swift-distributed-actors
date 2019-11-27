@@ -5,42 +5,46 @@
 import DistributedActors
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for LifecycleActor.Message
+// MARK: DO NOT EDIT: Codable conformance for AllInOneMachine.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values
 
-extension LifecycleActor.Message: Codable {
+extension AllInOneMachine.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case pleaseStop
-        case watchChildAndTerminateIt
-        case _doNOTSkipMe
+        case clean
+        case _boxCoffeeMachine
+        case _boxDiagnostics
     }
 
     public enum CodingKeys: CodingKey {
         case _case
+        case _boxCoffeeMachine
+        case _boxDiagnostics
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .pleaseStop:
-            self = .pleaseStop
-        case .watchChildAndTerminateIt:
-            self = .watchChildAndTerminateIt
-        case ._doNOTSkipMe:
-            self = ._doNOTSkipMe
+        case .clean:
+            self = .clean
+        case ._boxCoffeeMachine:
+            let boxed = try container.decode(GeneratedActor.Messages.CoffeeMachine.self, forKey: CodingKeys._boxCoffeeMachine)
+            self = .coffeeMachine(boxed)
+        case ._boxDiagnostics:
+            let boxed = try container.decode(GeneratedActor.Messages.Diagnostics.self, forKey: CodingKeys._boxDiagnostics)
+            self = .diagnostics(boxed)
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .pleaseStop:
-            try container.encode(DiscriminatorKeys.pleaseStop.rawValue, forKey: CodingKeys._case)
-        case .watchChildAndTerminateIt:
-            try container.encode(DiscriminatorKeys.watchChildAndTerminateIt.rawValue, forKey: CodingKeys._case)
-        case ._doNOTSkipMe:
-            try container.encode(DiscriminatorKeys._doNOTSkipMe.rawValue, forKey: CodingKeys._case)
+        case .clean:
+            try container.encode(DiscriminatorKeys.clean.rawValue, forKey: CodingKeys._case)
+        case .coffeeMachine(let boxed):
+            try container.encode(boxed, forKey: CodingKeys._boxCoffeeMachine)
+        case .diagnostics(let boxed):
+            try container.encode(boxed, forKey: CodingKeys._boxDiagnostics)
         }
     }
 }

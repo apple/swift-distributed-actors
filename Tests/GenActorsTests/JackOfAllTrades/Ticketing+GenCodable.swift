@@ -5,15 +5,13 @@
 import DistributedActors
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for LifecycleActor.Message
+// MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.Ticketing
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values
 
-extension LifecycleActor.Message: Codable {
+extension GeneratedActor.Messages.Ticketing: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case pleaseStop
-        case watchChildAndTerminateIt
-        case _doNOTSkipMe
+        case makeTicket
     }
 
     public enum CodingKeys: CodingKey {
@@ -23,24 +21,16 @@ extension LifecycleActor.Message: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .pleaseStop:
-            self = .pleaseStop
-        case .watchChildAndTerminateIt:
-            self = .watchChildAndTerminateIt
-        case ._doNOTSkipMe:
-            self = ._doNOTSkipMe
+        case .makeTicket:
+            self = .makeTicket
         }
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .pleaseStop:
-            try container.encode(DiscriminatorKeys.pleaseStop.rawValue, forKey: CodingKeys._case)
-        case .watchChildAndTerminateIt:
-            try container.encode(DiscriminatorKeys.watchChildAndTerminateIt.rawValue, forKey: CodingKeys._case)
-        case ._doNOTSkipMe:
-            try container.encode(DiscriminatorKeys._doNOTSkipMe.rawValue, forKey: CodingKeys._case)
+        case .makeTicket:
+            try container.encode(DiscriminatorKeys.makeTicket.rawValue, forKey: CodingKeys._case)
         }
     }
 }

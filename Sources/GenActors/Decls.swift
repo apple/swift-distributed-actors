@@ -31,6 +31,17 @@ struct ActorableTypeDecl {
         return res
     }
 
+    var generateCodableConformance: Bool
+
+    var messageFullyQualifiedName: String {
+        switch self.type {
+        case .protocol:
+            return "GeneratedActor.Messages.\(self.name)"
+        default:
+            return "\(self.name).Message"
+        }
+    }
+
     var boxFuncName: String {
         // TODO: "$box\(self.name)" would be nicer, but it is reserved
         // (error: cannot declare entity named '$boxParking'; the '$' prefix is reserved for implicitly-synthesized declarations)
