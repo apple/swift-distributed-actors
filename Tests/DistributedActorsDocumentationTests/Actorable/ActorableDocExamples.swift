@@ -217,3 +217,14 @@ extension AccessControl {
 // end::access_control_1[]
 
 final class ActorableDocExamples: XCTestCase {}
+
+// tag::disable_codable_gen[]
+public struct DontConformMessageToCodable: Actorable {
+    public static let generateCodableConformance = false
+
+    public func echo(text: String) -> String {
+        text
+    }
+}
+
+// end::disable_codable_gen[]

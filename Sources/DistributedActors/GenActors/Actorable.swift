@@ -36,6 +36,17 @@ public protocol Actorable {
     typealias Myself = Actor<Self>
 
     // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Configure GenActors for this Actorable
+
+    /// Configures `GenActors` whether or not to generate `Codable` conformance for `Actorable.Message`.
+    ///
+    /// By default, `GenActors` generates the `Message` type as an enum and conforms the type to Codable.
+    /// You may opt out of this when necessary, by overriding this property and returning `false`.
+    ///
+    /// - default: `true`
+    static var generateCodableConformance: Bool { get }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: GenActor filled in functions
 
     static func makeBehavior(instance: Self) -> Behavior<Message>
@@ -71,6 +82,12 @@ extension Actorable {
 }
 
 extension Actorable {
+    public static var generateCodableConformance: Bool {
+        true
+    }
+}
+
+extension Actorable {
     public func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
         // DeathWatch semantics are implemented in the behavior runtime, so we remain compatible with them here.
         .unhandled
@@ -85,7 +102,7 @@ extension Actorable {
 /// All function calls made on this object are turned into message sends and delivered *asynchronously* to the underlying actor.
 ///
 /// It is safe (including thread-safe) to share the `Actor` object with other threads, as well as to share it across the network.
-public struct Actor<A: Actorable> {
+public struct Actor<A: Actorable>: Codable {
     public typealias Message = A.Message
     public typealias Myself = Actor<A>
 
