@@ -24,8 +24,6 @@ extension Rendering {
             templateString:
             """
 
-            import DistributedActors
-
             // ==== ----------------------------------------------------------------------------------------------------------------
             // MARK: DO NOT EDIT: Codable conformance for {{messageName}}
             // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 

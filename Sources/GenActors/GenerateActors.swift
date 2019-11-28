@@ -143,6 +143,10 @@ public final class GenerateActors {
         try targetFile.append(Rendering.generatedFileHeader)
         try targetFile.append("\n")
 
+        try gather.imports.forEach { importBlock in
+            try targetFile.append("\(importBlock)")
+        }
+
         let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.settings)
         try targetFile.append(codableConformance)
 

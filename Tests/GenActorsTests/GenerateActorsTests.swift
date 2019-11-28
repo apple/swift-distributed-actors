@@ -114,6 +114,25 @@ final class GenerateActorsTests: XCTestCase {
         try futureString._nioFuture.wait().shouldEqual("Hello NIO \(name)!")
     }
 
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Imports
+
+    func test_imports_shouldBe_carriedToGenActorFile() throws {
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
+
+        lifecycleGenActorSource.shouldContain("import DistributedActors")
+        lifecycleGenActorSource.shouldContain("import class NIO.EventLoopFuture")
+    }
+
+    func test_imports_shouldBe_carriedToGenCodableFile() throws {
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenCodable.swift")
+        let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
+
+        lifecycleGenActorSource.shouldContain("import DistributedActors")
+        lifecycleGenActorSource.shouldContain("import class NIO.EventLoopFuture")
+    }
+
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Storing instance in right type of reference
 
