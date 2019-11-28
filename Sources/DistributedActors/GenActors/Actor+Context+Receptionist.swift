@@ -163,7 +163,7 @@ extension Reception {
             self.actors.isEmpty
         }
 
-        var first: Actor<A>? {
+        public var first: Actor<A>? {
             self.actors.first
         }
     }
