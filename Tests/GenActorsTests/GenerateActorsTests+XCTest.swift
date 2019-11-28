@@ -31,6 +31,8 @@ extension GenerateActorsTests {
             ("test_TestActorable_greetReplyToReturnStrict", test_TestActorable_greetReplyToReturnStrict),
             ("test_TestActorable_greetReplyToReturnStrictThrowing", test_TestActorable_greetReplyToReturnStrictThrowing),
             ("test_TestActorable_greetReplyToReturnNIOFuture", test_TestActorable_greetReplyToReturnNIOFuture),
+            ("test_imports_shouldBe_carriedToGenActorFile", test_imports_shouldBe_carriedToGenActorFile),
+            ("test_imports_shouldBe_carriedToGenCodableFile", test_imports_shouldBe_carriedToGenCodableFile),
             ("test_ClassActorableInstance", test_ClassActorableInstance),
             ("test_codableMessage_skipGeneration", test_codableMessage_skipGeneration),
             ("test_LifecycleActor_doesNotContainUnderscorePrefixedMessage", test_LifecycleActor_doesNotContainUnderscorePrefixedMessage),
