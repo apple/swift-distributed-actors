@@ -118,7 +118,7 @@ extension Actor.Context {
             let promise = self.context.system._eventLoopGroup.next().makePromise(of: Reception.Listing<Act>.self)
             self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(
                 key: key.underlying,
-                replyTo: self.underlying.subReceive("lookup-\(key)", SystemReceptionist.Listing<Act.Message>.self) { listing in
+                replyTo: self.underlying.subReceive("lookup-\(type(of: key))", SystemReceptionist.Listing<Act.Message>.self) { listing in
                     let actors = Set(listing.refs.map { ref in
                         Actor<Act>(ref: ref)
                     })

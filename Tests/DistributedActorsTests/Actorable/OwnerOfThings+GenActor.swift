@@ -17,6 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import class NIO.EventLoopFuture
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated OwnerOfThings messages 
 
@@ -25,6 +26,7 @@ extension OwnerOfThings {
     // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
+        case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
     }
 
     
@@ -48,6 +50,9 @@ extension OwnerOfThings {
                     let result = instance.readLastObservedValue()
                     _replyTo.tell(result)
  
+                case .performLookup(let _replyTo):
+                    instance.performLookup()
+                                    .whenComplete { res in _replyTo.tell(res) } 
                 
                 }
                 return .same
@@ -85,6 +90,20 @@ extension Actor where A.Message == OwnerOfThings.Message {
             self.ref.ask(for: Reception.Listing<OwnerOfThings>?.self, timeout: .effectivelyInfinite) { _replyTo in
                 .readLastObservedValue(_replyTo: _replyTo)
             }.nioFuture
+            )
+    } 
+    
+    func performLookup() -> Reply<Reception.Listing<OwnerOfThings>> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture: 
+            self.ref.ask(for: Result<Reception.Listing<OwnerOfThings>, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
+                .performLookup(_replyTo: _replyTo)
+            }.nioFuture.flatMapThrowing { result in
+            switch result {
+            case .success(let res): return res
+            case .failure(let err): throw err
+            }
+        }
             )
     } 
     

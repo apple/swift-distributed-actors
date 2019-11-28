@@ -36,8 +36,6 @@ public final class ActorableOwned<T> {
 
     public init<Owner>(_ context: Owner.Myself.Context, type: T.Type = T.self) where Owner: Actorable {
         let typeName = String(reflecting: T.self)
-            .replacingOccurrences(of: "<", with: "-")
-            .replacingOccurrences(of: ">", with: "-") // TODO: workaround this since names will be gone...?
 
         self._cell = nil
         self.__onUpdate = { _ in () }

@@ -51,6 +51,27 @@ class ActorSubReceiveTests: XCTestCase {
         try p.expectMessage("subreceive:test")
     }
 
+    func test_subReceiveId_fromGenericType_shouldNotBlowUp() throws {
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
+        let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<Set<String>>.self)
+
+        let behavior: Behavior<Never> = .setup { context in
+            let subRef = context.subReceive(Set<String>.self) { message in
+                p.tell("subreceive:\(message.count)")
+            }
+            refProbe.tell(subRef)
+
+            return .receiveMessage { _ in .same }
+        }
+
+        _ = try system.spawn("test-parent", behavior)
+
+        let subRef = try refProbe.expectMessage()
+
+        subRef.tell(Set(["one", "two"]))
+        try p.expectMessage("subreceive:2")
+    }
+
     func test_subReceive_shouldBeAbleToModifyActorState() throws {
         let p = self.testKit.spawnTestProbe(expecting: Int.self)
         let refProbe = self.testKit.spawnTestProbe(expecting: ActorRef<IncrementAndGet>.self)

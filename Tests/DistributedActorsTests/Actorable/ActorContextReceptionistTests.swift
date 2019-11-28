@@ -52,4 +52,11 @@ final class ActorContextReceptionTests: XCTestCase {
         let listing1: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(actors: Set([owner]))
         try p.expectMessage(listing1)
     }
+
+    func test_lookup_ofGenericType() throws {
+        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: p.ref) }
+
+        let reply = owner.performLookup()
+    }
 }

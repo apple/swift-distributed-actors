@@ -17,6 +17,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import class NIO.EventLoopFuture
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Codable conformance for OwnerOfThings.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values
@@ -25,11 +26,13 @@ extension OwnerOfThings.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case readLastObservedValue
+        case performLookup
     }
 
     public enum CodingKeys: CodingKey {
         case _case
         case readLastObservedValue__replyTo
+        case performLookup__replyTo
     }
 
     public init(from decoder: Decoder) throws {
@@ -38,6 +41,9 @@ extension OwnerOfThings.Message: Codable {
         case .readLastObservedValue:
             let _replyTo = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
             self = .readLastObservedValue(_replyTo: _replyTo)
+        case .performLookup:
+            let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>.self, forKey: CodingKeys.performLookup__replyTo)
+            self = .performLookup(_replyTo: _replyTo)
         }
     }
 
@@ -47,6 +53,9 @@ extension OwnerOfThings.Message: Codable {
         case .readLastObservedValue(let _replyTo):
             try container.encode(DiscriminatorKeys.readLastObservedValue.rawValue, forKey: CodingKeys._case)
             try container.encode(_replyTo, forKey: CodingKeys.readLastObservedValue__replyTo)
+        case .performLookup(let _replyTo):
+            try container.encode(DiscriminatorKeys.performLookup.rawValue, forKey: CodingKeys._case)
+            try container.encode(_replyTo, forKey: CodingKeys.performLookup__replyTo)
         }
     }
 }

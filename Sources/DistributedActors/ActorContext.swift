@@ -449,9 +449,6 @@ public struct SubReceiveId<SubMessage>: Hashable, Equatable {
 
     public init(_: SubMessage.Type) {
         let typeName = String(reflecting: SubMessage.self)
-            .replacingOccurrences(of: "<", with: "-")
-            .replacingOccurrences(of: ">", with: "-") // TODO: workaround this since names will be gone...?
-
         self.id = typeName
     }
 
