@@ -24,6 +24,7 @@ extension ActorSubReceiveTests {
     static var allTests: [(String, (ActorSubReceiveTests) -> () throws -> Void)] {
         return [
             ("test_subReceive_shouldBeAbleToReceiveMessages", test_subReceive_shouldBeAbleToReceiveMessages),
+            ("test_subReceiveId_fromGenericType_shouldNotBlowUp", test_subReceiveId_fromGenericType_shouldNotBlowUp),
             ("test_subReceive_shouldBeAbleToModifyActorState", test_subReceive_shouldBeAbleToModifyActorState),
             ("test_subReceive_shouldBeWatchable", test_subReceive_shouldBeWatchable),
             ("test_subReceive_shouldShareLifetimeWithParent", test_subReceive_shouldShareLifetimeWithParent),

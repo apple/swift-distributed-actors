@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import class NIO.EventLoopFuture
 
 struct OwnerOfThings: Actorable {
     let context: Myself.Context
@@ -30,6 +31,11 @@ struct OwnerOfThings: Actorable {
 
     func readLastObservedValue() -> Reception.Listing<OwnerOfThings>? {
         self.ownedListing.lastObservedValue
+    }
+
+    func performLookup() -> EventLoopFuture<Reception.Listing<OwnerOfThings>> {
+        let reply = self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"))
+        return reply._nioFuture
     }
 }
 

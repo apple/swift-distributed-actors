@@ -224,7 +224,7 @@ internal enum ActorLocation: Hashable {
 ///
 /// Names of user actors MUST:
 /// - not start with `$` (those names are reserved for Swift Distributed Actors internal system actors)
-/// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`
+/// - contain only ASCII characters and select special characters (listed in `ValidPathSymbols.extraSymbols`)
 ///
 /// - Example: `/user/lightbulbMaster/lightbulb-2012`
 public struct ActorPath: PathRelationships, Hashable {
@@ -445,7 +445,7 @@ private struct ValidActorPathSymbols {
     static let zero: UnicodeScalar = "0"
     static let nine: UnicodeScalar = "9"
 
-    static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';".unicodeScalars
+    static let extraSymbols: String.UnicodeScalarView = "-_.*$+:@&=,!~';<>".unicodeScalars
 }
 
 struct ActorName {

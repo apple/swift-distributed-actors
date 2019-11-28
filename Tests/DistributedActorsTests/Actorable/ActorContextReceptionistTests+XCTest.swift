@@ -25,6 +25,7 @@ extension ActorContextReceptionTests {
         return [
             ("test_autoUpdatedListing_updatesAutomatically", test_autoUpdatedListing_updatesAutomatically),
             ("test_autoUpdatedListing_invokesOnUpdate", test_autoUpdatedListing_invokesOnUpdate),
+            ("test_lookup_ofGenericType", test_lookup_ofGenericType),
         ]
     }
 }
