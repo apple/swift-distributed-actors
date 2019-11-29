@@ -74,15 +74,15 @@ let targets: [PackageDescription.Target] = [
     ),
 
     // libxpc
-    .target(
-        name: "XPCServiceProvider",
-        dependencies: []
-    ),
-    .target(
-        name: "XPCLibCaller",
-        dependencies: [
-        ]
-    ),
+//    .target(
+//        name: "XPCServiceProvider",
+//        dependencies: []
+//    ),
+//    .target(
+//        name: "XPCLibCaller",
+//        dependencies: [
+//        ]
+//    ),
 
     // xpc + actorable
     // TODO: it's hard to pull off across module
@@ -101,10 +101,10 @@ let targets: [PackageDescription.Target] = [
         ]
     ),
     .target(
-        name: "XPCActorCaller",
+        name: "XPCActorCaller", // this is "main"
         dependencies: [
 //            "XPCActorServiceAPI",
-            "XPCActorServiceProvider", // TODO: direct dependency... need to make it work with just an interface project
+//            "XPCActorServiceProvider", // TODO: direct dependency... need to make it work with just an interface project
             "XPCActorable",
             "Files",
         ]
@@ -112,10 +112,10 @@ let targets: [PackageDescription.Target] = [
 
     // other
 
-    .target(
-        name: "XPCSquirrel",
-        dependencies: [
-        ]),
+//    .target(
+//        name: "XPCSquirrel",
+//        dependencies: [
+//        ]),
 
 
     // ==== ------------------------------------------------------------------------------------------------------------

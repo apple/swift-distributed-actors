@@ -21,10 +21,9 @@ import SwiftSyntax
 // MARK: Find Actorables
 
 struct GatherActorables: SyntaxVisitor {
-    let path: String
+    let path: File
     let settings: GenerateActors.Settings
 
-    // naively copies all import Decls
     var imports: [String] = []
 
     var actorables: [ActorableTypeDecl] = []
@@ -33,7 +32,7 @@ struct GatherActorables: SyntaxVisitor {
     // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
     var nestingStack: [String] = []
 
-    init(_ path: String, _ settings: GenerateActors.Settings) {
+    init(_ path: File, _ settings: GenerateActors.Settings) {
         self.path = path
         self.settings = settings
     }
@@ -42,7 +41,8 @@ struct GatherActorables: SyntaxVisitor {
     // MARK: imports
 
     mutating func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.imports.append("\(node)")
+        // we store the imports outside the actorable, since we don't know _yet_ if there will be an actorable or not
+        self.imports.append("\(node)") // TODO more special type, since cross module etc
         return .visitChildren
     }
 
@@ -57,7 +57,14 @@ struct GatherActorables: SyntaxVisitor {
 
         let BLUE = "\u{001B}[0;34m"
         let RST = "\u{001B}[0;0m"
-        self.wipActorable = ActorableTypeDecl(type: type, name: name, generateCodableConformance: true)
+        self.debug("Actorable \(type) detected: [\(BLUE)\(name)\(RST)] at \(self.path.path), analyzing...")
+        self.wipActorable = ActorableTypeDecl(
+            sourceFile: self.path,
+            type: type,
+            name: name,
+            generateCodableConformance: true
+        )
+        self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
         self.debug("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path), analyzing...")
 
@@ -326,7 +333,6 @@ struct ResolveActorables {
         Self.validateActorableProtocols(actorables)
 
         var protocolLookup: [String: ActorableTypeDecl] = [:]
-        protocolLookup.reserveCapacity(actorables.count)
         for act in actorables where act.type == .protocol {
             // TODO: in reality should be FQN, for cross module support
             protocolLookup[act.name] = act
@@ -336,6 +342,7 @@ struct ResolveActorables {
         // yeah this is n^2 would not need this if we could use the type-/macro-system to do this for us?
         let resolvedActorables: [ActorableTypeDecl] = actorables.map { actorable in
             let inheritedByNameMatches = actorable.inheritedTypes.intersection(actorableTypes)
+
             guard !inheritedByNameMatches.isEmpty else {
                 return actorable
             }
@@ -354,8 +361,6 @@ struct ResolveActorables {
             let protocolFuncs: [ActorFuncDecl] = inheritedActorableProtocols.flatMap {
                 $0.funcs
             }
-
-            pprint("protocolFuncs = \(protocolFuncs)")
 
             // The protocols are added such that we can generate their `case _protocol(Protocol)` cases and delegate to them
             resolved.actorableProtocols.append(contentsOf: inheritedActorableProtocols)

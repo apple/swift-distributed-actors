@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import SwiftSyntax
+import Files
 
 struct ActorableTypeDecl {
     enum DeclType {
@@ -22,6 +23,11 @@ struct ActorableTypeDecl {
         case `enum`
         case `extension`
     }
+
+    /// File where the actorable was defined
+    var sourceFile: File
+
+    var imports: [String] = []
 
     var access: String = ""
     var type: DeclType
