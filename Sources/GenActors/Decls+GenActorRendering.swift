@@ -42,7 +42,6 @@ extension Rendering {
 
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
-                // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
                 {{messageAccess}} enum Message { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
@@ -50,6 +49,10 @@ extension Rendering {
                 {%for tell in boxFuncs %}
                 {{ tell }} 
                 {% endfor %}
+            }
+
+            {{messageAccess}} extension {{baseName}}.Message: ActorableMessage {
+                {{messageAccess}} typealias TheActorable {{baseName}}
             }
 
             """

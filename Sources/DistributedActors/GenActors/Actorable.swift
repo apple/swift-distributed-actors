@@ -133,3 +133,9 @@ public enum DeathPactDirective {
     /// Stops the current actor as reaction to the termination of the watched actors termination.
     case stop
 }
+
+/// Marker protocol for all `Message` types that are generated based on an `Actorable`.
+/// Useful for type constraining APIs to only Codable
+protocol ActorableMessage {
+    associatedtype TheActorable: Actorable
+}

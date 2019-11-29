@@ -13,19 +13,22 @@
 //===----------------------------------------------------------------------===//
 
 /// Represents a reference to a "virtual" actor, which means that the actor may not (currently) exist in memory,
-/// (or may have never existed _yet_), which will however be created upon the first message delivery to it.
+/// (or may have never existed _yet_), but will be created upon the first message delivery to it.
 ///
 /// A virtual actor MAY migrate transparently between nodes.
 ///
 /// Delivery of messages upon node failure and/or re-balancing is best effort, and messages MAY be lost.
 /// Same as with any other `ActorRef` if you need at-least-once delivery semantics, you need to build it into your message protocol.
+///
+/// It is by design that one can not `watch` such reference, as it's existence should not matter to end users of this API,
+/// i.e. even if the actor were to stop or move to other nodes, the same ref remains valid forever, thus watching it would be misleading.
 // TODO: message deliveries and redeliveries we can build as helpers and make it even easier.
 struct VirtualActorRef<Message>: ReceivesMessages {
 
     let identity: VirtualIdentity
-    private let namespace: VirtualNamespace
+    private let namespace: VirtualNamespace<Message>
 
-    init(namespace: VirtualNamespace, identity: VirtualIdentity) {
+    init(namespace: VirtualNamespace<Message>, identity: VirtualIdentity) {
         self.namespace = namespace
         self.identity = identity
     }

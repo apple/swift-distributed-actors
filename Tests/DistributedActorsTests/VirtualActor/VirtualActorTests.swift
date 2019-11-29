@@ -49,7 +49,7 @@ class VirtualActorTests: XCTestCase {
             echoBehavior
         }
 
-        let ref: ActorRef<VirtualTestMessage> = virtualNamespace.lookup(identity: "sensor-123")
+        let ref: ActorRef<VirtualTestMessage> = virtualNamespace.ref(identifiedBy: "sensor-123")
 
         let p = testKit.spawnTestProbe(expecting: String.self)
         ref.tell(.echo("in the mirror", replyTo: p.ref))
