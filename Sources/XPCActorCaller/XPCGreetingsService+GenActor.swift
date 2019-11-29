@@ -13,36 +13,45 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//
+//sa
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPC
+import XPCActorable
+import XPCActorServiceProvider
 
 import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsService messages 
+// MARK: DO NOT EDIT: Generated XPCGreetingsService messages 
 
-/// DO NOT EDIT: Generated GreetingsService messages
-extension GreetingsService {
+/// DO NOT EDIT: Generated XPCGreetingsService messages
+extension XPCGreetingsService {
 
     public enum Message { 
-        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
+        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol) 
+        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsService>
-    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsService.Message {
-        .greetingsServiceProtocol(message)
+    /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
+    public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
+        .xPCGreetingsServiceProtocol(message)
+    } 
+    
+    /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
+    public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
+        .xPCGreetingsServiceProtocol(message)
     } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsService behavior
+// MARK: DO NOT EDIT: Generated XPCGreetingsService behavior
 
-extension GreetingsService {
+extension XPCGreetingsService {
 
-    public static func makeBehavior(instance: GreetingsService) -> Behavior<Message> {
+    public static func makeBehavior(instance: XPCGreetingsService) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<GreetingsService>.Context(underlying: _context)
+            let context = Actor<XPCGreetingsService>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -51,13 +60,16 @@ extension GreetingsService {
                 switch message { 
                 
                 
-                case .greetingsServiceProtocol(.greet(let name)):
+                case .xPCGreetingsServiceProtocol(.greet(let name)):
+                    try instance.greet(name: name)
+ 
+                case .xPCGreetingsServiceProtocol(.greet(let name)):
                     try instance.greet(name: name)
  
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<GreetingsService>.Context(underlying: _context)
+                let context = Actor<XPCGreetingsService>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -80,8 +92,8 @@ extension GreetingsService {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for GreetingsService
+// MARK: Extend Actor for XPCGreetingsService
 
-extension Actor where A.Message == GreetingsService.Message {
+extension Actor where A.Message == XPCGreetingsService.Message {
     
 }

@@ -124,7 +124,6 @@ public final class ActorableXPCService<A: Actorable> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: XPC Callbacks
 
-
 fileprivate func xpc_connectionHandler(peer: xpc_connection_t) {
     guard let storage = _storage else {
         return

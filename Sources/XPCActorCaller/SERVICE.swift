@@ -9,14 +9,17 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//
+//sa
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPC
+import XPCActorable
+import XPCActorServiceProvider
 
 import Files
 
-public struct GreetingsService: Actorable, GreetingsServiceProtocol {
+public struct XPCGreetingsService: XPCGreetingsServiceProtocol, Actorable {
 
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
@@ -33,10 +36,9 @@ public struct GreetingsService: Actorable, GreetingsServiceProtocol {
 
 }
 
-
-public protocol GreetingsServiceProtocol: Actorable {
+public protocol XPCGreetingsServiceProtocol: Actorable {
 
     func greet(name: String) throws
 
-    static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> Self.Message
+    static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> Self.Message
 }

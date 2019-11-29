@@ -17,23 +17,21 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-
-import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceProtocol messages 
+// MARK: DO NOT EDIT: Generated XPCGreetingsServiceProtocol messages 
 
 extension GeneratedActor.Messages {
-    public enum GreetingsServiceProtocol { 
+    public enum XPCGreetingsServiceProtocol { 
         case greet(name: String)  
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Boxing GreetingsServiceProtocol for any inheriting actorable `A` 
+// MARK: DO NOT EDIT: Boxing XPCGreetingsServiceProtocol for any inheriting actorable `A` 
 
-extension Actor where A: GreetingsServiceProtocol {
+extension Actor where A: XPCGreetingsServiceProtocol {
     
     public func greet(name: String) {
-self.ref.tell(A._boxGreetingsServiceProtocol(.greet(name: name)))
+self.ref.tell(A._boxXPCGreetingsServiceProtocol(.greet(name: name)))
 } 
     
 }
