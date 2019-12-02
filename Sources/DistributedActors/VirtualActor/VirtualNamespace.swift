@@ -30,13 +30,12 @@
 /// ## Multi-node namespace
 
 final class VirtualNamespace<Message> {
-
     typealias NamespaceRef = ActorRef<NamespaceMessage>
     typealias NamespaceContext = ActorContext<NamespaceMessage>
 
     private let system: ActorSystem
 
-    /// This 
+    /// This
     private var refs: [VirtualIdentity: VirtualRefState]
 
     /// Refs of other regions -- one per node (which participates in the namespace)
@@ -55,6 +54,7 @@ final class VirtualNamespace<Message> {
         case _namespaceInstancesChanged(Receptionist.Listing<VirtualNamespace<Message>.NamespaceMessage>)
         // case _virtualSpawnReply(VirtualSpawnReply)
     }
+
     struct VirtualSpawnReply {
         let identity: VirtualIdentity
         let ref: ActorRef<Message>
@@ -66,7 +66,7 @@ final class VirtualNamespace<Message> {
         self.refs = [:]
         self.makeBehaviorOnDemand = makeBehaviorOnDemand
 
-        // TODO could spawn as /virtual/bla/...
+        // TODO: could spawn as /virtual/bla/...
         self._ref = try system._spawnSystemActor(VirtualNamespace.name(name), self.behavior)
     }
 
@@ -133,23 +133,24 @@ final class VirtualNamespace<Message> {
 
         switch targetNode {
         case .some(let targetNode) where targetNode == myselfNode:
-            _ = try virtualSpawnLocally(context, identity: identity)
+            _ = try self.virtualSpawnLocally(context, identity: identity)
             guard let spawned = self.refs[identity] else {
                 fatalError("virtualSpawnLocally was expected to fill self.refs for \(identity)")
             }
             return spawned
 
         case .some(let targetNode):
-            return try requestRemoteVirtualSpawn(context, identity: identity, targetNode: targetNode)
+            return try self.requestRemoteVirtualSpawn(context, identity: identity, targetNode: targetNode)
 
         case .none:
-            _ = try virtualSpawnLocally(context, identity: identity)
+            _ = try self.virtualSpawnLocally(context, identity: identity)
             guard let spawned = self.refs[identity] else {
                 fatalError("virtualSpawnLocally was expected to fill self.refs for \(identity)")
             }
             return spawned
         }
     }
+
     private func virtualSpawnLocally(_ context: NamespaceContext, identity: VirtualIdentity) throws -> ActorRef<Message> {
         // spawn locally
         let ref = try context.spawnWatch(.unique(identity.identifier), self.makeBehaviorOnDemand())
@@ -157,7 +158,8 @@ final class VirtualNamespace<Message> {
         self.refs[identity] = ready
         return ref
     }
-    private         func requestRemoteVirtualSpawn(_ context: NamespaceContext, identity: VirtualIdentity, targetNode node: UniqueNode) throws -> VirtualRefState {
+
+    private func requestRemoteVirtualSpawn(_ context: NamespaceContext, identity: VirtualIdentity, targetNode node: UniqueNode) throws -> VirtualRefState {
         // FIXME: this should rather use the receptionist to locate the ref (!!!)
         // TODO: spawn on a remote node
         let resolveContext: ResolveContext<NamespaceMessage> = try .init(
@@ -166,7 +168,7 @@ final class VirtualNamespace<Message> {
         )
         let targetNamespaceActor: ActorRef<NamespaceMessage> = context.system._resolve(context: resolveContext)
 
-            // TODO what is a proper timeout here, or allow config
+        // TODO: what is a proper timeout here, or allow config
         let spawnedResponse: AskResponse<VirtualSpawnReply> = targetNamespaceActor.ask(timeout: .seconds(30)) {
             NamespaceMessage.virtualSpawn(identity, replyTo: $0)
         }
@@ -186,8 +188,6 @@ final class VirtualNamespace<Message> {
         self.refs[identity] = refState
         return refState
     }
-
-
 
     private func onTerminated(_ context: NamespaceContext, terminated: Signals.Terminated) throws {
         let identity = VirtualIdentity(type: String(reflecting: Message.self), identifier: terminated.address.name)
@@ -216,7 +216,6 @@ extension VirtualNamespace {
 // MARK: VirtualNamespace, Direct API
 
 extension VirtualNamespace {
-
     // FIXME: replace with ActorRef with a delegate personality
     public func ref(identifiedBy identifier: String) -> VirtualActorRef<Message> {
         let identity = VirtualIdentity(type: String(reflecting: Message.self), identifier: identifier)
@@ -240,7 +239,6 @@ extension VirtualNamespace {
 // MARK: Virtual datatypes
 
 struct VirtualEnvelope {
-
     let identity: VirtualIdentity
 
     // TODO: should we do SeqNr right away here?
@@ -248,7 +246,6 @@ struct VirtualEnvelope {
 
     let file: String
     let line: UInt
-
 }
 
 struct VirtualIdentity: Hashable {
@@ -288,6 +285,4 @@ enum VirtualRefState {
             addressable._tellOrDeadLetter(envelope.message, file: envelope.file, line: envelope.line)
         }
     }
-
-
 }

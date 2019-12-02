@@ -24,7 +24,6 @@
 /// i.e. even if the actor were to stop or move to other nodes, the same ref remains valid forever, thus watching it would be misleading.
 // TODO: message deliveries and redeliveries we can build as helpers and make it even easier.
 struct VirtualActorRef<Message>: ReceivesMessages {
-
     let identity: VirtualIdentity
     private let namespace: VirtualNamespace<Message>
 
@@ -38,4 +37,3 @@ struct VirtualActorRef<Message>: ReceivesMessages {
         self.namespace.ref.tell(.forward(envelope), file: file, line: line)
     }
 }
-

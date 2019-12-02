@@ -59,7 +59,7 @@ final class VirtualActorTests: XCTestCase {
 
         let ref = virtualNamespace.ref(identifiedBy: "sensor-123")
 
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
         ref.tell(.echo("in the mirror", replyTo: p.ref))
 
         try p.expectMessage("echo:in the mirror")
@@ -67,7 +67,7 @@ final class VirtualActorTests: XCTestCase {
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Single node
-    
+
     func test_virtualActor_ensureUniqueness() throws {
         let virtualNamespace = try VirtualNamespace(system, of: VirtualTestMessage.self, name: "sensors") {
             // gets started "on demand", whenever a message is sent to an identity that has not been yet started.
@@ -78,7 +78,7 @@ final class VirtualActorTests: XCTestCase {
         let ref1 = virtualNamespace.ref(identifiedBy: "sensor-123")
         let ref2 = virtualNamespace.ref(identifiedBy: ref1.identity.identifier)
 
-        let p = testKit.spawnTestProbe(expecting: String.self)
+        let p = self.testKit.spawnTestProbe(expecting: String.self)
 
         ref1.tell(.echo("in the mirror", replyTo: p.ref))
         try p.expectMessage("echo:in the mirror")
@@ -98,7 +98,7 @@ final class VirtualActorTests: XCTestCase {
         let ref1 = virtualNamespace.ref(identifiedBy: "sensor-123")
         let ref2 = virtualNamespace.ref(identifiedBy: ref1.identity.identifier)
 
-        let p = testKit.spawnTestProbe(expecting: ActorRef<VirtualTestMessage>.self)
+        let p = self.testKit.spawnTestProbe(expecting: ActorRef<VirtualTestMessage>.self)
 
         ref1.tell(.exposeTrueSelf(replyTo: p.ref))
         let ref1p = try p.expectMessage()
@@ -109,4 +109,3 @@ final class VirtualActorTests: XCTestCase {
         ref2p.shouldEqual(ref1p)
     }
 }
-
