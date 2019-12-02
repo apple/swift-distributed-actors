@@ -33,9 +33,9 @@ struct VirtualActorRef<Message>: ReceivesMessages {
         self.identity = identity
     }
 
-    func tell(_ message: Message, file: String, line: UInt) {
+    func tell(_ message: Message, file: String = #file, line: UInt = #line) {
         let envelope = VirtualEnvelope(identity: self.identity, message: message, file: file, line: line)
-        self.namespace.ref.tell(.forward(envelope))
+        self.namespace.ref.tell(.forward(envelope), file: file, line: line)
     }
 }
 

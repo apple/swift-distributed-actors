@@ -472,7 +472,7 @@ extension ActorSystem: _ActorTreeTraversable {
     /// the print completes already have terminated, or may not print actors which started just after a visit at certain parent.
     internal func _printTree() {
         self._traverseAllVoid { context, ref in
-            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) - \(ref)")
+            print("\(String(repeating: "  ", count: context.depth))- /\(ref.address.name) : \(ref._typeString)")
             return .continue
         }
     }

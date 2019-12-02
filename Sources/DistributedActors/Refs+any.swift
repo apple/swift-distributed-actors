@@ -81,6 +81,16 @@ extension AddressableActorRef: CustomStringConvertible {
 }
 
 extension AddressableActorRef {
+    // Prints short name like `ActorRef<Thing>` (so not Module.Thing),
+    // useful for simple sanity checking of ref type in printouts of the actor tree,
+    // but should not be used to deduct the real type of the accepted messages, 
+    // for that purpose use the `messageTypeId` instead.
+    public var _typeString: String {
+        "\(type(of: self.ref))"
+    }
+}
+
+extension AddressableActorRef {
     public func hash(into hasher: inout Hasher) {
         self.address.hash(into: &hasher)
     }

@@ -24,6 +24,8 @@ extension VirtualActorTests {
     static var allTests: [(String, (VirtualActorTests) -> () throws -> Void)] {
         return [
             ("test_virtualActor_startsAutomatically", test_virtualActor_startsAutomatically),
+            ("test_virtualActor_ensureUniqueness", test_virtualActor_ensureUniqueness),
+            ("test_virtualActor_exposeTrueSelf", test_virtualActor_exposeTrueSelf),
         ]
     }
 }

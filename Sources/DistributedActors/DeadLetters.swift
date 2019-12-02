@@ -212,7 +212,7 @@ final class DeadLetterOffice {
         switch message {
         case .tombstone:
             // FIXME: this should never happen; tombstone must always be taken in by the actor as last message
-            traceLog_Mailbox(self.address.path, "Tombstone arrived in dead letters. TODO: make sure these dont happen")
+            traceLog_Mailbox(self.address.path, "Tombstone arrived in dead letters. This should not happen, please report this as an issue/bug.")
             return true // TODO: would be better to avoid them ending up here at all, this means that likely a double dead letter was sent
         case .watch(let watchee, let watcher):
             // if a watch message arrived here it either:
@@ -225,9 +225,10 @@ final class DeadLetterOffice {
             // are inherently racy in the during actor system shutdown:
             let ignored = recipient == ActorAddress._cluster
             return ignored
-//        case .terminated, .childTerminated:
-//            // we ignore terminated messages in dead letter logging, as those are often harmless side effects of "everyone is shutting down"
-//            return true
+        case .terminated where recipient?.path == ActorPath._receptionist:
+            // a terminated not arriving arriving at the receptionist most likely means that we're shutting down,
+            // and the receptionist has shut down already. // TODO: does this mean we should prefer to first stop user actors actually?
+            return true
         default:
             // ignore other messages, no special handling needed
             return false

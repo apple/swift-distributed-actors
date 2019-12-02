@@ -321,6 +321,16 @@ internal enum LocalReceptionist {
     }
 }
 
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Receptionist path
+
+extension ActorPath {
+    public static let _receptionist = try! ActorPath._system.appending("receptionist")
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Receptionist message protocol
+
 /// Marker protocol for all receptionist messages
 ///
 /// The message implementations are located in `Receptionist.*`

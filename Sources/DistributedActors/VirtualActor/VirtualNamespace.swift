@@ -12,15 +12,35 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// A virtual namespace in which virtual actors are represented.
-/// The namespace is managed cooperatively by all participating nodes, and actors are spawned on-demand automatically
+/// A virtual namespace in which virtual actors are automatically spawned and managed.
+///
+/// A namespace can span multiple nodes, or just a single node, and effectively can be assn as a "spawn-on-demand"
+/// mechanism, in which references to actors can be obtained regardless if they currently "exist" or not, in a sense
+/// they are "virtual" and materialized on demand (upon encountering the first message).
+///
+/// A `VirtualActor` is an entity uniquely identified by `VirtualIdentity`, and its uniqueness is ensured* in the namespace.
+/// Virtual references differ from normal actor references (`ActorRef`) in not allowing to monitor their lifecycle explicitly
+/// as they should be assumed perpetual (or "death-less"). This is as such these references MAY be migrated between nodes
+/// transparently, and end users of this API should not be aware that the reference has been migrated. // TODO: not implemented yet (migration / rebalancing)
+///
+/// ### Node allocation
+/// As the namespace is managed cooperatively by all participating nodes, and actors are spawned on-demand automatically
 /// on the "most appropriate" node available (e.g. "the node that has the least actors" or similar) // TODO: pending implementation of allocation strategies
+///
+/// ## Multi-node namespace
+
 final class VirtualNamespace<Message> {
 
+    typealias NamespaceRef = ActorRef<NamespaceMessage>
     typealias NamespaceContext = ActorContext<NamespaceMessage>
 
     private let system: ActorSystem
+
+    /// This 
     private var refs: [VirtualIdentity: VirtualRefState]
+
+    /// Refs of other regions -- one per node (which participates in the namespace)
+    private var namespaces: Set<NamespaceRef> = []
 
     private let makeBehaviorOnDemand: () -> Behavior<Message>
 
@@ -31,12 +51,17 @@ final class VirtualNamespace<Message> {
 
     enum NamespaceMessage {
         case forward(VirtualEnvelope)
-        case virtualSpawn(VirtualIdentity, replyTo: ActorRef<ActorRef<Message>>)
-        case _virtualSpawnReply(VirtualIdentity, ActorRef<Message>)
+        case virtualSpawn(VirtualIdentity, replyTo: ActorRef<VirtualSpawnReply>)
+        case _namespaceInstancesChanged(Receptionist.Listing<VirtualNamespace<Message>.NamespaceMessage>)
+        // case _virtualSpawnReply(VirtualSpawnReply)
+    }
+    struct VirtualSpawnReply {
+        let identity: VirtualIdentity
+        let ref: ActorRef<Message>
     }
 
     /// - Throws: if a namespace with the name already exists in the system
-    init(_ system: ActorSystem, name: String, makeBehaviorOnDemand: @escaping () -> Behavior<Message>) throws {
+    init(_ system: ActorSystem, of type: Message.Type = Message.self, name: String, makeBehaviorOnDemand: @escaping () -> Behavior<Message>) throws {
         self.system = system
         self.refs = [:]
         self.makeBehaviorOnDemand = makeBehaviorOnDemand
@@ -48,9 +73,12 @@ final class VirtualNamespace<Message> {
     internal var behavior: Behavior<NamespaceMessage> {
         .setup { context in
 
-            let key = Receptionist.RegistrationKey(VirtualNamespace<Message>.NamespaceMessage.self, "namespace-\(Message.self)")
+            let key = Receptionist.RegistrationKey(VirtualNamespace<Message>.NamespaceMessage.self, id: "namespace-\(Message.self)")
             context.system.receptionist.register(context.myself, key: key)
-            context.system.receptionist.
+            context.system.receptionist.subscribe(
+                key: key,
+                subscriber: context.messageAdapter { ._namespaceInstancesChanged($0) }
+            )
 
             return Behavior<NamespaceMessage>.receiveMessage { message in
                 switch message {
@@ -58,11 +86,10 @@ final class VirtualNamespace<Message> {
                     try self.forward(context, envelope: envelope)
 
                 case .virtualSpawn(let identity, let replyTo):
-                    do {
-                        try self.virtualSpawn(context, identity: identity, replyTo: replyTo)
-                    } catch {
-                        context.log.error("Failed to spawn virtual actor for identity: \(identity); Error: \(error)")
-                    }
+                    self.onVirtualSpawn(context, identity: identity, replyTo: replyTo)
+
+                case ._namespaceInstancesChanged(let listing):
+                    self.onNamespaceListingChange(context, listing: listing)
                 }
                 return .same
 
@@ -74,52 +101,93 @@ final class VirtualNamespace<Message> {
         }
     }
 
+    private func onVirtualSpawn(_ context: ActorContext<NamespaceMessage>, identity: VirtualIdentity, replyTo: ActorRef<VirtualSpawnReply>) {
+        do {
+            let spawned = try self.virtualSpawnLocally(context, identity: identity)
+            replyTo.tell(.init(identity: identity, ref: spawned))
+        } catch {
+            context.log.error("Failed to spawn virtual actor for identity: \(identity); Error: \(error)")
+        }
+    }
+
+    private func onNamespaceListingChange(_ context: NamespaceContext, listing: Receptionist.Listing<NamespaceRef.Message>) {
+        context.log.info("Updated namespace listing (other nodes): \(listing.refs)")
+        self.namespaces = listing.refs
+    }
+
     private func forward(_ context: NamespaceContext, envelope: VirtualEnvelope) throws {
-        if let box = refs[envelope.identity] {
-            do {
-                try box.stashOrTell(envelope)
-            } catch {
-                context.log.warning("Stash buffer for virtual actor [\(envelope.identity)] is full. Dropping message: \(envelope)")
-            }
-        } else {
-            try self.virtualSpawn(context, identity: envelope.identity)
-            // retry, now that the spawn was completed the refs will contain a ref for this envelope's identity
-            try forward(context, envelope: envelope)
+        let refState: VirtualRefState = try refs[envelope.identity] ?? self.virtualSpawn(context, identity: envelope.identity)
+
+        do {
+            try refState.stashOrTell(envelope)
+        } catch {
+            context.log.warning("Stash buffer for virtual actor [\(envelope.identity)] is full. Dropping message: \(envelope)")
         }
     }
 
     /// A "virtual" spawn is a spawn that may be local or remote, and is done in participation with other namespace instances on other nodes.
-    private func virtualSpawn(_ context: NamespaceContext, identity: VirtualIdentity, replyTo: ActorRef<ActorRef<Message>>) throws {
+    private func virtualSpawn(_ context: NamespaceContext, identity: VirtualIdentity) throws -> VirtualRefState {
         // TODO: determine on which node to spawn (load balancing)
         let targetNode = context.address.node
         let myselfNode = context.address.node
 
-        func spawnLocally() throws {
-            // spawn locally
-            let ref = try context.spawnWatch(.unique(identity.identifier), self.makeBehaviorOnDemand())
-            self.refs[identity] = VirtualRefState.ready(ref.asAddressable())
-            replyTo.tell(<#T##message: ActorRef<Message>##ActorRef<Message>#>)
-        }
-
-        func requestRemoteSpawn(_ node: UniqueNode) throws {
-            // TODO: spawn on a remote node
-            let resolveContext: ResolveContext<NamespaceMessage> = try .init(
-                address: VirtualNamespace.address(on: node, identity.identifier),
-                system: context.system
-            )
-            let resolvedRef: ActorRef<NamespaceMessage> = context.system._resolve(context: resolveContext)
-            resolvedRef.tell(.virtualSpawn(identity))
-        }
-
         switch targetNode {
         case .some(let targetNode) where targetNode == myselfNode:
-            try spawnLocally()
+            _ = try virtualSpawnLocally(context, identity: identity)
+            guard let spawned = self.refs[identity] else {
+                fatalError("virtualSpawnLocally was expected to fill self.refs for \(identity)")
+            }
+            return spawned
+
         case .some(let targetNode):
-            return try requestRemoteSpawn(targetNode)
-        case nil:
-            try spawnLocally()
+            return try requestRemoteVirtualSpawn(context, identity: identity, targetNode: targetNode)
+
+        case .none:
+            _ = try virtualSpawnLocally(context, identity: identity)
+            guard let spawned = self.refs[identity] else {
+                fatalError("virtualSpawnLocally was expected to fill self.refs for \(identity)")
+            }
+            return spawned
         }
     }
+    private func virtualSpawnLocally(_ context: NamespaceContext, identity: VirtualIdentity) throws -> ActorRef<Message> {
+        // spawn locally
+        let ref = try context.spawnWatch(.unique(identity.identifier), self.makeBehaviorOnDemand())
+        let ready = VirtualRefState.ready(ref.asAddressable())
+        self.refs[identity] = ready
+        return ref
+    }
+    private         func requestRemoteVirtualSpawn(_ context: NamespaceContext, identity: VirtualIdentity, targetNode node: UniqueNode) throws -> VirtualRefState {
+        // FIXME: this should rather use the receptionist to locate the ref (!!!)
+        // TODO: spawn on a remote node
+        let resolveContext: ResolveContext<NamespaceMessage> = try .init(
+            address: VirtualNamespace.address(on: node, identity.identifier),
+            system: context.system
+        )
+        let targetNamespaceActor: ActorRef<NamespaceMessage> = context.system._resolve(context: resolveContext)
+
+            // TODO what is a proper timeout here, or allow config
+        let spawnedResponse: AskResponse<VirtualSpawnReply> = targetNamespaceActor.ask(timeout: .seconds(30)) {
+            NamespaceMessage.virtualSpawn(identity, replyTo: $0)
+        }
+        context.onResultAsync(of: spawnedResponse, timeout: .effectivelyInfinite) {
+            switch $0 {
+            case .success(let spawned):
+                context.log.debug("Successfully received spawned ref from [\(targetNamespaceActor)] for virtual actor [identity:\(spawned.identity)]")
+                if let refState = self.refs.removeValue(forKey: spawned.identity) {
+                    self.refs[spawned.identity] = try refState.makeReady(addressable: spawned.ref.asAddressable())
+                }
+            case .failure(let err):
+                context.log.warning("Failed to spawn virtual actor [identity:\(identity)] remotely on \(targetNamespaceActor). Error: \(err)")
+            }
+            return .same
+        }
+        let refState = VirtualRefState.makeInitializing(capacity: 1024) // TODO: make configurable or dynamic
+        self.refs[identity] = refState
+        return refState
+    }
+
+
 
     private func onTerminated(_ context: NamespaceContext, terminated: Signals.Terminated) throws {
         let identity = VirtualIdentity(type: String(reflecting: Message.self), identifier: terminated.address.name)
@@ -132,11 +200,11 @@ final class VirtualNamespace<Message> {
 
 extension VirtualNamespace {
     static func name(_ name: String) -> ActorNaming {
-        "virtual-\(name)"
+        "v-namespace-\(name)"
     }
 
     static func path(_ name: String) throws -> ActorPath {
-        try ActorPath._system.appending("virtual-\(name)")
+        try ActorPath._system.appending("v-namespace-\(name)")
     }
 
     static func address(on node: UniqueNode, _ name: String) throws -> ActorAddress {
@@ -152,11 +220,15 @@ extension VirtualNamespace {
     // FIXME: replace with ActorRef with a delegate personality
     public func ref(identifiedBy identifier: String) -> VirtualActorRef<Message> {
         let identity = VirtualIdentity(type: String(reflecting: Message.self), identifier: identifier)
-        let vref = VirtualActorRef(namespace: self, identity: identity)
-        self.system.log.info("Prepared \(vref)")
-        return vref
+        let vRef = VirtualActorRef(namespace: self, identity: identity)
+        self.system.log.info("Prepared \(vRef)")
+        return vRef
     }
 
+    // TODO: We'd want this to be VirtualActor perhaps rather as we do not want to allow watching,
+    // but that means we'd need to source gen all the functions again to VirtualActor which is a bit annoying
+    //
+    //
     // TODO: possible once we have Delegate cells
 //    public func actor<A: Actorable>(identifiedBy identity: String) -> Actor<A> where A.Message == Message {
 //        let ref: ActorRef<A.Message> = self.ref(identifiedBy: identity)
@@ -190,13 +262,8 @@ enum VirtualRefState {
     case initializing(StashBuffer<VirtualEnvelope>)
     case ready(AddressableActorRef)
 
-    func stashOrTell(_ envelope: VirtualEnvelope) throws {
-        switch self {
-        case .initializing(let buffer):
-            try buffer.stash(message: envelope)
-        case .ready(let addressable):
-            addressable._tellOrDeadLetter(envelope.message, file: envelope.file, line: envelope.line)
-        }
+    static func makeInitializing(capacity: Int) -> VirtualRefState {
+        .initializing(.init(capacity: capacity))
     }
 
     /// Swaps and flushes buffered messages to the ready ref.
@@ -207,8 +274,20 @@ enum VirtualRefState {
             while let envelope = buffer.buffer.take() {
                 addressable._tellOrDeadLetter(envelope.message, file: envelope.file, line: envelope.line)
             }
+            return .ready(addressable)
         case .ready:
-            ()
+            return self
         }
     }
+
+    func stashOrTell(_ envelope: VirtualEnvelope) throws {
+        switch self {
+        case .initializing(let buffer):
+            try buffer.stash(message: envelope)
+        case .ready(let addressable):
+            addressable._tellOrDeadLetter(envelope.message, file: envelope.file, line: envelope.line)
+        }
+    }
+
+
 }
