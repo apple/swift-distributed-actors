@@ -31,23 +31,38 @@ public enum XPCSerialization {
             throw SerializationError.noSerializerRegisteredFor(hint: "\(Message.self))")
         }
 
+        // TODO: mark that this invocation will be over XPC somehow; serializer.setSerializationContext(<#T##context: ActorSerializationContext##ActorSerializationContext#>)
+
         let buf = try serializer.trySerialize(message)
 
+        // TODO serialize the Envelope
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
         xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serializerId))
 
-        pprint("xdict = \(xdict)")
-
         buf.withUnsafeReadableBytes { bytes in
-            pprint("bytes = \(bytes)")
             if let baseAddress = bytes.baseAddress {
                 xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue, UInt64(buf.readableBytes))
                 xpc_dictionary_set_data(xdict, ActorableXPCMessageField.message.rawValue, baseAddress, buf.readableBytes)
-                pprint("baseAddress = \(baseAddress)")
             }
         }
 
         return xdict
+    }
+
+    public static func serializeRecipient(_ system: ActorSystem, xdict: xpc_object_t, address: ActorAddress) throws {
+        guard let addressSerializerId = try system.serialization.serializerIdFor(type: ActorAddress.self) else {
+            fatalError("Can't serialize ActorAddress")
+        }
+        guard let serializer = try system.serialization.serializer(for: addressSerializerId) else {
+            fatalError("Can't serialize ActorAddress")
+        }
+
+        let buf = try serializer.trySerialize(address)
+        buf.withUnsafeReadableBytes { bytes in
+            if let baseAddress = bytes.baseAddress {
+                xpc_dictionary_set_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, baseAddress, buf.readableBytes)
+            }
+        }
     }
 
     // TODO: serializeRawDict - for C apis interop
@@ -57,33 +72,81 @@ public enum XPCSerialization {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Deserialize
 
-    public static func deserializeActorMessage(_ system: ActorSystem, xdict: xpc_object_t) throws -> Any {
+    public static func deserializeActorMessage(_ system: ActorSystem, peer: xpc_connection_t, xdict: xpc_object_t) throws -> Any {
         let serializerId = UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
-        pprint("serializerId = \(serializerId)")
 
         guard let serializer = system.serialization.serializer(for: serializerId) else {
             throw SerializationError.noSerializerRegisteredFor(hint: "SerializerId:\(serializerId))")
         }
 
-        pprint("serializer = \(serializer)")
+        // FIXME This means we need to make those value types (!!!!!!!)
+        // by storing the peer connection, we make the Codable infra deserialize a proxy that will reply to this peer
+        serializer.setUserInfo(key: .xpcConnection, value: peer)
 
         let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
-        pprint("length64 = \(length64)")
         var length = Int(length64)
-        pprint("length = \(length)")
 
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.message.rawValue, &length)
-        pprint("rawDataPointer = \(rawDataPointer)")
         let rawDataBufferPointer = UnsafeRawBufferPointer.init(start: rawDataPointer, count: length)
-        pprint("rawDataBufferPointer = \(rawDataBufferPointer)")
 
         var buf = system.serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
 
-        let anyMessage = try serializer.tryDeserialize(buf)
-        pprint("anyMessage = \(anyMessage)")
-
-        return anyMessage
+        do {
+            return try serializer.tryDeserialize(buf)
+        } catch {
+            // TODO only nowadays since we know its JSON
+            throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no payload>", error: error)
+        }
     }
 
+    // TODO make as envelope
+    public static func deserializeRecipient(_ system: ActorSystem, xdict: xpc_object_t) throws -> AddressableActorRef {
+        let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.recipientLength.rawValue)
+        var length = Int(length64)
+
+        let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.recipientAddress.rawValue, &length)
+        let rawDataBufferPointer = UnsafeRawBufferPointer.init(start: rawDataPointer, count: length)
+
+        var buf = system.serialization.allocator.buffer(capacity: 0)
+        buf.writeBytes(rawDataBufferPointer)
+
+        do {
+            guard let id = system.serialization.serializerIdFor(type: ActorAddress.self) else {
+                return system.deadLetters.asAddressable()
+            }
+            guard let serializer = system.serialization.serializer(for: id) else {
+                return system.deadLetters.asAddressable()
+            }
+            let address = try serializer.tryDeserialize(buf) as! ActorAddress
+            return system._resolveUntyped(context: ResolveContext(address: address, system: system))
+        } catch {
+            // TODO only nowadays since we know its JSON
+            throw XPCSerializationError.decodingError(payload: buf.getString(at: 0, length: buf.readableBytes) ?? "<no recipient>", error: error)
+        }
+
+    }
+}
+
+public enum XPCSerializationError: Error {
+    case decodingError(payload: String, error: Error)
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: User info
+
+extension Decoder {
+    public var xpcConnection: xpc_connection_t? {
+        self.userInfo[.xpcConnection] as? xpc_connection_t
+    }
+}
+
+extension Encoder {
+    public var xpcConnection: xpc_connection_t? {
+        self.userInfo[.xpcConnection] as? xpc_connection_t
+    }
+}
+
+public extension CodingUserInfoKey {
+    static let xpcConnection: CodingUserInfoKey = CodingUserInfoKey(rawValue: "XPCConnection")!
 }

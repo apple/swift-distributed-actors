@@ -30,6 +30,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated InvokeFuncs messages
 extension InvokeFuncs {
+
     public enum Message { 
         case doThingsAndRunTask(_replyTo: ActorRef<Int>) 
         case doThingsAsync(_replyTo: ActorRef<Reply<Int>>) 
@@ -95,34 +96,10 @@ extension InvokeFuncs {
 
 extension Actor where A.Message == InvokeFuncs.Message {
 
-    public func doThingsAndRunTask() -> Reply<Int> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAndRunTask(_replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
-    public func doThingsAsync() -> Reply<Reply<Int>> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: Reply<Int>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .doThingsAsync(_replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
-    internal func internalTask() -> Reply<Int> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: Int.self, timeout: .effectivelyInfinite) { _replyTo in
-                .internalTask(_replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
 }

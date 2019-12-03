@@ -57,7 +57,6 @@ struct GatherActorables: SyntaxVisitor {
 
         let BLUE = "\u{001B}[0;34m"
         let RST = "\u{001B}[0;0m"
-        self.debug("Actorable \(type) detected: [\(BLUE)\(name)\(RST)] at \(self.path.path), analyzing...")
         self.wipActorable = ActorableTypeDecl(
             sourceFile: self.path,
             type: type,
@@ -66,9 +65,19 @@ struct GatherActorables: SyntaxVisitor {
         )
         self.wipActorable.imports = self.imports
         self.wipActorable.declaredWithin = self.nestingStack
-        self.debug("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path), analyzing...")
+        self.info("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path.path), analyzing...")
 
         return .visitChildren
+    }
+
+    mutating func visitPostDecl(_ nodeName: String) {
+        self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
+
+        guard self.wipActorable != nil else {
+            return
+        }
+        self.actorables.append(self.wipActorable)
+        self.wipActorable = nil
     }
 
     mutating func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -77,6 +86,10 @@ struct GatherActorables: SyntaxVisitor {
             return .skipChildren
         case .visitChildren:
             guard let modifiers = node.modifiers else {
+                return .visitChildren
+            }
+
+            guard node.isActorable() else {
                 return .visitChildren
             }
 
@@ -96,20 +109,6 @@ struct GatherActorables: SyntaxVisitor {
             }
             return .visitChildren
         }
-    }
-
-    mutating func visitPostDecl(_ nodeName: String) {
-        self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
-
-        guard self.wipActorable != nil else {
-            return
-        }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
-    }
-
-    mutating func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visit(.protocol, node: node, name: node.identifier.text)
     }
 
     mutating func visitPost(_ node: ProtocolDeclSyntax) {
@@ -452,7 +451,10 @@ struct IsActorableVisitor: SyntaxVisitor {
 }
 
 extension SyntaxVisitor {
+    func info(_ message: String) {
+        print("[gen-actors][INFO] \(message)")
+    }
     func debug(_ message: String) {
-        print("[gen-actors] \(message)")
+        print("[gen-actors][DEBUG] \(message)")
     }
 }

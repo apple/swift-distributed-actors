@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
+@testable import DistributedActors
 import CXPCActorable
 import XPC
 import NIO
@@ -20,6 +20,8 @@ import Logging
 import Files
 
 // ==== ------------------------------------------------------------------------------------------------------------
+fileprivate let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
+
 fileprivate let _storageLock: Mutex = Mutex()
 fileprivate var _storage: XPCStorage? = nil
 
@@ -35,7 +37,7 @@ struct XPCStorage {
 /// Allows handling XPC messages using an `Actorable`.
 ///
 /// Once a handler actor is defined the `park()` function MUST be invoked to kick
-public final class ActorableXPCService<A: Actorable> {
+public final class XPCActorableService<A: Actorable> {
 
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
     let myself: ActorRef<A.Message>
@@ -78,6 +80,7 @@ public final class ActorableXPCService<A: Actorable> {
     /// Park the current thread and start handling messages using the provided actorable.
     ///
     /// Only one XPCService per process is allowed.
+    ///
     /// Even if multiple instances of `ActorableXPCService` are created, only the first one to `park()` the main thread
     /// is going to begin accepting requests, other `park()` calls will fail and crash the process.
     ///
@@ -114,7 +117,7 @@ public final class ActorableXPCService<A: Actorable> {
         )
         _storageLock.unlock()
 
-        // TODO use set_context instead of the blobal thing perhaps?
+        // TODO use set_context instead of the global thing perhaps?
 //        sact_xpc_main(&self.onConnectionContext, self.onConnectionCallback, self.onMessageCallback)
         xpc_main(xpc_connectionHandler)
     }
@@ -130,7 +133,7 @@ fileprivate func xpc_connectionHandler(peer: xpc_connection_t) {
     }
 
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
-    try! file.append("[actor service] CONNECT: \(peer)")
+    try! file.append("[actor service] CONNECT: \(peer)\n")
 
     xpc_connection_set_event_handler(peer, { (xdict: xpc_object_t) in
         xpc_eventHandler(storage, peer: peer, xdict: xdict)
@@ -140,34 +143,35 @@ fileprivate func xpc_connectionHandler(peer: xpc_connection_t) {
 }
 
 fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t, xdict: xpc_object_t) {
-    guard let storage = _storage else {
+    try! file.append("[actor service] [FROM: \(peer)]: \(xdict)\n")
+
+    guard xpc_get_type(xdict) != XPC_TYPE_ERROR else {
+        try! file.append("[actor service] ERROR [FROM: \(peer)]: \(xdict)\n")
         return
     }
-
-    let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
-    try! file.append("[actor service] [FROM: \(peer)]:                 pprint(\"Trying to deliver [\\(any)] to \\(self.myself)\")\(xdict)\n")
 
     // TODO sanity check where to etc?
 
     // --- deserialize and deliver ---
     let message: Any
     do {
-        message = try XPCSerialization.deserializeActorMessage(storage.system, xdict: xdict)
+        let serializer = storage.system.serialization.serializer(for: 10001)!
+        serializer.setUserInfo(key: .xpcConnection, value: peer)
+        // defer { serializer.setUserInfo(key: .xpcConnection, value: nil as String?) }
+        // try! file.append("Serializer: \(serializer)\n")
+
+        message = try XPCSerialization.deserializeActorMessage(storage.system, peer: peer, xdict: xdict)
     } catch {
-        try! file.append("Failed de-serializing xpc message, error: \(error)\n")
+        try! file.append("Failed de-serializing xpc message [\(xdict)], error: \(error)\n")
         storage.system.log.warning("Failed de-serializing xpc message, error: \(error)")
         return
     }
 
-    // TODO: deliver to actor
+    try! file.append("[actor service] Delivering \(message)\n")
+
     // TODO: what about replies etc
     // TODO: rather than always send to myself via this, we should resolve the envelopes recipient and deliver there
     storage.sendMessage(message)
-
-    // ~~~ reply ~~~
-//    let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
-//    xpc_dictionary_set_string(xdict, "echo", messageBytes)
-//    xpc_connection_send_message(peer, xdict)
 }
 
 

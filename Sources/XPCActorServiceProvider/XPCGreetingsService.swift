@@ -13,10 +13,10 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-
 import Files
+import XPCActorServiceAPI
 
-public struct XPCGreetingsService: XPCGreetingsServiceProtocol, Actorable {
+public struct XPCGreetingsService: GreetingsServiceProtocol, Actorable {
 
     let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
@@ -24,11 +24,26 @@ public struct XPCGreetingsService: XPCGreetingsServiceProtocol, Actorable {
 
     let context: Myself.Context
 
+    public func preStart(context: Myself.Context) {
+        try! self.file.append("\(context.address.path) started.\n")
+    }
+
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Actor message handlers
 
-    public func greet(name: String) throws {
-        try file.append("[actor service][\(self.context.name)] Received greet.(\(name))\n")
+
+    public func logGreeting(name: String) throws {
+        try file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))\n")
+    }
+
+    public func greet(name: String) throws -> String {
+        try file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))\n")
+        return "Greetings, \(name)!"
+    }
+
+    public func fatalCrash() {
+        try! file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .fatalCrash\n")
+        fatalError("Boom, crashing hard!")
     }
 
 }

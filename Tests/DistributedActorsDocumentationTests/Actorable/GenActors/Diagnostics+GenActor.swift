@@ -38,9 +38,6 @@ extension GeneratedActor.Messages {
 
 extension Actor where A: Diagnostics {
 
-    func printDiagnostics() {
-        self.ref.tell(A._boxDiagnostics(.printDiagnostics))
-    }
  
 
 }
