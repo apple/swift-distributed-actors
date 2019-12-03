@@ -28,7 +28,6 @@ extension OwnerOfThings {
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------

@@ -21,7 +21,7 @@ import NIO
 // TODO: could also encode using the NS coding scheme, or "raw" if we want to support those.
 public enum XPCSerialization {
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Serialize
 
     public static func serializeActorMessage<Message>(_ system: ActorSystem, message: Message) throws -> xpc_object_t {
@@ -36,10 +36,14 @@ public enum XPCSerialization {
         let xdict: xpc_object_t = xpc_dictionary_create(nil, nil, 0)
         xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue, UInt64(serializerId))
 
+        pprint("xdict = \(xdict)")
+
         buf.withUnsafeReadableBytes { bytes in
+            pprint("bytes = \(bytes)")
             if let baseAddress = bytes.baseAddress {
                 xpc_dictionary_set_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue, UInt64(buf.readableBytes))
                 xpc_dictionary_set_data(xdict, ActorableXPCMessageField.message.rawValue, baseAddress, buf.readableBytes)
+                pprint("baseAddress = \(baseAddress)")
             }
         }
 
@@ -50,26 +54,34 @@ public enum XPCSerialization {
 
     // TODO: serializeNSXPCStyle - for NSXPC services interop
 
-    // ==== ----------------------------------------------------------------------------------------------------------------
+    // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Deserialize
 
     public static func deserializeActorMessage(_ system: ActorSystem, xdict: xpc_object_t) throws -> Any {
         let serializerId = UInt32(xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.serializerId.rawValue))
+        pprint("serializerId = \(serializerId)")
 
-        guard let serializer = try system.serialization.serializer(for: serializerId) else {
+        guard let serializer = system.serialization.serializer(for: serializerId) else {
             throw SerializationError.noSerializerRegisteredFor(hint: "SerializerId:\(serializerId))")
         }
 
+        pprint("serializer = \(serializer)")
+
         let length64 = xpc_dictionary_get_uint64(xdict, ActorableXPCMessageField.messageLength.rawValue)
+        pprint("length64 = \(length64)")
         var length = Int(length64)
+        pprint("length = \(length)")
 
         let rawDataPointer: UnsafeRawPointer? = xpc_dictionary_get_data(xdict, ActorableXPCMessageField.message.rawValue, &length)
+        pprint("rawDataPointer = \(rawDataPointer)")
         let rawDataBufferPointer = UnsafeRawBufferPointer.init(start: rawDataPointer, count: length)
+        pprint("rawDataBufferPointer = \(rawDataBufferPointer)")
 
         var buf = system.serialization.allocator.buffer(capacity: 0)
         buf.writeBytes(rawDataBufferPointer)
 
         let anyMessage = try serializer.tryDeserialize(buf)
+        pprint("anyMessage = \(anyMessage)")
 
         return anyMessage
     }

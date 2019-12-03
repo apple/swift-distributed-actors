@@ -70,53 +70,53 @@ extension TestActorable.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .ping:
-            self = .ping
+            self = .ping(Function)
         case .greet:
             let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
-            self = .greet(name: name)
+            self = .greet(Function)
         case .greetUnderscoreParam:
             let name = try container.decode(String.self, forKey: CodingKeys.greetUnderscoreParam_name)
-            self = .greetUnderscoreParam(name)
+            self = .greetUnderscoreParam(Function)
         case .greet2:
             let name = try container.decode(String.self, forKey: CodingKeys.greet2_name)
             let surname = try container.decode(String.self, forKey: CodingKeys.greet2_surname)
-            self = .greet2(name: name, surname: surname)
+            self = .greet2(Function)
         case .throwing:
-            self = .throwing
+            self = .throwing(Function)
         case .passMyself:
             let someone = try container.decode(ActorRef<Actor<TestActorable>>.self, forKey: CodingKeys.passMyself_someone)
-            self = .passMyself(someone: someone)
+            self = .passMyself(Function)
         case ._ignoreInGenActor:
-            self = ._ignoreInGenActor
+            self = ._ignoreInGenActor(Function)
         case .parameterNames:
             let second = try container.decode(String.self, forKey: CodingKeys.parameterNames_first)
-            self = .parameterNames(first: second)
+            self = .parameterNames(Function)
         case .greetReplyToActorRef:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToActorRef_name)
             let replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greetReplyToActorRef_replyTo)
-            self = .greetReplyToActorRef(name: name, replyTo: replyTo)
+            self = .greetReplyToActorRef(Function)
         case .greetReplyToActor:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToActor_name)
             let replyTo = try container.decode(Actor<TestActorable>.self, forKey: CodingKeys.greetReplyToActor_replyTo)
-            self = .greetReplyToActor(name: name, replyTo: replyTo)
+            self = .greetReplyToActor(Function)
         case .greetReplyToReturnStrict:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnStrict_name)
             let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greetReplyToReturnStrict__replyTo)
-            self = .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)
+            self = .greetReplyToReturnStrict(Function)
         case .greetReplyToReturnStrictThrowing:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing_name)
             let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnStrictThrowing__replyTo)
-            self = .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)
+            self = .greetReplyToReturnStrictThrowing(Function)
         case .greetReplyToReturnNIOFuture:
             let name = try container.decode(String.self, forKey: CodingKeys.greetReplyToReturnNIOFuture_name)
             let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetReplyToReturnNIOFuture__replyTo)
-            self = .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)
+            self = .greetReplyToReturnNIOFuture(Function)
         case .becomeStopped:
-            self = .becomeStopped
+            self = .becomeStopped(Function)
         case .contextSpawnExample:
-            self = .contextSpawnExample
+            self = .contextSpawnExample(Function)
         case .timer:
-            self = .timer
+            self = .timer(Function)
 
         }
     }

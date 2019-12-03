@@ -363,7 +363,7 @@ struct ResolveActorables {
             }
 
             // The protocols are added such that we can generate their `case _protocol(Protocol)` cases and delegate to them
-            resolved.actorableProtocols.append(contentsOf: inheritedActorableProtocols)
+            resolved.actorableProtocols.formUnion(Set(inheritedActorableProtocols))
 
             // And we remove the "ad hoc" funcs which actually are funcs belonging to these protocols
             resolved.funcs = resolved.funcs.filter { f in

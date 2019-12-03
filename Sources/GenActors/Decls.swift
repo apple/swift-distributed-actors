@@ -70,7 +70,7 @@ struct ActorableTypeDecl {
 
     /// If this decl implements other actorable protocols, those should be included here
     /// Available only after post processing phase
-    var actorableProtocols: [ActorableTypeDecl] = []
+    var actorableProtocols: Set<ActorableTypeDecl> = [] 
 
     /// Cleared and Actorable protocols are moved to actorableProtocols in post processing
     var inheritedTypes: Set<String> = []
@@ -80,6 +80,20 @@ struct ActorableTypeDecl {
 
     /// Only expected in case of a `protocol` for
     var boxingFunc: ActorFuncDecl?
+}
+
+// TODO: Identity should include module name
+extension ActorableTypeDecl: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+    }
+
+    public static func ==(lhs: ActorableTypeDecl, rhs: ActorableTypeDecl) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        return true
+    }
 }
 
 struct ActorFuncDecl {

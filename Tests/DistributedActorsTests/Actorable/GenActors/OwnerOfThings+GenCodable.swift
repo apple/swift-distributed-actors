@@ -43,10 +43,10 @@ extension OwnerOfThings.Message: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .readLastObservedValue:
             let _replyTo = try container.decode(ActorRef<Reception.Listing<OwnerOfThings>?>.self, forKey: CodingKeys.readLastObservedValue__replyTo)
-            self = .readLastObservedValue(_replyTo: _replyTo)
+            self = .readLastObservedValue(Function)
         case .performLookup:
             let _replyTo = try container.decode(ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>.self, forKey: CodingKeys.performLookup__replyTo)
-            self = .performLookup(_replyTo: _replyTo)
+            self = .performLookup(Function)
 
         }
     }

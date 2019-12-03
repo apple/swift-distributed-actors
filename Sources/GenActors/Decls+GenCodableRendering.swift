@@ -161,6 +161,7 @@ extension Rendering {
             self.actorable.actorableProtocols.forEach { proto in
                 encodeCases.print(proto.renderCaseLet) // case parking(let boxed):
                 encodeCases.indent()
+                encodeCases.print("try container.encode(DiscriminatorKeys.\(proto.boxFuncName).rawValue, forKey: CodingKeys._case)")
                 encodeCases.print("try container.encode(boxed, forKey: CodingKeys.\(proto.boxFuncName))")
                 encodeCases.outdent()
             }

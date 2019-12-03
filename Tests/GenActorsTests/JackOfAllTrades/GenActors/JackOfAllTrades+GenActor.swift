@@ -29,7 +29,6 @@ extension JackOfAllTrades {
         case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
         case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 
     }
-
     
     /// Performs boxing of GeneratedActor.Messages.Ticketing messages such that they can be received by Actor<JackOfAllTrades>
     public static func _boxTicketing(_ message: GeneratedActor.Messages.Ticketing) -> JackOfAllTrades.Message {

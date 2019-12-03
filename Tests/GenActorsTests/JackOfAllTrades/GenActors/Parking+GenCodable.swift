@@ -39,7 +39,7 @@ extension GeneratedActor.Messages.Parking: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .park:
-            self = .park
+            self = .park(Function)
 
         }
     }

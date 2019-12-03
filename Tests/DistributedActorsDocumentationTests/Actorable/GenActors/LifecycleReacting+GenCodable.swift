@@ -45,7 +45,7 @@ extension LifecycleReacting.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .something:
-            self = .something
+            self = .something(Function)
 
         }
     }

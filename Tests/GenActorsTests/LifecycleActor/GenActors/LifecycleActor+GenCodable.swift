@@ -41,11 +41,11 @@ extension LifecycleActor.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .pleaseStop:
-            self = .pleaseStop
+            self = .pleaseStop(Function)
         case .watchChildAndTerminateIt:
-            self = .watchChildAndTerminateIt
+            self = .watchChildAndTerminateIt(Function)
         case ._doNOTSkipMe:
-            self = ._doNOTSkipMe
+            self = ._doNOTSkipMe(Function)
 
         }
     }
