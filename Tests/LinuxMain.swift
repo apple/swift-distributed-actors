@@ -76,6 +76,7 @@ XCTMain([
     testCase(DispatcherTests.allTests),
     testCase(EventStreamTests.allTests),
     testCase(FixedThreadPoolTests.allTests),
+    testCase(GenCodableTests.allTests),
     testCase(GenerateActorsTests.allTests),
     testCase(HeapTests.allTests),
     testCase(InterceptorTests.allTests),

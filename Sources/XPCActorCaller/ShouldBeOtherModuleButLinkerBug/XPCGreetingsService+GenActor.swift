@@ -19,7 +19,6 @@
 import DistributedActors
 import XPC
 import XPCActorable
-import XPCActorServiceProvider
 
 import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -29,14 +28,8 @@ import Files
 extension XPCGreetingsService {
 
     public enum Message { 
-        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol) 
-        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol) 
+        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol)
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
-    public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
-        .xPCGreetingsServiceProtocol(message)
-    } 
     
     /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
     public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
@@ -60,9 +53,6 @@ extension XPCGreetingsService {
                 switch message { 
                 
                 
-                case .xPCGreetingsServiceProtocol(.greet(let name)):
-                    try instance.greet(name: name)
- 
                 case .xPCGreetingsServiceProtocol(.greet(let name)):
                     try instance.greet(name: name)
  

@@ -13,10 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPC
-import XPCActorable
-import XPCActorServiceProvider
-
 import Files
 
 public struct XPCGreetingsService: XPCGreetingsServiceProtocol, Actorable {

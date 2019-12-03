@@ -49,7 +49,7 @@ extension Greeter.Message: Codable {
         case .greet:
             let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
             let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greet__replyTo)
-            self = .greet(name: name, _replyTo: _replyTo)
+            self = .greet(Function)
 
         }
     }
