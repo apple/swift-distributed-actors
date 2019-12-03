@@ -1,0 +1,20 @@
+
+[[xpc]]
+== XPC Transport
+
+> As Actors are "only" an abstraction of identifiable entities that communicate _only_ using messaging,
+> they can be used to abstract and ease interactions not only over network but also between processes.
+>
+> On Apple platforms the recommended IPC mechanism is XPC, and Actors support it as a transport in order to communicate
+> with XPC services defined in Swift, or raw C api.
+
+NOTE: See also <<actorable>>, which can be used to define and interact with XPC services as described below.
+
+=== Getting Started: (Actorable) XPC Service
+
+[source]
+----
+include::{dir_sact_doc_tests}/Actorable/XPCActorableDocExamples.swift[tag=xpc_greeter_0]
+----
+
+#TODO: Write full docs#

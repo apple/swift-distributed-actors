@@ -459,35 +459,35 @@ extension ActorableMessageDecl {
             printer.indent()
         }
 
-        self.renderPassMessage(boxWith: boxProtocol, printer: &printer)
-
         if isAsk {
-            printer.print("\n")
-            printer.print("}")
+            self.renderPassMessage(boxWith: boxProtocol, skipNewline: false, printer: &printer)
             printer.outdent()
             if self.throwing || self.returnType.isFutureReturn {
+                printer.print("}", skipNewline: true)
                 printer.print(".nioFuture.flatMapThrowing { result in")
                 printer.indent()
+
                 printer.print("switch result {")
-                              switch result {
                 printer.print("case .success(let res): return res")
                 printer.print("case .failure(let err): throw err")
-                              }
                 printer.print("}")
                 printer.outdent()
+
                 printer.print("}")
             } else {
+                printer.print("}", skipNewline: true)
                 printer.print(".nioFuture")
             }
-            printer.print(")")
             printer.outdent()
+            printer.print(")")
         } else {
+            self.renderPassMessage(boxWith: boxProtocol, skipNewline: true, printer: &printer)
             printer.print(")")
             printer.outdent()
         }
     }
 
-    func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?, printer: inout CodePrinter) {
+    func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?, skipNewline: Bool, printer: inout CodePrinter) {
         if let boxName = boxProtocol?.boxFuncName {
             printer.print("A.", skipNewline: true)
             printer.print(boxName, skipNewline: true)
@@ -495,10 +495,10 @@ extension ActorableMessageDecl {
         }
         printer.print(".\(self.name)", skipNewline: true)
 
-        printer.print(self.passEffectiveParamsWithBraces, skipNewline: true)
+        self.passEffectiveParamsWithBraces(printer: &printer)
 
         if boxProtocol != nil {
-            printer.print(")", skipNewline: true)
+            printer.print(")", skipNewline: skipNewline)
         }
     }
 }
@@ -553,28 +553,13 @@ extension ActorableMessageDecl.ReturnType {
 
 extension ActorFuncDecl {
     func renderFuncTell(printer: inout CodePrinter) throws {
-        var printer = CodePrinter()
-        printer.indent()
         self.message.renderFunc(printer: &printer) { printer in
-
-        // TODO: this is a bit inversed confusing when introduced the CodePrinter; clean it up
-        let body = printer.content
-
-        printer = CodePrinter()
-        printer.indent()
             message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
         }
     }
 
     func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl, printer: inout CodePrinter) throws {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
-
-        var printer = CodePrinter(startingIndentation: 1)
-        printer.print(self.message.renderFuncDecl, skipNewline: true)
-        printer.print(" {")
-        printer.indent()
-        self.message.renderTellOrAskMessage(boxWith: actorableProtocol, printer: &printer)
-        printer.print("}")
 
         self.message.renderFunc(printer: &printer) { printer in
             self.message.renderTellOrAskMessage(boxWith: actorableProtocol, printer: &printer)

@@ -45,7 +45,7 @@ extension GeneratedActor.Messages.Diagnostics: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .printDiagnostics:
-            self = .printDiagnostics(Function)
+            self = .printDiagnostics
 
         }
     }

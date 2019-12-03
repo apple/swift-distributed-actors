@@ -70,6 +70,10 @@ public enum ActorCoding {
 
 extension ActorRef {
     public func encode(to encoder: Encoder) throws {
+        guard let context = encoder.actorSerializationContext else {
+            throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While encoding [\(self)], using [\(encoder)]")
+        }
+        
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
     }
@@ -82,7 +86,14 @@ extension ActorRef {
             throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While decoding [\(address)], using [\(decoder)]")
         }
 
-        self = context.resolveActorRef(identifiedBy: address)
+        // TODO somehow smarter detect that "this should to over XPC transport"
+        //
+        // FIXME: "if our context means we should deserialize the Proxied refs"
+        if let xpcConnection = decoder.xpcConnection {
+            self = ActorRef(.delegate(XPCProxiedRefDelegate(system: context.system, origin: xpcConnection, address: address)))
+        } else {
+            self = context.resolveActorRef(identifiedBy: address)
+        }
     }
 }
 

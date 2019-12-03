@@ -44,7 +44,7 @@ public struct ActorSystemSettings {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
-    public var xpc: XPCActorTransport = .default
+    public var xpc: XPCActorTransport = .xpc
 
     public var transports: [ActorTransport] = []
 
@@ -101,6 +101,10 @@ extension ActorSystemSettings {
 public class ActorTransport {
     var `protocol`: String {
         fatalError("Not implemented: \(#function)")
+    }
+
+    func onActorSystemStart(system: ActorSystem) {
+        // do nothing by default
     }
 
     func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {

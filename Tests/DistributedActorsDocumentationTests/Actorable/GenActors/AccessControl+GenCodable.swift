@@ -46,9 +46,9 @@ extension AccessControl.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .greetPublicly:
-            self = .greetPublicly(Function)
+            self = .greetPublicly
         case .greetInternal:
-            self = .greetInternal(Function)
+            self = .greetInternal
 
         }
     }

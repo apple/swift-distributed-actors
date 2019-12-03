@@ -19,6 +19,7 @@
 // tag::imports[]
 
 import DistributedActors
+import XPCActorable
 
 // end::imports[]
 
@@ -30,6 +31,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
+
     public enum Message { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
@@ -85,14 +87,6 @@ extension Greeter {
 
 extension Actor where A.Message == Greeter.Message {
 
-    func greet(name: String) -> Reply<String> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
 }

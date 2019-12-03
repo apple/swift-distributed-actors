@@ -30,6 +30,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated DontConformMessageToCodable messages
 extension DontConformMessageToCodable {
+
     public enum Message { 
         case echo(text: String, _replyTo: ActorRef<String>) 
     }
@@ -85,14 +86,6 @@ extension DontConformMessageToCodable {
 
 extension Actor where A.Message == DontConformMessageToCodable.Message {
 
-    public func echo(text: String) -> Reply<String> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(text: text, _replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
 }

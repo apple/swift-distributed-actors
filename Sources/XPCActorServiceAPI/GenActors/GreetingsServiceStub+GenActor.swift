@@ -13,38 +13,35 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//sa
+//
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPC
-import XPCActorable
 
-import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated XPCGreetingsService messages 
+// MARK: DO NOT EDIT: Generated GreetingsServiceStub messages 
 
-/// DO NOT EDIT: Generated XPCGreetingsService messages
-extension XPCGreetingsService {
+/// DO NOT EDIT: Generated GreetingsServiceStub messages
+extension GreetingsServiceStub {
 
     public enum Message { 
-        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol)
+        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
-    public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
-        .xPCGreetingsServiceProtocol(message)
+    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsServiceStub>
+    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsServiceStub.Message {
+        .greetingsServiceProtocol(message)
     } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated XPCGreetingsService behavior
+// MARK: DO NOT EDIT: Generated GreetingsServiceStub behavior
 
-extension XPCGreetingsService {
+extension GreetingsServiceStub {
 
-    public static func makeBehavior(instance: XPCGreetingsService) -> Behavior<Message> {
+    public static func makeBehavior(instance: GreetingsServiceStub) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<XPCGreetingsService>.Context(underlying: _context)
+            let context = Actor<GreetingsServiceStub>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -53,13 +50,25 @@ extension XPCGreetingsService {
                 switch message { 
                 
                 
-                case .xPCGreetingsServiceProtocol(.greet(let name)):
-                    try instance.greet(name: name)
+                case .greetingsServiceProtocol(.logGreeting(let name)):
+                    try instance.logGreeting(name: name)
+ 
+                case .greetingsServiceProtocol(.greet(let name, let _replyTo)):
+                    do {
+                    let result = try instance.greet(name: name)
+                    _replyTo.tell(.success(result))
+                    } catch {
+                        context.log.warning("Error thrown while handling [\(message)], error: \(error)")
+                        _replyTo.tell(.failure(error))
+                    }
+ 
+                case .greetingsServiceProtocol(.fatalCrash):
+                    instance.fatalCrash()
  
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<XPCGreetingsService>.Context(underlying: _context)
+                let context = Actor<GreetingsServiceStub>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -82,8 +91,8 @@ extension XPCGreetingsService {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for XPCGreetingsService
+// MARK: Extend Actor for GreetingsServiceStub
 
-extension Actor where A.Message == XPCGreetingsService.Message {
-    
+extension Actor where A.Message == GreetingsServiceStub.Message {
+
 }

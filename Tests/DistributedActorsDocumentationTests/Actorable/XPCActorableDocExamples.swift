@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -12,11 +12,27 @@
 //
 //===----------------------------------------------------------------------===//
 
+// tag::imports[]
+
 import DistributedActors
+import XPCActorable
 
-public protocol XPCGreetingsServiceProtocol: Actorable {
+// end::imports[]
 
-    func greet(name: String) throws
+import DistributedActorsTestKit
+import XCTest
 
-    static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> Self.Message
+// tag::xpc_greeter_0[]
+struct Greeter: Actorable {
+    func greet(name: String) -> String {
+        "Hello, \(name)!"
+    }
+}
+
+// end::xpc_greeter_0[]
+
+class XPCExampleCaller {
+// tag::xpc_greeter_caller0[]
+
+// end::xpc_greeter_caller[]
 }

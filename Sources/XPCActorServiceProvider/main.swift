@@ -21,19 +21,20 @@ import Files
 
 let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
-try file.append("Whoop, I AM SERVICE")
 
 let system = ActorSystem("XPCActorServiceProvider") { settings in
-    settings.transports = [
-        .xpc
-    ]
+    // TODO make this the source of "truth" what transports are available
+    settings.transports += .xpc
 
     // TODO: simplify serialization so we dont have to register them?
-    settings.serialization.registerCodable(for: XPCGreetingsService.Message.self, underId: 10001)
-    settings.serialization.registerCodable(for: GeneratedActor.Messages.XPCGreetingsServiceProtocol.self, underId: 10002)
+    settings.serialization.registerCodable(for: GeneratedActor.Messages.GreetingsServiceProtocol.self, underId: 10001)
+    settings.serialization.registerCodable(for: XPCGreetingsService.Message.self, underId: 10002)
+    settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
 
-let service = try ActorableXPCService(system, XPCGreetingsService.init)
+try file.append("[actor service] Started.\n")
+
+let service = try XPCActorableService(system, XPCGreetingsService.init)
 
 service.park()
 exit(-1) // unreachable, park never exits

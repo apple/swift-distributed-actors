@@ -47,7 +47,7 @@ extension GeneratedActor.Messages.CoffeeMachine: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .makeCoffee:
             let _replyTo = try container.decode(ActorRef<Coffee>.self, forKey: CodingKeys.makeCoffee__replyTo)
-            self = .makeCoffee(Function)
+            self = .makeCoffee(_replyTo: _replyTo)
 
         }
     }
