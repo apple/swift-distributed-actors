@@ -120,7 +120,7 @@ extension Rendering {
                         decodeCases.print("let \(secondName) = try container.decode(\(type).self, forKey: CodingKeys.\(decl.message.name)_\(name))")
                     }
                 }
-                decodeCases.print("self = .\(decl.message.name)\(decl.message.passEffectiveParamsWithBraces)")
+                decodeCases.print("self = .\(decl.message.name)\(CodePrinter.content(decl.message.passEffectiveParamsWithBraces))")
                 decodeCases.outdent()
             }
 

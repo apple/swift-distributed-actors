@@ -24,13 +24,15 @@ extension Serialization {
             internal static let SystemMessageNACK: SerializerId = 3
             internal static let SystemMessageEnvelope: SerializerId = 4
 
-            internal static let String: SerializerId = 5
             internal static let Int: SerializerId = 100
             internal static let UInt: SerializerId = 101
             internal static let Int32: SerializerId = 102
             internal static let UInt32: SerializerId = 103
             internal static let Int64: SerializerId = 104
             internal static let UInt64: SerializerId = 105
+            internal static let String: SerializerId = 106
+
+            internal static let ActorAddress: SerializerId = 107
 
             internal static let ClusterShellMessage: SerializerId = 200
             internal static let ClusterEvent: SerializerId = 201

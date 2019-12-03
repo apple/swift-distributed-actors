@@ -30,6 +30,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated AccessControl messages
 extension AccessControl {
+
     public enum Message { 
         case greetPublicly 
         case greetInternal 
@@ -88,14 +89,8 @@ extension AccessControl {
 
 extension Actor where A.Message == AccessControl.Message {
 
-    public func greetPublicly() {
-        self.ref.tell(.greetPublicly)
-    }
  
 
-    internal func greetInternal() {
-        self.ref.tell(.greetInternal)
-    }
  
 
 }

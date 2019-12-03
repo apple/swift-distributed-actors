@@ -30,6 +30,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated LifecycleReacting messages
 extension LifecycleReacting {
+
     public enum Message { 
         case something 
     }
@@ -84,9 +85,6 @@ extension LifecycleReacting {
 
 extension Actor where A.Message == LifecycleReacting.Message {
 
-    func something() {
-        self.ref.tell(.something)
-    }
  
 
 }

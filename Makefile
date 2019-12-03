@@ -15,6 +15,7 @@ XPCEXECUTABLE=XPCActorServiceProvider
 install: build copySupportFiles
 
 build:
+	swift run GenActors
 	swift build
 
 copySupportFiles:

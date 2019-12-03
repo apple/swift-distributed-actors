@@ -67,6 +67,9 @@ public struct Serialization {
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageNACK)
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.Id.InternalSerializer.SystemMessageEnvelope)
 
+        // TODO: optimize, should be proto
+        self.registerSystemSerializer(context, serializer: JSONCodableSerializer(allocator: self.allocator), for: ActorAddress.self, underId: Serialization.Id.InternalSerializer.ActorAddress)
+
         // Predefined "primitive" types
         self.registerSystemSerializer(context, serializer: StringSerializer(self.allocator), underId: Serialization.Id.InternalSerializer.String)
         self.registerSystemSerializer(context, serializer: NumberSerializer(Int.self, self.allocator), underId: Serialization.Id.InternalSerializer.Int)
@@ -187,7 +190,7 @@ public struct Serialization {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Internal workings
 
-    internal func serializerIdFor<M>(message: M) throws -> SerializerId {
+    public func serializerIdFor<M>(message: M) throws -> SerializerId {
         let meta: MetaType<M> = MetaType(M.self)
         // let metaMeta = BoxedHashableAnyMetaType(meta) // TODO we will want to optimize this... no boxings, no wrappings...
         // TODO: letting user to implement the Type -> Ser -> apply functions could be a way out
@@ -524,6 +527,10 @@ open class Serializer<T> {
     open func setSerializationContext(_: ActorSerializationContext) {
         // nothing by default, implementations may choose to not care
     }
+
+    open func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
+        // nothing by default, implementations may choose to not care
+    }
 }
 
 extension Serializer: AnySerializer {
@@ -552,6 +559,7 @@ extension Serializer: AnySerializer {
 protocol AnySerializer {
     func _asSerializerOf<M>(_ type: M.Type) throws -> Serializer<M>
     func setSerializationContext(_ context: ActorSerializationContext)
+    func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)
     func trySerialize(_ message: Any) throws -> ByteBuffer
     func tryDeserialize(_ bytes: ByteBuffer) throws -> Any
 }
@@ -574,6 +582,9 @@ internal struct BoxedAnySerializer: AnySerializer {
 
     func setSerializationContext(_ context: ActorSerializationContext) {
         self.serializer.setSerializationContext(context)
+    }
+    func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
+        self.serializer.setUserInfo(key: key, value: value)
     }
 
     func trySerialize(_ message: Any) throws -> ByteBuffer {

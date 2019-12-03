@@ -264,6 +264,10 @@ public final class ActorSystem {
         lazyReplicator.wakeUp()
         lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
+
+        for transport in self.settings.transports {
+            transport.onActorSystemStart(system: self)
+        }
     }
 
     public convenience init() {

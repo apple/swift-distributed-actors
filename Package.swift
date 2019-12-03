@@ -20,6 +20,8 @@ let targets: [PackageDescription.Target] = [
             "Logging", "Metrics",
             "Backtrace",
 
+            "Files", // TODO: remove
+
             "DistributedActorsConcurrencyHelpers",
             "CDistributedActorsMailbox",
         ]
@@ -85,17 +87,16 @@ let targets: [PackageDescription.Target] = [
 //    ),
 
     // xpc + actorable
-    // TODO: it's hard to pull off across module
-//    .target(
-//        name: "XPCActorServiceAPI",
-//        dependencies: [
-//            "XPCActorable"
-//        ]
-//    ),
+    .target(
+        name: "XPCActorServiceAPI",
+        dependencies: [
+            "XPCActorable"
+        ]
+    ),
     .target(
         name: "XPCActorServiceProvider",
         dependencies: [
-//            "XPCActorServiceAPI",
+            "XPCActorServiceAPI",
             "XPCActorable",
             "Files",
         ]
@@ -103,8 +104,8 @@ let targets: [PackageDescription.Target] = [
     .target(
         name: "XPCActorCaller", // this is "main"
         dependencies: [
-//            "XPCActorServiceAPI",
-//            "XPCActorServiceProvider", // TODO: direct dependency... need to make it work with just an interface project
+            "XPCActorServiceAPI",
+//            "XPCActorServiceProvider",
             "XPCActorable",
             "Files",
         ]

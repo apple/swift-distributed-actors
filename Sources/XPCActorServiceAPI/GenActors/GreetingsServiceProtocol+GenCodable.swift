@@ -17,29 +17,40 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.XPCGreetingsServiceProtocol
+// MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.GreetingsServiceProtocol
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension GeneratedActor.Messages.XPCGreetingsServiceProtocol: Codable {
+extension GeneratedActor.Messages.GreetingsServiceProtocol: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
+        case logGreeting
         case greet
+        case fatalCrash
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
+        case logGreeting_name
         case greet_name
+        case greet__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
+        case .logGreeting:
+            let name = try container.decode(String.self, forKey: CodingKeys.logGreeting_name)
+            self = .logGreeting(name: name)
         case .greet:
             let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
-            self = .greet(name: name)
+            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greet__replyTo)
+            self = .greet(name: name, _replyTo: _replyTo)
+        case .fatalCrash:
+            self = .fatalCrash
 
         }
     }
@@ -47,9 +58,15 @@ extension GeneratedActor.Messages.XPCGreetingsServiceProtocol: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .greet(let name):
+        case .logGreeting(let name):
+            try container.encode(DiscriminatorKeys.logGreeting.rawValue, forKey: CodingKeys._case)
+            try container.encode(name, forKey: CodingKeys.logGreeting_name)
+        case .greet(let name, let _replyTo):
             try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
             try container.encode(name, forKey: CodingKeys.greet_name)
+            try container.encode(_replyTo, forKey: CodingKeys.greet__replyTo)
+        case .fatalCrash:
+            try container.encode(DiscriminatorKeys.fatalCrash.rawValue, forKey: CodingKeys._case)
 
         }
     }

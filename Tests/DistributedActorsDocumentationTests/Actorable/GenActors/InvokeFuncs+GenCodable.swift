@@ -51,13 +51,13 @@ extension InvokeFuncs.Message: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .doThingsAndRunTask:
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.doThingsAndRunTask__replyTo)
-            self = .doThingsAndRunTask(Function)
+            self = .doThingsAndRunTask(_replyTo: _replyTo)
         case .doThingsAsync:
             let _replyTo = try container.decode(ActorRef<Reply<Int>>.self, forKey: CodingKeys.doThingsAsync__replyTo)
-            self = .doThingsAsync(Function)
+            self = .doThingsAsync(_replyTo: _replyTo)
         case .internalTask:
             let _replyTo = try container.decode(ActorRef<Int>.self, forKey: CodingKeys.internalTask__replyTo)
-            self = .internalTask(Function)
+            self = .internalTask(_replyTo: _replyTo)
 
         }
     }

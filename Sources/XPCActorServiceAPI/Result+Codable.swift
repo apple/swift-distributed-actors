@@ -12,17 +12,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-import XPC
-import Dispatch
-import CXPCActorable
-
-public enum XPCLibSupport {
-
-    // typealias xpc_handler_t = (xpc_object_t) -> Void
-
-    public static func connect(name: String) -> xpc_connection_t {
-        print("\(#function)")
-        return CXPCActorable.sact_xpc_get_connection()
+extension Result: Codable where Success: Codable, Failure: Error {
+    public func encode(to encoder: Encoder) throws {
+        switch self {
+        case .success(let success):
+            var container = encoder.singleValueContainer()
+            try container.encode(success)
+        default:
+            fatalError("NOT IMPLEMENTED")
+        }
     }
 
+    public  init(from decoder: Decoder) throws {
+        self = .success(try decoder.singleValueContainer().decode(Success.self))
+    }
 }

@@ -17,8 +17,9 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-
 import Files
+import XPCActorServiceAPI
+
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated XPCGreetingsService messages 
 
@@ -26,12 +27,12 @@ import Files
 extension XPCGreetingsService {
 
     public enum Message { 
-        case xPCGreetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.XPCGreetingsServiceProtocol) 
+        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.XPCGreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
-    public static func _boxXPCGreetingsServiceProtocol(_ message: GeneratedActor.Messages.XPCGreetingsServiceProtocol) -> XPCGreetingsService.Message {
-        .xPCGreetingsServiceProtocol(message)
+    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
+    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> XPCGreetingsService.Message {
+        .greetingsServiceProtocol(message)
     } 
     
 }
@@ -51,8 +52,20 @@ extension XPCGreetingsService {
                 switch message { 
                 
                 
-                case .xPCGreetingsServiceProtocol(.greet(let name)):
-                    try instance.greet(name: name)
+                case .greetingsServiceProtocol(.logGreeting(let name)):
+                    try instance.logGreeting(name: name)
+ 
+                case .greetingsServiceProtocol(.greet(let name, let _replyTo)):
+                    do {
+                    let result = try instance.greet(name: name)
+                    _replyTo.tell(.success(result))
+                    } catch {
+                        context.log.warning("Error thrown while handling [\(message)], error: \(error)")
+                        _replyTo.tell(.failure(error))
+                    }
+ 
+                case .greetingsServiceProtocol(.fatalCrash):
+                    instance.fatalCrash()
  
                 }
                 return .same
@@ -83,5 +96,5 @@ extension XPCGreetingsService {
 // MARK: Extend Actor for XPCGreetingsService
 
 extension Actor where A.Message == XPCGreetingsService.Message {
-    
+
 }

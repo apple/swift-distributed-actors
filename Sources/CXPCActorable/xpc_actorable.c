@@ -26,12 +26,8 @@ xpc_connection_t sact_xpc_get_connection() {
     // _userQueue = dispatch_queue_create_with_target([uqName UTF8String], DISPATCH_QUEUE_SERIAL_WITH_AUTORELEASE_POOL, dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0));
     dispatch_queue_main_t q = dispatch_get_main_queue();
 
-    printf("Service get connection");
-
     xpc_connection_t c = xpc_connection_create("com.apple.sakkana.XPCLibService", q);
     xpc_connection_set_event_handler(c, ^(xpc_object_t event) {
-        printf("[CLIENT C] I GOT A REPLY: %s", event);
-
         pid_t pid = getpid();
 //        int64_t threadId = 0;
 //        pthread_threadid_np(NULL, &threadId);

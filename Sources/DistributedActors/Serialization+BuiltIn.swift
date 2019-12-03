@@ -73,7 +73,7 @@ internal class NumberSerializer<Number: FixedWidthInteger>: Serializer<Number> {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: JSON Codable Serializer
 
-internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
+internal final class JSONCodableSerializer<T: Codable>: Serializer<T>, CustomStringConvertible {
     private let allocate: ByteBufferAllocator
     internal var encoder: JSONEncoder = JSONEncoder()
     internal var decoder: JSONDecoder = JSONDecoder()
@@ -92,8 +92,6 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
         var buffer = self.allocate.buffer(capacity: data.count)
         buffer.writeBytes(data)
 
-        pprint("data = \(String(data: data, encoding: .utf8))")
-
         return buffer
     }
 
@@ -101,8 +99,6 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
         guard let data = bytes.getData(at: 0, length: bytes.readableBytes) else {
             fatalError("Could not read data! Was: \(bytes), trying to deserialize for \(T.self)")
         }
-
-        pprint("decode = \(String(reflecting: T.self)) from \(String(data: data, encoding: .utf8))")
         return try self.decoder.decode(T.self, from: data)
     }
 
@@ -110,5 +106,14 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
         // same context shared for encoding/decoding is safe
         self.decoder.userInfo[.actorSerializationContext] = context
         self.encoder.userInfo[.actorSerializationContext] = context
+    }
+
+    override func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?) {
+        self.encoder.userInfo[key] = value
+        self.decoder.userInfo[key] = value
+    }
+
+    var description: String {
+        "JSONCodableSerializer(allocate: \(allocate), encoder: \(encoder.userInfo), decoder: \(decoder.userInfo))"
     }
 }

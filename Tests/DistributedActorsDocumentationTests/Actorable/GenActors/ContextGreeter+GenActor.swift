@@ -30,6 +30,7 @@ import XCTest
 
 /// DO NOT EDIT: Generated ContextGreeter messages
 extension ContextGreeter {
+
     public enum Message { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }
@@ -85,14 +86,6 @@ extension ContextGreeter {
 
 extension Actor where A.Message == ContextGreeter.Message {
 
-    func greet(name: String) -> Reply<String> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greet(name: name, _replyTo: _replyTo)}
-            .nioFuture
-            )
-    }
  
 
 }

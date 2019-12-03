@@ -12,13 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import DistributedActors
-
-public protocol GreetingsServiceProtocol: Actorable {
-
-    func logGreeting(name: String) throws
-    func greet(name: String) throws -> String
-    func fatalCrash()
-
-    static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> Self.Message
+/// Causes `GenActors` to generate a `...Stub` for the protocol, so it may be consumed without knowing that the exact implementation class is.
+// TODO: not implemented
+public protocol XPCActorableProtocol {
 }

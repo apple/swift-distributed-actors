@@ -82,9 +82,13 @@ public final class GenerateActors {
         try generateAll(resolvedActorables: resolvedActorables)
     }
 
+    func info(_ message: String) {
+        print("[gen-actors][INFO] \(message)")
+    }
+
     func debug(_ message: String) {
         if self.settings.verbose {
-            print("[gen-actors] \(message)")
+            print("[gen-actors][DEBUG] \(message)")
         }
     }
 }
@@ -98,7 +102,6 @@ extension GenerateActors {
         var unresolvedActorables: [ActorableTypeDecl] = []
 
         try self.filesToScan.forEach { file in
-            self.debug("Parsing [\(file.path)]...")
             let actorablesInFile = try self.parse(fileToParse: file)
             unresolvedActorables.append(contentsOf: actorablesInFile)
         }
@@ -110,7 +113,6 @@ extension GenerateActors {
             }
 
             try actorFilesToScan.forEach { file in
-                self.debug("Parsing [\(file.path)]...")
                 let actorablesInFile = try self.parse(fileToParse: file)
                 unresolvedActorables.append(contentsOf: actorablesInFile)
             }
@@ -168,6 +170,7 @@ extension GenerateActors {
         let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.settings)
         try targetFile.append(renderedShell)
 
+        self.debug("Generated: \(targetFile.path)")
         return targetFile
     }
 
@@ -191,6 +194,7 @@ extension GenerateActors {
         let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.settings)
         try targetFile.append(codableConformance)
 
+        self.debug("Generated: \(targetFile.path)")
         return targetFile
     }
 

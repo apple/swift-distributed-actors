@@ -33,15 +33,15 @@ extension AllInOneMachine.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
         case clean
-        case _boxCoffeeMachine
         case _boxDiagnostics
+        case _boxCoffeeMachine
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case _boxCoffeeMachine
         case _boxDiagnostics
+        case _boxCoffeeMachine
 
     }
 
@@ -49,13 +49,13 @@ extension AllInOneMachine.Message: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .clean:
-            self = .clean(Function)
-        case ._boxCoffeeMachine:
-            let boxed = try container.decode(GeneratedActor.Messages.CoffeeMachine.self, forKey: CodingKeys._boxCoffeeMachine)
-            self = .coffeeMachine(boxed)
+            self = .clean
         case ._boxDiagnostics:
             let boxed = try container.decode(GeneratedActor.Messages.Diagnostics.self, forKey: CodingKeys._boxDiagnostics)
             self = .diagnostics(boxed)
+        case ._boxCoffeeMachine:
+            let boxed = try container.decode(GeneratedActor.Messages.CoffeeMachine.self, forKey: CodingKeys._boxCoffeeMachine)
+            self = .coffeeMachine(boxed)
 
         }
     }
@@ -65,12 +65,12 @@ extension AllInOneMachine.Message: Codable {
         switch self {
         case .clean:
             try container.encode(DiscriminatorKeys.clean.rawValue, forKey: CodingKeys._case)
-        case .coffeeMachine(let boxed):
-            try container.encode(DiscriminatorKeys._boxCoffeeMachine.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxCoffeeMachine)
         case .diagnostics(let boxed):
             try container.encode(DiscriminatorKeys._boxDiagnostics.rawValue, forKey: CodingKeys._case)
             try container.encode(boxed, forKey: CodingKeys._boxDiagnostics)
+        case .coffeeMachine(let boxed):
+            try container.encode(DiscriminatorKeys._boxCoffeeMachine.rawValue, forKey: CodingKeys._case)
+            try container.encode(boxed, forKey: CodingKeys._boxCoffeeMachine)
 
         }
     }
