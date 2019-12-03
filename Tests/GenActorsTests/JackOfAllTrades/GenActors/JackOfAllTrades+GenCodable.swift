@@ -43,7 +43,7 @@ extension JackOfAllTrades.Message: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .hello:
             let replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello_replyTo)
-            self = .hello(replyTo: replyTo)
+            self = .hello(Function)
         case ._boxTicketing:
             let boxed = try container.decode(GeneratedActor.Messages.Ticketing.self, forKey: CodingKeys._boxTicketing)
             self = .ticketing(boxed)
@@ -62,6 +62,7 @@ extension JackOfAllTrades.Message: Codable {
         case .ticketing(let boxed):
             try container.encode(boxed, forKey: CodingKeys._boxTicketing)
         case .parking(let boxed):
+            try container.encode(DiscriminatorKeys._boxParking.rawValue, forKey: CodingKeys._case)
             try container.encode(boxed, forKey: CodingKeys._boxParking)
         }
     }

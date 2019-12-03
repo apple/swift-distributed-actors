@@ -73,7 +73,7 @@ public final class GenerateActors {
     }
 
     public func run() throws {
-        var unresolvedActorables = try parseAll()
+        let unresolvedActorables = try parseAll()
 
         // resolves protocol adoption across files; e.g. a protocol defined in another file can be implemented in another
         // TODO: does not work cross module yet (it would break)

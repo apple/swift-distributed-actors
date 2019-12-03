@@ -92,6 +92,8 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
         var buffer = self.allocate.buffer(capacity: data.count)
         buffer.writeBytes(data)
 
+        pprint("data = \(String(data: data, encoding: .utf8))")
+
         return buffer
     }
 
@@ -100,6 +102,7 @@ internal final class JSONCodableSerializer<T: Codable>: Serializer<T> {
             fatalError("Could not read data! Was: \(bytes), trying to deserialize for \(T.self)")
         }
 
+        pprint("decode = \(String(reflecting: T.self)) from \(String(data: data, encoding: .utf8))")
         return try self.decoder.decode(T.self, from: data)
     }
 

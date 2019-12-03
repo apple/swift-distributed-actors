@@ -26,6 +26,12 @@ struct CodePrinter {
         self.indentation = indentation
     }
 
+    static func content(_ printing: (inout CodePrinter) -> ()) -> String {
+        var printer = CodePrinter()
+        printing(&printer)
+        return printer.content
+    }
+
     /// Useful for printing nested parts.
     func makeIndented(by indentation: Int) -> CodePrinter {
         CodePrinter(startingIndentation: self.indentation + indentation)

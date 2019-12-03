@@ -39,7 +39,7 @@ extension GeneratedActor.Messages.Ticketing: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .makeTicket:
-            self = .makeTicket
+            self = .makeTicket(Function)
 
         }
     }

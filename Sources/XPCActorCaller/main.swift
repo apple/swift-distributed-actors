@@ -15,12 +15,19 @@
 import DistributedActors
 import XPC
 import XPCActorable
-import XPCActorServiceProvider
+import Files
+//import XPCActorServiceProvider
+
+let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
+try file.append("---------------------------------------------\n")
+try file.append("[client] hello\n")
 
 let serviceName = "com.apple.sakkana.XPCLibService"
 
+
 let system = ActorSystem("XPCActorCaller") { settings in
-//    settings.serialization.registerCodable(for: GreetingsService.Message.self, underId: 10001)
+    settings.serialization.registerCodable(for: XPCGreetingsService.Message.self, underId: 10001)
+    settings.serialization.registerCodable(for: GeneratedActor.Messages.XPCGreetingsServiceProtocol.self, underId: 10002)
 }
 
 let xpc = XPCService(system)

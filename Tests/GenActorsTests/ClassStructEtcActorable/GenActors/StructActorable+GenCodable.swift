@@ -40,7 +40,7 @@ extension StructActorable.Message: Codable {
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
         case .hello:
             let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello__replyTo)
-            self = .hello(_replyTo: _replyTo)
+            self = .hello(Function)
 
         }
     }

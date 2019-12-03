@@ -19,37 +19,31 @@
 import DistributedActors
 import XPC
 import XPCActorable
-import XPCActorServiceProvider
 
 import Files
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for XPCGreetingsService.Message
+// MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.XPCGreetingsServiceProtocol
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension XPCGreetingsService.Message: Codable {
+extension GeneratedActor.Messages.XPCGreetingsServiceProtocol: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case _boxXPCGreetingsServiceProtocol
-        case _boxXPCGreetingsServiceProtocol
+        case greet
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case _boxXPCGreetingsServiceProtocol
-        case _boxXPCGreetingsServiceProtocol
+        case greet_name
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case ._boxXPCGreetingsServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.XPCGreetingsServiceProtocol.self, forKey: CodingKeys._boxXPCGreetingsServiceProtocol)
-            self = .xPCGreetingsServiceProtocol(boxed)
-        case ._boxXPCGreetingsServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.XPCGreetingsServiceProtocol.self, forKey: CodingKeys._boxXPCGreetingsServiceProtocol)
-            self = .xPCGreetingsServiceProtocol(boxed)
+        case .greet:
+            let name = try container.decode(String.self, forKey: CodingKeys.greet_name)
+            self = .greet(name: name)
 
         }
     }
@@ -57,10 +51,9 @@ extension XPCGreetingsService.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .xPCGreetingsServiceProtocol(let boxed):
-            try container.encode(boxed, forKey: CodingKeys._boxXPCGreetingsServiceProtocol)
-        case .xPCGreetingsServiceProtocol(let boxed):
-            try container.encode(boxed, forKey: CodingKeys._boxXPCGreetingsServiceProtocol)
+        case .greet(let name):
+            try container.encode(DiscriminatorKeys.greet.rawValue, forKey: CodingKeys._case)
+            try container.encode(name, forKey: CodingKeys.greet_name)
 
         }
     }

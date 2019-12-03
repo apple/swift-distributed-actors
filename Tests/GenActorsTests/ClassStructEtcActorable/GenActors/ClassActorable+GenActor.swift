@@ -26,7 +26,6 @@ extension ClassActorable {
     public enum Message { 
         case hello(_replyTo: ActorRef<String>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
