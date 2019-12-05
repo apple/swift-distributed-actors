@@ -2,6 +2,7 @@
 .swift-version
 
 *.orig
+*.app
 
 /.build
 /Samples/.build
