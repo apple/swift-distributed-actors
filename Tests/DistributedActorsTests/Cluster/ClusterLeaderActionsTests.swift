@@ -175,7 +175,8 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             // FIXME: notice the joining->joining and up->up events; they do not impact correctness, but we want to fix them; this is mostly due to how we gossip Member() rather than a change to member right now.
 
             // on the leader node, the other node noticed as up:
-            let eventsOnFirstSub = try p1.expectMessages(count: 5)
+            let eventsOnFirstSub = try p1.expectMessages(count: 6)
+            eventsOnFirstSub.shouldContain(.snapshot(.empty))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .joining))) // FIXME: we have to change how we signal changes
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnFirstSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .joining, toStatus: .up)))
@@ -183,7 +184,8 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
             eventsOnFirstSub.shouldContain(.leadershipChange(.init(oldLeader: nil, newLeader: .init(node: first.cluster.node, status: .joining))))
 
             // on non-leader node
-            let eventsOnSecondSub = try p2.expectMessages(count: 5)
+            let eventsOnSecondSub = try p2.expectMessages(count: 6)
+            eventsOnSecondSub.shouldContain(.snapshot(.empty))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: nil, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: second.cluster.node, fromStatus: .joining, toStatus: .joining)))
             eventsOnSecondSub.shouldContain(.membershipChange(.init(node: first.cluster.node, fromStatus: .up, toStatus: .up))) // FIXME: by doing a real gossip rather then sending "the member" this will be fixed

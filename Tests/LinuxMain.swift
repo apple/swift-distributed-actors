@@ -63,6 +63,7 @@ XCTMain([
     testCase(CRDTSerializationTests.allTests),
     testCase(CRDTVersioningTests.allTests),
     testCase(ClusterAssociationTests.allTests),
+    testCase(ClusterEventStreamTests.allTests),
     testCase(ClusterEventsSerializationTests.allTests),
     testCase(ClusterLeaderActionsTests.allTests),
     testCase(ClusterMembershipGossipTests.allTests),
