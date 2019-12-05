@@ -130,25 +130,25 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     ///
     /// This operation is guaranteed to return a member if it was added to the membership UNLESS the member has been `.removed`
     /// and dropped which happens only after an extended period of time. // FIXME: That period of time is not implemented
-    func uniqueMember(_ node: UniqueNode) -> Member? {
+    public func uniqueMember(_ node: UniqueNode) -> Member? {
         return self._members[node]
     }
 
     /// Picks "first", in terms of least progressed among its lifecycle member in presence of potentially multiple members
     /// for a non-unique `Node`. In practice, this happens when an existing node is superseded by a "replacement", and the
     /// previous node becomes immediately down.
-    func firstMember(_ node: Node) -> Member? {
+    public func firstMember(_ node: Node) -> Member? {
         return self._members.values.sorted(by: MemberStatus.Ordering).first(where: { $0.node.node == node })
     }
 
-    func members(_ node: Node) -> [Member] {
+    public func members(_ node: Node) -> [Member] {
         return self._members.values
             .filter { $0.node.node == node }
             .sorted(by: MemberStatus.Ordering)
     }
 
     /// More efficient than using `members(atLeast:)` followed by a `.count`
-    func count(atLeast status: MemberStatus) -> Int {
+    public func count(atLeast status: MemberStatus) -> Int {
         return self._members.values
             .lazy
             .filter { member in status <= member.status }
@@ -156,14 +156,14 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     }
 
     /// More efficient than using `members(withStatus:)` followed by a `.count`
-    func count(withStatus status: MemberStatus) -> Int {
+    public func count(withStatus status: MemberStatus) -> Int {
         return self._members.values
             .lazy
             .filter { member in status == member.status }
             .count
     }
 
-    func members(withStatus status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
+    public func members(withStatus status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
@@ -172,7 +172,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         }
     }
 
-    func members(atLeast status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
+    public func members(atLeast status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
@@ -181,7 +181,7 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
         }
     }
 
-    func members(atMost status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
+    public func members(atMost status: MemberStatus, reachability: MemberReachability? = nil) -> [Member] {
         let reachabilityFilter: (Member) -> Bool = { member in
             reachability == nil || member.reachability == reachability
         }
@@ -206,18 +206,18 @@ public struct Membership: Hashable, ExpressibleByArrayLiteral {
     public internal(set) var leader: Member?
 
     /// Returns a copy of the membership, though without any leaders assigned.
-    var leaderless: Membership {
+    public var leaderless: Membership {
         var l = self
         l.leader = nil
         return l
     }
 
     // TODO: this could take into account roles, if we do them
-    func isLeader(_ node: UniqueNode) -> Bool {
+    public func isLeader(_ node: UniqueNode) -> Bool {
         return self.leader?.node == node
     }
 
-    func isLeader(_ member: Member) -> Bool {
+    public func isLeader(_ member: Member) -> Bool {
         return self.isLeader(member.node)
     }
 }
@@ -487,14 +487,14 @@ enum MembershipError: Error {
 /// or may originate from local decisions (such as joining or downing).
 public struct MembershipChange: Equatable {
     /// The node which the change concerns.
-    let node: UniqueNode
+    public let node: UniqueNode
 
     /// Only set if the change is a "replacement", which can happen only if a node joins
     /// from the same physical address (host + port), however its UID has changed.
-    var replaced: Member?
+    public var replaced: Member?
 
-    var fromStatus: MemberStatus?
-    let toStatus: MemberStatus
+    public var fromStatus: MemberStatus?
+    public let toStatus: MemberStatus
 
     init(member: Member, toStatus: MemberStatus? = nil) {
         self.node = member.node
@@ -522,8 +522,8 @@ public struct MembershipChange: Equatable {
     }
 
     /// Current member that is part of the membership after this change
-    var member: Member {
-        return Member(node: self.node, status: self.toStatus)
+    public var member: Member {
+        Member(node: self.node, status: self.toStatus)
     }
 }
 
@@ -531,33 +531,33 @@ extension MembershipChange {
     /// Is a "replace" operation, meaning a new node with different UID has replaced a previousNode.
     /// This can happen upon a service reboot, with stable network address -- the new node then "replaces" the old one,
     /// and the old node shall be removed from the cluster as a result of this.
-    var isReplacement: Bool {
+    public var isReplacement: Bool {
         return self.replaced != nil
     }
 
-    var isJoining: Bool {
+    public var isJoining: Bool {
         return self.toStatus.isJoining
     }
 
-    var isUp: Bool {
+    public var isUp: Bool {
         return self.toStatus.isUp
     }
 
-    var isDown: Bool {
+    public var isDown: Bool {
         return self.toStatus.isDown
     }
 
     /// Matches when a change is to: `.down`, `.leaving` or `.removed`.
-    var isAtLeastDown: Bool {
+    public var isAtLeastDown: Bool {
         return self.toStatus >= .down
     }
 
-    var isLeaving: Bool {
+    public var isLeaving: Bool {
         return self.toStatus.isLeaving
     }
 
     /// Slight rewording of API, as this is the membership _change_, thus it is a "removal", while the `toStatus` is "removed"
-    var isRemoval: Bool {
+    public var isRemoval: Bool {
         return self.toStatus.isRemoved
     }
 }

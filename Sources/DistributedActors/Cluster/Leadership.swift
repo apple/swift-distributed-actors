@@ -95,8 +95,8 @@ public struct LeaderElectionResult: AsyncResult {
 /// Emitted when a change in leader is decided.
 public struct LeadershipChange: Equatable {
     // let role: Role if this leader was of a specific role, carry the info here? same for DC?
-    let oldLeader: Member?
-    let newLeader: Member?
+    public let oldLeader: Member?
+    public let newLeader: Member?
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
