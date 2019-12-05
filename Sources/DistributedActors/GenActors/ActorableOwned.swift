@@ -41,7 +41,7 @@ public final class ActorableOwned<T> {
         self.__onUpdate = { _ in () }
         self._ref = nil
         let subReceiveId: SubReceiveId<T> = SubReceiveId(T.self, id: "ActorOwned-\(typeName)")
-        self._ref = context.underlying.subReceive(subReceiveId, T.self) { newValue in
+        self._ref = context._underlying.subReceive(subReceiveId, T.self) { newValue in
             self._cell = ValueCell(value: newValue, updatedAt: Date())
             self.__onUpdate(newValue)
         }

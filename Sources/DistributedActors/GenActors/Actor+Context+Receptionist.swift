@@ -38,7 +38,7 @@ extension Actor.Context {
         let context: Myself.Context
 
         private var underlying: ActorContext<A.Message> {
-            self.context.underlying
+            self.context._underlying
         }
 
         /// Registers `myself` in the systems receptionist with given id.
@@ -99,7 +99,7 @@ extension Actor.Context {
             let owned: ActorableOwned<Reception.Listing<Act>> = ActorableOwned(self.context)
             self.context.system.receptionist.subscribe(
                 key: key.underlying,
-                subscriber: self.context.underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { listing in
+                subscriber: self.context._underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { listing in
                     let actors = Set(listing.refs.map { ref in
                         Actor<Act>(ref: ref)
                     })

@@ -24,11 +24,11 @@ extension Actor {
     ///
     /// The `Actor<A>.Context` is the `Actorable` equivalent of `ActorContext<Message>`, which is designed to work with the low-level `Behavior` types.
     public struct Context {
-        @usableFromInline
-        internal let underlying: ActorContext<A.Message>
+        /// Only public to enable workarounds while all APIs gain Actor/Actorable style versions.
+        public let _underlying: ActorContext<A.Message>
 
         public init(underlying: ActorContext<A.Message>) {
-            self.underlying = underlying
+            self._underlying = underlying
         }
     }
 }
@@ -36,17 +36,17 @@ extension Actor {
 extension Actor.Context {
     /// Returns `ActorSystem` which this context belongs to.
     public var system: ActorSystem {
-        self.underlying.system
+        self._underlying.system
     }
 
     /// Uniquely identifies this actor in the cluster.
     public var address: ActorAddress {
-        self.underlying.address
+        self._underlying.address
     }
 
     /// Local path under which this actor resides within the actor tree.
     public var path: ActorPath {
-        self.underlying.path
+        self._underlying.path
     }
 
     /// Name of this actor.
@@ -58,7 +58,7 @@ extension Actor.Context {
     // We can safely make it a `lazy var` without synchronization as `ActorContext` is required to only be accessed in "its own"
     // Actor, which means that we always have guaranteed synchronization in place and no concurrent access should take place.
     public var name: String {
-        self.underlying.name
+        self._underlying.name
     }
 
     /// The actor reference to _this_ actor.
@@ -70,22 +70,22 @@ extension Actor.Context {
     // and it's important to keep in mind the actors are "like people", so having this talk about "myself" is important IMHO
     // to get developers into the right mindset.
     public var myself: Actor<A> {
-        Actor(ref: self.underlying.myself)
+        Actor(ref: self._underlying.myself)
     }
 
     /// Provides context metadata aware `Logger`
     public var log: Logger {
         get {
-            self.underlying.log
+            self._underlying.log
         }
         set {
-            self.underlying.log = newValue
+            self._underlying.log = newValue
         }
     }
 
     /// Dispatcher on which this actor is executing
     public var dispatcher: MessageDispatcher {
-        self.underlying.dispatcher
+        self._underlying.dispatcher
     }
 }
 
@@ -94,14 +94,14 @@ extension Actor.Context {
 
 extension Actor.Context {
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping (Actor<Child>.Context) -> Child) throws -> Actor<Child> {
-        let ref = try self.underlying.spawn(naming, of: Child.Message.self, Behavior<Child.Message>.setup { context in
+        let ref = try self._underlying.spawn(naming, of: Child.Message.self, Behavior<Child.Message>.setup { context in
             Child.makeBehavior(instance: makeActorable(.init(underlying: context)))
         })
         return Actor<Child>(ref: ref)
     }
 
     public func spawn<Child: Actorable>(_ naming: ActorNaming, _ makeActorable: @escaping () -> Child) throws -> Actor<Child> {
-        let ref: ActorRef = try self.underlying.spawn(naming, of: Child.Message.self, Child.makeBehavior(instance: makeActorable()))
+        let ref: ActorRef = try self._underlying.spawn(naming, of: Child.Message.self, Child.makeBehavior(instance: makeActorable()))
         return Actor<Child>(ref: ref)
     }
 
@@ -130,7 +130,7 @@ extension Actor.Context {
 extension Actor.Context {
     /// Allows setting up and canceling timers, bound to the lifecycle of this actor.
     public var timers: Timers<A.Message> {
-        self.underlying.timers
+        self._underlying.timers
     }
 }
 
@@ -170,12 +170,12 @@ extension Actor.Context {
     ///  - MUST NOT be invoked concurrently to the actors execution, i.e. from the "outside" of the current actor.
     @discardableResult
     public func watch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> { // TODO: fix signature, should the watchee
-        _ = self.underlying.watch(watchee.ref, file: file, line: line)
+        _ = self._underlying.watch(watchee.ref, file: file, line: line)
         return watchee
     }
 
     internal func watch(_ watchee: AddressableActorRef, file: String = #file, line: UInt = #line) {
-        _ = self.underlying.watch(watchee, file: file, line: line)
+        _ = self._underlying.watch(watchee, file: file, line: line)
     }
 
     /// Reverts the watching of an previously watched actor.
@@ -194,7 +194,7 @@ extension Actor.Context {
     /// - Returns: the passed in watchee reference for easy chaining `e.g. context.unwatch(ref)`
     @discardableResult
     public func unwatch<Act>(_ watchee: Actor<Act>, file: String = #file, line: UInt = #line) -> Actor<Act> {
-        _ = self.underlying.unwatch(watchee.ref, file: file, line: line)
+        _ = self._underlying.unwatch(watchee.ref, file: file, line: line)
         return watchee
     }
 }
@@ -281,7 +281,7 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     public func onResultAsync<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Void) {
-        self.underlying.onResultAsync(of: asyncResult, timeout: timeout) { result in
+        self._underlying.onResultAsync(of: asyncResult, timeout: timeout) { result in
             try continuation(result)
             return .same
         }
@@ -303,7 +303,7 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     public func onResultAsyncThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount, _ continuation: @escaping (AR.Value) throws -> Void) {
-        self.underlying.onResultAsyncThrowing(of: asyncResult, timeout: timeout) { result in
+        self._underlying.onResultAsyncThrowing(of: asyncResult, timeout: timeout) { result in
             try continuation(result)
             return .same
         }

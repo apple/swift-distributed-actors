@@ -280,7 +280,7 @@ extension Membership {
 
         // for single node "cluster" we allow becoming the leader myself eagerly (e.g. useful in testing)
         if self._members.count == 0 {
-            self.join(wannabeLeader.node)
+            _ = self.join(wannabeLeader.node)
         }
 
         // we sanity check that the wanna-be leader is already a member

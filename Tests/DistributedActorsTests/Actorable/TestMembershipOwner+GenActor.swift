@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,68 +16,45 @@
 //
 //===----------------------------------------------------------------------===//
 
-// tag::imports[]
-
-import DistributedActors
-
-// end::imports[]
-
+@testable import DistributedActors
 import DistributedActorsTestKit
 import XCTest
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine messages 
+// MARK: DO NOT EDIT: Generated TestMembershipOwner messages 
 
-/// DO NOT EDIT: Generated AllInOneMachine messages
-extension AllInOneMachine {
+/// DO NOT EDIT: Generated TestMembershipOwner messages
+extension TestMembershipOwner {
     // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
-        case clean 
-        case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
-        case diagnostics(/*TODO: MODULE.*/GeneratedActor.Messages.Diagnostics) 
+        case replyMembership(_replyTo: ActorRef<Membership?>) 
     }
 
     
-    /// Performs boxing of GeneratedActor.Messages.CoffeeMachine messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> AllInOneMachine.Message {
-        .coffeeMachine(message)
-    } 
-    
-    /// Performs boxing of GeneratedActor.Messages.Diagnostics messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxDiagnostics(_ message: GeneratedActor.Messages.Diagnostics) -> AllInOneMachine.Message {
-        .diagnostics(message)
-    } 
-    
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine behavior
+// MARK: DO NOT EDIT: Generated TestMembershipOwner behavior
 
-extension AllInOneMachine {
+extension TestMembershipOwner {
 
-    public static func makeBehavior(instance: AllInOneMachine) -> Behavior<Message> {
+    public static func makeBehavior(instance: TestMembershipOwner) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<AllInOneMachine>.Context(underlying: _context)
-            var instance = instance
+            let context = Actor<TestMembershipOwner>.Context(underlying: _context)
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .clean:
-                    instance.clean()
- 
-                
-                case .coffeeMachine(.makeCoffee(let _replyTo)):
-                    let result = instance.makeCoffee()
+                case .replyMembership(let _replyTo):
+                    let result = instance.replyMembership()
                     _replyTo.tell(result)
  
-                case .diagnostics(.printDiagnostics):
-                    instance.printDiagnostics()
- 
+                
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<AllInOneMachine>.Context(underlying: _context)
+                let context = Actor<TestMembershipOwner>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -100,12 +77,17 @@ extension AllInOneMachine {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for AllInOneMachine
+// MARK: Extend Actor for TestMembershipOwner
 
-extension Actor where A.Message == AllInOneMachine.Message {
+extension Actor where A.Message == TestMembershipOwner.Message {
     
-    func clean() {
-        self.ref.tell(.clean)
+    func replyMembership() -> Reply<Membership?> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture: 
+            self.ref.ask(for: Membership?.self, timeout: .effectivelyInfinite) { _replyTo in
+                .replyMembership(_replyTo: _replyTo)
+            }.nioFuture
+            )
     } 
     
 }
