@@ -491,9 +491,9 @@ public struct MembershipChange: Equatable {
 
     /// Only set if the change is a "replacement", which can happen only if a node joins
     /// from the same physical address (host + port), however its UID has changed.
-    public var replaced: Member?
+    public private(set) var replaced: Member?
 
-    public var fromStatus: MemberStatus?
+    public private(set) var fromStatus: MemberStatus?
     public let toStatus: MemberStatus
 
     init(member: Member, toStatus: MemberStatus? = nil) {

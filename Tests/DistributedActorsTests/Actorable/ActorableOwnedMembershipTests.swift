@@ -26,21 +26,18 @@ final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
 
-            let p = self.testKit(first).spawnTestProbe(expecting: Membership.self)
-            let owner = try first.spawn("membershipOwner") {
-                TestMembershipOwner(context: $0, probe: p.ref)
-            }
-
-            // FIXME: this should work even if we call join nodes EAGERLY
-
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
             try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)
+
+            let owner = try first.spawn("membershipOwner") {
+                TestMembershipOwner(context: $0)
+            }
 
             try self.testKit(first).eventually(within: .seconds(3)) {
                 let membershipReply = owner.replyMembership()
                 let membership = try membershipReply._nioFuture.wait()
-                guard membership?.count(atLeast: .joining) == 2 else {
-                    throw Boom("Not yet all joining nodes in lastObservedValue")
+                guard membership?.count(atLeast: .up) == 2 else {
+                    throw Boom("Not yet all joining nodes in lastObservedValue, was: \(membership)")
                 }
             }
         }
@@ -55,14 +52,9 @@ struct TestMembershipOwner: Actorable {
         false
     }
 
-    init(context: Myself.Context, probe: ActorRef<Membership>) {
+    init(context: Myself.Context) {
         self.context = context
         self.membership = context.system.cluster.autoUpdatedMembership(context)
-        self.membership.onUpdate {
-            if $0.members(atLeast: .joining).count > 0 {
-                probe.tell($0)
-            }
-        }
     }
 
     func replyMembership() -> Membership? {
