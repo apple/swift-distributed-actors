@@ -225,7 +225,12 @@ public final class ActorSystem {
         var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
         do {
             if let cluster = self._cluster {
-                let clusterEvents = try! EventStream<ClusterEvent>(self, name: "clusterEvents", systemStream: true)
+                let clusterEvents = try! EventStream<ClusterEvent>(
+                    self,
+                    name: "clusterEvents",
+                    systemStream: true,
+                    customBehavior: ClusterEventStream.Shell.behavior
+                )
                 lazyCluster = try cluster.start(system: self, clusterEvents: clusterEvents) // only spawns when cluster is initialized
 
                 self._clusterControl = ClusterControl(settings.cluster, clusterRef: cluster.ref, eventStream: clusterEvents)

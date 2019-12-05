@@ -29,11 +29,12 @@ public struct EventStream<Event> {
         self.ref = ref
     }
 
-    internal init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self, systemStream: Bool) throws {
+    internal init(_ system: ActorSystem, name: String, of type: Event.Type = Event.self, systemStream: Bool, customBehavior: Behavior<EventStreamShell.Message<Event>>? = nil) throws {
+        let behavior = customBehavior ?? EventStreamShell.behavior(type)
         if systemStream {
-            self.ref = try system._spawnSystemActor(.unique(name), EventStreamShell.behavior(type))
+            self.ref = try system._spawnSystemActor(.unique(name), behavior)
         } else {
-            self.ref = try system.spawn(.unique(name), EventStreamShell.behavior(type))
+            self.ref = try system.spawn(.unique(name), behavior)
         }
     }
 
