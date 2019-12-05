@@ -90,8 +90,6 @@ final class EventStreamTests: XCTestCase {
 
         // we are sending a `.terminated` system message instead of stopping the probe here
         // because we still need to verify that we don't receive any more messages after that
-        //
-        // TODO: is there a less hacky way to do this?
         eventStream.ref.sendSystemMessage(.terminated(ref: p1.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
         eventStream.ref.sendSystemMessage(.terminated(ref: p2.ref.asAddressable(), existenceConfirmed: true, addressTerminated: false))
 
