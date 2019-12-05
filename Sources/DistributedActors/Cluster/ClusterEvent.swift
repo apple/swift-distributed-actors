@@ -22,15 +22,15 @@ public enum ClusterEvent: Equatable {
 
 /// Emitted when the reachability of a member changes, as determined by a failure detector (e.g. `SWIM`).
 public struct ReachabilityChange: Equatable {
-    let member: Member
+    public let member: Member
 
     /// This change is to a `.reachable` state of the `Member`
-    var toReachable: Bool {
+    public var toReachable: Bool {
         return self.member.reachability == .reachable
     }
 
     /// This change is to a `.unreachable` state of the `Member`
-    var toUnreachable: Bool {
+    public var toUnreachable: Bool {
         return self.member.reachability == .unreachable
     }
 }
