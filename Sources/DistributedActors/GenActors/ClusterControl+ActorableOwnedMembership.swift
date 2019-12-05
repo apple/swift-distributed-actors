@@ -24,35 +24,9 @@ extension ClusterControl {
         owned.update(newValue: Membership.empty)
 
         self.events.subscribe(ownerContext._underlying.subReceive(ClusterEvent.self) { (event: ClusterEvent) in
-            switch event {
-            case .snapshot(let snapshot):
-                owned.update(newValue: snapshot)
-
-            case .membershipChange(let change):
-                guard var membership = owned.lastObservedValue else {
-                    fatalError("\(ActorableOwned<Membership>.self) can never be empty, we set the state immediately when creating the owned.")
-                }
-                _ = membership.apply(change)
-                owned.update(newValue: membership)
-
-            case .leadershipChange(let change):
-                guard var membership = owned.lastObservedValue else {
-                    fatalError("\(ActorableOwned<Membership>.self) can never be empty, we set the state immediately when creating the owned.")
-                }
-                do {
-                    _ = try membership.applyLeadershipChange(to: change.newLeader)
-                    owned.update(newValue: membership)
-                } catch {
-                    ownerContext.log.warning("Failed to update \(ActorableOwned<Membership>.self): \(error)")
-                }
-
-            case .reachabilityChange(let change):
-                guard var membership = owned.lastObservedValue else {
-                    fatalError("\(ActorableOwned<Membership>.self) can never be empty, we set the state immediately when creating the owned.")
-                }
-                _ = membership.applyReachabilityChange(change)
-                owned.update(newValue: membership)
-            }
+            var membership = owned.lastObservedValue ?? Membership.empty
+            try membership.apply(event: event)
+            owned.update(newValue: membership)
         })
 
         return owned
