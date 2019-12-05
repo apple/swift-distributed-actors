@@ -123,9 +123,10 @@ extension Leadership {
             return .setup { context in
                 context.log.trace("Spawned \(context.path) to run \(self.election)")
                 context.system.cluster.events.subscribe(context.myself)
+
                 // FIXME: we have to add "own node" since we're not getting the .snapshot... so we have to manually act as if..
                 _ = self.membership.apply(MembershipChange(node: context.system.cluster.node, fromStatus: nil, toStatus: .joining))
-                return self.ready
+                return self.runElection(context)
             }
         }
 
@@ -164,18 +165,18 @@ extension Leadership {
                 case .success(.some(let leadershipChange)):
                     guard let changed = try self.membership.applyLeadershipChange(to: leadershipChange.newLeader) else {
                         context.log.trace("The leadership change that was decided on by \(self.election) results in no change from current leadership state.")
-                        return .same
+                        return self.ready
                     }
                     context.system.cluster.ref.tell(.requestMembershipChange(.leadershipChange(changed)))
-                    return .same
+                    return self.ready
 
                 case .success(.none):
                     // no change decided upon
-                    return .same
+                    return self.ready
 
                 case .failure(let err):
                     context.log.warning("Failed to select leader... Error: \(err)")
-                    return .same
+                    return self.ready
                 }
             }
         }

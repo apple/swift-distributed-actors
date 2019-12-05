@@ -278,6 +278,11 @@ extension Membership {
             return LeadershipChange(oldLeader: oldLeader, newLeader: self.leader)
         }
 
+        // for single node "cluster" we allow becoming the leader myself eagerly (e.g. useful in testing)
+        if self._members.count == 0 {
+            self.join(wannabeLeader.node)
+        }
+
         // we sanity check that the wanna-be leader is already a member
         guard self._members[wannabeLeader.node] != nil else {
             throw MembershipError.nonMemberLeaderSelected(self, wannabeLeader: wannabeLeader)

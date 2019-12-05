@@ -22,6 +22,42 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: leader decision: .joining -> .up
 
+    func test_singleLeader() throws {
+        try shouldNotThrow {
+            let first = self.setUpNode("first") { settings in
+                settings.cluster.node.port = 7111
+                settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 1)
+            }
+
+            let p = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
+
+            _ = try first.spawn("selfishSingleLeader", Behavior<ClusterEvent>.setup { context  in 
+                context.system.cluster.events.subscribe(context.myself)
+
+                return .receiveMessage { event in
+                    switch event {
+                    case .leadershipChange:
+                        p.tell(event)
+                        return .same
+                    default:
+                        return .same
+                    }
+                }
+
+            })
+
+            switch try p.expectMessage() {
+            case .leadershipChange(let change):
+                guard let leader = change.newLeader else {
+                    throw self.testKit(first).fail("Expected \(first.cluster.node) to be leader")
+                }
+                leader.node.shouldEqual(first.cluster.node)
+            default:
+                self.testKit(first).fail("Expected leader change event")
+            }
+        }
+    }
+
     func test_joining_to_up_decisionByLeader() throws {
         try shouldNotThrow {
             let first = self.setUpNode("first") { settings in
