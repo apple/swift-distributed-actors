@@ -34,7 +34,7 @@ struct OwnerOfThings: Actorable {
     }
 
     func performLookup() -> EventLoopFuture<Reception.Listing<OwnerOfThings>> {
-        let reply = self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"))
+        let reply = self.context.receptionist.lookup(.init(OwnerOfThings.self, id: "all/owners"), timeout: .effectivelyInfinite)
         return reply._nioFuture
     }
 }

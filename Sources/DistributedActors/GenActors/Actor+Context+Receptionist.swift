@@ -114,19 +114,19 @@ extension Actor.Context {
         ///
         /// - Parameters:
         ///   - key: selects which actors we are interested in.
-        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>) -> Reply<Reception.Listing<Act>> {
-            let promise = self.context.system._eventLoopGroup.next().makePromise(of: Reception.Listing<Act>.self)
-            self.underlying.system.receptionist.tell(SystemReceptionist.Lookup(
-                key: key.underlying,
-                replyTo: self.underlying.subReceive("lookup-\(type(of: key))", SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    let actors = Set(listing.refs.map { ref in
-                        Actor<Act>(ref: ref)
-                    })
-                    promise.succeed(.init(actors: actors))
-                }
-            ))
+        public func lookup<Act: Actorable>(_ key: Reception.Key<Act>, timeout: TimeAmount) -> Reply<Reception.Listing<Act>> {
+            let listingReply: AskResponse<SystemReceptionist.Listing<Act.Message>> = self.underlying.system.receptionist.ask(timeout: timeout) {
+                SystemReceptionist.Lookup(key: key.underlying, replyTo: $0)
+            }
 
-            return Reply(nioFuture: promise.futureResult)
+            let actorListing: EventLoopFuture<Reception.Listing<Act>> = listingReply.nioFuture.map { listing in
+                let acts = Set(listing.refs.map { ref in
+                    Actor<Act>(ref: ref)
+                })
+                return Reception.Listing(actors: acts)
+            }
+
+            return Reply(nioFuture: actorListing)
         }
     }
 }
