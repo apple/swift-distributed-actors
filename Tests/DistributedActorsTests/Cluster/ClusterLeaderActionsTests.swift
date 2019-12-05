@@ -31,7 +31,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
 
             let p = self.testKit(first).spawnTestProbe(expecting: ClusterEvent.self)
 
-            _ = try first.spawn("selfishSingleLeader", Behavior<ClusterEvent>.setup { context  in 
+            _ = try first.spawn("selfishSingleLeader", Behavior<ClusterEvent>.setup { context in
                 context.system.cluster.events.subscribe(context.myself)
 
                 return .receiveMessage { event in

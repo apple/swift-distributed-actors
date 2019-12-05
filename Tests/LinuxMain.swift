@@ -43,6 +43,7 @@ XCTMain([
     testCase(ActorSystemTests.allTests),
     testCase(ActorTestKitTests.allTests),
     testCase(ActorTestProbeTests.allTests),
+    testCase(ActorableOwnedMembershipTests.allTests),
     testCase(BackoffStrategyTests.allTests),
     testCase(BehaviorCanonicalizeTests.allTests),
     testCase(BehaviorTests.allTests),
