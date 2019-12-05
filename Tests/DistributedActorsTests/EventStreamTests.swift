@@ -26,6 +26,10 @@ final class EventStreamTests: XCTestCase {
         self.testKit = ActorTestKit(self.system)
     }
 
+    override func tearDown() {
+        self.system.shutdown().wait()
+    }
+
     func test_eventStream_shouldPublishEventsToAllSubscribers() throws {
         let p1 = self.testKit.spawnTestProbe(expecting: String.self)
         let p2 = self.testKit.spawnTestProbe(expecting: String.self)
