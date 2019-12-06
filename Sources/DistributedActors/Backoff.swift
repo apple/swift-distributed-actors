@@ -68,10 +68,10 @@ public enum Backoff {
     public static func exponential(
         initialInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.initialInterval,
         multiplier: Double = ExponentialBackoffStrategy.Defaults.multiplier,
-        maxInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,
+        capInterval: TimeAmount = ExponentialBackoffStrategy.Defaults.capInterval,
         randomFactor: Double = ExponentialBackoffStrategy.Defaults.randomFactor
     ) -> ExponentialBackoffStrategy {
-        return .init(initialInterval: initialInterval, multiplier: multiplier, capInterval: maxInterval, randomFactor: randomFactor)
+        .init(initialInterval: initialInterval, multiplier: multiplier, capInterval: capInterval, randomFactor: randomFactor)
     }
 }
 
@@ -143,7 +143,7 @@ public struct ExponentialBackoffStrategy: BackoffStrategy {
     public struct Defaults {
         public static let initialInterval: TimeAmount = .milliseconds(200)
         public static let multiplier: Double = 1.5
-        public static let capInterval: TimeAmount = .seconds(30)
+        public static let capInterval: TimeAmount = .effectivelyInfinite
         public static let randomFactor: Double = 0.25
 
         // TODO: We could also implement taking a Clock, and using it see if there's a total limit exceeded

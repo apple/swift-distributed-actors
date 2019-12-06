@@ -72,10 +72,14 @@ class BackoffStrategyTests: XCTestCase {
     func test_exponentialBackoff_shouldNotExceedMaximumBackoff() {
         let max = TimeAmount.seconds(1)
         let maxRandomNoise = max * 1.25
-        var backoff = Backoff.exponential(initialInterval: .milliseconds(500), maxInterval: max)
+        var backoff = Backoff.exponential(initialInterval: .milliseconds(500), capInterval: max)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
         backoff.next()?.shouldBeLessThanOrEqual(max + maxRandomNoise)
+    }
+
+    func test_exponentialBackoff_withLargeInitial_shouldAdjustCap() {
+        Backoff.exponential(initialInterval: .seconds(60)) // cap used to be hardcoded which would cause this to precondition crash
     }
 }
