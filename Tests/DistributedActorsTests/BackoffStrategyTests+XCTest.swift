@@ -29,6 +29,7 @@ extension BackoffStrategyTests {
             ("test_exponentialBackoff_shouldAllowDisablingRandomFactor", test_exponentialBackoff_shouldAllowDisablingRandomFactor),
             ("test_exponentialBackoff_reset_shouldResetBackoffIntervals", test_exponentialBackoff_reset_shouldResetBackoffIntervals),
             ("test_exponentialBackoff_shouldNotExceedMaximumBackoff", test_exponentialBackoff_shouldNotExceedMaximumBackoff),
+            ("test_exponentialBackoff_withLargeInitial_shouldAdjustCap", test_exponentialBackoff_withLargeInitial_shouldAdjustCap),
         ]
     }
 }
