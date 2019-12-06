@@ -78,6 +78,10 @@ In general Actors support three discrete styles of interactions:
     * Actorable example signature: `func greet(name: String) -> Greeting`, or `func greet(name: String) -> EventLoopFuture<Greeting>`,
       meaning we "return" the value we want to reply back with. The calling actor will receive an `Reply<Greeting>` in either case.
 
+NOTE: When using `call`-style APIs to message `myself` beware to NOT `awaitResult` (nor `await` if/when this feature lands)
+      on the `Reply` as this would deadlock, since the waiting suspends the actor, meaning it'd never get to process the
+      call message, resulting in the `Reply` never being sent. Such deadlock though is resolved by calls always being waited on with a timeout #TODO: calls do not force timeouts currently# #TODO: we can detect such deadlocks, and with traces, we could even print the chain of calls pretty easily#
+
 [[actorable_context]]
 ==== Actor<Self>.Context
 
