@@ -79,7 +79,7 @@ extension ProcessIsolated {
             }
 
             // always DOWN the node that we know has terminated
-            self.system.cluster.down(node: servant.node)
+            self.system.cluster.down(node: servant.node.node)
             // TODO: we could aggressively tell other nodes about the down rather rely on the gossip...?
 
             // if we have a restart supervision logic, we should apply it.
@@ -95,7 +95,7 @@ extension ProcessIsolated {
 
             case .escalate:
                 self.system.log.info("\(messagePrefix): ESCALATE, as decided by: \(servant.restartLogic, orElse: "<undefined-strategy>")")
-                self.system.cluster.down(node: self.system.cluster.node)
+                self.system.cluster.down(node: self.system.cluster.node.node)
                 // TODO: ensure we exit the master process as well
 
             case .restartImmediately:

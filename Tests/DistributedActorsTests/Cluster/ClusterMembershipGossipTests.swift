@@ -47,7 +47,7 @@ final class ClusterMembershipGossipTests: ClusteredNodesTestBase {
                 try self.assertMemberStatus(on: second, node: third.cluster.node, is: .up)
             }
 
-            second.cluster.down(node: third.cluster.node)
+            second.cluster.down(node: third.cluster.node.node)
 
             try self.testKit(first).eventually(within: .seconds(5)) {
                 try self.assertMemberStatus(on: first, node: third.cluster.node, is: .down)

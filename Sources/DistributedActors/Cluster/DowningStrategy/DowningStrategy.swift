@@ -97,9 +97,9 @@ internal struct DowningStrategyShell {
         }
     }
 
-    func markAsDown(_ context: ActorContext<Message>, member: UniqueNode) {
-        context.log.info("Strategy [\(type(of: self.strategy))] decision about unreachable member [\(member)]: marking as: DOWN")
-        context.system.cluster.down(node: member)
+    func markAsDown(_ context: ActorContext<Message>, member node: UniqueNode) {
+        context.log.info("Strategy [\(type(of: self.strategy))] decision about unreachable member [\(node)]: marking as: .down")
+        context.system.cluster.down(node: node.node)
     }
 
     func receiveClusterEvent(_ context: ActorContext<Message>, event: ClusterEvent) throws {
