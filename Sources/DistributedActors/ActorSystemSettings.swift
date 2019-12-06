@@ -18,7 +18,7 @@ import Logging
 /// Settings used to configure an `ActorSystem`.
 public struct ActorSystemSettings {
     public static var `default`: ActorSystemSettings {
-        return .init()
+        .init()
     }
 
     // TODO: LoggingSettings

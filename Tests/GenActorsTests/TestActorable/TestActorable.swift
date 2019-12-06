@@ -15,7 +15,6 @@
 import DistributedActors
 import class NIO.EventLoopFuture
 
-// TODO: take into account that type may not be public
 public struct TestActorable: Actorable {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: State
@@ -122,9 +121,4 @@ public struct TestActorable: Actorable {
         // This causes the actor to schedule invoking `ping()`
         self.context.timers.startSingle(key: "tick", message: Message.ping, delay: .seconds(2))
     }
-}
-
-// should not accidentally try to make this actorable
-public struct ExampleModel {
-    public struct ExampleData {}
 }

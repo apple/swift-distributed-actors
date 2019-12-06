@@ -222,18 +222,9 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Void) -> Behavior<Myself.Message> {
-        let ar: AR
-        if let timeout = timeout {
-            ar = asyncResult.withTimeout(after: timeout)
-        } else {
-            ar = asyncResult
-        }
-
-        ar._onComplete { [weak myCell = self.myself.ref._unsafeUnwrapCell] result in
-            myCell?.sendSystemMessage(.resume(result.map {
-                $0
-            }))
+    public func awaitResult<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount = .effectivelyInfinite, _ continuation: @escaping (Result<AR.Value, Error>) throws -> Void) -> Behavior<Myself.Message> {
+        asyncResult.withTimeout(after: timeout)._onComplete { [weak myCell = self.myself.ref._unsafeUnwrapCell] result in
+            myCell?.sendSystemMessage(.resume(result.map { $0 }))
         }
 
         return Behavior<Myself.Message>.suspend(handler: { (res: Result<AR.Value, Error>) in
@@ -256,7 +247,7 @@ extension Actor.Context {
     ///   - continuation: continuation to run after `AsyncResult` completes. It is safe to access
     ///                   and modify actor state from here.
     /// - Returns: a behavior that causes the actor to suspend until the `AsyncResult` completes
-    public func awaitResultThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount? = nil, _ continuation: @escaping (AR.Value) throws -> Void) -> Behavior<Myself.Message> {
+    public func awaitResultThrowing<AR: AsyncResult>(of asyncResult: AR, timeout: TimeAmount = .effectivelyInfinite, _ continuation: @escaping (AR.Value) throws -> Void) -> Behavior<Myself.Message> {
         self.awaitResult(of: asyncResult, timeout: timeout) { result in
             switch result {
             case .success(let res): return try continuation(res)
