@@ -58,5 +58,6 @@ final class ActorContextReceptionTests: XCTestCase {
         let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: p.ref) }
 
         let reply = owner.performLookup()
+        try reply._nioFuture.wait().first.shouldEqual(owner)
     }
 }

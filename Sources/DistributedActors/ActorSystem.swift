@@ -225,6 +225,8 @@ public final class ActorSystem {
         var lazyNodeDeathWatcher: LazyStart<NodeDeathWatcherShell.Message>?
         do {
             if let cluster = self._cluster {
+                // try!-safe, this will spawn under /system/... which we have full control over,
+                // and there /system namespace and it is known there will be no conflict for this name
                 let clusterEvents = try! EventStream<ClusterEvent>(
                     self,
                     name: "clusterEvents",

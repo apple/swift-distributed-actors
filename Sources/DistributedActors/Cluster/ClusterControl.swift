@@ -47,18 +47,7 @@ public struct ClusterControl {
         self.ref.tell(.command(.initJoin(node)))
     }
 
-    /// Mark as `MemberStatus.down` the specific `node` being passed in.
-    public func down(node: UniqueNode) {
-        self.ref.tell(.command(.downCommand(node.node)))
-    }
-
     /// Mark as `MemberStatus.down` _any_ incarnation of a member matching the passed in `node`.
-    ///
-    /// This API is less precise than `down(node: UniqueNode)` since the latter specifies a specific incarnation of a node,
-    /// meaning that given a node restarting and re-joining the cluster using the same address/port by using this down function
-    /// the "new" node -- or, in other words "any incarnation of that address" -- is going to be marked down and removed from the cluster.
-    /// Whereas the `UniqueNode` downing is always bound to a specific instance/incarnation of a node, and thus can be used to down
-    /// a specific node, to ensure it has left the cluster, before another incarnation of it has a chance to re-join.
     public func down(node: Node) {
         self.ref.tell(.command(.downCommand(node)))
     }

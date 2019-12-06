@@ -21,6 +21,7 @@ struct OwnerOfThings: Actorable {
 
     init(context: Myself.Context, probe: ActorRef<Reception.Listing<OwnerOfThings>>) {
         self.context = context
+        context.receptionist.registerMyself(as: "all/owners")
         self.ownedListing = context.receptionist.autoUpdatedListing(OwnerOfThings.key)
         self.ownedListing.onUpdate { newValue in
             probe.tell(newValue)
