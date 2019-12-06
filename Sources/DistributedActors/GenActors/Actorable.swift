@@ -106,12 +106,12 @@ public struct ResultReply<Value, ErrorType: Error>: AsyncResult {
         self._nioFuture = nioFuture
     }
 
-    public func _onComplete(_: @escaping (Result<Value, Error>) -> Void) {
-        () // TODO: implement me
+    public func _onComplete(_ callback: @escaping (Result<Value, Error>) -> Void) {
+        self._nioFuture.whenComplete { callback($0) }
     }
 
     public func withTimeout(after timeout: TimeAmount) -> Self {
-        return self
+        ResultReply(nioFuture: self._nioFuture.withTimeout(after: timeout))
     }
 }
 

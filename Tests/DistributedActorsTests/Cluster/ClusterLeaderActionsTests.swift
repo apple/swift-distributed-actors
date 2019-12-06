@@ -53,7 +53,7 @@ final class ClusterLeaderActionsTests: ClusteredNodesTestBase {
                 }
                 leader.node.shouldEqual(first.cluster.node)
             default:
-                self.testKit(first).fail("Expected leader change event")
+                throw self.testKit(first).fail("Expected leader change event")
             }
         }
     }

@@ -85,7 +85,7 @@ public struct LeaderElectionResult: AsyncResult {
     }
 
     public func withTimeout(after timeout: TimeAmount) -> LeaderElectionResult {
-        return LeaderElectionResult(self.future.withTimeout(after: timeout))
+        LeaderElectionResult(self.future.withTimeout(after: timeout))
     }
 }
 

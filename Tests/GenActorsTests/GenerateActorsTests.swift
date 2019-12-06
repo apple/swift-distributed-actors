@@ -270,4 +270,43 @@ final class GenerateActorsTests: XCTestCase {
             "terminated:ChildTerminated(/user/watcher/child)",
         ])
     }
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Awaiting on a result (context.awaitResult)
+
+    func test_AwaitingActorable_awaitOnAResult() throws {
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, Error>.self)
+
+        let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
+        let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)
+        actor.awaitOnAFuture(f: promise.futureResult, replyTo: p.ref)
+
+        // to ensure we actually complete after the actor has suspended
+        promise.completeWith(.success("Hello!"))
+
+        switch try p.expectMessage() {
+        case .success(let hello):
+            hello.shouldEqual("Hello!")
+        case .failure(let error):
+            throw error
+        }
+    }
+
+    func test_AwaitingActorable_onResultAsync() throws {
+        let p = self.testKit.spawnTestProbe(expecting: Result<String, Error>.self)
+
+        let actor = try self.system.spawn("testActor") { AwaitingActorable(context: $0) }
+        let promise = self.system._eventLoopGroup.next().makePromise(of: String.self)
+        actor.onResultAsyncExample(f: promise.futureResult, replyTo: p.ref)
+
+        // to ensure we actually complete after the actor has suspended
+        promise.completeWith(.success("Hello!"))
+
+        switch try p.expectMessage() {
+        case .success(let hello):
+            hello.shouldEqual("Hello!")
+        case .failure(let error):
+            throw error
+        }
+    }
 }
