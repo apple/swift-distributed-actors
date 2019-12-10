@@ -64,7 +64,9 @@ struct CodePrinter {
                 printMe.append(self.padding)
             }
             printMe.append("\(line)")
-            if !skipNewline {
+            if skipNewline {
+                self._dontIndentNext = true
+            } else {
                 printMe.append("\n")
             }
 
@@ -77,5 +79,11 @@ struct CodePrinter {
 
     var padding: String {
         String(repeating: String(repeating: " ", count: 4), count: self.indentation)
+    }
+
+    static func content(_ print: (inout CodePrinter) throws -> ()) rethrows -> String {
+        var printer = CodePrinter()
+        try print(&printer)
+        return printer.content
     }
 }

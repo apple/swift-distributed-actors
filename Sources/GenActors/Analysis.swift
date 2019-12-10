@@ -147,6 +147,10 @@ struct GatherActorables: SyntaxVisitor {
             return .skipChildren
         }
 
+        guard self.wipActorable != nil else {
+            return .skipChildren
+        }
+
         switch name {
         case "generateCodableConformance":
             // short cut, rather than checking exact return value
