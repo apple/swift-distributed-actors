@@ -77,9 +77,9 @@ extension Rendering {
             // MARK: DO NOT EDIT: Boxing {{baseName}} for any inheriting actorable `A` 
 
             extension Actor where A: {{actorableProtocol}} {
-                {%for tell in funcBoxTells %}
-                {{ tell }} 
-                {% endfor %}
+            {%for tell in funcBoxTells %}
+            {{ tell }} 
+            {% endfor %}
             }
 
             """
@@ -142,9 +142,9 @@ extension Rendering {
             // MARK: Extend Actor for {{baseName}}
 
             extension Actor where A.Message == {{baseName}}.Message {
-                {% for tell in funcTells %}
-                {{ tell }} 
-                {% endfor %}
+            {% for tell in funcTells %}
+            {{ tell }} 
+            {% endfor %}
             }
 
             """
@@ -174,11 +174,17 @@ extension Rendering {
                     try inheritedProtocol.renderBoxingFunc(in: self.actorable)
                 },
 
-                "funcTells": try self.actorable.funcs.map {
-                    try $0.renderFuncTell()
+                "funcTells": try self.actorable.funcs.map { funcDecl in 
+                    try CodePrinter.content { printer in
+                        printer.indent()
+                        try funcDecl.renderFuncTell(printer: &printer)
+                    }
                 },
-                "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map {
-                    try $0.renderBoxFuncTell(self.actorable)
+                "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map { actorableFunc in 
+                    try CodePrinter.content { printer in
+                        printer.indent()
+                        try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
+                    }
                 } : [],
             ]
 
@@ -313,20 +319,21 @@ extension ActorableMessageDecl {
         return ret
     }
 
-    func renderFunc(body: String) -> String {
-        """
-        \(self.renderFuncDecl) {
-                \(body)
-            }
-        """
+    func renderFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> ()) {
+        self.renderFuncDecl(printer: &printer)
+        printer.print(" {")
+        printer.indent()
+        printBody(&printer)
+        printer.outdent()
+        printer.print("}")
     }
 
-    var renderFuncDecl: String {
+    func renderFuncDecl(printer: inout CodePrinter) {
         let access = self.access.map {
             "\($0) "
         } ?? ""
 
-        return "\(access)func \(self.name)(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)"
+        printer.print("\(access)func \(self.name)(\(self.renderFuncParams))\(self.returnType.renderReturnTypeDeclPart)", skipNewline: true)
     }
 
     var renderFuncParams: String {
@@ -411,81 +418,80 @@ extension ActorableMessageDecl {
     }
 
     /// Implements the generated func method(...) by passing the parameters as a message, by telling or asking.
-    func renderTellOrAskMessage(boxWith boxProtocol: ActorableTypeDecl? = nil) -> String {
-        var ret = ""
+    func renderTellOrAskMessage(boxWith boxProtocol: ActorableTypeDecl? = nil, printer: inout CodePrinter) {
         var isAsk = false
 
         switch self.returnType {
         case .nioEventLoopFuture(let futureValueType):
             isAsk = true
-            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        Reply(nioFuture: \n")
-            ret.append("            self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
-            ret.append("                ")
+            printer.print("// TODO: FIXME perhaps timeout should be taken from context")
+            printer.print("Reply(nioFuture:")
+            printer.indent()
+            printer.print("self.ref.ask(for: Result<\(futureValueType), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.indent()
         case .type(let t):
             isAsk = true
-            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        Reply(nioFuture: \n")
+            printer.print("// TODO: FIXME perhaps timeout should be taken from context")
+            printer.print("Reply(nioFuture:")
+            printer.indent()
             if self.throwing {
-                ret.append("            self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
+                printer.print("self.ref.ask(for: Result<\(t), Error>.self, timeout: .effectivelyInfinite) { _replyTo in")
+                printer.indent()
             } else {
-                ret.append("            self.ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in\n")
+                printer.print("self.ref.ask(for: \(t).self, timeout: .effectivelyInfinite) { _replyTo in")
+                printer.indent()
             }
-            ret.append("                ")
         case .result(let t, let errType):
             isAsk = true
-            ret.append("// TODO: FIXME perhaps timeout should be taken from context\n")
-            ret.append("        Reply(nioFuture: \n")
-            ret.append("            self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in\n")
-            ret.append("                ")
+            printer.print("// TODO: FIXME perhaps timeout should be taken from context")
+            printer.print("Reply(nioFuture:")
+            printer.indent()
+            printer.print("self.ref.ask(for: Result<\(t), \(errType)>.self, timeout: .effectivelyInfinite) { _replyTo in")
+            printer.indent()
         case .void:
-            ret.append("self.ref.tell(")
+            printer.print("self.ref.tell(", skipNewline: true)
         case .behavior:
-            ret.append("self.ref.tell(")
+            printer.print("self.ref.tell(", skipNewline: true)
         }
 
-        ret.append(self.renderPassMessage(boxWith: boxProtocol))
+        self.renderPassMessage(boxWith: boxProtocol, printer: &printer)
 
         if isAsk {
-            ret.append("\n")
-            ret.append("            }")
+            printer.print("\n")
+            printer.print("}")
+            printer.outdent()
             if self.throwing || self.returnType.isFutureReturn {
-                ret.append("""
-                .nioFuture.flatMapThrowing { result in
-                            switch result {
-                            case .success(let res): return res
-                            case .failure(let err): throw err
-                            }
-                        }\n
-                """)
+                printer.print(".nioFuture.flatMapThrowing { result in")
+                printer.indent()
+                printer.print("switch result {")
+                printer.print("case .success(let res): return res")
+                printer.print("case .failure(let err): throw err")
+                printer.print("}")
+                printer.outdent()
+                printer.print("}")
             } else {
-                ret.append(".nioFuture\n")
+                printer.print(".nioFuture")
             }
-            ret.append("            )")
+            printer.print(")")
+            printer.outdent()
         } else {
-            ret.append(")")
+            printer.print(")")
         }
-
-        return ret
     }
 
-    func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?) -> String {
-        var ret = ""
-
+    func renderPassMessage(boxWith boxProtocol: ActorableTypeDecl?, printer: inout CodePrinter) {
         if let boxName = boxProtocol?.boxFuncName {
-            ret.append("A.")
-            ret.append(boxName)
-            ret.append("(")
+            printer.print("A.", skipNewline: true)
+            printer.print(boxName, skipNewline: true)
+            printer.print("(", skipNewline: true)
         }
-        ret.append(".\(self.name)")
+        printer.print(".\(self.name)", skipNewline: true)
 
-        ret.append(self.passEffectiveParamsWithBraces)
+        printer.print(self.passEffectiveParamsWithBraces, skipNewline: true)
 
         if boxProtocol != nil {
-            ret.append(")")
+            printer.print(")", skipNewline: true)
         }
-
-        return ret
     }
 }
 
@@ -538,24 +544,18 @@ extension ActorableMessageDecl.ReturnType {
 }
 
 extension ActorFuncDecl {
-    func renderFuncTell() throws -> String {
-        self.message.renderFunc(body: message.renderTellOrAskMessage(boxWith: nil))
+    func renderFuncTell(printer: inout CodePrinter) throws {
+        self.message.renderFunc(printer: &printer) { printer in
+            message.renderTellOrAskMessage(boxWith: nil, printer: &printer)
+        }
     }
 
-    func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl) throws -> String {
+    func renderBoxFuncTell(_ actorableProtocol: ActorableTypeDecl, printer: inout CodePrinter) throws {
         precondition(actorableProtocol.type == .protocol, "protocolToBox MUST be protocol, was: \(actorableProtocol)")
 
-        // TODO: need CodePrinter finally...
-        var res = ""
-        res.append(self.message.renderFuncDecl)
-        res.append(" {")
-        res.append("\n")
-
-        res.append(self.message.renderTellOrAskMessage(boxWith: actorableProtocol))
-        res.append("\n")
-        res.append("}")
-
-        return res
+        self.message.renderFunc(printer: &printer) { printer in
+            self.message.renderTellOrAskMessage(boxWith: actorableProtocol, printer: &printer)
+        }
     }
 
     // TODO: dedup with the boxed one

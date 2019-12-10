@@ -658,11 +658,12 @@ internal struct Envelope {
 
 /// Can carry a closure for later execution on specific actor context.
 @usableFromInline
-internal struct ActorClosureCarry {
+internal struct ActorClosureCarry: CustomStringConvertible {
     @usableFromInline
-    class _Storage {
+    internal class _Storage {
         @usableFromInline
         let function: () throws -> Void
+
         @usableFromInline
         let file: String
         @usableFromInline
@@ -696,6 +697,11 @@ internal struct ActorClosureCarry {
     @usableFromInline
     var line: UInt {
         return self._storage.line
+    }
+
+    @usableFromInline
+    var description: String {
+        "ActorClosureCarry(<closure> defined at \(self._storage.file):\(self._storage.line))"
     }
 }
 

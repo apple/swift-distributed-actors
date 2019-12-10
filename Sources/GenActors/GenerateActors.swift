@@ -117,7 +117,8 @@ public final class GenerateActors {
     }
 
     private func generateGenActorFile(_ parent: Folder, gather: GatherActorables, actorable: ActorableTypeDecl) throws -> File {
-        let targetFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenActorNameSuffixWithExtension)")
+        let genFolder = try parent.createSubfolderIfNeeded(withName: "GenActors")
+        let targetFile = try genFolder.createFile(named: "\(actorable.name)\(self.fileGenActorNameSuffixWithExtension)")
 
         try targetFile.append(Rendering.generatedFileHeader)
         try targetFile.append("\n")
@@ -139,7 +140,8 @@ public final class GenerateActors {
             return nil // skip generating
         }
 
-        let targetFile = try parent.createFile(named: "\(actorable.name)\(self.fileGenCodableNameSuffixWithExtension)")
+        let genFolder = try parent.createSubfolderIfNeeded(withName: "GenActors")
+        let targetFile = try genFolder.createFile(named: "\(actorable.name)\(self.fileGenCodableNameSuffixWithExtension)")
 
         try targetFile.append(Rendering.generatedFileHeader)
         try targetFile.append("\n")

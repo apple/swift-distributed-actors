@@ -163,7 +163,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Ignoring certain methods from exposing
 
     func test_LifecycleActor_doesNotContainUnderscorePrefixedMessage() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case __skipMe")
@@ -171,7 +171,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_LifecycleActor_doesNotContainGeneratedMessagesForLifecycleMethods() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor").file(named: "LifecycleActor+GenActor.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/LifecycleActor/GenActors").file(named: "LifecycleActor+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case preStart")
@@ -180,7 +180,7 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_TestActorable_doesNotContainGenerated_privateFuncs() throws {
-        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable").file(named: "TestActorable+GenActor.swift")
+        let lifecycleGenActorPath = try Folder.current.subfolder(at: "Tests/GenActorsTests/TestActorable/GenActors").file(named: "TestActorable+GenActor.swift")
         let lifecycleGenActorSource = try String(contentsOfFile: lifecycleGenActorPath.path)
 
         lifecycleGenActorSource.shouldNotContain("case privateFunc")
