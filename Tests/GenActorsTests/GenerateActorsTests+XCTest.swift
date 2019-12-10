@@ -45,6 +45,8 @@ extension GenerateActorsTests {
             ("test_LifecycleActor_watchActorsAndReceiveTerminationSignals", test_LifecycleActor_watchActorsAndReceiveTerminationSignals),
             ("test_AwaitingActorable_awaitOnAResult", test_AwaitingActorable_awaitOnAResult),
             ("test_AwaitingActorable_onResultAsync", test_AwaitingActorable_onResultAsync),
+            ("test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly", test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly),
+            ("test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly", test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly),
         ]
     }
 }

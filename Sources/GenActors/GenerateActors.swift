@@ -63,7 +63,7 @@ public final class GenerateActors {
                 try Folder(path: path)
             }
 
-            if self.foldersToScan.isEmpty {
+            if self.foldersToScan.isEmpty, self.filesToScan.isEmpty {
                 try self.foldersToScan.append(Folder.current.subfolder(at: "Sources"))
             }
 
@@ -126,6 +126,7 @@ public final class GenerateActors {
             try targetFile.append("\(importBlock)")
         }
 
+        try targetFile.append("\n")
         let renderedShell = try Rendering.ActorShellTemplate(actorable: actorable).render(self.settings)
         try targetFile.append(renderedShell)
 
@@ -147,6 +148,7 @@ public final class GenerateActors {
             try targetFile.append("\(importBlock)")
         }
 
+        try targetFile.append("\n")
         let codableConformance = try Rendering.MessageCodableTemplate(actorable: actorable).render(self.settings)
         try targetFile.append(codableConformance)
 

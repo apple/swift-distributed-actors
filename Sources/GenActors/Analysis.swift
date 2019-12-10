@@ -30,6 +30,9 @@ struct GatherActorables: SyntaxVisitor {
     var actorables: [ActorableTypeDecl] = []
     var wipActorable: ActorableTypeDecl!
 
+    // Stack of types a declaration is nested in. E.g. a actorable struct declared in an enum for namespacing.
+    var nestingStack: [String] = []
+
     init(_ path: String, _ settings: GenerateActors.Settings) {
         self.path = path
         self.settings = settings
@@ -48,63 +51,76 @@ struct GatherActorables: SyntaxVisitor {
 
     mutating func visit(_ type: ActorableTypeDecl.DeclType, node: DeclSyntax, name: String) -> SyntaxVisitorContinueKind {
         guard node.isActorable() else {
-            return .skipChildren
+            self.nestingStack.append("\(name)")
+            return .visitChildren
         }
 
         let BLUE = "\u{001B}[0;34m"
         let RST = "\u{001B}[0;0m"
-        self.debug("Actorable \(type) detected: [\(BLUE)\(name)\(RST)] at \(self.path), analyzing...")
         self.wipActorable = ActorableTypeDecl(type: type, name: name, generateCodableConformance: true)
+        self.wipActorable.declaredWithin = self.nestingStack
+        self.debug("Actorable \(type) detected: [\(BLUE)\(self.wipActorable.fullName)\(RST)] at \(self.path), analyzing...")
 
         return .visitChildren
+    }
+
+    mutating func visitPostDecl(_ nodeName: String) {
+        self.nestingStack = Array(self.nestingStack.reversed().drop(while: { $0 == nodeName })).reversed()
+
+        guard self.wipActorable != nil else {
+            return
+        }
+        self.actorables.append(self.wipActorable)
+        self.wipActorable = nil
     }
 
     mutating func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.protocol, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_: ProtocolDeclSyntax) {
-        guard self.wipActorable != nil else {
-            return
-        }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
+    mutating func visitPost(_ node: ProtocolDeclSyntax) {
+        self.visitPostDecl(node.identifier.text)
     }
 
     mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.class, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_: ClassDeclSyntax) {
-        guard self.wipActorable != nil else {
-            return
-        }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
+    mutating func visitPost(_ node: ClassDeclSyntax) {
+        self.visitPostDecl(node.identifier.text)
     }
 
     mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visit(.struct, node: node, name: node.identifier.text)
     }
 
-    mutating func visitPost(_: StructDeclSyntax) {
-        guard self.wipActorable != nil else {
-            return
-        }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
+    mutating func visitPost(_ node: StructDeclSyntax) {
+        self.visitPostDecl(node.identifier.text)
     }
 
     mutating func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visit(.extension, node: node, name: "\(node.uniqueIdentifier)")
+        let name = "\(node.extendedType.description)".trim(character: " ")
+        return self.visit(.extension, node: node, name: name)
     }
 
-    mutating func visitPost(_: ExtensionDeclSyntax) {
-        guard self.wipActorable != nil else {
-            return
+    mutating func visitPost(_ node: ExtensionDeclSyntax) {
+        self.visitPostDecl(node.extendedType.description.trim(character: " "))
+    }
+
+    mutating func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+        let name = "\(node.identifier.text)"
+
+        guard node.isActorable() else {
+            self.nestingStack.append("\(name)")
+            return .visitChildren
         }
-        self.actorables.append(self.wipActorable)
-        self.wipActorable = nil
+
+        // TODO: It could be interesting to express actors as enums, that would be their "states"
+        fatalError("Enums cannot (currently) be Actorable, define [\(name)] (in \(path)) as a struct instead. Offending node: \(node)")
+    }
+
+    mutating func visitPost(_ node: EnumDeclSyntax) {
+        self.visitPostDecl(node.identifier.text)
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -361,14 +377,33 @@ extension DeclSyntax {
 
 struct IsActorableVisitor: SyntaxVisitor {
     var actorable: Bool = false
+    var depth = 0
 
-    mutating func visit(_ node: InheritedTypeSyntax) -> SyntaxVisitorContinueKind {
+    mutating func visit(_ node: InheritedTypeListSyntax) -> SyntaxVisitorContinueKind {
         if "\(node)".contains("Actorable") { // TODO: make less hacky
             self.actorable = true
             return .skipChildren
         }
         return .visitChildren
     }
+
+    mutating private func visitOnlyTopLevel() -> SyntaxVisitorContinueKind{
+        depth += 1
+        return depth == 1 ? .visitChildren : .skipChildren
+    }
+    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+    mutating func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+    mutating func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+
 
     var shouldContinue: SyntaxVisitorContinueKind {
         self.actorable ? .visitChildren : .skipChildren

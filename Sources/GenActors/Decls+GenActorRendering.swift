@@ -152,7 +152,7 @@ extension Rendering {
 
         func render(_ settings: GenerateActors.Settings) throws -> String {
             let context: [String: Any] = [
-                "baseName": self.actorable.name,
+                "baseName": self.actorable.fullName,
                 "actorableProtocol": self.actorable.type == .protocol ? self.actorable.name : "",
 
                 "varLetInstance": self.actorable.renderStoreInstanceAs,
@@ -191,7 +191,7 @@ extension Rendering {
             }
 
             switch self.actorable.type {
-            case .struct, .class, .extension:
+            case .struct, .class, .enum, .extension:
                 rendered.append(try Self.behaviorTemplate.render(context))
                 rendered.append(try Self.actorTellTemplate.render(context))
             case .protocol:
@@ -255,7 +255,7 @@ extension ActorableTypeDecl {
 
     func renderBoxingFunc(in owner: ActorableTypeDecl) throws -> String {
         let context: [String: Any] = [
-            "baseName": "\(owner.name)",
+            "baseName": "\(owner.fullName)",
             "access": "public",
             "boxCaseName": "\(self.nameFirstLowercased)",
             "boxFuncName": "\(self.boxFuncName)",

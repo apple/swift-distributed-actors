@@ -19,10 +19,15 @@ struct ActorableTypeDecl {
         case `protocol`
         case `class`
         case `struct`
+        case `enum`
         case `extension`
     }
 
     var type: DeclType
+
+    /// Contains type names within which this type was declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
+    /// Empty for top level declarations.
+    var declaredWithin: [String] = []
 
     var name: String
     var nameFirstLowercased: String {
@@ -31,6 +36,15 @@ struct ActorableTypeDecl {
         return res
     }
 
+    var fullName: String {
+        if self.declaredWithin.isEmpty {
+            return self.name
+        } else {
+            return "\(declaredWithin.joined(separator: ".")).\(self.name)"
+        }
+    }
+
+
     var generateCodableConformance: Bool
 
     var messageFullyQualifiedName: String {
@@ -38,7 +52,7 @@ struct ActorableTypeDecl {
         case .protocol:
             return "GeneratedActor.Messages.\(self.name)"
         default:
-            return "\(self.name).Message"
+            return "\(self.fullName).Message"
         }
     }
 
@@ -81,6 +95,7 @@ struct ActorableMessageDecl {
     }
 
     let access: String?
+    var outerType: String?
     let name: String
 
     typealias Name = String
@@ -108,14 +123,6 @@ struct ActorableMessageDecl {
             res.append((nil, "_replyTo", "ActorRef<Result<\(valueType), Error>>"))
         }
 
-//        if case .nioEventLoopFuture(of: let futureValueType) = self.returnType {
-//            res.append((nil, "_replyTo", "ActorRef<Result<\(futureValueType), Error>>"))
-//        } else if case .type(let returnType) = self.returnType, self.throwing {
-//            res.append((nil, "_replyTo", "ActorRef<\(returnType)>"))
-//        } else if case .type(let returnType) = self.returnType, !self.throwing {
-//            res.append((nil, "_replyTo", "ActorRef<Result<\(futureValueType), Error>>"))
-//        }
-
         return res
     }
 
@@ -142,8 +149,6 @@ struct ActorableMessageDecl {
                 let trimmed = String("\(t)"
                     .trim(character: " ")
                     .replacingOccurrences(of: " ", with: "")
-//                    .replacingOccurrences(of: "Result<", with: "")
-//                    .dropLast(1)
                 )
 
                 // FIXME: this will break with nexting...
@@ -168,7 +173,7 @@ struct ActorableMessageDecl {
 extension ActorableMessageDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
 //        hasher.combine(access) // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
-        hasher.combine(self.name)
+        hasher.combine(self.name) // FIXME take into account enclosing scope
         hasher.combine(self.throwing)
     }
 

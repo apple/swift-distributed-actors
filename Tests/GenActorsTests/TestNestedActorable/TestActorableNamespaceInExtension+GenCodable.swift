@@ -17,29 +17,32 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for StructActorable.Message
+// MARK: DO NOT EDIT: Codable conformance for TestActorableNamespace.TestActorableNamespaceInExtension.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension StructActorable.Message: Codable {
+extension TestActorableNamespace.TestActorableNamespaceInExtension.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case hello
+        case echo
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case hello__replyTo
+        case echo_string
+        case echo__replyTo
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .hello:
-            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.hello__replyTo)
-            self = .hello(_replyTo: _replyTo)
+        case .echo:
+            let string = try container.decode(String.self, forKey: CodingKeys.echo_string)
+            let _replyTo = try container.decode(ActorRef<String>.self, forKey: CodingKeys.echo__replyTo)
+            self = .echo(string, _replyTo: _replyTo)
 
         }
     }
@@ -47,9 +50,10 @@ extension StructActorable.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .hello(let _replyTo):
-            try container.encode(DiscriminatorKeys.hello.rawValue, forKey: CodingKeys._case)
-            try container.encode(_replyTo, forKey: CodingKeys.hello__replyTo)
+        case .echo(let string, let _replyTo):
+            try container.encode(DiscriminatorKeys.echo.rawValue, forKey: CodingKeys._case)
+            try container.encode(string, forKey: CodingKeys.echo_string)
+            try container.encode(_replyTo, forKey: CodingKeys.echo__replyTo)
 
         }
     }

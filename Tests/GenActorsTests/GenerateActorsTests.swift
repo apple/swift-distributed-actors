@@ -150,7 +150,7 @@ final class GenerateActorsTests: XCTestCase {
     func test_codableMessage_skipGeneration() throws {
         do {
             let filename = "SkipCodableActorable+GenCodable.swift"
-            let genCodableFile = try Folder.current
+            _ = try Folder.current
                 .subfolder(at: "Tests/GenActorsTests/SkipCodableActorable")
                 .file(named: filename)
             XCTFail("Expected file \(filename) to NOT exist, since its generation should have been skipped.")
@@ -309,4 +309,27 @@ final class GenerateActorsTests: XCTestCase {
             throw error
         }
     }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Nested actorables
+
+    func test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly() throws {
+        let nestedActor = try self.system.spawn("nested-1") { _ in 
+            TestActorableNamespace.TestActorableNamespaceDirectly()
+        }
+
+        let reply = nestedActor.echo("Hi!")
+        try reply._nioFuture.wait().shouldEqual("Hi!")
+    }
+
+    func test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly() throws {
+        let nestedActor = try self.system.spawn("nested-1") { _ in 
+            TestActorableNamespace.TestActorableNamespaceInExtension()
+        }
+
+        let reply = nestedActor.echo("Hi!")
+        try reply._nioFuture.wait().shouldEqual("Hi!")
+    }
+
+
 }
