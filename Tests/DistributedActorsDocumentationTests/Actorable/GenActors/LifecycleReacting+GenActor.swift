@@ -30,7 +30,6 @@ import XCTest
 
 /// DO NOT EDIT: Generated LifecycleReacting messages
 extension LifecycleReacting {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case something 
     }

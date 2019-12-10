@@ -24,7 +24,6 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated JackOfAllTrades messages
 extension JackOfAllTrades {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case hello(replyTo: ActorRef<String>) 
         case parking(/*TODO: MODULE.*/GeneratedActor.Messages.Parking) 

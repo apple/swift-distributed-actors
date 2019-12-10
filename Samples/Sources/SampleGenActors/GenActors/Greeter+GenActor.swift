@@ -23,7 +23,6 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case greet(name: String) 
     }

@@ -30,7 +30,6 @@ import XCTest
 
 /// DO NOT EDIT: Generated InvokeFuncs messages
 extension InvokeFuncs {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case doThingsAndRunTask(_replyTo: ActorRef<Int>) 
         case doThingsAsync(_replyTo: ActorRef<Reply<Int>>) 

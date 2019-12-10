@@ -314,7 +314,7 @@ final class GenerateActorsTests: XCTestCase {
     // MARK: Nested actorables
 
     func test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly() throws {
-        let nestedActor = try self.system.spawn("nested-1") { _ in 
+        let nestedActor = try self.system.spawn("nested-1") { _ in
             TestActorableNamespace.TestActorableNamespaceDirectly()
         }
 
@@ -323,13 +323,11 @@ final class GenerateActorsTests: XCTestCase {
     }
 
     func test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly() throws {
-        let nestedActor = try self.system.spawn("nested-1") { _ in 
+        let nestedActor = try self.system.spawn("nested-1") { _ in
             TestActorableNamespace.TestActorableNamespaceInExtension()
         }
 
         let reply = nestedActor.echo("Hi!")
         try reply._nioFuture.wait().shouldEqual("Hi!")
     }
-
-
 }

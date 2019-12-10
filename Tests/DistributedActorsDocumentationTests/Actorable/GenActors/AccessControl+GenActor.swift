@@ -30,7 +30,6 @@ import XCTest
 
 /// DO NOT EDIT: Generated AccessControl messages
 extension AccessControl {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case greetPublicly 
         case greetInternal 

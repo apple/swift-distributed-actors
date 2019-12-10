@@ -23,7 +23,6 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated ClassActorable messages
 extension ClassActorable {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case hello(_replyTo: ActorRef<String>) 
     }

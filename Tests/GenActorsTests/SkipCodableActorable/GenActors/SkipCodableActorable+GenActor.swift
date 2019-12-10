@@ -24,7 +24,6 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated SkipCodableActorable messages
 extension SkipCodableActorable {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case echo(text: String, _replyTo: ActorRef<String>) 
     }

@@ -23,7 +23,6 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated TestActorableNamespace.TestActorableNamespaceInExtension messages
 extension TestActorableNamespace.TestActorableNamespaceInExtension {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case echo(String, _replyTo: ActorRef<String>) 
     }

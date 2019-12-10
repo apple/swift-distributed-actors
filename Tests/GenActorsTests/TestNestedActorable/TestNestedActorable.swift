@@ -31,11 +31,10 @@ extension TestActorableNamespace {
         }
     }
 
-    struct NotActorableAgain {
-    }
+    struct NotActorableAgain {}
 }
 
-//extension TestActorableNamespace {
+// extension TestActorableNamespace {
 //    enum InnerNamespace {
 //        struct TestActorableNamespaceExtensionEnumDirectly: Actorable {
 //            func echo(_ string: String) -> String {
@@ -43,5 +42,5 @@ extension TestActorableNamespace {
 //            }
 //        }
 //    }
-//}
+// }
 //

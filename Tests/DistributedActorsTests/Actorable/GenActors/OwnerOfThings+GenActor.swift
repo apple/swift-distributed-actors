@@ -24,7 +24,6 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated OwnerOfThings messages
 extension OwnerOfThings {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case readLastObservedValue(_replyTo: ActorRef<Reception.Listing<OwnerOfThings>?>) 
         case performLookup(_replyTo: ActorRef<Result<Reception.Listing<OwnerOfThings>, Error>>) 
