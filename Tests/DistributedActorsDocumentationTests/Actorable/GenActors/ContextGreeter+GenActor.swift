@@ -30,7 +30,6 @@ import XCTest
 
 /// DO NOT EDIT: Generated ContextGreeter messages
 extension ContextGreeter {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case greet(name: String, _replyTo: ActorRef<String>) 
     }

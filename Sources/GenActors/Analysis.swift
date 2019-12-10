@@ -30,7 +30,7 @@ struct GatherActorables: SyntaxVisitor {
     var actorables: [ActorableTypeDecl] = []
     var wipActorable: ActorableTypeDecl!
 
-    // Stack of types a declaration is nested in. E.g. a actorable struct declared in an enum for namespacing.
+    // Stack of types a declaration is nested in. E.g. an actorable struct declared in an enum for namespacing.
     var nestingStack: [String] = []
 
     init(_ path: String, _ settings: GenerateActors.Settings) {
@@ -116,7 +116,7 @@ struct GatherActorables: SyntaxVisitor {
         }
 
         // TODO: It could be interesting to express actors as enums, that would be their "states"
-        fatalError("Enums cannot (currently) be Actorable, define [\(name)] (in \(path)) as a struct instead. Offending node: \(node)")
+        fatalError("Enums cannot (currently) be Actorable, define [\(name)] (in \(self.path)) as a struct instead. Offending node: \(node)")
     }
 
     mutating func visitPost(_ node: EnumDeclSyntax) {
@@ -391,23 +391,26 @@ struct IsActorableVisitor: SyntaxVisitor {
         return .visitChildren
     }
 
-    mutating private func visitOnlyTopLevel() -> SyntaxVisitorContinueKind{
-        depth += 1
-        return depth == 1 ? .visitChildren : .skipChildren
+    private mutating func visitOnlyTopLevel() -> SyntaxVisitorContinueKind {
+        self.depth += 1
+        return self.depth == 1 ? .visitChildren : .skipChildren
     }
-    mutating func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visitOnlyTopLevel()
-    }
-    mutating func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visitOnlyTopLevel()
-    }
-    mutating func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        self.visitOnlyTopLevel()
-    }
-    mutating func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+
+    mutating func visit(_: StructDeclSyntax) -> SyntaxVisitorContinueKind {
         self.visitOnlyTopLevel()
     }
 
+    mutating func visit(_: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+
+    mutating func visit(_: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
+
+    mutating func visit(_: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
+        self.visitOnlyTopLevel()
+    }
 
     var shouldContinue: SyntaxVisitorContinueKind {
         self.actorable ? .visitChildren : .skipChildren

@@ -24,7 +24,6 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated AwaitingActorable messages
 extension AwaitingActorable {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
         case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 

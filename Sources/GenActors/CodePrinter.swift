@@ -81,7 +81,7 @@ struct CodePrinter {
         String(repeating: String(repeating: " ", count: 4), count: self.indentation)
     }
 
-    static func content(_ print: (inout CodePrinter) throws -> ()) rethrows -> String {
+    static func content(_ print: (inout CodePrinter) throws -> Void) rethrows -> String {
         var printer = CodePrinter()
         try print(&printer)
         return printer.content

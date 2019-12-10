@@ -25,7 +25,6 @@ import XCTest
 
 /// DO NOT EDIT: Generated TestMembershipOwner messages
 extension TestMembershipOwner {
-    // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
     public enum Message { 
         case replyMembership(_replyTo: ActorRef<Membership?>) 
     }

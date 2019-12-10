@@ -25,7 +25,7 @@ struct ActorableTypeDecl {
 
     var type: DeclType
 
-    /// Contains type names within which this type was declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
+    /// Contains type names within which this type is declared, e.g. `[Actorables.May.Be.Nested].MyActorable`.
     /// Empty for top level declarations.
     var declaredWithin: [String] = []
 
@@ -40,10 +40,9 @@ struct ActorableTypeDecl {
         if self.declaredWithin.isEmpty {
             return self.name
         } else {
-            return "\(declaredWithin.joined(separator: ".")).\(self.name)"
+            return "\(self.declaredWithin.joined(separator: ".")).\(self.name)"
         }
     }
-
 
     var generateCodableConformance: Bool
 
@@ -173,7 +172,7 @@ struct ActorableMessageDecl {
 extension ActorableMessageDecl: Hashable {
     public func hash(into hasher: inout Hasher) {
 //        hasher.combine(access) // FIXME? rules are a bit more complex in reality here, since enclosing scope etc
-        hasher.combine(self.name) // FIXME take into account enclosing scope
+        hasher.combine(self.name) // FIXME: take into account enclosing scope
         hasher.combine(self.throwing)
     }
 

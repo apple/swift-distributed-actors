@@ -42,7 +42,6 @@ extension Rendering {
 
             /// DO NOT EDIT: Generated {{baseName}} messages
             extension {{baseName}} {
-                // TODO: make Message: Codable - https://github.com/apple/swift-distributed-actors/issues/262
                 {{messageAccess}} enum Message { {% for case in funcCases %}
                     {{case}} {% endfor %}
                 }
@@ -174,13 +173,13 @@ extension Rendering {
                     try inheritedProtocol.renderBoxingFunc(in: self.actorable)
                 },
 
-                "funcTells": try self.actorable.funcs.map { funcDecl in 
+                "funcTells": try self.actorable.funcs.map { funcDecl in
                     try CodePrinter.content { printer in
                         printer.indent()
                         try funcDecl.renderFuncTell(printer: &printer)
                     }
                 },
-                "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map { actorableFunc in 
+                "funcBoxTells": self.actorable.type == .protocol ? try self.actorable.funcs.map { actorableFunc in
                     try CodePrinter.content { printer in
                         printer.indent()
                         try actorableFunc.renderBoxFuncTell(self.actorable, printer: &printer)
@@ -319,7 +318,7 @@ extension ActorableMessageDecl {
         return ret
     }
 
-    func renderFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> ()) {
+    func renderFunc(printer: inout CodePrinter, printBody: (inout CodePrinter) -> Void) {
         self.renderFuncDecl(printer: &printer)
         printer.print(" {")
         printer.indent()
