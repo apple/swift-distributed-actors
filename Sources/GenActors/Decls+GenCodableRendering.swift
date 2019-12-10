@@ -25,10 +25,10 @@ extension Rendering {
             """
 
             // ==== ----------------------------------------------------------------------------------------------------------------
-            // MARK: DO NOT EDIT: Codable conformance for {{messageName}}
+            // MARK: DO NOT EDIT: Codable conformance for {{baseName}}
             // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-            extension {{messageName}}: Codable {
+            extension {{baseName}}: Codable {
                 // TODO: Check with Swift team which style of discriminator to aim for
                 public enum DiscriminatorKeys: String, Decodable {
                     {{ discriminatorCases }}
@@ -59,7 +59,7 @@ extension Rendering {
         func render(_: GenerateActors.Settings) throws -> String {
             let printer = CodePrinter()
 
-            let messageName = "\(self.actorable.messageFullyQualifiedName)"
+            let baseName = "\(self.actorable.messageFullyQualifiedName)"
 
             // ==== ----------------------------------------------------------------------------------------------------
             // MARK: discriminatorCases
@@ -80,7 +80,6 @@ extension Rendering {
             codingKeys.dontIndentNext()
             codingKeys.print("case _case") // the "special" case used to find the DiscriminatorKeys
             self.actorable.funcs.forEach { decl in
-                // TODO: effective params???
                 decl.message.effectiveParams.forEach { firstName, secondName, _ in
                     let name: String
                     if firstName == "_" {
@@ -167,7 +166,7 @@ extension Rendering {
             }
 
             return try Self.messageCodableConformanceTemplate.render([
-                "messageName": messageName,
+                "baseName": baseName,
                 "discriminatorCases": discriminatorCases.content,
                 "codingKeys": codingKeys.content,
                 "decodeCases": decodeCases.content,
