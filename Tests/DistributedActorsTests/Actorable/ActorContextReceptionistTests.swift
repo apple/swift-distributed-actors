@@ -30,7 +30,9 @@ final class ActorContextReceptionTests: XCTestCase {
     }
 
     func test_autoUpdatedListing_updatesAutomatically() throws {
-        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted()) }
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: self.system.deadLetters.adapted())
+        }
 
         let listing: Reception.Listing<OwnerOfThings> = try self.testKit.eventually(within: .seconds(1)) {
             let readFuture = owner.readLastObservedValue()
@@ -45,19 +47,49 @@ final class ActorContextReceptionTests: XCTestCase {
 
     func test_autoUpdatedListing_invokesOnUpdate() throws {
         let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
-        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: p.ref) }
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: p.ref)
+        }
 
-        let listing0: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(actors: Set())
+        let listing0: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(refs: Set())
         try p.expectMessage(listing0)
-        let listing1: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(actors: Set([owner]))
+        let listing1: Reception.Listing<OwnerOfThings> = Reception.Listing<OwnerOfThings>(refs: Set([owner.ref]))
         try p.expectMessage(listing1)
     }
 
     func test_lookup_ofGenericType() throws {
         let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
-        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") { OwnerOfThings(context: $0, probe: p.ref) }
+        let owner: Actor<OwnerOfThings> = try self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: p.ref)
+        }
 
         let reply = owner.performLookup()
         try reply._nioFuture.wait().first.shouldEqual(owner)
+    }
+
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Performance
+
+    func test_autoUpdatedListing_shouldQuicklyUpdateFromThousandsOfUpdates() throws {
+        let p = self.testKit.spawnTestProbe(expecting: Reception.Listing<OwnerOfThings>.self)
+        let n = 3000
+
+        let ownerRef = try! self.system.spawn("owner") {
+            OwnerOfThings(context: $0, probe: p.ref, onListingUpdated: { probe, newValue in
+                if newValue.actors.count == n {
+                    probe.tell(newValue)
+                }
+            })
+        }
+
+        for _ in 1 ... n {
+            let ref: ActorRef<OwnerOfThings.Message> = try! self.system.spawn(.prefixed(with: "owner"), .receive { _, _ in
+                .same
+            })
+            self.system.receptionist.register(ref, key: .init(OwnerOfThings.Message.self, id: "owners-of-things"))
+        }
+
+        let listing = try! p.expectMessage(within: .seconds(60))
+        listing.actors.count.shouldEqual(n)
     }
 }

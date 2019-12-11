@@ -19,12 +19,16 @@ struct OwnerOfThings: Actorable {
     let context: Myself.Context
     let ownedListing: ActorableOwned<Reception.Listing<OwnerOfThings>>!
 
-    init(context: Myself.Context, probe: ActorRef<Reception.Listing<OwnerOfThings>>) {
+    init(
+        context: Myself.Context, probe: ActorRef<Reception.Listing<OwnerOfThings>>,
+        onListingUpdated: @escaping (ActorRef<Reception.Listing<OwnerOfThings>>, Reception.Listing<OwnerOfThings>) -> Void = { $0.tell($1) }
+    ) {
         self.context = context
         context.receptionist.registerMyself(as: "all/owners")
+
         self.ownedListing = context.receptionist.autoUpdatedListing(OwnerOfThings.key)
         self.ownedListing.onUpdate { newValue in
-            probe.tell(newValue)
+            onListingUpdated(probe, newValue)
         }
 
         context.receptionist.registerMyself(as: Self.key.id)
