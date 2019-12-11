@@ -303,7 +303,7 @@ internal enum LocalReceptionist {
     }
 
     private static func makeRemoveRegistrationCallback(context: ActorContext<Receptionist.Message>, message: _Register, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
-        return context.makeAsynchronousCallback {
+        context.makeAsynchronousCallback {
             let remainingRegistrations = storage.removeRegistration(key: message._key.boxed, ref: message._addressableActorRef) ?? []
 
             if let subscribed = storage.subscriptions(forKey: message._key.boxed) {
@@ -315,7 +315,7 @@ internal enum LocalReceptionist {
     }
 
     private static func makeRemoveSubscriptionCallback(context: ActorContext<Receptionist.Message>, message: _Subscribe, storage: Receptionist.Storage) -> AsynchronousCallback<Void> {
-        return context.makeAsynchronousCallback {
+        context.makeAsynchronousCallback {
             storage.removeSubscription(key: message._key.boxed, subscription: message._boxed)
         }
     }

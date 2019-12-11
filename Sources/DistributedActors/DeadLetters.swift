@@ -172,6 +172,12 @@ final class DeadLetterOffice {
         // as that may then change ordering; if multiple onDeadLetter executions are ongoing, we want
         // all of them to be piped to the exact same logging handler, do not create a new Logging.Logger() here (!)
 
+        if self.system?.isShuttingDown ?? false {
+            // do not log dead letters while shutting down
+            // (as many many dead letters are expected, and could potentially flood logs with lots of scary looking, but expected dead letters)
+            return
+        }
+
         var metadata: Logger.Metadata = [
             "deadLetter": "1", // marker, can be used by logging tools to easily capture all dead letter logging
             // TODO: could coalesce and bump a counter if many times the same dead letter is logged
@@ -188,6 +194,9 @@ final class DeadLetterOffice {
                 // thus, it is impossible to resolve a remote address into a dead ref; however keeping this path in case we manually make such mistake
                 // somewhere in internals, and can spot it then easily
                 deadAddress = .init(node: node, path: recipient.path, incarnation: recipient.incarnation)
+                if recipient.path.starts(with: ._system), self.system?.isShuttingDown ?? false {
+                    return // do not log dead letters to /system actors while shutting down
+                }
             }
 
             metadata["actorPath"] = Logger.MetadataValue.stringConvertible(deadAddress)

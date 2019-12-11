@@ -108,6 +108,12 @@ public final class ActorSystem {
     private var shutdownReceptacle: BlockingReceptacle<Void>?
     private let shutdownLock: Lock = Lock()
 
+    /// Greater than 0 shutdown has been initiated / is in progress.
+    private let shutdownFlag = Atomic(value: 0)
+    internal var isShuttingDown: Bool {
+        self.shutdownFlag.load() > 0
+    }
+
     /// Exposes `NIO.MultiThreadedEventLoopGroup` used by this system.
     /// Try not to rely on this too much as this is an implementation detail...
     public let _eventLoopGroup: MultiThreadedEventLoopGroup
@@ -309,6 +315,8 @@ public final class ActorSystem {
         if shutdownAlreadyRunning {
             return Shutdown(receptacle: receptacle)
         }
+
+        _ = self.shutdownFlag.add(1)
 
         DispatchQueue.global().async {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)

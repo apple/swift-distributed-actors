@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Dispatch
 import Logging
 import NIO
 
@@ -83,10 +84,7 @@ extension Actor.Context {
             self.underlying.system.receptionist.subscribe(
                 key: key.underlying,
                 subscriber: self.underlying.subReceive("subscribe-\(key)", SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    let actors = Set(listing.refs.map { ref in
-                        Actor<Act>(ref: ref)
-                    })
-                    onListingChange(.init(actors: actors))
+                    onListingChange(.init(refs: listing.refs))
                 }
             )
         }
@@ -100,10 +98,7 @@ extension Actor.Context {
             self.context.system.receptionist.subscribe(
                 key: key.underlying,
                 subscriber: self.context._underlying.subReceive(SystemReceptionist.Listing<Act.Message>.self) { listing in
-                    let actors = Set(listing.refs.map { ref in
-                        Actor<Act>(ref: ref)
-                    })
-                    owned.update(newValue: Reception.Listing(actors: actors))
+                    owned.update(newValue: Reception.Listing(refs: listing.refs))
                 }
             )
 
@@ -120,10 +115,7 @@ extension Actor.Context {
             }
 
             let actorListing: EventLoopFuture<Reception.Listing<Act>> = listingReply.nioFuture.map { listing in
-                let acts = Set(listing.refs.map { ref in
-                    Actor<Act>(ref: ref)
-                })
-                return Reception.Listing(actors: acts)
+                Reception.Listing(refs: listing.refs)
             }
 
             return Reply(nioFuture: actorListing)
@@ -157,14 +149,23 @@ extension Reception {
     ///
     /// This is the `Actorable` version of `SystemReceptionist.Listing`, allowing location of `Actor` instances.
     public struct Listing<A: Actorable>: Equatable {
-        public let actors: Set<Actor<A>>
+        public let refs: Set<ActorRef<A.Message>>
 
         public var isEmpty: Bool {
             self.actors.isEmpty
         }
 
+        /// - Complexity: O(n)
+        public var actors: Set<Actor<A>> {
+            Set(self.refs.map { Actor<A>(ref: $0) })
+        }
+
+        public func actor(named name: String) -> Actor<A>? {
+            self.refs.first { $0.address.name == name }.map { Actor<A>(ref: $0) }
+        }
+
         public var first: Actor<A>? {
-            self.actors.first
+            self.refs.first.map { Actor<A>(ref: $0) }
         }
     }
 }

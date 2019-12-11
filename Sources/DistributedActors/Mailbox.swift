@@ -62,6 +62,8 @@ internal final class Mailbox<Message> {
     let address: ActorAddress
     let serializeAllMessages: Bool
 
+    let measureMessages = true
+
     init(shell: ActorShell<Message>, capacity: UInt32, maxRunLength: UInt32 = 100) {
         #if SACT_TESTS_LEAKS
         if shell.address.segments.first?.value == "user" {
@@ -180,6 +182,8 @@ internal final class Mailbox<Message> {
         // whether this was the first activation, to signal the need to enqueue
         // this mailbox.
         self.userMessages.enqueue(envelope)
+
+        self.shell?._system.metrics.recordMailboxMessageCount(Int(self.status.messageCount))
 
         if oldStatus.activations == 0, !oldStatus.isSuspended {
             return .needsScheduling
@@ -658,11 +662,12 @@ internal struct Envelope {
 
 /// Can carry a closure for later execution on specific actor context.
 @usableFromInline
-internal struct ActorClosureCarry {
+internal struct ActorClosureCarry: CustomStringConvertible {
     @usableFromInline
     class _Storage {
         @usableFromInline
         let function: () throws -> Void
+
         @usableFromInline
         let file: String
         @usableFromInline
@@ -685,22 +690,27 @@ internal struct ActorClosureCarry {
 
     @usableFromInline
     var function: () throws -> Void {
-        return self._storage.function
+        self._storage.function
     }
 
     @usableFromInline
     var file: String {
-        return self._storage.file
+        self._storage.file
     }
 
     @usableFromInline
     var line: UInt {
-        return self._storage.line
+        self._storage.line
+    }
+
+    @usableFromInline
+    var description: String {
+        "ActorClosureCarry(<closure> defined at \(self._storage.file):\(self._storage.line))"
     }
 }
 
 @usableFromInline
-internal struct SubMessageCarry {
+internal struct SubMessageCarry: CustomStringConvertible {
     @usableFromInline
     class _Storage {
         @usableFromInline
@@ -727,17 +737,22 @@ internal struct SubMessageCarry {
 
     @usableFromInline
     var identifier: AnySubReceiveId {
-        return self._storage.identifier
+        self._storage.identifier
     }
 
     @usableFromInline
     var message: Any {
-        return self._storage.message
+        self._storage.message
     }
 
     @usableFromInline
     var subReceiveAddress: ActorAddress {
-        return self._storage.subReceiveAddress
+        self._storage.subReceiveAddress
+    }
+
+    @usableFromInline
+    var description: String {
+        "SubMessageCarry(\(self.message), subReceive identifier: \(self.identifier.underlying), address: \(self.subReceiveAddress))"
     }
 }
 

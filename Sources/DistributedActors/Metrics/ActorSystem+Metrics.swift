@@ -76,8 +76,14 @@ internal class ActorSystemMetrics {
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Mailbox
 
-//    let _mailbox_size: Gauge
-//
+    // let _mailbox_message_size: Gauge
+    let _mailbox_message_count: Recorder
+
+    @inline(__always)
+    func recordMailboxMessageCount(_ count: Int) {
+        self._mailbox_message_count.record(count)
+    }
+
 //    /// Report mailbox size, based on shell's props (e.g. into a group measurement)
 //    func mailbox_size<Anything>(_ shell: ActorShell<Anything>) -> Gauge? {
 //        if let group = shell._props.metrics.group {
@@ -190,7 +196,7 @@ internal class ActorSystemMetrics {
         self._actors_lifecycle_system = .init(label: actorsLifecycleLabel, positive: [rootSystem, dimStart], negative: [rootSystem, dimStop])
 
         // ==== Mailbox ---------------------------------------------
-        // TODO: more mailbox metrics;
+        self._mailbox_message_count = .init(label: settings.makeLabel("mailbox", "message", "count"))
 
         // ==== CRDTs -----------------------------------------------
         // TODO: more mailbox metrics;
