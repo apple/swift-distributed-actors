@@ -110,7 +110,7 @@ public final class ActorSystem {
 
     /// Exposes `NIO.MultiThreadedEventLoopGroup` used by this system.
     /// Try not to rely on this too much as this is an implementation detail...
-    public let _eventLoopGroup: MultiThreadedEventLoopGroup
+    public var _eventLoopGroup: MultiThreadedEventLoopGroup!
 
     #if SACT_TESTS_LEAKS
     static let actorSystemInitCounter: Atomic<Int> = Atomic(value: 0)
@@ -154,7 +154,7 @@ public final class ActorSystem {
 
         // TODO: we should not rely on NIO for futures
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: settings.threadPoolSize)
-        settings.cluster.eventLoopGroup = eventLoopGroup
+         settings.cluster.eventLoopGroup = eventLoopGroup
 
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
@@ -314,17 +314,21 @@ public final class ActorSystem {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
             if let cluster = self._cluster {
                 let receptacle = BlockingReceptacle<Void>()
-                cluster.ref.tell(.command(.unbind(receptacle))) // FIXME: should be shutdown
-                receptacle.wait(atMost: .milliseconds(300)) // FIXME: configure
+                cluster.ref.tell(.command(.shutdown(receptacle)))
+                receptacle.wait(atMost: .seconds(3)) // FIXME: configure
             }
             self.userProvider.stopAll()
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
-            try! self._eventLoopGroup.syncShutdownGracefully()
+            self._eventLoopGroup.shutdownGracefully { err in
+                print(err)
+
+                receptacle.offerOnce(())
+            }
+            self._eventLoopGroup = nil
             self.serialization = nil
             self._cluster = nil
             self._receptionist = self.deadLetters.adapted()
-            receptacle.offerOnce(())
         }
 
         return Shutdown(receptacle: receptacle)

@@ -15,33 +15,32 @@
 import Dispatch
 import DistributedActors
 
-print("Getting args")
-
-var args = CommandLine.arguments
-args.removeFirst()
-
-print("got args")
-
-print("\(args)")
-
-guard args.count >= 1 else {
-    fatalError("no port given")
-}
-
-let system = ActorSystem("System") { settings in
+let a = ActorSystem("System") { settings in
     settings.cluster.enabled = true
-    settings.cluster.bindPort = Int(args[0])!
+    settings.cluster.bindPort = 7337
     settings.cluster.downingStrategy = .timeout(.default)
-    settings.defaultLogLevel = .debug
+    settings.defaultLogLevel = .info
 }
 
-if args.count >= 3 {
-    print("getting host")
-    let host = args[1]
-    print("parsing port")
-    let port = Int(args[2])!
-    print("Joining")
-    system.cluster.join(node: Node(systemName: "System", host: host, port: port))
-}
+a.shutdown()
+
+//let b = ActorSystem("System") { settings in
+//    settings.cluster.enabled = true
+//    settings.cluster.bindPort = 7337 + 1
+//    settings.cluster.downingStrategy = .timeout(.default)
+//    settings.defaultLogLevel = .info
+//}
+//
+//let c = ActorSystem("System") { settings in
+//    settings.cluster.enabled = true
+//    settings.cluster.bindPort = 7337 + 2
+//    settings.cluster.downingStrategy = .timeout(.default)
+//    settings.defaultLogLevel = .info
+//}
+//
+//a.cluster.join(node: b.cluster.node.node)
+//b.cluster.join(node: a.cluster.node.node)
+//c.cluster.join(node: a.cluster.node.node)
+//c.cluster.join(node: b.cluster.node.node)
 
 Thread.sleep(.minutes(10))

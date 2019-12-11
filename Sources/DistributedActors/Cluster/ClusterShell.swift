@@ -185,7 +185,7 @@ internal class ClusterShell {
         case reachabilityChanged(UniqueNode, MemberReachability)
 
         case downCommand(Node)
-        case unbind(BlockingReceptacle<Void>) // TODO: could be NIO future
+        case shutdown(BlockingReceptacle<Void>) // TODO: could be NIO future
     }
 
     enum QueryMessage: NoSerializationVerification {
@@ -308,9 +308,9 @@ extension ClusterShell {
                     return self.onReachabilityChange(context, state: state, change: ReachabilityChange(member: member.asUnreachable))
                 }
 
-            case .unbind(let receptacle):
+            case .shutdown(let receptacle):
                 // TODO: should become shutdown
-                return self.unbind(context, state: state, signalOnceUnbound: receptacle)
+                return self.shutdown(context, state: state, signalOnceUnbound: receptacle)
 
             case .downCommand(let node):
                 return self.onDownCommand(context, state: state, node: node)
@@ -692,13 +692,22 @@ extension ClusterShell {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Unbind
+// MARK: shutdown
 
 extension ClusterShell {
-    // TODO: become "shutdown" rather than just unbind
-    fileprivate func unbind(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
+    fileprivate func shutdown(_ context: ActorContext<Message>, state: ClusterShellState, signalOnceUnbound: BlockingReceptacle<Void>) -> Behavior<Message> {
         let addrDesc = "\(state.settings.uniqueBindNode.node.host):\(state.settings.uniqueBindNode.node.port)"
-        return context.awaitResult(of: state.channel.close(), timeout: .seconds(3)) { // TODO: hardcoded timeout
+
+        var closing = state.channel.close()
+
+        self._associationsLock.withLockVoid {
+            self._associationsRegistry.forEach { kv in
+                let control = kv.value
+                closing = closing.and(control.close()).map { _ in () }
+            }
+        }
+
+        return context.awaitResult(of: closing, timeout: .seconds(3)) { // TODO: hardcoded timeout
             switch $0 {
             case .success:
                 context.log.info("Unbound server socket [\(addrDesc)], node: \(reflecting: state.selfNode)")

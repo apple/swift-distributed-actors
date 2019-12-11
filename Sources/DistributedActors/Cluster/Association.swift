@@ -80,6 +80,7 @@ internal struct AssociationRemoteControl {
 
     init(channel: Channel, remoteNode: UniqueNode) {
         self.channel = channel
+        pprint("channel[\(remoteNode)] = \(channel)")
         self.remoteNode = remoteNode
     }
 
@@ -90,5 +91,9 @@ internal struct AssociationRemoteControl {
 
     func sendSystemMessage(_ message: SystemMessage, recipient: ActorAddress) {
         self.channel.writeAndFlush(NIOAny(TransportEnvelope(systemMessage: message, recipient: recipient)), promise: nil)
+    }
+
+    func close() -> EventLoopFuture<Void> {
+        self.channel.close()
     }
 }
