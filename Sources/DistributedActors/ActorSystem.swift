@@ -78,6 +78,17 @@ public final class ActorSystem {
     private var _replicator: ActorRef<CRDT.Replicator.Message>!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
+    // MARK: Cluster Singleton
+
+    private var _clusterSingletonShell: ActorRef<ClusterSingletonShell.Message>!
+
+    public var clusterSingleton: ClusterSingleton {
+        return self._clusterSingleton
+    }
+
+    private lazy var _clusterSingleton: ClusterSingleton = ClusterSingleton(self, ref: self._clusterSingletonShell)
+
+    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
     internal var metrics: ActorSystemMetrics {
@@ -219,6 +230,9 @@ public final class ActorSystem {
         let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
         self._replicator = lazyReplicator.ref
 
+        let lazyClusterSingletonShell = try! self._prepareSystemActor(ClusterSingletonShell.naming, ClusterSingletonShell().behavior, perpetual: true)
+        self._clusterSingletonShell = lazyClusterSingletonShell.ref
+
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
         #endif
@@ -261,6 +275,7 @@ public final class ActorSystem {
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
+        lazyClusterSingletonShell.wakeUp()
         lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
     }
