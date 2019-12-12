@@ -51,10 +51,10 @@ internal class ClusterSingletonManager<Message> {
     var behavior: Behavior<ManagerMessage> {
         .setup { context in
             // This is how the manager receives events relevant to `AllocationStrategy`
-            let allocationStrategyEventSubReceive = context.subReceive(ClusterSingletonShell.AllocationStrategyEvent.self) { event in
+            let allocationStrategyEventSubReceive = context.subReceive(AllocationStrategyEvent.self) { event in
                 try self.receiveAllocationStrategyEvent(context, event)
             }
-            context.system.clusterSingleton.subscribeToAllocationStrategyEvents(allocationStrategyEventSubReceive)
+            context.system.plugins.clusterSingleton.subscribeToAllocationStrategyEvents(allocationStrategyEventSubReceive)
 
             return Behavior<ManagerMessage>.receiveMessage { message in
                 switch message {
@@ -75,7 +75,7 @@ internal class ClusterSingletonManager<Message> {
         }
     }
 
-    private func receiveAllocationStrategyEvent(_ context: ActorContext<ManagerMessage>, _ event: ClusterSingletonShell.AllocationStrategyEvent) throws {
+    private func receiveAllocationStrategyEvent(_ context: ActorContext<ManagerMessage>, _ event: AllocationStrategyEvent) throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateNode`,
         // which will determine if `targetNode` has changed and react accordingly.
         switch event {

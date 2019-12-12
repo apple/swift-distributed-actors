@@ -58,6 +58,7 @@ public final class ActorSystem {
 
     // initialized during startup
     public var serialization: Serialization!
+    internal var plugins: Plugins!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Receptionist
@@ -76,17 +77,6 @@ public final class ActorSystem {
     }
 
     private var _replicator: ActorRef<CRDT.Replicator.Message>!
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Cluster Singleton
-
-    private var _clusterSingletonShell: ActorRef<ClusterSingletonShell.Message>!
-
-    public var clusterSingleton: ClusterSingleton {
-        return self._clusterSingleton
-    }
-
-    private lazy var _clusterSingleton: ClusterSingleton = ClusterSingleton(self, ref: self._clusterSingletonShell)
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
@@ -223,15 +213,19 @@ public final class ActorSystem {
         // serialization
         self.serialization = Serialization(settings: settings, system: self)
 
+        // plugins
+        self.plugins = Plugins(settings: settings.plugins)
+        self.plugins.onSystemInit(self)
+
+        // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
+        self._receptionist = deadLetters.adapted()
+
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
         self._receptionist = lazyReceptionist.ref
 
         let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
         self._replicator = lazyReplicator.ref
-
-        let lazyClusterSingletonShell = try! self._prepareSystemActor(ClusterSingletonShell.naming, ClusterSingletonShell().behavior, perpetual: true)
-        self._clusterSingletonShell = lazyClusterSingletonShell.ref
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -267,6 +261,8 @@ public final class ActorSystem {
 
         _ = self.metrics // force init of metrics
 
+        self.plugins.onSystemInitComplete(self)
+
         // Wake up all the delayed actors. This MUST be the last thing to happen
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
@@ -275,7 +271,6 @@ public final class ActorSystem {
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
-        lazyClusterSingletonShell.wakeUp()
         lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
     }
@@ -341,6 +336,10 @@ public final class ActorSystem {
         }
 
         self.serialization = nil
+
+        self.plugins.onSystemShutdown(self)
+        self.plugins = nil
+
         self._cluster = nil
 
         _ = self.shutdownFlag.add(1)

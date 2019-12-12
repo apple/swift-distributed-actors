@@ -37,8 +37,6 @@ internal class ClusterSingletonProxy<Message> {
 
     /// Message buffer in case `singleton` is `nil`
     private let buffer: StashBuffer<Message>
-    /// Whether the buffer capacity has been reached and messages starting to get discarded
-    private var bufferOverflow: Bool = false
 
     init(settings: ClusterSingletonSettings, manager: ActorRef<ClusterSingletonManager<Message>.ManagerMessage>) {
         self.settings = settings
@@ -50,7 +48,7 @@ internal class ClusterSingletonProxy<Message> {
         .setup { context in
             // This is how the proxy receives update from manager on singleton ref changes
             let singletonSubReceive = context.subReceive(ActorRef<Message>?.self) {
-                self.updateSingleton($0)
+                self.updateSingleton(context, $0)
             }
             // Link manager and proxy
             self.manager.tell(.linkProxy(singletonSubReceive))
@@ -62,7 +60,8 @@ internal class ClusterSingletonProxy<Message> {
         }
     }
 
-    private func updateSingleton(_ newSingleton: ActorRef<Message>?) {
+    private func updateSingleton(_ context: ActorContext<Message>, _ newSingleton: ActorRef<Message>?) {
+        context.log.debug("Reassigning singleton from [\(String(describing: self.singleton))] to [\(String(describing: newSingleton))]")
         self.singleton = newSingleton
 
         // Empty stashed messages if we have the singleton
@@ -70,7 +69,6 @@ internal class ClusterSingletonProxy<Message> {
             while let stashed = self.buffer.buffer.take() {
                 singleton.tell(stashed)
             }
-            self.bufferOverflow = false // Reset
         }
     }
 
@@ -80,12 +78,12 @@ internal class ClusterSingletonProxy<Message> {
             singleton.tell(message)
         } else {
             if self.buffer.buffer.isFull {
-                if !self.bufferOverflow {
-                    context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
-                    self.bufferOverflow = true // Set flag so we only warn once
+                // TODO: log this warning only "once in while" after buffer becomes full
+                context.log.warning("Buffer is full. Messages might start getting disposed.", metadata: self.metadata(context))
+                // Move the oldest message to dead letters to make room
+                if let oldestMessage = self.buffer.buffer.take() {
+                    context.system.deadLetters.tell(DeadLetter(oldestMessage, recipient: context.address))
                 }
-                // Delete the oldest message to make room
-                _ = self.buffer.buffer.take()
             }
 
             try self.buffer.stash(message: message)
