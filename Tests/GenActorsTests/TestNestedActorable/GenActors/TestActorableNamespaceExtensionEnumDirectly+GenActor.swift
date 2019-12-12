@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,68 +16,43 @@
 //
 //===----------------------------------------------------------------------===//
 
-// tag::imports[]
-
 import DistributedActors
 
-// end::imports[]
-
-import DistributedActorsTestKit
-import XCTest
-
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine messages 
+// MARK: DO NOT EDIT: Generated TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly messages 
 
-/// DO NOT EDIT: Generated AllInOneMachine messages
-extension AllInOneMachine {
+/// DO NOT EDIT: Generated TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly messages
+extension TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly {
     public enum Message { 
-        case clean 
-        case diagnostics(/*TODO: MODULE.*/GeneratedActor.Messages.Diagnostics) 
-        case coffeeMachine(/*TODO: MODULE.*/GeneratedActor.Messages.CoffeeMachine) 
+        case echo(String, _replyTo: ActorRef<String>) 
     }
 
     
-    /// Performs boxing of GeneratedActor.Messages.Diagnostics messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxDiagnostics(_ message: GeneratedActor.Messages.Diagnostics) -> AllInOneMachine.Message {
-        .diagnostics(message)
-    } 
-    
-    /// Performs boxing of GeneratedActor.Messages.CoffeeMachine messages such that they can be received by Actor<AllInOneMachine>
-    public static func _boxCoffeeMachine(_ message: GeneratedActor.Messages.CoffeeMachine) -> AllInOneMachine.Message {
-        .coffeeMachine(message)
-    } 
-    
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated AllInOneMachine behavior
+// MARK: DO NOT EDIT: Generated TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly behavior
 
-extension AllInOneMachine {
+extension TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly {
 
-    public static func makeBehavior(instance: AllInOneMachine) -> Behavior<Message> {
+    public static func makeBehavior(instance: TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<AllInOneMachine>.Context(underlying: _context)
-            var instance = instance
+            let context = Actor<TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly>.Context(underlying: _context)
+            let instance = instance
 
             /* await */ instance.preStart(context: context)
 
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
-                case .clean:
-                    instance.clean()
- 
-                
-                case .diagnostics(.printDiagnostics):
-                    instance.printDiagnostics()
- 
-                case .coffeeMachine(.makeCoffee(let _replyTo)):
-                    let result = instance.makeCoffee()
+                case .echo(let string, let _replyTo):
+                    let result = instance.echo(string)
                     _replyTo.tell(result)
  
+                
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<AllInOneMachine>.Context(underlying: _context)
+                let context = Actor<TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -100,12 +75,17 @@ extension AllInOneMachine {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for AllInOneMachine
+// MARK: Extend Actor for TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly
 
-extension Actor where A.Message == AllInOneMachine.Message {
+extension Actor where A.Message == TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly.Message {
 
-    func clean() {
-        self.ref.tell(.clean)
+    func echo(_ string: String) -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                .echo(string, _replyTo: _replyTo)}
+            .nioFuture
+            )
     }
  
 
