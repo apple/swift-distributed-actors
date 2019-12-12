@@ -12,17 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Protocol for cluster singleton allocation strategy
+import DistributedActors
 
-/// Strategy for choosing a `UniqueNode` to allocate cluster singleton.
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Protocol for singleton allocation strategy
+
+/// Strategy for choosing a `UniqueNode` to allocate singleton.
 internal protocol AllocationStrategy {
     /// Receives and handles the `clusterEvent`.
     ///
     /// - Returns: The current `node` after processing `clusterEvent`.
     func onClusterEvent(_ clusterEvent: ClusterEvent) -> UniqueNode?
 
-    /// The currently allocated `node` for the cluster singleton.
+    /// The currently allocated `node` for the singleton.
     var node: UniqueNode? { get }
 }
 

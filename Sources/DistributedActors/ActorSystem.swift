@@ -78,17 +78,6 @@ public final class ActorSystem {
     private var _replicator: ActorRef<CRDT.Replicator.Message>!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: Cluster Singleton
-
-    private var _clusterSingletonShell: ActorRef<ClusterSingletonShell.Message>!
-
-    public var clusterSingleton: ClusterSingleton {
-        return self._clusterSingleton
-    }
-
-    private lazy var _clusterSingleton: ClusterSingleton = ClusterSingleton(self, ref: self._clusterSingletonShell)
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Metrics
 
     internal var metrics: ActorSystemMetrics {
@@ -223,15 +212,15 @@ public final class ActorSystem {
         // serialization
         self.serialization = Serialization(settings: settings, system: self)
 
+        // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
+        self._receptionist = deadLetters.adapted()
+
         let receptionistBehavior = self.settings.cluster.enabled ? ClusterReceptionist.behavior(syncInterval: settings.cluster.receptionistSyncInterval) : LocalReceptionist.behavior
         let lazyReceptionist = try! self._prepareSystemActor(Receptionist.naming, receptionistBehavior, perpetual: true)
         self._receptionist = lazyReceptionist.ref
 
         let lazyReplicator = try! self._prepareSystemActor(CRDT.Replicator.naming, CRDT.Replicator.Shell(settings: .default).behavior, perpetual: true)
         self._replicator = lazyReplicator.ref
-
-        let lazyClusterSingletonShell = try! self._prepareSystemActor(ClusterSingletonShell.naming, ClusterSingletonShell().behavior, perpetual: true)
-        self._clusterSingletonShell = lazyClusterSingletonShell.ref
 
         #if SACT_TESTS_LEAKS
         _ = ActorSystem.actorSystemInitCounter.add(1)
@@ -275,9 +264,11 @@ public final class ActorSystem {
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
-        lazyClusterSingletonShell.wakeUp()
         lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
+
+        /// Starts plugins after the system is fully initialized
+        self.settings.plugins.startAll(self)
     }
 
     public convenience init() {
@@ -340,10 +331,12 @@ public final class ActorSystem {
             return Shutdown(receptacle: receptacle)
         }
 
+        _ = self.shutdownFlag.add(1)
+
         self.serialization = nil
         self._cluster = nil
 
-        _ = self.shutdownFlag.add(1)
+        self.settings.plugins.stopAll(self)
 
         DispatchQueue.global().async {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)

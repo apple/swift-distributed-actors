@@ -45,6 +45,12 @@ public final class StashBuffer<Message> {
         }
     }
 
+    /// Takes and returns first message from the stash buffer, if not empty.
+    @inlinable
+    public func take() -> Message? {
+        self.buffer.take()
+    }
+
     /// Unstashes all messages currently contained in the buffer and eagerly
     /// processes them with the given behavior. Behavior changes will be
     /// tracked, so if a message causes a behavior change, that behavior will be
@@ -78,7 +84,13 @@ public final class StashBuffer<Message> {
     /// Guaranteed to be lower or equal to `capacity` that the stash was initialized with.
     @inlinable
     public var count: Int {
-        return self.buffer.count
+        self.buffer.count
+    }
+
+    /// Returns boolean that indicates if the buffer is full.
+    @inlinable
+    public var isFull: Bool {
+        self.buffer.isFull
     }
 }
 

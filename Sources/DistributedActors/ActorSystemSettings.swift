@@ -36,6 +36,7 @@ public struct ActorSystemSettings {
 
     public var actor: ActorSettings = .default
     public var serialization: SerializationSettings = .default
+    public var plugins: PluginsSettings = .default
     public var metrics: MetricsSettings = .default(rootName: nil)
     public var failure: FailureSettings = .default
 
