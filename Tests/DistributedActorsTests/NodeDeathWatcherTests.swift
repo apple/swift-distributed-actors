@@ -23,9 +23,11 @@ final class NodeDeathWatcherTests: ClusteredNodesTestBase {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
             }
+            defer { first.shutdown() }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.swim.gossip.probeInterval = .milliseconds(100)
             }
+            defer { second.shutdown() }
 
             try self.joinNodes(node: first, with: second)
 

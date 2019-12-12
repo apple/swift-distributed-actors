@@ -39,6 +39,8 @@ class SerializationTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     func test_sanity_roundTripBetweenFoundationDataAndNioByteBuffer() throws {

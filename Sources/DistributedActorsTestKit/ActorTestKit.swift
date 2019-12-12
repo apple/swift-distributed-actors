@@ -26,7 +26,13 @@ import XCTest
 /// The `ActorTestKit` offers a number of helpers such as test probes and helper functions to
 /// make testing actor based "from the outside" code manageable and pleasant.
 public final class ActorTestKit {
-    internal let system: ActorSystem
+    internal weak var _system: ActorSystem?
+    internal var system: ActorSystem {
+        guard let s = self._system else {
+            fatalError("Attempted accessing ActorTestKit.system yet it was `nil`!")
+        }
+        return s
+    }
 
     private let spawnProbesLock = Lock()
     /// Access should be protected by `spawnProbesLock`, in order to guarantee unique names.
@@ -35,7 +41,7 @@ public final class ActorTestKit {
     public let settings: ActorTestKitSettings
 
     public init(_ system: ActorSystem, configuredWith configureSettings: (inout ActorTestKitSettings) -> Void = { _ in () }) {
-        self.system = system
+        self._system = system
 
         var settings = ActorTestKitSettings()
         configureSettings(&settings)

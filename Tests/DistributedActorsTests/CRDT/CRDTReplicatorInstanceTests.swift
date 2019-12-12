@@ -27,6 +27,8 @@ final class CRDTReplicatorInstanceTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     let replicaA: ReplicaId = .actorAddress(try! ActorAddress(path: ActorPath._user.appending("a"), incarnation: .perpetual))

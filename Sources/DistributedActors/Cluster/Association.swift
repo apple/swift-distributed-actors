@@ -80,7 +80,6 @@ internal struct AssociationRemoteControl {
 
     init(channel: Channel, remoteNode: UniqueNode) {
         self.channel = channel
-        pprint("channel[\(remoteNode)] = \(channel)")
         self.remoteNode = remoteNode
     }
 

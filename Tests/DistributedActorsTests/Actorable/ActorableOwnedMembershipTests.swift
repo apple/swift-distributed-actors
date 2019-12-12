@@ -22,9 +22,11 @@ final class ActorableOwnedMembershipTests: ClusteredNodesTestBase {
             let first = self.setUpNode("first") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
+            defer { first.shutdown() }
             let second = self.setUpNode("second") { settings in
                 settings.cluster.autoLeaderElection = .lowestAddress(minNumberOfMembers: 2)
             }
+            defer { second.shutdown() }
 
             try self.joinNodes(node: first, with: second, ensureMembers: .up)
             try self.assertMemberStatus(on: first, node: second.cluster.node, is: .up)

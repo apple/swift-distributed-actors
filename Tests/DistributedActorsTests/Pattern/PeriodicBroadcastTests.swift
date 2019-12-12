@@ -28,6 +28,8 @@ final class PeriodicBroadcastTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     // TODO: Way more tests and capabilities; should be able to use receptionist to find nodes to broadcast to

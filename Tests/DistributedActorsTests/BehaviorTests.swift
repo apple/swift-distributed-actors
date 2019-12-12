@@ -33,6 +33,8 @@ class BehaviorTests: XCTestCase {
     override func tearDown() {
         self.system.shutdown().wait()
         try! self.eventLoopGroup.syncShutdownGracefully()
+        self.system = nil
+        self.testKit = nil
     }
 
     public struct TestMessage {

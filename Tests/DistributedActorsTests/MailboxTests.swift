@@ -26,6 +26,7 @@ final class MailboxTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
     }
 
     func test_sendMessage_shouldDropMessagesWhenFull() {

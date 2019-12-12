@@ -35,6 +35,8 @@ class DispatcherTests: XCTestCase {
         self.group.shutdownGracefully(queue: DispatchQueue.global()) { error in
             _ = error.map { err in fatalError("Failed terminating event loops: \(err)") }
         }
+        self.system = nil
+        self.testKit = nil
     }
 
     // MARK: Running "on NIO" for fun and profit

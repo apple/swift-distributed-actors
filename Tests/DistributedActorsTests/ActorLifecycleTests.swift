@@ -28,6 +28,8 @@ class ActorLifecycleTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------

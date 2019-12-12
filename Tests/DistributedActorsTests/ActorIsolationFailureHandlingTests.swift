@@ -28,6 +28,8 @@ final class ActorIsolationFailureHandlingTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     private enum SimpleTestError: Error {

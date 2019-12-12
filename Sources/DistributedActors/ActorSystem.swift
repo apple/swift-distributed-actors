@@ -110,7 +110,13 @@ public final class ActorSystem {
 
     /// Exposes `NIO.MultiThreadedEventLoopGroup` used by this system.
     /// Try not to rely on this too much as this is an implementation detail...
-    public var _eventLoopGroup: MultiThreadedEventLoopGroup!
+    public var _eventLoopGroup: MultiThreadedEventLoopGroup
+    private let _shuttingDownFailure: EventLoopFuture<Void>
+    internal func shuttingDownFailure<T>(of: T.Type = T.self) ->  EventLoopFuture<T> {
+        self._shuttingDownFailure.map {
+            $0 as! T // as!-safe, this never executes, we only do so to ge
+        }
+    }
 
     #if SACT_TESTS_LEAKS
     static let actorSystemInitCounter: Atomic<Int> = Atomic(value: 0)
@@ -158,6 +164,7 @@ public final class ActorSystem {
 
         // TODO: should we share this, or have a separate ELG for IO?
         self._eventLoopGroup = eventLoopGroup
+        self._shuttingDownFailure = eventLoopGroup.next().makeFailedFuture(ActorSystemShuttingDownError())
 
         self.settings = settings
 
@@ -321,11 +328,14 @@ public final class ActorSystem {
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
             self._eventLoopGroup.shutdownGracefully { err in
-                print(err)
-
+                if let err = err {
+                    let message = "Error while shutting down event loop group: \(err)"
+                    pprint(message)
+                    self.log.error("\(message)")
+                }
                 receptacle.offerOnce(())
             }
-            self._eventLoopGroup = nil
+            // self._eventLoopGroup = nil // TODO: We could drop it more eagerly like this... to ensure kqueue gets released, or NIO can resolve: https://github.com/apple/swift-nio/issues/1302
             self.serialization = nil
             self._cluster = nil
             self._receptionist = self.deadLetters.adapted()
@@ -568,4 +578,8 @@ internal struct LazyStart<Message> {
     func wakeUp() {
         self.ref._unsafeUnwrapCell.mailbox.schedule()
     }
+}
+
+public struct ActorSystemShuttingDownError: Error {
+    let message: String = "The ActorSystem is shutting down, unable to fulfil any more promises."
 }

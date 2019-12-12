@@ -28,6 +28,8 @@ class ActorRefAdapterTests: XCTestCase {
 
     override func tearDown() {
         self.system.shutdown().wait()
+        self.system = nil
+        self.testKit = nil
     }
 
     func test_adaptedRef_shouldConvertMessages() throws {

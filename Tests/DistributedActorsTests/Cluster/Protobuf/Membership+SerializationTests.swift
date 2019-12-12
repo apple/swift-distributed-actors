@@ -32,6 +32,8 @@ final class MembershipSerializationTests: XCTestCase {
     override func tearDown() {
         self.system.shutdown().wait()
         self.context = nil
+        self.system = nil
+        self.testKit = nil
     }
 
     func test_serializationOf_membership() throws {

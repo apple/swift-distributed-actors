@@ -21,6 +21,7 @@ private let NANOS = 1_000_000_000
 class TimeSpecTests: XCTestCase {
     let nanosAmount: TimeAmount = .nanoseconds(100)
     let secondsAmount: TimeAmount = .seconds(2)
+
     var totalAmount: TimeAmount {
         return self.secondsAmount + self.nanosAmount
     }
