@@ -316,6 +316,9 @@ public final class ActorSystem {
             return Shutdown(receptacle: receptacle)
         }
 
+        self.serialization = nil
+        self._cluster = nil
+
         _ = self.shutdownFlag.add(1)
 
         DispatchQueue.global().async {
@@ -329,8 +332,6 @@ public final class ActorSystem {
             self.systemProvider.stopAll()
             self.dispatcher.shutdown()
             try! self._eventLoopGroup.syncShutdownGracefully()
-            self.serialization = nil
-            self._cluster = nil
             self._receptionist = self.deadLetters.adapted()
             receptacle.offerOnce(())
         }

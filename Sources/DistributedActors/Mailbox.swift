@@ -707,11 +707,6 @@ internal struct ActorClosureCarry: CustomStringConvertible {
     var description: String {
         "ActorClosureCarry(<closure> defined at \(self._storage.file):\(self._storage.line))"
     }
-
-    @usableFromInline
-    var description: String {
-        "ActorClosureCarry(<closure> defined at \(self._storage.file):\(self._storage.line))"
-    }
 }
 
 @usableFromInline

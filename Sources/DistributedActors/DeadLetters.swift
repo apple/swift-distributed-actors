@@ -172,12 +172,6 @@ final class DeadLetterOffice {
         // as that may then change ordering; if multiple onDeadLetter executions are ongoing, we want
         // all of them to be piped to the exact same logging handler, do not create a new Logging.Logger() here (!)
 
-        if self.system?.isShuttingDown ?? false {
-            // do not log dead letters while shutting down
-            // (as many many dead letters are expected, and could potentially flood logs with lots of scary looking, but expected dead letters)
-            return
-        }
-
         var metadata: Logger.Metadata = [
             "deadLetter": "1", // marker, can be used by logging tools to easily capture all dead letter logging
             // TODO: could coalesce and bump a counter if many times the same dead letter is logged
@@ -207,6 +201,12 @@ final class DeadLetterOffice {
 
         if let systemMessage = deadLetter.message as? SystemMessage, self.specialHandled(systemMessage, recipient: deadLetter.recipient) {
             return // system message was special handled; no need to log it anymore
+        }
+
+        if self.system?.isShuttingDown ?? true {
+            // do not log dead letters while shutting down
+            // (as many many dead letters are expected, and could potentially flood logs with lots of scary looking, but expected dead letters)
+            return
         }
 
         // in all other cases, we want to log the dead letter:
