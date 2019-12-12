@@ -12,18 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActors
 import Logging
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ClusterSingletonManager
+// MARK: ActorSingletonManager
 
-/// Manages and runs the cluster singleton behind `ActorRef<Message>`.
+/// Manages and runs the actor singleton that backs `ActorRef<Message>`.
 ///
-/// `ClusterSingletonManager` subscribes to events and feeds them into `AllocationStrategy` to determine the node that the singleton runs on. It
-/// spawns or terminates the singleton if needed, and updates the singleton `ActorRef` accordingly.
-internal class ClusterSingletonManager<Message> {
-    /// Cluster singleton settings
-    private let settings: ClusterSingletonSettings
+/// `ActorSingletonManager` subscribes to events and feeds them into `AllocationStrategy` to determine the node that the
+/// singleton runs on. It spawns or terminates the singleton if needed, and updates the singleton `ActorRef` accordingly.
+internal class ActorSingletonManager<Message> {
+    /// Settings for the `ActorSingleton`
+    private let settings: ActorSingletonSettings
 
     /// The strategy that determines which node the singleton will be allocated
     private let allocationStrategy: AllocationStrategy?
@@ -33,15 +34,15 @@ internal class ClusterSingletonManager<Message> {
     /// The singleton behavior
     private let singletonBehavior: Behavior<Message>
 
-    /// The node that the cluster singleton runs on
+    /// The node that the singleton runs on
     private var targetNode: UniqueNode?
     /// The `ActorRef` of the singleton
     private var ref: ActorRef<Message>?
 
-    /// The `ClusterSingletonProxy` paired with this manager
+    /// The `ActorSingletonProxy` paired with this manager
     private var proxy: ActorRef<ActorRef<Message>?>?
 
-    init(settings: ClusterSingletonSettings, allocationStrategy: AllocationStrategy?, props: Props, _ behavior: Behavior<Message>) {
+    init(settings: ActorSingletonSettings, allocationStrategy: AllocationStrategy?, props: Props, _ behavior: Behavior<Message>) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
@@ -51,10 +52,10 @@ internal class ClusterSingletonManager<Message> {
     var behavior: Behavior<ManagerMessage> {
         .setup { context in
             // This is how the manager receives events relevant to `AllocationStrategy`
-            let allocationStrategyEventSubReceive = context.subReceive(ClusterSingletonShell.AllocationStrategyEvent.self) { event in
+            let allocationStrategyEventSubReceive = context.subReceive(AllocationStrategyEvent.self) { event in
                 try self.receiveAllocationStrategyEvent(context, event)
             }
-            context.system.clusterSingleton.subscribeToAllocationStrategyEvents(allocationStrategyEventSubReceive)
+            context.system.singleton.subscribeToAllocationStrategyEvents(allocationStrategyEventSubReceive)
 
             return Behavior<ManagerMessage>.receiveMessage { message in
                 switch message {
@@ -75,8 +76,8 @@ internal class ClusterSingletonManager<Message> {
         }
     }
 
-    private func receiveAllocationStrategyEvent(_ context: ActorContext<ManagerMessage>, _ event: ClusterSingletonShell.AllocationStrategyEvent) throws {
-        // Feed the event to `AllocationStrategy` then forward the result to `updateNode`,
+    private func receiveAllocationStrategyEvent(_ context: ActorContext<ManagerMessage>, _ event: AllocationStrategyEvent) throws {
+        // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
         switch event {
         case .clusterEvent(let clusterEvent):
@@ -102,7 +103,7 @@ internal class ClusterSingletonManager<Message> {
             try self.takeOver(context, from: previousTargetNode)
         default:
             if previousTargetNode == selfNode {
-                context.log.debug("Node \(selfNode) handing over singleton \(self.settings.name)")
+                context.log.debug("Node \(selfNode) handing off singleton \(self.settings.name)")
                 try self.handOff(context, to: node)
             }
 
@@ -117,12 +118,12 @@ internal class ClusterSingletonManager<Message> {
     }
 
     private func takeOver(_ context: ActorContext<ManagerMessage>, from: UniqueNode?) throws {
-        // TODO: (optimization) tell `ClusterSingletonManager` on `from` node that this node is taking over
+        // TODO: (optimization) tell `ActorSingletonManager` on `from` node that this node is taking over
         self.ref = try context.spawn(.unique(self.settings.name), props: self.singletonProps, self.singletonBehavior)
     }
 
     private func handOff(_ context: ActorContext<ManagerMessage>, to: UniqueNode?) throws {
-        // TODO: (optimization) tell `ClusterSingletonManager` on `to` node that this node is handing off
+        // TODO: (optimization) tell `ActorSingletonManager` on `to` node that this node is handing off
         guard let ref = self.ref else {
             return
         }
@@ -146,9 +147,9 @@ internal class ClusterSingletonManager<Message> {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: ClusterSingletonManager + logging
+// MARK: ActorSingletonManager + logging
 
-extension ClusterSingletonManager {
+extension ActorSingletonManager {
     func metadata<ManagerMessage>(_: ActorContext<ManagerMessage>) -> Logger.Metadata {
         var metadata: Logger.Metadata = [
             "name": "\(self.settings.name)",
@@ -169,7 +170,7 @@ extension ClusterSingletonManager {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Cluster singleton path / address
+// MARK: Singleton path / address
 
 extension ActorAddress {
     internal static func _singleton(name: String, on node: UniqueNode) -> ActorAddress {
