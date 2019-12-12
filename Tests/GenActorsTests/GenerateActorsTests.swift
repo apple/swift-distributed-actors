@@ -330,4 +330,13 @@ final class GenerateActorsTests: XCTestCase {
         let reply = nestedActor.echo("Hi!")
         try reply._nioFuture.wait().shouldEqual("Hi!")
     }
+
+    func test_TestActorableNamespaceExtensionEnumDirectly_shouldHaveBeenGeneratedProperly() throws {
+        let nestedActor = try self.system.spawn("nested-1") { _ in
+            TestActorableNamespace.InnerNamespace.TestActorableNamespaceExtensionEnumDirectly()
+        }
+
+        let reply = nestedActor.echo("Hi!")
+        try reply._nioFuture.wait().shouldEqual("Hi!")
+    }
 }

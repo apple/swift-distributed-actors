@@ -47,6 +47,7 @@ extension GenerateActorsTests {
             ("test_AwaitingActorable_onResultAsync", test_AwaitingActorable_onResultAsync),
             ("test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly", test_TestActorableNamespaceDirectly_shouldHaveBeenGeneratedProperly),
             ("test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly", test_TestActorableNamespaceInExtension_shouldHaveBeenGeneratedProperly),
+            ("test_TestActorableNamespaceExtensionEnumDirectly_shouldHaveBeenGeneratedProperly", test_TestActorableNamespaceExtensionEnumDirectly_shouldHaveBeenGeneratedProperly),
         ]
     }
 }
