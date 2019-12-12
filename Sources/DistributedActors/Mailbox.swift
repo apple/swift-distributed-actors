@@ -86,7 +86,7 @@ internal final class Mailbox<Message> {
     deinit {
         #if SACT_TESTS_LEAKS
         if self.address.segments.first?.value == "user" {
-            _ = self.deadLetters._system!.userMailboxInitCounter.sub(1)
+            _ = self.deadLetters._system?.userMailboxInitCounter.sub(1)
         }
         #endif
     }
