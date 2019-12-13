@@ -55,6 +55,11 @@ struct GatherActorables: SyntaxVisitor {
             return .visitChildren
         }
 
+        // This is another marker protocol and we do not need to generate anything for it
+        guard name != "XPCActorableProtocol" else {
+            return .skipChildren
+        }
+
         let BLUE = "\u{001B}[0;34m"
         let RST = "\u{001B}[0;0m"
         self.wipActorable = ActorableTypeDecl(
@@ -392,8 +397,7 @@ struct ResolveActorables {
                             static func \(proto.boxFuncName)(_ message: GeneratedActor.Messages.\(proto.name)) -> Self.Message
 
                         Implementations for this function will be generated automatically for every concrete conformance of an Actorable and this protocol.
-                        
-                        Actorables: \(actorables)
+                        Type defined in file: \(proto.sourceFile.path)
                         \u{001B}[0;0m
                     """)
             }

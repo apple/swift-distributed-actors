@@ -105,19 +105,10 @@ let targets: [PackageDescription.Target] = [
         name: "XPCActorCaller", // this is "main"
         dependencies: [
             "XPCActorServiceAPI",
-//            "XPCActorServiceProvider",
             "XPCActorable",
             "Files",
         ]
     ),
-
-    // other
-
-//    .target(
-//        name: "XPCSquirrel",
-//        dependencies: [
-//        ]),
-
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: TestKit
@@ -195,6 +186,35 @@ let targets: [PackageDescription.Target] = [
             "DistributedActors",
         ],
         path: "IntegrationTests/tests_02_process_isolated/it_ProcessIsolated_backoffRespawn"
+    ),
+
+    // XPCActorable tests
+    .target(
+        name: "it_XPCActorable_echo",
+        dependencies: [
+            "DistributedActors",
+            "XPCActorable",
+            "it_XPCActorable_echo_api",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_api",
+        dependencies: [
+            "DistributedActors",
+            "XPCActorable",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_api"
+    ),
+    .target(
+        name: "it_XPCActorable_echo_service",
+        dependencies: [
+            "DistributedActors",
+            "XPCActorable",
+            "it_XPCActorable_echo_api",
+            "Files",
+        ],
+        path: "IntegrationTests/tests_03_xpc_actorable/it_XPCActorable_echo_service"
     ),
 
     // ==== ----------------------------------------------------------------------------------------------------------------
