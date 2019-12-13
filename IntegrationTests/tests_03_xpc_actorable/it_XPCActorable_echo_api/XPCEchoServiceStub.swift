@@ -9,10 +9,14 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//
+//sa
 //===----------------------------------------------------------------------===//
 
-/// Causes `GenActors` to generate a `...Stub` for the protocol, so it may be consumed without knowing that the exact implementation class is.
-// TODO: not implemented
-public protocol XPCActorableProtocol {
+import DistributedActors
+import XPCActorable
+
+public struct XPCEchoServiceStub: Actorable, XPCEchoServiceProtocol {
+    public func echo(string: String) -> String {
+        fatalError("stub: \(#function)")
+    }
 }
