@@ -156,9 +156,9 @@ public struct ClusterSettings {
     /// When enabled traces _all_ incoming and outgoing cluster (e.g. handshake) protocol communication (remote messages).
     /// All logs will be prefixed using `[tracelog:cluster]`, for easier grepping.
     #if SACT_TRACE_CLUSTER
-    var traceLogLevel: Logger.Level? = .warning
+    public var traceLogLevel: Logger.Level? = .warning
     #else
-    var traceLogLevel: Logger.Level?
+    public var traceLogLevel: Logger.Level?
     #endif
 
     public init(node: Node, tls: TLSConfiguration? = nil) {
