@@ -12,18 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-extension Result: Codable where Success: Codable, Failure: Error {
-    public func encode(to encoder: Encoder) throws {
-        switch self {
-        case .success(let success):
-            var container = encoder.singleValueContainer()
-            try container.encode(success)
-        default:
-            fatalError("NOT IMPLEMENTED")
-        }
-    }
+import DistributedActors
 
-    public  init(from decoder: Decoder) throws {
-        self = .success(try decoder.singleValueContainer().decode(Success.self))
-    }
+/// Causes `GenActors` to generate a `...Stub` for the protocol, so it may be consumed without knowing that the exact implementation class is.
+public protocol XPCActorableProtocol: Actorable {
 }
