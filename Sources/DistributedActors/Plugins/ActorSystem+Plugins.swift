@@ -15,95 +15,128 @@
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin protocol
 
-/// A plugin provides specific features and capabilities (e.g., cluster singleton) to an `ActorSystem`.
-internal protocol Plugin {
+public protocol AnyPlugin {
+    /// Starts the plugin.
+    func start(_ system: ActorSystem) -> Result<Void, Error>
+
+    /// Stops the plugin.
+    func stop(_ system: ActorSystem) -> Result<Void, Error>
+}
+
+/// A plugin provides specific features and capabilities (e.g., singleton) to an `ActorSystem`.
+public protocol Plugin: AnyPlugin {
+    typealias Key = PluginKey<Self>
+
     /// The plugin's unique identifier
-    static var name: String { get }
+    static var key: Key { get }
+}
 
-    // TODO: introduce ActorSystem lifecycle and make plugin a lifecycle item?
+internal struct BoxedPlugin: AnyPlugin {
+    private let underlying: AnyPlugin
 
-    /// Delegate that gets called during `ActorSystem.init`
-    func onSystemInit(_ system: ActorSystem) -> Result<Void, Error>
+    internal let key: AnyPluginKey
 
-    /// Delegate that gets called at the end of `ActorSystem.init`
-    func onSystemInitComplete(_ system: ActorSystem) -> Result<Void, Error>
+    internal init<P: Plugin>(_ plugin: P) {
+        self.underlying = plugin
+        self.key = AnyPluginKey(P.key)
+    }
 
-    /// Delegate that gets called during `ActorSystem.shutdown`
-    func onSystemShutdown(_ system: ActorSystem) -> Result<Void, Error>
+    internal func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
+        guard let unwrapped = self.underlying as? P else {
+            fatalError("Type mismatch, expected: [\(String(reflecting: P.self))] got [\(self.underlying)]")
+        }
+        return unwrapped
+    }
+
+    internal func start(_ system: ActorSystem) -> Result<Void, Error> {
+        return self.underlying.start(system)
+    }
+
+    internal func stop(_ system: ActorSystem) -> Result<Void, Error> {
+        return self.underlying.stop(system)
+    }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Plugins
+// MARK: Plugin key
 
-/// A collection of `Plugin`s for an `ActorSystem`.
-internal class Plugins {
-    /// Plugins by identifier
-    private var plugins: [String: Plugin] = [:]
+public struct PluginKey<P: Plugin>: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible {
+    public let name: String
 
-    init(settings: PluginsSettings) {
-        self.plugins[ClusterSingletonPlugin.name] = ClusterSingletonPlugin(settings: settings.clusterSingleton)
+    internal var asAny: AnyPluginKey {
+        AnyPluginKey(self)
     }
 
-    /// Returns `Plugin` for the `identifier`.
-    subscript(_ identifier: String) -> Plugin? {
-        self.plugins[identifier]
+    public init(stringLiteral value: String) {
+        self.name = value
     }
 
-    /// Calls `onSystemInit` on each plugin.
-    func onSystemInit(_ system: ActorSystem) {
-        for (key, plugin) in self.plugins {
-            if case .failure(let error) = plugin.onSystemInit(system) {
-                fatalError("Failed to initialize plugin \(key)! Error: \(error)")
-            }
-        }
+    public var description: String {
+        "PluginKey(\(self.name))"
+    }
+}
+
+internal struct AnyPluginKey: Equatable, CustomStringConvertible {
+    internal let pluginTypeId: ObjectIdentifier
+    internal let name: String
+
+    internal init<P: Plugin>(_ key: PluginKey<P>) {
+        self.pluginTypeId = ObjectIdentifier(P.self)
+        self.name = key.name
     }
 
-    /// Calls `onSystemInitComplete` on each plugin.
-    func onSystemInitComplete(_ system: ActorSystem) {
-        for (key, plugin) in self.plugins {
-            if case .failure(let error) = plugin.onSystemInitComplete(system) {
-                fatalError("Failed to complete initialization for plugin \(key)! Error: \(error)")
-            }
-        }
-    }
-
-    /// Calls `onSystemShutdown` on each plugin.
-    func onSystemShutdown(_ system: ActorSystem) {
-        for (key, plugin) in self.plugins {
-            if case .failure(let error) = plugin.onSystemShutdown(system) {
-                fatalError("Failed to shut down plugin \(key)! Error: \(error)")
-            }
-        }
+    public var description: String {
+        "AnyPluginKey(\(self.name))"
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugins settings
 
-/// Configures `ActorSystem` plugins.
+/// Settings for `ActorSystem` plugins.
 public struct PluginsSettings {
     public static var `default`: PluginsSettings {
         .init()
     }
 
-    public var clusterSingleton: ClusterSingletonPluginSettings = .default
+    internal var plugins: [BoxedPlugin] = []
 
     public init() {}
 
-    /// Adds a `ClusterSingleton`.
-    public mutating func add(_ clusterSingleton: ClusterSingleton) -> Result<Void, ClusterSingletonError> {
-        return self.clusterSingleton.add(clusterSingleton)
+    /// Adds a `Plugin`.
+    ///
+    /// - Note: A plugin that depends on others should be added *after* its dependencies.
+    public mutating func add<P: Plugin>(_ plugin: P) {
+        return self.plugins.append(BoxedPlugin(plugin))
+    }
+
+    /// Returns `Plugin` identified by `key`.
+    public subscript<P: Plugin>(_: PluginKey<P>) -> P? {
+        self.plugins.first { $0.key == P.key.asAny }?.unsafeUnwrapAs(P.self)
+    }
+
+    /// Starts all plugins in the same order as they were added.
+    internal func startAll(_ system: ActorSystem) {
+        for plugin in self.plugins {
+            if case .failure(let error) = plugin.start(system) {
+                fatalError("Failed to start plugin \(plugin.key.name)! Error: \(error)")
+            }
+        }
+    }
+
+    /// Stops all plugins in the *reversed* order as they were added.
+    internal func stopAll(_ system: ActorSystem) {
+        // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
+        for plugin in self.plugins.reversed() {
+            if case .failure(let error) = plugin.stop(system) {
+                fatalError("Failed to stop plugin \(plugin.key.name)! Error: \(error)")
+            }
+        }
     }
 }
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Plugin shortcuts
-
-extension Plugins {
-    public var clusterSingleton: ClusterSingletonPlugin {
-        guard let singleton = self[ClusterSingletonPlugin.name], let clusterSingleton = singleton as? ClusterSingletonPlugin else {
-            fatalError("Invalid plugin [\(ClusterSingletonPlugin.name)]")
-        }
-        return clusterSingleton
+extension PluginsSettings {
+    public static func += <P: Plugin>(lhs: inout PluginsSettings, rhs: P) {
+        lhs.add(rhs)
     }
 }

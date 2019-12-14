@@ -39,6 +39,14 @@ var targets: [PackageDescription.Target] = [
             "Files",
         ]
     ),
+    
+    // ==== ------------------------------------------------------------------------------------------------------------
+    // MARK: Plugins
+    
+    .target(
+         name: "ActorSingletonPlugin",
+         dependencies: ["DistributedActors"]
+     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: XPC
@@ -85,6 +93,7 @@ var targets: [PackageDescription.Target] = [
         name: "DistributedActorsTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
     ),
+    
     .testTarget(
         name: "DistributedActorsTestKitTests",
         dependencies: ["DistributedActors", "DistributedActorsTestKit"]
@@ -107,9 +116,15 @@ var targets: [PackageDescription.Target] = [
             "DistributedActorsTestKit",
         ]
     ),
+    
+    .testTarget(
+         name: "ActorSingletonPluginTests",
+         dependencies: ["ActorSingletonPlugin", "DistributedActorsTestKit"]
+     ),
 
     // ==== ------------------------------------------------------------------------------------------------------------
     // MARK: Integration Tests - `it_` prefixed
+    
     .target(
         name: "it_ProcessIsolated_escalatingWorkers",
         dependencies: [

@@ -86,7 +86,6 @@ class TraversalTests: XCTestCase {
             "system",
             "receptionist",
             "replicator",
-            "clusterSingleton",
             "user",
             "other",
             "inner-1",

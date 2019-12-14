@@ -12,49 +12,53 @@
 //
 //===----------------------------------------------------------------------===//
 
+import DistributedActors
+
+extension Plugin {
+    public static func singleton(_ settings: ActorSingletonPluginSettings = .default) -> ActorSingletonPlugin {
+        ActorSingletonPlugin(settings: settings)
+    }
+}
+
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Cluster singleton plugin
+// MARK: Actor singleton plugin
 
-public class ClusterSingletonPlugin {
-    /// All `ClusterSingleton`s defined in `PluginsSettings`
-    private let singletons: [String: ClusterSingleton]
+public final class ActorSingletonPlugin {
+    /// All singletons defined in `ActorSingletonPluginSettings`
+    private let singletons: [String: BoxedActorSingleton]
 
-    /// `LazyStart` and the actual `ActorRef` for `ClusterSingletonPluginShell`
-    private var lazyShell: LazyStart<ClusterSingletonPluginShell.Message>?
-    private var ref: ActorRef<ClusterSingletonPluginShell.Message>!
+    private var ref: ActorRef<ActorSingletonShell.Message>!
 
-    /// Creates `ClusterSingletonPlugin` from `settings`.
-    public init(settings: ClusterSingletonPluginSettings) {
+    /// Creates `ActorSingletonPlugin` from `settings`.
+    public init(settings: ActorSingletonPluginSettings) {
         self.singletons = settings.singletons
     }
 
-    /// Returns the `ActorRef` for cluster singleton identified by `name`.
+    /// Returns `ActorRef` for the singleton identified by `name`.
     ///
-    /// The cluster singleton must have been set up via  `PluginsSettings.add(clusterSingleton:)`.
-    public func ref<Message>(name: String) -> Result<ActorRef<Message>, ClusterSingletonError> {
-        guard let singleton = self.singletons[name], let proxy = singleton.proxy as? ActorRef<Message> else {
+    /// The singleton must have been set up via `ActorSingletonPluginSettings`.
+    public func ref<Message>(name: String) -> Result<ActorRef<Message>, ActorSingletonError> {
+        guard let boxed = self.singletons[name] else {
             return .failure(.unknown(name: name))
         }
-        return .success(proxy)
+        return .success(boxed.unsafeUnwrapAs(Message.self).proxy)
     }
 
-    /// Adds `subscriber` to `AllocationStrategy`-relevant events, sent by `ClusterSingletonShell`.
+    /// Adds `subscriber` to `AllocationStrategy`-relevant events, sent by `ActorSingletonShell`.
     internal func subscribeToAllocationStrategyEvents(_ subscriber: ActorRef<AllocationStrategyEvent>) {
         self.ref.tell(.subscribeToAllocationStrategyEvents(subscriber))
     }
 }
 
-extension ClusterSingletonPlugin: Plugin {
-    internal static let name: String = "clusterSingleton"
+extension ActorSingletonPlugin: Plugin {
+    public static let key: PluginKey<ActorSingletonPlugin> = "actorSingleton"
 
-    func onSystemInit(_ system: ActorSystem) -> Result<Void, Error> {
+    public func start(_ system: ActorSystem) -> Result<Void, Error> {
         do {
-            let lazyShell = try! system._prepareSystemActor(ClusterSingletonPluginShell.naming, ClusterSingletonPluginShell().behavior, perpetual: true)
-            self.lazyShell = lazyShell // Woken up later (in `onSystemInitComplete`)
-            self.ref = lazyShell.ref
+            self.ref = try! system.spawn(ActorSingletonShell.naming, ActorSingletonShell().behavior)
 
             try self.singletons.values.forEach { singleton in
-                singleton.proxy = try singleton._spawnProxy(system)
+                try singleton.spawnProxy(system)
             }
             return .success(())
         } catch {
@@ -62,52 +66,60 @@ extension ClusterSingletonPlugin: Plugin {
         }
     }
 
-    func onSystemInitComplete(_: ActorSystem) -> Result<Void, Error> {
-        self.lazyShell?.wakeUp()
-        return .success(())
-    }
-
-    func onSystemShutdown(_: ActorSystem) -> Result<Void, Error> {
+    public func stop(_: ActorSystem) -> Result<Void, Error> {
+        self.ref?.tell(.stop)
         return .success(())
     }
 }
 
-public enum ClusterSingletonError: Error {
-    /// A cluster singleton with `name` already exists.
+public enum ActorSingletonError: Error {
+    /// A singleton with `name` already exists.
     case nameAlreadyExists(String)
-    /// There is no registered cluster singleton identified by `name`.
+    /// There is no registered singleton identified by `name`.
     case unknown(name: String)
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Cluster singleton plugin settings
+// MARK: Settings for `ActorSingletonPlugin`
 
-public struct ClusterSingletonPluginSettings {
-    public static var `default`: ClusterSingletonPluginSettings {
+public struct ActorSingletonPluginSettings {
+    public static var `default`: ActorSingletonPluginSettings {
         .init()
     }
 
-    internal var singletons: [String: ClusterSingleton] = [:]
+    internal var singletons: [String: BoxedActorSingleton] = [:]
 
     public init() {}
 
-    /// Adds a `ClusterSingleton`.
-    internal mutating func add(_ singleton: ClusterSingleton) -> Result<Void, ClusterSingletonError> {
+    /// Adds a `ActorSingleton`.
+    public mutating func add<Message>(_ singleton: ActorSingleton<Message>) -> Result<Void, ActorSingletonError> {
         guard self.singletons[singleton.settings.name] == nil else {
             return .failure(.nameAlreadyExists(singleton.settings.name))
         }
 
-        self.singletons[singleton.settings.name] = singleton
+        self.singletons[singleton.settings.name] = BoxedActorSingleton(singleton)
 
         return .success(())
+    }
+
+    /// Adds a `behavior` as singleton with `settings`.
+    public mutating func add<Message>(settings: ActorSingletonSettings, props: Props = Props(), _ behavior: Behavior<Message>) -> Result<Void, ActorSingletonError> {
+        let singleton = ActorSingleton(settings: settings, props: props, behavior)
+        return self.add(singleton)
+    }
+
+    /// Adds a `behavior` as singleton identified by `name`.
+    public mutating func add<Message>(_ name: String, props: Props = Props(), _ behavior: Behavior<Message>) -> Result<Void, ActorSingletonError> {
+        let singleton = ActorSingleton(name, props: props, behavior)
+        return self.add(singleton)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Shell for `ClusterSingletonPlugin`
+// MARK: Actor singleton shell
 
-internal class ClusterSingletonPluginShell {
-    static let naming: ActorNaming = .unique("clusterSingleton")
+internal class ActorSingletonShell {
+    static let naming: ActorNaming = .unique("actorSingleton")
 
     init() {}
 
@@ -126,9 +138,10 @@ internal class ClusterSingletonPluginShell {
                     subscribers[ref.address] = ref
                     context.watch(ref)
                     context.log.trace("Successfully subscribed [\(ref)] to AllocationStrategyEvent stream")
+                    return .same
+                case .stop:
+                    return .stop
                 }
-
-                return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { context, signal in
                 if subscribers.removeValue(forKey: signal.address) != nil {
                     context.log.trace("Removed subscriber [\(signal.address)] because it terminated")
@@ -142,6 +155,7 @@ internal class ClusterSingletonPluginShell {
 
     enum Message {
         case subscribeToAllocationStrategyEvents(ActorRef<AllocationStrategyEvent>)
+        case stop
     }
 }
 

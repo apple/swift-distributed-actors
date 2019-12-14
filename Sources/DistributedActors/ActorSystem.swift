@@ -58,7 +58,6 @@ public final class ActorSystem {
 
     // initialized during startup
     public var serialization: Serialization!
-    internal var plugins: Plugins!
 
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Receptionist
@@ -213,10 +212,6 @@ public final class ActorSystem {
         // serialization
         self.serialization = Serialization(settings: settings, system: self)
 
-        // plugins
-        self.plugins = Plugins(settings: settings.plugins)
-        self.plugins.onSystemInit(self)
-
         // HACK to allow starting the receptionist, otherwise we'll get initialization errors from the compiler
         self._receptionist = deadLetters.adapted()
 
@@ -261,8 +256,6 @@ public final class ActorSystem {
 
         _ = self.metrics // force init of metrics
 
-        self.plugins.onSystemInitComplete(self)
-
         // Wake up all the delayed actors. This MUST be the last thing to happen
         // in the initialization of the actor system, as we will start receiving
         // messages and all field on the system have to be initialized beforehand.
@@ -273,6 +266,9 @@ public final class ActorSystem {
         }
         lazyCluster?.wakeUp()
         lazyNodeDeathWatcher?.wakeUp()
+
+        /// Starts plugins after the system is fully initialized
+        self.settings.plugins.startAll(self)
     }
 
     public convenience init() {
@@ -335,14 +331,12 @@ public final class ActorSystem {
             return Shutdown(receptacle: receptacle)
         }
 
+        _ = self.shutdownFlag.add(1)
+
         self.serialization = nil
-
-        self.plugins.onSystemShutdown(self)
-        self.plugins = nil
-
         self._cluster = nil
 
-        _ = self.shutdownFlag.add(1)
+        self.settings.plugins.stopAll(self)
 
         DispatchQueue.global().async {
             self.log.log(level: .debug, "SHUTTING DOWN ACTOR SYSTEM [\(self.name)]. All actors will be stopped.", file: #file, function: #function, line: #line)
