@@ -54,15 +54,12 @@ public final class XPCActorTransport: ActorTransport {
 // MARK: XPCDeathWatcher
 
 extension ActorSystem {
-    internal var _xpcMaster: ActorRef<XPCDeathWatcher.Message> {
-        let context: ResolveContext<XPCDeathWatcher.Message> =
+    internal var _xpcMaster: ActorRef<XPCMaster.Message> {
+        let context: ResolveContext<XPCMaster.Message> =
             try! .init(address: .init(path: ActorPath._system.appending("xpc"), incarnation: .perpetual), system: self)
         return self._resolve(context: context)
     }
 }
-
-/// The XPC equivalent of monitoring nodes for crashes.
-typealias XPCDeathWatcher = XPCMaster
 
 /// Responsible for managing watches of xpc services exposed as actors, such that watching them works the same as watching
 /// any other actor. An XPC `INVALID`, after all, equivalent to a `Terminated` signal.

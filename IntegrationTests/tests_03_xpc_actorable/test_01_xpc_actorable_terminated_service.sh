@@ -32,7 +32,6 @@ cd tests_03_xpc_actorable
 
 make
 
-rm -rf out
 ./${app_name}.app/Contents/MacOS/${app_name} > out 2>&1
 cat out
 

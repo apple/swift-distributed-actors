@@ -19,14 +19,6 @@ import Files
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
-///// Keys used in xpc dictionaries sent as messages.
-//public enum ActorableXPCMessageField: String {
-//    case message = "M"
-//    case messageLength = "L"
-//    case serializerId = "S"
-//    case recipientId = "R"
-//}
-
 /// When an XPC service was sent a "real" actor ref and replies to it, we want to capture this logic in this "proxy"
 /// which will make the reply happen over XPC, in such way that the other side can deserialize the actual destination.
 internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, CustomStringConvertible {
