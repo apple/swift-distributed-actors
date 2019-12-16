@@ -20,7 +20,7 @@ import Logging
 import Files
 
 // ==== ------------------------------------------------------------------------------------------------------------
-fileprivate let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
+fileprivate let file = try! Folder(path: "/tmp").file(named: "xpc.txt") // FIXME: remove hacky way to log
 
 fileprivate let _storageLock: Mutex = Mutex()
 fileprivate var _storage: XPCStorage? = nil
@@ -118,7 +118,7 @@ public final class XPCActorableService<A: Actorable> {
         _storageLock.unlock()
 
         // TODO use set_context instead of the global thing perhaps?
-//        sact_xpc_main(&self.onConnectionContext, self.onConnectionCallback, self.onMessageCallback)
+        //        sact_xpc_main(&self.onConnectionContext, self.onConnectionCallback, self.onMessageCallback)
         xpc_main(xpc_connectionHandler)
     }
 

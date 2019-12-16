@@ -6,7 +6,7 @@
 //
 // This source file is part of the Swift Distributed Actors open source project
 //
-// Copyright (c) 2018-2019 Apple Inc. and the Swift Distributed Actors project authors
+// Copyright (c) 2019 Apple Inc. and the Swift Distributed Actors project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -16,38 +16,32 @@
 //
 //===----------------------------------------------------------------------===//
 
-// tag::imports[]
-
 import DistributedActors
-
-// end::imports[]
-
-import DistributedActorsTestKit
-import XCTest
+import XPCActorServiceAPI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for AccessControl.Message
+// MARK: DO NOT EDIT: Codable conformance for GreetingsServiceImpl.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension AccessControl.Message: Codable {
+extension GreetingsServiceImpl.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case greetPublicly
-        case greetInternal
+        case _boxGreetingsServiceProtocol
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
+        case _boxGreetingsServiceProtocol
+
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case .greetPublicly:
-            self = .greetPublicly
-        case .greetInternal:
-            self = .greetInternal
+        case ._boxGreetingsServiceProtocol:
+            let boxed = try container.decode(GeneratedActor.Messages.GreetingsServiceProtocol.self, forKey: CodingKeys._boxGreetingsServiceProtocol)
+            self = .greetingsServiceProtocol(boxed)
 
         }
     }
@@ -55,10 +49,9 @@ extension AccessControl.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .greetPublicly:
-            try container.encode(DiscriminatorKeys.greetPublicly.rawValue, forKey: CodingKeys._case)
-        case .greetInternal:
-            try container.encode(DiscriminatorKeys.greetInternal.rawValue, forKey: CodingKeys._case)
+        case .greetingsServiceProtocol(let boxed):
+            try container.encode(DiscriminatorKeys._boxGreetingsServiceProtocol.rawValue, forKey: CodingKeys._case)
+            try container.encode(boxed, forKey: CodingKeys._boxGreetingsServiceProtocol)
 
         }
     }

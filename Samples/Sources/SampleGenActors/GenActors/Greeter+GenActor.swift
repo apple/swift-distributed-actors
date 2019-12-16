@@ -23,10 +23,10 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated Greeter messages
 extension Greeter {
+
     public enum Message { 
         case greet(name: String) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ extension Greeter {
 
 extension Actor where A.Message == Greeter.Message {
 
-    func greet(name: String) {
+     func greet(name: String) {
         self.ref.tell(.greet(name: name))
     }
  

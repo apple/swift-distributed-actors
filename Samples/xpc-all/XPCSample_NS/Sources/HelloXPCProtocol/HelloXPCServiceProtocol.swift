@@ -17,6 +17,6 @@ import Foundation
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Interface
 
-@objc(HelloXPCServiceProtocol) protocol HelloXPCServiceProtocol {
+@objc(HelloXPCServiceProtocol) public protocol HelloXPCServiceProtocol {
     func hello(withReply reply: @escaping (String) -> Void)
 }

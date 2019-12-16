@@ -13,19 +13,16 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import Files
 import XPCActorServiceAPI
 
-public struct XPCGreetingsService: GreetingsServiceProtocol, Actorable {
-
-    let file = try! Folder(path: "/tmp").file(named: "xpc.txt")
+public struct GreetingsServiceImpl: GreetingsServiceProtocol, Actorable {
 
     // TODO: allow for manually writing the Message enum, for fine control over what to expose as messages?
 
     let context: Myself.Context
 
     public func preStart(context: Myself.Context) {
-        try! self.file.append("\(context.address.path) started.\n")
+        context.log.info("\(context.address.path) started.")
     }
 
     // ==== ------------------------------------------------------------------------------------------------------------
@@ -33,16 +30,16 @@ public struct XPCGreetingsService: GreetingsServiceProtocol, Actorable {
 
 
     public func logGreeting(name: String) throws {
-        try file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))\n")
+        self.context.log.info("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))")
     }
 
     public func greet(name: String) throws -> String {
-        try file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))\n")
+        self.context.log.info("[actor service:\(self.context.system.name)][\(self.context.path)] Received .greet(\(name))")
         return "Greetings, \(name)!"
     }
 
     public func fatalCrash() {
-        try! file.append("[actor service:\(self.context.system.name)][\(self.context.path)] Received .fatalCrash\n")
+        self.context.log.info("[actor service:\(self.context.system.name)][\(self.context.path)] Received .fatalCrash")
         fatalError("Boom, crashing hard!")
     }
 

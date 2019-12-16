@@ -38,6 +38,33 @@ let targets: [PackageDescription.Target] = [
         path: "Sources/SampleGenActors"
     ),
 
+    /* --- xpc actorable examples */
+    .target(
+        name: "XPCActorServiceAPI",
+        dependencies: [
+            "XPCActorable"
+        ],
+        path: "Sources/XPCActorServiceAPI"
+    ),
+    .target(
+        name: "XPCActorServiceProvider",
+        dependencies: [
+            "XPCActorServiceAPI",
+            "XPCActorable",
+            "LoggingOSLog",
+        ],
+        path: "Sources/XPCActorServiceProvider"
+    ),
+    .target(
+        name: "XPCActorCaller", // this is "main"
+        dependencies: [
+            "XPCActorServiceAPI",
+            "XPCActorable",
+            "Files",
+        ],
+        path: "Sources/XPCActorCaller"
+    ),
+
     /* --- tests --- */
     .testTarget(
         name: "SampleGenActorsTests",
@@ -51,10 +78,17 @@ let targets: [PackageDescription.Target] = [
 ]
 
 var dependencies: [Package.Dependency] = [
-    // ~~~ parent ~~~
+    // ~~~~~~~     parent       ~~~~~~~
     .package(path: "../"),
-    // ~~~ only for samples ~~~
+
+    // ~~~~~~~ only for samples ~~~~~~~
+
+    // for metrics examples:
     .package(url: "https://github.com/MrLotU/SwiftPrometheus", .branch("master")),
+
+    // for mocking logging via files in XPC examples
+    .package(url: "https://github.com/JohnSundell/Files", from: "4.0.0"), // MIT license
+    .package(url: "https://github.com/chrisaljoudi/swift-log-oslog.git", from: "0.1.0"), // TODO: waiting for license https://github.com/chrisaljoudi/swift-log-oslog/issues/4
 ]
 
 let package = Package(

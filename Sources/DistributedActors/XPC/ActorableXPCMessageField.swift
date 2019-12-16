@@ -12,11 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
+import XPC
+import Dispatch
 
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Interface
+#if os(macOS)
 
-@objc(HelloXPCServiceProtocol) protocol HelloXPCServiceProtocol {
-    func hello(withReply reply: @escaping (String) -> Void)
+/// Keys used in xpc dictionaries sent as messages.
+public enum ActorableXPCMessageField: String {
+    case message = "M"
+    case messageLength = "ML"
+
+    case serializerId = "S"
+
+    case recipientLength = "RL"
+    case recipientAddress = "R"
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
