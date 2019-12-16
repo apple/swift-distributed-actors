@@ -262,12 +262,11 @@ public final class ActorSystem {
         // messages and all field on the system have to be initialized beforehand.
         lazyReceptionist.wakeUp()
         lazyReplicator.wakeUp()
-        lazyCluster?.wakeUp()
-        lazyNodeDeathWatcher?.wakeUp()
-
         for transport in self.settings.transports {
             transport.onActorSystemStart(system: self)
         }
+        lazyCluster?.wakeUp()
+        lazyNodeDeathWatcher?.wakeUp()
     }
 
     public convenience init() {

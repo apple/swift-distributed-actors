@@ -22,17 +22,52 @@ import Files
 // TODO: Offering such by default may be "tricky" or "wrong"...
 
 extension Result: Codable where Success: Codable, Failure: Error {
+
+    public enum DiscriminatorKeys: String, Codable {
+        case success
+        case failure
+    }
+
+    public enum CodingKeys: CodingKey {
+        case _case
+        case success_value
+        case failure_value
+    }
+
     public func encode(to encoder: Encoder) throws {
         switch self {
         case .success(let success):
-            var container = encoder.singleValueContainer()
-            try container.encode(success)
-        default:
-            fatalError("NOT IMPLEMENTED")
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(DiscriminatorKeys.success, forKey: ._case)
+            try container.encode(success, forKey: .success_value)
+
+        case .failure(let error):
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(DiscriminatorKeys.failure, forKey: ._case)
+            try container.encode(XPCGenericError(error: type(of: error)), forKey: .failure_value)
         }
     }
 
     public  init(from decoder: Decoder) throws {
-        self = .success(try decoder.singleValueContainer().decode(Success.self))
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        switch try container.decode(DiscriminatorKeys.self, forKey: ._case) {
+        case .success:
+            self = .success(try container.decode(Success.self, forKey: .success_value))
+        case .failure:
+            let error = try container.decode(XPCGenericError.self, forKey: .failure_value)
+            self = Result<Success, Error>.failure(error) as! Result<Success, Failure> // FIXME: this is broken...
+        }
+    }
+}
+
+public struct XPCGenericError: Error, Codable {
+    public let reason: String
+
+    public init(reason: String) {
+        self.reason = reason
+    }
+
+    public init<E: Error>(error errorType: E.Type) {
+        self.reason = "\(errorType)"
     }
 }

@@ -44,23 +44,6 @@ let targets: [PackageDescription.Target] = [
     // MARK: XPC
 
     .target(
-        name: "HelloXPCService",
-        dependencies: [
-            "DistributedActors"
-        ]
-    ),
-    .target(
-        name: "HelloXPC",
-        dependencies: [
-            "DistributedActors"
-        ]
-    ),
-
-    // ==== ----------------------------------------------------------------------------------------------------------------
-    // MARK: LibXPC
-
-
-    .target(
         name: "CXPCActorable",
         dependencies: [
             "Files",
@@ -71,41 +54,6 @@ let targets: [PackageDescription.Target] = [
         dependencies: [
             "DistributedActors",
             "CXPCActorable",
-            "Files",
-        ]
-    ),
-
-    // libxpc
-//    .target(
-//        name: "XPCServiceProvider",
-//        dependencies: []
-//    ),
-//    .target(
-//        name: "XPCLibCaller",
-//        dependencies: [
-//        ]
-//    ),
-
-    // xpc + actorable
-    .target(
-        name: "XPCActorServiceAPI",
-        dependencies: [
-            "XPCActorable"
-        ]
-    ),
-    .target(
-        name: "XPCActorServiceProvider",
-        dependencies: [
-            "XPCActorServiceAPI",
-            "XPCActorable",
-            "Files",
-        ]
-    ),
-    .target(
-        name: "XPCActorCaller", // this is "main"
-        dependencies: [
-            "XPCActorServiceAPI",
-            "XPCActorable",
             "Files",
         ]
     ),
@@ -307,20 +255,12 @@ let package = Package(
             targets: ["GenActors"]
         ),
 
-        /* --- XPC --- */
+        /* --- xpc --- */
 
-//        .executable(
-//            name: "HelloXPC",
-//            targets: [
-//                "HelloXPC",
-//            ]
-//        ),
-//        .executable(
-//            name: "HelloXPCService",
-//            targets: [
-//                "HelloXPCService"
-//            ]
-//        ),
+        .library(
+            name: "XPCActorable",
+            targets: ["XPCActorable"]
+        ),
 
         /* ---  performance --- */
         .executable(

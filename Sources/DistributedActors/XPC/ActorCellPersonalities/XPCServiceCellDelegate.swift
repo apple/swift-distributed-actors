@@ -17,22 +17,10 @@ import Dispatch
 
 #if os(macOS)
 
-/// Keys used in xpc dictionaries sent as messages.
-public enum ActorableXPCMessageField: String {
-    case message = "M"
-    case messageLength = "ML"
-
-    case serializerId = "S"
-
-    case recipientLength = "RL"
-    case recipientAddress = "R"
-}
-
 /// Delegates message handling to an XPC Service.
 ///
 /// Messages are serialized as `xpc_dictionary` using the `XPCMessageField` keys, and may be received
 /// by a service implemented in C using `libxpc` or `XPCActorable`.
-// TODO: Support NSXPC?
 internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
 
     /// XPC Connection to the service named `serviceName`
@@ -78,7 +66,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
 
         // register connection with death-watcher (when it is Invalidated, we need to signal Terminated to all watchers)
         let myself = ActorRef<Message>(.delegate(self))
-        system._xpcMaster.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
+        // system._xpcMaster.tell(.xpcRegisterService(self.peer, myself.asAddressable())) // TODO: do we really need it?
 
         xpc_connection_set_event_handler(self.peer, { (xdict: xpc_object_t) in
             var log = ActorLogger.make(system: system, identifier: "\(myself.address.name)")
@@ -108,12 +96,12 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
                     log.error("XPC Error: \(xdict)")
                 }
             default:
-                pprint("MESSAGE [FROM:\(address)]: \(xdict)")
+                log.info("MESSAGE [FROM:\(address)]: \(xdict)")
                 let message: Any
                 do {
                     message = try XPCSerialization.deserializeActorMessage(system, peer: self.peer, xdict: xdict)
                 } catch {
-                    pprint("dropping message. in \(myself.address), error: \(error)")
+                    log.error("Dropping message, due to deserialization error: \(error)")
                     return
                 }
                 
@@ -131,7 +119,6 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
     }
 
     override func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
-
         // TODO offload async the serialization work?
         let xdict: xpc_object_t
         do {
@@ -153,15 +140,15 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
     }
 
     override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
-        self.system.log.info("DROPPING closure sent at \(file):\(line)")
+        fatalError("Attempted to send closure (defined at \(file):\(line)) to XPC Service \(self.address). This is not supported!")
     }
 
     override func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
-        self.system.log.info("DROPPING sub-message \(message) sent at \(file):\(line)")
+        self.system.log.warning("DROPPING sub-message \(message) sent at \(file):\(line)") // FIXME: Should be made to work
     }
 
     override func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
-        self.system.log.info("DROPPING adapted \(message) sent at \(file):\(line)")
+        self.system.log.warning("DROPPING adapted \(message) sent at \(file):\(line)") // FIXME: Should be made to work
     }
 }
 

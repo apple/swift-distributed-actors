@@ -48,6 +48,24 @@ reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 
+struct Me: Actorable {
+    let service: Actor<GreetingsServiceStub>
+
+//    // TODO make these work
+//    func receiveSignal(context: Myself.Context, signal: Signal) -> DeathPactDirective {
+//        switch signal {
+//        case let invalidated as Signals.Terminated:
+//            context.log.warning("The service \(invalidated.address) was TERMINATED") // for an XPC Service this also handles Invalidated
+//
+//        case let invalidated as Signals.XPCConnectionInvalidated:
+//            context.log.warning("The service \(invalidated.address) was INVALIDATED")
+//
+//        case let interrupted as Signals.XPCConnectionInterrupted:
+//            context.log.warning("The service \(invalidated.address) was INTERRUPTED")
+//        }
+//    }
+//
+//}
 
 
 

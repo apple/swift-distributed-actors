@@ -16,6 +16,7 @@ import Foundation
 import Cocoa
 import SwiftUI
 import Dispatch
+import HelloXPCProtocol
 
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -25,22 +26,9 @@ if #available(macOS 10.15, *) {
 
     class AppDelegate: NSObject, NSApplicationDelegate {
 
-
-        struct ContentView: View {
-
-            let text: String
-
-            var body: some View {
-                Text(self.text)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-
-        var window: NSWindow!
-
         func applicationDidFinishLaunching(_ aNotification: Notification) {
 
-            let connection = NSXPCConnection(serviceName: "com.apple.sakkanaHelloXPCService")
+            let connection = NSXPCConnection(serviceName: "com.apple.sakkana.HelloXPCService")
             connection.remoteObjectInterface = NSXPCInterface(with: HelloXPCServiceProtocol.self)
             connection.resume()
 
@@ -56,22 +44,7 @@ if #available(macOS 10.15, *) {
             }
 
             service!.hello() { (greeting) in
-                print("Greeted: \(greeting)")
-
-                DispatchQueue.main.async {
-                    // Create the SwiftUI view that provides the window contents.
-                    let contentView = ContentView(text: greeting)
-
-                    // Create the window and set the content view.
-                    self.window = NSWindow(
-                        contentRect: NSRect(x: 0, y: 0, width: 480, height: 300),
-                        styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                        backing: .buffered, defer: false)
-                    self.window.center()
-                    self.window.setFrameAutosaveName("Main Window")
-                    self.window.contentView = NSHostingView(rootView: contentView)
-                    self.window.makeKeyAndOrderFront(nil)
-                }
+                print("Greeted 3: \(greeting)")
             }
         }
 
@@ -89,10 +62,6 @@ if #available(macOS 10.15, *) {
     NSApplication.shared.delegate = delegate
 
     _ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
-
-//    while 1 == 1 {
-//        ()
-//    }
 } else {
     print("WRONG VERSION")
 }

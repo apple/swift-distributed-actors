@@ -81,6 +81,3 @@ void sact_xpc_main(SactXPCHandlerClosureContext context, SactXPCOnConnectionCall
     xpc_main(sact_xpc_connection_handler);
 }
 
-//void sact_xpc_main(SactXPCHandlerClosureContext context) {
-//    xpc_main(sact_xpc_connection_handler);
-//}

@@ -1,21 +1,14 @@
 SUPPORTFILES=./SupportFiles/
 PLATFORM=x86_64-apple-macosx
 BUILD_DIRECTORY = ./.build/${PLATFORM}/debug
-#APP_DIRECTORY=./XPCLibCaller.app
-#CFBUNDLEEXECUTABLE=XPCLibCaller
-APP_DIRECTORY=./XPCActorCaller.app
-CFBUNDLEEXECUTABLE=XPCActorCaller
+APP_DIRECTORY=./HelloXPC.app
+CFBUNDLEEXECUTABLE=HelloXPC
 
-# C service impl
-#XPCEXECUTABLE=XPCServiceProvider
-
-# Actor service impl
-XPCEXECUTABLE=XPCActorServiceProvider
+XPCEXECUTABLE=HelloXPCService
 
 install: build copySupportFiles
 
 build:
-	swift run GenActors
 	swift build
 
 copySupportFiles:

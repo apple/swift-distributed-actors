@@ -17,33 +17,32 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import Files
 import XPCActorServiceAPI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated XPCGreetingsService messages 
+// MARK: DO NOT EDIT: Generated GreetingsServiceImpl messages 
 
-/// DO NOT EDIT: Generated XPCGreetingsService messages
-extension XPCGreetingsService {
+/// DO NOT EDIT: Generated GreetingsServiceImpl messages
+extension GreetingsServiceImpl {
 
     public enum Message { 
         case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
     }
     
-    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<XPCGreetingsService>
-    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> XPCGreetingsService.Message {
+    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsServiceImpl>
+    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsServiceImpl.Message {
         .greetingsServiceProtocol(message)
     } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated XPCGreetingsService behavior
+// MARK: DO NOT EDIT: Generated GreetingsServiceImpl behavior
 
-extension XPCGreetingsService {
+extension GreetingsServiceImpl {
 
-    public static func makeBehavior(instance: XPCGreetingsService) -> Behavior<Message> {
+    public static func makeBehavior(instance: GreetingsServiceImpl) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<XPCGreetingsService>.Context(underlying: _context)
+            let context = Actor<GreetingsServiceImpl>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -70,7 +69,7 @@ extension XPCGreetingsService {
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<XPCGreetingsService>.Context(underlying: _context)
+                let context = Actor<GreetingsServiceImpl>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -93,8 +92,8 @@ extension XPCGreetingsService {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for XPCGreetingsService
+// MARK: Extend Actor for GreetingsServiceImpl
 
-extension Actor where A.Message == XPCGreetingsService.Message {
+extension Actor where A.Message == GreetingsServiceImpl.Message {
 
 }
