@@ -76,7 +76,7 @@ extension GreetingsServiceImpl {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -85,7 +85,9 @@ extension GreetingsServiceImpl {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    pprint("signal = \(signal)")
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }

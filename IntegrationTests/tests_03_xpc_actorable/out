@@ -1,0 +1,3 @@
+2019-12-17T20:45:15+0900 info: [it_XPCActorable_echo][XPCActorTransport.swift:85][thread:1533129][/system/xpc] XPC transport initialized.
+2019-12-17T20:45:15+0900 info: [it_XPCActorable_echo][XPCServiceCellDelegate.swift:134][thread:1533113] Sending to xpc://@localhost:1/xpc/com.apple.sakkana.XPCLibService: xPCEchoServiceProtocol((extension in it_XPCActorable_echo_api):DistributedActors.GeneratedActor.Messages.XPCEchoServiceProtocol.letItCrash)
+2019-12-17T20:45:15+0900 info: [it_XPCActorable_echo][ActorableWatcher.swift:42][thread:1533133][/user/watcher] Received receiveSignal(context:signal:): XPCConnectionInterrupted(xpc://@localhost:1/xpc/com.apple.sakkana.XPCLibService, description: "Connection Interrupted")

@@ -315,7 +315,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         case .terminated(let ref, let existenceConfirmed, let nodeTerminated):
             let terminated = Signals.Terminated(address: ref.address, existenceConfirmed: existenceConfirmed, nodeTerminated: nodeTerminated)
-            try self.interpretTerminatedSignal(who: ref, terminated: terminated)
+            try self.interpretTerminatedSignal(who: ref.address, terminated: terminated)
 
         case .childTerminated(let ref, let circumstances):
             switch circumstances {
@@ -335,6 +335,9 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         case .nodeTerminated(let remoteNode):
             self.interpretNodeTerminated(remoteNode)
+
+        case .carrySignal(let signal):
+            try self.interpretCarrySignal(signal)
 
         case .stop:
             try self.interpretStop()
@@ -782,9 +785,9 @@ extension ActorShell {
     ///
     /// Mutates actor cell behavior.
     /// May cause actor to terminate upon error or returning .stop etc from `.signalHandling` user code.
-    @inlinable internal func interpretTerminatedSignal(who deadRef: AddressableActorRef, terminated: Signals.Terminated) throws {
+    @inlinable internal func interpretTerminatedSignal(who dead: ActorAddress, terminated: Signals.Terminated) throws {
         #if SACT_TRACE_ACTOR_SHELL
-        self.log.info("Received terminated: \(deadRef)")
+        self.log.info("Received terminated: \(dead)")
         #endif
 
         guard self.deathWatch.receiveTerminated(terminated) else {
@@ -801,8 +804,8 @@ extension ActorShell {
         switch next.underlying {
         case .unhandled:
             throw DeathPactError.unhandledDeathPact(
-                terminated: deadRef, myself: self.myself.asAddressable(),
-                message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(deadRef.address)]. " +
+                dead, myself: self.myself.asAddressable(),
+                message: "DeathPactError: Unhandled [\(terminated)] signal about watched actor [\(dead)]. " +
                     "Handle the `.terminated` signal in `.receiveSignal()` in order react to this situation differently than termination."
             )
         default:
@@ -822,6 +825,24 @@ extension ActorShell {
         #endif
 
         self.deathWatch.receiveNodeTerminated(terminatedNode, myself: self.asAddressable)
+    }
+
+    /// Interpret a carried signal directly -- those are potentially delivered by plugins or custom transports.
+    /// They MAY share semantics with `Signals.Terminated`, in which case they would be interpreted accordingly.
+    @inlinable
+    internal func interpretCarrySignal(_ signal: Signal) throws {
+        #if SACT_TRACE_ACTOR_SHELL
+        self.log.info("Received carried signal: \(signal)")
+        #endif
+
+        if let terminated = signal as? Signals.Terminated {
+            // it is a Terminated sub-class, and thus shares semantics with it,
+            // e.g. an XPC Service being Invalidated.
+            try self.interpretTerminatedSignal(who: terminated.address, terminated: terminated)
+        } else {
+            let next: Behavior<Message> = try self.supervisor.interpretSupervised(target: self.behavior, context: self, signal: signal)
+            try self.becomeNext(behavior: next)
+        }
     }
 
     @inlinable
@@ -846,7 +867,7 @@ extension ActorShell {
 
         // next we may apply normal deathWatch logic if the child was being watched
         if self.deathWatch.isWatching(terminatedRef.address) {
-            return try self.interpretTerminatedSignal(who: terminatedRef, terminated: terminated)
+            return try self.interpretTerminatedSignal(who: terminatedRef.address, terminated: terminated)
         } else {
             // otherwise we deliver the message, however we do not terminate ourselves if it remains unhandled
 

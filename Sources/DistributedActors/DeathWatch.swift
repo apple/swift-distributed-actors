@@ -173,5 +173,5 @@ internal struct DeathWatch<Message> {
 // MARK: Errors
 
 public enum DeathPactError: Error {
-    case unhandledDeathPact(terminated: AddressableActorRef, myself: AddressableActorRef, message: String)
+    case unhandledDeathPact(ActorAddress, myself: AddressableActorRef, message: String)
 }

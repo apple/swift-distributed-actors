@@ -68,16 +68,15 @@ extension ActorSystem {
 final class XPCMaster {
 
     // TODO: key it by XPC ID
-    private var xpcWatchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
-    // var services: [XPCConnectionBox: AddressableActorRef] = [:]
-    private var serviceTombstones: [xpc_connection_t] = []
+    private var watchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
+    // private var serviceTombstones: [xpc_connection_t] = [] // TODO: Think if we need tombstones, or can rely on XPC doing the right thing
 
     enum Message {
         case xpcRegisterService(xpc_connection_t, AddressableActorRef)
         case xpcConnectionInvalidated(AddressableActorRef)
         case xpcConnectionInterrupted(AddressableActorRef)
         case xpcActorWatched(watchee: AddressableActorRef, watcher: AddressableActorRef)
-        // TODO: unwatch
+        case xpcActorUnwatched(watchee: AddressableActorRef, watcher: AddressableActorRef)
         case watcherTerminated(AddressableActorRef)
     }
 
@@ -92,32 +91,27 @@ final class XPCMaster {
                     context.log.info("Registered: \(ref)")
 
                 case .xpcConnectionInterrupted(let serviceRef):
-//                    let key = XPCConnectionBox(connection: connection)
-//                    guard let serviceRef = self.services.removeValue(forKey: key) else {
-//                        // TODO: check the tombstones
-//                        return .same
-//                    }
+                    // Unlike `Invalidated`/`Terminated` an `Interrupted` connection means that the service may be restarted
+                    // (by launchd) and still remain valid. Thus we do NOT remove the watchers from the dictionary.
+                    guard let watchers: Set<AddressableActorRef> = self.watchers[serviceRef] else {
+                        return .same
+                    }
 
-                    // FIXME: send the proper lifecycle signals -- the XPCSignals
-                    if let watchers: Set<AddressableActorRef> = self.xpcWatchers.removeValue(forKey: serviceRef) {
-                        watchers.forEach { (watcher: AddressableActorRef) in
-                            watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
-                        }
+                    let interrupted = SystemMessage.carrySignal(Signals.XPC.XPCConnectionInterrupted(address: serviceRef.address, description: "Connection Interrupted"))
+                    watchers.forEach { (watcher: AddressableActorRef) in
+                        watcher.sendSystemMessage(interrupted) // TODO: carry description from transport
                     }
 
                 case .xpcConnectionInvalidated(let serviceRef):
-//                    let key = XPCConnectionBox(connection: connection)
-//                    guard let serviceRef = self.services.removeValue(forKey: key) else {
-//                         // TODO: check the tombstones
-//                        return .same
-//                    }
-
                     // FIXME: send the proper lifecycle signals -- the XPCSignals
-                    if let watchers: Set<AddressableActorRef> = self.xpcWatchers.removeValue(forKey: serviceRef) {
-                        watchers.forEach { (watcher: AddressableActorRef) in
-                            watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
-                        }
+                    guard let watchers: Set<AddressableActorRef> = self.watchers.removeValue(forKey: serviceRef) else {
+                        return .same
                     }
+
+                    let invalidated = SystemMessage.carrySignal(Signals.XPC.XPCConnectionInvalidated(address: serviceRef.address, description: "Connection Interrupted"))
+                    watchers.forEach { (watcher: AddressableActorRef) in
+                            watcher.sendSystemMessage(invalidated)
+                        }
 
                 case .xpcActorWatched(let watchee, let watcher):
 //                    guard !self.nodeTombstones.contains(remoteNode) else {
@@ -125,10 +119,18 @@ final class XPCMaster {
 //                        return
 //                    }
 
-                    var existingWatchers = self.xpcWatchers[watchee] ?? []
+                    var existingWatchers = self.watchers[watchee] ?? []
                     existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
 
-                    self.xpcWatchers[watchee] = existingWatchers
+                    self.watchers[watchee] = existingWatchers
+
+                case .xpcActorUnwatched(let watchee, let watcher):
+                    guard let watchers: Set<AddressableActorRef> = self.watchers[watchee] else {
+                        // seems that watchee has no watchers, thus no need to remove this one.
+                        // Realistically this should not happen in normal operations, but nothing is stopping people from issuing many `unwatch()`
+                        // calls on the same reference after all, thus we only silently ignore them here.
+                        return .same
+                    }
 
                 case .watcherTerminated(let watcher):
                     // FIXME: remove watcher

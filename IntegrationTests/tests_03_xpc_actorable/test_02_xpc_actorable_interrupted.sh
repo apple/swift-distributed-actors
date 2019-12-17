@@ -32,11 +32,12 @@ cd tests_03_xpc_actorable
 
 make
 
-./${app_name}.app/Contents/MacOS/${app_name} > out 2>&1
+rm -rf out
+./${app_name}.app/Contents/MacOS/${app_name} letItCrash > out 2>&1
 cat out
 
-if [[ $(cat out | grep 'success("echo:Capybara")' | wc -l) -ne '1' ]]; then
-    printf "${RED}ERROR: The application did not receive a successful reply!\n"
+if [[ $(cat out | grep '\[/user/watcher\] Received receiveSignal(context:signal:): XPCConnectionInterrupted(xpc://' | wc -l) -ne '1' ]]; then
+    printf "${RED}ERROR: The application did receive a connection interrupted when it was expected successful reply!\n"
 
     exit -1
 fi

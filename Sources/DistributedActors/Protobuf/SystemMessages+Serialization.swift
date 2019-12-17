@@ -94,6 +94,8 @@ extension SystemMessage: InternalProtobufRepresentable {
             terminated.addressTerminated = addressTerminated
             proto.payload = .terminated(terminated)
 
+        case .carrySignal(let signal):
+            throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.carrySignal(\(signal))")
         case .start:
             throw SerializationError.mayNeverBeSerialized(type: "SystemMessage.start")
         case .nodeTerminated:

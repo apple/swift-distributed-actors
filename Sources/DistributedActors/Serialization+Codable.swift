@@ -70,10 +70,6 @@ public enum ActorCoding {
 
 extension ActorRef {
     public func encode(to encoder: Encoder) throws {
-        guard let context = encoder.actorSerializationContext else {
-            throw ActorCoding.CodingError.missingActorSerializationContext(ActorRef<Message>.self, details: "While encoding [\(self)], using [\(encoder)]")
-        }
-        
         var container = encoder.singleValueContainer()
         try container.encode(self.address)
     }

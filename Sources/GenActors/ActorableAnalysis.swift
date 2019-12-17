@@ -282,7 +282,12 @@ extension GatherActorables {
     /// We skip generating messages for methods prefixed like this, regardless if they are public etc.
     /// We DO allow `_` methods and treat them as "this is only for the actor to message _itself_
     static let skipMethodsStartingWith = ["__", "$"]
-    static let skipMethods = ["preStart", "postStop", "receiveTerminated"] // TODO: more specific with param type matching?
+    static let skipMethods = [
+        "preStart",
+        "postStop",
+        "receiveTerminated",
+        "receiveSignal"
+    ] // TODO: more specific with param type matching?
 
     static func shouldSkipGenFor(func node: FunctionDeclSyntax) -> Bool {
         // Skip all "internal" methods

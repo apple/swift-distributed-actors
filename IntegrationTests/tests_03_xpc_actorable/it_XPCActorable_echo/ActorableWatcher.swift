@@ -14,22 +14,32 @@
 
 import DistributedActors
 import XPCActorable
+import Foundation
 import it_XPCActorable_echo_api
-import Files
 
-fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
-
-public struct XPCEchoService: Actorable, XPCEchoServiceProtocol {
+struct ActorableWatcher: Actorable {
 
     let context: Myself.Context
+    let service: Actor<XPCEchoServiceProtocolStub>
 
-    public func echo(string: String) -> String {
-        try! _file.append("\(self.context.address) got \(string)\n")
-        return "echo:\(string)"
+    init(context: Myself.Context, service: Actor<XPCEchoServiceProtocolStub>) {
+        self.context = context
+        self.service = service
+
+        context.watch(service)
     }
 
-    public func letItCrash() {
-        fatalError("Let it crash!")
+    func noop() {
+        // do nothing
     }
 
+    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
+        context.log.info("Received \(#function): \(terminated)")
+        return .stop
+    }
+
+    func receiveSignal(context: Myself.Context, signal: Signal) {
+        context.log.info("Received \(#function): \(signal)")
+        exit(0)
+    }
 }
