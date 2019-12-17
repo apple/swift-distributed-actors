@@ -37,7 +37,7 @@ extension Signals {
     /// silently disposed of. This error will only be given to peer connections.
     ///
     /// - SeeAlso: `XPC_ERROR_CONNECTION_INTERRUPTED` (`connection.h`)
-    public public struct XPCConnectionInterrupted: Signal, CustomStringConvertible {
+    public struct XPCConnectionInterrupted: Signal, CustomStringConvertible {
         public let address: AddressableActorRef
         public let _description: String
 
