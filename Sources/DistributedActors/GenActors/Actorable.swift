@@ -68,7 +68,12 @@ public protocol Actorable {
     // MARK: Receiving Signals
 
     /// Received when a watched actor terminates.
-    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective
+    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) throws -> DeathPactDirective
+
+    /// Received when other Signals are delivered to the actor.
+    /// While PreStart, PostStop and Terminated are signals as well, they are common enough to deserve their custom hooks.
+    /// This signal handler is able to handle all other signals, including custom ones which plugins or transports may have to use to communicate with an actor.
+    func receiveSignal(context: Myself.Context, signal: Signal) throws
 }
 
 extension Actorable {
@@ -88,9 +93,13 @@ extension Actorable {
 }
 
 extension Actorable {
-    public func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
+    public func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) throws -> DeathPactDirective {
         // DeathWatch semantics are implemented in the behavior runtime, so we remain compatible with them here.
         .unhandled
+    }
+
+    public func receiveSignal(context: Myself.Context, signal: Signal) throws {
+        // do nothing by default
     }
 }
 

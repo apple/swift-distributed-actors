@@ -33,7 +33,7 @@ cd tests_03_xpc_actorable
 make
 
 rm -rf out
-./${app_name}.app/Contents/MacOS/${app_name} > out 2>&1
+./${app_name}.app/Contents/MacOS/${app_name} echo > out 2>&1
 cat out
 
 if [[ $(cat out | grep 'success("echo:Capybara")' | wc -l) -ne '1' ]]; then

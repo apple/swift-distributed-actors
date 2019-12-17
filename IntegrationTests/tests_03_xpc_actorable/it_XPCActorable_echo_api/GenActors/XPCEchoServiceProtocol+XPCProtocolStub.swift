@@ -20,32 +20,23 @@ import DistributedActors
 import XPCActorable
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated XPCEchoServiceProtocol messages 
+// MARK: DO NOT EDIT: Generated XPCEchoServiceProtocolStub for XPCService consumers of the XPCEchoServiceProtocol XPCActorableProtocol
 
-extension GeneratedActor.Messages {
-    public enum XPCEchoServiceProtocol { 
-        case echo(string: String, _replyTo: ActorRef<String>) 
-        case letItCrash  
+/// DO NOT EDIT: Generated XPCEchoServiceProtocol messages
+///
+/// This type serves only as "stub" in order for callers of an XPCService implementing XPCEchoServiceProtocol to be 
+/// able to express `Actor<XPCEchoServiceProtocol>`.
+public struct XPCEchoServiceProtocolStub: Actorable, XPCEchoServiceProtocol {
+    private init() {
+        // Just a Stub, no-one should ever be instantiating it.
     }
-}
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Boxing XPCEchoServiceProtocol for any inheriting actorable `A` 
 
-extension Actor where A: XPCEchoServiceProtocol {
-
-    public func echo(string: String) -> Reply<String> {
-        // TODO: FIXME perhaps timeout should be taken from context
-        Reply(nioFuture:
-            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                A._boxXPCEchoServiceProtocol(.echo(string: string, _replyTo: _replyTo))
-            }.nioFuture
-        )
+    public func echo(string: String) -> String {
+        fatalError("Function STUB for XPCActorableProtocol [echo], function: \(#function).")
     }
- 
 
     public func letItCrash() {
-        self.ref.tell(A._boxXPCEchoServiceProtocol(.letItCrash))
+        fatalError("Function STUB for XPCActorableProtocol [letItCrash], function: \(#function).")
     }
- 
 
 }

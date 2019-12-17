@@ -73,7 +73,7 @@ internal final class ActorRefAdapter<To>: AbstractAdapter {
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
             self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
-        case .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
+        case .carrySignal, .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
             () // ignore all other messages // TODO: why?
         }
     }
@@ -270,7 +270,7 @@ internal final class SubReceiveAdapter<Message, OwnerMessage>: AbstractAdapter {
             self.removeWatcher(watchee: watchee, watcher: watcher)
         case .terminated(let ref, _, _):
             self.removeWatcher(watchee: self.myself.asAddressable(), watcher: ref) // note: this was nice, always is correct after all now
-        case .nodeTerminated, .childTerminated, .resume, .start, .stop, .tombstone:
+        case .nodeTerminated, .childTerminated, .carrySignal, .resume, .start, .stop, .tombstone:
             () // ignore all other messages // TODO: why?
         }
     }

@@ -57,6 +57,10 @@ internal enum SystemMessage: Equatable {
     ///     or the node hosting the actor has been downed, thus we assumed the actor has died as well, but we cannot prove it did).
     case terminated(ref: AddressableActorRef, existenceConfirmed: Bool, addressTerminated: Bool) // TODO: more additional info? // TODO: send terminated PATH, not ref, sending to it does not make sense after all
 
+    /// Extension point for transports or other plugins which may need to send custom signals to actors.
+    /// The carried signal will be delivered as-is to the recipient actor.
+    case carrySignal(Signal)
+
     /// Child actor has terminated. This system message by itself does not necessarily cause a DeathPact and termination of the parent.
     /// If the message carries an `escalated` failure, the failure should apply to the parent as well, potentially tearing it down as well.
     case childTerminated(ref: AddressableActorRef, TerminationCircumstances)
@@ -144,6 +148,7 @@ extension SystemMessage {
         case (.start, _),
              (.watch, _),
              (.unwatch, _),
+             (.carrySignal, _),
              (.tombstone, _),
              (.terminated, _),
              (.childTerminated, _),
