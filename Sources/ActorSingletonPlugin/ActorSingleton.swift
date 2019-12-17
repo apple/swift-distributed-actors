@@ -28,7 +28,7 @@ import DistributedActors
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
 ///    the singleton allocation.
-public class ActorSingleton<Message> {
+public final class ActorSingleton<Message>: Plugin {
     /// Settings for the `ActorSingleton`
     public let settings: ActorSingletonSettings
 
@@ -38,9 +38,11 @@ public class ActorSingleton<Message> {
     public let behavior: Behavior<Message>
 
     /// The manager ref
+    /// TODO: !-safe because
     internal private(set) var manager: ActorRef<ActorSingletonManager<Message>.ManagerMessage>!
 
     /// The proxy ref
+    /// TODO: !-safe because
     internal private(set) var proxy: ActorRef<Message>!
 
     /// Defines a `behavior` as singleton with `settings`.
@@ -57,18 +59,48 @@ public class ActorSingleton<Message> {
     }
 
     /// Spawns `ActorSingletonProxy` and associated actors (e.g., `ActorSingleManager`).
-    internal func spawnProxy(_ system: ActorSystem) throws {
+    internal func spawnAll(_ system: ActorSystem) throws {
         let allocationStrategy = self.settings.allocationStrategy.make(system.settings.cluster, self.settings)
-        let manager = try system.spawn(
-            "$singletonManager-\(self.settings.name)",
-            ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior
-        )
-        self.manager = manager
 
-        self.proxy = try system.spawn(
-            "$singletonProxy-\(self.settings.name)",
-            ActorSingletonProxy(settings: self.settings, manager: manager).behavior
+        // TODO: only spawn the Manager if we are a node that can potentially host the singleton
+        self.manager = try system._spawnSystemActor(
+            "singletonManager-\(self.settings.name)", // TODO: $ is not allowed for user spawned thus this would fail with $ prefix
+             ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior
         )
+
+        self.proxy = try system._spawnSystemActor(
+            "singletonProxy-\(self.settings.name)",  // TODO: $ is not allowed for user spawned thus this would fail with $ prefix
+            ActorSingletonProxy(settings: self.settings, manager: self.manager).behavior
+        )
+    }
+}
+
+// ==== ----------------------------------------------------------------------------------------------------------------
+// MARK: Implement Plugin protocol
+
+extension ActorSingleton {
+
+    public static func pluginKey(name: String) -> PluginKey<ActorSingleton<Message>> {
+        PluginKey<ActorSingleton<Message>>(plugin: "$actorSingleton").makeSub(name)
+    }
+
+    public var key: PluginKey<ActorSingleton<Message>> {
+        Self.pluginKey(name: self.settings.name)
+    }
+
+    public func start(_ system: ActorSystem) -> Result<Void, Error> {
+        do {
+            try self.spawnAll(system)
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    public func stop(_ system: ActorSystem) -> Result<Void, Error> {
+        // TODO: stop the manager gracefully; it could initiate a hand over here
+        // TODO: stop the proxy?
+        return .success(())
     }
 }
 
@@ -76,7 +108,7 @@ public class ActorSingleton<Message> {
 // MARK: Type-erased `ActorSingleton`
 
 internal protocol AnyActorSingleton {
-    func spawnProxy(_ system: ActorSystem) throws
+    func spawnAll(_ system: ActorSystem) throws
 }
 
 extension ActorSingleton: AnyActorSingleton {}
@@ -88,8 +120,8 @@ internal struct BoxedActorSingleton: AnyActorSingleton {
         self.underlying = actorSingleton
     }
 
-    internal func spawnProxy(_ system: ActorSystem) throws {
-        try self.underlying.spawnProxy(system)
+    internal func spawnAll(_ system: ActorSystem) throws {
+        try self.underlying.spawnAll(system)
     }
 
     internal func unsafeUnwrapAs<Message>(_: Message.Type) -> ActorSingleton<Message> {

@@ -51,11 +51,9 @@ internal class ActorSingletonManager<Message> {
 
     var behavior: Behavior<ManagerMessage> {
         .setup { context in
-            // This is how the manager receives events relevant to `AllocationStrategy`
-            let allocationStrategyEventSubReceive = context.subReceive(AllocationStrategyEvent.self) { event in
-                try self.receiveAllocationStrategyEvent(context, event)
-            }
-            context.system.singleton.subscribeToAllocationStrategyEvents(allocationStrategyEventSubReceive)
+            context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
+                try self.receiveAllocationStrategyEvent(context, .clusterEvent(event))
+            })
 
             return Behavior<ManagerMessage>.receiveMessage { message in
                 switch message {
