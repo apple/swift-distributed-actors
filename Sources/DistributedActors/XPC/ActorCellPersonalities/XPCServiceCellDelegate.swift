@@ -84,11 +84,11 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
             case XPC_TYPE_ERROR:
                 if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != nil {
                     if String(cString: errorDescription).contains("Connection interrupted") {
-                        log.error("XPC Interrupted Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInterrupted(self.peer)) // TODO maybe rather pass the ref?
+                        // log.error("XPC Interrupted Error: \(xdict)")
+                        system._xpcMaster.tell(.xpcConnectionInterrupted(myself.asAddressable())) // TODO maybe rather pass the ref?
                     } else if String(cString: errorDescription).contains("Connection invalid") { // TODO: Verify this... (or rather, replace with switches)
-                        log.error("XPC Invalid Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInvalidated(self.peer)) // TODO maybe rather pass the ref?
+                        // log.error("XPC Invalid Error: \(xdict)")
+                        system._xpcMaster.tell(.xpcConnectionInvalidated(myself.asAddressable())) // TODO maybe rather pass the ref?
                     } else {
                         log.error("XPC Error: \(xdict)")
                     }
@@ -136,7 +136,12 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
     }
 
     override func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
-        self.system.log.info("DROPPING system message \(message) sent at \(file):\(line)")
+        switch message {
+        case .watch(let watchee, let watcher):
+            self.system._xpcMaster.tell(.xpcActorWatched(watchee: watchee, watcher: watcher))
+        default: // FIXME handle also unwatch and others, including terminated
+            self.system.log.warning("DROPPING SYSTEM MESSAGE in \(self.address): \(message)")
+        }
     }
 
     override func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {

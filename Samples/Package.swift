@@ -50,7 +50,6 @@ let targets: [PackageDescription.Target] = [
         name: "XPCActorServiceProvider",
         dependencies: [
             "XPCActorServiceAPI",
-            "XPCActorable",
             "LoggingOSLog",
         ],
         path: "Sources/XPCActorServiceProvider"
@@ -59,7 +58,6 @@ let targets: [PackageDescription.Target] = [
         name: "XPCActorCaller", // this is "main"
         dependencies: [
             "XPCActorServiceAPI",
-            "XPCActorable",
             "Files",
         ],
         path: "Sources/XPCActorCaller"

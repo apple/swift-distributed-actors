@@ -13,35 +13,33 @@
 // See CONTRIBUTORS.md for the list of Swift Distributed Actors project authors
 //
 // SPDX-License-Identifier: Apache-2.0
-//
+//sa
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
+import XPC
+import XPCActorable
+import XPCActorServiceAPI
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceStub messages 
+// MARK: DO NOT EDIT: Generated Me messages 
 
-/// DO NOT EDIT: Generated GreetingsServiceStub messages
-extension GreetingsServiceStub {
+/// DO NOT EDIT: Generated Me messages
+extension Me {
 
     public enum Message { 
-        case greetingsServiceProtocol(/*TODO: MODULE.*/GeneratedActor.Messages.GreetingsServiceProtocol) 
+        case noop 
     }
-    
-    /// Performs boxing of GeneratedActor.Messages.GreetingsServiceProtocol messages such that they can be received by Actor<GreetingsServiceStub>
-    public static func _boxGreetingsServiceProtocol(_ message: GeneratedActor.Messages.GreetingsServiceProtocol) -> GreetingsServiceStub.Message {
-        .greetingsServiceProtocol(message)
-    } 
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated GreetingsServiceStub behavior
+// MARK: DO NOT EDIT: Generated Me behavior
 
-extension GreetingsServiceStub {
+extension Me {
 
-    public static func makeBehavior(instance: GreetingsServiceStub) -> Behavior<Message> {
+    public static func makeBehavior(instance: Me) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<GreetingsServiceStub>.Context(underlying: _context)
+            let context = Actor<Me>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -49,26 +47,14 @@ extension GreetingsServiceStub {
             return Behavior<Message>.receiveMessage { message in
                 switch message { 
                 
+                case .noop:
+                    instance.noop()
+ 
                 
-                case .greetingsServiceProtocol(.logGreeting(let name)):
-                    try instance.logGreeting(name: name)
- 
-                case .greetingsServiceProtocol(.greet(let name, let _replyTo)):
-                    do {
-                    let result = try instance.greet(name: name)
-                    _replyTo.tell(.success(result))
-                    } catch {
-                        context.log.warning("Error thrown while handling [\(message)], error: \(error)")
-                        _replyTo.tell(.failure(error))
-                    }
- 
-                case .greetingsServiceProtocol(.fatalCrash):
-                    instance.fatalCrash()
- 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<GreetingsServiceStub>.Context(underlying: _context)
+                let context = Actor<Me>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
@@ -91,8 +77,13 @@ extension GreetingsServiceStub {
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for GreetingsServiceStub
+// MARK: Extend Actor for Me
 
-extension Actor where A.Message == GreetingsServiceStub.Message {
+extension Actor where A.Message == Me.Message {
+
+     func noop() {
+        self.ref.tell(.noop)
+    }
+ 
 
 }

@@ -36,7 +36,7 @@ public final class XPCActorTransport: ActorTransport {
     }
 
     override func onActorSystemStart(system: ActorSystem) {
-        _ = try! system._spawnSystemActor("xpc", XPCMaster().behavior)
+        _ = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
     }
 
     override func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
@@ -67,57 +67,77 @@ extension ActorSystem {
 /// This corresponds to the `NodeDeathWatcher` for clustered actors.
 final class XPCMaster {
 
-    var watchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
-    var services: [XPCConnectionBox: AddressableActorRef] = [:]
-    var serviceTombstones: [xpc_connection_t] = []
+    // TODO: key it by XPC ID
+    private var xpcWatchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
+    // var services: [XPCConnectionBox: AddressableActorRef] = [:]
+    private var serviceTombstones: [xpc_connection_t] = []
 
     enum Message {
         case xpcRegisterService(xpc_connection_t, AddressableActorRef)
-        case xpcConnectionInvalidated(xpc_connection_t)
-        case xpcConnectionInterrupted(xpc_connection_t)
+        case xpcConnectionInvalidated(AddressableActorRef)
+        case xpcConnectionInterrupted(AddressableActorRef)
+        case xpcActorWatched(watchee: AddressableActorRef, watcher: AddressableActorRef)
+        // TODO: unwatch
         case watcherTerminated(AddressableActorRef)
     }
 
     var behavior: Behavior<Message> {
-        .receive { context, message in
-            switch message {
-            case .xpcRegisterService(let connection, let ref):
-                self.services[.init(connection: connection)] = ref
+        return .setup { context in
+            context.log.info("XPC transport initialized.")
 
-            case .xpcConnectionInterrupted(let connection):
-                let key = XPCConnectionBox(connection: connection)
-                guard let serviceRef = self.services.removeValue(forKey: key) else {
-                    // TODO: check the tombstones
-                    return .same
-                }
+            return .receiveMessage { message in
+                switch message {
+                case .xpcRegisterService(let connection, let ref):
+                    // self.services[.init(connection: connection)] = ref
+                    context.log.info("Registered: \(ref)")
 
-                // FIXME: send the proper lifecycle signals -- the XPCSignals
-                if let watchers: Set<AddressableActorRef> = self.watchers.removeValue(forKey: serviceRef) {
-                    watchers.forEach { (watcher: AddressableActorRef) in
-                        watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
+                case .xpcConnectionInterrupted(let serviceRef):
+//                    let key = XPCConnectionBox(connection: connection)
+//                    guard let serviceRef = self.services.removeValue(forKey: key) else {
+//                        // TODO: check the tombstones
+//                        return .same
+//                    }
+
+                    // FIXME: send the proper lifecycle signals -- the XPCSignals
+                    if let watchers: Set<AddressableActorRef> = self.xpcWatchers.removeValue(forKey: serviceRef) {
+                        watchers.forEach { (watcher: AddressableActorRef) in
+                            watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
+                        }
                     }
-                }
 
-            case .xpcConnectionInvalidated(let connection):
-                let key = XPCConnectionBox(connection: connection)
-                guard let serviceRef = self.services.removeValue(forKey: key) else {
-                    // TODO: check the tombstones
-                    return .same
-                }
+                case .xpcConnectionInvalidated(let serviceRef):
+//                    let key = XPCConnectionBox(connection: connection)
+//                    guard let serviceRef = self.services.removeValue(forKey: key) else {
+//                         // TODO: check the tombstones
+//                        return .same
+//                    }
 
-                // FIXME: send the proper lifecycle signals -- the XPCSignals
-                if let watchers: Set<AddressableActorRef> = self.watchers.removeValue(forKey: serviceRef) {
-                    watchers.forEach { (watcher: AddressableActorRef) in
-                        watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
+                    // FIXME: send the proper lifecycle signals -- the XPCSignals
+                    if let watchers: Set<AddressableActorRef> = self.xpcWatchers.removeValue(forKey: serviceRef) {
+                        watchers.forEach { (watcher: AddressableActorRef) in
+                            watcher.sendSystemMessage(.terminated(ref: serviceRef, existenceConfirmed: true, addressTerminated: true))
+                        }
                     }
+
+                case .xpcActorWatched(let watchee, let watcher):
+//                    guard !self.nodeTombstones.contains(remoteNode) else {
+//                        watcher.sendSystemMessage(.nodeTerminated(remoteNode))
+//                        return
+//                    }
+
+                    var existingWatchers = self.xpcWatchers[watchee] ?? []
+                    existingWatchers.insert(watcher) // FIXME: we have to remove it once it terminates...
+
+                    self.xpcWatchers[watchee] = existingWatchers
+
+                case .watcherTerminated(let watcher):
+                    // FIXME: remove watcher
+                    ()
                 }
 
-            case .watcherTerminated(let watcher):
-                // FIXME: remove watcher
-                ()
+                return .same
             }
 
-            return .same
         }
     }
 }
