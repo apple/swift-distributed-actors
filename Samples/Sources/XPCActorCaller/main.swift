@@ -17,7 +17,7 @@ import XPC
 import XPCActorable
 import XPCActorServiceAPI
 
-let serviceName = "com.apple.distributedactors.XPCLibService"
+let serviceName = "com.apple.distributedactors.xpc.GreetingsService"
 
 let system = ActorSystem("XPCActorCaller") { settings in
     settings.transports += .xpc
@@ -59,8 +59,12 @@ struct Me: Actorable {
     }
 
     func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
-        context.log.info("Received: \(terminated)")
+        context.log.info("Received \(#function): \(terminated)")
         return .stop
+    }
+
+    func receiveSignal(context: Myself.Context, signal: Signal) {
+        context.log.info("Received \(#function): \(signal)")
     }
 }
 

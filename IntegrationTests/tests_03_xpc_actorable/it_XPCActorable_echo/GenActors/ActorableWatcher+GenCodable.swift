@@ -18,30 +18,30 @@
 
 import DistributedActors
 import XPCActorable
+import Foundation
+import it_XPCActorable_echo_api
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Codable conformance for XPCEchoServiceStub.Message
+// MARK: DO NOT EDIT: Codable conformance for ActorableWatcher.Message
 // TODO: This will not be required, once Swift synthesizes Codable conformances for enums with associated values 
 
-extension XPCEchoServiceStub.Message: Codable {
+extension ActorableWatcher.Message: Codable {
     // TODO: Check with Swift team which style of discriminator to aim for
     public enum DiscriminatorKeys: String, Decodable {
-        case _boxXPCEchoServiceProtocol
+        case noop
 
     }
 
     public enum CodingKeys: CodingKey {
         case _case
-        case _boxXPCEchoServiceProtocol
 
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(DiscriminatorKeys.self, forKey: CodingKeys._case) {
-        case ._boxXPCEchoServiceProtocol:
-            let boxed = try container.decode(GeneratedActor.Messages.XPCEchoServiceProtocol.self, forKey: CodingKeys._boxXPCEchoServiceProtocol)
-            self = .xPCEchoServiceProtocol(boxed)
+        case .noop:
+            self = .noop
 
         }
     }
@@ -49,9 +49,8 @@ extension XPCEchoServiceStub.Message: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
-        case .xPCEchoServiceProtocol(let boxed):
-            try container.encode(DiscriminatorKeys._boxXPCEchoServiceProtocol.rawValue, forKey: CodingKeys._case)
-            try container.encode(boxed, forKey: CodingKeys._boxXPCEchoServiceProtocol)
+        case .noop:
+            try container.encode(DiscriminatorKeys.noop.rawValue, forKey: CodingKeys._case)
 
         }
     }

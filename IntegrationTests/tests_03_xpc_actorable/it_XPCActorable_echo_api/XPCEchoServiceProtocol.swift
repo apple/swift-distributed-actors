@@ -18,5 +18,8 @@ import XPCActorable
 public protocol XPCEchoServiceProtocol: XPCActorableProtocol {
     func echo(string: String) -> String
 
+    /// Causes a fault and the XPC service process to be killed
+    func letItCrash()
+
     static func _boxXPCEchoServiceProtocol(_ message: GeneratedActor.Messages.XPCEchoServiceProtocol) -> Self.Message
 }

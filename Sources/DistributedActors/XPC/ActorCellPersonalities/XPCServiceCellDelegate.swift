@@ -85,10 +85,10 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
                 if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != nil {
                     if String(cString: errorDescription).contains("Connection interrupted") {
                         // log.error("XPC Interrupted Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInterrupted(myself.asAddressable())) // TODO maybe rather pass the ref?
+                        system._xpcMaster.tell(.xpcConnectionInterrupted(myself.asAddressable()))
                     } else if String(cString: errorDescription).contains("Connection invalid") { // TODO: Verify this... (or rather, replace with switches)
                         // log.error("XPC Invalid Error: \(xdict)")
-                        system._xpcMaster.tell(.xpcConnectionInvalidated(myself.asAddressable())) // TODO maybe rather pass the ref?
+                        system._xpcMaster.tell(.xpcConnectionInvalidated(myself.asAddressable()))
                     } else {
                         log.error("XPC Error: \(xdict)")
                     }

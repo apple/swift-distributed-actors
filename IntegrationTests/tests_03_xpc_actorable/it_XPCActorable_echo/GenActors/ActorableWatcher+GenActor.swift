@@ -17,15 +17,15 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPC
 import XPCActorable
-import XPCActorServiceAPI
+import Foundation
+import it_XPCActorable_echo_api
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated Me messages 
+// MARK: DO NOT EDIT: Generated ActorableWatcher messages 
 
-/// DO NOT EDIT: Generated Me messages
-extension Me {
+/// DO NOT EDIT: Generated ActorableWatcher messages
+extension ActorableWatcher {
 
     public enum Message { 
         case noop 
@@ -33,13 +33,13 @@ extension Me {
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: DO NOT EDIT: Generated Me behavior
+// MARK: DO NOT EDIT: Generated ActorableWatcher behavior
 
-extension Me {
+extension ActorableWatcher {
 
-    public static func makeBehavior(instance: Me) -> Behavior<Message> {
+    public static func makeBehavior(instance: ActorableWatcher) -> Behavior<Message> {
         return .setup { _context in
-            let context = Actor<Me>.Context(underlying: _context)
+            let context = Actor<ActorableWatcher>.Context(underlying: _context)
             let instance = instance
 
             /* await */ instance.preStart(context: context)
@@ -54,14 +54,14 @@ extension Me {
                 }
                 return .same
             }.receiveSignal { _context, signal in 
-                let context = Actor<Me>.Context(underlying: _context)
+                let context = Actor<ActorableWatcher>.Context(underlying: _context)
 
                 switch signal {
                 case is Signals.PostStop: 
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -70,16 +70,17 @@ extension Me {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Extend Actor for Me
+// MARK: Extend Actor for ActorableWatcher
 
-extension Actor where A.Message == Me.Message {
+extension Actor where A.Message == ActorableWatcher.Message {
 
      func noop() {
         self.ref.tell(.noop)

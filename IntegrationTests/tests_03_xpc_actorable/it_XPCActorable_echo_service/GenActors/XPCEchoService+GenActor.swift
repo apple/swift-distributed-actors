@@ -57,6 +57,9 @@ extension XPCEchoService {
                     let result = instance.echo(string: string)
                     _replyTo.tell(result)
  
+                case .xPCEchoServiceProtocol(.letItCrash):
+                    instance.letItCrash()
+ 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
@@ -67,7 +70,7 @@ extension XPCEchoService {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -76,7 +79,8 @@ extension XPCEchoService {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
