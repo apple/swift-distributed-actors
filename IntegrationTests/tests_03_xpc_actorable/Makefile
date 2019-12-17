@@ -8,7 +8,7 @@ XPCEXECUTABLE=it_XPCActorable_echo_service
 install: build copySupportFiles
 
 build:
-	swift run GenActors it_XPCActorable_echo_api it_XPCActorable_echo_service it_XPCActorable_echo
+	swift run GenActors --clean it_XPCActorable_echo_api it_XPCActorable_echo_service it_XPCActorable_echo
 	swift build
 
 copySupportFiles:

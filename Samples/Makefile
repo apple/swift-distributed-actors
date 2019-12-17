@@ -9,7 +9,7 @@ XPCEXECUTABLE=XPCActorServiceProvider
 xpcSample: build copySupportFiles
 
 build:
-	swift run GenActors
+	swift run GenActors --clean
 	swift build
 
 copySupportFiles:

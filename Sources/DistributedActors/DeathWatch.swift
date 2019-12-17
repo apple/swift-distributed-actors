@@ -62,7 +62,11 @@ internal struct DeathWatch<Message> {
 
         watchee.sendSystemMessage(.watch(watchee: watchee, watcher: AddressableActorRef(watcher)), file: file, line: line)
         self.watching.insert(watchee)
-        self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+
+        // TODO: this is specific to the transport (!), if we only do XPC but not cluster, this does not make sense
+        if watchee.address.node?.node.protocol == "sact" { // FIXME: this is an ugly workaround; proper many transports support would be the right thing
+            self.subscribeNodeTerminatedEvents(myself: watcher, node: watchee.address.node)
+        }
     }
 
     /// Performed by the sending side of "unwatch", the watchee should equal "context.myself"

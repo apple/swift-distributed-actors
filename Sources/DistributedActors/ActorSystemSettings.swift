@@ -44,7 +44,7 @@ public struct ActorSystemSettings {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
-    public var xpc: XPCActorTransport = .xpc
+    public var xpc: XPCActorTransport = .xpc // FIXME: remove
 
     public var transports: [ActorTransport] = []
 
