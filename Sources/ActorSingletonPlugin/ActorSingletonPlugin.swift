@@ -20,18 +20,6 @@ extension ActorSystem {
     }
 }
 
-extension ActorSystemSettings {
-    public static func += <P: Plugin>(settings: inout ActorSystemSettings, plugin: P) {
-        settings.plugins.add(plugin)
-    }
-}
-
-extension PluginsSettings {
-    public static func += <P: Plugin>(plugins: inout PluginsSettings, plugin: P) {
-        plugins.add(plugin)
-    }
-}
-
 /// Allows for simplified lookups of actor references which are known to be managed by `ActorSingleton`.
 public struct ActorSingletonLookup {
     private let system: ActorSystem
