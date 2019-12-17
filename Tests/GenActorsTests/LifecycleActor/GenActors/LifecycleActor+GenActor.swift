@@ -24,6 +24,7 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated LifecycleActor messages
 extension LifecycleActor {
+
     public enum Message { 
         case pleaseStop 
         case watchChildAndTerminateIt 
@@ -66,7 +67,7 @@ extension LifecycleActor {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -75,7 +76,8 @@ extension LifecycleActor {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -91,7 +93,7 @@ extension Actor where A.Message == LifecycleActor.Message {
     }
  
 
-    func watchChildAndTerminateIt() {
+     func watchChildAndTerminateIt() {
         self.ref.tell(.watchChildAndTerminateIt)
     }
  

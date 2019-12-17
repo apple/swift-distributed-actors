@@ -522,7 +522,7 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.success(1)))
+        ref._sendSystemMessage(.resume(.success(1)))
 
         try p.expectMessage("unsuspended:success(1)")
         try p.expectMessage("resumed:something else")
@@ -556,14 +556,14 @@ class BehaviorTests: XCTestCase {
         ref.tell("something else") // actor is suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
+        ref._sendSystemMessage(.resume(.success(1))) // actor will process the resume handler, but stay suspended
         try p.expectMessage("suspended:success(1)")
         try p.expectNoMessage(for: .milliseconds(50))
 
         ref.tell("last") // actor is still suspended and should not process this message
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.success("test")))
+        ref._sendSystemMessage(.resume(.success("test")))
 
         try p.expectMessage("unsuspended:success(\"test\")")
         try p.expectMessage("resumed:something else")
@@ -606,7 +606,7 @@ class BehaviorTests: XCTestCase {
 
         try p.expectNoMessage(for: .milliseconds(50))
 
-        ref.sendSystemMessage(.resume(.failure(Boom())))
+        ref._sendSystemMessage(.resume(.failure(Boom())))
 
         try p.expectMessage().shouldStartWith(prefix: "unsuspended:Boom")
         try p.expectMessage("resumed:something else")
@@ -903,7 +903,7 @@ class BehaviorTests: XCTestCase {
 
         ref.tell("something") // this message causes the actor the suspend
 
-        ref.sendSystemMessage(.stop)
+        ref._sendSystemMessage(.stop)
 
         try p.expectTerminated(ref)
     }
@@ -943,7 +943,7 @@ class BehaviorTests: XCTestCase {
 
         try p.expectMessage("signal:child")
 
-        ref.sendSystemMessage(.resume(.success(1)))
+        ref._sendSystemMessage(.resume(.success(1)))
 
         try p.expectMessage("unsuspended:1")
         try p.expectMessage("changedBySignal:something else")

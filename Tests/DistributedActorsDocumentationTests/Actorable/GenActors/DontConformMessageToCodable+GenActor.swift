@@ -66,7 +66,7 @@ extension DontConformMessageToCodable {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -75,7 +75,8 @@ extension DontConformMessageToCodable {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -86,6 +87,13 @@ extension DontConformMessageToCodable {
 
 extension Actor where A.Message == DontConformMessageToCodable.Message {
 
+    public func echo(text: String) -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
+                .echo(text: text, _replyTo: _replyTo)}.nioFuture
+        )
+    }
  
 
 }

@@ -29,6 +29,7 @@ extension JackOfAllTrades.Message: Codable {
         case hello
         case _boxTicketing
         case _boxParking
+
     }
 
     public enum CodingKeys: CodingKey {
@@ -36,6 +37,7 @@ extension JackOfAllTrades.Message: Codable {
         case hello_replyTo
         case _boxTicketing
         case _boxParking
+
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,6 +52,7 @@ extension JackOfAllTrades.Message: Codable {
         case ._boxParking:
             let boxed = try container.decode(GeneratedActor.Messages.Parking.self, forKey: CodingKeys._boxParking)
             self = .parking(boxed)
+
         }
     }
 
@@ -65,6 +68,7 @@ extension JackOfAllTrades.Message: Codable {
         case .parking(let boxed):
             try container.encode(DiscriminatorKeys._boxParking.rawValue, forKey: CodingKeys._case)
             try container.encode(boxed, forKey: CodingKeys._boxParking)
+
         }
     }
 }

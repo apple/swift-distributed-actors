@@ -18,13 +18,16 @@ import Logging
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Public API
 
+/// :nodoc: INTERNAL API: May change without any prior notice.
+///
 /// Represents a reference to an actor.
 /// All communication between actors is handled _through_ actor refs, which guarantee their isolation remains intact.
-public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
+public struct ActorRef<Message>: ReceivesMessages, _ReceivesSystemMessages {
+    /// :nodoc: INTERNAL API: May change without further notice.
     /// The actor ref is "aware" whether it represents a local, remote or otherwise special actor.
     ///
     /// Adj. self-conscious: feeling undue awareness of oneself, one's appearance, or one's actions.
-    internal enum Personality {
+    public enum Personality {
         case cell(ActorCell<Message>)
         case remote(RemotePersonality<Message>)
         case adapter(AbstractAdapter)
@@ -35,10 +38,12 @@ public struct ActorRef<Message>: ReceivesMessages, ReceivesSystemMessages {
 
     internal let personality: Personality
 
-    internal init(_ personality: Personality) {
+    /// :nodoc: INTERNAL API: May change without further notice.
+    public init(_ personality: Personality) {
         self.personality = personality
     }
 
+    /// Address of the actor referred to by this `ActorRef`.
     public var address: ActorAddress {
         switch self.personality {
         case .cell(let cell): return cell.address
@@ -145,23 +150,22 @@ public protocol ReceivesMessages: Codable {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Internal implementation classes
 
-/// INTERNAL API: Only for use by the actor system itself
-@usableFromInline
-internal protocol ReceivesSystemMessages: Codable {
+/// :nodoc: INTERNAL API: Only for use by the actor system itself
+public protocol _ReceivesSystemMessages: Codable {
     var address: ActorAddress { get }
     var path: ActorPath { get }
 
-    /// Internal API causing an immediate send of a system message to target actor.
+    /// :nodoc: INTERNAL API causing an immediate send of a system message to target actor.
     /// System messages are given stronger delivery guarantees in a distributed setting than "user" messages.
-    func sendSystemMessage(_ message: SystemMessage, file: String, line: UInt)
+    func _sendSystemMessage(_ message: _SystemMessage, file: String, line: UInt)
 
-    /// INTERNAL API: This way remoting sends messages
+    /// :nodoc: INTERNAL API: This way remoting sends messages
     func _tellOrDeadLetter(_ message: Any, file: String, line: UInt)
 
     func _unsafeGetRemotePersonality() -> RemotePersonality<Any>
 }
 
-extension ReceivesSystemMessages {
+extension _ReceivesSystemMessages {
     public var path: ActorPath {
         return self.address.path
     }
@@ -170,9 +174,8 @@ extension ReceivesSystemMessages {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor Ref Internals and Internal Capabilities
 
-internal extension ActorRef {
-    @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+extension ActorRef {
+    public func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch self.personality {
         case .cell(let cell):
             cell.sendSystemMessage(message, file: file, line: line)
@@ -189,7 +192,7 @@ internal extension ActorRef {
         }
     }
 
-    var _deadLetters: ActorRef<DeadLetter> {
+    internal var _deadLetters: ActorRef<DeadLetter> {
         switch self.personality {
         case .cell(let cell):
             return cell.mailbox.deadLetters
@@ -207,8 +210,7 @@ internal extension ActorRef {
     }
 
     /// Used internally by remoting layer, to send message when known it should be "fine"
-    @usableFromInline
-    func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
+    public func _tellOrDeadLetter(_ message: Any, file: String = #file, line: UInt = #line) {
         guard let _message = message as? Message else {
             traceLog_Mailbox(self.path, "_tellUnsafe: [\(message)] failed because of invalid message type, to: \(self); Sent at \(file):\(line)")
             self._deadLetters.tell(DeadLetter(message, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
@@ -218,8 +220,7 @@ internal extension ActorRef {
         self.tell(_message, file: file, line: line)
     }
 
-    @usableFromInline
-    func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
+    public func _unsafeGetRemotePersonality() -> RemotePersonality<Any> {
         switch self.personality {
         case .remote(let remote):
             return remote as! RemotePersonality<Any>
@@ -229,7 +230,7 @@ internal extension ActorRef {
     }
 
     @usableFromInline
-    var _system: ActorSystem? {
+    internal var _system: ActorSystem? {
         switch self.personality {
         case .cell(let cell):
             return cell.system
@@ -247,6 +248,8 @@ internal extension ActorRef {
     }
 }
 
+/// :nodoc: INTERNAL API: HERE BE DRAGONS.
+///
 /// A "cell" containing the real actor as well as its mailbox.
 ///
 /// Outside interactions with the actor in the cell are only permitted by sending it messages via the mailbox.
@@ -257,9 +260,7 @@ internal extension ActorRef {
 /// and are such that a stopped actor can be released as soon as possible (shell), yet the cell remains
 /// active while anyone still holds references to it. The mailbox class on the other hand, is kept alive by
 /// by the cell, as it may result in message sends to dead letters which the mailbox handles
-
-@usableFromInline
-internal final class ActorCell<Message> {
+public final class ActorCell<Message> {
     let mailbox: Mailbox<Message>
 
     weak var actor: ActorShell<Message>?
@@ -290,7 +291,7 @@ internal final class ActorCell<Message> {
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         traceLog_Mailbox(self.address.path, "sendSystemMessage: [\(message)], to: \(String(describing: self))")
         self.mailbox.sendSystemMessage(message, file: file, line: line)
     }
@@ -340,44 +341,41 @@ public extension ActorRef where Message == DeadLetter {
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Delegate Cell
+// MARK: Cell Delegate
 
-
+/// :nodoc: INTERNAL API: May change without prior notice.
+/// EXTENSION POINT: Can be used to offer `ActorRef`s to other "special" entities, such as other `ActorTransport`s etc.
+///
 /// Similar to an `ActorCell` but for some delegated actual "entity".
 /// This can be used to implement actor-like beings, which are backed by non-actor entities.
 // TODO we could use this to make TestProbes more "real" rather than wrappers
-internal class CellDelegate<Message> {
+open class CellDelegate<Message> {
 
-    var system: ActorSystem {
+    open var system: ActorSystem {
         fatalError("Not implemented: \(#function)")
     }
 
-    var address: ActorAddress {
+    open var address: ActorAddress {
         fatalError("Not implemented: \(#function)")
     }
 
-    @usableFromInline
-    func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
+    open func sendMessage(_ message: Message, file: String = #file, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    open func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    @usableFromInline
-    func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
+    open func sendClosure(file: String = #file, line: UInt = #line, _ f: @escaping () throws -> ()) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    @usableFromInline
-    func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
+    open func sendSubMessage<SubMessage>(_ message: SubMessage, identifier: AnySubReceiveId, subReceiveAddress: ActorAddress, file: String = #file, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 
-    @usableFromInline
-    func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
+    open func sendAdaptedMessage(_ message: Any, file: String = #file, line: UInt = #line) {
         fatalError("Not implemented: \(#function), called from \(file):\(line)")
     }
 }
@@ -391,13 +389,13 @@ internal class CellDelegate<Message> {
 ///
 /// Only a single instance of this "actor" exists, and it is the parent of all top level guardians.
 @usableFromInline
-internal struct TheOneWhoHasNoParent: ReceivesSystemMessages { // FIXME: fix the name
+internal struct TheOneWhoHasNoParent: _ReceivesSystemMessages { // FIXME: fix the name
     // path is breaking the rules -- it never can be empty, but this is "the one", it can do whatever it wants
     @usableFromInline
     let address: ActorAddress = ._localRoot
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    func _sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         CDistributedActorsMailbox.sact_dump_backtrace()
         fatalError("The \(self.address) actor MUST NOT receive any messages. Yet received \(message); Sent at \(file):\(line)")
     }
@@ -430,10 +428,11 @@ extension TheOneWhoHasNoParent: CustomStringConvertible, CustomDebugStringConver
     }
 }
 
+/// :nodoc: INTERNAL API: May change without any prior notice.
+///
 /// Represents the an "top level" actor which is the parent of all actors spawned on by the system itself
 /// (unlike actors spawned from within other actors, by using `context.spawn`).
-@usableFromInline
-internal class Guardian {
+public final class Guardian {
     @usableFromInline
     let _address: ActorAddress
     var address: ActorAddress {
@@ -459,7 +458,7 @@ internal class Guardian {
     private var stopping: Bool = false
     weak var system: ActorSystem?
 
-    init(parent: ReceivesSystemMessages, name: String, system: ActorSystem) {
+    init(parent: _ReceivesSystemMessages, name: String, system: ActorSystem) {
         assert(parent.address == ActorAddress._localRoot, "A Guardian MUST live directly under the `/` path.")
 
         do {
@@ -482,7 +481,7 @@ internal class Guardian {
     }
 
     @usableFromInline
-    func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case .childTerminated(let ref, let circumstances):
             self._childrenLock.synchronized {
@@ -562,7 +561,7 @@ internal class Guardian {
             }
 
             if self._children.removeChild(identifiedBy: childRef.address) {
-                childRef.sendSystemMessage(.stop)
+                childRef._sendSystemMessage(.stop)
             }
         }
     }
@@ -599,8 +598,7 @@ internal class Guardian {
 }
 
 extension Guardian: _ActorTreeTraversable {
-    @usableFromInline
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         let children: Children = self.children
 
         var c = context.deeper
@@ -618,8 +616,7 @@ extension Guardian: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }
@@ -631,8 +628,7 @@ extension Guardian: _ActorTreeTraversable {
         }
     }
 
-    @usableFromInline
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard let selector = context.selectorSegments.first else {
             fatalError("Expected selector in guardian._resolve()!")
         }

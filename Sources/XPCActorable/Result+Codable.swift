@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import CXPCActorable
 import XPC
 import NIO
@@ -71,3 +73,8 @@ public struct XPCGenericError: Error, Codable {
         self.reason = "\(errorType)"
     }
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

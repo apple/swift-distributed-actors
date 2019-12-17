@@ -55,7 +55,7 @@ internal final class Mailbox<Message> {
     weak var shell: ActorShell<Message>?
     let _status: Atomic<UInt64> = Atomic(value: 0)
     let userMessages: MPSCLinkedQueue<Envelope>
-    let systemMessages: MPSCLinkedQueue<SystemMessage>
+    let systemMessages: MPSCLinkedQueue<_SystemMessage>
     let capacity: UInt32
     let maxRunLength: UInt32
     let deadLetters: ActorRef<DeadLetter>
@@ -214,7 +214,7 @@ internal final class Mailbox<Message> {
     }
 
     @inlinable
-    func sendSystemMessage(_ systemMessage: SystemMessage, file: String, line: UInt) {
+    func sendSystemMessage(_ systemMessage: _SystemMessage, file: String, line: UInt) {
         func sendAndDropAsDeadLetter() {
             // TODO: should deadLetters be special, since watching it is nonsense?
             self.deadLetters.tell(DeadLetter(systemMessage, recipient: self.address, sentAtFile: file, sentAtLine: line), file: file, line: line)
@@ -249,7 +249,7 @@ internal final class Mailbox<Message> {
         }
     }
 
-    private func enqueueSystemMessage(_ systemMessage: SystemMessage) -> EnqueueDirective {
+    private func enqueueSystemMessage(_ systemMessage: _SystemMessage) -> EnqueueDirective {
         // The ordering of enqueue/activate calls is tremendously important here and MUST NOT be inversed.
         //
         // Unlike user messages, where the message count is stored, here we first enqueue and then activate.
@@ -770,14 +770,15 @@ internal enum ActorRunResult {
     case closed
 }
 
-internal struct MessageProcessingFailure: Error {
+/// :nodoc: INTERNAL API
+public struct MessageProcessingFailure: Error {
     let messageDescription: String
     let backtrace: [String] // TODO: Could be worth it to carry it as struct rather than the raw string?
 }
 
 extension MessageProcessingFailure: CustomStringConvertible, CustomDebugStringConvertible {
-    var description: String {
-        return "Actor faulted while processing message '\(self.messageDescription)', with backtrace"
+    public var description: String {
+        "Actor faulted while processing message '\(self.messageDescription)', with backtrace"
     }
 
     public var debugDescription: String {

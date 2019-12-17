@@ -18,6 +18,7 @@
 
 import DistributedActors
 import XPCActorServiceAPI
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceImpl messages 
@@ -66,6 +67,12 @@ extension GreetingsServiceImpl {
                 case .greetingsServiceProtocol(.fatalCrash):
                     instance.fatalCrash()
  
+                case .greetingsServiceProtocol(.greetDirect(let who)):
+                    instance.greetDirect(who: who)
+ 
+                case .greetingsServiceProtocol(.greetFuture(let name, let _replyTo)):
+                    instance.greetFuture(name: name)
+                                    .whenComplete { res in _replyTo.tell(res) } 
                 }
                 return .same
             }.receiveSignal { _context, signal in 
@@ -85,7 +92,6 @@ extension GreetingsServiceImpl {
                         return .same
                     }
                 default:
-                    pprint("signal = \(signal)")
                     try instance.receiveSignal(context: context, signal: signal)
                     return .same
                 }

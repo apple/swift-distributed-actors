@@ -12,7 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import DistributedActors
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import CXPCActorable
 import XPC
 import NIO
@@ -191,3 +193,8 @@ fileprivate func xpc_eventHandler(_ storage: XPCStorage, peer: xpc_connection_t,
 //        pprint("TELL: \(message)")
 //    }
 //}
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

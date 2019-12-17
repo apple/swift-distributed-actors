@@ -12,9 +12,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
 import DistributedActors
 
 /// Causes `GenActors` to generate a `...Stub` for the protocol, so it may be consumed without knowing that the exact implementation class is.
 public protocol XPCActorableProtocol: Actorable {
     // TODO: validations in source-gen that this may ONLY be used on a protocol?
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

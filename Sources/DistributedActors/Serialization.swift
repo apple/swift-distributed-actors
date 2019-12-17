@@ -62,9 +62,9 @@ public struct Serialization {
 
         // register all serializers
         // TODO: change APIs here a bit, it does not read nice
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage>(allocator: self.allocator), for: SystemMessage.self, underId: Serialization.Id.InternalSerializer.SystemMessage)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.ACK>(allocator: self.allocator), for: SystemMessage.ACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageACK)
-        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessage.NACK>(allocator: self.allocator), for: SystemMessage.NACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageNACK)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage>(allocator: self.allocator), for: _SystemMessage.self, underId: Serialization.Id.InternalSerializer.SystemMessage)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage.ACK>(allocator: self.allocator), for: _SystemMessage.ACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageACK)
+        self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<_SystemMessage.NACK>(allocator: self.allocator), for: _SystemMessage.NACK.self, underId: Serialization.Id.InternalSerializer.SystemMessageNACK)
         self.registerSystemSerializer(context, serializer: InternalProtobufSerializer<SystemMessageEnvelope>(allocator: self.allocator), for: SystemMessageEnvelope.self, underId: Serialization.Id.InternalSerializer.SystemMessageEnvelope)
 
         // TODO: optimize, should be proto
@@ -204,16 +204,16 @@ public struct Serialization {
         return sid
     }
 
-    internal func serializerIdFor<M>(type: M.Type) -> SerializerId? {
+    public func serializerIdFor<M>(type: M.Type) -> SerializerId? {
         let meta: MetaType<M> = MetaType(M.self)
         return self.serializerIdFor(metaType: meta)
     }
 
-    internal func serializerIdFor(metaType: AnyMetaType) -> SerializerId? {
+    public func serializerIdFor(metaType: AnyMetaType) -> SerializerId? {
         return self.serializerIds[metaType.asHashable()]
     }
 
-    internal func serializer(for id: SerializerId) -> AnySerializer? {
+    public func serializer(for id: SerializerId) -> AnySerializer? {
         return self.serializers[id]
     }
 
@@ -534,11 +534,11 @@ open class Serializer<T> {
 }
 
 extension Serializer: AnySerializer {
-    func _asSerializerOf<M>(_: M.Type) -> Serializer<M> {
+    public func _asSerializerOf<M>(_: M.Type) -> Serializer<M> {
         return self as! Serializer<M>
     }
 
-    func trySerialize(_ message: Any) throws -> ByteBuffer {
+    public func trySerialize(_ message: Any) throws -> ByteBuffer {
         guard let _message = message as? T else {
             throw SerializationError.wrongSerializer(
                 hint: """
@@ -551,12 +551,12 @@ extension Serializer: AnySerializer {
         return try self.serialize(message: _message)
     }
 
-    func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
+    public func tryDeserialize(_ bytes: ByteBuffer) throws -> Any {
         return try self.deserialize(bytes: bytes)
     }
 }
 
-protocol AnySerializer {
+public protocol AnySerializer {
     func _asSerializerOf<M>(_ type: M.Type) throws -> Serializer<M>
     func setSerializationContext(_ context: ActorSerializationContext)
     func setUserInfo<Value>(key: CodingUserInfoKey, value: Value?)
@@ -596,7 +596,7 @@ internal struct BoxedAnySerializer: AnySerializer {
     }
 }
 
-enum SerializationError: Error {
+public enum SerializationError: Error {
     // --- registration errors ---
     case alreadyDefined(hint: String, serializerId: Serialization.SerializerId, serializer: AnySerializer?)
 
@@ -629,7 +629,9 @@ enum SerializationError: Error {
 // Implementation notes:
 // We need this since we will receive data from the wire and need to pick "the right" deserializer
 // See: https://stackoverflow.com/questions/42459484/make-a-swift-dictionary-where-the-key-is-type
+@usableFromInline 
 struct MetaType<T>: Hashable {
+    @usableFromInline
     static func == (lhs: MetaType, rhs: MetaType) -> Bool {
         return lhs.base == rhs.base
     }
@@ -644,6 +646,7 @@ struct MetaType<T>: Hashable {
         self.base = type(of: value)
     }
 
+    @usableFromInline
     func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self.base))
     }
@@ -655,7 +658,7 @@ extension MetaType: CustomStringConvertible {
     }
 }
 
-protocol AnyMetaType {
+public protocol AnyMetaType {
     // TODO: slightly worried that we will do asHashable on each message send... consider the "hardcore all things" mode
     func asHashable() -> AnyHashable
 
@@ -666,16 +669,19 @@ protocol AnyMetaType {
 }
 
 extension MetaType: AnyMetaType {
+    @usableFromInline
     func asHashable() -> AnyHashable {
-        return AnyHashable(self)
+        AnyHashable(self)
     }
 
+    @usableFromInline
     func `is`(_ other: AnyMetaType) -> Bool {
-        return self.asHashable() == other.asHashable()
+        self.asHashable() == other.asHashable()
     }
 
+    @usableFromInline
     func isInstance(_ obj: Any) -> Bool {
-        return obj is T
+        obj is T
     }
 }
 
@@ -697,18 +703,22 @@ internal struct BoxedHashableAnyMetaType: Hashable, AnyMetaType {
         return lhs.is(rhs.meta)
     }
 
+    @usableFromInline
     func asHashable() -> AnyHashable {
         return AnyHashable(self)
     }
 
+    @usableFromInline
     func unsafeUnwrapAs<M>(_: M.Type) -> MetaType<M> {
         fatalError("unsafeUnwrapAs(_:) has not been implemented")
     }
 
+    @usableFromInline
     func `is`(_ other: AnyMetaType) -> Bool {
         return self.meta.asHashable() == other.asHashable()
     }
 
+    @usableFromInline
     func isInstance(_ obj: Any) -> Bool {
         return self.meta.isInstance(obj)
     }

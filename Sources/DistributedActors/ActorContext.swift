@@ -463,8 +463,8 @@ extension SubReceiveId: ExpressibleByStringLiteral, ExpressibleByStringInterpola
     }
 }
 
-@usableFromInline
-internal struct AnySubReceiveId: Hashable, Equatable {
+/// :nodoc: INTERNAL API
+public struct AnySubReceiveId: Hashable, Equatable {
     let underlying: AnyHashable
 
     init<SubMessage>(_ id: SubReceiveId<SubMessage>) {

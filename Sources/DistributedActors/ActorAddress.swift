@@ -307,22 +307,22 @@ extension ActorPath: CustomStringConvertible {
 }
 
 extension ActorPath {
-    internal static let _root: ActorPath = .init() // also known as "/"
-    internal static let _user: ActorPath = try! ActorPath(root: "user")
-    internal static let _system: ActorPath = try! ActorPath(root: "system")
+    public static let _root: ActorPath = .init() // also known as "/"
+    public static let _user: ActorPath = try! ActorPath(root: "user")
+    public static let _system: ActorPath = try! ActorPath(root: "system")
 
     internal func makeLocalAddress(incarnation: ActorIncarnation) -> ActorAddress {
-        return .init(path: self, incarnation: incarnation)
+        .init(path: self, incarnation: incarnation)
     }
 
     internal func makeRemoteAddress(on node: UniqueNode, incarnation: ActorIncarnation) -> ActorAddress {
-        return .init(node: node, path: self, incarnation: incarnation)
+        .init(node: node, path: self, incarnation: incarnation)
     }
 }
 
 extension ActorPath: Comparable {
     public static func < (lhs: ActorPath, rhs: ActorPath) -> Bool {
-        return "\(lhs)" < "\(rhs)"
+        "\(lhs)" < "\(rhs)"
     }
 }
 

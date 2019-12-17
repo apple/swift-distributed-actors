@@ -24,6 +24,7 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated TestActorable messages
 extension TestActorable {
+
     public enum Message { 
         case ping 
         case greet(name: String) 
@@ -125,7 +126,7 @@ extension TestActorable {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -134,7 +135,8 @@ extension TestActorable {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -170,7 +172,7 @@ extension Actor where A.Message == TestActorable.Message {
     }
  
 
-    func passMyself(someone: ActorRef<Actor<TestActorable>>) {
+     func passMyself(someone: ActorRef<Actor<TestActorable>>) {
         self.ref.tell(.passMyself(someone: someone))
     }
  
@@ -180,7 +182,7 @@ extension Actor where A.Message == TestActorable.Message {
     }
  
 
-    func parameterNames(first second: String) {
+     func parameterNames(first second: String) {
         self.ref.tell(.parameterNames(first: second))
     }
  
@@ -199,9 +201,8 @@ extension Actor where A.Message == TestActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}
-            .nioFuture
-            )
+                .greetReplyToReturnStrict(name: name, _replyTo: _replyTo)}.nioFuture
+        )
     }
  
 
@@ -209,14 +210,13 @@ extension Actor where A.Message == TestActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}
-            .nioFuture.flatMapThrowing { result in
+                .greetReplyToReturnStrictThrowing(name: name, _replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
                 switch result {
                 case .success(let res): return res
                 case .failure(let err): throw err
                 }
             }
-            )
+        )
     }
  
 
@@ -224,28 +224,27 @@ extension Actor where A.Message == TestActorable.Message {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
-                .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}
-            .nioFuture.flatMapThrowing { result in
+                .greetReplyToReturnNIOFuture(name: name, _replyTo: _replyTo)}.nioFuture.flatMapThrowing { result in
                 switch result {
                 case .success(let res): return res
                 case .failure(let err): throw err
                 }
             }
-            )
+        )
     }
  
 
-    func becomeStopped() {
+     func becomeStopped() {
         self.ref.tell(.becomeStopped)
     }
  
 
-    func contextSpawnExample() {
+     func contextSpawnExample() {
         self.ref.tell(.contextSpawnExample)
     }
  
 
-    func timer() {
+     func timer() {
         self.ref.tell(.timer)
     }
  

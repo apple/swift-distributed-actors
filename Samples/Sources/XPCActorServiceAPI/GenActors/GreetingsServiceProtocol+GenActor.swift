@@ -18,6 +18,7 @@
 
 import DistributedActors
 import XPCActorable
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceProtocol messages 
@@ -26,7 +27,9 @@ extension GeneratedActor.Messages {
     public enum GreetingsServiceProtocol { 
         case logGreeting(name: String) 
         case greet(name: String, _replyTo: ActorRef<Result<String, Error>>) 
-        case fatalCrash  
+        case fatalCrash 
+        case greetDirect(who: ActorRef<String>) 
+        case greetFuture(name: String, _replyTo: ActorRef<Result<String, Error>>)  
     }
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -56,6 +59,26 @@ extension Actor where A: GreetingsServiceProtocol {
 
     public func fatalCrash() {
         self.ref.tell(A._boxGreetingsServiceProtocol(.fatalCrash))
+    }
+ 
+
+    public func greetDirect(who: ActorRef<String>) {
+        self.ref.tell(A._boxGreetingsServiceProtocol(.greetDirect(who: who)))
+    }
+ 
+
+    public func greetFuture(name: String) -> Reply<String> {
+        // TODO: FIXME perhaps timeout should be taken from context
+        Reply(nioFuture:
+            self.ref.ask(for: Result<String, Error>.self, timeout: .effectivelyInfinite) { _replyTo in
+                A._boxGreetingsServiceProtocol(.greetFuture(name: name, _replyTo: _replyTo))
+            }.nioFuture.flatMapThrowing { result in
+                switch result {
+                case .success(let res): return res
+                case .failure(let err): throw err
+                }
+            }
+        )
     }
  
 

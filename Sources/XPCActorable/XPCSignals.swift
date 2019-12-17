@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import XPC
 import Dispatch
-
-#if os(macOS)
 
 extension Signals {
 

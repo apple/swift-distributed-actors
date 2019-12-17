@@ -12,6 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import Dispatch
 import XPC
 
@@ -31,15 +34,31 @@ extension Array where Element == ActorTransport {
 
 public final class XPCActorTransport: ActorTransport {
 
+    public override init() {
+        super.init()
+    }
+
     override public var `protocol`: String {
         "xpc"
     }
 
-    override func onActorSystemStart(system: ActorSystem) {
+    override public func onActorSystemStart(system: ActorSystem) {
         _ = try! system._spawnSystemActor("xpc", XPCMaster().behavior, perpetual: true)
     }
 
-    override func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
+    override public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        assert(context.address.node?.node.protocol == "xpc", "\(XPCActorTransport.self) was requested to resolve a non 'xpc' address, was: \(context.address)")
+
+        do {
+            return try ActorRef<Message>(
+                .delegate(XPCServiceCellDelegate(system: context.system, address: context.address))
+            )
+        } catch {
+            return context.personalDeadLetters
+        }
+    }
+
+    override public func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
         try XPCServiceCellDelegate(system: system, address: address)
     }
 
@@ -69,6 +88,7 @@ final class XPCMaster {
 
     // TODO: key it by XPC ID
     private var watchers: [AddressableActorRef: Set<AddressableActorRef>] = [:]
+
     // private var serviceTombstones: [xpc_connection_t] = [] // TODO: Think if we need tombstones, or can rely on XPC doing the right thing
 
     enum Message {
@@ -97,9 +117,9 @@ final class XPCMaster {
                         return .same
                     }
 
-                    let interrupted = SystemMessage.carrySignal(Signals.XPC.XPCConnectionInterrupted(address: serviceRef.address, description: "Connection Interrupted"))
+                    let interrupted = _SystemMessage.carrySignal(Signals.XPC.XPCConnectionInterrupted(address: serviceRef.address, description: "Connection Interrupted"))
                     watchers.forEach { (watcher: AddressableActorRef) in
-                        watcher.sendSystemMessage(interrupted) // TODO: carry description from transport
+                        watcher._sendSystemMessage(interrupted) // TODO: carry description from transport
                     }
 
                 case .xpcConnectionInvalidated(let serviceRef):
@@ -108,10 +128,10 @@ final class XPCMaster {
                         return .same
                     }
 
-                    let invalidated = SystemMessage.carrySignal(Signals.XPC.XPCConnectionInvalidated(address: serviceRef.address, description: "Connection Interrupted"))
+                    let invalidated = _SystemMessage.carrySignal(Signals.XPC.XPCConnectionInvalidated(address: serviceRef.address, description: "Connection Interrupted"))
                     watchers.forEach { (watcher: AddressableActorRef) in
-                            watcher.sendSystemMessage(invalidated)
-                        }
+                        watcher._sendSystemMessage(invalidated)
+                    }
 
                 case .xpcActorWatched(let watchee, let watcher):
 //                    guard !self.nodeTombstones.contains(remoteNode) else {
@@ -124,6 +144,8 @@ final class XPCMaster {
 
                     self.watchers[watchee] = existingWatchers
 
+                    // TODO: Test for the racy case when we watch, unwatch, cause a failure; in the ActorCell we guarantee that we will not see such Interrupted then
+                    // but without the cell we lost this guarantee. This would have to be implemented in the XPCServiceCellDelegate
                 case .xpcActorUnwatched(let watchee, let watcher):
                     guard let watchers: Set<AddressableActorRef> = self.watchers[watchee] else {
                         // seems that watchee has no watchers, thus no need to remove this one.
@@ -162,3 +184,8 @@ struct XPCConnectionBox: Hashable {
         xpc_connection_get_pid(lhs.connection) == xpc_connection_get_pid(rhs.connection)
     }
 }
+
+#else
+/// XPC is only available on Apple platforms
+#endif
+

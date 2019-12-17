@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import XPC
 import Files
-
-#if os(macOS)
 
 fileprivate let _file = try! Folder(path: "/tmp").file(named: "xpc.txt")
 
@@ -67,7 +68,7 @@ internal final class XPCProxiedRefDelegate<Message>: CellDelegate<Message>, Cust
 
     }
 
-    override func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         self.system.log.info("DROPPING system message \(message) sent at \(file):\(line)")
     }
 

@@ -24,11 +24,11 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated AwaitingActorable messages
 extension AwaitingActorable {
+
     public enum Message { 
         case awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
         case onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ extension AwaitingActorable {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -72,7 +72,8 @@ extension AwaitingActorable {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -83,12 +84,12 @@ extension AwaitingActorable {
 
 extension Actor where A.Message == AwaitingActorable.Message {
 
-    func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
+     func awaitOnAFuture(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
         self.ref.tell(.awaitOnAFuture(f: f, replyTo: replyTo))
     }
  
 
-    func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
+     func onResultAsyncExample(f: EventLoopFuture<String>, replyTo: ActorRef<Result<String, Error>>) {
         self.ref.tell(.onResultAsyncExample(f: f, replyTo: replyTo))
     }
  

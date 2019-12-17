@@ -22,7 +22,7 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
     let startTime = Atomic<UInt64>(value: 0)
     let receptacle = BlockingReceptacle<Message>()
 
-    override init(parent: ReceivesSystemMessages, name: String, system: ActorSystem) {
+    override init(parent: _ReceivesSystemMessages, name: String, system: ActorSystem) {
         super.init(parent: parent, name: name, system: system)
     }
 
@@ -31,7 +31,7 @@ internal class BenchmarkLatchGuardian<Message>: Guardian { // This is an ugly ha
         self.startTime.store(SwiftBenchmarkTools.Timer().getTimeAsInt())
     }
 
-    override func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         // ignore
     }
 
