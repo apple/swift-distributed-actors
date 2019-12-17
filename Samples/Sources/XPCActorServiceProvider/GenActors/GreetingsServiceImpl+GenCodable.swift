@@ -18,6 +18,7 @@
 
 import DistributedActors
 import XPCActorServiceAPI
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Codable conformance for GreetingsServiceImpl.Message

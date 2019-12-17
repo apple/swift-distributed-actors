@@ -209,7 +209,7 @@ extension ActorTestKit {
         precondition(!path.contains("#"), "assertion path MUST NOT contain # id section of an unique path.")
 
         let callSiteInfo = CallSiteInfo(file: file, line: line, column: column, function: #function)
-        let res: TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
+        let res: _TraversalResult<AddressableActorRef> = self.system._traverseAll { _, ref in
             if ref.address.path.description == path {
                 return .accumulateSingle(ref)
             } else {

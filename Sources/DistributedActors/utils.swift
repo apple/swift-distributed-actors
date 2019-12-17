@@ -101,7 +101,7 @@ internal func _hackyPThreadThreadId() -> String {
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Functions used for debug tracing, eventually likely to be removed
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_DEATHWATCH
@@ -109,7 +109,7 @@ internal func traceLog_DeathWatch(_ message: @autoclosure () -> String, file: St
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_MAILBOX
@@ -117,7 +117,7 @@ internal func traceLog_Mailbox(_ path: ActorPath?, _ message: @autoclosure () ->
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_ACTOR_SHELL
@@ -125,7 +125,7 @@ internal func traceLog_Cell(_ message: @autoclosure () -> String, file: StaticSt
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_PROBE
@@ -133,7 +133,7 @@ internal func traceLog_Probe(_ message: @autoclosure () -> String, file: StaticS
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SUPERVISION
@@ -141,7 +141,7 @@ internal func traceLog_Supervision(_ message: @autoclosure () -> String, file: S
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_SERIALIZATION
@@ -149,7 +149,7 @@ func traceLog_Serialization(_ message: @autoclosure () -> String, file: StaticSt
     #endif
 }
 
-/// INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
+/// :nodoc: INTERNAL API: Used for easier debugging; most of those messages are meant to be eventually removed
 @inlinable
 func traceLog_Remote(_ message: @autoclosure () -> String, file: StaticString = #file, line: UInt = #line) {
     #if SACT_TRACE_REMOTE

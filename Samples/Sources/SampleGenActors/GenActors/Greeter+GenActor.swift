@@ -67,7 +67,6 @@ extension Greeter {
                         return .same
                     }
                 default:
-                    pprint("signal = \(signal)")
                     try instance.receiveSignal(context: context, signal: signal)
                     return .same
                 }

@@ -23,10 +23,10 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated TestActorableNamespace.TestActorableNamespaceDirectly messages
 extension TestActorableNamespace.TestActorableNamespaceDirectly {
+
     public enum Message { 
         case echo(String, _replyTo: ActorRef<String>) 
     }
-
     
 }
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ extension TestActorableNamespace.TestActorableNamespaceDirectly {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -68,7 +68,8 @@ extension TestActorableNamespace.TestActorableNamespaceDirectly {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -79,13 +80,12 @@ extension TestActorableNamespace.TestActorableNamespaceDirectly {
 
 extension Actor where A.Message == TestActorableNamespace.TestActorableNamespaceDirectly.Message {
 
-    func echo(_ string: String) -> Reply<String> {
+     func echo(_ string: String) -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .echo(string, _replyTo: _replyTo)}
-            .nioFuture
-            )
+                .echo(string, _replyTo: _replyTo)}.nioFuture
+        )
     }
  
 

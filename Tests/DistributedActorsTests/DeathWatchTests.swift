@@ -156,8 +156,8 @@ class DeathWatchTests: XCTestCase {
         try probe.expectMessage("reply:hi")
 
         // internal hacks
-        let fakeTerminated: SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
-        romeo.sendSystemMessage(fakeTerminated)
+        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
+        romeo._sendSystemMessage(fakeTerminated)
 
         try probe.expectTerminated(romeo)
     }
@@ -205,8 +205,8 @@ class DeathWatchTests: XCTestCase {
         try probe.expectMessage("reply:unwatch")
 
         // internal hacks; we simulate that Juliet has terminated, and enqueued the .terminated before the unwatch managed to reach her
-        let fakeTerminated: SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
-        romeo.sendSystemMessage(fakeTerminated)
+        let fakeTerminated: _SystemMessage = .terminated(ref: juliet.asAddressable(), existenceConfirmed: true)
+        romeo._sendSystemMessage(fakeTerminated)
 
         // should NOT trigger the receiveSignal handler (which notifies the probe)
         try probe.expectNoMessage(for: .milliseconds(100))

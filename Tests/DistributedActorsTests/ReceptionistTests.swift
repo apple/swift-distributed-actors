@@ -112,6 +112,33 @@ final class ReceptionistTests: XCTestCase {
 
         listing.refs.count.shouldEqual(1)
     }
+    func test_receptionist_shouldRemoveAndAddNewSingletonRef() throws {
+        let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)
+        let lookupProbe: ActorTestProbe<Receptionist.Listing<String>> = self.testKit.spawnTestProbe()
+
+        let old: ActorRef<String> = try system.spawn(.anonymous,
+            .receiveMessage { _ in
+                .stop
+            }
+        )
+        let new: ActorRef<String> = try system.spawn(.anonymous,
+            .receiveMessage { _ in
+                .same
+            }
+        )
+
+        let key = Receptionist.RegistrationKey(String.self, id: "shouldBeOne")
+
+        receptionist.tell(Receptionist.Register(old, key: key))
+        old.tell("stop")
+        receptionist.tell(Receptionist.Register(new, key: key))
+
+        receptionist.tell(Receptionist.Lookup(key: key, replyTo: lookupProbe.ref))
+
+        let listing = try lookupProbe.expectMessage()
+
+        listing.refs.count.shouldEqual(1)
+    }
 
     func test_receptionist_shouldReplyWithRegistered() throws {
         let receptionist = try system.spawn("receptionist", LocalReceptionist.behavior)

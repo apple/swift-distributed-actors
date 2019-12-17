@@ -44,9 +44,9 @@ public struct ActorSystemSettings {
             self.serialization.localNode = self.cluster.uniqueBindNode
         }
     }
-    public var xpc: XPCActorTransport = .xpc // FIXME: remove
 
-    public var transports: [ActorTransport] = []
+    public typealias ProtocolName = String
+    public var transports: [ProtocolName: ActorTransport] = [:]
 
     /// Installs a global backtrace (on fault) pretty-print facility upon actor system start.
     public var installSwiftBacktrace: Bool = true
@@ -91,23 +91,5 @@ extension ActorSystemSettings {
 
         // arbitrarily selected, we protect start() using it; we may lift this restriction if needed
         public var maxBehaviorNestingDepth: Int = 128
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Transport Settings
-
-/// Internal protocol allowing for introduction of additional transports.
-public class ActorTransport {
-    var `protocol`: String {
-        fatalError("Not implemented: \(#function)")
-    }
-
-    func onActorSystemStart(system: ActorSystem) {
-        // do nothing by default
-    }
-
-    func makeCellDelegate<Message>(system: ActorSystem, address: ActorAddress) throws -> CellDelegate<Message> {
-        fatalError("Not implemented: \(#function)")
     }
 }

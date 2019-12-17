@@ -48,15 +48,15 @@ internal struct SystemMessageEnvelope: Equatable {
 
     // Actual messages start with sequence nr >= 1
     let sequenceNr: SequenceNr
-    let message: SystemMessage
+    let message: _SystemMessage
     // TODO: association id for logging?
 
-    init(sequenceNr: SequenceNr, message: SystemMessage) {
+    init(sequenceNr: SequenceNr, message: _SystemMessage) {
         self.sequenceNr = sequenceNr
         self.message = message
     }
 
-    init(sequenceNr: Int, message: SystemMessage) {
+    init(sequenceNr: Int, message: _SystemMessage) {
         assert(sequenceNr > 0, "sequenceNr MUST be > 0")
         self.init(sequenceNr: SequenceNr(sequenceNr), message: message)
     }
@@ -66,7 +66,7 @@ extension SystemMessageEnvelope {
     internal static let metaType: MetaType<SystemMessageEnvelope> = MetaType(SystemMessageEnvelope.self)
 }
 
-extension SystemMessage {
+extension _SystemMessage {
     /// ACKnowledgement -- sent by the receiving end for every (or coalesced) received system message.
     ///
     /// The carried `sequenceNr` indicates the "last correctly observed message"
@@ -114,8 +114,8 @@ extension SystemMessage {
 // MARK: Outbound Re-Delivery
 
 internal final class OutboundSystemMessageRedelivery {
-    typealias ACK = SystemMessage.ACK
-    typealias NACK = SystemMessage.NACK
+    typealias ACK = _SystemMessage.ACK
+    typealias NACK = _SystemMessage.NACK
     typealias SequenceNr = SystemMessageEnvelope.SequenceNr
 
     // guaranteed to contain SystemMessageEnvelope but we also need the recipients which are in MessageEnvelope
@@ -140,7 +140,7 @@ internal final class OutboundSystemMessageRedelivery {
         self.redeliveryIntervalBackoff = settings.makeRedeliveryBackoff
     }
 
-    func offer(_ message: SystemMessage, recipient: ActorAddress) -> OfferedDirective {
+    func offer(_ message: _SystemMessage, recipient: ActorAddress) -> OfferedDirective {
         // Are we able to buffer this message?
         let nrOfMessagesPendingAcknowledgement = self.messagesPendingAcknowledgement.count
         guard nrOfMessagesPendingAcknowledgement < self.settings.redeliveryBufferLimit else {
@@ -281,8 +281,8 @@ struct GiveUpRedeliveringSystemMessagesError: Error {}
 /// Each association has one inbound system message queue.
 @usableFromInline
 internal class InboundSystemMessages {
-    typealias ACK = SystemMessage.ACK
-    typealias NACK = SystemMessage.NACK
+    typealias ACK = _SystemMessage.ACK
+    typealias NACK = _SystemMessage.NACK
     typealias SequenceNr = SystemMessageEnvelope.SequenceNr
 
     // TODO: we do not keep any "future" messages and rely on them being re-sent, this is most likely fine (and is in reality in other impls),

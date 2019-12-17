@@ -97,7 +97,7 @@ class TraversalTests: XCTestCase {
     }
 
     func test_traverse_shouldAllowImplementingCollect() {
-        let found: TraversalResult<String> = self.system._traverseAll { _, ref in
+        let found: _TraversalResult<String> = self.system._traverseAll { _, ref in
             if ref.address.name.contains("inner") {
                 // collect it
                 return .accumulateSingle(ref.address.name)
@@ -118,7 +118,7 @@ class TraversalTests: XCTestCase {
     }
 
     func test_traverse_shouldHaveRightDepthInContext() {
-        let _: TraversalResult<String> = self.system._traverseAll { context, ref in
+        let _: _TraversalResult<String> = self.system._traverseAll { context, ref in
             if ref.address.name == "hello" {
                 context.depth.shouldEqual(1)
                 return .continue

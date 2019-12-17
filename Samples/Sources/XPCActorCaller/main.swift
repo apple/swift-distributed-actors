@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import DistributedActors
-import XPC
+import XPC // only for dispatchMain() // TODO: won't bee needed
 import XPCActorable
 import XPCActorServiceAPI
 
@@ -41,51 +41,18 @@ reply.withTimeout(after: .seconds(3))._nioFuture.whenComplete {
     system.log.info("Reply from service.greet(Capybara) = \($0)")
 }
 
-struct Me: Actorable {
-
-    let context: Myself.Context
-    let service: Actor<GreetingsServiceProtocolStub>
-
-    init(context: Myself.Context, service: Actor<GreetingsServiceProtocolStub>) {
-        self.context = context
-        self.service = service
-
-        context.watch(service)
-
-        service.fatalCrash() // crashes the service
-    }
-
-    func noop() {
-    }
-
-    func receiveTerminated(context: Myself.Context, terminated: Signals.Terminated) -> DeathPactDirective {
-        context.log.info("Received \(#function): \(terminated)")
-        return .stop
-    }
-
-    func receiveSignal(context: Myself.Context, signal: Signal) {
-        context.log.info("Received \(#function): \(signal)")
-    }
-}
-
-try! system.spawn("me", { Me(context: $0, service: xpcGreetingsActor) })
-
-
 // TODO: make it a pattern to call some system.park() so we can manage this (same with process isolated)?
 dispatchMain()
 
 
 
-// TODO make these work
-//    func receiveSignal(context: Myself.Context, signal: Signal) -> DeathPactDirective {
-//        switch signal {
-//        case let invalidated as Signals.Terminated:
-//            context.log.warning("The service \(invalidated.address) was TERMINATED") // for an XPC Service this also handles Invalidated
-//
-//        case let invalidated as Signals.XPCConnectionInvalidated:
-//            context.log.warning("The service \(invalidated.address) was INVALIDATED")
-//
-//        case let interrupted as Signals.XPCConnectionInterrupted:
-//            context.log.warning("The service \(invalidated.address) was INTERRUPTED")
-//        }
-//    }
+
+
+
+
+let ref: ActorRef<String> = try system.spawn("Me", .receive { context, message in
+    context.log.info("GOT: \(message)")
+    return .same
+})
+
+xpcGreetingsActor.greetDirect(who: ref)

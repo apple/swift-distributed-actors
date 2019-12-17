@@ -20,13 +20,14 @@ import NIO
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor internals
 
+/// :nodoc: INTERNAL API
+///
 /// The shell is responsible for interpreting messages using the current behavior.
 /// In simplified terms, it can be thought of as "the actual actor," as it is the most central piece where
 /// all actor interactions with messages, user code, and the mailbox itself happen.
 ///
 /// The shell is mutable, and full of dangerous and carefully threaded/ordered code, be extra cautious.
-@usableFromInline
-internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
+public final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     // The phrase that "actor change their behavior" can be understood quite literally;
     // On each message interpretation the actor may return a new behavior that will be handling the next message.
     @usableFromInline
@@ -62,7 +63,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         )
 
     @usableFromInline
-    var _myselfReceivesSystemMessages: ReceivesSystemMessages {
+    var _myselfReceivesSystemMessages: _ReceivesSystemMessages {
         return self.myself
     }
 
@@ -175,7 +176,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         system.metrics.recordActorStop(self)
     }
 
-    /// INTERNAL API: MUST be called immediately after constructing the cell and ref,
+    /// :nodoc: INTERNAL API: MUST be called immediately after constructing the cell and ref,
     /// as the actor needs to access its ref from its context during setup or other behavior reductions
     internal func set(ref: ActorCell<Message>) {
         self._myCell = ref // TODO: atomic?
@@ -300,7 +301,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
     /// Throws:
     ///   - user behavior thrown exceptions
     ///   - or `DeathPactError` when a watched actor terminated and the termination signal was not handled; See "death watch" for details.
-    func interpretSystemMessage(message: SystemMessage) throws -> ActorRunResult {
+    func interpretSystemMessage(message: _SystemMessage) throws -> ActorRunResult {
         traceLog_Cell("Interpret system message: \(message)")
 
         switch message {
@@ -603,15 +604,15 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
         guard case .failed(_, let failure) = self.behavior.underlying else {
             // we are not failed, so no need to further check for .escalate supervision
-            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .stopped))
+            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .stopped))
         }
 
         guard self.supervisor is EscalatingSupervisor<Message> else {
             // NOT escalating
-            return parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .failed(failure)))
+            return parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .failed(failure)))
         }
 
-        parent.sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
+        parent._sendSystemMessage(.childTerminated(ref: self.myself.asAddressable(), .escalating(failure)))
     }
 
     func invokePendingDeferredClosuresWhileTerminating() {
@@ -676,7 +677,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
         return self.subReceives[identifier]?.0
     }
 
-    override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
+    public override func subReceive<SubMessage>(_ id: SubReceiveId<SubMessage>, _ subType: SubMessage.Type, _ closure: @escaping (SubMessage) throws -> Void) -> ActorRef<SubMessage> {
         do {
             let wrappedClosure: (SubMessageCarry) throws -> Behavior<Message> = { carry in
                 guard let message = carry.message as? SubMessage else {
@@ -725,7 +726,7 @@ internal final class ActorShell<Message>: ActorContext<Message>, AbstractActor {
 
     private var messageAdapters: [MessageAdapterClosure] = []
 
-    override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
+    public override func messageAdapter<From>(from fromType: From.Type, adapt: @escaping (From) -> Message?) -> ActorRef<From> {
         do {
             let metaType = MetaType(fromType)
             let anyAdapter: (Any) -> Message? = { message in
@@ -773,7 +774,7 @@ extension ActorShell {
             self.deathWatch.becomeWatchedBy(watcher: watcher, myself: self.myself)
         } else {
             // so we are in the middle of terminating already anyway
-            watcher.sendSystemMessage(.terminated(ref: self.asAddressable, existenceConfirmed: true))
+            watcher._sendSystemMessage(.terminated(ref: self.asAddressable, existenceConfirmed: true))
         }
     }
 
@@ -917,19 +918,18 @@ extension ActorShell: CustomStringConvertible {
 
 /// The purpose of this cell is to allow storing cells of different types in a collection, i.e. Children
 internal protocol AbstractActor: _ActorTreeTraversable {
-    var _myselfReceivesSystemMessages: ReceivesSystemMessages { get }
+    var _myselfReceivesSystemMessages: _ReceivesSystemMessages { get }
     var children: Children { get set } // lock-protected
     var asAddressable: AddressableActorRef { get }
 }
 
 extension AbstractActor {
     @inlinable
-    var receivesSystemMessages: ReceivesSystemMessages {
-        return self._myselfReceivesSystemMessages
+    var receivesSystemMessages: _ReceivesSystemMessages {
+        self._myselfReceivesSystemMessages
     }
 
-    @inlinable
-    func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> TraversalDirective<T>) -> TraversalResult<T> {
+    public func _traverse<T>(context: TraversalContext<T>, _ visit: (TraversalContext<T>, AddressableActorRef) -> _TraversalDirective<T>) -> _TraversalResult<T> {
         var c = context.deeper
         switch visit(context, self.asAddressable) {
         case .continue:
@@ -946,8 +946,8 @@ extension AbstractActor {
         }
     }
 
-    func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
-        let myself: ReceivesSystemMessages = self._myselfReceivesSystemMessages
+    public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
+        let myself: _ReceivesSystemMessages = self._myselfReceivesSystemMessages
 
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
@@ -967,7 +967,7 @@ extension AbstractActor {
         return self.children._resolve(context: context)
     }
 
-    func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
+    public func _resolveUntyped(context: ResolveContext<Any>) -> AddressableActorRef {
         guard context.selectorSegments.first != nil else {
             // no remaining selectors == we are the "selected" ref, apply uid check
             if self._myselfReceivesSystemMessages.address.incarnation == context.address.incarnation {
@@ -983,7 +983,7 @@ extension AbstractActor {
 }
 
 internal extension ActorContext {
-    /// INTERNAL API: UNSAFE, DO NOT TOUCH.
+    /// :nodoc: INTERNAL API: UNSAFE, DO NOT TOUCH.
     @usableFromInline
     var _downcastUnsafe: ActorShell<Message> {
         switch self {

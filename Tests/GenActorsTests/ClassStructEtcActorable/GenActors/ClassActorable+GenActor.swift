@@ -23,6 +23,7 @@ import DistributedActors
 
 /// DO NOT EDIT: Generated ClassActorable messages
 extension ClassActorable {
+
     public enum Message { 
         case hello(_replyTo: ActorRef<String>) 
     }
@@ -58,7 +59,7 @@ extension ClassActorable {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -67,7 +68,8 @@ extension ClassActorable {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -78,13 +80,12 @@ extension ClassActorable {
 
 extension Actor where A.Message == ClassActorable.Message {
 
-    func hello() -> Reply<String> {
+     func hello() -> Reply<String> {
         // TODO: FIXME perhaps timeout should be taken from context
         Reply(nioFuture:
             self.ref.ask(for: String.self, timeout: .effectivelyInfinite) { _replyTo in
-                .hello(_replyTo: _replyTo)}
-            .nioFuture
-            )
+                .hello(_replyTo: _replyTo)}.nioFuture
+        )
     }
  
 

@@ -218,7 +218,7 @@ internal extension Timers {
             traceLog_Supervision("executing the task ::: \(context.myself)")
 
             // TODO: avoid the box part?
-            context.myself.asAddressable().sendSystemMessage(.resume(.success(token)))
+            context.myself.asAddressable()._sendSystemMessage(.resume(.success(token)))
         }
 
         traceLog_Supervision("Scheduled actor wake-up [\(key)] with generation [\(generation)], in \(delay.prettyDescription)")

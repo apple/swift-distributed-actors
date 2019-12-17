@@ -18,6 +18,7 @@
 
 import DistributedActors
 import XPCActorable
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Codable conformance for GeneratedActor.Messages.GreetingsServiceProtocol
@@ -29,6 +30,8 @@ extension GeneratedActor.Messages.GreetingsServiceProtocol: Codable {
         case logGreeting
         case greet
         case fatalCrash
+        case greetDirect
+        case greetFuture
 
     }
 
@@ -37,6 +40,9 @@ extension GeneratedActor.Messages.GreetingsServiceProtocol: Codable {
         case logGreeting_name
         case greet_name
         case greet__replyTo
+        case greetDirect_who
+        case greetFuture_name
+        case greetFuture__replyTo
 
     }
 
@@ -52,6 +58,13 @@ extension GeneratedActor.Messages.GreetingsServiceProtocol: Codable {
             self = .greet(name: name, _replyTo: _replyTo)
         case .fatalCrash:
             self = .fatalCrash
+        case .greetDirect:
+            let who = try container.decode(ActorRef<String>.self, forKey: CodingKeys.greetDirect_who)
+            self = .greetDirect(who: who)
+        case .greetFuture:
+            let name = try container.decode(String.self, forKey: CodingKeys.greetFuture_name)
+            let _replyTo = try container.decode(ActorRef<Result<String, Error>>.self, forKey: CodingKeys.greetFuture__replyTo)
+            self = .greetFuture(name: name, _replyTo: _replyTo)
 
         }
     }
@@ -68,6 +81,13 @@ extension GeneratedActor.Messages.GreetingsServiceProtocol: Codable {
             try container.encode(_replyTo, forKey: CodingKeys.greet__replyTo)
         case .fatalCrash:
             try container.encode(DiscriminatorKeys.fatalCrash.rawValue, forKey: CodingKeys._case)
+        case .greetDirect(let who):
+            try container.encode(DiscriminatorKeys.greetDirect.rawValue, forKey: CodingKeys._case)
+            try container.encode(who, forKey: CodingKeys.greetDirect_who)
+        case .greetFuture(let name, let _replyTo):
+            try container.encode(DiscriminatorKeys.greetFuture.rawValue, forKey: CodingKeys._case)
+            try container.encode(name, forKey: CodingKeys.greetFuture_name)
+            try container.encode(_replyTo, forKey: CodingKeys.greetFuture__replyTo)
 
         }
     }

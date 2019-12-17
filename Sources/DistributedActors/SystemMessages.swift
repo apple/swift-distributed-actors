@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// :nodoc: INTERNAL API: May change without any prior notice. User code should ALWAYS interact with `Signal` and NEVER with `_SystemMessage`.
+///
 /// Messages sent only internally by the `ActorSystem` and actor internals.
 /// These messages MUST NOT ever be sent directly by user-land.
 ///
@@ -36,8 +38,7 @@
 /// in the cluster membership.
 ///
 /// - SeeAlso: `OutboundSystemMessageRedeliverySettings` to configure the `redeliveryBufferLimit`
-@usableFromInline
-internal enum SystemMessage: Equatable {
+public enum _SystemMessage: Equatable {
     /// Sent to an Actor for it to "start", i.e. inspect and potentially evaluate a behavior wrapper that should
     /// be executed immediately e.g. `setup` or similar ones.
     ///
@@ -105,25 +106,25 @@ public enum TerminationCircumstances {
     case escalating(Supervision.Failure)
 }
 
-internal extension SystemMessage {
+internal extension _SystemMessage {
     @inlinable
-    static func terminated(ref: AddressableActorRef) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef) -> _SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: false)
     }
 
     @inlinable
-    static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef, existenceConfirmed: Bool) -> _SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: existenceConfirmed, addressTerminated: false)
     }
 
     @inlinable
-    static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> SystemMessage {
+    static func terminated(ref: AddressableActorRef, addressTerminated: Bool) -> _SystemMessage {
         return .terminated(ref: ref, existenceConfirmed: false, addressTerminated: addressTerminated)
     }
 }
 
-extension SystemMessage {
-    public static func == (lhs: SystemMessage, rhs: SystemMessage) -> Bool {
+extension _SystemMessage {
+    public static func == (lhs: _SystemMessage, rhs: _SystemMessage) -> Bool {
         switch (lhs, rhs) {
         case (.start, .start): return true
 
@@ -160,6 +161,6 @@ extension SystemMessage {
     }
 }
 
-extension SystemMessage {
-    internal static let metaType: MetaType<SystemMessage> = MetaType(SystemMessage.self)
+extension _SystemMessage {
+    internal static let metaType: MetaType<_SystemMessage> = MetaType(_SystemMessage.self)
 }

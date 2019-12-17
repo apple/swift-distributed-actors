@@ -38,6 +38,9 @@ extension GeneratedActor.Messages {
 
 extension Actor where A: Diagnostics {
 
+    internal func printDiagnostics() {
+        self.ref.tell(A._boxDiagnostics(.printDiagnostics))
+    }
  
 
 }

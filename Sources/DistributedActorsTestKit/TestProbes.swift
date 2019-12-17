@@ -52,7 +52,7 @@ public final class ActorTestProbe<Message> {
     /// Blocking linked queue, available to run assertions on
     private let messagesQueue = LinkedBlockingQueue<Message>()
     /// Blocking linked queue, available to run assertions on
-    private let signalQueue = LinkedBlockingQueue<SystemMessage>()
+    private let signalQueue = LinkedBlockingQueue<_SystemMessage>()
     /// Blocking linked queue, specialized for keeping only termination signals (so that we can assert terminations, independently of other signals)
     private let terminationsQueue = LinkedBlockingQueue<Signals.Terminated>()
 
@@ -87,7 +87,7 @@ public final class ActorTestProbe<Message> {
 
     private static func behavior(
         messageQueue: LinkedBlockingQueue<Message>,
-        signalQueue: LinkedBlockingQueue<SystemMessage>, // TODO: maybe we don't need this one
+        signalQueue: LinkedBlockingQueue<_SystemMessage>, // TODO: maybe we don't need this one
         terminationsQueue: LinkedBlockingQueue<Signals.Terminated>
     ) -> Behavior<ProbeCommands> {
         return Behavior<ProbeCommands>.receive { context, message in
@@ -523,10 +523,10 @@ extension ActorTestProbe {
 
 extension ActorTestProbe {
     /// Expects a signal to be enqueued to this actor within the default `expectationTimeout`.
-    public func expectSignal(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> SystemMessage {
+    public func expectSignal(file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws -> _SystemMessage {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        let maybeGot: SystemMessage? = self.signalQueue.poll(self.expectationTimeout)
+        let maybeGot: _SystemMessage? = self.signalQueue.poll(self.expectationTimeout)
         guard let got = maybeGot else {
             throw callSite.error("Expected Signal however no signal arrived within \(self.expectationTimeout.prettyDescription)")
         }
@@ -534,10 +534,10 @@ extension ActorTestProbe {
     }
 
     /// Expects the `expected` system message
-    public func expectSignal(expected: SystemMessage, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
+    public func expectSignal(expected: _SystemMessage, file: StaticString = #file, line: UInt = #line, column: UInt = #column) throws {
         let callSite = CallSiteInfo(file: file, line: line, column: column, function: #function)
 
-        let got: SystemMessage = try self.expectSignal(file: file, line: line, column: column)
+        let got: _SystemMessage = try self.expectSignal(file: file, line: line, column: column)
         if got != expected {
             throw callSite.error(callSite.detailedMessage(got: got, expected: expected))
         }

@@ -65,7 +65,7 @@ extension LifecycleReacting {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -74,7 +74,8 @@ extension LifecycleReacting {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }
@@ -85,6 +86,9 @@ extension LifecycleReacting {
 
 extension Actor where A.Message == LifecycleReacting.Message {
 
+     func something() {
+        self.ref.tell(.something)
+    }
  
 
 }

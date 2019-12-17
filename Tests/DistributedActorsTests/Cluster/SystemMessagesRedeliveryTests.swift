@@ -269,8 +269,8 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
             }
         }
 
-        try validateRoundTrip(SystemMessage.ACK(sequenceNr: 1337))
-        try validateRoundTrip(SystemMessage.NACK(sequenceNr: 1337))
+        try validateRoundTrip(_SystemMessage.ACK(sequenceNr: 1337))
+        try validateRoundTrip(_SystemMessage.NACK(sequenceNr: 1337))
         let ref = system.deadLetters.asAddressable()
         try validateRoundTrip(SystemMessageEnvelope(sequenceNr: 1337, message: .watch(watchee: ref, watcher: ref)))
     }
@@ -284,12 +284,12 @@ final class SystemMessagesRedeliveryTests: XCTestCase {
         return .init(sequenceNr: seqNr, message: .start)
     }
 
-    private func ack(_ seqNr: Int) -> SystemMessage.ACK {
-        return SystemMessage.ACK(sequenceNr: seqNr)
+    private func ack(_ seqNr: Int) -> _SystemMessage.ACK {
+        return _SystemMessage.ACK(sequenceNr: seqNr)
     }
 
-    private func nack(_ seqNr: Int) -> SystemMessage.NACK {
-        return SystemMessage.NACK(sequenceNr: seqNr)
+    private func nack(_ seqNr: Int) -> _SystemMessage.NACK {
+        return _SystemMessage.NACK(sequenceNr: seqNr)
     }
 
     private func seqNr(_ i: Int) -> SystemMessageEnvelope.SequenceNr {

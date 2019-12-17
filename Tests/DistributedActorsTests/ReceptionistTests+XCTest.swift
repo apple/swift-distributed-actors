@@ -26,6 +26,7 @@ extension ReceptionistTests {
             ("test_receptionist_shouldRespondWithRegisteredRefsForKey", test_receptionist_shouldRespondWithRegisteredRefsForKey),
             ("test_receptionist_shouldRespondWithEmptyRefForUnknownKey", test_receptionist_shouldRespondWithEmptyRefForUnknownKey),
             ("test_receptionist_shouldNotRegisterTheSameRefTwice", test_receptionist_shouldNotRegisterTheSameRefTwice),
+            ("test_receptionist_shouldRemoveAndAddNewSingletonRef", test_receptionist_shouldRemoveAndAddNewSingletonRef),
             ("test_receptionist_shouldReplyWithRegistered", test_receptionist_shouldReplyWithRegistered),
             ("test_receptionist_shouldUnregisterTerminatedRefs", test_receptionist_shouldUnregisterTerminatedRefs),
             ("test_receptionist_shouldContinuouslySendUpdatesForSubscriptions", test_receptionist_shouldContinuouslySendUpdatesForSubscriptions),

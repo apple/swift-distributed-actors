@@ -12,10 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
 import DistributedActors
 import XPCActorable
-import LoggingOSLog
 
 let system = ActorSystem("XPCActorServiceProvider") { settings in
     // TODO make this the source of "truth" what transports are available
@@ -27,9 +25,7 @@ let system = ActorSystem("XPCActorServiceProvider") { settings in
     settings.serialization.registerCodable(for: Result<String, Error>.self, underId: 10003)
 }
 
-system.log.info("Started.")
-
 let service = try XPCActorableService(system, GreetingsServiceImpl.init)
 
 service.park()
-exit(-1) // unreachable, park never exits
+// unreachable, park never exits

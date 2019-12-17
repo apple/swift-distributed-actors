@@ -32,7 +32,7 @@ extension GeneratedActor.Messages {
 
 extension Actor where A: Parking {
 
-    func park() {
+    public func park() {
         self.ref.tell(A._boxParking(.park))
     }
  

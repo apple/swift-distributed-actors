@@ -24,6 +24,7 @@ import class NIO.EventLoopFuture
 
 /// DO NOT EDIT: Generated JackOfAllTrades messages
 extension JackOfAllTrades {
+
     public enum Message { 
         case hello(replyTo: ActorRef<String>) 
         case ticketing(/*TODO: MODULE.*/GeneratedActor.Messages.Ticketing) 
@@ -76,7 +77,7 @@ extension JackOfAllTrades {
                     instance.postStop(context: context)
                     return .same
                 case let terminated as Signals.Terminated:
-                    switch instance.receiveTerminated(context: context, terminated: terminated) {
+                    switch try instance.receiveTerminated(context: context, terminated: terminated) {
                     case .unhandled: 
                         return .unhandled
                     case .stop: 
@@ -85,7 +86,8 @@ extension JackOfAllTrades {
                         return .same
                     }
                 default:
-                    return .unhandled
+                    try instance.receiveSignal(context: context, signal: signal)
+                    return .same
                 }
             }
         }

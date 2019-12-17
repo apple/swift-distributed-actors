@@ -32,7 +32,7 @@ extension GeneratedActor.Messages {
 
 extension Actor where A: Ticketing {
 
-    func makeTicket() {
+    public func makeTicket() {
         self.ref.tell(A._boxTicketing(.makeTicket))
     }
  

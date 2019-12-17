@@ -14,6 +14,7 @@
 
 import DistributedActors
 import XPCActorServiceAPI
+import NIO
 
 public struct GreetingsServiceImpl: GreetingsServiceProtocol, Actorable {
 
@@ -41,6 +42,14 @@ public struct GreetingsServiceImpl: GreetingsServiceProtocol, Actorable {
     public func fatalCrash() {
         self.context.log.info("[actor service:\(self.context.system.name)][\(self.context.path)] Received .fatalCrash")
         fatalError("Boom, crashing hard!")
+    }
+
+    public func greetDirect(who: ActorRef<String>) {
+        who.tell("Hello \(who.address.name)")
+    }
+
+    public func greetFuture(name: String) -> EventLoopFuture<String> {
+        self.context.system._eventLoopGroup.next().makeSucceededFuture("Hello \(name)")
     }
 
 }

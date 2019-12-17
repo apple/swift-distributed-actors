@@ -18,6 +18,7 @@
 
 import DistributedActors
 import XPCActorable
+import NIO
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: DO NOT EDIT: Generated GreetingsServiceProtocolStub for XPCService consumers of the GreetingsServiceProtocol XPCActorableProtocol
@@ -41,6 +42,14 @@ public struct GreetingsServiceProtocolStub: Actorable, GreetingsServiceProtocol 
 
     public func fatalCrash() {
         fatalError("Function STUB for XPCActorableProtocol [fatalCrash], function: \(#function).")
+    }
+
+    public func greetDirect(who: ActorRef<String>) {
+        fatalError("Function STUB for XPCActorableProtocol [greetDirect], function: \(#function).")
+    }
+
+    public func greetFuture(name: String) -> EventLoopFuture<String> {
+        fatalError("Function STUB for XPCActorableProtocol [greetFuture], function: \(#function).")
     }
 
 }

@@ -302,12 +302,12 @@ private final class SerializationHandler: ChannelDuplexHandler {
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessageEnvelope: message as! SystemMessageEnvelope, recipient: wireEnvelope.recipient)))
 
             case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageACK:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! SystemMessage.ACK, recipient: wireEnvelope.recipient)))
+                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(ack: message as! _SystemMessage.ACK, recipient: wireEnvelope.recipient)))
             case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessageNACK:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! SystemMessage.NACK, recipient: wireEnvelope.recipient)))
+                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(nack: message as! _SystemMessage.NACK, recipient: wireEnvelope.recipient)))
 
             case .success(let message) where wireEnvelope.serializerId == Serialization.Id.InternalSerializer.SystemMessage:
-                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! SystemMessage, recipient: wireEnvelope.recipient)))
+                context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(systemMessage: message as! _SystemMessage, recipient: wireEnvelope.recipient)))
 
             case .success(let message):
                 context.fireChannelRead(self.wrapInboundOut(TransportEnvelope(message: message, recipient: wireEnvelope.recipient)))
@@ -429,7 +429,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 
-    private func onInboundACK(ack: SystemMessage.ACK) {
+    private func onInboundACK(ack: _SystemMessage.ACK) {
         switch self.outboundSystemMessages.acknowledge(ack) {
         case .acknowledged:
             return // good, and do not pass the ACK through the pipeline, we handled it completely just now
@@ -443,7 +443,7 @@ internal final class SystemMessageRedeliveryHandler: ChannelDuplexHandler {
         }
     }
 
-    private func onInboundNACK(_ context: ChannelHandlerContext, nack: SystemMessage.NACK) {
+    private func onInboundNACK(_ context: ChannelHandlerContext, nack: _SystemMessage.NACK) {
         switch self.outboundSystemMessages.negativeAcknowledge(nack) {
         case .ensureRedeliveryTick(let nextRedeliveryTickDelay):
             self.scheduleNextRedeliveryTick(context, in: nextRedeliveryTickDelay)
@@ -558,7 +558,7 @@ private final class ActorDeliveryHandler: ChannelInboundHandler {
         case .message(let message):
             ref._tellOrDeadLetter(message)
         case .systemMessage(let message):
-            ref.sendSystemMessage(message)
+            ref._sendSystemMessage(message)
         case .systemMessageEnvelope(let systemMessageEnvelope):
             fatalError("""
             .systemMessageEnvelope should not be allowed through to the \(self) handler! \
@@ -810,7 +810,7 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         /// Note: MAY contain SystemMessageEnvelope
         case message(Any)
         // ~~ outbound ~~
-        case systemMessage(SystemMessage)
+        case systemMessage(_SystemMessage)
         // ~~ inbound only ~~
         case systemMessageEnvelope(SystemMessageEnvelope)
         case systemMessageDelivery(SystemMessageDelivery)
@@ -818,8 +818,8 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
 
     // TODO: we could merge ACK and NACK if NACKs were to carry "the gap"
     enum SystemMessageDelivery {
-        case ack(SystemMessage.ACK)
-        case nack(SystemMessage.NACK)
+        case ack(_SystemMessage.ACK)
+        case nack(_SystemMessage.NACK)
     }
 
     let recipient: ActorAddress
@@ -851,10 +851,10 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         self.underlyingMessageMetaType = MetaType(Message.self)
     }
 
-    init(systemMessage: SystemMessage, recipient: ActorAddress) {
+    init(systemMessage: _SystemMessage, recipient: ActorAddress) {
         self.storage = .systemMessage(systemMessage)
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(SystemMessage.self)
+        self.underlyingMessageMetaType = MetaType(_SystemMessage.self)
     }
 
     init(systemMessageEnvelope: SystemMessageEnvelope, recipient: ActorAddress) {
@@ -863,16 +863,16 @@ internal struct TransportEnvelope: CustomStringConvertible, CustomDebugStringCon
         self.underlyingMessageMetaType = MetaType(SystemMessageEnvelope.self)
     }
 
-    init(ack: SystemMessage.ACK, recipient: ActorAddress) {
+    init(ack: _SystemMessage.ACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.ack(ack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(SystemMessage.ACK.self)
+        self.underlyingMessageMetaType = MetaType(_SystemMessage.ACK.self)
     }
 
-    init(nack: SystemMessage.NACK, recipient: ActorAddress) {
+    init(nack: _SystemMessage.NACK, recipient: ActorAddress) {
         self.storage = .systemMessageDelivery(.nack(nack))
         self.recipient = recipient
-        self.underlyingMessageMetaType = MetaType(SystemMessage.NACK.self)
+        self.underlyingMessageMetaType = MetaType(_SystemMessage.NACK.self)
     }
 
     /// Unwraps *ONE* layer of envelope

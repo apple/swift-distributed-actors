@@ -3,7 +3,7 @@
 
 import PackageDescription
 
-let targets: [PackageDescription.Target] = [
+var targets: [PackageDescription.Target] = [
     // ==== ----------------------------------------------------------------------------------------------------------------
     // MARK: Samples
 
@@ -37,8 +37,13 @@ let targets: [PackageDescription.Target] = [
         ],
         path: "Sources/SampleGenActors"
     ),
+]
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
 
-    /* --- xpc actorable examples */
+// ==== ------------------------------------------------------------------------------------------------------------
+// MARK: XPCActorable Examples (only available on Apple platforms)
+
+targets.append(contentsOf: [
     .target(
         name: "XPCActorServiceAPI",
         dependencies: [
@@ -72,8 +77,9 @@ let targets: [PackageDescription.Target] = [
         ],
         path: "Tests/SampleGenActorsTests"
     ),
-
 ]
+
+#endif
 
 var dependencies: [Package.Dependency] = [
     // ~~~~~~~     parent       ~~~~~~~

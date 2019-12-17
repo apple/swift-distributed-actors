@@ -12,10 +12,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+
+import DistributedActors
 import XPC
 import Dispatch
-
-#if os(macOS)
 
 /// Delegates message handling to an XPC Service.
 ///
@@ -70,7 +71,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
 
         xpc_connection_set_event_handler(self.peer, { (xdict: xpc_object_t) in
             var log = ActorLogger.make(system: system, identifier: "\(myself.address.name)")
-            log[metadataKey: "actorPath"] = .lazyStringConvertible { address }
+            log[metadataKey: "actorPath"] = "\(address)"
             // TODO: connection id?
 
             switch xpc_get_type(xdict) {
@@ -82,7 +83,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
 //                log.error("[xpc] Invalidated: \(event)")
 //                system._xpcMaster.tell(.xpcConnectionInvalidated(self.peer))
             case XPC_TYPE_ERROR:
-                if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != nil {
+                if let errorDescription = xpc_dictionary_get_string(xdict, "XPCErrorDescription"), errorDescription.pointee != 0 {
                     if String(cString: errorDescription).contains("Connection interrupted") {
                         // log.error("XPC Interrupted Error: \(xdict)")
                         system._xpcMaster.tell(.xpcConnectionInterrupted(myself.asAddressable()))
@@ -135,7 +136,7 @@ internal final class XPCServiceCellDelegate<Message>: CellDelegate<Message> {
         // self.system.log.info("Sending to \(self): \(ActorableXPCMessageField.message.rawValue)=\(xdict)")
     }
 
-    override func sendSystemMessage(_ message: SystemMessage, file: String = #file, line: UInt = #line) {
+    override func sendSystemMessage(_ message: _SystemMessage, file: String = #file, line: UInt = #line) {
         switch message {
         case .watch(let watchee, let watcher):
             self.system._xpcMaster.tell(.xpcActorWatched(watchee: watchee, watcher: watcher))
