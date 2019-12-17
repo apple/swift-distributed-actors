@@ -2,12 +2,11 @@
 // Created by Yim Lee on 12/13/19.
 //
 
-import XCTest
-import DistributedActors
 import ActorSingletonPlugin
+import DistributedActors
+import XCTest
 
 final class ActorSingletonPluginTests: XCTestCase {
-
     func test_example() throws {
         let system = ActorSystem("X") { settings in
 
@@ -24,7 +23,6 @@ final class ActorSingletonPluginTests: XCTestCase {
         // user-defined convenience:
         try system.singleton.mySingletonRef().tell("Hello")
     }
-
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
@@ -46,4 +44,3 @@ extension ActorSingletonLookup {
         try self.ref(name: MySingleton.name, of: MySingleton.Message.self)
     }
 }
-

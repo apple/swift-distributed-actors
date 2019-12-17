@@ -54,8 +54,18 @@ internal class ActorSingletonProxy<Message> {
             // Link manager and proxy
             self.manager.tell(.linkProxy(singletonSubReceive))
 
-            return .receiveMessage { message in
+            // Stop myself if manager terminates
+            _ = context.watch(self.manager)
+
+            return Behavior<Message>.receiveMessage { message in
                 try self.forwardOrStash(context, message: message)
+                return .same
+            }.receiveSpecificSignal(Signals.Terminated.self) { context, signal in
+                if self.manager.address == signal.address {
+                    context.log.error("Stopping myself because manager [\(signal.address)] terminated")
+                    return .stop
+                }
+                context.log.warning("Received unexpected termination signal for non-manager [\(signal.address)]")
                 return .same
             }
         }

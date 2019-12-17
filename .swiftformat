@@ -10,7 +10,7 @@
 --ifdef no-indent
 --patternlet inline
 --self insert
---stripunusedargs unnamed-only
+--stripunusedargs closure-only
 --wraparguments before-first
 
 # rules

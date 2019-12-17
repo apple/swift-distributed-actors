@@ -51,11 +51,11 @@ internal struct BoxedPlugin: AnyPlugin {
     }
 
     internal func start(_ system: ActorSystem) -> Result<Void, Error> {
-        return self.underlying.start(system)
+        self.underlying.start(system)
     }
 
     internal func stop(_ system: ActorSystem) -> Result<Void, Error> {
-        return self.underlying.stop(system)
+        self.underlying.stop(system)
     }
 }
 
@@ -73,6 +73,7 @@ public struct PluginKey<P: Plugin>: CustomStringConvertible {
     public init(plugin: String) {
         self.init(plugin: plugin, sub: nil)
     }
+
     private init(plugin: String, sub: String?) {
         self.plugin = plugin
         self.sub = sub
@@ -128,7 +129,7 @@ public struct PluginsSettings {
     /// Adds a `Plugin`.
     ///
     /// - Note: A plugin that depends on others should be added *after* its dependencies.
-    /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings
+    /// - Faults, when plugin of the exact same `PluginKey` is already included in the settings.
     public mutating func add<P: Plugin>(_ plugin: P) {
         precondition(
             !self.plugins.contains(where: { $0.key == plugin.key.asAny }),

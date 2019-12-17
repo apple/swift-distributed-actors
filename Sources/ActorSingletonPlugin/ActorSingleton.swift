@@ -19,7 +19,7 @@ import DistributedActors
 
 /// An `ActorSingleton` ensures that there is no more than one actor of a specific type running in the cluster.
 ///
-/// Actor types that are singleton must be registered during system setup, as part of `ActorSingletonPluginSettings`.
+/// Actors that are singleton must be registered during system setup, as part of `ActorSystemSettings`.
 /// The `ActorRef` of the singleton can later be obtained through `ActorSystem.singleton.ref(name:)`.
 ///
 /// A singleton may run on any node in the cluster. Use `ActorSingletonSettings.allocationStrategy` to control node
@@ -28,7 +28,7 @@ import DistributedActors
 ///
 /// - Warning: Refer to the configured `AllocationStrategy` for trade-offs between safety and recovery latency for
 ///    the singleton allocation.
-public final class ActorSingleton<Message>: Plugin {
+public final class ActorSingleton<Message> {
     /// Settings for the `ActorSingleton`
     public let settings: ActorSingletonSettings
 
@@ -37,12 +37,10 @@ public final class ActorSingleton<Message>: Plugin {
     /// The singleton behavior
     public let behavior: Behavior<Message>
 
-    /// The manager ref
-    /// TODO: !-safe because
+    /// The `ActorSingletonManager` ref. It's automatically spawned during system initialization so `!` is safe.
     internal private(set) var manager: ActorRef<ActorSingletonManager<Message>.ManagerMessage>!
 
-    /// The proxy ref
-    /// TODO: !-safe because
+    /// The `ActorSingletonProxy` ref. It's automatically spawned during system initialization so `!` is safe.
     internal private(set) var proxy: ActorRef<Message>!
 
     /// Defines a `behavior` as singleton with `settings`.
@@ -64,22 +62,21 @@ public final class ActorSingleton<Message>: Plugin {
 
         // TODO: only spawn the Manager if we are a node that can potentially host the singleton
         self.manager = try system._spawnSystemActor(
-            "singletonManager-\(self.settings.name)", // TODO: $ is not allowed for user spawned thus this would fail with $ prefix
-             ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior
+            "singletonManager-\(self.settings.name)",
+            ActorSingletonManager(settings: self.settings, allocationStrategy: allocationStrategy, props: self.props, self.behavior).behavior
         )
 
         self.proxy = try system._spawnSystemActor(
-            "singletonProxy-\(self.settings.name)",  // TODO: $ is not allowed for user spawned thus this would fail with $ prefix
+            "singletonProxy-\(self.settings.name)",
             ActorSingletonProxy(settings: self.settings, manager: self.manager).behavior
         )
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Implement Plugin protocol
+// MARK: Plugin protocol conformance
 
-extension ActorSingleton {
-
+extension ActorSingleton: Plugin {
     public static func pluginKey(name: String) -> PluginKey<ActorSingleton<Message>> {
         PluginKey<ActorSingleton<Message>>(plugin: "$actorSingleton").makeSub(name)
     }
@@ -98,37 +95,10 @@ extension ActorSingleton {
     }
 
     public func stop(_ system: ActorSystem) -> Result<Void, Error> {
-        // TODO: stop the manager gracefully; it could initiate a hand over here
-        // TODO: stop the proxy?
+        self.manager.tell(.stop)
+        // We don't control the proxy's directives so we can't tell it to stop, but the proxy
+        // watches the manager so it will stop itself if the manager terminates.
         return .success(())
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Type-erased `ActorSingleton`
-
-internal protocol AnyActorSingleton {
-    func spawnAll(_ system: ActorSystem) throws
-}
-
-extension ActorSingleton: AnyActorSingleton {}
-
-internal struct BoxedActorSingleton: AnyActorSingleton {
-    private let underlying: AnyActorSingleton
-
-    init<Message>(_ actorSingleton: ActorSingleton<Message>) {
-        self.underlying = actorSingleton
-    }
-
-    internal func spawnAll(_ system: ActorSystem) throws {
-        try self.underlying.spawnAll(system)
-    }
-
-    internal func unsafeUnwrapAs<Message>(_: Message.Type) -> ActorSingleton<Message> {
-        guard let unwrapped = self.underlying as? ActorSingleton<Message> else {
-            fatalError("Type mismatch, expected: [\(String(reflecting: ActorSingleton<Message>.self))] got [\(self.underlying)]")
-        }
-        return unwrapped
     }
 }
 

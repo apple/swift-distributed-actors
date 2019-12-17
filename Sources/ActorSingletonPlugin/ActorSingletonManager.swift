@@ -27,7 +27,7 @@ internal class ActorSingletonManager<Message> {
     private let settings: ActorSingletonSettings
 
     /// The strategy that determines which node the singleton will be allocated
-    private let allocationStrategy: AllocationStrategy?
+    private let allocationStrategy: AllocationStrategy
 
     /// Props of the singleton behavior
     private let singletonProps: Props
@@ -42,7 +42,7 @@ internal class ActorSingletonManager<Message> {
     /// The `ActorSingletonProxy` paired with this manager
     private var proxy: ActorRef<ActorRef<Message>?>?
 
-    init(settings: ActorSingletonSettings, allocationStrategy: AllocationStrategy?, props: Props, _ behavior: Behavior<Message>) {
+    init(settings: ActorSingletonSettings, allocationStrategy: AllocationStrategy, props: Props, _ behavior: Behavior<Message>) {
         self.settings = settings
         self.allocationStrategy = allocationStrategy
         self.singletonProps = props
@@ -52,16 +52,18 @@ internal class ActorSingletonManager<Message> {
     var behavior: Behavior<ManagerMessage> {
         .setup { context in
             context.system.cluster.events.subscribe(context.subReceive(ClusterEvent.self) { event in
-                try self.receiveAllocationStrategyEvent(context, .clusterEvent(event))
+                try self.receiveClusterEvent(context, event)
             })
 
             return Behavior<ManagerMessage>.receiveMessage { message in
                 switch message {
                 case .linkProxy(let proxy):
                     self.proxy = context.watch(proxy)
+                    return .same
+                case .stop:
+                    try self.handOff(context, to: nil)
+                    return .stop
                 }
-
-                return .same
             }.receiveSpecificSignal(Signals.Terminated.self) { context, signal in
                 if let proxyAddress = self.proxy?.address, proxyAddress == signal.address {
                     context.log.error("Unlinking proxy [\(signal.address)] because it terminated")
@@ -74,14 +76,11 @@ internal class ActorSingletonManager<Message> {
         }
     }
 
-    private func receiveAllocationStrategyEvent(_ context: ActorContext<ManagerMessage>, _ event: AllocationStrategyEvent) throws {
+    private func receiveClusterEvent(_ context: ActorContext<ManagerMessage>, _ event: ClusterEvent) throws {
         // Feed the event to `AllocationStrategy` then forward the result to `updateTargetNode`,
         // which will determine if `targetNode` has changed and react accordingly.
-        switch event {
-        case .clusterEvent(let clusterEvent):
-            let node = self.allocationStrategy?.onClusterEvent(clusterEvent)
-            try self.updateTargetNode(context, node: node)
-        }
+        let node = self.allocationStrategy.onClusterEvent(event)
+        try self.updateTargetNode(context, node: node)
     }
 
     private func updateTargetNode(_ context: ActorContext<ManagerMessage>, node: UniqueNode?) throws {
@@ -141,6 +140,8 @@ internal class ActorSingletonManager<Message> {
     enum ManagerMessage {
         /// Links the given proxy to this manager
         case linkProxy(ActorRef<ActorRef<Message>?>)
+        /// Stops the manager
+        case stop
     }
 }
 
@@ -182,6 +183,6 @@ extension ActorPath {
     }
 
     internal static func _singletonManager(name: String) -> ActorPath {
-        try! ActorPath._system.appending("$singletonManager-\(name)")
+        try! ActorPath._system.appending("singletonManager-\(name)")
     }
 }
