@@ -17,9 +17,11 @@
 
 public protocol AnyPlugin {
     /// Starts the plugin.
+    // TODO: return a Future<> once we have such abstraction, such that plugin can ensure "to be ready" within some time
     func start(_ system: ActorSystem) -> Result<Void, Error>
 
     /// Stops the plugin.
+    // TODO: return a Future<> once we have such abstraction, such that plugin can ensure "to be ready" within some time
     func stop(_ system: ActorSystem) -> Result<Void, Error>
 }
 
@@ -28,7 +30,7 @@ public protocol Plugin: AnyPlugin {
     typealias Key = PluginKey<Self>
 
     /// The plugin's unique identifier
-    static var key: Key { get }
+    var key: Key { get }
 }
 
 internal struct BoxedPlugin: AnyPlugin {
@@ -38,7 +40,7 @@ internal struct BoxedPlugin: AnyPlugin {
 
     internal init<P: Plugin>(_ plugin: P) {
         self.underlying = plugin
-        self.key = AnyPluginKey(P.key)
+        self.key = AnyPluginKey(plugin.key)
     }
 
     internal func unsafeUnwrapAs<P: Plugin>(_: P.Type) -> P {
@@ -49,94 +51,64 @@ internal struct BoxedPlugin: AnyPlugin {
     }
 
     internal func start(_ system: ActorSystem) -> Result<Void, Error> {
-        return self.underlying.start(system)
+        self.underlying.start(system)
     }
 
     internal func stop(_ system: ActorSystem) -> Result<Void, Error> {
-        return self.underlying.stop(system)
+        self.underlying.stop(system)
     }
 }
 
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Plugin key
 
-public struct PluginKey<P: Plugin>: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible {
-    public let name: String
+public struct PluginKey<P: Plugin>: CustomStringConvertible {
+    public let plugin: String
+    public let sub: String?
 
     internal var asAny: AnyPluginKey {
         AnyPluginKey(self)
     }
 
-    public init(stringLiteral value: String) {
-        self.name = value
+    public init(plugin: String) {
+        self.init(plugin: plugin, sub: nil)
+    }
+
+    private init(plugin: String, sub: String?) {
+        self.plugin = plugin
+        self.sub = sub
+    }
+
+    public func makeSub(_ sub: String) -> PluginKey {
+        precondition(self.sub == nil, "Cannot make a sub plugin key from \(self) (sub MUST be nil)")
+        return .init(plugin: self.plugin, sub: sub)
     }
 
     public var description: String {
-        "PluginKey(\(self.name))"
+        if let sub = self.sub {
+            return "PluginKey<\(P.self)>(\(self.plugin), sub: \(sub))"
+        } else {
+            return "PluginKey<\(P.self)>(\(self.plugin))"
+        }
     }
 }
 
-internal struct AnyPluginKey: Equatable, CustomStringConvertible {
+internal struct AnyPluginKey: Hashable, CustomStringConvertible {
     internal let pluginTypeId: ObjectIdentifier
-    internal let name: String
+    internal let plugin: String
+    internal let sub: String?
 
     internal init<P: Plugin>(_ key: PluginKey<P>) {
         self.pluginTypeId = ObjectIdentifier(P.self)
-        self.name = key.name
+        self.plugin = key.plugin
+        self.sub = key.sub
     }
 
     public var description: String {
-        "AnyPluginKey(\(self.name))"
-    }
-}
-
-// ==== ----------------------------------------------------------------------------------------------------------------
-// MARK: Plugins settings
-
-/// Settings for `ActorSystem` plugins.
-public struct PluginsSettings {
-    public static var `default`: PluginsSettings {
-        .init()
-    }
-
-    internal var plugins: [BoxedPlugin] = []
-
-    public init() {}
-
-    /// Adds a `Plugin`.
-    ///
-    /// - Note: A plugin that depends on others should be added *after* its dependencies.
-    public mutating func add<P: Plugin>(_ plugin: P) {
-        return self.plugins.append(BoxedPlugin(plugin))
-    }
-
-    /// Returns `Plugin` identified by `key`.
-    public subscript<P: Plugin>(_: PluginKey<P>) -> P? {
-        self.plugins.first { $0.key == P.key.asAny }?.unsafeUnwrapAs(P.self)
-    }
-
-    /// Starts all plugins in the same order as they were added.
-    internal func startAll(_ system: ActorSystem) {
-        for plugin in self.plugins {
-            if case .failure(let error) = plugin.start(system) {
-                fatalError("Failed to start plugin \(plugin.key.name)! Error: \(error)")
-            }
+        if let sub = self.sub {
+            return "AnyPluginKey(\(self.plugin), sub: \(sub))"
+        } else {
+            return "AnyPluginKey(\(self.plugin))"
         }
-    }
-
-    /// Stops all plugins in the *reversed* order as they were added.
-    internal func stopAll(_ system: ActorSystem) {
-        // Shut down in reversed order so plugins with the fewest dependencies are stopped first!
-        for plugin in self.plugins.reversed() {
-            if case .failure(let error) = plugin.stop(system) {
-                fatalError("Failed to stop plugin \(plugin.key.name)! Error: \(error)")
-            }
-        }
-    }
-}
-
-extension PluginsSettings {
-    public static func += <P: Plugin>(lhs: inout PluginsSettings, rhs: P) {
-        lhs.add(rhs)
     }
 }

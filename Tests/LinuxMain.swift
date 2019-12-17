@@ -21,6 +21,7 @@ import XCTest
 ///
 
 #if os(Linux) || os(FreeBSD)
+@testable import ActorSingletonPluginTests
 @testable import CDistributedActorsMailboxTests
 @testable import DistributedActorsConcurrencyHelpersTests
 @testable import DistributedActorsTestKitTests
@@ -39,6 +40,7 @@ XCTMain([
     testCase(ActorMemoryTests.allTests),
     testCase(ActorNamingTests.allTests),
     testCase(ActorRefAdapterTests.allTests),
+    testCase(ActorSingletonPluginTests.allTests),
     testCase(ActorSubReceiveTests.allTests),
     testCase(ActorSystemTests.allTests),
     testCase(ActorTestKitTests.allTests),

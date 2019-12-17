@@ -543,6 +543,9 @@ extension ActorSystem: _ActorTreeTraversable {
         self._traverseAll(visit)
     }
 
+    /// Looks up an actor by `context`.
+    ///
+    /// - Warning: This method is NOT intended for normal user actors.
     public func _resolve<Message>(context: ResolveContext<Message>) -> ActorRef<Message> {
         guard let selector = context.selectorSegments.first else {
             return context.personalDeadLetters
