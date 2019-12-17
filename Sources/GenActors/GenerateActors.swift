@@ -34,6 +34,8 @@ public final class GenerateActors {
             $0.starts(with: "-")
         }.reduce(into: Settings()) { settings, option in
             switch option {
+            case "--clean":
+                settings.clean = true
             case "-v", "--verbose":
                 settings.verbose = true
             default:
@@ -73,6 +75,10 @@ public final class GenerateActors {
     }
 
     public func run() throws {
+        if self.settings.clean {
+            cleanAll()
+        }
+
         let unresolvedActorables = try parseAll()
 
         // resolves protocol adoption across files; e.g. a protocol defined in another file can be implemented in another
@@ -97,6 +103,35 @@ public final class GenerateActors {
 // MARK: Parsing sources
 
 extension GenerateActors {
+
+    private func cleanAll() {
+        func isGeneratedFile(file: File) -> Bool {
+            file.name.hasSuffix(self.fileGenActorNameSuffixWithExtension) ||
+                file.name.hasSuffix(self.fileGenXPCProtocolStubSuffixWithExtension) ||
+                file.name.hasSuffix(self.fileGenCodableNameSuffixWithExtension)
+        }
+
+        func delete(_ file: File) {
+            do {
+                self.info("Cleaning up: [\(file.path)]...")
+                try file.delete()
+            } catch {
+                self.info("Could not delete: \(file)")
+            }
+        }
+
+        self.filesToScan.forEach { file in
+            if isGeneratedFile(file: file) {
+                delete(file)
+            }
+        }
+
+        self.foldersToScan.forEach { folder in
+            folder.files.recursive
+                .filter { isGeneratedFile(file: $0) }
+                .forEach { delete($0) }
+        }
+    }
 
     private func parseAll() throws -> [ActorableTypeDecl] {
         var unresolvedActorables: [ActorableTypeDecl] = []
@@ -205,6 +240,9 @@ extension GenerateActors {
 
 extension GenerateActors {
     struct Settings {
+        /// Removes any `GenActors` directories before generating sources
+        var clean: Bool = false
+
         /// If true, prints verbose information during analysis and source code generation.
         /// Can be enabled using `--verbose`
         var verbose: Bool = false
