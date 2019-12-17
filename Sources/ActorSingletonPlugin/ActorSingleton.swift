@@ -17,7 +17,7 @@ import DistributedActors
 // ==== ----------------------------------------------------------------------------------------------------------------
 // MARK: Actor singleton
 
-/// An `ActorSingleton` ensures that there is no more than one actor of a specific type running in the cluster.
+/// An `ActorSingleton` ensures that there is no more than one instance of an actor running in the cluster.
 ///
 /// Actors that are singleton must be registered during system setup, as part of `ActorSystemSettings`.
 /// The `ActorRef` of the singleton can later be obtained through `ActorSystem.singleton.ref(name:)`.
